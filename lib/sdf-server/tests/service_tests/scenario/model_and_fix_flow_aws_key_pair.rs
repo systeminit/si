@@ -1,7 +1,7 @@
 use dal::{DalContext, FixCompletionStatus};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use sdf::service::fix::run::FixRunRequest;
+use sdf_server::service::fix::run::FixRunRequest;
 
 use crate::service_tests::scenario::ScenarioHarness;
 use crate::test_setup;

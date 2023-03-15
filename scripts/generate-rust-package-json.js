@@ -22,7 +22,7 @@ function transformInternalDeps(cargoTomlDeps) {
 
 const cargoTomlFiles = fg.sync('(bin|lib)/*/Cargo.toml');
 
-const BOOT_PACKAGES = ['pinga', 'sdf-cli', 'veritech-cli', 'council-cli'];
+const BOOT_PACKAGES = ['pinga', 'sdf', 'veritech', 'council'];
 
 // add cyclone as veritech dep
 // lang-js to cyclone
@@ -34,7 +34,7 @@ for (const tomlPath of cargoTomlFiles) {
   const tomlData = toml.parse(tomlFileRaw);
   // console.log(tomlData);
 
-  const binPath = `../../target/debug/${tomlData.package.name.replace('-cli', '')}`;
+  const binPath = `../../target/debug/${tomlData.package.name}`;
 
   const packageJsonData = {
     name: tomlData.package.name,
@@ -59,11 +59,11 @@ for (const tomlPath of cargoTomlFiles) {
     // the dependencies in package.json files is used by turborepo when running dependent tasks
     dependencies: {
       ...transformInternalDeps(tomlData.dependencies),
-      ...tomlData.package.name === 'veritech-cli' && {
-        'cyclone-cli': "workspace:*",
+      ...tomlData.package.name === 'veritech' && {
+        'cyclone': "workspace:*",
         'lang-js': "workspace:*",
       },
-      ...tomlData.package.name === 'cyclone-cli' && {
+      ...tomlData.package.name === 'cyclone' && {
         'lang-js': "workspace:*",
       },
     },

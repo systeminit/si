@@ -94,7 +94,7 @@ pub enum AttributeValueError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    Council(#[from] council::client::Error),
+    Council(#[from] council_server::client::Error),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error("AttributeContext error: {0}")]

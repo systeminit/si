@@ -12,7 +12,6 @@ on:
       - bin/pinga/**
       - lib/config-file/**
       - lib/dal/**
-      - lib/sdf/**
       - lib/si-data-nats/**
       - lib/si-data-pg/**
       - lib/nats-subscriber/**

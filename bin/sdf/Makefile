@@ -7,5 +7,5 @@ CONTAINER_NAME := sdf
 IMG := systeminit/sdf
 WATCH_TASK := run
 WATCH_PATHS := . \
-	../../lib/sdf \
+	../../lib/sdf-server \
 	../../lib/telemetry-application-rs

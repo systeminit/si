@@ -4,7 +4,7 @@ use dal::{
 };
 use dal_test::{test, test_harness::encrypt_message};
 use hyper::Method;
-use sdf::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
+use sdf_server::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
 
 use crate::{service_tests::api_request_auth_json_body, test_setup};
 

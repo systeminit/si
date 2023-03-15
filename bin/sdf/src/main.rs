@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use color_eyre::Result;
-use sdf::{
+use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
 };
 use telemetry_application::{
@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 
 mod args;
 
-type JobProcessor = sdf::NatsProcessor;
+type JobProcessor = sdf_server::NatsProcessor;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 

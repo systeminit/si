@@ -1,6 +1,6 @@
 use clap::{ArgAction, Parser};
 
-use council::server::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use council_server::server::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "council";
 

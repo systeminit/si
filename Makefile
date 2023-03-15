@@ -46,7 +46,7 @@ COMPONENTS = \
 	bin/sdf \
 	bin/si-discord-bot \
 	bin/veritech \
-	lib/council \
+	lib/council-server \
 	lib/bytes-lines-codec \
 	lib/config-file \
 	lib/cyclone-client \
@@ -58,7 +58,7 @@ COMPONENTS = \
 	lib/nats-subscriber \
 	lib/object-tree \
 	lib/pinga-server \
-	lib/sdf \
+	lib/sdf-server \
 	lib/si-data-nats \
 	lib/si-data-pg \
 	lib/si-pkg \
@@ -232,13 +232,13 @@ test//lib/cyclone-client//RTESTDEPS: test//lib/deadpool-cyclone
 test//lib/cyclone-server//TESTDEPS: build//bin/lang-js
 test//lib/cyclone-server//RTESTDEPS: test//bin/cyclone test//lib/cyclone-client
 
-test//lib/council//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/council//RTESTDEPS: test//lib/dal//TEST
+test//lib/council-server//TESTDEPS: build//bin/cyclone deploy//partial
+test//lib/council-server//RTESTDEPS: test//lib/dal//TEST
 
 test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/dal//RTESTDEPS: test//lib/sdf
+test//lib/dal//RTESTDEPS: test//lib/sdf-server
 
-test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
+test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf-server//TEST
 
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
@@ -250,20 +250,20 @@ test//lib/object-tree//RTESTDEPS: test//lib/si-pkg test//lib/dal
 
 test//lib/pinga-server//RTESTDEPS: test//bin/pinga
 
-test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council
+test//lib/sdf-server//TESTDEPS: build//bin/cyclone deploy//partial
+test//lib/sdf-server//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council
 
-test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
+test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf-server
 
-test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf
+test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf-server
 
 test//lib/si-pkg//RTESTDEPS: test//lib/dal
 
-test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
+test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf-server//TEST
 
-test//lib/si-std//RTESTDEPS: test//lib/dal-test test//lib/sdf
+test//lib/si-std//RTESTDEPS: test//lib/dal-test test//lib/sdf-server
 
-test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
+test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf-server//TEST
 
 test//lib/telemetry-application-rs//RTESTDEPS: test//bin/cyclone test//bin/sdf test//bin/veritech
 

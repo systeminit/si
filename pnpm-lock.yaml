@@ -209,12 +209,12 @@ importers:
 
   bin/council:
     specifiers:
-      council: workspace:*
+      council-server: workspace:*
       si-data-nats: workspace:*
       si-settings: workspace:*
       telemetry-application: workspace:*
     dependencies:
-      council: link:../../lib/council
+      council-server: link:../../lib/council-server
       si-data-nats: link:../../lib/si-data-nats
       si-settings: link:../../lib/si-settings
       telemetry-application: link:../../lib/telemetry-application-rs
@@ -308,20 +308,20 @@ importers:
 
   bin/sdf:
     specifiers:
-      sdf: workspace:*
+      sdf-server: workspace:*
       telemetry-application: workspace:*
     dependencies:
-      sdf: link:../../lib/sdf
+      sdf-server: link:../../lib/sdf-server
       telemetry-application: link:../../lib/telemetry-application-rs
 
   bin/veritech:
     specifiers:
-      cyclone-cli: workspace:*
+      cyclone: workspace:*
       lang-js: workspace:*
       telemetry-application: workspace:*
       veritech-server: workspace:*
     dependencies:
-      cyclone-cli: link:../cyclone
+      cyclone: link:../cyclone
       lang-js: link:../lang-js
       telemetry-application: link:../../lib/telemetry-application-rs
       veritech-server: link:../../lib/veritech-server
@@ -332,7 +332,7 @@ importers:
   lib/config-file:
     specifiers: {}
 
-  lib/council:
+  lib/council-server:
     specifiers:
       si-data-nats: workspace:*
       si-settings: workspace:*
@@ -373,7 +373,7 @@ importers:
 
   lib/dal:
     specifiers:
-      council: workspace:*
+      council-server: workspace:*
       nats-subscriber: workspace:*
       object-tree: workspace:*
       si-data-nats: workspace:*
@@ -382,7 +382,7 @@ importers:
       telemetry: workspace:*
       veritech-client: workspace:*
     dependencies:
-      council: link:../council
+      council-server: link:../council-server
       nats-subscriber: link:../nats-subscriber
       object-tree: link:../object-tree
       si-data-nats: link:../si-data-nats
@@ -393,7 +393,7 @@ importers:
 
   lib/dal-test:
     specifiers:
-      council: workspace:*
+      council-server: workspace:*
       dal: workspace:*
       si-data-nats: workspace:*
       si-data-pg: workspace:*
@@ -403,7 +403,7 @@ importers:
       veritech-client: workspace:*
       veritech-server: workspace:*
     dependencies:
-      council: link:../council
+      council-server: link:../council-server
       dal: link:../dal
       si-data-nats: link:../si-data-nats
       si-data-pg: link:../si-data-pg
@@ -484,7 +484,7 @@ importers:
       telemetry: link:../telemetry-rs
       veritech-client: link:../veritech-client
 
-  lib/sdf:
+  lib/sdf-server:
     specifiers:
       dal: workspace:*
       si-data-nats: workspace:*

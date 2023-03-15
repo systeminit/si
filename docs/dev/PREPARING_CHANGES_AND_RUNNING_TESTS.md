@@ -47,7 +47,7 @@ Where `bin/veritech` is the path to the component you want to test. If you want 
 cleaned and started automatically (blowing away the data in the database) run this instead:
 
 ```bash
-make FORCE=true test//lib/sdf
+make FORCE=true test//lib/sdf-server
 ```
 
 ## Running the CI tests locally

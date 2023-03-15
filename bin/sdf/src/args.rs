@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{builder::PossibleValuesParser, ArgAction, Parser};
-use sdf::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
+use sdf_server::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
 
 const NAME: &str = "sdf";
 

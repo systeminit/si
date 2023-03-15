@@ -605,25 +605,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 name = "council"
 version = "0.1.0"
 dependencies = [
- "derive_builder 0.11.2",
- "futures",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-settings",
- "telemetry",
- "thiserror",
- "tokio",
- "ulid",
-]
-
-[[package]]
-name = "council-cli"
-version = "0.1.0"
-dependencies = [
  "clap",
  "color-eyre",
- "council",
+ "council-server",
  "derive_builder 0.11.2",
  "futures",
  "serde",
@@ -631,6 +615,22 @@ dependencies = [
  "si-data-nats",
  "si-settings",
  "telemetry-application",
+ "thiserror",
+ "tokio",
+ "ulid",
+]
+
+[[package]]
+name = "council-server"
+version = "0.1.0"
+dependencies = [
+ "derive_builder 0.11.2",
+ "futures",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-settings",
+ "telemetry",
  "thiserror",
  "tokio",
  "ulid",
@@ -760,7 +760,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cyclone-cli"
+name = "cyclone"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -845,7 +845,7 @@ dependencies = [
  "async-trait",
  "base64",
  "chrono",
- "council",
+ "council-server",
  "dal-test",
  "derive_more",
  "diff",
@@ -892,7 +892,7 @@ name = "dal-test"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
- "council",
+ "council-server",
  "dal",
  "lazy_static",
  "names",
@@ -3193,6 +3193,17 @@ dependencies = [
 name = "sdf"
 version = "0.1.0"
 dependencies = [
+ "clap",
+ "color-eyre",
+ "sdf-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "sdf-server"
+version = "0.1.0"
+dependencies = [
  "async-trait",
  "axum 0.5.17",
  "axum-macros",
@@ -3228,17 +3239,6 @@ dependencies = [
  "tower",
  "tower-http",
  "veritech-client",
-]
-
-[[package]]
-name = "sdf-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "sdf",
- "telemetry-application",
- "tokio",
 ]
 
 [[package]]
@@ -4408,7 +4408,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
-name = "veritech-cli"
+name = "veritech"
 version = "0.1.0"
 dependencies = [
  "clap",

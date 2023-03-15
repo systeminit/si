@@ -26,7 +26,7 @@
     "telemetry": "workspace:*",
     "veritech-client": "workspace:*",
     "veritech-server": "workspace:*",
-    "council": "workspace:*"
+    "council-server": "workspace:*"
   },
   "devDependencies": {}
 }

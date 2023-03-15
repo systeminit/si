@@ -3,7 +3,7 @@ use dal_test::{
     test,
     test_harness::{create_component_for_schema_variant, create_schema, create_schema_variant},
 };
-use sdf::service::component::get_components_metadata::{
+use sdf_server::service::component::get_components_metadata::{
     GetComponentsMetadataRequest, GetComponentsMetadataResponse,
 };
 

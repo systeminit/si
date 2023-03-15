@@ -129,8 +129,8 @@ impl JobConsumer for DependentValuesUpdate {
 
         let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
 
-        let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
-        let mut council = council::Client::new(
+        let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;
+        let mut council = council_server::Client::new(
             ctx.nats_conn().clone(),
             ctx.council_subject_prefix(),
             jid,
@@ -139,7 +139,7 @@ impl JobConsumer for DependentValuesUpdate {
         .await?;
         let pub_council = council.clone_into_pub();
 
-        if let council::client::State::Shutdown = council.wait_to_create_values().await? {
+        if let council_server::client::State::Shutdown = council.wait_to_create_values().await? {
             return Ok(());
         }
 
@@ -209,7 +209,7 @@ impl JobConsumer for DependentValuesUpdate {
         while !dependency_graph.is_empty() {
             match council.fetch_response().await? {
                 Some(response) => match response {
-                    council::Response::OkToProcess { node_ids } => {
+                    council_server::Response::OkToProcess { node_ids } => {
                         for node_id in node_ids {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
@@ -239,7 +239,7 @@ impl JobConsumer for DependentValuesUpdate {
                                 ))?;
                         }
                     }
-                    council::Response::BeenProcessed { node_id } => {
+                    council_server::Response::BeenProcessed { node_id } => {
                         let id = AttributeValueId::from(node_id);
                         dependency_graph.remove(&id);
 
@@ -257,8 +257,8 @@ impl JobConsumer for DependentValuesUpdate {
 
                         ctx = self.commit_and_continue(ctx).await?;
                     }
-                    council::Response::OkToCreate => unreachable!(),
-                    council::Response::Shutdown => break,
+                    council_server::Response::OkToCreate => unreachable!(),
+                    council_server::Response::Shutdown => break,
                 },
                 // FIXME: reconnect
                 None => break, // Happens if subscription has been unsubscribed or if connection is closed
@@ -352,7 +352,7 @@ async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
     single_transaction: bool,
-    council: council::PubClient,
+    council: council_server::PubClient,
     status_updater: Arc<Mutex<StatusUpdater>>,
 ) -> AttributeValueResult<()> {
     info!("DependentValueUpdate {:?}: START", attribute_value.id());

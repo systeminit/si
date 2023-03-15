@@ -47,7 +47,7 @@ pub enum JobConsumerError {
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
-    Council(#[from] council::client::Error),
+    Council(#[from] council_server::client::Error),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]

@@ -11,9 +11,9 @@ on:
       - Cargo.*
       - bin/sdf/**
       - lib/config-file/**
-      - lib/council/**
+      - lib/council-server/**
       - lib/dal/**
-      - lib/sdf/**
+      - lib/sdf-server/**
       - lib/si-data-nats/**
       - lib/si-data-pg/**
       - lib/nats-subscriber/**
