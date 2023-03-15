@@ -193,6 +193,53 @@
         }"
       />
     </v-group>
+
+    <!--  spinner overlay  -->
+    <v-group
+      ref="overlay"
+      :config="{
+        x: -halfWidth,
+        y: 0,
+        opacity: 0,
+        listening: false,
+      }"
+    >
+      <!--  transparent overlay  -->
+      <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeBodyHeight,
+          x: 0,
+          y: 0,
+          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+          fill: 'rgba(255,255,255,0.70)',
+        }"
+      />
+      <DiagramIcon
+        icon="loader"
+        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+        :size="overlayIconSize"
+        :x="halfWidth"
+        :y="nodeBodyHeight / 2"
+      />
+    </v-group>
+
+    <!-- added/modified indicator (smaller, bottom left) -->
+    <DiagramIcon
+      v-if="isAdded || isModified"
+      :icon="isAdded ? 'plus' : 'tilde'"
+      :bg-color="
+        isAdded
+          ? diagramConfig?.toneColors?.success
+          : diagramConfig?.toneColors?.warning
+      "
+      circle-bg
+      :color="theme === 'dark' ? '#000' : '#FFF'"
+      :size="20"
+      :x="halfWidth - 15"
+      :y="nodeHeaderHeight / 2 - 35"
+      origin="center"
+    />
   </v-group>
 </template>
 
@@ -202,7 +249,6 @@ import _ from "lodash";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
-import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
 import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
@@ -269,6 +315,12 @@ const groupRef = ref();
 const size = computed(
   () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
 );
+
+const isDeleted = computed(() => props.group.def.changeStatus === "deleted");
+const isModified = computed(() => props.group.def.changeStatus === "modified");
+const isAdded = computed(() => props.group.def.changeStatus === "added");
+
+const overlayIconSize = computed(() => nodeWidth.value / 3);
 
 const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
@@ -347,8 +399,6 @@ const colors = computed(() => {
     bodyText,
   };
 });
-
-const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 
 function onMouseOver(evt: KonvaEventObject<MouseEvent>) {
   evt.cancelBubble = true;

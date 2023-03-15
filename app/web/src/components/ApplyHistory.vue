@@ -65,10 +65,7 @@
                   )
                 "
               >
-                <Timestamp
-                  size="mini"
-                  :date="new Date(fixBatch.finishedAt.replace(' UTC', ''))"
-                />
+                <Timestamp size="mini" :date="new Date(fixBatch.finishedAt)" />
               </span>
             </div>
           </template>
@@ -90,6 +87,9 @@
                 <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
               </div>
               <div>by: {{ fixBatch.author }}</div>
+              <div>
+                <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
+              </div>
             </div>
 
             <ul class="pl-5 mt-2">
@@ -135,6 +135,7 @@
 </template>
 
 <script lang="ts" setup>
+import _ from "lodash";
 import { computed } from "vue";
 import clsx from "clsx";
 import { themeClasses } from "@/ui-lib/theme_tools";
@@ -150,7 +151,7 @@ import CodeViewer from "./CodeViewer.vue";
 
 const fixesStore = useFixesStore();
 
-const fixBatches = computed(() => fixesStore.allFinishedFixBatches);
+const fixBatches = computed(() => _.reverse(fixesStore.allFinishedFixBatches));
 
 const formatTitle = (title: string) => {
   return title

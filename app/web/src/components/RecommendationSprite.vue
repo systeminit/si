@@ -33,7 +33,7 @@
           recommendation.isRunnable === 'running'
         "
         name="loader"
-        :class="clsx('flex-none mx-1', statusIconProps.color)"
+        class="flex-none mx-1 text-action-300"
         size="lg"
       />
       <Icon

@@ -140,13 +140,13 @@
           <!-- TOOD(nick): replace with an SLA tab panel -->
           <!-- <GenericTabPanel :component-list="componentList" />
           </TabPanel> -->
-          <TabPanel
+          <!-- <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
             <GenericTabPanel :component-list="componentList" />
-          </TabPanel>
+          </TabPanel> -->
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
