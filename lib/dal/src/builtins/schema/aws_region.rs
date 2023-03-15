@@ -88,6 +88,15 @@ impl MigrationDriver {
             .await?;
 
         // Validation Creation
+        self.create_validation(
+            ctx,
+            Validation::StringIsNotEmpty { value: None },
+            *region_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
         let expected = regions_json
             .iter()
             .map(|r| r.code.clone())
