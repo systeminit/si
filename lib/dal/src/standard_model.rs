@@ -796,6 +796,18 @@ pub trait StandardModel {
 
         Ok(obj)
     }
+
+    #[instrument(skip_all)]
+    async fn exists_in_head(&self, ctx: &DalContext) -> StandardModelResult<bool>
+    where
+        Self: Send + Sync + Sized + Serialize + DeserializeOwned,
+    {
+        let head_ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
+        let obj: Option<Self> =
+            crate::standard_model::get_by_id(&head_ctx, Self::table_name(), self.id()).await?;
+
+        Ok(obj.is_some())
+    }
 }
 
 #[macro_export]

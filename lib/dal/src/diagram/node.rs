@@ -7,9 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, ComponentType,
-    DalContext, DiagramError, HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant,
-    StandardModel,
+    history_event, ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext,
+    DiagramError, HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
 };
 
 #[derive(
@@ -195,9 +194,11 @@ impl DiagramComponentView {
         let x = node.x().parse::<f64>()?;
         let y = node.y().parse::<f64>()?;
 
-        let change_status = if node.visibility().deleted_at.is_some() {
+        // Change status should track the component, not the node, since node position is on the
+        // node and the node will change if it is moved
+        let change_status = if component.visibility().deleted_at.is_some() {
             ChangeStatus::Deleted
-        } else if node.visibility().change_set_pk != ChangeSetPk::NONE {
+        } else if !component.exists_in_head(ctx).await? {
             ChangeStatus::Added
         } else if is_modified {
             ChangeStatus::Modified
