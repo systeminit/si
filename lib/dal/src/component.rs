@@ -1074,7 +1074,7 @@ impl Component {
             .await?;
         let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
 
-        for attr_value in attr_values.iter_mut() {
+        for attr_value in &mut attr_values {
             attr_value.update_from_prototype_function(ctx).await?;
         }
 
