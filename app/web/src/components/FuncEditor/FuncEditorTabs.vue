@@ -23,19 +23,21 @@
     </template>
 
     <TabGroupItem
-      v-for="func in openFuncsList"
-      :key="func.id"
-      :label="func.name"
-      :slug="func.id"
+      v-for="openFuncId in openFuncIds"
+      :key="openFuncId"
+      :slug="openFuncId"
     >
-      <FuncEditor :func-id="func.id" />
+      <template #label>{{
+        funcStore.funcsById[openFuncId]?.name ?? openFuncId
+      }}</template>
+      <FuncEditor :func-id="openFuncId" />
     </TabGroupItem>
   </TabGroup>
 </template>
 
 <script lang="ts" setup>
 import _ from "lodash";
-import { watch, ref, computed, nextTick } from "vue";
+import { watch, ref, nextTick } from "vue";
 import FuncEditor from "@/components/FuncEditor/FuncEditor.vue";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
@@ -53,10 +55,7 @@ const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
 
-const openFuncIds = ref([] as FuncId[]);
-const openFuncsList = computed(() => {
-  return _.map(openFuncIds.value, (id) => funcStore.funcsById[id]);
-});
+const openFuncIds = ref<FuncId[]>([]);
 
 const closeFunc = (funcId: string) => {
   openFuncIds.value = _.without(openFuncIds.value, funcId);

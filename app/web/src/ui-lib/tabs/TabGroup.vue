@@ -100,7 +100,9 @@
             :key="tab.props.slug"
             @select="selectTab(tab.props.slug)"
           >
-            {{ tab.props.label }}
+            <!-- TODO: we may need another slot for rendering custom labels in the overflow menu -->
+            <component :is="tab.slots.label" v-if="tab.slots.label" />
+            <span v-else>{{ tab.props.label }}</span>
           </DropdownMenuItem>
         </DropdownMenu>
       </div>

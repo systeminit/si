@@ -62,7 +62,6 @@ watch(
 );
 
 const updateFuncCode = (code: string) => {
-  console.log('updateFuncTriggered');
   funcStore.updateFuncCode(props.funcId, code);
 };
 </script>

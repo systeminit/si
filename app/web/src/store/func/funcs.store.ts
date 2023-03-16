@@ -156,6 +156,7 @@ export const useFuncStore = () => {
           },
           keyRequestStatusBy: func.id,
           onSuccess: (response) => {
+            this.funcDetailsById[func.id] = func;
             this.funcDetailsById[func.id].associations = response.associations;
             this.funcDetailsById[func.id].isRevertible = response.isRevertible;
           },
