@@ -6,44 +6,44 @@ mod model_and_fix_flow_aws_key_pair;
 mod model_and_fix_flow_whiskers;
 mod model_flow_fedora_coreos_ignition;
 
-use axum::http::Method;
-use axum::Router;
-use dal::component::confirmation::ConfirmationView;
-use dal::property_editor::values::PropertyEditorValue;
-use dal::socket::SocketEdgeKind;
-use dal::ComponentViewProperties;
+use axum::{http::Method, Router};
 use dal::{
-    AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, FixBatchId, NodeId,
-    Prop, PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
+    component::confirmation::ConfirmationView, property_editor::values::PropertyEditorValue,
+    socket::SocketEdgeKind, AttributeValue, AttributeValueId, ComponentId, ComponentView,
+    ComponentViewProperties, DalContext, FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId,
+    Socket, StandardModel, Visibility,
 };
-use sdf::service::change_set::apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse};
-use sdf::service::change_set::create_change_set::{
-    CreateChangeSetRequest, CreateChangeSetResponse,
+use sdf_server::service::{
+    change_set::{
+        apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse},
+        create_change_set::{CreateChangeSetRequest, CreateChangeSetResponse},
+    },
+    component::{
+        get_property_editor_values::{
+            GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
+        },
+        insert_property_editor_value::{
+            InsertPropertyEditorValueRequest, InsertPropertyEditorValueResponse,
+        },
+        update_property_editor_value::{
+            UpdatePropertyEditorValueRequest, UpdatePropertyEditorValueResponse,
+        },
+    },
+    diagram::{
+        create_connection::{CreateConnectionRequest, CreateConnectionResponse},
+        create_node::{CreateNodeRequest, CreateNodeResponse},
+    },
+    fix::{
+        confirmations::{ConfirmationsRequest, ConfirmationsResponse},
+        list::{BatchHistoryView, ListFixesRequest, ListFixesResponse},
+        run::{FixRunRequest, FixesRunRequest, FixesRunResponse},
+    },
 };
-use sdf::service::component::get_property_editor_values::{
-    GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
-};
-use sdf::service::component::insert_property_editor_value::{
-    InsertPropertyEditorValueRequest, InsertPropertyEditorValueResponse,
-};
-use sdf::service::component::update_property_editor_value::{
-    UpdatePropertyEditorValueRequest, UpdatePropertyEditorValueResponse,
-};
-use sdf::service::diagram::create_connection::{CreateConnectionRequest, CreateConnectionResponse};
-use sdf::service::diagram::create_node::{CreateNodeRequest, CreateNodeResponse};
-use sdf::service::fix::confirmations::ConfirmationsRequest;
-use sdf::service::fix::confirmations::ConfirmationsResponse;
-use sdf::service::fix::list::ListFixesResponse;
-use sdf::service::fix::list::{BatchHistoryView, ListFixesRequest};
-use sdf::service::fix::run::FixesRunResponse;
-use sdf::service::fix::run::{FixRunRequest, FixesRunRequest};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 
-use crate::service_tests::api_request_auth_json_body;
-use crate::service_tests::api_request_auth_query;
+use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 
 /// This _private_ struct is a wrapper around metadata related to a [`Component`](dal::Component)
 /// for use in scenario tests.

@@ -20,8 +20,8 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/config-file/**
   lib/dal/**
   lib/dal-test/**
-  lib/sdf/**
-  lib/council/**
+  lib/sdf-server/**
+  lib/council-server/**
   lib/si-data-nats/**
   lib/si-data-pg/**
   lib/si-settings/**

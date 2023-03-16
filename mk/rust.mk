@@ -4,28 +4,46 @@ TEST_ARGS ?=
 TEST_FILTER ?=
 SI_LOG ?= info
 
+PKGID = $(shell cargo pkgid --offline --quiet)
+WORKSPACE_ROOT = $(shell cargo metadata --offline --no-deps --quiet \
+		 | jq -r .workspace_root)
+
 ## clean: Cleans all build/test temporary work files
 default--clean:
 	$(call header,$@)
-	cargo clean
+	cd $(WORKSPACE_ROOT)
+	@# cargo clean will warn about ignoring the version and url qualifiers
+	@# on a full pkgid spec so we'll determine the short, versionless pkgid
+	@# spec and use that
+	cargo clean --package "$$(echo $(PKGID) \
+		| awk -F '#|@' '{\
+			if ($$0 ~ /^.+#[^#]+@[^@]+$$/) {print $$2} \
+			else {print $$1} \
+		}' \
+		| xargs basename)"
 .PHONY: default--clean
 
 ## build: Builds the Rust crate
 default--build:
 	$(call header,$@)
-	cargo build
+	cd $(WORKSPACE_ROOT)
+	cargo build --package $(PKGID)
 .PHONY: default--build
 
 ## check-lint: Checks all code and doc linting for the Rust crate
 default--check-lint:
 	$(call header,$@)
-	cargo clippy --no-deps --all-targets -- -D warnings
+	cd $(WORKSPACE_ROOT)
+	cargo clippy --package $(PKGID) \
+		--no-deps --all-targets -- -D warnings
 .PHONY: default--check-lint
 
 ## check-doc: Checks all documentation for the Rust crate
 default--check-doc:
 	$(call header,$@)
-	env RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --document-private-items
+	cd $(WORKSPACE_ROOT)
+	env RUSTDOCFLAGS="-Dwarnings" cargo doc --package $(PKGID) \
+		--no-deps --document-private-items
 .PHONY: default--check-doc
 
 ## check-format: Checks all code formatting for the Rust crate
@@ -41,7 +59,9 @@ default--check: check-format check-lint check-doc
 ## fix-lint: Updates code with linting fixes for the crate (may modify sources)
 default--fix-lint:
 	$(call header,$@)
-	cargo fix --edition-idioms --allow-dirty --allow-staged
+	cd $(WORKSPACE_ROOT)
+	cargo fix --package $(PKGID) \
+		--edition-idioms --allow-dirty --allow-staged
 .PHONY: default--fix-lint
 
 ## fix-format: Updates code formatting for the crate (may modify sources)
@@ -61,7 +81,15 @@ default--start: run
 ## run: Runs the default bin of the Rust crate
 default--run:
 	$(call header,$@)
-	cargo run
+	cd $(WORKSPACE_ROOT)
+	@# cargo run doesn't seem to honor the full pkid spec so we'll determine
+	@# the short, versionless  pkgid spec and use that
+	cargo run --package "$$(echo $(PKGID) \
+		| awk -F '#|@' '{\
+			if ($$0 ~ /^.+#[^#]+@[^@]+$$/) {print $$2} \
+			else {print $$1} \
+		}' \
+		| xargs basename)"
 .PHONY: default--run
 
 ## watch: Runs `cargo watch` for the Rust crate
@@ -74,7 +102,9 @@ default--watch:
 ## test: Tests the Rust crate
 default--test:
 	$(call header,$@)
-	env RUST_BACKTRACE=1 cargo test $(TEST_FILTER) -- $(TEST_ARGS)
+	cd $(WORKSPACE_ROOT)
+	env RUST_BACKTRACE=1 cargo test --package $(PKGID) \
+		$(TEST_FILTER) -- $(TEST_ARGS)
 .PHONY: default--test
 
 ## prepush: Runs all checks & tests required before pushing commits

@@ -21,7 +21,7 @@
 !bin/veritech
 !lib/bytes-lines-codec
 !lib/config-file
-!lib/council
+!lib/council-server
 !lib/cyclone-client
 !lib/cyclone-core
 !lib/cyclone-server
@@ -31,7 +31,7 @@
 !lib/nats-subscriber
 !lib/object-tree
 !lib/pinga-server
-!lib/sdf
+!lib/sdf-server
 !lib/veritech-client
 !lib/veritech-core
 !lib/veritech-server

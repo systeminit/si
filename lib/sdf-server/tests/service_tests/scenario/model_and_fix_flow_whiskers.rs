@@ -3,7 +3,7 @@ use dal::qualification::QualificationSubCheckStatus;
 use dal::{Component, DalContext, FixBatchId, FixCompletionStatus};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use sdf::service::fix::run::FixRunRequest;
+use sdf_server::service::fix::run::FixRunRequest;
 use std::collections::HashMap;
 
 use crate::service_tests::scenario::ScenarioHarness;

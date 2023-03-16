@@ -25,7 +25,7 @@ It is designed for those wanting to get the rebase over with in a clean manner.
    3. In those same options, “Incoming” refers to changes on our branch. 
    4. You can the options or manually intervene to make changes. Sometimes, you may want to accept everything on HEAD or your local branch and just triage manually. Sometimes, you’ll want to not accept anything and manually triage the whole thing. Sometimes you’ll want to do both. It depends!
    5. Finally, it can be useful to have your branch diff open on GitHub to see what you changed before the rebase: `https://github.com/systeminit/si/compare/main...<your-branch>`.
-8. Once all conflict areas for “unmerged paths” (files with conflicts) have been resolved, run `git add` with either the entire current working directory and below (`.`) or specific files/directories (e.g. `lib/dal/src lib/sdf/src/`) as the next argument(s).
+8. Once all conflict areas for “unmerged paths” (files with conflicts) have been resolved, run `git add` with either the entire current working directory and below (`.`) or specific files/directories (e.g. `lib/dal/src lib/sdf-server/src/`) as the next argument(s).
 9. Now run `git status` again. The output should indicate that conflicts have been resolved and that we can continue rebasing.
 10. If everything looks good in the output, run `git rebase --continue`. You will have an opportunity to amend your commit message here, if desired.
     1. You will not have to necessarily the “human fix this conflict area” process for every commit.

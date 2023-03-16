@@ -31,7 +31,7 @@ A-cyclone:
   - rustfmt.toml
 A-sdf:
   - bin/sdf/**/*
-  - lib/sdf/**/*
+  - lib/sdf-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -54,7 +54,7 @@ A-pinga:
   - rustfmt.toml
 A-council:
   - bin/council/**/*
-  - lib/council/**/*
+  - lib/council-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

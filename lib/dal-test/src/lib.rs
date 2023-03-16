@@ -307,17 +307,17 @@ pub fn nats_subject_prefix() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
-/// Configures and builds a [`council::Server`] suitable for running alongside DAL object-related
+/// Configures and builds a [`council_server::Server`] suitable for running alongside DAL object-related
 /// tests.
 pub async fn council_server(
     nats_config: NatsConfig,
     subject_prefix: String,
-) -> Result<council::Server> {
-    let config = council::server::Config::builder()
+) -> Result<council_server::Server> {
+    let config = council_server::server::Config::builder()
         .nats(nats_config)
         .subject_prefix(subject_prefix)
         .build()?;
-    let server = council::Server::new_with_config(config).await?;
+    let server = council_server::Server::new_with_config(config).await?;
     Ok(server)
 }
 

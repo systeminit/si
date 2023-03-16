@@ -7,7 +7,7 @@ use dal_test::{
     test,
     test_harness::{generate_fake_name, one_time_setup, TestContext},
 };
-use sdf::service::signup::{self, create_account::CreateAccountResponse};
+use sdf_server::service::signup::{self, create_account::CreateAccountResponse};
 use tower::ServiceExt;
 
 #[test]
@@ -18,7 +18,7 @@ async fn create_account() {
         ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
-    let (app, _, _) = sdf::build_service(
+    let (app, _, _) = sdf_server::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),
@@ -68,7 +68,7 @@ async fn create_account_invalid_signup_secret() {
         ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
-    let (app, _, _) = sdf::build_service(
+    let (app, _, _) = sdf_server::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use axum::http::Method;
 use dal::StandardModel;
 use dal_test::{test, test_harness::create_schema as dal_create_schema};
-use sdf::service::schema::{
+use sdf_server::service::schema::{
     create_schema::{CreateSchemaRequest, CreateSchemaResponse},
     get_schema::{GetSchemaRequest, GetSchemaResponse},
     list_schemas::{ListSchemaRequest, ListSchemaResponse},

@@ -167,13 +167,13 @@ impl TestContext {
     }
 }
 
-async fn council_server(nats_config: NatsConfig, subject_prefix: String) -> council::Server {
-    let config = council::server::Config::builder()
+async fn council_server(nats_config: NatsConfig, subject_prefix: String) -> council_server::Server {
+    let config = council_server::server::Config::builder()
         .nats(nats_config)
         .subject_prefix(subject_prefix)
         .build()
         .expect("failed to build spec");
-    council::Server::new_with_config(config)
+    council_server::Server::new_with_config(config)
         .await
         .expect("failed to create server")
 }
