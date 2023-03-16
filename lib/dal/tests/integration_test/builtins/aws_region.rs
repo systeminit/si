@@ -35,7 +35,11 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-poop-1",
             }
         }], // actual
-        region_payload.component_view_properties_raw(ctx).await // expected
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // expected
     );
 
     let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
@@ -84,7 +88,11 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-east-1",
             },
         }], // actual
-        region_payload.component_view_properties_raw(ctx).await // expected
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // expected
     );
 
     // TODO(nick): now, ensure we have the right value! Huzzah.
@@ -227,7 +235,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-east-2"
             },
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -281,7 +293,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-west-2"
             },
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -449,7 +465,11 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "region": "us-east-2"
             },
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -503,7 +523,11 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "region": "us-west-2"
             },
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{

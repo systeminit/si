@@ -11,10 +11,11 @@ use crate::validation::Validation;
 use crate::AttributeValueError;
 use crate::{action_prototype::ActionKind, ComponentType};
 use crate::{
-    func::argument::FuncArgument, ActionPrototype, ActionPrototypeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
-    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    func::argument::FuncArgument,
+    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
+    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind,
+    SchemaError, SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Documentation URL(s)
@@ -88,6 +89,15 @@ impl MigrationDriver {
             .await?;
 
         // Validation Creation
+        self.create_validation(
+            ctx,
+            Validation::StringIsNotEmpty { value: None },
+            *region_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
         let expected = regions_json
             .iter()
             .map(|r| r.code.clone())
@@ -120,6 +130,26 @@ impl MigrationDriver {
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             false,
+        )
+        .await?;
+
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:qualificationAwsRegionHasRegionSet",
+                "domain",
+            )
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            *schema_variant.id(),
+            None,
+            LeafKind::Qualification,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                func_argument_id: qualification_func_argument_id,
+            }],
         )
         .await?;
 
