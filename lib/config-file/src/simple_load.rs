@@ -13,7 +13,7 @@ where
         Some(target) => target,
         None => return Ok(None),
     };
-    let buf = read_from_file(&target)?;
+    let buf = read_from_file(target)?;
     Ok(Some(load_from_str(&buf, file_format)?))
 }
 

@@ -12,7 +12,7 @@ async fn new(ctx: &DalContext) {
         ctx,
         WorkflowPrototypeId::NONE,
         name,
-        ActionKind::Other,
+        ActionKind::Create,
         context,
     )
     .await

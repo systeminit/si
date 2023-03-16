@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::component::confirmation::ConfirmationView as DalConfirmationView;
+use dal::component::confirmation::view::ConfirmationView as DalConfirmationView;
 use dal::{Component, Visibility};
 use serde::{Deserialize, Serialize};
 

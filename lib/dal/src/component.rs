@@ -25,22 +25,20 @@ use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
 use crate::{
-    func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
+    impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
-    AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
-    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
-    ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, Prop, PropError,
-    PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
-    WsEventResult, WsPayload,
+    AttributePrototypeError, AttributePrototypeId, AttributeReadContext, ComponentType, DalContext,
+    EdgeError, ExternalProvider, ExternalProviderError, ExternalProviderId, FixError, Func,
+    FuncBackendKind, FuncError, HistoryActor, HistoryEventError, InternalProvider,
+    InternalProviderId, Node, NodeError, PropError, PropId, RootPropChild, Schema, SchemaError,
+    SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkflowRunnerError,
+    WorkspaceError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
-pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 pub mod code;
 pub mod confirmation;
@@ -50,6 +48,8 @@ pub mod resource;
 pub mod status;
 pub mod validation;
 pub mod view;
+
+pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
@@ -61,12 +61,6 @@ pub enum ComponentError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("attribute value not found for context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
-    #[error("invalid json pointer: {0} for {1}")]
-    BadJsonPointer(String, String),
-    #[error("code generation function returned unexpected format, expected {0:?}, got {1:?}")]
-    CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error(transparent)]
     CodeView(#[from] CodeViewError),
     #[error("edge error: {0}")]
@@ -75,48 +69,14 @@ pub enum ComponentError {
     FixResolver(#[from] FixResolverError),
     #[error("fix error: {0}")]
     Fix(#[from] Box<FixError>),
-    #[error("unable to delete frame due to attached components")]
-    FrameHasAttachedComponents,
-    #[error("component marked as protected: {0}")]
-    ComponentProtected(ComponentId),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("func not found: {0}")]
-    FuncNotFound(FuncId),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
-    #[error("internal provider not found for prop: {0}")]
-    InternalProviderNotFoundForProp(PropId),
-    #[error("invalid context(s) provided for diff")]
-    InvalidContextForDiff,
-    #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]
-    InvalidFuncBackendKindForValidations(FuncBackendKind),
-    #[error("missing attribute value for id: ({0})")]
-    MissingAttributeValue(AttributeValueId),
-    #[error("missing index map on attribute value: {0}")]
-    MissingIndexMap(AttributeValueId),
-    #[error("expected one root prop, found multiple: {0:?}")]
-    MultipleRootProps(Vec<Prop>),
-    #[error("root prop not found for schema variant: {0}")]
-    RootPropNotFound(SchemaVariantId),
-    #[error("validation error: {0}")]
-    Validation(#[from] ValidationConstructorError),
-    #[error("attribute value does not have a prototype: {0}")]
-    MissingAttributePrototype(AttributeValueId),
-    #[error("node not found for component: {0}")]
-    NodeNotFoundForComponent(ComponentId),
-    #[error("attribute prototype does not have a function: {0}")]
-    MissingAttributePrototypeFunction(AttributePrototypeId),
-    #[error("/root/si/name is unset for component {0}")]
-    NameIsUnset(ComponentId),
-    #[error(transparent)]
-    ComponentView(#[from] ComponentViewError),
-    #[error("unable to find code generated")]
-    CodeGeneratedNotFound,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -125,6 +85,10 @@ pub enum ComponentError {
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationConstructorError),
+    #[error(transparent)]
+    ComponentView(#[from] ComponentViewError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
@@ -133,30 +97,14 @@ pub enum ComponentError {
     StandardModelError(#[from] StandardModelError),
     #[error("node error: {0}")]
     NodeError(#[from] NodeError),
-    #[error("component not found: {0}")]
-    NotFound(ComponentId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("no schema variant for component {0}")]
-    NoSchemaVariant(ComponentId),
-    #[error("no schema for component {0}")]
-    NoSchema(ComponentId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("missing a prop in attribute update: {0} not found")]
-    MissingProp(PropId),
-    #[error("missing a prop in attribute update: {0} not found")]
-    PropNotFound(String),
-    #[error("missing a func in attribute update: {0} not found")]
-    MissingFunc(String),
-    #[error("func binding return value: {0} not found")]
-    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
-    #[error("invalid prop value kind; expected {0} but found {1}")]
-    InvalidPropValue(&'static str, Value),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
@@ -165,18 +113,39 @@ pub enum ComponentError {
     ValidationResolver(#[from] ValidationResolverError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("validation prototype does not match component schema variant: {0}")]
-    ValidationPrototypeMismatch(SchemaVariantId),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
-    #[error("workspace not found")]
-    WorkspaceNotFound,
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error("invalid AttributeReadContext: {0}")]
-    BadAttributeReadContext(String),
+
+    #[error("attribute value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("unable to delete frame due to attached components")]
+    FrameHasAttachedComponents,
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
+    #[error("invalid context(s) provided for diff")]
+    InvalidContextForDiff,
+    #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]
+    InvalidFuncBackendKindForValidations(FuncBackendKind),
+    #[error("attribute value does not have a prototype: {0}")]
+    MissingAttributePrototype(AttributeValueId),
+    #[error("node not found for component: {0}")]
+    NodeNotFoundForComponent(ComponentId),
+    #[error("attribute prototype does not have a function: {0}")]
+    MissingAttributePrototypeFunction(AttributePrototypeId),
+    #[error("/root/si/name is unset for component {0}")]
+    NameIsUnset(ComponentId),
+    #[error("component not found: {0}")]
+    NotFound(ComponentId),
+    #[error("no schema variant for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("no schema for component {0}")]
+    NoSchema(ComponentId),
+    #[error("func binding return value: {0} not found")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error("found child attribute value of a map without a key: {0}")]
     FoundMapEntryWithoutKey(AttributeValueId),
     #[error("schema variant has not been finalized at least once: {0}")]
@@ -185,6 +154,8 @@ pub enum ComponentError {
     CannotUpdateResourceTreeInChangeSet,
     #[error("no func binding return value for leaf entry name: {0}")]
     MissingFuncBindingReturnValueIdForLeafEntryName(String),
+    #[error("confirmation view error: {0}")]
+    ConfirmationView(String),
 
     /// Found an [`AttributePrototypeArgumentError`](crate::AttributePrototypeArgumentError).
     #[error("attribute prototype argument error: {0}")]
@@ -192,6 +163,7 @@ pub enum ComponentError {
     /// Found an [`ExternalProviderError`](crate::ExternalProviderError).
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
+
     /// A parent [`AttributeValue`](crate::AttributeValue) was not found for the specified
     /// [`AttributeValueId`](crate::AttributeValue).
     #[error("parent attribute value not found for attribute value: {0}")]

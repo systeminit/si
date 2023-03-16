@@ -28,7 +28,9 @@ pub enum ChangeStatusError {
 pub type ChangeStatusResult<T> = Result<T, ChangeStatusError>;
 
 /// An enum representing the change_status of an entity in the [`ChangeSet`](crate::ChangeSet).
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr)]
+#[derive(
+    Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy, Display, EnumString, AsRefStr,
+)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ChangeStatus {
@@ -134,11 +136,10 @@ impl ComponentChangeStatusGroup {
             let component_name: Option<String> = row.try_get("component_name")?;
             let component_name = component_name.unwrap_or_else(|| "".to_owned());
 
-            // TODO(nick): don't move the enum.
             result.push(Self {
                 component_id,
                 component_name,
-                component_status: component_status.clone(),
+                component_status,
             });
         }
         Ok(result)
