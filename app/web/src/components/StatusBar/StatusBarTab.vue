@@ -9,7 +9,7 @@
     <div class="flex text-sm place-content-center items-center pl-2">
       <slot name="name" />
     </div>
-    <div class="flex grow justify-end place-content-center items-center gap-2">
+    <div class="flex grow justify-end place-content-center items-center gap-1">
       <slot name="summary" />
     </div>
   </div>

@@ -87,7 +87,7 @@
           enter-active-class="duration-500 ease-out"
           enter-from-class="opacity-0"
           enter-to-class="opacity-100"
-          leave-active-class="duration-300 ease-in"
+          leave-active-class="duration-300 ease-in delay-2000"
           leave-from-class="opacity-100 "
           leave-to-class="opacity-0"
         >
@@ -96,6 +96,7 @@
             :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
           >
             <RecommendationSprite
+              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
               :recommendation="recommendation"
               :selected="
                 recommendationSelection[
@@ -111,23 +112,13 @@
               "
             />
           </li>
-        </TransitionGroup>
-
-        <Transition
-          enter-active-class="delay-300 duration-200 ease-out"
-          enter-from-class="opacity-0"
-          enter-to-class="opacity-100"
-          leave-active-class="duration-200 ease-in"
-          leave-from-class="opacity-100 "
-          leave-to-class="opacity-0"
-        >
-          <div
+          <li
             v-if="recommendations.length === 0"
-            class="absolute top-0 p-4 italic"
+            class="p-4 italic !delay-0 !duration-0 hidden first:block"
           >
             No recommendations are available at this time.
-          </div>
-        </Transition>
+          </li>
+        </TransitionGroup>
       </div>
     </TabGroupItem>
   </TabGroup>
