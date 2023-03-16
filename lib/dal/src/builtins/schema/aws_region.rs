@@ -1,21 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-use crate::builtins::schema::MigrationDriver;
-use crate::builtins::BuiltinsError;
-use crate::component::ComponentKind;
-use crate::edit_field::widget::WidgetKind;
-use crate::property_editor::SelectWidgetOption;
-use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
-use crate::socket::SocketArity;
-use crate::validation::Validation;
-use crate::AttributeValueError;
-use crate::{action_prototype::ActionKind, ComponentType};
 use crate::{
+    builtins::schema::MigrationDriver,
+    builtins::BuiltinsError,
+    component::ComponentKind,
+    edit_field::widget::WidgetKind,
     func::argument::FuncArgument,
+    property_editor::SelectWidgetOption,
+    schema::variant::definition::SchemaVariantDefinitionMetadataJson,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind,
-    SchemaError, SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    socket::SocketArity,
+    validation::Validation,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
+    BuiltinsResult, ComponentType, DalContext, ExternalProvider, Func, InternalProvider, PropKind,
+    SchemaError, SchemaVariant, StandardModel,
 };
 
 // Documentation URL(s)
@@ -230,6 +228,12 @@ impl MigrationDriver {
         )
         .await?;
 
+        // TODO(paulo): restore this when the following PR is merged: https://github.com/systeminit/si/pull/1876
+        // It gives us the ability to check if the fix flow has been run
+        // Which allows us to identify if a resource has actually been created in real-life, or if
+        // we are just passively monitoring it, like with AMI, Docker Image and Region
+        // By doing that we can avoid setting needs_destroy for passive components
+        /*
         let region_refresh_workflow_name = "si:awsRegionRefreshWorkflow";
         let region_refresh_workflow_func =
             Func::find_by_attr(ctx, "name", &region_refresh_workflow_name)
@@ -267,6 +271,7 @@ impl MigrationDriver {
             context,
         )
         .await?;
+        */
 
         Ok(())
     }

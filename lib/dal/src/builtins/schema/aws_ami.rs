@@ -1,19 +1,13 @@
-use crate::builtins::schema::MigrationDriver;
-use crate::builtins::BuiltinsError;
-use crate::component::ComponentKind;
-use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
-use crate::schema::variant::leaves::LeafKind;
-use crate::socket::SocketArity;
-use crate::validation::Validation;
-use crate::SchemaVariant;
 use crate::{
-    action_prototype::ActionKind,
-    schema::variant::leaves::{LeafInput, LeafInputLocation},
-};
-use crate::{
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind,
-    SchemaError, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    builtins::schema::MigrationDriver,
+    builtins::BuiltinsError,
+    component::ComponentKind,
+    schema::variant::definition::SchemaVariantDefinitionMetadataJson,
+    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
+    socket::SocketArity,
+    validation::Validation,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
+    ExternalProvider, InternalProvider, PropKind, SchemaVariant, StandardModel,
 };
 
 // Documentation URL(s)
@@ -199,6 +193,12 @@ impl MigrationDriver {
         )
         .await?;
 
+        // TODO(paulo): restore this when the following PR is merged: https://github.com/systeminit/si/pull/1876
+        // It gives us the ability to check if the fix flow has been run
+        // Which allows us to identify if a resource has actually been created in real-life, or if
+        // we are just passively monitoring it, like with AMI, Docker Image and Region
+        // By doing that we can avoid setting needs_destroy for passive components
+        /*
         let workflow_func_name = "si:awsAmiRefreshWorkflow";
         let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
@@ -233,6 +233,7 @@ impl MigrationDriver {
             context,
         )
         .await?;
+        */
 
         Ok(())
     }

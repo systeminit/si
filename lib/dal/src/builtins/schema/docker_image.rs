@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
+use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
-use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
 use crate::{
-    component::ComponentKind, socket::SocketArity, ActionPrototype, ActionPrototypeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, Prop,
-    PropKind, SchemaError, SchemaVariant, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    component::ComponentKind, socket::SocketArity, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
+    DalContext, ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError,
+    SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 impl MigrationDriver {
@@ -211,7 +210,7 @@ impl MigrationDriver {
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype = WorkflowPrototype::new(
+        let _workflow_prototype = WorkflowPrototype::new(
             ctx,
             *workflow_func.id(),
             serde_json::Value::Null,
@@ -220,6 +219,12 @@ impl MigrationDriver {
         )
         .await?;
 
+        // TODO(paulo): restore this when the following PR is merged: https://github.com/systeminit/si/pull/1876
+        // It gives us the ability to check if the fix flow has been run
+        // Which allows us to identify if a resource has actually been created in real-life, or if
+        // we are just passively monitoring it, like with AMI, Docker Image and Region
+        // By doing that we can avoid setting needs_destroy for passive components
+        /*
         let name = "refresh";
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),
@@ -234,6 +239,7 @@ impl MigrationDriver {
             context,
         )
         .await?;
+        */
 
         Ok(())
     }
