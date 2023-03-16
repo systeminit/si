@@ -171,22 +171,52 @@
         }"
       />
 
+      <!-- package/type icon -->
+      <DiagramIcon
+        v-if="group.def.typeIcon"
+        :icon="group.def.typeIcon"
+        :color="colors.icon"
+        :size="GROUP_HEADER_ICON_SIZE"
+        :x="5"
+        :y="4"
+        origin="top-left"
+      />
+
       <!-- header text -->
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 0,
-          y: 0,
+          x: 42,
+          y: 2,
           verticalAlign: 'top',
           align: 'left',
-          width: headerWidth,
-          text: `${group.def.title} ${group.def.subtitle}: ${
-            group.def.childNodeIds?.length ?? 0
-          }`,
+          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          text: group.def.title,
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
           fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'none',
+          ellipsis: true,
+        }"
+      />
+
+      <!-- subtitle text -->
+      <v-text
+        ref="titleTextRef"
+        :config="{
+          x: 42,
+          y: 20,
+          verticalAlign: 'top',
+          align: 'left',
+          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          text: `${group.def.subtitle}: ${group.def.childNodeIds?.length ?? 0}`,
+          padding: 6,
+          fill: colors.headerText,
+          fontSize: GROUP_TITLE_FONT_SIZE,
+          fontStyle: 'italic',
           fontFamily: DIAGRAM_FONT_FAMILY,
           listening: false,
           wrap: 'none',
@@ -201,10 +231,7 @@
       v-if="group.def.statusIcons?.length"
       :config="{
         x: halfWidth - group.def.statusIcons.length * 22 - 2,
-        y:
-          nodeHeaderHeight +
-          SOCKET_MARGIN_TOP +
-          SOCKET_GAP * (leftSockets.length + rightSockets.length),
+        y: 0,
       }"
     >
       <DiagramIcon
@@ -214,7 +241,7 @@
         :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
         :size="20"
         :x="i * 22"
-        :y="nodeBodyHeight - 38"
+        :y="nodeBodyHeight - 5"
         origin="bottom-left"
       />
     </v-group>
@@ -249,7 +276,7 @@
       />
     </v-group>
 
-    <!-- added/modified indicator (smaller, bottom left) -->
+    <!-- added/modified indicator -->
     <DiagramIcon
       v-if="isAdded || isModified"
       :icon="isAdded ? 'plus' : 'tilde'"
@@ -260,9 +287,14 @@
       "
       circle-bg
       :color="theme === 'dark' ? '#000' : '#FFF'"
-      :size="20"
-      :x="halfWidth - 15"
-      :y="nodeHeaderHeight / 2 - 38"
+      :size="GROUP_HEADER_ICON_SIZE"
+      :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
+      :y="
+        -nodeHeaderHeight +
+        GROUP_HEADER_ICON_SIZE / 2 -
+        GROUP_HEADER_BOTTOM_MARGIN +
+        4
+      "
       origin="center"
     />
   </v-group>
@@ -287,6 +319,7 @@ import {
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
+  GROUP_HEADER_ICON_SIZE,
 } from "@/components/GenericDiagram/diagram_constants";
 import {
   DiagramDrawEdgeState,
@@ -352,7 +385,7 @@ const halfWidth = computed(() => nodeWidth.value / 2);
 const headerWidth = computed(() =>
   !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
     ? nodeWidth.value
-    : nodeWidth.value - 30,
+    : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
 );
 
 const actualSockets = computed(() =>
@@ -393,6 +426,7 @@ watch(
 function recalcHeaderHeight() {
   headerTextHeight.value =
     titleTextRef.value?.getNode()?.getSelfRect().height || 20;
+  headerTextHeight.value *= 1.7;
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
@@ -412,7 +446,6 @@ watch([nodeWidth, nodeHeight, position], () => {
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
-  const headerText = primaryColor.isDark() ? "#FFF" : "#000";
 
   // body bg
   const bodyBgHsl = primaryColor.toHsl();
@@ -422,7 +455,8 @@ const colors = computed(() => {
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
     headerBg: primaryColor.toRgbString(),
-    headerText,
+    icon: "#000",
+    headerText: "#000",
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };
