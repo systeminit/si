@@ -90,6 +90,7 @@ import KubernetesLogo from "~icons/carbon/kubernetes";
 
 // carbon
 import Hashtag from "~icons/carbon/hashtag";
+import Create from "~icons/carbon/intent-request-create";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -109,6 +110,7 @@ export const ICONS = Object.freeze({
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   component: Cube,
+  create: Create,
   "credit-card": CreditCard,
   diagram: Diagram,
   "dots-horizontal": DotsHorizontal,

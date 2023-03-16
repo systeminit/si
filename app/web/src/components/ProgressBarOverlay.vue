@@ -9,19 +9,20 @@
     "
   >
     <div class="flex justify-between items-center">
-      <span>
+      <div class="grow whitespace-nowrap">
         {{ title }}
-        <slot name="detail">
-          <span
-            :class="
-              clsx(
-                'text-neutral-400 dark:text-neutral-500 text-sm font-normal pl-10',
-              )
-            "
-            >{{ detail }}
-          </span>
-        </slot>
-      </span>
+      </div>
+      <slot name="detail">
+        <div
+          :class="
+            clsx(
+              'text-neutral-400 dark:text-neutral-500 text-sm font-normal pl-10 truncate',
+            )
+          "
+        >
+          {{ detail }}
+        </div>
+      </slot>
     </div>
 
     <Transition
