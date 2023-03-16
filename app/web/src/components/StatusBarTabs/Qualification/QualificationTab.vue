@@ -25,6 +25,16 @@
       </StatusBarTabPill>
 
       <StatusBarTabPill
+        v-if="componentStats.success"
+        class="bg-warning-100 text-warning-600 font-bold"
+      >
+        <StatusIndicatorIcon type="qualification" status="warning" size="xs" />
+        <div>
+          {{ componentStats.warning }}
+        </div>
+      </StatusBarTabPill>
+
+      <StatusBarTabPill
         v-if="componentStats.failure"
         class="bg-destructive-100 text-destructive-600 font-bold"
       >
