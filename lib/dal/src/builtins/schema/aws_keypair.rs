@@ -69,7 +69,7 @@ impl MigrationDriver {
             .await?;
 
         // Prop: /root/domain/KeyType
-        let _key_type_prop = self
+        let key_type_prop = self
             .create_prop(
                 ctx,
                 "KeyType",
@@ -233,6 +233,8 @@ impl MigrationDriver {
             serde_json::json!["key-pair"],
         )
         .await?;
+        self.set_default_value_for_prop(ctx, *key_type_prop.id(), serde_json::json!["rsa"])
+            .await?;
 
         // Connect the "/root/domain/key id" prop to the external provider.
         let external_provider_attribute_prototype_id = key_name_external_provider
