@@ -12,6 +12,15 @@
         "target/**"
       ]
     },
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "target/**"
+      ]
+    },
     // script meant to be used only when intending to boot the entire stack
     "dev:backend": {
       "cache": false,
