@@ -39,8 +39,8 @@
                 />
                 <span
                   v-if="
-                    fixBatch.fixes.filter((f) => f.status === 'success')
-                      .length === fixBatch.fixes.length
+                    fixBatch.status === 'success'
+		    && fixBatch.fixes.filter((f) => f.status === 'success').length === fixBatch.fixes.length
                   "
                   class="mt-2"
                   >All fixes succeeded</span
@@ -56,6 +56,7 @@
                 >
               </span>
               <span
+	        v-if="fixBatch.finishedAt"
                 :class="
                   clsx(
                     'text-xs',
@@ -86,7 +87,7 @@
                   )
                 "
               >
-                <!-- <Timestamp :date="fixBatch.finishedAt" size="extended" /> -->
+                <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
               </div>
               <div>by: {{ fixBatch.author }}</div>
             </div>
