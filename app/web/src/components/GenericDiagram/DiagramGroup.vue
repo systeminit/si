@@ -172,7 +172,6 @@
       />
 
       <!-- header text -->
-      <!--  TODO fix font size   -->
       <v-text
         ref="titleTextRef"
         :config="{
@@ -181,7 +180,9 @@
           verticalAlign: 'top',
           align: 'left',
           width: headerWidth,
-          text: `${group.def.subtitle}: ${group.def.childNodeIds?.length ?? 0}`,
+          text: `${group.def.title} ${group.def.subtitle}: ${
+            group.def.childNodeIds?.length ?? 0
+          }`,
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
@@ -191,6 +192,30 @@
           wrap: 'none',
           ellipsis: true,
         }"
+      />
+      />
+    </v-group>
+
+    <!-- status icons -->
+    <v-group
+      v-if="group.def.statusIcons?.length"
+      :config="{
+        x: halfWidth - group.def.statusIcons.length * 22 - 2,
+        y:
+          nodeHeaderHeight +
+          SOCKET_MARGIN_TOP +
+          SOCKET_GAP * (leftSockets.length + rightSockets.length),
+      }"
+    >
+      <DiagramIcon
+        v-for="(statusIcon, i) in group.def.statusIcons"
+        :key="`status-icon-${i}`"
+        :icon="statusIcon.icon"
+        :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+        :size="20"
+        :x="i * 22"
+        :y="nodeBodyHeight - 38"
+        origin="bottom-left"
       />
     </v-group>
 
@@ -324,8 +349,11 @@ const overlayIconSize = computed(() => nodeWidth.value / 3);
 
 const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
-// TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
-const headerWidth = computed(() => nodeWidth.value * 0.75);
+const headerWidth = computed(() =>
+  !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
+    ? nodeWidth.value
+    : nodeWidth.value - 30,
+);
 
 const actualSockets = computed(() =>
   _.filter(
