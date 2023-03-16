@@ -53,7 +53,7 @@ impl Component {
             .pg()
             .query(
                 LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES,
-                &[ctx.tenancy(), ctx.visibility()],
+                &[ctx.tenancy(), &ctx.visibility().to_deleted()],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -100,6 +100,10 @@ impl Component {
                 .component(ctx_with_deleted)
                 .await?
                 .ok_or(NodeError::ComponentIsNone)?;
+
+            if component.visibility.deleted_at.is_some() && !component.needs_destroy() {
+                continue;
+            }
             if let Some((component_specific_confirmations, primary_action_kind)) =
                 Self::list_confirmations_for_component(ctx, *component.id()).await?
             {
@@ -117,7 +121,6 @@ impl Component {
                         no_recommendation_results.extend(component_specific_confirmations)
                     }
                 }
-                dbg!(component.name(ctx).await?, primary_action_kind);
             }
         }
 

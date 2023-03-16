@@ -282,19 +282,6 @@ impl Node {
         //
         // Runtime complexity: O(n) where "n" is a node
         for node_id in all_nodes {
-            let node = Node::get_by_id(ctx, &node_id)
-                .await?
-                .ok_or(NodeError::NotFound(node_id))?;
-            if node.visibility.deleted_at.is_some() {
-                let comp = node
-                    .component(ctx)
-                    .await?
-                    .ok_or(NodeError::ComponentIsNone)?;
-
-                if !comp.needs_destroy() {
-                    continue;
-                }
-            }
             if !all_connected_nodes.contains(&node_id) {
                 sorted.insert(0, node_id);
             } else if !nodes_with_full_destination_lineage.contains_key(&node_id) {
