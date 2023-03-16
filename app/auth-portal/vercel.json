@@ -1,0 +1,10 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile --filter ../.. --filter @si/auth-portal...",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "ignoreCommand": "npx turbo-ignore",
+  "github": {
+    "silent": true
+  }
+}
