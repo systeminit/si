@@ -5,15 +5,12 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::fix::{FixCompletionStatus, FixError, FixResult};
-use crate::standard_model::objects_from_rows;
 use crate::{
+    fix::{FixCompletionStatus, FixError, FixResult},
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     DalContext, Fix, StandardModel, Tenancy, Timestamp, Visibility, WsEvent, WsEventResult,
     WsPayload,
 };
-
-const LIST_FINISHED: &str = include_str!("../queries/fix_batch_list_finished.sql");
 
 pk!(FixBatchPk);
 pk!(FixBatchId);
@@ -139,16 +136,6 @@ impl FixBatch {
 
     pub fn author(&self) -> String {
         self.author.clone()
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_finished(ctx: &DalContext) -> FixResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(LIST_FINISHED, &[ctx.tenancy(), ctx.visibility()])
-            .await?;
-        Ok(objects_from_rows(rows)?)
     }
 }
 

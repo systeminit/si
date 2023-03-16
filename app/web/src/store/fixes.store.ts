@@ -59,8 +59,8 @@ export type Fix = {
   attributeValueId: AttributeValueId;
   provider?: string;
   resource: Resource;
-  startedAt: string;
-  finishedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
@@ -70,8 +70,8 @@ export type FixBatch = {
   status: FixStatus;
   author: string;
   fixes: Fix[];
-  startedAt: string;
-  finishedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
 };
 
 export interface ConfirmationStats {
