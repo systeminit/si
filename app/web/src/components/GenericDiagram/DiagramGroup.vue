@@ -5,6 +5,7 @@
       id: group.uniqueKey,
       x: position.x,
       y: position.y,
+      ...(isDeleted && { opacity: 0.5 }),
     }"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
@@ -192,36 +193,6 @@
         }"
       />
     </v-group>
-
-    <!--  spinner overlay  -->
-    <v-group
-      ref="overlay"
-      :config="{
-        x: -halfWidth,
-        y: 0,
-        opacity: 0,
-        listening: false,
-      }"
-    >
-      <!--  transparent overlay  -->
-      <v-rect
-        :config="{
-          width: nodeWidth,
-          height: nodeBodyHeight,
-          x: 0,
-          y: 0,
-          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-          fill: 'rgba(255,255,255,0.70)',
-        }"
-      />
-      <DiagramIcon
-        icon="loader"
-        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
-        :size="overlayIconSize"
-        :x="halfWidth"
-        :y="nodeBodyHeight / 2"
-      />
-    </v-group>
   </v-group>
 </template>
 
@@ -329,8 +300,6 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const overlayIconSize = computed(() => nodeWidth.value / 3);
-
 const headerTextHeight = ref(20);
 watch(
   [nodeWidth, () => props.group.def.title, () => props.group.def.subtitle],
@@ -379,19 +348,7 @@ const colors = computed(() => {
   };
 });
 
-const overlay = ref();
-watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
-  if (_.isNil(overlay)) return;
-  const node = overlay.value.getNode();
-
-  const transition = new Tween({
-    node,
-    duration: 0.1,
-    opacity: isLoading ? 1 : 0,
-  });
-
-  transition.play();
-});
+const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 
 function onMouseOver(evt: KonvaEventObject<MouseEvent>) {
   evt.cancelBubble = true;
@@ -405,9 +362,11 @@ function onResizeHover(
   evt.cancelBubble = true;
   emit("hover:start", { type: "resize", direction });
 }
+
 function onSocketHoverStart(socket: DiagramSocketData) {
   emit("hover:start", { type: "socket", socket });
 }
+
 function onSocketHoverEnd(_socket: DiagramSocketData) {
   emit("hover:end");
 }
