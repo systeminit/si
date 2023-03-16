@@ -77,6 +77,7 @@ import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
 import ExternalLink from "~icons/octicon/link-external";
 import Globe from "~icons/octicon/globe-24";
+import Check2 from "~icons/octicon/check-16";
 
 // 3p logos
 import AwsLogo from "~icons/cib/amazon-aws";
@@ -104,6 +105,7 @@ export const ICONS = Object.freeze({
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
   "check-square": CheckSquare,
+  check2: Check2,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   component: Cube,

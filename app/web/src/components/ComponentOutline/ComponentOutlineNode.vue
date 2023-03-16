@@ -36,20 +36,20 @@
         <Icon name="tree-parents" size="xs" class="mr-2xs" />
         {{ parentBreadcrumbsText }}
       </div>
-      <div class="flex items-center p-xs">
+      <div class="flex flex-row items-center p-xs w-full gap-1">
         <Icon
           :name="component.icon"
           size="sm"
           :class="
             clsx(
-              'mr-xs',
+              'mr-xs flex-none',
               enableGroupToggle && 'group-hover:scale-0 transition-all',
             )
           "
         />
 
-        <div class="flex flex-col gap-[6px] select-none">
-          <div class="capsize text-[13px] font-bold">
+        <div class="flex flex-col gap-[6px] select-none truncate">
+          <div class="capsize text-[13px] font-bold w-full truncate">
             {{ component.displayName }}
           </div>
           <div class="capsize text-[11px] italic">
@@ -69,7 +69,7 @@
           />
         </div>
 
-        <div class="ml-auto flex">
+        <div class="ml-auto flex flex-none">
           <!-- other status icons -->
           <div
             v-if="component.changeStatus !== 'deleted'"

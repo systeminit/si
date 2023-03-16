@@ -11,7 +11,7 @@
       params: { ...route.params, funcId: func.id },
     }"
   >
-    <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
+    <div class="w-full truncate">
       {{ func.name }}
     </div>
     <SiChip

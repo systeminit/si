@@ -48,11 +48,12 @@
         class="flex gap-2 items-center text-sm relative min-w-0"
         :class="classes"
       >
-        <Icon
+        <!-- TODO(Wendy) - after velvet rope we can try to come up with icons for this again
+          <Icon
           :name="recommendationIcon(recommendation.actionKind)"
           size="md"
           :class="recommendationColor(recommendation.actionKind)"
-        />
+        /> -->
         <div class="flex flex-col min-w-0">
           <span class="font-bold truncate"> {{ recommendation.name }}</span>
           <span class="text-xs text-neutral-700 dark:text-neutral-300 truncate">

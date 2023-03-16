@@ -23,10 +23,16 @@ const CONFIG = {
     running: { iconName: "loader", tone: "action" },
   },
   fix: {
-    success: { iconName: "check-circle", tone: "success" },
-    failure: { iconName: "x-circle", tone: "destructive" },
+    success: { iconName: "check2", tone: "success" },
+    failure: { iconName: "alert-triangle", tone: "destructive" },
     unstarted: { iconName: "help-circle", tone: "neutral" },
     running: { iconName: "loader", tone: "action" },
+  },
+  resource: {
+    ok: { iconName: "check2", tone: "success" },
+    warning: { iconName: "exclamation-circle", tone: "warning" },
+    error: { iconName: "alert-triangle", tone: "destructive" },
+    unknown: { iconName: "help-circle", tone: "neutral" },
   },
 };
 

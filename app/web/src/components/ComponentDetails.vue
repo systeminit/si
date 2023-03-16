@@ -92,15 +92,32 @@
               class="dark:text-neutral-50 text-neutral-900 pt-2"
             >
               <template #title>
-                <HealthIcon
-                  :health="selectedComponent.resource.status"
-                  :message="
-                    selectedComponent.resource.message
-                      ? [selectedComponent.resource.message]
-                      : []
-                  "
-                  :view-details="selectedComponent.resource.logs"
+                <StatusIndicatorIcon
+                  type="resource"
+                  :status="selectedComponent.resource.status"
                 />
+                <div class="grow font-bold pl-xs line-clamp-2">
+                  {{
+                    selectedComponent.resource.message
+                      ? selectedComponent.resource.message
+                      : `Health ${selectedComponent.resource.status}`
+                  }}
+                </div>
+                <div class="pr-sm">
+                  <FixDetails
+                    v-if="
+                      selectedComponent.resource.logs &&
+                      selectedComponent.resource.logs.length > 0
+                    "
+                    :health="selectedComponent.resource.status"
+                    :message="
+                      [selectedComponent.resource.message ?? ''].filter(
+                        (f) => f.length > 0,
+                      )
+                    "
+                    :details="selectedComponent.resource.logs"
+                  />
+                </div>
               </template>
             </CodeViewer>
             <div
@@ -122,7 +139,6 @@ import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import HealthIcon from "@/components/HealthIcon.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
@@ -131,6 +147,8 @@ import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import FixDetails from "./FixDetails.vue";
 
 const props = defineProps<{
   disabled?: boolean;
