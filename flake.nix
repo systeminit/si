@@ -59,7 +59,10 @@
             nodePackages.typescript
             nodePackages.typescript-language-server
 
-          ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
+          ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [
+	    libiconv
+	    pkgs.darwin.apple_sdk.frameworks.Security
+	  ]);
         };
       });
     };
