@@ -237,7 +237,7 @@
       :color="theme === 'dark' ? '#000' : '#FFF'"
       :size="20"
       :x="halfWidth - 15"
-      :y="nodeHeaderHeight / 2 - 35"
+      :y="nodeHeaderHeight / 2 - 38"
       origin="center"
     />
   </v-group>

@@ -36,7 +36,7 @@
         <Icon name="tree-parents" size="xs" class="mr-2xs" />
         {{ parentBreadcrumbsText }}
       </div>
-      <div class="flex flex-row items-center p-xs w-full gap-1">
+      <div class="flex flex-row items-center px-xs w-full gap-1">
         <Icon
           :name="component.icon"
           size="sm"
@@ -48,12 +48,14 @@
           "
         />
 
-        <div class="flex flex-col gap-[6px] select-none truncate">
-          <div class="capsize text-[13px] font-bold w-full truncate">
-            {{ component.displayName }}
+        <div class="flex flex-col select-none overflow-hidden py-xs">
+          <div
+            class="capsize text-[13px] font-bold relative leading-loose pb-xs"
+          >
+            <div class="truncate w-full">{{ component.displayName }}</div>
           </div>
-          <div class="capsize text-[11px] italic">
-            {{ component.schemaName }}
+          <div class="capsize text-[11px] italic relative">
+            <div class="truncate w-full">{{ component.schemaName }}</div>
           </div>
         </div>
         <!-- group open/close controls -->
@@ -71,26 +73,25 @@
 
         <div class="ml-auto flex flex-none">
           <!-- other status icons -->
-          <div
-            v-if="component.changeStatus !== 'deleted'"
-            class="flex mr-xs items-center"
-          >
-            <StatusIndicatorIcon
-              type="qualification"
-              :status="qualificationStatus"
-              size="xs"
-            />
-            <StatusIndicatorIcon
-              type="confirmation"
-              :status="confirmationStatus"
-              size="xs"
-            />
+          <div class="flex mr-xs items-center">
+            <template v-if="component.changeStatus !== 'deleted'">
+              <StatusIndicatorIcon
+                type="qualification"
+                :status="qualificationStatus"
+                size="xs"
+              />
+              <StatusIndicatorIcon
+                type="confirmation"
+                :status="confirmationStatus"
+                size="xs"
+              />
+            </template>
 
             <!-- change status -->
             <StatusIndicatorIcon
               type="change"
               :status="component.changeStatus"
-              size="xs"
+              :size="component.changeStatus === 'deleted' ? 'md' : 'xs'"
             />
           </div>
         </div>

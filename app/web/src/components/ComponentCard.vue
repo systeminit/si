@@ -14,7 +14,7 @@
     <div class="flex gap-xs items-center">
       <Icon :name="component.icon" size="lg" class="shrink-0" />
       <Stack spacing="xs" class="">
-        <div class="leading-tight font-bold line-clamp-4">
+        <div class="font-bold break-all line-clamp-4">
           {{ component.displayName }}
         </div>
         <div class="text-xs italic capsize">

@@ -32,7 +32,7 @@
     />
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
-      <Stack class="p-sm" v-if="!props.disabled">
+      <Stack v-if="!props.disabled" class="p-sm">
         <ErrorMessage icon="alert-triangle" tone="warning">
           This component will be removed from your model when this change set is
           merged
