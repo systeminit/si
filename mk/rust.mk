@@ -1,7 +1,7 @@
 WATCH_PATHS ?= .
 WATCH_TASK ?= clippy
-TEST_ARGS ?=
-TEST_FILTER ?=
+SI_TEST_ARGS ?=
+SI_TEST_FILTER ?=
 SI_LOG ?= info
 
 PKGID = $(shell cargo pkgid --offline --quiet)
@@ -104,7 +104,7 @@ default--test:
 	$(call header,$@)
 	cd $(WORKSPACE_ROOT)
 	env RUST_BACKTRACE=1 cargo test --package $(PKGID) \
-		$(TEST_FILTER) -- $(TEST_ARGS)
+		$(SI_TEST_FILTER) -- $(SI_TEST_ARGS)
 .PHONY: default--test
 
 ## prepush: Runs all checks & tests required before pushing commits
