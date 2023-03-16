@@ -38,8 +38,6 @@ pub enum FuncBackendError {
     },
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("invalid data - got unset when not expected")]
-    UnexpectedUnset,
     #[error("veritech client error: {0}")]
     VeritechClient(#[from] veritech_client::ClientError),
     #[error("send error")]
