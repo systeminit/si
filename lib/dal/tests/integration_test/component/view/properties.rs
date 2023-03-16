@@ -38,7 +38,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     let code_generation_func_id = *code_generation_func.id();
     let code = "function generate(input) {
         return {
-            code: input.domain?.poop ?? \"\",
+            code: input.domain?.poop,
             format: \"json\"
         };
     }";

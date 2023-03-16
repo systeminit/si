@@ -5,9 +5,7 @@ use veritech_client::{
     ResolverFunctionResponseType, ResolverFunctionResultSuccess,
 };
 
-use crate::func::backend::{
-    ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
-};
+use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {
@@ -50,12 +48,6 @@ impl FuncDispatch for FuncBackendJsAttribute {
         let value = veritech
             .execute_resolver_function(output_tx, &self.request)
             .await?;
-        match &value {
-            FunctionResult::Success(success) if success.unset => {
-                return Err(FuncBackendError::UnexpectedUnset);
-            }
-            _ => {}
-        };
         Ok(value)
     }
 }
