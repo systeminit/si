@@ -85,6 +85,15 @@ overflow hidden */
           @hover:start="onElementHoverStart(edge)"
           @hover:end="onElementHoverEnd(edge)"
         />
+        <DiagramGroupOverlay
+          v-for="group in groups"
+          :key="group.uniqueKey"
+          :group="group"
+          :temp-position="movedElementPositions[group.uniqueKey]"
+          :temp-size="resizedElementSizes[group.uniqueKey]"
+          @resize="onNodeLayoutOrLocationChange(group)"
+        />
+
         <!-- placeholders for new inserted elements still processing -->
         <template
           v-for="(pendingInsert, pendingInsertId) in pendingInsertedElements"
@@ -158,6 +167,7 @@ import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
+import DiagramGroupOverlay from "@/components/GenericDiagram/DiagramGroupOverlay.vue";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
