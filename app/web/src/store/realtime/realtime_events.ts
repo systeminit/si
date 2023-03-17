@@ -3,6 +3,7 @@
 
 import { ComponentId } from "../components.store";
 import { FixStatus } from "../fixes.store";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import {
   AttributeValueId,
   AttributeValueKind,
@@ -73,6 +74,7 @@ export type WsEventPayloadMap = {
   StatusUpdate: {
     pk: StatusUpdatePk;
     status: AttributeValueStatus | "statusStarted" | "statusFinished";
+    actor: ActorView;
     values: {
       componentId: ComponentId;
       valueId: AttributeValueId;

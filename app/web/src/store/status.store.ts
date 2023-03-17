@@ -432,7 +432,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             callback: (update, metadata) => {
               // fill in update metadata if this the first time we're seeing this specific update
               if (!this.updateMetadataByPk[update.pk]) {
-                this.updateMetadataByPk[update.pk] = { actor: metadata.actor };
+                this.updateMetadataByPk[update.pk] = { actor: update.actor };
               }
 
               if (update.status === "statusStarted") {
