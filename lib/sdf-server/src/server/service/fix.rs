@@ -9,8 +9,8 @@ use thiserror::Error;
 use dal::fix::FixError as DalFixError;
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    ComponentError, ComponentId, FixBatchId, FixResolverError, FuncBindingReturnValueError,
-    StandardModelError, TransactionsError, UserError, UserPk, WorkflowRunnerError,
+    ComponentError, ComponentId, FixResolverError, FuncBindingReturnValueError, StandardModelError,
+    TransactionsError, UserError, UserPk, WorkflowRunnerError,
 };
 
 pub mod confirmations;

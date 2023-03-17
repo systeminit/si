@@ -338,11 +338,15 @@ impl Fix {
     }
 
     /// Generates a [`FixHistoryView`] based on [`self`](Fix).
-    pub async fn history_view(&self, ctx: &DalContext) -> FixResult<Option<FixHistoryView>> {
+    pub async fn history_view(
+        &self,
+        ctx: &DalContext,
+        batch_timed_out: bool,
+    ) -> FixResult<Option<FixHistoryView>> {
         // Technically WorkflowRunner returns a vec of resources, but we only handle one resource at a time
         // It's a technical debt we haven't tackled yet, so let's assume it's only one resource
         let maybe_resource = self
-            .workflow_runner(&ctx)
+            .workflow_runner(ctx)
             .await?
             .map(|r| Ok::<_, WorkflowRunnerError>(r.resources()?.pop()))
             .transpose()?
@@ -350,29 +354,29 @@ impl Fix {
 
         let resource = if let Some(resource) = maybe_resource {
             resource
-        } else if batch_timedout {
+        } else if batch_timed_out {
             CommandRunResult {
                 status: ResourceStatus::Error,
                 value: None,
                 message: Some("Execution timed-out".to_owned()),
-                // TODO: add propper logs here
+                // TODO: add proper logs here
                 logs: vec![],
             }
         } else {
             // Note: at least one resource is required for fixes that finished, but it's not clear
             // if we want to break this route if the assumption is incorrect or just hide the fix
-            warn!("Fix didn't have any resource: {fix:?}");
+            warn!("Fix didn't have any resource: {self:?}");
             return Ok(None);
         };
 
-        let component = Component::get_by_id(&ctx, &fix.component_id())
+        let component = Component::get_by_id(ctx, &self.component_id())
             .await?
-            .ok_or_else(|| DalComponentError::NotFound(fix.component_id()))?;
+            .ok_or_else(|| ComponentError::NotFound(self.component_id()))?;
         let schema = component
-            .schema(&ctx)
+            .schema(ctx)
             .await?
-            .ok_or_else(|| DalComponentError::NoSchema(fix.component_id()))?;
-        let category = SchemaUiMenu::find_for_schema(&ctx, *schema.id())
+            .ok_or_else(|| ComponentError::NoSchema(self.component_id()))?;
+        let category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
             .await?
             .map(|um| um.category().to_string());
 
@@ -385,7 +389,7 @@ impl Fix {
             action: self.action().to_owned(),
             schema_name: schema.name().to_owned(),
             attribute_value_id: *self.attribute_value_id(),
-            component_name: component.name(&ctx).await?,
+            component_name: component.name(ctx).await?,
             component_id: *component.id(),
             provider: category,
             resource: ResourceView::new(resource),

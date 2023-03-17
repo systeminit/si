@@ -26,8 +26,9 @@
                 <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
                 <div
                   v-if="
-                    fixBatch.status === 'success'
-		    && fixBatch.fixes.filter((f) => f.status === 'success').length === fixBatch.fixes.length
+                    fixBatch.status === 'success' &&
+                    fixBatch.fixes.filter((f) => f.status === 'success')
+                      .length === fixBatch.fixes.length
                   "
                   class="pl-xs"
                 >
@@ -44,7 +45,7 @@
                 </div>
               </span>
               <span
-	        v-if="fixBatch.finishedAt"
+                v-if="fixBatch.finishedAt"
                 :class="
                   clsx(
                     'text-xs',

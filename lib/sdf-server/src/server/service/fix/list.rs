@@ -1,20 +1,12 @@
 use axum::{extract::Query, Json};
 use chrono::Utc;
-use dal::fix::FixError as DalFixError;
 use dal::fix::FixHistoryView;
-use dal::{
-    func::backend::js_command::CommandRunResult, schema::SchemaUiMenu,
-    workflow_runner::WorkflowRunnerError, AttributeValueId, Component,
-    ComponentError as DalComponentError, ComponentId, FixBatch, FixBatchId, FixCompletionStatus,
-    FixId, ResourceView,
-};
+use dal::{FixBatch, FixBatchId, FixCompletionStatus};
 use dal::{StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 use super::FixResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use veritech_client::ResourceStatus;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -46,14 +38,14 @@ pub async fn list(
 
     let mut batch_views = Vec::new();
     for batch in FixBatch::list(&ctx).await? {
-        let mut batch_timedout = false;
+        let mut batch_timed_out = false;
         // FIXME(paulo): hardcoding 3 minutes timeout to avoid hiding broken batches forever
         let completion_status = if let Some(status) = batch.completion_status() {
             *status
         } else if Utc::now().signed_duration_since(batch.timestamp().created_at)
             > chrono::Duration::minutes(3)
         {
-            batch_timedout = true;
+            batch_timed_out = true;
             FixCompletionStatus::Failure
         } else {
             continue;
@@ -61,7 +53,7 @@ pub async fn list(
 
         let mut fix_views = Vec::new();
         for fix in batch.fixes(&ctx).await? {
-            if let Some(history_view) = fix.history_view(&ctx).await? {
+            if let Some(history_view) = fix.history_view(&ctx, batch_timed_out).await? {
                 fix_views.push(history_view)
             }
         }
