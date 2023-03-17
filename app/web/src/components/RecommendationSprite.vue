@@ -84,7 +84,15 @@
           class="pb-xs text-destructive-500"
         >
           <div class="font-bold">Last attempt failed!</div>
-          <div class="italic text-xs">
+          <div v-if="recommendation.lastFix.startedAt" class="italic text-xs">
+            Started At:
+            <Timestamp
+              :date="new Date(recommendation.lastFix.startedAt)"
+              size="long"
+            />
+          </div>
+          <div v-if="recommendation.lastFix.finishedAt" class="italic text-xs">
+            Failed At:
             <Timestamp
               :date="new Date(recommendation.lastFix.finishedAt)"
               size="long"

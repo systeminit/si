@@ -26,13 +26,24 @@
           class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
           @click="selectFixBatch(fixBatch.id)"
         >
-          <span
-            v-if="fixBatch.finishedAt"
-            class="truncate mr-3 whitespace-nowrap flex flex-row gap-2"
+          <div
+            class="truncate mr-3 whitespace-nowrap flex flex-row gap-2 items-center"
           >
             <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
-            <Timestamp :date="new Date(fixBatch.finishedAt)" size="long" />
-          </span>
+            <div class="flex flex-col">
+              <div class="text-sm font-bold truncate">
+                {{ fixBatch.author }}
+              </div>
+              <div class="text-xs italic">
+                <Timestamp
+                  v-if="fixBatch.startedAt"
+                  :date="new Date(fixBatch.startedAt)"
+                  size="long"
+                />
+                <div v-else>No timestamp available.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

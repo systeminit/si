@@ -126,6 +126,13 @@ export default {
 </script>
 
 <style>
+/*
+
+TODO(Wendy) - currently the color picker does not respond to theme and is always in light mode 
+TODO(Wendy) - also it doesn't populate with the default color of a new component properly
+
+*/
+
 .picker_wrapper.popup,
 .picker_wrapper.popup .picker_arrow::before,
 .picker_wrapper.popup .picker_arrow::after {

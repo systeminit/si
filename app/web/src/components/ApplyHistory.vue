@@ -45,7 +45,7 @@
                 </div>
               </span>
               <span
-                v-if="fixBatch.finishedAt"
+                v-if="fixBatch.startedAt"
                 :class="
                   clsx(
                     'text-xs',
@@ -53,7 +53,7 @@
                   )
                 "
               >
-                <Timestamp size="mini" :date="new Date(fixBatch.finishedAt)" />
+                <Timestamp size="mini" :date="new Date(fixBatch.startedAt)" />
               </span>
             </div>
           </template>
@@ -75,7 +75,12 @@
                 <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
               </div>
               <div>By: {{ fixBatch.author }}</div>
-              <div class="italic">
+              <div v-if="fixBatch.startedAt" class="italic">
+                Started At:
+                <Timestamp size="long" :date="new Date(fixBatch.startedAt)" />
+              </div>
+              <div v-if="fixBatch.finishedAt" class="italic">
+                Finished At:
                 <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
               </div>
             </div>
