@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::action_prototype::ActionKind;
 use crate::component::confirmation::{ConfirmationEntry, ConfirmationMetadataCache};
+use crate::fix::FixHistoryView;
 use crate::{
     ActionPrototype, ActionPrototypeError, AttributeValueId, ComponentError, DalContext, Fix,
     FixResolver, FixResolverError, FuncBindingReturnValue, FuncBindingReturnValueError,
@@ -259,7 +260,7 @@ impl ConfirmationView {
                 None => (None, None, None),
             };
 
-        let fix_resolver =
+        let maybe_fix_resolver =
             FixResolver::find_for_confirmation_attribute_value(ctx, *found_attribute_value_id)
                 .await?;
 
@@ -286,11 +287,25 @@ impl ConfirmationView {
             let recommendation_status = if is_running {
                 RecommendationStatus::Running
             } else {
-                match fix_resolver.as_ref().and_then(FixResolver::success) {
+                match maybe_fix_resolver.as_ref().and_then(FixResolver::success) {
                     Some(true) => RecommendationStatus::Success,
                     Some(false) => RecommendationStatus::Failure,
                     None => RecommendationStatus::Unstarted,
                 }
+            };
+
+            // Find the last fix ran. If a fix has never been ran before for this
+            // recommendation (i.e. no fix resolver), that is fine!
+            let maybe_last_fix: Option<FixHistoryView> = match maybe_fix_resolver.as_ref() {
+                Some(fix_resolver) => {
+                    let fix = Fix::get_by_id(ctx, &fix_resolver.last_fix_id())
+                        .await?
+                        .ok_or(ComponentError::FixNotFound(fix_resolver.last_fix_id()))?;
+                    fix.history_view(ctx, false)
+                        .await
+                        .map_err(|e| ComponentError::Fix(Box::new(e)))?
+                }
+                None => None,
             };
 
             // Track the ability to run the recommendation.
@@ -336,6 +351,7 @@ impl ConfirmationView {
                 recommended_action: action_prototype.name().to_owned(),
                 action_kind: recommendation_action_kind,
                 status: recommendation_status,
+                last_fix: maybe_last_fix,
                 is_runnable: recommendation_is_runnable,
             });
         }
@@ -423,6 +439,10 @@ pub struct Recommendation {
     /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the
     /// [recommendation](Self).
     pub is_runnable: RecommendationIsRunnable,
+    /// Gives the [`history view`](crate::fix::FixHistoryView) of the last [`Fix`](crate::Fix) ran.
+    /// This will be empty if the [`Recommendation`] had never had a corresponding
+    /// [`Fix`](crate::Fix) ran before.
+    pub last_fix: Option<FixHistoryView>,
 }
 
 /// Tracks the last known status of a [`Recommendation`] (corresponds to the

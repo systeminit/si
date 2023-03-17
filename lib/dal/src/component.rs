@@ -30,7 +30,7 @@ use crate::{
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, ComponentType, DalContext,
-    EdgeError, ExternalProvider, ExternalProviderError, ExternalProviderId, FixError, Func,
+    EdgeError, ExternalProvider, ExternalProviderError, ExternalProviderId, FixError, FixId, Func,
     FuncBackendKind, FuncError, HistoryActor, HistoryEventError, InternalProvider,
     InternalProviderId, Node, NodeError, PropError, PropId, RootPropChild, Schema, SchemaError,
     SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
@@ -69,6 +69,12 @@ pub enum ComponentError {
     FixResolver(#[from] FixResolverError),
     #[error("fix error: {0}")]
     Fix(#[from] Box<FixError>),
+    #[error("fix not found for id: {0}")]
+    FixNotFound(FixId),
+    #[error("unable to delete frame due to attached components")]
+    FrameHasAttachedComponents,
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
@@ -122,10 +128,6 @@ pub enum ComponentError {
 
     #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
-    #[error("unable to delete frame due to attached components")]
-    FrameHasAttachedComponents,
-    #[error("component marked as protected: {0}")]
-    ComponentProtected(ComponentId),
     #[error("invalid context(s) provided for diff")]
     InvalidContextForDiff,
     #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]

@@ -7,22 +7,22 @@ use si_data_pg::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::ResourceStatus;
 
 use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::schema::SchemaUiMenu;
 use crate::{
     func::backend::js_command::CommandRunResult, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    ActionPrototypeError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    FixResolverError, FuncError, HistoryEventError, SchemaError, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId,
-    WorkflowRunnerStatus, WsEvent, WsPayload,
+    ActionPrototypeError, AttributeValueId, Component, ComponentError, ComponentId, DalContext,
+    FixResolverError, FuncError, HistoryEventError, ResourceView, SchemaError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
+    WorkflowRunnerId, WorkflowRunnerStatus, WsEvent, WsPayload,
 };
 use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
-/// Contains the ability to group fixes together.
 pub mod batch;
-/// Contains the ability to resolve _current_ fixes, provided by [`FixResolver`](crate::FixResolver).
 pub mod resolver;
 
 /// The completion status of a [`Fix`] or [`FixBatch`](crate::FixBatch).
@@ -108,6 +108,10 @@ pub enum FixError {
     EmptyCompletionStatus,
     #[error("workflow runner status {0} cannot be converted to fix completion status")]
     IncompatibleWorkflowRunnerStatus(WorkflowRunnerStatus),
+    #[error("missing finished timestamp for fix: {0}")]
+    MissingFinishedTimestampForFix(FixId),
+    #[error("missing started timestamp for fix: {0}")]
+    MissingStartedTimestampForFix(FixId),
     #[error("fix not found for id: {0}")]
     MissingFix(FixId),
     #[error("fix batch not found for id: {0}")]
@@ -332,6 +336,83 @@ impl Fix {
             None => Ok(None),
         }
     }
+
+    /// Generates a [`FixHistoryView`] based on [`self`](Fix).
+    pub async fn history_view(
+        &self,
+        ctx: &DalContext,
+        batch_timed_out: bool,
+    ) -> FixResult<Option<FixHistoryView>> {
+        // Technically WorkflowRunner returns a vec of resources, but we only handle one resource at a time
+        // It's a technical debt we haven't tackled yet, so let's assume it's only one resource
+        let maybe_resource = self
+            .workflow_runner(ctx)
+            .await?
+            .map(|r| Ok::<_, WorkflowRunnerError>(r.resources()?.pop()))
+            .transpose()?
+            .flatten();
+
+        let resource = if let Some(resource) = maybe_resource {
+            resource
+        } else if batch_timed_out {
+            CommandRunResult {
+                status: ResourceStatus::Error,
+                value: None,
+                message: Some("Execution timed-out".to_owned()),
+                // TODO: add proper logs here
+                logs: vec![],
+            }
+        } else {
+            // Note: at least one resource is required for fixes that finished, but it's not clear
+            // if we want to break this route if the assumption is incorrect or just hide the fix
+            warn!("Fix didn't have any resource: {self:?}");
+            return Ok(None);
+        };
+
+        let component = Component::get_by_id(ctx, &self.component_id())
+            .await?
+            .ok_or_else(|| ComponentError::NotFound(self.component_id()))?;
+        let schema = component
+            .schema(ctx)
+            .await?
+            .ok_or_else(|| ComponentError::NoSchema(self.component_id()))?;
+        let category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
+            .await?
+            .map(|um| um.category().to_string());
+
+        Ok(Some(FixHistoryView {
+            id: self.id,
+            status: self
+                .completion_status()
+                .copied()
+                .unwrap_or(FixCompletionStatus::Failure),
+            action: self.action().to_owned(),
+            schema_name: schema.name().to_owned(),
+            attribute_value_id: *self.attribute_value_id(),
+            component_name: component.name(ctx).await?,
+            component_id: *component.id(),
+            provider: category,
+            resource: ResourceView::new(resource),
+            started_at: self.started_at().map(|s| s.to_string()),
+            finished_at: self.finished_at().map(|s| s.to_string()),
+        }))
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FixHistoryView {
+    id: FixId,
+    status: FixCompletionStatus,
+    action: String,
+    schema_name: String,
+    component_name: String,
+    component_id: ComponentId,
+    attribute_value_id: AttributeValueId,
+    provider: Option<String>,
+    started_at: Option<String>,
+    finished_at: Option<String>,
+    resource: ResourceView,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

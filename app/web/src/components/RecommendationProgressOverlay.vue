@@ -54,10 +54,9 @@ const fixState = computed(() => {
     let summary = "Determining recommendations for updated model...";
     let highlightedSummary = "";
     if (rate === 1) {
-      summary = "Model is up-to-date";
+      summary = "Model is up to date";
       const { length } = fixesStore.unstartedRecommendations;
       if (length !== 0) {
-        summary += " - ";
         highlightedSummary = `${length} recommendation${
           length > 1 ? "s" : ""
         } pending`;

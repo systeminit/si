@@ -26,14 +26,24 @@
           class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
           @click="selectFixBatch(fixBatch.id)"
         >
-          <span
-	     v-if="fixBatch.finishedAt"
-	     class="truncate mr-3 whitespace-nowrap"
-	  >
-            <!-- FIXME(nick): change to timestamp once its available in "Date" format. -->
-            <!-- <Timestamp :date="fixBatch.finishedAt" size="long" /> -->
-            <span class="timestamp">{{ fixBatch.finishedAt }}</span>
-          </span>
+          <div
+            class="truncate mr-3 whitespace-nowrap flex flex-row gap-2 items-center"
+          >
+            <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
+            <div class="flex flex-col">
+              <div class="text-sm font-bold truncate">
+                {{ fixBatch.author }}
+              </div>
+              <div class="text-xs italic">
+                <Timestamp
+                  v-if="fixBatch.startedAt"
+                  :date="new Date(fixBatch.startedAt)"
+                  size="long"
+                />
+                <div v-else>No timestamp available.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -56,22 +66,16 @@
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
-            class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
+            class="p-xs h-12 cursor-pointer flex flex-row items-center"
             @click="selectFix(fix.attributeValueId, fix.action)"
           >
-            <span class="mr-3 w-full h-full">
-              <HealthIcon
-                :health="fix.resource.status"
-                :message="
-                  [
-                    `${formatTitle(fix.action)} ${fix.schemaName}`,
-                    fix.resource.message ?? '',
-                  ].filter((f) => f.length > 0)
-                "
-                :view-details="[]"
-                class="ml-3"
-              />
-            </span>
+            <StatusIndicatorIcon
+              type="resource"
+              :status="fix.resource.status"
+            />
+            <div class="font-bold pl-xs line-clamp-2">
+              {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
+            </div>
           </div>
         </div>
       </div>
@@ -82,22 +86,49 @@
               ? JSON.stringify(selectedFixInfo.resource.data, null, 2)
               : ''
           "
-          class="dark:text-neutral-50 text-neutral-900"
+          class="text-neutral-50"
+          title-classes=""
         >
           <template #title>
-            <HealthIcon
-              :health="selectedFixInfo.resource.status"
-              :message="
-                [
+            <StatusIndicatorIcon
+              type="resource"
+              :status="selectedFixInfo.resource.status"
+            />
+            <div class="grow flex flex-col pl-xs">
+              <div class="font-bold">
+                {{
                   `${formatTitle(selectedFixInfo.action)} ${
                     selectedFixInfo.schemaName
-                  }`,
-                  selectedFixInfo.resource.message ?? '',
-                ].filter((f) => f.length > 0)
-              "
-              :view-details="selectedFixInfo.resource.logs"
-              class="ml-3"
-            />
+                  }`
+                }}
+              </div>
+              <div>
+                {{
+                  selectedFixInfo.resource.message
+                    ? selectedFixInfo.resource.message
+                    : `Health ${selectedFixInfo.resource.status}`
+                }}
+              </div>
+            </div>
+
+            <div class="pr-xs">
+              <FixDetails
+                v-if="
+                  selectedFixInfo.resource.logs &&
+                  selectedFixInfo.resource.logs.length > 0
+                "
+                :health="selectedFixInfo.resource.status"
+                :message="
+                  [
+                    `${formatTitle(selectedFixInfo.action)} ${
+                      selectedFixInfo.schemaName
+                    }`,
+                    selectedFixInfo.resource.message ?? '',
+                  ].filter((f) => f.length > 0)
+                "
+                :details="selectedFixInfo.resource.logs"
+              />
+            </div>
           </template>
         </CodeViewer>
       </div>
@@ -126,7 +157,9 @@ import { ref, computed } from "vue";
 // import Timestamp from "@/ui-lib/Timestamp.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "@/components/CodeViewer.vue";
-import HealthIcon from "@/components/HealthIcon.vue";
+import Timestamp from "@/ui-lib/Timestamp.vue";
+import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import FixDetails from "@/components/FixDetails.vue";
 
 export interface SortOption {
   value: string;

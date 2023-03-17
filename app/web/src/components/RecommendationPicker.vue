@@ -32,40 +32,53 @@
         <div
           :class="
             clsx(
-              'flex-none flex flex-row p-4 w-full items-center justify-between border-b',
+              'flex-none flex flex-row p-4 w-full items-center justify-between border-b overflow-hidden',
               themeClasses('border-neutral-200', 'border-neutral-600'),
             )
           "
         >
-          <div class="mr-2 whitespace-nowrap">Recommendations</div>
-          <div
-            v-if="creationRecommendations.length > 0"
-            class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-success-500 bg-success-50 dark:text-success-100 dark:bg-success-500"
-          >
+          <div class="whitespace-nowrap font-bold">Recommendations</div>
+          <div class="flex flex-row grow justify-end gap-1">
+            <div
+              v-if="creationRecommendations.length > 0"
+              class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-success-500 bg-success-50 dark:text-success-100 dark:bg-success-500"
+            >
+              <Icon
+                name="create"
+                size="xs"
+                class="text-success-500 dark:text-success-100"
+              />
+              <span class="pl-1">{{ creationRecommendations.length }}</span>
+            </div>
+            <div
+              v-if="genericRecommendations.length > 0"
+              class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-warning-500 bg-warning-50 dark:text-warning-100 dark:bg-warning-500"
+            >
+              <Icon
+                name="tools"
+                size="xs"
+                class="text-warning-500 dark:text-destructive-100"
+              />
+              <span class="pl-1">{{ genericRecommendations.length }}</span>
+            </div>
+            <div
+              v-if="destructionRecommendations.length > 0"
+              class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
+            >
+              <Icon
+                name="trash"
+                size="xs"
+                class="text-destructive-500 dark:text-destructive-100"
+              />
+              <span class="pl-1">{{ destructionRecommendations.length }}</span>
+            </div>
             <Icon
-              name="tools"
-              size="xs"
-              class="text-success-500 dark:text-success-100"
+              v-if="confirmationsInFlight || fixesStore.populatingFixes"
+              name="loader"
+              size="md"
+              class="text-action-500 dark:text-action-100"
             />
-            <span class="pl-1">{{ creationRecommendations.length }}</span>
           </div>
-          <div
-            v-if="genericRecommendations.length > 0"
-            class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
-          >
-            <Icon
-              name="tools"
-              size="xs"
-              class="text-destructive-500 dark:text-destructive-100"
-            />
-            <span class="pl-1">{{ genericRecommendations.length }}</span>
-          </div>
-          <Icon
-            v-if="confirmationsInFlight || fixesStore.populatingFixes"
-            name="loader"
-            size="md"
-            class="text-action-500 dark:text-action-100"
-          />
         </div>
       </template>
       <div class="relative w-full h-full overflow-y-auto">
@@ -74,7 +87,7 @@
           enter-active-class="duration-500 ease-out"
           enter-from-class="opacity-0"
           enter-to-class="opacity-100"
-          leave-active-class="duration-300 ease-in"
+          leave-active-class="duration-300 ease-in delay-2000"
           leave-from-class="opacity-100 "
           leave-to-class="opacity-0"
         >
@@ -83,6 +96,7 @@
             :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
           >
             <RecommendationSprite
+              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
               :recommendation="recommendation"
               :selected="
                 recommendationSelection[
@@ -98,29 +112,13 @@
               "
             />
           </li>
+          <li
+            v-if="recommendations.length === 0"
+            class="p-4 italic !delay-0 !duration-0 hidden first:block"
+          >
+            No recommendations are available at this time.
+          </li>
         </TransitionGroup>
-
-        <Transition
-          enter-active-class="delay-300 duration-200 ease-out"
-          enter-from-class="opacity-0"
-          enter-to-class="opacity-100"
-          leave-active-class="duration-200 ease-in"
-          leave-from-class="opacity-100 "
-          leave-to-class="opacity-0"
-        >
-          <div v-if="recommendations.length === 0" class="absolute top-0 p-4">
-            <img
-              v-if="recommendations.length > 0"
-              src="../assets/images/WhiskersTriumphV1.png"
-              alt="Whiskers the cat, relaxing"
-            />
-            <img
-              v-else
-              src="../assets/images/WhiskersPensiveV1.png"
-              alt="Whiskers the cat, looking at you"
-            />
-          </div>
-        </Transition>
       </div>
     </TabGroupItem>
   </TabGroup>
@@ -167,6 +165,10 @@ const creationRecommendations = computed(() =>
 
 const genericRecommendations = computed(() =>
   recommendations.value.filter((r) => r.actionKind === "other"),
+);
+
+const destructionRecommendations = computed(() =>
+  recommendations.value.filter((r) => r.actionKind === "destroy"),
 );
 
 const recommendationSelection: Record<string, boolean> = reactive({});

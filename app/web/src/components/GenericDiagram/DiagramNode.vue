@@ -69,7 +69,7 @@
           y: 4,
           verticalAlign: 'top',
           align: 'left',
-          text: node.def.title,
+          text: truncatedNodeTitle,
           width: nodeWidth - 24 - 24 - 8,
           padding: 0,
           fill: colors.headerText,
@@ -331,6 +331,14 @@ const connectedEdgesBySocketKey = computed(() => {
     lookup[edge.toSocketKey].push(edge);
   });
   return lookup;
+});
+
+const MAX_TITLE_LENGTH = 80;
+
+const truncatedNodeTitle = computed(() => {
+  if (props.node.def.title.length > MAX_TITLE_LENGTH) {
+    return `${props.node.def.title.substring(0, MAX_TITLE_LENGTH)}...`;
+  } else return props.node.def.title;
 });
 
 const nodeWidth = computed(() => NODE_WIDTH);

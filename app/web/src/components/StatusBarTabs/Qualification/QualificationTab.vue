@@ -25,7 +25,7 @@
       </StatusBarTabPill>
 
       <StatusBarTabPill
-        v-if="componentStats.success"
+        v-if="componentStats.warning"
         class="bg-warning-100 text-warning-600 font-bold"
       >
         <StatusIndicatorIcon type="qualification" status="warning" size="xs" />

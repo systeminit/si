@@ -43,7 +43,8 @@ export type Recommendation = {
   recommendedAction: string;
   provider: string;
   actionKind: ActionKind;
-  status: FixStatus;
+  status: FixStatus; // TODO(Wendy) - this should be replaced with a reference to the lastFixRun
+  lastFix?: Fix; // TODO(nick,wendy): delete status if we don't need it
   isRunnable: RecommendationIsRunnable;
 };
 

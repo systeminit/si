@@ -1,37 +1,15 @@
 <template>
-  <span class="flex flex-row items-center">
-    <Icon
-      :name="icon.name"
-      class="pr-2 mr-2"
-      :class="icon.class"
-      size="lg"
-      :title="`Health: ${health}`"
-    />
-
-    <span
-      class="flex flex-col w-full h-full break-words"
-      :title="message.join('\n')"
+  <span>
+    <button
+      class="underline text-action-400 font-bold"
+      @click="modalRef.open()"
     >
-      <strong
-        v-for="(singleMessage, index) in message"
-        :key="singleMessage"
-        class="mt-1 ml-1"
-      >
-        {{ singleMessage }}
-        <button
-          v-if="index === 0 && details.length > 0"
-          class="underline text-action-400"
-          @click="modalRef.open()"
-        >
-          View Details
-        </button>
-      </strong>
-      <strong v-if="message.length === 0">Health {{ health }}</strong>
-    </span>
+      View Details
+    </button>
 
     <Modal ref="modalRef" size="2xl">
       <template #title>
-        <span class="flex" :title="message.join('\n')">
+        <span class="flex items-center" :title="message.join('\n')">
           <Icon
             :name="icon.name"
             class="pr-2"
@@ -80,21 +58,24 @@ import Modal from "@/ui-lib/modals/Modal.vue";
 const props = defineProps<{
   health: ResourceHealth;
   message: string[];
-  viewDetails: string[];
+  details: string[];
 }>();
 
 const details = computed(() => {
-  return props.viewDetails.flatMap((d) => d.split("\\n"));
+  return props.details.flatMap((d) => d.split("\\n"));
 });
 
 const icon = computed(() => {
   switch (props.health) {
     case ResourceHealth.Ok:
-      return { name: "check-square" as IconNames, class: "text-success-500" };
+      return { name: "check2" as IconNames, class: "text-success-500" };
     case ResourceHealth.Warning:
-      return { name: "alert-square" as IconNames, class: "text-warning-500" };
+      return { name: "alert-triangle" as IconNames, class: "text-warning-500" };
     case ResourceHealth.Error:
-      return { name: "x-square" as IconNames, class: "text-destructive-500" };
+      return {
+        name: "alert-triangle" as IconNames,
+        class: "text-destructive-500",
+      };
     case ResourceHealth.Unknown:
     default:
       return { name: "help-circle" as IconNames, class: "text-neutral-300" };

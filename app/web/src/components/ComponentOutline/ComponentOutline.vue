@@ -83,7 +83,6 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
-import ReadOnlyBanner from "../ReadOnlyBanner.vue";
 
 const outlineRef = ref<HTMLElement>();
 

@@ -171,17 +171,27 @@
         }"
       />
 
+      <!-- package/type icon -->
+      <DiagramIcon
+        v-if="group.def.typeIcon"
+        :icon="group.def.typeIcon"
+        :color="colors.icon"
+        :size="GROUP_HEADER_ICON_SIZE"
+        :x="5"
+        :y="5"
+        origin="top-left"
+      />
+
       <!-- header text -->
-      <!--  TODO fix font size   -->
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 0,
-          y: 0,
+          x: 42,
+          y: 2,
           verticalAlign: 'top',
           align: 'left',
-          width: headerWidth,
-          text: `${group.def.subtitle}: ${group.def.childNodeIds?.length ?? 0}`,
+          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          text: group.def.title,
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
@@ -192,7 +202,101 @@
           ellipsis: true,
         }"
       />
+
+      <!-- subtitle text -->
+      <v-text
+        ref="titleTextRef"
+        :config="{
+          x: 42,
+          y: 20,
+          verticalAlign: 'top',
+          align: 'left',
+          width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
+          text: `${group.def.subtitle}: ${group.def.childNodeIds?.length ?? 0}`,
+          padding: 6,
+          fill: colors.headerText,
+          fontSize: GROUP_TITLE_FONT_SIZE,
+          fontStyle: 'italic',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'none',
+          ellipsis: true,
+        }"
+      />
+      />
     </v-group>
+
+    <!-- status icons -->
+    <v-group
+      v-if="group.def.statusIcons?.length"
+      :config="{
+        x: halfWidth - group.def.statusIcons.length * 22 - 2,
+        y: 0,
+      }"
+    >
+      <DiagramIcon
+        v-for="(statusIcon, i) in group.def.statusIcons"
+        :key="`status-icon-${i}`"
+        :icon="statusIcon.icon"
+        :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+        :size="20"
+        :x="i * 22"
+        :y="nodeBodyHeight - 5"
+        origin="bottom-left"
+      />
+    </v-group>
+
+    <!--  spinner overlay  -->
+    <v-group
+      ref="overlay"
+      :config="{
+        x: -halfWidth,
+        y: 0,
+        opacity: 0,
+        listening: false,
+      }"
+    >
+      <!--  transparent overlay  -->
+      <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeBodyHeight,
+          x: 0,
+          y: 0,
+          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+          fill: 'rgba(255,255,255,0.70)',
+        }"
+      />
+      <DiagramIcon
+        icon="loader"
+        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+        :size="overlayIconSize"
+        :x="halfWidth"
+        :y="nodeBodyHeight / 2"
+      />
+    </v-group>
+
+    <!-- added/modified indicator -->
+    <DiagramIcon
+      v-if="isAdded || isModified"
+      :icon="isAdded ? 'plus' : 'tilde'"
+      :bg-color="
+        isAdded
+          ? diagramConfig?.toneColors?.success
+          : diagramConfig?.toneColors?.warning
+      "
+      circle-bg
+      :color="theme === 'dark' ? '#000' : '#FFF'"
+      :size="GROUP_HEADER_ICON_SIZE"
+      :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
+      :y="
+        -nodeHeaderHeight +
+        GROUP_HEADER_ICON_SIZE / 2 -
+        GROUP_HEADER_BOTTOM_MARGIN +
+        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
+      "
+      origin="center"
+    />
   </v-group>
 </template>
 
@@ -202,7 +306,6 @@ import _ from "lodash";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
-import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
 import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
@@ -216,6 +319,7 @@ import {
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
+  GROUP_HEADER_ICON_SIZE,
 } from "@/components/GenericDiagram/diagram_constants";
 import {
   DiagramDrawEdgeState,
@@ -270,10 +374,19 @@ const size = computed(
   () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
 );
 
+const isDeleted = computed(() => props.group.def.changeStatus === "deleted");
+const isModified = computed(() => props.group.def.changeStatus === "modified");
+const isAdded = computed(() => props.group.def.changeStatus === "added");
+
+const overlayIconSize = computed(() => nodeWidth.value / 3);
+
 const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
-// TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
-const headerWidth = computed(() => nodeWidth.value * 0.75);
+const headerWidth = computed(() =>
+  !props.group.def.changeStatus || props.group.def.changeStatus === "unmodified"
+    ? nodeWidth.value
+    : nodeWidth.value - GROUP_HEADER_ICON_SIZE - 4,
+);
 
 const actualSockets = computed(() =>
   _.filter(
@@ -313,6 +426,7 @@ watch(
 function recalcHeaderHeight() {
   headerTextHeight.value =
     titleTextRef.value?.getNode()?.getSelfRect().height || 20;
+  headerTextHeight.value *= 1.7;
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
@@ -332,7 +446,6 @@ watch([nodeWidth, nodeHeight, position], () => {
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
-  const headerText = primaryColor.isDark() ? "#FFF" : "#000";
 
   // body bg
   const bodyBgHsl = primaryColor.toHsl();
@@ -340,15 +453,20 @@ const colors = computed(() => {
   const bodyBg = tinycolor(bodyBgHsl);
 
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+  let headerText;
+  if (primaryColor.toHsl().l < 0.5) {
+    headerText = "#FFF";
+  } else {
+    headerText = "#000";
+  }
   return {
     headerBg: primaryColor.toRgbString(),
+    icon: "#000",
     headerText,
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };
 });
-
-const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 
 function onMouseOver(evt: KonvaEventObject<MouseEvent>) {
   evt.cancelBubble = true;

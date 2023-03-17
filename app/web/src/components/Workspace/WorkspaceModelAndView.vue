@@ -522,6 +522,26 @@ function onOutlineRightClick(e: MouseEvent) {
   contextMenuRef.value?.open(e, true);
 }
 
+const typeDisplayName = (action = "delete") => {
+  if (selectedComponentId.value) {
+    if (selectedComponent.value.nodeType === "component") return "Component";
+    else return "Frame";
+  } else if (selectedComponentIds.value.length) {
+    const components =
+      action === "delete"
+        ? deletableSelectedComponents
+        : restorableSelectedComponents;
+
+    for (const c of components.value) {
+      if (c.nodeType === "component") return "Component"; // if we have both frames and components, just use the word component
+    }
+
+    return "Frame";
+  } else {
+    return "Component";
+  }
+};
+
 const rightClickMenuItems = computed(() => {
   const items: MenuItemObjectDef[] = [];
   if (isViewMode.value) {
@@ -546,13 +566,17 @@ const rightClickMenuItems = computed(() => {
     // single selected component
     if (selectedComponent.value.changeStatus === "deleted") {
       items.push({
-        label: "Restore component",
+        label: `Restore ${typeDisplayName()} "${
+          selectedComponent.value.displayName
+        }"`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
       });
     } else {
       items.push({
-        label: "Delete component",
+        label: `Delete ${typeDisplayName()} "${
+          selectedComponent.value.displayName
+        }"`,
         icon: "trash",
         onSelect: triggerDeleteSelection,
       });
@@ -562,7 +586,7 @@ const rightClickMenuItems = computed(() => {
     if (deletableSelectedComponents.value.length > 0) {
       items.push({
         label: `Delete ${deletableSelectedComponents.value.length} ${plur(
-          "component",
+          typeDisplayName("delete"),
           deletableSelectedComponents.value.length,
         )}`,
         icon: "trash",
@@ -572,7 +596,7 @@ const rightClickMenuItems = computed(() => {
     if (restorableSelectedComponents.value.length > 0) {
       items.push({
         label: `Restore ${restorableSelectedComponents.value.length} ${plur(
-          "component",
+          typeDisplayName("restore"),
           restorableSelectedComponents.value.length,
         )}`,
         icon: "trash-restore",

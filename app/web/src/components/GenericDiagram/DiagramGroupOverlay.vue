@@ -52,34 +52,13 @@
 <script lang="ts" setup>
 import { computed, nextTick, PropType, ref, watch } from "vue";
 import _ from "lodash";
-import tinycolor from "tinycolor2";
-
-import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@/ui-lib/theme_tools";
-import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
 import {
-  SOCKET_GAP,
-  SOCKET_MARGIN_TOP,
   CORNER_RADIUS,
-  DEFAULT_NODE_COLOR,
-  DIAGRAM_FONT_FAMILY,
-  SELECTION_COLOR,
   GROUP_HEADER_BOTTOM_MARGIN,
-  GROUP_TITLE_FONT_SIZE,
-  GROUP_RESIZE_HANDLE_SIZE,
 } from "@/components/GenericDiagram/diagram_constants";
-import {
-  DiagramDrawEdgeState,
-  DiagramEdgeData,
-  DiagramElementUniqueKey,
-  DiagramGroupData,
-  Size2D,
-  SideAndCornerIdentifiers,
-  DiagramSocketData,
-  ElementHoverMeta,
-} from "./diagram_types";
+import { DiagramGroupData, Size2D } from "./diagram_types";
 
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
@@ -99,7 +78,6 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
-const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
 
 const titleTextRef = ref();
@@ -111,8 +89,6 @@ const size = computed(
 
 const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
-// TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
-const headerWidth = computed(() => nodeWidth.value * 0.75);
 
 const overlayIconSize = computed(() => nodeWidth.value / 3);
 
@@ -139,25 +115,6 @@ const nodeHeight = computed(
 );
 
 const position = computed(() => props.tempPosition || props.group.def.position);
-
-const colors = computed(() => {
-  const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
-  const headerText = primaryColor.isDark() ? "#FFF" : "#000";
-
-  // body bg
-  const bodyBgHsl = primaryColor.toHsl();
-  bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
-  const bodyBg = tinycolor(bodyBgHsl);
-
-  const bodyText = theme.value === "dark" ? "#FFF" : "#000";
-  return {
-    headerBg: primaryColor.toRgbString(),
-    headerText,
-    bodyBg: bodyBg.toRgbString(),
-    bodyText,
-  };
-});
-
 const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
 const deletedXSize = computed(() =>
   Math.min(nodeHeight.value, nodeWidth.value),

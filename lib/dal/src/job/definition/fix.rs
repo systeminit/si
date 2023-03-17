@@ -177,11 +177,12 @@ impl JobConsumer for FixesJob {
             .ok_or(FixError::EmptyCompletionStatus)?;
 
         // Upsert the relevant fix resolver.
-        let _fix_resolver = FixResolver::upsert(
+        FixResolver::upsert(
             ctx,
             workflow_prototype_id,
             fix_item.attribute_value_id,
             Some(matches!(completion_status, FixCompletionStatus::Success)),
+            *fix.id(),
         )
         .await?;
 

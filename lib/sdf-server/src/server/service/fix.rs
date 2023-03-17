@@ -39,6 +39,7 @@ pub enum FixError {
     User(#[from] UserError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
+
     #[error("no schema found for component {0}")]
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]

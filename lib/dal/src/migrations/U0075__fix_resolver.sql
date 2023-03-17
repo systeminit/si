@@ -1,15 +1,16 @@
 CREATE TABLE fix_resolvers
 (
-    pk                          ident primary key                 default ident_create_v1(),
-    id                          ident                    not null default ident_create_v1(),
-    tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
-    visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    workflow_prototype_id       ident                    NOT NULL,
-    attribute_value_id          ident                    NOT NULL,
-    success                     bool
+    pk                       ident primary key                 default ident_create_v1(),
+    id                       ident                    not null default ident_create_v1(),
+    tenancy_workspace_pk     ident,
+    visibility_change_set_pk ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at    timestamp with time zone,
+    created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    workflow_prototype_id    ident                    NOT NULL,
+    attribute_value_id       ident                    NOT NULL,
+    success                  bool,
+    last_fix_id              ident                    NOT NULL
 );
 
 CREATE UNIQUE INDEX unique_fix_resolvers
@@ -29,6 +30,7 @@ CREATE OR REPLACE FUNCTION fix_resolver_create_v1(
     this_workflow_prototype_id ident,
     this_attribute_value_id ident,
     this_success bool,
+    this_last_fix_id ident,
     OUT object json) AS
 $$
 DECLARE
@@ -44,13 +46,15 @@ BEGIN
                                visibility_deleted_at,
                                workflow_prototype_id,
                                attribute_value_id,
-                               success)
+                               success,
+                               last_fix_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_workflow_prototype_id,
             this_attribute_value_id,
-            this_success)
+            this_success,
+            this_last_fix_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

@@ -22,53 +22,38 @@
         >
           <template #label>
             <div class="flex flex-row items-center gap-2">
-              <span class="font-bold flex">
-                <Icon
-                  v-if="['success', 'failure'].includes(fixBatch.status)"
-                  :name="
-                    fixBatch.status === 'success' ? 'check-square' : 'x-square'
-                  "
-                  :class="
-                    fixBatch.status === 'success'
-                      ? 'text-success-500'
-                      : 'text-destructive-500'
-                  "
-                  class="pr-2"
-                  size="lg"
-                  :title="`Status: ${fixBatch.status}`"
-                />
-                <span
+              <span class="font-bold flex flex-row items-center">
+                <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
+                <div
                   v-if="
-                    fixBatch.status === 'success'
-		    && fixBatch.fixes.filter((f) => f.status === 'success').length === fixBatch.fixes.length
+                    fixBatch.status === 'success' &&
+                    fixBatch.fixes.filter((f) => f.status === 'success')
+                      .length === fixBatch.fixes.length
                   "
-                  class="mt-2"
-                  >All fixes succeeded</span
+                  class="pl-xs"
                 >
-                <span v-else class="mt-2"
-                  >{{
+                  All fixes succeeded
+                </div>
+                <div v-else class="pl-xs">
+                  {{
                     fixBatch.fixes.filter((f) => f.status === "success").length
                   }}
                   of {{ fixBatch.fixes.length }} fix{{
                     fixBatch.fixes.length > 1 ? "es" : ""
                   }}
-                  succeeded</span
-                >
+                  succeeded
+                </div>
               </span>
               <span
-	        v-if="fixBatch.finishedAt"
+                v-if="fixBatch.startedAt"
                 :class="
                   clsx(
                     'text-xs',
                     themeClasses('text-neutral-700', 'text-neutral-300'),
                   )
                 "
-                class="mt-1"
               >
-                <Timestamp
-                  size="mini"
-                  :date="new Date(fixBatch.finishedAt.replace(' UTC', ''))"
-                />
+                <Timestamp size="mini" :date="new Date(fixBatch.startedAt)" />
               </span>
             </div>
           </template>
@@ -89,7 +74,15 @@
               >
                 <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
               </div>
-              <div>by: {{ fixBatch.author }}</div>
+              <div>By: {{ fixBatch.author }}</div>
+              <div v-if="fixBatch.startedAt" class="italic">
+                Started At:
+                <Timestamp size="long" :date="new Date(fixBatch.startedAt)" />
+              </div>
+              <div v-if="fixBatch.finishedAt" class="italic">
+                Finished At:
+                <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
+              </div>
             </div>
 
             <ul class="pl-5 mt-2">
@@ -102,27 +95,74 @@
                 :default-open="false"
               >
                 <template #label>
-                  <HealthIcon
-                    :health="fix.resource.status"
-                    :message="
-                      [
-                        `${formatTitle(fix.action)} ${fix.schemaName}`,
-                        fix.resource.message ?? '',
-                      ].filter((f) => f.length > 0)
-                    "
-                    :view-details="fix.resource.logs"
-                    class="ml-3"
+                  <StatusIndicatorIcon
+                    type="resource"
+                    :status="fix.resource.status"
                   />
+                  <div class="flex flex-col">
+                    <div class="font-bold pl-xs">
+                      {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
+                    </div>
+                  </div>
                 </template>
                 <template #default>
-                  <div class="p-2">
+                  <div class="p-2 dark:text-neutral-50 text-neutral-900">
                     <CodeViewer
                       v-if="fix.resource.data"
                       :code="JSON.stringify(fix.resource.data, null, 2)"
                       class="dark:text-neutral-50 text-neutral-900"
                     >
-                      <template #title> </template>
+                      <template #title>
+                        <div class="font-bold">
+                          {{ fix.resource.message ?? "Resource Code" }}
+                          <FixDetails
+                            v-if="
+                              fix.resource.logs && fix.resource.logs.length > 0
+                            "
+                            :health="fix.resource.status"
+                            :message="
+                              [
+                                `${formatTitle(fix.action)} ${fix.schemaName}`,
+                                fix.resource.message ?? '',
+                              ].filter((f) => f.length > 0)
+                            "
+                            :details="fix.resource.logs"
+                          />
+                        </div>
+                      </template>
                     </CodeViewer>
+                    <template v-else-if="fix.resource.message">
+                      {{ fix.resource.message }}
+                      <FixDetails
+                        v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                        :health="fix.resource.status"
+                        :message="
+                          [
+                            `${formatTitle(fix.action)} ${fix.schemaName}`,
+                            fix.resource.message ?? '',
+                          ].filter((f) => f.length > 0)
+                        "
+                        :details="fix.resource.logs"
+                      />
+                    </template>
+                    <template v-else>
+                      {{
+                        fix.resource.status === "ok"
+                          ? "Completed successfully"
+                          : "Error"
+                      }}
+                      <FixDetails
+                        v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                        :health="fix.resource.status"
+                        :message="
+                          [
+                            `${formatTitle(fix.action)} ${fix.schemaName}`,
+                            fix.resource.message ?? '',
+                          ].filter((f) => f.length > 0)
+                        "
+                        :details="fix.resource.logs"
+                      />
+                    </template>
                   </div>
                 </template>
               </SiCollapsible>
@@ -135,6 +175,7 @@
 </template>
 
 <script lang="ts" setup>
+import _ from "lodash";
 import { computed } from "vue";
 import clsx from "clsx";
 import { themeClasses } from "@/ui-lib/theme_tools";
@@ -142,15 +183,15 @@ import SiSearch from "@/components/SiSearch.vue";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import Timestamp from "@/ui-lib/Timestamp.vue";
-import HealthIcon from "@/components/HealthIcon.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import CodeViewer from "./CodeViewer.vue";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import FixDetails from "./FixDetails.vue";
 
 const fixesStore = useFixesStore();
 
-const fixBatches = computed(() => fixesStore.allFinishedFixBatches);
+const fixBatches = computed(() => _.reverse(fixesStore.allFinishedFixBatches));
 
 const formatTitle = (title: string) => {
   return title

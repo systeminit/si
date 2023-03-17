@@ -1,14 +1,21 @@
 <template>
   <SiCollapsible
     as="div"
-    class="w-full"
+    :class="
+      clsx(
+        'w-full hover:border-action-500 dark:hover:border-action-300 border border-transparent',
+        selected
+          ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+          : '',
+      )
+    "
     content-as="ul"
     :default-open="false"
     hide-bottom-border-when-open
   >
     <template #prefix>
       <VormInput
-        v-if="recommendation.isRunnable === 'yes'"
+        v-if="recommendation.isRunnable === 'yes' && !iconDelayActive"
         :model-value="selected"
         type="checkbox"
         class="flex-none pl-1"
@@ -21,32 +28,24 @@
         "
       />
       <Icon
-        v-else-if="
-          recommendation.status === 'running' ||
-          recommendation.isRunnable === 'running'
-        "
-        name="loader"
-        :class="clsx('flex-none pl-1', statusIconProps.color)"
-        size="lg"
-      />
-      <Icon
         v-else
         :name="statusIconProps.name"
-        :class="clsx('flex-none pl-1', statusIconProps.color)"
+        :class="clsx('flex-none mx-1', statusIconProps.color)"
         size="lg"
       />
     </template>
     <template #label>
       <div
-        class="flex gap-2 items-center text-sm relative min-w-0"
+        class="flex flex-row gap-2 items-center text-sm relative min-w-0 w-full justify-end"
         :class="classes"
       >
-        <Icon
+        <!-- TODO(Wendy) - after velvet rope we can try to come up with icons for this again
+          <Icon
           :name="recommendationIcon(recommendation.actionKind)"
           size="md"
           :class="recommendationColor(recommendation.actionKind)"
-        />
-        <div class="flex flex-col min-w-0">
+        /> -->
+        <div class="flex flex-col min-w-0 grow">
           <span class="font-bold truncate"> {{ recommendation.name }}</span>
           <span class="text-xs text-neutral-700 dark:text-neutral-300 truncate">
             <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
@@ -57,6 +56,15 @@
             }}
           </span>
         </div>
+        <Icon
+          v-if="
+            recommendation.lastFix &&
+            recommendation.lastFix.status === 'failure'
+          "
+          name="alert-triangle"
+          class="text-destructive-500"
+          size="lg"
+        />
       </div>
     </template>
     <template #default>
@@ -68,6 +76,29 @@
           )
         "
       >
+        <div
+          v-if="
+            recommendation.lastFix &&
+            recommendation.lastFix.status === 'failure'
+          "
+          class="pb-xs text-destructive-500"
+        >
+          <div class="font-bold">Last attempt failed!</div>
+          <div v-if="recommendation.lastFix.startedAt" class="italic text-xs">
+            Started At:
+            <Timestamp
+              :date="new Date(recommendation.lastFix.startedAt)"
+              size="long"
+            />
+          </div>
+          <div v-if="recommendation.lastFix.finishedAt" class="italic text-xs">
+            Failed At:
+            <Timestamp
+              :date="new Date(recommendation.lastFix.finishedAt)"
+              size="long"
+            />
+          </div>
+        </div>
         <div class="flex flex-row justify-between text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Cloud Provider:</div>
@@ -82,7 +113,7 @@
             <div>dev</div>
           </div>
         </div>
-        <div class="py-4 text-sm">
+        <div class="py-xs text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Recommendation:</div>
             <div>{{ recommendation.recommendedAction }}</div>
@@ -94,19 +125,40 @@
 </template>
 
 <script setup lang="ts">
-import { Ref, computed, PropType } from "vue";
+import { Ref, computed, PropType, ref, watch, onBeforeUnmount } from "vue";
 import clsx from "clsx";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
-import { Recommendation, ActionKind } from "@/store/fixes.store";
+import { Recommendation } from "@/store/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
+import Timestamp from "@/ui-lib/Timestamp.vue";
 import SiCollapsible from "./SiCollapsible.vue";
 
 const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
+});
+
+let delayTimeout: Timeout;
+const iconDelayActive = ref(false);
+
+watch(
+  () => props.recommendation.isRunnable,
+  (newVal, oldVal) => {
+    if (oldVal === "running" && newVal === "yes") {
+      emit("toggle", false);
+      iconDelayActive.value = true;
+      delayTimeout = setTimeout(() => {
+        iconDelayActive.value = false;
+      }, 2000);
+    }
+  },
+);
+
+onBeforeUnmount(() => {
+  clearTimeout(delayTimeout);
 });
 
 const classes = computed(() => props.class);
@@ -128,23 +180,23 @@ const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
   },
 );
 
-const recommendationIcon = (recommendationAction: ActionKind) => {
-  if (recommendationAction === "create") {
-    return "plus-circle";
-  } else if (recommendationAction === "destroy") {
-    return "minus-circle";
-  } else {
-    return "tilde-circle";
-  }
-};
+// const recommendationIcon = (recommendationAction: ActionKind) => {
+//   if (recommendationAction === "create") {
+//     return "plus-circle";
+//   } else if (recommendationAction === "destroy") {
+//     return "minus-circle";
+//   } else {
+//     return "tilde-circle";
+//   }
+// };
 
-const recommendationColor = (recommendationAction: ActionKind) => {
-  if (recommendationAction === "create") {
-    return "text-success-500 flex-none";
-  } else if (recommendationAction === "destroy") {
-    return "text-destructive-500 flex-none";
-  } else {
-    return "text-warning-500 flex-none";
-  }
-};
+// const recommendationColor = (recommendationAction: ActionKind) => {
+//   if (recommendationAction === "create") {
+//     return "text-success-500 flex-none";
+//   } else if (recommendationAction === "destroy") {
+//     return "text-destructive-500 flex-none";
+//   } else {
+//     return "text-warning-500 flex-none";
+//   }
+// };
 </script>
