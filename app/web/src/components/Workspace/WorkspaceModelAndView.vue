@@ -83,6 +83,20 @@
     </template>
   </SiPanel>
 
+  <Modal ref="deleteBlockedModalRef" title="Can't delete component">
+    <Stack space="sm">
+      <p>
+        You cannot delete a frame that still has children.
+        <br />
+        Delete them before proceeding.
+      </p>
+
+      <div class="flex space-x-sm justify-end">
+        <VButton2 tone="action" @click="closeDeleteBlockedModal"> Ok</VButton2>
+      </div>
+    </Stack>
+  </Modal>
+
   <Modal ref="confirmDeleteModalRef" title="Are you sure?">
     <Stack space="sm">
       <template v-if="selectedEdge">
@@ -233,6 +247,8 @@ const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 const selectedComponentIds = computed(
   () => componentsStore.selectedComponentIds,
 );
+const selectedComponents = computed(() => componentsStore.selectedComponents);
+
 const selectedEdgeId = computed(() => componentsStore.selectedEdgeId);
 const selectedEdge = computed(() => componentsStore.selectedEdge);
 
@@ -373,6 +389,11 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
 }
 
 const confirmDeleteModalRef = ref<InstanceType<typeof Modal>>();
+const deleteBlockedModalRef = ref<InstanceType<typeof Modal>>();
+
+function closeDeleteBlockedModal() {
+  deleteBlockedModalRef.value?.close();
+}
 
 const deletableSelectedComponents = computed(() => {
   return _.reject(
@@ -388,7 +409,7 @@ const restorableSelectedComponents = computed(() => {
 });
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
-  // delete event includes what to delete, but its the same as current selection
+  // delete event includes what to delete, but it's the same as current selection
   triggerDeleteSelection();
 }
 
@@ -401,6 +422,20 @@ function triggerDeleteSelection() {
     // TODO: more logic to decide if modal is necessary for other situations
     if (!deletableSelectedComponents.value.length) return;
   }
+
+  const deletionSubjectHasChildren =
+    selectedComponents.value?.filter((el) => {
+      if (el.childNodeIds.length > 0) {
+        return true;
+      }
+      return false;
+    }).length > 0;
+
+  if (deletionSubjectHasChildren) {
+    deleteBlockedModalRef.value?.open();
+    return;
+  }
+
   confirmDeleteModalRef.value?.open();
 }
 
@@ -437,6 +472,7 @@ function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
   }
   return DiagramNodeData.generateUniqueKey(component.nodeId);
 }
+
 function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
   if (!edgeId) return;
   return DiagramEdgeData.generateUniqueKey(edgeId);
