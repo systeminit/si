@@ -2,8 +2,6 @@ use deadpool_cyclone::{
     CommandRunRequest, ResolverFunctionRequest, ValidationRequest, WorkflowResolveRequest,
 };
 use nats_subscriber::Subscription;
-use nats_subscriber::SubscriptionConfig;
-use nats_subscriber::SubscriptionConfigKeyOption;
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use veritech_core::{
@@ -25,16 +23,11 @@ impl FunctionSubscriber {
             messaging.destination = &subject.as_str(),
             "subscribing for resolver function requests"
         );
-        Subscription::new(
-            nats,
-            SubscriptionConfig {
-                subject,
-                queue_name: Some("resolver".into()),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: true,
-            },
-        )
-        .await
+        Subscription::create(subject)
+            .queue_name("resolver")
+            .check_for_reply_mailbox(true)
+            .start(nats)
+            .await
     }
 
     pub async fn validation(
@@ -46,16 +39,11 @@ impl FunctionSubscriber {
             messaging.destination = &subject.as_str(),
             "subscribing for validation requests"
         );
-        Subscription::new(
-            nats,
-            SubscriptionConfig {
-                subject,
-                queue_name: Some("validation".into()),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: true,
-            },
-        )
-        .await
+        Subscription::create(subject)
+            .queue_name("validation")
+            .check_for_reply_mailbox(true)
+            .start(nats)
+            .await
     }
 
     pub async fn workflow_resolve(
@@ -67,16 +55,11 @@ impl FunctionSubscriber {
             messaging.destination = &subject.as_str(),
             "subscribing for workflow resolve requests"
         );
-        Subscription::new(
-            nats,
-            SubscriptionConfig {
-                subject,
-                queue_name: Some("workflow".into()),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: true,
-            },
-        )
-        .await
+        Subscription::create(subject)
+            .queue_name("workflow")
+            .check_for_reply_mailbox(true)
+            .start(nats)
+            .await
     }
 
     pub async fn command_run(
@@ -88,15 +71,10 @@ impl FunctionSubscriber {
             messaging.destination = &subject.as_str(),
             "subscribing for command resolve requests"
         );
-        Subscription::new(
-            nats,
-            SubscriptionConfig {
-                subject,
-                queue_name: Some("command".into()),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: true,
-            },
-        )
-        .await
+        Subscription::create(subject)
+            .queue_name("command")
+            .check_for_reply_mailbox(true)
+            .start(nats)
+            .await
     }
 }

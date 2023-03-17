@@ -3,6 +3,8 @@
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
+pub mod builder;
+
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -13,9 +15,11 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::{NatsClient, NatsError};
+use si_data_nats::NatsError;
 use telemetry::prelude::*;
 use thiserror::Error;
+
+pub use crate::builder::SubscriptionBuilder;
 
 #[allow(missing_docs)]
 #[derive(Error, Debug)]
@@ -37,10 +41,6 @@ pub enum SubscriberError {
 }
 
 type SubscriberResult<T> = Result<T, SubscriberError>;
-
-/// The default "final message" header key that corresponds to
-/// [`SubscriptionConfigKeyOption::UseDefaultKey`].
-pub const DEFAULT_FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
 /// Contains the Rust type expected in the subscription stream.
 #[derive(Debug)]
@@ -70,75 +70,17 @@ pin_project! {
     }
 }
 
-/// The [`config`](Self) used for creating a [`Subscription`].
-pub struct SubscriptionConfig<S>
-where
-    S: Into<String>,
-{
-    /// The [NATS](https://nats.io) subject used.
-    pub subject: S,
-    /// If provided, the [`Subscription`] will use [`NatsClient::queue_subscribe`]. Otherwise, it
-    /// [`NatsClient::subscribe`].
-    pub queue_name: Option<S>,
-    /// If a key is provided (or the [`default`](DEFAULT_FINAL_MESSAGE_HEADER_KEY) is used), the
-    /// [`Subscription`] will only close successfully if a "final message" is seen. Otherwise, it
-    /// can close successfully without receiving a "final message".
-    pub final_message_header_key: SubscriptionConfigKeyOption<S>,
-    /// If set, the [`Subscription`] will check for a reply mailbox in the [`Request`].
-    /// Otherwise, it will not perform the check.
-    pub check_for_reply_mailbox: bool,
-}
-
-/// Clarifies whether or not to use a "final message" header key for successfully closing
-/// [`Subscriptions`](Subscription) (as well as what key should be used, if applicable).
-pub enum SubscriptionConfigKeyOption<S>
-where
-    S: Into<String>,
-{
-    /// Use the provided key.
-    UseKey(S),
-    /// Use the default key: [`DEFAULT_FINAL_MESSAGE_HEADER_KEY`].
-    UseDefaultKey,
-    /// Do not use a key (i.e. allow successful close without seeing a "final message").
-    DoNotUseKey,
-}
-
 impl<T> Subscription<T> {
+    /// Provides the [`builder`](SubscriptionBuilder) for creating a [`Subscription`].
+    pub fn create(subject: impl Into<String>) -> SubscriptionBuilder<T> {
+        SubscriptionBuilder::new(subject)
+    }
+
     /// Create a new [`subscription`](Self) for a given request shape `T`.
     ///
     /// # Errors
     ///
     /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
-    pub async fn new(
-        nats: &NatsClient,
-        config: SubscriptionConfig<impl Into<String>>,
-    ) -> SubscriberResult<Subscription<T>> {
-        let inner = if let Some(queue_name) = config.queue_name {
-            nats.queue_subscribe(config.subject, queue_name)
-                .await
-                .map_err(SubscriberError::NatsSubscribe)?
-        } else {
-            nats.subscribe(config.subject)
-                .await
-                .map_err(SubscriberError::NatsSubscribe)?
-        };
-
-        let final_message_header_key = match config.final_message_header_key {
-            SubscriptionConfigKeyOption::UseKey(key) => Some(key.into()),
-            SubscriptionConfigKeyOption::UseDefaultKey => {
-                Some(DEFAULT_FINAL_MESSAGE_HEADER_KEY.into())
-            }
-            SubscriptionConfigKeyOption::DoNotUseKey => None,
-        };
-
-        Ok(Subscription {
-            inner,
-            _phantom: PhantomData::<T>,
-            final_message_header_key,
-            check_for_reply_mailbox: config.check_for_reply_mailbox,
-        })
-    }
-
     #[allow(dead_code, missing_docs, clippy::missing_errors_doc)]
     pub async fn drain(&self) -> SubscriberResult<()> {
         self.inner.drain().await.map_err(SubscriberError::NatsDrain)

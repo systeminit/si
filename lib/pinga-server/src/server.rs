@@ -9,9 +9,7 @@ use dal::{
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
-use nats_subscriber::{
-    Request, SubscriberError, Subscription, SubscriptionConfig, SubscriptionConfigKeyOption,
-};
+use nats_subscriber::{Request, SubscriberError, Subscription};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use telemetry::prelude::*;
@@ -242,17 +240,11 @@ impl Subscriber {
         );
         let ctx_builder = DalContext::builder(services_context);
 
-        Ok(Subscription::new(
-            &nats,
-            SubscriptionConfig {
-                subject,
-                queue_name: Some(NATS_JOBS_DEFAULT_QUEUE.into()),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: false,
-            },
-        )
-        .await?
-        .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))))
+        Ok(Subscription::create(subject)
+            .queue_name(NATS_JOBS_DEFAULT_QUEUE)
+            .start(&nats)
+            .await?
+            .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))))
     }
 }
 

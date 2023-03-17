@@ -7,9 +7,7 @@ use std::panic::AssertUnwindSafe;
 
 use futures::FutureExt;
 use futures::StreamExt;
-use nats_subscriber::{
-    Request, SubscriberError, Subscription, SubscriptionConfig, SubscriptionConfigKeyOption,
-};
+use nats_subscriber::{Request, SubscriberError, Subscription};
 use serde::Deserialize;
 use serde::Serialize;
 use si_data_nats::NatsError;
@@ -80,16 +78,11 @@ impl StatusReceiver {
     pub async fn new(services_context: ServicesContext) -> StatusReceiverResult<Self> {
         // TODO(nick): add ability to alter nats subject or add prefix.
         let nats = services_context.nats_conn();
-        let requests: Subscription<StatusReceiverRequest> = Subscription::new(
-            nats,
-            SubscriptionConfig {
-                subject: STATUS_RECEIVER_REQUEST_SUBJECT,
-                queue_name: Some(STATUS_RECEIVER_QUEUE_NAME),
-                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
-                check_for_reply_mailbox: false,
-            },
-        )
-        .await?;
+        let requests: Subscription<StatusReceiverRequest> =
+            Subscription::create(STATUS_RECEIVER_REQUEST_SUBJECT)
+                .queue_name(STATUS_RECEIVER_QUEUE_NAME)
+                .start(nats)
+                .await?;
         Ok(Self {
             services_context,
             requests,

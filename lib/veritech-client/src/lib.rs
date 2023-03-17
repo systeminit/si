@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use futures::{StreamExt, TryStreamExt};
-use nats_subscriber::{
-    SubscriberError, Subscription, SubscriptionConfig, SubscriptionConfigKeyOption,
-};
+use nats_subscriber::{SubscriberError, Subscription};
 use serde::{de::DeserializeOwned, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -197,18 +195,11 @@ impl Client {
             messaging.destination = &result_subscription_subject.as_str(),
             "subscribing for result messages"
         );
-        let mut result_subscription: Subscription<FunctionResult<S>> = Subscription::new(
-            &self.nats,
-            SubscriptionConfig {
-                subject: result_subscription_subject,
-                queue_name: None,
-                final_message_header_key: SubscriptionConfigKeyOption::UseKey(
-                    FINAL_MESSAGE_HEADER_KEY.into(),
-                ),
-                check_for_reply_mailbox: false,
-            },
-        )
-        .await?;
+        let mut result_subscription: Subscription<FunctionResult<S>> =
+            Subscription::create(result_subscription_subject)
+                .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+                .start(&self.nats)
+                .await?;
 
         // Construct a subscription stream for output messages
         let output_subscription_subject = reply_mailbox_for_output(&reply_mailbox_root);
@@ -216,18 +207,11 @@ impl Client {
             messaging.destination = &output_subscription_subject.as_str(),
             "subscribing for output messages"
         );
-        let output_subscription = Subscription::new(
-            &self.nats,
-            SubscriptionConfig {
-                subject: output_subscription_subject,
-                queue_name: None,
-                final_message_header_key: SubscriptionConfigKeyOption::UseKey(
-                    FINAL_MESSAGE_HEADER_KEY.into(),
-                ),
-                check_for_reply_mailbox: false,
-            },
-        )
-        .await?;
+        let output_subscription = Subscription::create(output_subscription_subject)
+            .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+            .start(&self.nats)
+            .await?;
+
         // Spawn a task to forward output to the sender provided by the caller
         tokio::spawn(forward_output_task(output_subscription, output_tx));
 
