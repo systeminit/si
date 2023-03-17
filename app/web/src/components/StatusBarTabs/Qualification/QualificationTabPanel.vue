@@ -8,7 +8,14 @@
       @filter="changeSelectedFilter"
     >
       <template #icon="{ component }">
+        <Icon
+          v-if="component.changeStatus === 'deleted'"
+          name="x"
+          size="xl"
+          class="text-destructive-500"
+        />
         <StatusIndicatorIcon
+          v-else
           type="qualification"
           :status="qualificationStatusByComponentId[component.id]"
         />
@@ -16,6 +23,14 @@
     </StatusBarTabPanelComponentList>
 
     <!-- Selected component view -->
+    <div
+      v-if="selectedComponent?.changeStatus === 'deleted'"
+      class="bg-shade-100 h-full w-full flex flex-row items-center"
+    >
+      <div class="text-2xl text-center w-full font-bold text-neutral-500">
+        The selected component has been deleted in this change set.
+      </div>
+    </div>
     <QualificationViewerMultiple
       v-if="selectedComponent"
       :component-id="selectedComponent.id"
@@ -39,6 +54,7 @@ import StatusBarTabPanelComponentList, {
 import { useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const qualificationsStore = useQualificationsStore();
 const componentsStore = useComponentsStore();
@@ -77,17 +93,22 @@ const componentsList = computed(() => {
   return _.map(componentsStore.allComponents, (c) => ({
     id: c.id,
     name: c.displayName,
+    changeStatus: c.changeStatus,
     status: qualificationsStore.qualificationStatusByComponentId[c.id],
   }));
 });
 const filteredComponentsList = computed(() => {
-  if (selectedFilter.value.value === "all") return componentsList.value;
+  const componentsListWithoutDeleted = _.filter(componentsList.value, (c) => {
+    return c.changeStatus !== "deleted";
+  });
+
+  if (selectedFilter.value.value === "all") return componentsListWithoutDeleted;
   if (selectedFilter.value.value === "success")
-    return _.filter(componentsList.value, { status: "success" });
+    return _.filter(componentsListWithoutDeleted, { status: "success" });
   if (selectedFilter.value.value === "warning")
-    return _.filter(componentsList.value, { status: "warning" });
+    return _.filter(componentsListWithoutDeleted, { status: "warning" });
   if (selectedFilter.value.value === "failure")
-    return _.filter(componentsList.value, { status: "failure" });
+    return _.filter(componentsListWithoutDeleted, { status: "failure" });
   return [];
 });
 </script>

@@ -73,7 +73,14 @@
 
         <div class="ml-auto flex flex-none">
           <!-- other status icons -->
-          <div class="flex mr-xs items-center">
+          <div
+            :class="
+              clsx(
+                'flex items-center',
+                component.changeStatus === 'deleted' ? 'mr-1' : 'mr-xs',
+              )
+            "
+          >
             <template v-if="component.changeStatus !== 'deleted'">
               <StatusIndicatorIcon
                 type="qualification"
