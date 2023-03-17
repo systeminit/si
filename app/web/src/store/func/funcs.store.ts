@@ -4,7 +4,7 @@ import { watch } from "vue";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
+import { FuncVariant } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "../change_sets.store";
@@ -206,13 +206,17 @@ export const useFuncStore = () => {
         });
       },
 
-      async updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
-        const func = this.funcDetailsById[funcId];
-        if (func?.associations?.type !== "attribute") {
-          return;
-        }
-        func.associations.arguments = args;
-        await this.UPDATE_FUNC(this.funcDetailsById[funcId]);
+      updateFuncMetadata(func: FuncWithDetails) {
+        const currentCode = this.funcById(func.id)?.code ?? "";
+        this.funcDetailsById[func.id] = {
+          ...func,
+          code: currentCode,
+        };
+
+        this.UPDATE_FUNC({
+          ...func,
+          code: currentCode,
+        });
       },
 
       updateFuncCode(funcId: FuncId, code: string) {
@@ -226,7 +230,7 @@ export const useFuncStore = () => {
         // however this should work for now, and lets the store handle this logic
         if (!this.saveQueue[funcId]) {
           this.saveQueue[funcId] = _.debounce(() => {
-            this.UPDATE_FUNC(this.funcDetailsById[funcId]);
+            this.UPDATE_FUNC(this.funcById(funcId));
           }, 2000);
         }
         // call debounced function which will trigger sending the save to the backend
