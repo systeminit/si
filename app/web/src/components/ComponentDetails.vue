@@ -42,7 +42,9 @@
           variant="ghost"
           size="md"
           icon="trash-restore"
-          label="Restore component"
+          :label="`Restore ${
+            selectedComponent.nodeType === 'component' ? 'Component' : 'Frame'
+          }`"
           @click="emit('restore')"
         />
       </Stack>

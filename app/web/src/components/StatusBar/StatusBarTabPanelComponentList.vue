@@ -37,7 +37,7 @@
             ? 'bg-action-500'
             : 'hover:bg-black'
         "
-        class="py-xs px-xs cursor-pointer flex justify-between items-center leading-tight"
+        class="py-xs px-xs cursor-pointer flex justify-between items-center leading-tight h-10"
         @click="componentsStore.setSelectedComponentId(component.id)"
       >
         <span class="shrink h-full min-w-0 truncate mr-3">
@@ -55,11 +55,13 @@ import { useComponentsStore } from "@/store/components.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import { ChangeStatus } from "@/api/sdf/dal/change_set";
 
 export interface ComponentListItem {
   id: string;
   name: string;
   schema?: string;
+  changeStatus?: ChangeStatus;
 }
 
 export interface FilterOption {

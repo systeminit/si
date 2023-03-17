@@ -137,6 +137,11 @@ export const useQualificationsStore = () => {
         },
 
         async FETCH_COMPONENT_QUALIFICATIONS(componentId: ComponentId) {
+          // Do not fetch qualifications for a deleted component
+          const componentsStore = useComponentsStore();
+          const component = componentsStore.componentsById[componentId];
+          if (component.changeStatus === "deleted") return;
+
           return new ApiRequest<Qualification[]>({
             url: "component/list_qualifications",
             keyRequestStatusBy: componentId,
