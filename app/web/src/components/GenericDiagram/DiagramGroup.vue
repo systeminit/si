@@ -178,7 +178,7 @@
         :color="colors.icon"
         :size="GROUP_HEADER_ICON_SIZE"
         :x="5"
-        :y="4"
+        :y="5"
         origin="top-left"
       />
 
@@ -293,7 +293,7 @@
         -nodeHeaderHeight +
         GROUP_HEADER_ICON_SIZE / 2 -
         GROUP_HEADER_BOTTOM_MARGIN +
-        4
+        (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
       "
       origin="center"
     />
@@ -453,10 +453,16 @@ const colors = computed(() => {
   const bodyBg = tinycolor(bodyBgHsl);
 
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
+  let headerText;
+  if (primaryColor.toHsl().l < 0.5) {
+    headerText = "#FFF";
+  } else {
+    headerText = "#000";
+  }
   return {
     headerBg: primaryColor.toRgbString(),
     icon: "#000",
-    headerText: "#000",
+    headerText,
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };

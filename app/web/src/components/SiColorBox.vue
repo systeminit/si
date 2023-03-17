@@ -129,12 +129,14 @@ export default {
 .picker_wrapper.popup,
 .picker_wrapper.popup .picker_arrow::before,
 .picker_wrapper.popup .picker_arrow::after {
-  background: unset;
+  background: white;
+  z-index: 100;
 }
 
 .picker_wrapper,
 .picker_editor,
+.picker_editor input,
 .picker_editor input::placeholder {
-  color: inherit !important;
+  background: white;
 }
 </style>
