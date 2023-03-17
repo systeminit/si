@@ -80,6 +80,7 @@ onMounted(() => {
     const p = new Picker(pickerElement.value as HTMLElement);
     p.onDone = valueChanged;
     picker.value = p;
+    p.setOptions({ alpha: false });
   }
 });
 
@@ -114,7 +115,7 @@ const boxClasses = computed((): Record<string, boolean> => {
 
 const valueChanged = (color: { hex: string }) => {
   setDirty();
-  emit("update:modelValue", color.hex);
+  emit("update:modelValue", color.hex.substring(0, color.hex.length - 2));
   emit("blur");
 };
 </script>
@@ -125,19 +126,24 @@ export default {
 };
 </script>
 
-<style>
-/*
-
-TODO(Wendy) - currently the color picker does not respond to theme and is always in light mode 
-TODO(Wendy) - also it doesn't populate with the default color of a new component properly
-
-*/
-
+<style lang="less">
 .picker_wrapper.popup,
 .picker_wrapper.popup .picker_arrow::before,
 .picker_wrapper.popup .picker_arrow::after {
   background: white;
   z-index: 100;
+  body.dark & {
+    background: black;
+  }
+}
+
+.picker_wrapper.popup {
+  border-radius: 0 0.25rem 0.25rem 0.25rem;
+}
+
+.picker_editor input,
+.picker_sample {
+  border-radius: 0.25rem;
 }
 
 .picker_wrapper,
@@ -145,5 +151,20 @@ TODO(Wendy) - also it doesn't populate with the default color of a new component
 .picker_editor input,
 .picker_editor input::placeholder {
   background: white;
+  body.dark & {
+    background: @colors-neutral-700;
+    color: white;
+  }
+}
+
+.picker_done button {
+  background: white;
+  border-radius: 0.25rem;
+  body.dark & {
+    background: @colors-neutral-700;
+    &:hover {
+      background: black;
+    }
+  }
 }
 </style>
