@@ -11,7 +11,7 @@ use crate::{
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
-    ActorView, AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
+    AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
 
@@ -91,7 +91,6 @@ impl AttributeValueStatusUpdate {
 pub struct WsEvent {
     version: i64,
     workspace_pk: WorkspacePk,
-    actor: ActorView,
     change_set_pk: ChangeSetPk,
     payload: WsPayload,
 }
@@ -105,12 +104,10 @@ impl WsEvent {
             }
         };
         let change_set_pk = ctx.visibility().change_set_pk;
-        let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
         Ok(WsEvent {
             version: 1,
             workspace_pk,
-            actor,
             change_set_pk,
             payload,
         })

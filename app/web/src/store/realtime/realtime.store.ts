@@ -36,7 +36,6 @@ type TrackedSubscription = EventTypeAndCallback & {
 type RealtimeEventMetadata = {
   version: number;
   workspace_pk: string;
-  actor: ActorView;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
