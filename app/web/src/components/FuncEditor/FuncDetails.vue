@@ -201,7 +201,7 @@ watch(loadFuncDetailsReqStatus, () => {
 
 const updateFunc = () => {
   if (!funcId || !editingFunc.value) return;
-  funcStore.UPDATE_FUNC(editingFunc.value);
+  funcStore.updateFuncMetadata(editingFunc.value);
 };
 
 const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
