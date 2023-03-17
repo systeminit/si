@@ -176,9 +176,7 @@ import clsx from "clsx";
 import SiPanel from "@/components/SiPanel.vue";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/components/StatusBarTabs/Qualification/QualificationTab.vue";
-import GenericTabPanel from "@/components/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ChangeSetTabPanel from "@/components/StatusBarTabs/Changes/ChangesTabPanel.vue";
 import ChangeSetTab from "@/components/StatusBarTabs/Changes/ChangesTab.vue";
@@ -234,14 +232,14 @@ const barClasses = computed(() => {
   return result;
 });
 
-const componentsStore = useComponentsStore();
+// const componentsStore = useComponentsStore();
 
-const componentList = computed(() =>
-  _.map(componentsStore.allComponents, (c) => ({
-    id: c.id,
-    name: `${c.schemaName} - ${c.displayName}`,
-  })),
-);
+// const componentList = computed(() =>
+//   _.map(componentsStore.allComponents, (c) => ({
+//     id: c.id,
+//     name: `${c.schemaName} - ${c.displayName}`,
+//   })),
+// );
 
 // close status bar when route changes
 // TODO: probably do something smarter if tab still exists
