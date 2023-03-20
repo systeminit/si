@@ -1,7 +1,7 @@
 {
   "extends": "@si/tsconfig/tsconfig.browser.json",
   "compilerOptions": {
-    "composite": true,
+    // "composite": true,
     "types": [
       "vite/client"
     ]

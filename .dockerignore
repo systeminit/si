@@ -6,3 +6,4 @@ tmp
 **/*.ignore
 **/*.turbo
 **/dist
+**/tsconfig.tsbuildinfo

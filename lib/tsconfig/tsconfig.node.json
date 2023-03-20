@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "composite": true,
+    // "composite": true,
     "module": "ESNext",
     "lib": [
       "ESNext"

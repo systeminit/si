@@ -1,7 +1,7 @@
-ARG NODE_VERSION=18-slim
+ARG NODE_VERSION=18.15.0
 ARG PACKAGE_PATH=@si/auth-api
 
-FROM node:$NODE_VERSION AS base
+FROM node:$NODE_VERSION-slim AS base
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 # RUN apk add --no-cache libc6-compat
 # RUN apk update
@@ -15,7 +15,7 @@ RUN npm i -g turbo
 COPY . .
 RUN turbo prune --scope=@si/auth-api --docker
 
-FROM node:$NODE_VERSION AS installer
+FROM node:$NODE_VERSION-slim AS installer
 WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=base /app/out/json/ ./
@@ -29,12 +29,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store\
   --unsafe-perm\
   # ↑ Docker runs pnpm as root and then pnpm won't run package scripts unless we pass this arg
   | grep -v "cross-device link not permitted\|Falling back to copying packages from store"
-  
-  # ↑ This inverted grep match is because using Docker's 'cache' mount type
-  # causes Docker to place the pnpm content-addressable store on a different virtual drive,
-  # which prohibits pnpm from symlinking its content to its virtual store (in node_modules/.pnpm),
-  # and that causes pnpm to fall back on copying the files. And that's fine,
-  # except pnpm emits a lot of warnings doing that, so here we filter out those warnings.
+
+# ↑ This inverted grep match is because using Docker's 'cache' mount type
+# causes Docker to place the pnpm content-addressable store on a different virtual drive,
+# which prohibits pnpm from symlinking its content to its virtual store (in node_modules/.pnpm),
+# and that causes pnpm to fall back on copying the files. And that's fine,
+# except pnpm emits a lot of warnings doing that, so here we filter out those warnings.
 
 COPY --from=base /app/out/full/ .
 
@@ -63,7 +63,7 @@ COPY --from=base /app/out/full/ .
 #   --unsafe-perm\
 #   # ↑ Docker runs pnpm as root and then pnpm won't run package scripts unless we pass this arg
 #   | grep -v "cross-device link not permitted\|Falling back to copying packages from store"
-  
+
 #   # ↑ This inverted grep match is because using Docker's 'cache' mount type
 #   # causes Docker to place the pnpm content-addressable store on a different virtual drive,
 #   # which prohibits pnpm from symlinking its content to its virtual store (in node_modules/.pnpm),
@@ -87,10 +87,11 @@ RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy 
 # RUN cp -r src/prisma-client dist
 RUN rm -rf pruned/src
 
-FROM node:18-alpine as runner
+FROM node:$NODE_VERSION-alpine as runner
 RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 npm i -g pnpm
 
 WORKDIR /app
+
 # # ENV NODE_ENV=production
 COPY --from=builder /app/bin/auth-api/pruned .
 COPY --from=builder /app/bin/auth-api/dist ./dist
@@ -103,4 +104,4 @@ RUN pnpx prisma generate
 # some discussion and possible things to try here - https://github.com/prisma/prisma/issues/11577
 
 # # ENTRYPOINT ["node", "index.js"]
-CMD pnpx prisma migrate deploy && pnpm run boot
+CMD pnpm run boot

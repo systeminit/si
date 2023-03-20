@@ -52,7 +52,7 @@ export async function getUserById(id: UserId) {
 export type UserWithTosStatus = Awaited<ReturnType<typeof getUserById>>;
 
 export async function getUserByAuth0Id(auth0Id: string) {
-  return await prisma.user.findUnique({ where: { auth0Id } });
+  return prisma.user.findUnique({ where: { auth0Id } });
 }
 
 export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.UserData) {

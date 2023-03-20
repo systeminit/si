@@ -6,13 +6,17 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "node --watch --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
-    "build": "tsc",
+    "build": "tsc --incremental false",
     "boot": "node --experimental-specifier-resolution=node ./dist/main.js",
     "boot-ts": "node --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
     "lint": "eslint src --ext .ts,.cjs",
     "lint:fix": "pnpm run lint --fix",
     "db:reset": "prisma migrate reset --force && prisma migrate deploy",
-    "docker:build": "cd ../.. && docker build -f bin/auth-api/Dockerfile . -t auth-api"
+    "docker:build:aws": "cd ../.. && docker buildx build --output type=docker --platform=linux/amd64 -f bin/auth-api/Dockerfile . -t si/si-auth-api",
+    "docker:tag:aws": "docker tag si/si-auth-api:latest 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",
+    "docker:push:aws": "docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",
+    "docker:deploy:aws": "pnpm run docker:build:aws && pnpm run docker:tag:aws && pnpm run docker:push:aws",
+    "docker:build:local": "cd ../.. && docker build -f bin/auth-api/Dockerfile . -t si/si-auth-api-local"
   },
   "dependencies": {
     "@koa/cors": "^4.0.0",

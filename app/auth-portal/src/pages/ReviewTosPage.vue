@@ -40,6 +40,7 @@ const disableContinueButton = computed(() => {
 });
 
 async function loadTosDetails() {
+  if (import.meta.env.SSR) return;
   if (authStore.user?.needsTosUpdate === false) {
     return router.push({ name: "dashboard" });
   }

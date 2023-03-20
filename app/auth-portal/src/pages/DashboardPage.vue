@@ -30,6 +30,7 @@ const workspaces = computed(() => workspacesStore.workspaces);
 const router = useRouter();
 
 function reloadWorkspaces() {
+  if (import.meta.env.SSR) return;
   if (!authStore.userIsLoggedIn) return;
 
   // might want to show in a modal, but we'll see...

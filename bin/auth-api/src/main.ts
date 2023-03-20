@@ -20,6 +20,8 @@ const prisma = new PrismaClient();
 
 const app = new Koa<CustomAppState, CustomAppContext>();
 
+app.proxy = true;
+
 // include this one early since it can fire off and be done when handling OPTIONS requests
 app.use(cors({ credentials: true }));
 app.use(detectClientIp);

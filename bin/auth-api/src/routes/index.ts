@@ -19,7 +19,8 @@ router.get("/boom", async (ctx) => {
 });
 
 // automatically load all *.routes.ts files in this directory
-const routeFilePaths = glob.sync(`${__dirname}/**/*.routes.ts`);
+// (need .js for when the files are built)
+const routeFilePaths = glob.sync(`${__dirname}/**/*.routes.{js,ts}`);
 routeFilePaths.forEach((routeFilePath) => {
   const load = import(routeFilePath.replace(__dirname, "./"));
   // technically loading is async, but is not actually a problem

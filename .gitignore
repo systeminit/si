@@ -26,3 +26,5 @@ app/web/cypress/videos/
 .vim
 
 .env.local
+# Local Netlify folder
+.netlify

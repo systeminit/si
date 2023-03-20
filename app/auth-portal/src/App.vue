@@ -7,12 +7,10 @@
       <nav>
         <template v-if="userIsLoggedIn">
           <p>hello {{ authStore.bestUserLabel }}!</p>
-          <a class="button" href="http://localhost:9001/auth/logout"
-            >Log out!</a
-          >
+          <a class="button" :href="`${API_URL}/auth/logout`">Log out!</a>
         </template>
         <template v-else>
-          <a class="button" href="http://localhost:9001/auth/login">Log in!</a>
+          <a class="button" :href="`${API_URL}/auth/login`">Log in!</a>
         </template>
       </nav>
       <RouterView />
@@ -28,9 +26,12 @@ import { useAuthStore } from "./store/auth.store";
 const authStore = useAuthStore();
 const checkAuthReq = authStore.getRequestStatus("CHECK_AUTH");
 
+const API_URL = import.meta.env.VITE_AUTH_API_URL;
+
 const userIsLoggedIn = computed(() => authStore.userIsLoggedIn);
 
 onBeforeMount(async () => {
+  if (import.meta.env.SSR) return;
   await authStore.CHECK_AUTH();
 });
 </script>

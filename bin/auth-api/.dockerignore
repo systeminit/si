@@ -1,0 +1,4 @@
+tsconfig.tsbuildinfo
+.env.local
+dist
+.vscode

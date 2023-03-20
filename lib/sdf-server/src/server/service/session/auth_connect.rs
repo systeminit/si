@@ -63,7 +63,8 @@ pub async fn auth_connect(
 ) -> SessionResult<Json<AuthConnectResponse>> {
     let client = reqwest::Client::new();
     let res = client
-        .post("http://localhost:9001/complete-auth-connect")
+        // TODO: pull this from an env var
+        .post("https://auth-api.systeminit.com/complete-auth-connect")
         .json(&json!({"code": request.code }))
         .send()
         .await?;
