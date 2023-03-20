@@ -38,6 +38,8 @@ pub enum SchemaVariantDefinitionError {
     CouldNotCheckForDefaultVariant(String),
     #[error("Could not get ui menu for schema: {0}")]
     CouldNotGetUiMenu(SchemaId),
+    #[error(transparent)]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
@@ -82,23 +84,6 @@ impl Default for PropCache {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub fn hex_color_to_i64(color: &str) -> SchemaVariantDefinitionResult<i64> {
-    let bytes: Vec<u8> = match hex::decode(color) {
-        Ok(bytes) => bytes,
-        Err(_) => Err(SchemaVariantDefinitionError::InvalidHexColor(
-            color.to_string(),
-        ))?,
-    };
-
-    if bytes.len() != 3 {
-        return Err(SchemaVariantDefinitionError::InvalidHexColor(
-            color.to_string(),
-        ));
-    }
-
-    Ok(((bytes[0] as i64) << 16) + ((bytes[1] as i64) << 8) + bytes[2] as i64)
 }
 
 pk!(SchemaVariantDefinitionPk);
@@ -306,10 +291,6 @@ impl SchemaVariantDefinitionMetadataJson {
         }
     }
 
-    pub fn color_as_i64(&self) -> SchemaVariantDefinitionResult<i64> {
-        hex_color_to_i64(&self.color)
-    }
-
     pub async fn from_schema_and_variant(
         ctx: &DalContext,
         schema: &Schema,
@@ -335,7 +316,9 @@ impl SchemaVariantDefinitionMetadataJson {
             menu_name,
             category,
             color: variant
-                .color_as_string()
+                .color(ctx)
+                .await
+                .map_err(Box::new)?
                 .unwrap_or_else(|| "baddad".to_string()),
             component_kind: *schema.component_kind(),
             link: variant.link().map(|l| l.to_string()),
@@ -467,7 +450,7 @@ impl SchemaVariant {
             Err(e) => Err(Box::new(e))?,
         };
 
-        let (mut schema_variant, root_prop) = Self::new(ctx, schema_id, variant_name).await?;
+        let (schema_variant, root_prop) = Self::new(ctx, schema_id, variant_name).await?;
         let schema_variant_id = *schema_variant.id();
 
         // NOTE(nick): allow users to use a definition without props... just in case, I guess.
@@ -543,10 +526,7 @@ impl SchemaVariant {
         }
 
         schema_variant
-            .set_color(
-                ctx,
-                Some(schema_variant_definition_metadata.color_as_i64()?),
-            )
+            .set_color(ctx, schema_variant_definition_metadata.color)
             .await?;
 
         Ok((
@@ -649,25 +629,5 @@ impl SchemaVariant {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn decode_hex_colors() {
-        let colors: [&str; 5] = ["ababab", "ffffff", "caffed", "00ff00", "badf00"];
-
-        for hex_color in colors {
-            assert_eq!(
-                *hex_color.to_string(),
-                format!(
-                    "{:06x}",
-                    hex_color_to_i64(hex_color).expect("able to convert hex")
-                )
-            );
-        }
     }
 }

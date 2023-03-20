@@ -12,19 +12,22 @@ use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
+use crate::schema::variant::root_prop::SiPropChild;
 use crate::standard_model::object_from_row;
 use crate::{
     func::binding::FuncBindingError,
+    func::binding_return_value::FuncBindingReturnValueId,
     impl_standard_model, pk,
     schema::{RootProp, SchemaError},
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, ExternalProvider,
-    ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider, Prop, PropError,
-    PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Tenancy,
-    Timestamp, ValidationPrototypeError, Visibility, WsEventError,
+    AttributeValueError, AttributeValueId, BuiltinsError, Component, ComponentError, ComponentId,
+    DalContext, ExternalProvider, ExternalProviderError, Func, FuncBindingReturnValue, FuncError,
+    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
+    SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError,
+    Visibility, WsEventError,
 };
 use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
@@ -55,6 +58,8 @@ pub enum SchemaVariantError {
     AttributeValue(#[from] AttributeValueError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error(transparent)]
+    Component(#[from] Box<ComponentError>),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
@@ -69,7 +74,7 @@ pub enum SchemaVariantError {
     MissingSchema(SchemaVariantId),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error("schema not found: {0}")]
+    #[error("schema variant not found: {0}")]
     NotFound(SchemaVariantId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
@@ -97,6 +102,8 @@ pub enum SchemaVariantError {
     ParentPropNotFound(PropId),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("func binding return value not found {0}")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
@@ -159,8 +166,6 @@ pub struct SchemaVariant {
 
     name: String,
     link: Option<String>,
-    // NOTE(nick): we should consider whether or not we want to keep the color.
-    color: Option<i64>,
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
     // components are not created unless the variant has been finalized at least once.
     finalized_once: bool,
@@ -387,11 +392,51 @@ impl SchemaVariant {
 
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
-    standard_model_accessor!(color, OptionBigInt<i64>, SchemaVariantResult);
     standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
 
-    pub fn color_as_string(&self) -> Option<String> {
-        self.color.map(|color| format!("{:06x}", color))
+    pub async fn color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
+        let attribute_value = Component::find_si_child_attribute_value(
+            ctx,
+            ComponentId::NONE,
+            self.id,
+            SiPropChild::Color,
+        )
+        .await
+        .map_err(Box::new)?;
+        let func_binding_return_value =
+            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+                .ok_or_else(|| {
+                    SchemaVariantError::FuncBindingReturnValueNotFound(
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                })?;
+
+        let color = func_binding_return_value
+            .value()
+            .cloned()
+            .map(serde_json::from_value)
+            .transpose()?;
+        Ok(color)
+    }
+
+    pub async fn set_color(&self, ctx: &DalContext, color: String) -> SchemaVariantResult<()> {
+        let attribute_value = Component::find_si_child_attribute_value(
+            ctx,
+            ComponentId::NONE,
+            self.id,
+            SiPropChild::Color,
+        )
+        .await
+        .map_err(Box::new)?;
+        let prop = Prop::get_by_id(ctx, &attribute_value.context.prop_id())
+            .await?
+            .ok_or(PropError::NotFound(
+                attribute_value.context.prop_id(),
+                *ctx.visibility(),
+            ))?;
+        prop.set_default_value(ctx, color).await?;
+        Ok(())
     }
 
     standard_model_belongs_to!(

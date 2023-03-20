@@ -2,7 +2,7 @@
   "name": "Generic Frame",
   "menuName": "Generic Frame",
   "category": "Frames",
-  "color": "ffffff",
+  "color": "#ffffff",
   "componentKind": "standard",
   "link": null,
   "description": null

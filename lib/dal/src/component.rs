@@ -464,6 +464,7 @@ impl Component {
     pub async fn find_si_child_attribute_value(
         ctx: &DalContext,
         component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
         si_prop_child: SiPropChild,
     ) -> ComponentResult<AttributeValue> {
         let si_child_prop_name = si_prop_child.prop_name();
@@ -476,6 +477,7 @@ impl Component {
                     ctx.tenancy(),
                     ctx.visibility(),
                     &component_id,
+                    &schema_variant_id,
                     &si_child_prop_name,
                 ],
             )
@@ -528,8 +530,10 @@ impl Component {
         ctx: &DalContext,
         value: Option<T>,
     ) -> ComponentResult<()> {
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
         let attribute_value =
-            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Name).await?;
+            Self::find_si_child_attribute_value(ctx, self.id, schema_variant_id, SiPropChild::Name)
+                .await?;
 
         // Before we set the name, ensure that another function is not setting the name (e.g.
         // something different than "unset" or "setString").
@@ -742,8 +746,10 @@ impl Component {
     ///
     /// Mutate this with [`Self::set_type()`].
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
         let type_attribute_value =
-            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Type).await?;
+            Self::find_si_child_attribute_value(ctx, self.id, schema_variant_id, SiPropChild::Type)
+                .await?;
         let raw_value = type_attribute_value.get_value(ctx).await?.ok_or_else(|| {
             ComponentError::ComponentTypeIsNone(self.id, *type_attribute_value.id())
         })?;
@@ -753,8 +759,14 @@ impl Component {
 
     /// Gets the protected attribute value of [`self`](Self).
     pub async fn get_protected(&self, ctx: &DalContext) -> ComponentResult<bool> {
-        let protected_attribute_value =
-            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Protected).await?;
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
+        let protected_attribute_value = Self::find_si_child_attribute_value(
+            ctx,
+            self.id,
+            schema_variant_id,
+            SiPropChild::Protected,
+        )
+        .await?;
         let raw_value = protected_attribute_value.get_value(ctx).await?.ok_or(
             ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id()),
         )?;
@@ -769,8 +781,10 @@ impl Component {
         ctx: &DalContext,
         component_type: ComponentType,
     ) -> ComponentResult<()> {
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
         let type_attribute_value =
-            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Type).await?;
+            Self::find_si_child_attribute_value(ctx, self.id, schema_variant_id, SiPropChild::Type)
+                .await?;
 
         // If we are setting the type for the first time, we will need to mutate the context to
         // be component-specific. This is because the attribute value will have an unset component
@@ -1060,21 +1074,20 @@ impl Component {
     }
 
     /// Finds the "color" that the [`Component`] should be in the [`Diagram`](crate::Diagram).
-    pub async fn get_color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
-        let color_attribute_value =
-            Component::find_si_child_attribute_value(ctx, self.id, SiPropChild::Color).await?;
-        let color = match color_attribute_value.get_value(ctx).await? {
-            Some(frame_color) => serde_json::from_value(frame_color)?,
-            None => {
-                let schema_variant = self
-                    .schema_variant(ctx)
-                    .await?
-                    .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-                schema_variant
-                    .color()
-                    .map(|color_int| format!("#{color_int:x}"))
-            }
-        };
+    pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
+        let color_attribute_value = Component::find_si_child_attribute_value(
+            ctx,
+            self.id,
+            schema_variant_id,
+            SiPropChild::Color,
+        )
+        .await?;
+        let color = color_attribute_value
+            .get_value(ctx)
+            .await?
+            .map(serde_json::from_value)
+            .transpose()?;
         Ok(color)
     }
 }

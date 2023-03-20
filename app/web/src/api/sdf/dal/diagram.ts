@@ -33,7 +33,7 @@ export interface DiagramSchemaVariant {
   name: string;
   schemaName: string;
   schemaId: string;
-  color: number;
+  color: string;
   inputSockets: DiagramInputSocket[];
   outputSockets: DiagramOutputSocket[];
 }

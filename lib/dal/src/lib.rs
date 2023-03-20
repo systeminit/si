@@ -74,7 +74,8 @@ pub use actor_view::ActorView;
 pub use attribute::value::view::AttributeView;
 pub use attribute::{
     context::{
-        AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+        AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
+        AttributeContextError, AttributeReadContext,
     },
     prototype::argument::{
         AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,

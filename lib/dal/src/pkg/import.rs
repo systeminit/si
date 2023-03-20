@@ -8,7 +8,7 @@ use crate::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
-    schema::{variant::definition::hex_color_to_i64, SchemaUiMenu},
+    schema::SchemaUiMenu,
     DalContext, Func, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
 };
 
@@ -179,11 +179,9 @@ async fn create_schema_variant(
                 .set_default_schema_variant_id(ctx, Some(schema_variant.id()))
                 .await?;
 
-            let color = match variant_spec.color() {
-                Some(color_str) => Some(hex_color_to_i64(color_str)?),
-                None => None,
-            };
-            schema_variant.set_color(ctx, color).await?;
+            if let Some(color) = variant_spec.color() {
+                schema_variant.set_color(ctx, color.to_owned()).await?;
+            }
 
             let domain_prop_id = root_prop.domain_prop_id;
             variant_spec

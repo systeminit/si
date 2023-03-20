@@ -18,8 +18,8 @@ use crate::socket::SocketError;
 use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
-    DalContext, ExternalProviderId, FuncError, PropError, PropId, PropKind, SchemaError,
-    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    DalContext, ExternalProviderId, FuncError, PropError, PropId, SchemaError, SchemaVariantId,
+    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -44,8 +44,6 @@ pub enum BuiltinsError {
     AttributeValueNotFound(AttributeValueId),
     #[error("attribute value not found for attribute read context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
-    #[error("no parent found for attribute value: {0}")]
-    AttributeValueDoesNotHaveParent(AttributeValueId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -66,10 +64,6 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForAttributeValue,
     #[error("missing attribute prototype for external provider id: {0}")]
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
-    #[error("expected primitive prop kind (string, boolean, integer), found {0}")]
-    NonPrimitivePropKind(PropKind),
-    #[error("parent prop kind is not \"Object\", which is required for setting default values on props (found {0})")]
-    ParentPropIsNotObjectForPropWithDefaultValue(PropKind),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("prop not bound by id: {0}")]

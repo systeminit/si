@@ -361,16 +361,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     const schemaVariant = Object.values(
                       this.schemaVariantsById,
                     ).find((v) => v.schemaId === item.schema_id);
-                    const colorInt = schemaVariant?.color;
-                    const color = colorInt
-                      ? `#${colorInt.toString(16)}`
-                      : "#777";
-
                     return {
                       displayName: item.name,
                       id: item.schema_id,
                       // links: item.links, // not sure this is needed?
-                      color,
+                      color: schemaVariant?.color ?? "#777",
                     };
                   }),
                 ),

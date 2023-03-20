@@ -144,10 +144,14 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
     );
 
     // Now, test our query. Ensure we have the right context too.
-    let found_attribute_value =
-        Component::find_si_child_attribute_value(ctx, *component.id(), SiPropChild::Type)
-            .await
-            .expect("could not find type attribute value");
+    let found_attribute_value = Component::find_si_child_attribute_value(
+        ctx,
+        *component.id(),
+        *schema_variant.id(),
+        SiPropChild::Type,
+    )
+    .await
+    .expect("could not find type attribute value");
     assert_eq!(
         expected_attribute_value.context, // expected
         found_attribute_value.context,    // actual
@@ -183,10 +187,14 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
 
     // Check that the type was updated. Ensure that we have the right attribute value too (specific
     // to the component now that's been updated).
-    let updated_attribute_value =
-        Component::find_si_child_attribute_value(ctx, *component.id(), SiPropChild::Type)
-            .await
-            .expect("could not find type attribute value");
+    let updated_attribute_value = Component::find_si_child_attribute_value(
+        ctx,
+        *component.id(),
+        *schema_variant.id(),
+        SiPropChild::Type,
+    )
+    .await
+    .expect("could not find type attribute value");
     assert_eq!(
         expected_attribute_value.context, // expected
         updated_attribute_value.context,  // actual
@@ -578,6 +586,7 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },
@@ -631,6 +640,7 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },
@@ -664,6 +674,7 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },

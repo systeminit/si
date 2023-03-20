@@ -25,6 +25,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "tail",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -48,6 +49,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "head",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -104,6 +106,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "tail",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -127,6 +130,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "head",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -162,6 +166,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "look-at-me-mom-i-updated",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -186,6 +191,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         serde_json::json![{
             "si": {
                 "name": "head",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },

@@ -182,7 +182,7 @@ pub enum AttributeValueError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("Prop not found: {0}")]
     PropNotFound(PropId),
     #[error("schema not found for component id: {0}")]

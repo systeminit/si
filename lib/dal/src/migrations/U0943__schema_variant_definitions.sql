@@ -11,7 +11,7 @@ CREATE TABLE schema_variant_definitions
     category                    text                     NOT NULL,
     menu_name                   text,
     link                        text,
-    color                       varchar(6)               NOT NULL DEFAULT '000000',
+    color                       varchar(7)               NOT NULL DEFAULT '#000000',
     component_kind              text                     NOT NULL,
     definition                  text                     NOT NULL DEFAULT '',
     description                 text

@@ -119,7 +119,7 @@ async fn build_variant_spec(
 ) -> Result<SchemaVariantSpec, PkgError> {
     let mut variant_spec_builder = SchemaVariantSpec::builder();
     variant_spec_builder.name(variant.name());
-    if let Some(color_str) = variant.color_as_string() {
+    if let Some(color_str) = variant.color(ctx).await? {
         variant_spec_builder.color(color_str);
     };
     if let Some(link) = variant.link() {

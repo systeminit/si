@@ -213,7 +213,8 @@ impl AttributeView {
                                 root_attribute_value.context.prop_id(),
                                 *ctx.visibility(),
                             )
-                        })?;
+                        })
+                        .map_err(Box::new)?;
                     debug!("\
                         likely tried to build an attribute view for an attribute value that is unset, \
                         so the \"properties\" object is empty ({:?}), and does not contain a key matching \

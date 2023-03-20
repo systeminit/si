@@ -2,7 +2,7 @@
   "name": "Kubernetes Namespace",
   "menuName": "Namespace",
   "category": "Kubernetes",
-  "color": "30ba78",
+  "color": "#30ba78",
   "componentKind": "standard",
   "link": "https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
   "description": null
