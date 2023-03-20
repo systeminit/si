@@ -76,8 +76,8 @@ impl<T> SubscriptionBuilder<T> {
     }
 
     /// Sets the "check_for_reply_mailbox" field.
-    pub fn check_for_reply_mailbox(mut self, check_for_reply_mailbox: impl Into<bool>) -> Self {
-        self.check_for_reply_mailbox = check_for_reply_mailbox.into();
+    pub fn check_for_reply_mailbox(mut self) -> Self {
+        self.check_for_reply_mailbox = true;
         self
     }
 }
