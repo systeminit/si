@@ -1359,12 +1359,13 @@ function beginResizeElement() {
 }
 function endResizeElement() {
   if (!resizeElement.value) return;
-  const newNodeSize = resizedElementSizes[resizeElement.value.uniqueKey];
+  const size = resizedElementSizes[resizeElement.value.uniqueKey];
+  const position = movedElementPositions[resizeElement.value.uniqueKey];
 
   emit("resize-element", {
     element: resizeElement.value,
-    position: resizeElement.value.def.position,
-    size: newNodeSize,
+    position,
+    size,
     isFinal: true,
   });
 
