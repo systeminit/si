@@ -304,7 +304,7 @@ impl Fix {
         completion_message: Option<String>,
     ) -> FixResult<()> {
         if self.started_at.is_some() {
-            self.set_finished_at(ctx, Some(Utc::now().to_string()))
+            self.set_finished_at(ctx, Some(Utc::now().to_rfc3339()))
                 .await?;
             self.set_completion_status(ctx, Some(completion_status))
                 .await?;
@@ -324,7 +324,7 @@ impl Fix {
         } else if self.finished_at.is_some() {
             Err(FixError::AlreadyFinished)
         } else {
-            self.set_started_at(ctx, Some(format!("{}", Utc::now())))
+            self.set_started_at(ctx, Some(Utc::now().to_rfc3339()))
                 .await?;
             Ok(())
         }

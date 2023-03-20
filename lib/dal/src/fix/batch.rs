@@ -88,7 +88,7 @@ impl FixBatch {
     /// A safe wrapper around setting the finished and completion status columns.
     pub async fn stamp_finished(&mut self, ctx: &DalContext) -> FixResult<FixCompletionStatus> {
         if self.started_at.is_some() {
-            self.set_finished_at(ctx, Some(format!("{}", Utc::now())))
+            self.set_finished_at(ctx, Some(Utc::now().to_rfc3339()))
                 .await?;
 
             // TODO(nick): getting what the batch completion status should be can be a query.
@@ -128,7 +128,7 @@ impl FixBatch {
         } else if self.fixes(ctx).await?.is_empty() {
             Err(FixError::NoFixesInBatch(self.id))
         } else {
-            self.set_started_at(ctx, Some(format!("{}", Utc::now())))
+            self.set_started_at(ctx, Some(Utc::now().to_rfc3339()))
                 .await?;
             Ok(())
         }
