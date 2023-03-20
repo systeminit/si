@@ -25,7 +25,7 @@ impl FunctionSubscriber {
         );
         Subscription::create(subject)
             .queue_name("resolver")
-            .check_for_reply_mailbox(true)
+            .check_for_reply_mailbox()
             .start(nats)
             .await
     }
@@ -41,7 +41,7 @@ impl FunctionSubscriber {
         );
         Subscription::create(subject)
             .queue_name("validation")
-            .check_for_reply_mailbox(true)
+            .check_for_reply_mailbox()
             .start(nats)
             .await
     }
@@ -57,7 +57,7 @@ impl FunctionSubscriber {
         );
         Subscription::create(subject)
             .queue_name("workflow")
-            .check_for_reply_mailbox(true)
+            .check_for_reply_mailbox()
             .start(nats)
             .await
     }
@@ -73,7 +73,7 @@ impl FunctionSubscriber {
         );
         Subscription::create(subject)
             .queue_name("command")
-            .check_for_reply_mailbox(true)
+            .check_for_reply_mailbox()
             .start(nats)
             .await
     }
