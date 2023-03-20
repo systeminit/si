@@ -37,7 +37,7 @@ async fn async_main() -> Result<()> {
         .service_name("sdf")
         .service_namespace("si")
         .log_env_var_prefix("SI")
-        .app_modules(vec!["sdf_cli", "sdf"])
+        .app_modules(vec!["sdf", "sdf_server"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();

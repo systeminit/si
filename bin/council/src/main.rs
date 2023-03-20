@@ -32,7 +32,7 @@ async fn async_main() -> Result<()> {
         .service_name("council")
         .service_namespace("si")
         .log_env_var_prefix("SI")
-        .app_modules(vec!["council"])
+        .app_modules(vec!["council", "council_server"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
