@@ -2,8 +2,9 @@ use std::{io, path::Path, sync::Arc};
 
 use dal::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobInfo},
+        consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
         definition::{FixesJob, WorkflowRun},
+        producer::JobProducer,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
@@ -321,25 +322,55 @@ async fn job_request_task(ctx_builder: DalContextBuilder, request: Request<JobIn
 }
 
 async fn job_request(ctx_builder: DalContextBuilder, request: Request<JobInfo>) -> Result<()> {
-    let (job_info, _) = request.into_parts();
-    debug!(job = ?job_info, "executing job");
+    let (job_info, reply_channel) = request.into_parts();
+    info!(job = ?job_info, "executing job");
 
-    let job = match job_info.kind() {
-        stringify!(DependentValuesUpdate) => Box::new(DependentValuesUpdate::try_from(job_info)?)
-            as Box<dyn JobConsumer + Send + Sync>,
-        stringify!(WorkflowRun) => {
-            Box::new(WorkflowRun::try_from(job_info)?) as Box<dyn JobConsumer + Send + Sync>
-        }
-        stringify!(FixesJob) => {
-            Box::new(FixesJob::try_from(job_info)?) as Box<dyn JobConsumer + Send + Sync>
-        }
-        kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
-    };
+    let job =
+        match job_info.kind() {
+            stringify!(DependentValuesUpdate) => {
+                Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+                    as Box<dyn JobConsumer + Send + Sync>
+            }
+            stringify!(WorkflowRun) => Box::new(WorkflowRun::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>,
+            stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>,
+            kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
+        };
 
     match job.run_job(ctx_builder.clone()).await {
-        Ok(r) => Ok(r),
-        Err(err) => record_job_failure(ctx_builder, job, err).await,
+        Ok(()) => {
+            if let Some(reply_channel) = reply_channel {
+                // TODO: what to do if this fails?
+                let _ = ctx_builder.nats_conn().publish(reply_channel, "done").await;
+            }
+        }
+        Err(err) => record_job_failure(ctx_builder.clone(), job, err).await?,
     }
+
+    let mut ctx = ctx_builder
+        .build(job_info.access_builder().build(job_info.visibility()))
+        .await?;
+
+    for next in job_info.subsequent_jobs {
+        ctx.update_visibility(next.job.visibility());
+        ctx.update_access_builder(next.job.access_builder());
+
+        let boxed = Box::new(next.job) as Box<dyn JobProducer + Send + Sync>;
+        if next.wait_for_execution {
+            ctx_builder
+                .job_processor()
+                .enqueue_blocking_job(boxed, &ctx)
+                .await;
+        } else {
+            ctx_builder.job_processor().enqueue_job(boxed, &ctx).await;
+        }
+    }
+
+    if let Err(err) = ctx.commit().await {
+        error!("Unable to push jobs to nats: {err}");
+    }
+    Ok(())
 }
 
 async fn record_job_failure(

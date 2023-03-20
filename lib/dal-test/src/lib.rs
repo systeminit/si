@@ -12,15 +12,14 @@ use dal::builtins::BuiltinSchemaOption;
 #[cfg(debug_assertions)]
 use dal::check_runtime_dependencies;
 use dal::{
-    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
-    DalContext, JwtSecretKey, ServicesContext,
+    job::processor::JobQueueProcessor, DalContext, JwtSecretKey, NatsProcessor, ServicesContext,
 };
 use lazy_static::lazy_static;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
 use telemetry::prelude::*;
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 use uuid::Uuid;
 use veritech_client::EncryptionKey;
 use veritech_server::{Instance, StandardConfig};
@@ -288,8 +287,9 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let job_processor =
-            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let (alive_marker, _job_processor_shutdown_rx) = mpsc::channel(1);
+        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone(), alive_marker))
+            as Box<dyn JobQueueProcessor + Send + Sync>;
 
         Ok(TestContext {
             config: self.config.clone(),

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -79,6 +79,12 @@ impl From<JobConsumerError> for std::io::Error {
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NextJobInfo {
+    pub job: JobInfo,
+    pub wait_for_execution: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
     pub id: String,
     pub kind: String,
@@ -89,6 +95,7 @@ pub struct JobInfo {
     pub args: Vec<Value>,
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
+    pub subsequent_jobs: VecDeque<NextJobInfo>,
 }
 
 impl JobInfo {
@@ -107,17 +114,15 @@ pub struct JobConsumerCustomPayload {
     pub extra: HashMap<String, Value>,
 }
 
-#[async_trait]
-// Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
-pub trait JobConsumer: std::fmt::Debug + Sync {
+pub trait JobConsumerMetadata {
     fn type_name(&self) -> String;
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
+}
 
-    /// Horrible hack, exists to support sync processor, they need that all jobs run within the provided DalContext, without commiting any transactions, or writing to unrelated transactions
-    /// And since it's sync the data sharing issue that appears in dependent values update running in parallel in pinga, sharing data, synchronized by council, stops existing
-    fn set_sync(&mut self) {}
-
+#[async_trait]
+// Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
+pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
     /// Intended to be defined by implementations of this trait.
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()>;
 

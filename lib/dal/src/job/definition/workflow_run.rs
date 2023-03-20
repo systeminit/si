@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
+        consumer::{
+            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+        },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ComponentId, DalContext, ResourceView, Visibility, WorkflowPrototypeId,
@@ -88,8 +90,7 @@ impl JobProducer for WorkflowRun {
     }
 }
 
-#[async_trait]
-impl JobConsumer for WorkflowRun {
+impl JobConsumerMetadata for WorkflowRun {
     fn type_name(&self) -> String {
         "WorkflowRun".to_string()
     }
@@ -101,7 +102,10 @@ impl JobConsumer for WorkflowRun {
     fn visibility(&self) -> Visibility {
         self.visibility
     }
+}
 
+#[async_trait]
+impl JobConsumer for WorkflowRun {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let (_runner, runner_state, func_binding_return_values, resources) = WorkflowRunner::run(
             ctx,

@@ -8,7 +8,9 @@ use tokio::{sync::Mutex, task::JoinSet};
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
 use crate::{
-    job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
+    job::consumer::{
+        JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+    },
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
@@ -33,7 +35,6 @@ pub struct DependentValuesUpdate {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
-    single_transaction: bool,
 }
 
 impl DependentValuesUpdate {
@@ -46,27 +47,7 @@ impl DependentValuesUpdate {
             access_builder,
             visibility,
             job: None,
-            single_transaction: false,
         })
-    }
-
-    async fn clone_ctx_with_new_transactions(
-        &self,
-        ctx: &DalContext,
-    ) -> JobConsumerResult<DalContext> {
-        if self.single_transaction {
-            Ok(ctx.clone())
-        } else {
-            Ok(ctx.clone_with_new_transactions().await?)
-        }
-    }
-
-    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
-        if self.single_transaction {
-            Ok(ctx)
-        } else {
-            Ok(ctx.commit_and_continue().await?)
-        }
     }
 }
 
@@ -100,18 +81,9 @@ impl JobProducer for DependentValuesUpdate {
     }
 }
 
-#[async_trait]
-impl JobConsumer for DependentValuesUpdate {
+impl JobConsumerMetadata for DependentValuesUpdate {
     fn type_name(&self) -> String {
         "DependentValuesUpdate".to_string()
-    }
-
-    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
-    /// The sync processor needs everything to run within a single transaction, so we check for it
-    fn set_sync(&mut self) {
-        self.single_transaction = true;
-        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
-        self.job = Some(boxed.try_into().unwrap());
     }
 
     fn access_builder(&self) -> AccessBuilder {
@@ -121,9 +93,12 @@ impl JobConsumer for DependentValuesUpdate {
     fn visibility(&self) -> Visibility {
         self.visibility
     }
+}
 
+#[async_trait]
+impl JobConsumer for DependentValuesUpdate {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let mut ctx = self.clone_ctx_with_new_transactions(ctx).await?;
+        let mut ctx = ctx.clone_with_new_transactions().await?;
 
         let now = std::time::Instant::now();
 
@@ -145,7 +120,7 @@ impl JobConsumer for DependentValuesUpdate {
 
         AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
 
-        ctx = self.commit_and_continue(ctx).await?;
+        ctx = ctx.commit_and_continue().await?;
 
         council.finished_creating_values().await?;
 
@@ -202,7 +177,7 @@ impl JobConsumer for DependentValuesUpdate {
             .values_queued(&ctx, enqueued)
             .await?;
 
-        ctx = self.commit_and_continue(ctx).await?;
+        ctx = ctx.commit_and_continue().await?;
 
         let mut update_tasks = JoinSet::new();
 
@@ -219,9 +194,9 @@ impl JobConsumer for DependentValuesUpdate {
                                 .await
                                 .values_running(&ctx, vec![id])
                                 .await?;
-                            ctx = self.commit_and_continue(ctx).await?;
+                            ctx = ctx.commit_and_continue().await?;
 
-                            let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
+                            let task_ctx = ctx.clone_with_new_transactions().await?;
                             let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
                                 .await?
                                 .ok_or_else(|| {
@@ -233,7 +208,6 @@ impl JobConsumer for DependentValuesUpdate {
                                 .spawn(update_value(
                                     task_ctx,
                                     attribute_value,
-                                    self.single_transaction,
                                     pub_council.clone(),
                                     status_updater.clone(),
                                 ))?;
@@ -255,7 +229,7 @@ impl JobConsumer for DependentValuesUpdate {
                             .values_completed(&ctx, vec![id])
                             .await?;
 
-                        ctx = self.commit_and_continue(ctx).await?;
+                        ctx = ctx.commit_and_continue().await?;
                     }
                     council_server::Response::OkToCreate => unreachable!(),
                     council_server::Response::Shutdown => break,
@@ -268,7 +242,7 @@ impl JobConsumer for DependentValuesUpdate {
                 .await?
                 .publish_on_commit(&ctx)
                 .await?;
-            ctx = self.commit_and_continue(ctx).await?;
+            ctx = ctx.commit_and_continue().await?;
 
             // If we get `None` back from the `JoinSet` that means that there are no
             // further tasks in the `JoinSet` for us to wait on. This should only happen
@@ -305,7 +279,7 @@ impl JobConsumer for DependentValuesUpdate {
             }
         }
 
-        ctx = self.commit_and_continue(ctx).await?;
+        ctx = ctx.commit_and_continue().await?;
 
         Arc::try_unwrap(status_updater)
             .unwrap()
@@ -330,9 +304,7 @@ impl JobConsumer for DependentValuesUpdate {
             error!("could not publish status receiver request: {:?}", e);
         }
 
-        if !self.single_transaction {
-            ctx.commit().await?;
-        }
+        ctx.commit().await?;
 
         let elapsed_time = now.elapsed();
         info!(
@@ -351,7 +323,6 @@ impl JobConsumer for DependentValuesUpdate {
 async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
-    single_transaction: bool,
     council: council_server::PubClient,
     status_updater: Arc<Mutex<StatusUpdater>>,
 ) -> AttributeValueResult<()> {
@@ -376,9 +347,7 @@ async fn update_value(
         .await?
         .publish_on_commit(&ctx)
         .await?;
-    if !single_transaction {
-        ctx.commit().await?;
-    }
+    ctx.commit().await?;
 
     council.processed_value(attribute_value.id().into()).await?;
 
@@ -405,7 +374,6 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             access_builder,
             visibility,
             job: Some(job),
-            single_transaction: false,
         })
     }
 }

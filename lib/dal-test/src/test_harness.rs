@@ -4,15 +4,15 @@ use color_eyre::Result;
 use dal::{
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
-    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
+    job::processor::JobQueueProcessor,
     jwt_key::JwtSecretKey,
     key_pair::KeyPairPk,
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, NatsProcessor, Node, Prop, PropId, PropKind,
+    Schema, SchemaId, SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User,
     UserClaim, UserPk, Visibility, Workspace, WorkspacePk, WorkspaceSignup,
 };
 use jwt_simple::algorithms::{RS256KeyPair, RSAKeyPairLike};
@@ -21,6 +21,7 @@ use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use tokio::sync::mpsc;
 use uuid::Uuid;
 use veritech_client::EncryptionKey;
 use veritech_server::{Instance, StandardConfig};
@@ -90,8 +91,9 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let job_processor =
-            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let (alive_marker, _job_processor_shutdown_rx) = mpsc::channel(1);
+        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone(), alive_marker))
+            as Box<dyn JobQueueProcessor + Send + Sync>;
 
         let nats_subject_prefix = nats_prefix();
 

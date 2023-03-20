@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use crate::fix::FixError;
 use crate::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
+        consumer::{
+            JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+        },
         definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
@@ -108,8 +110,7 @@ impl JobProducer for FixesJob {
     }
 }
 
-#[async_trait]
-impl JobConsumer for FixesJob {
+impl JobConsumerMetadata for FixesJob {
     fn type_name(&self) -> String {
         "FixesJob".to_string()
     }
@@ -121,7 +122,10 @@ impl JobConsumer for FixesJob {
     fn visibility(&self) -> Visibility {
         self.visibility
     }
+}
 
+#[async_trait]
+impl JobConsumer for FixesJob {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         // Mark the batch as started if it has not been yet.
         if !self.started {
@@ -202,9 +206,8 @@ impl JobConsumer for FixesJob {
             )
             .await?;
 
-            let mut job = DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]);
-            job.set_sync();
-            job.run(ctx).await?;
+            ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
+                .await;
         }
 
         WsEvent::fix_return(
