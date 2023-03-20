@@ -1,6 +1,10 @@
 //! This library contains tools for creating subscriptions to [NATS](https://nats.io) with native
 //! Rust types.
 
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
+
+pub mod builder;
+
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -11,10 +15,13 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::{NatsClient, NatsError};
+use si_data_nats::NatsError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+pub use crate::builder::SubscriptionBuilder;
+
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum SubscriberError {
     #[error("failed to deserialize json message")]
@@ -27,6 +34,10 @@ pub enum SubscriberError {
     NatsSubscribe(#[source] NatsError),
     #[error("failed to unsubscribe from nats subscription")]
     NatsUnsubscribe(#[source] NatsError),
+    #[error("the nats subscription closed before seeing a final message (expected key: {0})")]
+    UnexpectedNatsSubscriptionClosed(String),
+    #[error("no return mailbox specified; bug! message data: {0:?}")]
+    NoReplyMailbox(Vec<u8>),
 }
 
 type SubscriberResult<T> = Result<T, SubscriberError>;
@@ -36,11 +47,14 @@ type SubscriberResult<T> = Result<T, SubscriberError>;
 pub struct Request<T> {
     /// The Rust type expected in the subscription stream.
     pub payload: T,
+    /// An optional reply mailbox.
+    pub reply_mailbox: Option<String>,
 }
 
 impl<T> Request<T> {
-    pub fn into_parts(self) -> T {
-        self.payload
+    /// Split the [`request`](Self)'s fields into individual values.
+    pub fn into_parts(self) -> (T, Option<String>) {
+        (self.payload, self.reply_mailbox)
     }
 }
 
@@ -51,39 +65,32 @@ pin_project! {
         #[pin]
         inner: si_data_nats::Subscription,
         _phantom: PhantomData<T>,
+        final_message_header_key: Option<String>,
+        check_for_reply_mailbox: bool,
     }
 }
 
 impl<T> Subscription<T> {
-    /// Create a new [`subscription`](Self) for a given request shape `T`. If a queue name is
-    /// provided, we will use [`NatsClient::queue_subscribe`] instead of
-    /// [`NatsClient::subscribe`].
-    pub async fn new(
-        nats: &NatsClient,
-        subject: impl Into<String>,
-        queue_name: Option<impl Into<String>>,
-    ) -> SubscriberResult<Subscription<T>> {
-        let inner = if let Some(queue_name) = queue_name {
-            nats.queue_subscribe(subject, queue_name)
-                .await
-                .map_err(SubscriberError::NatsSubscribe)?
-        } else {
-            nats.subscribe(subject)
-                .await
-                .map_err(SubscriberError::NatsSubscribe)?
-        };
-
-        Ok(Subscription {
-            inner,
-            _phantom: PhantomData::<T>,
-        })
+    /// Provides the [`builder`](SubscriptionBuilder) for creating a [`Subscription`].
+    pub fn create(subject: impl Into<String>) -> SubscriptionBuilder<T> {
+        SubscriptionBuilder::new(subject)
     }
 
-    #[allow(dead_code)]
+    /// Create a new [`subscription`](Self) for a given request shape `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
+    #[allow(dead_code, missing_docs, clippy::missing_errors_doc)]
     pub async fn drain(&self) -> SubscriberResult<()> {
         self.inner.drain().await.map_err(SubscriberError::NatsDrain)
     }
 
+    /// Unsubscribe from [NATS](https://nats.io).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SubscriberError`] if the [`Subscription`] does not successfully unsubscribe.
     pub async fn unsubscribe(self) -> SubscriberResult<()> {
         self.inner
             .unsubscribe()
@@ -106,7 +113,37 @@ where
             // for the caller to decide how to proceed (i.e. does the caller fail on first error,
             // ignore error items, etc.)
             Poll::Ready(Some(Ok(nats_msg))) => {
-                let data = nats_msg.into_data();
+                // Only check if the message has a final message header if our subscription config
+                // specified one (or used the default).
+                if let Some(final_message_header_key) = this.final_message_header_key {
+                    // If the NATS message has a final message header, then treat this as an
+                    // end-of-stream marker and close our stream.
+                    if let Some(headers) = nats_msg.headers() {
+                        if headers.keys().any(|key| key == final_message_header_key) {
+                            trace!(
+                                "{} header detected in NATS message, closing stream",
+                                final_message_header_key
+                            );
+                            return Poll::Ready(None);
+                        }
+                    }
+                }
+
+                let (data, reply) = nats_msg.into_parts();
+
+                let reply_mailbox = match this.check_for_reply_mailbox {
+                    true => match reply {
+                        // We have a reply mailbox, good
+                        Some(reply) => Some(reply),
+                        // No reply mailbox provided
+                        None => {
+                            return Poll::Ready(Some(Err(SubscriberError::NoReplyMailbox(data))));
+                        }
+                    },
+                    // If we do not have to check the reply mailbox, use "None"
+                    false => None,
+                };
+
                 let payload: T = match serde_json::from_slice(&data) {
                     // Deserializing from JSON into a formal request type was successful
                     Ok(request) => request,
@@ -117,12 +154,24 @@ where
                 };
 
                 // Return the request type
-                Poll::Ready(Some(Ok(Request { payload })))
+                Poll::Ready(Some(Ok(Request {
+                    payload,
+                    reply_mailbox,
+                })))
             }
-            // A NATS error occured (async error or other i/o)
+            // A NATS error occurred (async error or other i/o)
             Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(SubscriberError::NatsIo(err)))),
-            // We see no more messages on the subject, so close the stream
-            Poll::Ready(None) => Poll::Ready(None),
+            // We see no more messages on the subject, so let's decide what to do
+            Poll::Ready(None) => match this.final_message_header_key {
+                // If we are expecting a "final message" header key, then this is an unexpected
+                // problem
+                Some(key) => Poll::Ready(Some(Err(
+                    SubscriberError::UnexpectedNatsSubscriptionClosed(key.to_string()),
+                ))),
+                // If we are not expecting a "final message" header key, then we can successfully
+                // close the stream
+                None => Poll::Ready(None),
+            },
             // Not ready, so...not ready!
             Poll::Pending => Poll::Pending,
         }

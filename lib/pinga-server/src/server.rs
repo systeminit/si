@@ -240,11 +240,11 @@ impl Subscriber {
         );
         let ctx_builder = DalContext::builder(services_context);
 
-        Ok(
-            Subscription::new(&nats, subject, Some(NATS_JOBS_DEFAULT_QUEUE))
-                .await?
-                .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))),
-        )
+        Ok(Subscription::create(subject)
+            .queue_name(NATS_JOBS_DEFAULT_QUEUE)
+            .start(&nats)
+            .await?
+            .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))))
     }
 }
 
@@ -321,7 +321,7 @@ async fn job_request_task(ctx_builder: DalContextBuilder, request: Request<JobIn
 }
 
 async fn job_request(ctx_builder: DalContextBuilder, request: Request<JobInfo>) -> Result<()> {
-    let job_info = request.into_parts();
+    let (job_info, _) = request.into_parts();
     debug!(job = ?job_info, "executing job");
 
     let job = match job_info.kind() {

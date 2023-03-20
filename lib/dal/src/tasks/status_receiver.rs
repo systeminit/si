@@ -78,12 +78,11 @@ impl StatusReceiver {
     pub async fn new(services_context: ServicesContext) -> StatusReceiverResult<Self> {
         // TODO(nick): add ability to alter nats subject or add prefix.
         let nats = services_context.nats_conn();
-        let requests: Subscription<StatusReceiverRequest> = Subscription::new(
-            nats,
-            STATUS_RECEIVER_REQUEST_SUBJECT,
-            Some(STATUS_RECEIVER_QUEUE_NAME),
-        )
-        .await?;
+        let requests: Subscription<StatusReceiverRequest> =
+            Subscription::create(STATUS_RECEIVER_REQUEST_SUBJECT)
+                .queue_name(STATUS_RECEIVER_QUEUE_NAME)
+                .start(nats)
+                .await?;
         Ok(Self {
             services_context,
             requests,

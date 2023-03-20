@@ -1,20 +1,16 @@
 use std::sync::Arc;
 
 use futures::{StreamExt, TryStreamExt};
+use nats_subscriber::{SubscriberError, Subscription};
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
     nats_command_run_subject, nats_resolver_function_subject, nats_subject,
     nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
-    reply_mailbox_for_result,
+    reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
 };
-
-mod subscription;
-
-use subscription::{Subscription, SubscriptionError};
 
 pub use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
@@ -23,6 +19,7 @@ pub use cyclone_core::{
     ResolverFunctionResultSuccess, ResourceStatus, SensitiveContainer, ValidationRequest,
     ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
+use si_data_nats::NatsClient;
 
 #[derive(Error, Debug)]
 pub enum ClientError {
@@ -32,8 +29,8 @@ pub enum ClientError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("no function result from cyclone; bug!")]
     NoResult,
-    #[error("result error")]
-    Result(#[from] SubscriptionError),
+    #[error(transparent)]
+    Subscriber(#[from] SubscriberError),
     #[error("root connection closed")]
     RootConnectionClosed,
     #[error("unable to publish message: {0:?}")]
@@ -199,7 +196,10 @@ impl Client {
             "subscribing for result messages"
         );
         let mut result_subscription: Subscription<FunctionResult<S>> =
-            Subscription::new(self.nats.subscribe(result_subscription_subject).await?);
+            Subscription::create(result_subscription_subject)
+                .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+                .start(&self.nats)
+                .await?;
 
         // Construct a subscription stream for output messages
         let output_subscription_subject = reply_mailbox_for_output(&reply_mailbox_root);
@@ -207,8 +207,11 @@ impl Client {
             messaging.destination = &output_subscription_subject.as_str(),
             "subscribing for output messages"
         );
-        let output_subscription =
-            Subscription::new(self.nats.subscribe(output_subscription_subject).await?);
+        let output_subscription = Subscription::create(output_subscription_subject)
+            .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
+            .start(&self.nats)
+            .await?;
+
         // Spawn a task to forward output to the sender provided by the caller
         tokio::spawn(forward_output_task(output_subscription, output_tx));
 
@@ -230,7 +233,10 @@ impl Client {
             // Wait for one message on the result reply mailbox
             result = result_subscription.try_next() => {
                 result_subscription.unsubscribe().await?;
-                result?.ok_or(ClientError::NoResult)
+                match result? {
+                    Some(result) => Ok(result.payload),
+                    None => Err(ClientError::NoResult)
+                }
             }
             reply = root_subscription.next() => {
                 Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)??))
@@ -251,7 +257,7 @@ async fn forward_output_task(
     while let Some(msg) = output_subscription.next().await {
         match msg {
             Ok(output) => {
-                if let Err(err) = output_tx.send(output).await {
+                if let Err(err) = output_tx.send(output.payload).await {
                     warn!(error = ?err, "output forwarder failed to send message on channel");
                 }
             }
