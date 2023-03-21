@@ -11,9 +11,11 @@
     "build": "turbo run rc:build build --filter=./app/* --filter=lang-js --filter=// --parallel",
     "rc:clean": "cargo clean",
     "clean": "turbo run rc:clean clean --filter=./app/* --filter=lang-js --filter=// --parallel",
-    "dev:frontend": "pnpm run --filter=web --filter=\"@si/auth-portal\" dev",
+    "dev:frontend": "pnpm run --filter=web dev",
     "dev:web": "pnpm run --filter=web dev",
-    "dev:auth": "pnpm run --filter=\"@si/auth-portal\" dev",
+    "dev:auth": "pnpm run --filter=\"@si/auth-portal\" --filter=\"@si/auth-api\" dev",
+    "dev:auth-api": "pnpm run --filter=\"@si/auth-api\" dev",
+    "dev:auth-portal": "pnpm run --filter=\"@si/auth-portal\" dev",
     "dev:backend": "turbo dev:backend",
     "dev:pinga": "turbo dev:backend --filter=pinga",
     "dev:council": "turbo dev:backend --filter=council",
@@ -23,9 +25,6 @@
     "rc:fmt": "cargo fmt",
     "rc:check": "cargo check",
     "rc:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps"
-  },
-  "volta": {
-    "node": "16.16.0"
   },
   "devDependencies": {
     "fast-glob": "^3.2.12",
