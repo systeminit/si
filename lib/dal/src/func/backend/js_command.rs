@@ -85,6 +85,7 @@ pub struct CommandRunResult {
     // Note: we might benefit from adding the metadata here, but it's unused and takes a lot of boilerplate in the root_prop definition
     #[serde(default)]
     pub logs: Vec<String>,
+    pub last_synced: Option<String>,
 }
 
 impl ExtractPayload for CommandRunResultSuccess {
@@ -96,6 +97,7 @@ impl ExtractPayload for CommandRunResultSuccess {
             status: self.status,
             message: self.message.or(self.error),
             logs: Default::default(),
+            last_synced: Some(Utc::now().to_string()),
         })
     }
 }

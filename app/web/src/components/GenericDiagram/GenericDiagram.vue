@@ -70,6 +70,7 @@ overflow hidden */
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(node)"
           :is-selected="elementIsSelected(node)"
+          :delete-icon="deleteIcon"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
@@ -91,6 +92,7 @@ overflow hidden */
           :group="group"
           :temp-position="movedElementPositions[group.uniqueKey]"
           :temp-size="resizedElementSizes[group.uniqueKey]"
+          :delete-icon="deleteIcon"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
 
@@ -168,6 +170,7 @@ import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/GenericDiagram/DiagramGroupOverlay.vue";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
@@ -212,6 +215,9 @@ import {
   MIN_ZOOM,
   NODE_WIDTH,
   GROUP_INTERNAL_PADDING,
+  GROUP_HEADER_ICON_SIZE,
+  GROUP_HEADER_BOTTOM_MARGIN,
+  GROUP_BOTTOM_INTERNAL_PADDING,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -246,6 +252,7 @@ const props = defineProps({
   },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
+  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 
   controlsDisabled: { type: Boolean },
 });
@@ -1058,8 +1065,16 @@ function onDragElementsMove() {
       const groupBounds = {
         left: groupPos.x + GROUP_INTERNAL_PADDING,
         right: groupPos.x + groupShape.width() - GROUP_INTERNAL_PADDING,
-        top: groupPos.y + GROUP_INTERNAL_PADDING,
-        bottom: groupPos.y + groupShape.height() - GROUP_INTERNAL_PADDING,
+        top:
+          groupPos.y +
+          GROUP_INTERNAL_PADDING +
+          (el.def.nodeType === "component"
+            ? 0
+            : GROUP_HEADER_ICON_SIZE +
+              GROUP_HEADER_BOTTOM_MARGIN +
+              GROUP_INTERNAL_PADDING / 2),
+        bottom:
+          groupPos.y + groupShape.height() - GROUP_BOTTOM_INTERNAL_PADDING,
       };
 
       const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
@@ -1327,11 +1342,13 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
     )
       continue;
 
+    // TODO(Wendy) - Eventually we need to decide what happens if you add a Frame to another Frame that is smaller than it!
     boxDictionary[group.uniqueKey] = {
       x: left - GROUP_INTERNAL_PADDING,
       y: top - GROUP_INTERNAL_PADDING,
       width: right - left + GROUP_INTERNAL_PADDING * 2,
-      height: bottom - top + GROUP_INTERNAL_PADDING * 2,
+      height:
+        bottom - top + GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING,
     };
   }
 
@@ -1550,7 +1567,10 @@ function onResizeMove() {
         x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
         y: parentPosition.y + GROUP_INTERNAL_PADDING,
         width: parentShape.width() - GROUP_INTERNAL_PADDING * 2,
-        height: parentShape.height() - GROUP_INTERNAL_PADDING * 2,
+        height:
+          parentShape.height() -
+          GROUP_INTERNAL_PADDING -
+          GROUP_BOTTOM_INTERNAL_PADDING,
       };
 
       // Bottom collision

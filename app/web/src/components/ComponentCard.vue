@@ -14,7 +14,11 @@
     <div class="flex gap-xs items-center">
       <Icon :name="component.icon" size="lg" class="shrink-0" />
       <Stack spacing="xs" class="">
-        <div class="font-bold break-all line-clamp-4">
+        <div
+          ref="componentNameRef"
+          v-tooltip="componentNameTooltip"
+          class="font-bold break-all line-clamp-4"
+        >
           {{ component.displayName }}
         </div>
         <div class="text-xs italic capsize">
@@ -45,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
@@ -71,5 +75,20 @@ const bodyBg = computed(() => {
   const bodyBgHsl = primaryColor.toHsl();
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
   return tinycolor(bodyBgHsl);
+});
+
+const componentNameRef = ref();
+const componentNameTooltip = computed(() => {
+  if (
+    componentNameRef.value &&
+    componentNameRef.value.scrollHeight > componentNameRef.value.offsetHeight
+  ) {
+    return {
+      content: componentNameRef.value.textContent,
+      delay: { show: 700, hide: 10 },
+    };
+  } else {
+    return {};
+  }
 });
 </script>

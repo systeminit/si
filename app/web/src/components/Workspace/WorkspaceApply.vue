@@ -11,6 +11,7 @@
       :nodes="diagramNodes"
       :edges="diagramEdges"
       read-only
+      delete-icon="trash"
     />
   </div>
   <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">

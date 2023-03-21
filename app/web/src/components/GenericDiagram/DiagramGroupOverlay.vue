@@ -40,7 +40,7 @@
 
     <DiagramIcon
       v-if="isDeleted"
-      icon="x"
+      :icon="deleteIcon"
       :color="diagramConfig?.toneColors?.destructive"
       :size="deletedXSize"
       :x="0"
@@ -58,8 +58,8 @@ import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
 } from "@/components/GenericDiagram/diagram_constants";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import { DiagramGroupData, Size2D } from "./diagram_types";
-
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
@@ -76,6 +76,8 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+
+  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 });
 
 const diagramConfig = useDiagramConfig();

@@ -16,10 +16,10 @@
           ref="pickerElement"
           :aria-required="props.required"
           :style="{ backgroundColor: props.modelValue }"
-          class="block w-10 h-6 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm dark:color-white"
+          class="block w-10 h-6 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
           :class="boxClasses"
         ></span>
-        <span class="p-1">{{ props.modelValue }}</span>
+        <span class="p-1">{{ props.modelValue?.toUpperCase() }}</span>
       </span>
 
       <div
@@ -144,6 +144,7 @@ export default {
 .picker_editor input,
 .picker_sample {
   border-radius: 0.25rem;
+  overflow: hidden;
 }
 
 .picker_wrapper,

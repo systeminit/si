@@ -28,6 +28,7 @@ export const GROUP_TITLE_FONT_SIZE = 14;
 export const GROUP_INTERNAL_PADDING = 20;
 export const GROUP_RESIZE_HANDLE_SIZE = 20;
 export const GROUP_HEADER_ICON_SIZE = 35;
+export const GROUP_BOTTOM_INTERNAL_PADDING = 35;
 
 // corner radius used on nodes (maybe other things later?)
 export const CORNER_RADIUS = 3;

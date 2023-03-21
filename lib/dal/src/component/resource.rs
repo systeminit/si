@@ -183,6 +183,7 @@ pub struct ResourceView {
     pub message: Option<String>,
     pub data: Option<Value>,
     pub logs: Vec<String>,
+    pub last_synced: Option<String>,
 }
 
 impl ResourceView {
@@ -192,6 +193,7 @@ impl ResourceView {
             message: result.message,
             status: result.status,
             logs: result.logs,
+            last_synced: result.last_synced,
         }
     }
 }

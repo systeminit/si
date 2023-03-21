@@ -331,7 +331,6 @@ import {
   DiagramSocketData,
   ElementHoverMeta,
 } from "./diagram_types";
-
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 

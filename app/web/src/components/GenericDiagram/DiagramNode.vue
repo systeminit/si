@@ -210,7 +210,7 @@
     <!-- deleted X overlay (large centered) -->
     <DiagramIcon
       v-if="isDeleted"
-      icon="x"
+      :icon="deleteIcon"
       :color="diagramConfig?.toneColors?.destructive"
       :size="DELETED_X_SIZE"
       :x="0"
@@ -245,6 +245,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -287,6 +288,7 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 });
 
 const emit = defineEmits<{
