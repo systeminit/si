@@ -18,6 +18,7 @@ app/web/cypress/screenshots/
 app/web/cypress/videos/
 
 .turbo
+.netlify
 
 # vim temp files
 .*.swp
@@ -25,3 +26,5 @@ app/web/cypress/videos/
 .vim
 
 .env.local
+# Local Netlify folder
+.netlify

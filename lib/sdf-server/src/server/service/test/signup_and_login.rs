@@ -27,7 +27,6 @@ pub async fn signup_and_login(
         &workspace_name,
         &user_name,
         &user_email,
-        &user_password,
     )
     .await?;
     let jwt = result

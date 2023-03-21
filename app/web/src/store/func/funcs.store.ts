@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { defineStore } from "pinia";
 import { watch } from "vue";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncVariant } from "@/api/sdf/dal/func";
@@ -17,7 +17,6 @@ import {
   InputSourceProp,
   CreateFuncAttributeOptions,
 } from "./types";
-import { ApiRequest } from "../lib/pinia_api_tools";
 import { useRouterStore } from "../router.store";
 
 export type FuncId = string;

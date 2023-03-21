@@ -26,7 +26,6 @@ pub async fn signup(
         &workspace_name,
         &user_name,
         &user_email,
-        &user_password,
     )
     .await?;
 

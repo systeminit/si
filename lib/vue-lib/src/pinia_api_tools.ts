@@ -18,9 +18,8 @@ NOTES / TODOS / IDEAS
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
-import _ from "lodash";
-import promiseDelay from "@/utils/promise_delay";
-import defer, { DeferredPromise } from "../../utils/defer_promise";
+import * as _ from "lodash-es";
+import { promiseDelay, createDeferredPromise, DeferredPromise } from "@si/ts-lib";
 
 // TODO: need to rework these types, and be more flexible... See vue-query for ideas
 type RawRequestStatusKeyArg = string | number | undefined | null;
@@ -221,7 +220,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       // mark the request as pending in the store
       // and attach a deferred promise we'll resolve when completed
       // which we'll use to not make the same request multiple times at the same time, but still be able to await the result
-      const completed = defer();
+      const completed = createDeferredPromise();
       store.$patch((state) => {
         state.apiRequestStatuses[trackingKey] = {
           requestedAt: new Date(),

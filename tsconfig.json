@@ -2,11 +2,27 @@
   "references": [
     // unforunately, this needs to be kept up to date with any ts components within the repo
     // although it only affects some VSCode support when opening up the root folder
-    { "path": "./app/auth-portal" },
-    { "path": "./app/web" },
-    { "path": "./bin/auth-api" },
-    { "path": "./bin/lang-js" },
-    { "path": "./bin/si-discord-bot" },
+    {
+      "path": "./app/auth-portal"
+    },
+    {
+      "path": "./app/web"
+    },
+    {
+      "path": "./bin/auth-api"
+    },
+    {
+      "path": "./bin/lang-js"
+    },
+    {
+      "path": "./bin/si-discord-bot"
+    },
+    {
+      "path": "./lib/ts-lib"
+    },
+    {
+      "path": "./lib/vue-lib"
+    },
   ],
   "files": []
 }

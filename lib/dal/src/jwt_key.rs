@@ -1,8 +1,8 @@
-use std::{fs::File, io::prelude::*, path::Path, pin::Pin, str::FromStr};
+use std::{fs::File, io::prelude::*, path::Path, pin::Pin};
 
 use jwt_simple::{
     algorithms::{RS256KeyPair, RS256PublicKey},
-    prelude::{JWTClaims, RSAPublicKeyLike, Token},
+    prelude::{JWTClaims, RSAPublicKeyLike},
 };
 use serde::{Deserialize, Serialize};
 use si_data_pg::{InstrumentedTransaction, PgError, PgPoolError};
@@ -20,7 +20,6 @@ use crate::{pk, DalContext, UserClaim, UserPk, WorkspacePk};
 const JWT_KEY_EXISTS: &str = include_str!("queries/jwt_key/exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
     include_str!("queries/jwt_key/get_latest_private_key.sql");
-const JWT_KEY_GET_PUBLIC_KEY: &str = include_str!("queries/jwt_key/get_public_key.sql");
 
 #[derive(Error, Debug)]
 pub enum JwtKeyError {
@@ -132,22 +131,36 @@ impl JwtSecretKey {
 }
 
 #[instrument(skip_all)]
-pub async fn get_jwt_validation_key(
-    ctx: &DalContext,
-    jwt_id: impl AsRef<str>,
-) -> JwtKeyResult<RS256PublicKey> {
-    let jwt_id = jwt_id.as_ref();
-    let pk = JwtPk::from_str(jwt_id)?;
+pub async fn get_jwt_validation_key() -> JwtKeyResult<RS256PublicKey> {
+    // let jwt_id = jwt_id.as_ref();
+    // let pk = JwtPk::from_str(jwt_id)?;
 
-    let row = ctx
-        .txns()
-        .pg()
-        .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
-        .await?;
-    let key: String = row.try_get("public_key")?;
+    // let row = ctx
+    //     .txns()
+    //     .pg()
+    //     .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
+    //     .await?;
+    // let key: String = row.try_get("public_key")?;
+
+    // TODO: this is the dev public key, we'll need to toggle to the prod public key
+    // and we want to load this in a much smarter way...
+    let key = "-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA26alH+FYeuFfrLedINll
+EOCxMwDE8Y/cp3dMgoCBxB6pE1wn7uPkUispjjcsYFGKsmJ6pmrirQ6k65A3teeg
+QqBCVDoWkco6GFvdp9lhySFXoZ9SEo0DQWvqe/o+YzHRToq+KTrEFoY+SWJYGiJS
+yuwrm09YelG5QRA3E6ajGbbRNzd1XpvvSm0gI0OHUL8v6ZnFZeWVIDKqne/BXy/C
+NYTZEGKZr5hroxBqqpze3CqhCAAN9rfTtQxvKNOzd0lgy4Cu8X+RBKm+unKgDPhY
+SqA6wKcu4T5asMd4NdZ1r5g1onhQNm5ouxtKq35Mlh+hbRgw9/QMYEYMKggDYCvn
+AorwPyCXjGtgCBT0KVsaZBTBRf5uZzWV6D5mjcMHjJoFpC41VOceio3/NCGTqu1M
+j+TdmI+toprQqAU/OG0eXlDS7HNxyqKhbwDnBnI8gedQ0rhHHkyK0wnX+4H04c43
+5UyHxdbqJbcdSbssUDqYmGk0vcN6u72/YrQwT0GfVYBCBGQn+cpN8P3nT+k533nb
+w6zMZwg3ztrMZO1cV/xpiDUTxxV5iWN/HoiSSZ1PCK9Byc/NnLIeqL8vO2RHa0J/
+OZk+wfML7+4H53lowRr0zAmkMn2u1Wxda9oGSUezsIvyIDWnOruM/DtIOEQnkIEg
+08nljy29cVMh5/26Oga3qysCAwEAAQ==
+-----END PUBLIC KEY-----";
 
     tokio::task::spawn_blocking(move || {
-        RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
+        RS256PublicKey::from_pem(key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
     })
     .instrument(trace_span!(
         "from_pem",
@@ -158,7 +171,7 @@ pub async fn get_jwt_validation_key(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token(
-    ctx: &DalContext,
+    _ctx: &DalContext,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<UserClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -168,12 +181,7 @@ pub async fn validate_bearer_token(
         return Err(JwtKeyError::BearerToken);
     };
 
-    let metadata =
-        Token::decode_metadata(&token).map_err(|err| JwtKeyError::Metadata(format!("{err}")))?;
-    let key_id = metadata
-        .key_id()
-        .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
-    let public_key = get_jwt_validation_key(ctx, key_id).await?;
+    let public_key = get_jwt_validation_key().await?;
     let claims = tokio::task::spawn_blocking(move || {
         public_key
             .verify_token::<UserClaim>(&token, None)
@@ -189,7 +197,7 @@ pub async fn validate_bearer_token(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token_api_client(
-    ctx: &DalContext,
+    _ctx: &DalContext,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -199,13 +207,7 @@ pub async fn validate_bearer_token_api_client(
         return Err(JwtKeyError::BearerToken);
     };
 
-    let metadata =
-        Token::decode_metadata(token).map_err(|err| JwtKeyError::Metadata(format!("{err}")))?;
-    let key_id = metadata
-        .key_id()
-        .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
-
-    let public_key = get_jwt_validation_key(ctx, key_id).await?;
+    let public_key = get_jwt_validation_key().await?;
     let claims = public_key
         .verify_token::<ApiClaim>(token, None)
         .map_err(|err| JwtKeyError::Verify(format!("{err}")))?;

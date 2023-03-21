@@ -7,9 +7,10 @@
         "src/*"
       ]
     },
-    // "types": [
-    //   "unplugin-icons/types/raw"
-    // ],
+    "types": [
+      "vite/client"
+      //   "unplugin-icons/types/raw"
+    ],
   },
   "include": [
     "src/**/*.ts",

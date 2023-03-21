@@ -2,9 +2,8 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import async from "async";
 import { Vector2d } from "konva/lib/types";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib";
 
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import {
   DiagramEdgeDef,
   DiagramNodeDef,

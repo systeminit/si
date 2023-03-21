@@ -7,6 +7,7 @@ import { useRouterStore } from "./store/router.store";
 
 // Cannot use inside the template directly.
 const isDevMode = import.meta.env.DEV;
+const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const routes: RouteRecordRaw[] = [
   {
@@ -119,21 +120,19 @@ const routes: RouteRecordRaw[] = [
   },
   // Auth
   {
-    path: "/authenticate/*",
-    name: "authenticate",
-    redirect: { name: "login" },
+    path: "/auth-connect",
+    name: "auth-connect",
+    meta: { public: true },
+    component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
   {
     path: "/login",
     name: "login",
     meta: { public: true },
-    component: () => import("@/pages/auth/LoginPage.vue"),
-  },
-  {
-    path: "/signup",
-    name: "signup",
-    meta: { public: true },
-    component: () => import("@/pages/auth/SignupPage.vue"),
+    beforeEnter: () => {
+      window.location.href = `${AUTH_PORTAL_URL}/login`;
+    },
+    component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
   {
     path: "/logout",
@@ -141,21 +140,16 @@ const routes: RouteRecordRaw[] = [
     beforeEnter: () => {
       const authStore = useAuthStore();
       authStore.localLogout();
+
+      window.location.href = `${AUTH_PORTAL_URL}/logout`;
       return { name: "login" };
     },
-    component: () => import("@/pages/auth/LoginPage.vue"), // just need something here for TS, but guard always redirects
+    component: () => import("@/pages/auth/AuthConnectPage.vue"), // just need something here for TS, but guard always redirects
   },
 
   // 404
   {
-    path: "/404",
-    name: "notFound",
-    meta: { public: true },
-    component: () => import("@/pages/NotFound.vue"),
-  },
-  {
     path: "/:catchAll(.*)",
-    // redirect: "/404", // makes it harder to see what the failing url was
     meta: { public: true },
     component: () => import("@/pages/NotFound.vue"),
   },

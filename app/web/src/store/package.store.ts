@@ -1,9 +1,8 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { parseISO } from "date-fns";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";

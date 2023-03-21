@@ -39,7 +39,7 @@
 import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useHead } from "@vueuse/head";
-import defer from "@/utils/defer_promise";
+import { createDeferredPromise, DeferredPromise } from "@si/ts-lib";
 
 export type WipeState = "idle" | "running" | "done" | "exiting";
 type Position = { x: number; y: number };
@@ -60,8 +60,8 @@ useHead(
     ],
   })),
 );
-let openDonePromise: ReturnType<typeof defer>;
-let closeDonePromise: ReturnType<typeof defer>;
+let openDonePromise: DeferredPromise;
+let closeDonePromise: DeferredPromise;
 
 const onWipeOpenDone = () => {
   state.value = "done";
@@ -93,7 +93,7 @@ const open = async (openAt: HTMLElement | Position) => {
   setTimeout(() => {
     state.value = "running";
   }, 20);
-  openDonePromise = defer();
+  openDonePromise = createDeferredPromise();
   return openDonePromise.promise;
 };
 
@@ -104,7 +104,7 @@ const close = () => {
   };
 
   state.value = "exiting";
-  closeDonePromise = defer();
+  closeDonePromise = createDeferredPromise();
   return closeDonePromise.promise;
 };
 

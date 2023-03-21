@@ -19,7 +19,7 @@
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
 import clsx from "clsx";
-import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
+import { ApiRequestStatus } from "@si/vue-lib";
 import Icon from "./icons/Icon.vue";
 import { Tones } from "./helpers/tones";
 

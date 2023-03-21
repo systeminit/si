@@ -200,29 +200,6 @@ where
     }
 }
 
-pub struct JwtSecretKey(pub crate::JwtSecretKey);
-
-#[async_trait]
-impl<P> FromRequest<P> for JwtSecretKey
-where
-    P: Send,
-{
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(key) = Extension::<crate::server::config::JwtSecretKey>::from_request(req)
-            .await
-            .map_err(internal_error)?;
-        Ok(Self(key))
-    }
-}
-
-impl JwtSecretKey {
-    pub fn key(&self) -> &sodiumoxide::crypto::secretbox::Key {
-        &self.0.key
-    }
-}
-
 pub struct SignupSecret(pub super::routes::SignupSecret);
 
 #[async_trait]

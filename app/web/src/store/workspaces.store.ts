@@ -1,10 +1,8 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { watch } from "vue";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
-
+import { addStoreHooks, ApiRequest } from "@si/vue-lib";
 import { Workspace } from "@/api/sdf/dal/workspace";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { useAuthStore } from "./auth.store";
 import { useRouterStore } from "./router.store";
 

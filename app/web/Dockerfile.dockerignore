@@ -13,6 +13,8 @@
 !app/web
 !lib/tsconfig
 !lib/eslint-config
+!lib/vue-lib
+!lib/ts-lib
 
 # Ignore non-portable context in component sub-directories
 **/.envrc

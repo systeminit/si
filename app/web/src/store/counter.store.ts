@@ -2,7 +2,7 @@
 
 import { defineStore } from "pinia";
 import { watch } from "vue";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+import { addStoreHooks } from "@si/vue-lib";
 
 export const useCounterStore = addStoreHooks(
   defineStore("counter", {

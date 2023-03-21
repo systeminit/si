@@ -1,10 +1,9 @@
 import { ViteSSG } from "vite-ssg";
+
 import "./style.css";
 import App from "./App.vue";
-
-import LoginPage from "./pages/LoginPage.vue";
-import SignupPage from "./pages/SignupPage.vue";
-import NotFoundPage from "./pages/NotFoundPage.vue";
+import routes from "./routes";
+import store from "./store";
 
 // createApp(App).mount('#app')
 // const app = createSSRApp(App)
@@ -15,15 +14,14 @@ export const createApp = ViteSSG(
   App,
   // vue-router options
   {
-    routes: [
-      { name: "home", path: "/", redirect: { name: "login" } },
-      { name: "signup", path: "/signup", component: SignupPage },
-      { name: "login", path: "/login", component: LoginPage },
-      { name: "404", path: "/:catchAll(.*)", component: NotFoundPage },
-    ],
+    routes,
   },
   // // function to have custom setups
-  // ({ app, router, routes, isClient, initialState }) => {
-  //   // install plugins etc.
-  // },
+  ({
+    app,
+    // router, routes, isClient, initialState
+  }) => {
+    // install plugins etc.
+    app.use(store);
+  },
 );

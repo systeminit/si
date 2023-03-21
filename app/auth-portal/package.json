@@ -13,6 +13,10 @@
     "lint:fix": "pnpm run lint --fix"
   },
   "dependencies": {
+    "@si/vue-lib": "workspace:*",
+    "@si/ts-lib": "workspace:*",
+    "axios": "^0.27.2",
+    "pinia": "^2.0.32",
     "vite-ssg": "^0.22.1",
     "vue": "^3.2.45",
     "vue-router": "^4.1.6"

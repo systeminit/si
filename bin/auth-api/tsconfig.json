@@ -9,9 +9,11 @@
       "isolatedModules": false
     }
   },
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
   "include": [
-    "src/*",
-    ".eslintrc.cjs",
-  ]
-  
+    "**/*.ts",
+  ],
 }

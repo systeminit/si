@@ -7,7 +7,7 @@ import {
   reactive,
 } from "vue";
 import isPromise from "is-promise";
-import _ from "lodash";
+import * as _ from "lodash-es";
 
 type MaybePromise<T> = T | Promise<T>;
 declare module "pinia" {
@@ -50,7 +50,7 @@ export const piniaHooksPlugin: PiniaPlugin = ({
   );
   // expose this info to devtools
   // TODO: determine the best way to safely check in both vite and webpack setups
-  if (import.meta.env.DEV || process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV /* || process.env.NODE_ENV === "development" */) {
     store._customProperties.add("_trackedStoreUsers");
     store._customProperties.add("_trackedStoreUsersCount");
   }
