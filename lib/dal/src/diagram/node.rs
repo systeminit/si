@@ -208,7 +208,7 @@ impl DiagramComponentView {
 
         let component_status = ComponentStatus::get_by_id(ctx, component.id())
             .await?
-            .ok_or(DiagramError::ComponentStatusNotFound(*component.id()))?;
+            .ok_or_else(|| DiagramError::ComponentStatusNotFound(*component.id()))?;
 
         let created_info =
             HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.creation())

@@ -300,7 +300,7 @@ impl ConfirmationView {
                 Some(fix_resolver) => {
                     let fix = Fix::get_by_id(ctx, &fix_resolver.last_fix_id())
                         .await?
-                        .ok_or(ComponentError::FixNotFound(fix_resolver.last_fix_id()))?;
+                        .ok_or_else(|| ComponentError::FixNotFound(fix_resolver.last_fix_id()))?;
                     fix.history_view(ctx, false)
                         .await
                         .map_err(|e| ComponentError::Fix(Box::new(e)))?

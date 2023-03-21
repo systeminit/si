@@ -772,9 +772,12 @@ impl Component {
             SiPropChild::Protected,
         )
         .await?;
-        let raw_value = protected_attribute_value.get_value(ctx).await?.ok_or(
-            ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id()),
-        )?;
+        let raw_value = protected_attribute_value
+            .get_value(ctx)
+            .await?
+            .ok_or_else(|| {
+                ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id())
+            })?;
         let protected: bool = serde_json::from_value(raw_value)?;
         Ok(protected)
     }
