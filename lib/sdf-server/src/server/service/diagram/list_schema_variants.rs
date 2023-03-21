@@ -57,7 +57,7 @@ pub struct SchemaVariantView {
     name: String,
     schema_name: String,
     schema_id: SchemaId,
-    color: i64,
+    color: String,
     input_sockets: Vec<InputSocketView>,
     output_sockets: Vec<OutputSocketView>,
 }
@@ -120,7 +120,10 @@ pub async fn list_schema_variants(
             name: variant.name().to_owned(),
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
-            color: variant.color().map_or(0x00b0bc, |c| *c),
+            color: variant
+                .color(&ctx)
+                .await?
+                .unwrap_or_else(|| "00b0bc".to_owned()),
             input_sockets,
             output_sockets,
         });

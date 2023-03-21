@@ -105,6 +105,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Mimic Tear",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },

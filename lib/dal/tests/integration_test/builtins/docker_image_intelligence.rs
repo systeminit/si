@@ -20,6 +20,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "soulrender",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -37,6 +38,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "bloodscythe",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -65,6 +67,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "soulrender",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -83,6 +86,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "bloodscythe-updated",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -111,6 +115,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "soulrender-updated",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -128,6 +133,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "bloodscythe-updated",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },

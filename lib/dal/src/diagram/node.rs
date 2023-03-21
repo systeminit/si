@@ -252,7 +252,7 @@ impl DiagramComponentView {
                 y: y.round() as isize,
             },
             size,
-            color: component.get_color(ctx).await?,
+            color: component.color(ctx).await?,
             node_type: component.get_type(ctx).await?,
             change_status,
             resource,

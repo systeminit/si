@@ -525,6 +525,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-east-1",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false
             },

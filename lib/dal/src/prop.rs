@@ -19,9 +19,9 @@ use crate::{
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
-    AttributeContextBuilderError, AttributeReadContext, DalContext, Func, FuncId,
-    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    AttributeContextBuilder, AttributeContextBuilderError, AttributePrototypeError,
+    AttributeReadContext, DalContext, Func, FuncId, HistoryEventError, SchemaVariant,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
 
@@ -35,9 +35,9 @@ pub enum PropError {
     AttributeContext(#[from] AttributeContextBuilderError),
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributePrototype error: {0}")]
-    AttributePrototype(String),
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("AttributeValue error: {0}")]
-    AttributeValue(String),
+    AttributeValue(#[from] AttributeValueError),
     #[error("expected child prop not found with name {0}")]
     ExpectedChildNotFound(String),
     #[error("FuncBinding error: {0}")]
@@ -58,6 +58,13 @@ pub enum PropError {
     StandardModel(#[from] StandardModelError),
     #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
     ParentNotAllowed(PropId, PropKind),
+    #[error("unable to set default value for non scalar prop type")]
+    SetDefaultForNonScalar(PropKind),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+
+    #[error("parent prop kind is not \"Object\", which is required for setting default values on props (found {0})")]
+    ParentPropIsNotObjectForPropWithDefaultValue(PropKind),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -245,9 +252,8 @@ impl Prop {
             ..AttributeReadContext::default()
         };
 
-        if let Some(attribute_value) = AttributeValue::find_for_context(ctx, attribute_read_context)
-            .await
-            .map_err(|e| PropError::AttributeValue(format!("{e}")))?
+        if let Some(attribute_value) =
+            AttributeValue::find_for_context(ctx, attribute_read_context).await?
         {
             let parent_attribute_read_context = AttributeReadContext {
                 prop_id: Some(parent_prop_id),
@@ -255,22 +261,15 @@ impl Prop {
             };
             let parent_attribute_value =
                 AttributeValue::find_for_context(ctx, parent_attribute_read_context)
-                    .await
-                    .map_err(|e| PropError::AttributeValue(format!("{e}")))?
-                    .ok_or_else(|| {
-                        PropError::AttributeValue(format!(
-                            "missing attribute value for context: {parent_attribute_read_context:?}"
-                        ))
-                    })?;
+                    .await?
+                    .ok_or(AttributeValueError::NotFoundForReadContext(
+                        parent_attribute_read_context,
+                    ))?;
 
-            attribute_value
-                .unset_parent_attribute_value(ctx)
-                .await
-                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+            attribute_value.unset_parent_attribute_value(ctx).await?;
             attribute_value
                 .set_parent_attribute_value(ctx, parent_attribute_value.id())
-                .await
-                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+                .await?;
         };
 
         self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
@@ -367,9 +366,7 @@ impl Prop {
                 .to_context()?;
 
             let attribute_value = if let Some(attribute_value) =
-                AttributeValue::find_for_context(ctx, attribute_context.into())
-                    .await
-                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
+                AttributeValue::find_for_context(ctx, attribute_context.into()).await?
             {
                 attribute_value
             } else {
@@ -382,14 +379,13 @@ impl Prop {
                     None,
                     maybe_parent,
                 )
-                .await
-                .map_err(|e| PropError::AttributePrototype(e.to_string()))?;
+                .await?;
 
                 AttributeValue::find_for_context(ctx, attribute_context.into())
-                    .await
-                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
-                    .ok_or(AttributeValueError::Missing)
-                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
+                    .await?
+                    .ok_or(AttributeValueError::NotFoundForReadContext(
+                        attribute_context.into(),
+                    ))?
             };
 
             if *prop.kind() == PropKind::Object {
@@ -404,5 +400,57 @@ impl Prop {
         }
 
         Ok(())
+    }
+
+    pub async fn set_default_value<T: Serialize>(
+        &self,
+        ctx: &DalContext,
+        value: T,
+    ) -> PropResult<()> {
+        let value = serde_json::to_value(value)?;
+        match self.kind() {
+            PropKind::String | PropKind::Boolean | PropKind::Integer => {
+                let attribute_read_context = AttributeReadContext::default_with_prop(self.id);
+                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                    .await?
+                    .ok_or(AttributeValueError::NotFoundForReadContext(
+                        attribute_read_context,
+                    ))?;
+                let parent_attribute_value = attribute_value
+                    .parent_attribute_value(ctx)
+                    .await?
+                    .ok_or_else(|| AttributeValueError::ParentNotFound(*attribute_value.id()))?;
+
+                // Ensure the parent project is an object. Technically, we should ensure that every
+                // prop in entire lineage is of kind object, but this should (hopefully) suffice
+                // for now. Ideally, this would be handled in a query.
+                let parent_prop = Prop::get_by_id(ctx, &parent_attribute_value.context.prop_id())
+                    .await?
+                    .ok_or_else(|| {
+                        PropError::NotFound(
+                            parent_attribute_value.context.prop_id(),
+                            *ctx.visibility(),
+                        )
+                    })?;
+                if parent_prop.kind() != &PropKind::Object {
+                    return Err(PropError::ParentPropIsNotObjectForPropWithDefaultValue(
+                        *parent_prop.kind(),
+                    ));
+                }
+
+                let context = AttributeContextBuilder::from(attribute_read_context).to_context()?;
+                AttributeValue::update_for_context(
+                    ctx,
+                    *attribute_value.id(),
+                    Some(*parent_attribute_value.id()),
+                    context,
+                    Some(value),
+                    None,
+                )
+                .await?;
+                Ok(())
+            }
+            _ => Err(PropError::SetDefaultForNonScalar(*self.kind())),
+        }
     }
 }

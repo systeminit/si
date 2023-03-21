@@ -9,7 +9,6 @@ CREATE TABLE schema_variants
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     link                        text,
-    color                       bigint,
     finalized_once              bool                     NOT NULL DEFAULT FALSE
 );
 SELECT standard_model_table_constraints_v1('schema_variants');

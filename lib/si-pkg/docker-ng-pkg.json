@@ -12,7 +12,7 @@
       "variants": [
         {
           "name": "v0",
-          "color": "4695E7",
+          "color": "#4695E7",
           "domain": {
             "name": "domain",
             "kind": "object",
@@ -41,7 +41,7 @@
       "variants": [
         {
           "name": "v0",
-          "color": "4695E7",
+          "color": "#4695E7",
           "domain": {
             "name": "domain",
             "kind": "object",

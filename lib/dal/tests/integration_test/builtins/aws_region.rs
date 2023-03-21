@@ -27,10 +27,10 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-poop-1",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false,
             },
-
             "domain": {
                 "region": "us-poop-1",
             }
@@ -81,6 +81,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-east-1",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false,
             },
@@ -149,6 +150,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false,
             },
@@ -166,6 +168,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "server",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -228,6 +231,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false,
             },
@@ -245,6 +249,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "server",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -286,6 +291,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-west-2",
+                "color": "#FF9900",
                 "type": "configurationFrame",
                 "protected": false,
             },
@@ -303,6 +309,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "server",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -379,6 +386,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -395,8 +403,9 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     assert_eq!(
         serde_json::json![{
             "si": {
-            "name": "server",
+                "name": "server",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "domain": {
@@ -458,6 +467,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -475,6 +485,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         serde_json::json![{
             "si": {
                 "name": "server",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -516,6 +527,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         serde_json::json![{
             "si": {
                 "name": "us-west-2",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -533,6 +545,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         serde_json::json![{
             "si": {
                 "name": "server",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },

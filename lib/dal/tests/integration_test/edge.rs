@@ -158,6 +158,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "to",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -194,6 +195,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "to",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -229,6 +231,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "to",
+                "color": "#FF9900",
                 "type": "component",
                 "protected": false,
             },
@@ -355,6 +358,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },
@@ -399,6 +403,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },
@@ -436,6 +441,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
+                "color": "#e26b70",
                 "type": "component",
                 "protected": false,
             },

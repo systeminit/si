@@ -1,9 +1,9 @@
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::action_prototype::ActionKind;
-use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
@@ -17,12 +17,12 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    ActionPrototype, ActionPrototypeContext, AttributeReadContext, AttributeValue,
-    BuiltinSchemaOption, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
-    FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider, LeafInput,
-    LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, ValidationPrototype,
-    ValidationPrototypeContext, WorkflowPrototype, WorkflowPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, BuiltinSchemaOption, BuiltinsError, BuiltinsResult,
+    DalContext, ExternalProvider, Func, FuncDescription, FuncDescriptionContents, FuncError,
+    FuncId, InternalProvider, LeafInput, LeafInputLocation, LeafKind, Prop, PropError, PropId,
+    PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    StandardModel, ValidationPrototype, ValidationPrototypeContext, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 mod aws_ami;
@@ -40,16 +40,16 @@ mod kubernetes_deployment;
 mod kubernetes_namespace;
 mod systeminit_generic_frame;
 
-const NODE_COLOR_FRAMES: &str = "FFFFFF";
+const NODE_COLOR_FRAMES: &str = "#FFFFFF";
 // Reference: https://aws.amazon.com/trademark-guidelines/
-const NODE_COLOR_AWS: &str = "FF9900";
+const NODE_COLOR_AWS: &str = "#FF9900";
 // Reference: https://getfedora.org/
-const NODE_COLOR_COREOS: &str = "E26B70";
+const NODE_COLOR_COREOS: &str = "#E26B70";
 // Reference: https://www.docker.com/company/newsroom/media-resources/
-const NODE_COLOR_DOCKER: &str = "4695E7";
+const NODE_COLOR_DOCKER: &str = "#4695E7";
 // This node color is purely meant the complement existing node colors.
 // It does not reflect an official branding Kubernetes color.
-const NODE_COLOR_KUBERNETES: &str = "30BA78";
+const NODE_COLOR_KUBERNETES: &str = "#30BA78";
 
 pub async fn migrate(
     ctx: &DalContext,
@@ -358,10 +358,9 @@ impl MigrationDriver {
                 external_providers,
             )))
         } else {
-            let (mut schema_variant, root_prop) =
-                SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+            let (schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
             schema_variant
-                .set_color(ctx, Some(definition_metadata.color_as_i64()?))
+                .set_color(ctx, definition_metadata.color)
                 .await?;
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -430,58 +429,16 @@ impl MigrationDriver {
     ///
     /// This function should only be used _after_
     /// [`SchemaVariant::finalize()`](crate::SchemaVariant::finalize()) within a builtin migration.
-    pub async fn set_default_value_for_prop(
+    pub async fn set_default_value_for_prop<T: Serialize>(
         &self,
         ctx: &DalContext,
         prop_id: PropId,
-        value: Value,
+        value: T,
     ) -> BuiltinsResult<()> {
         let prop = Prop::get_by_id(ctx, &prop_id)
             .await?
             .ok_or(BuiltinsError::PropNotFound(prop_id))?;
-        match prop.kind() {
-            PropKind::String | PropKind::Boolean | PropKind::Integer => {
-                let attribute_read_context = AttributeReadContext::default_with_prop(prop_id);
-                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                    .await?
-                    .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                        attribute_read_context,
-                    ))?;
-                let parent_attribute_value = attribute_value
-                    .parent_attribute_value(ctx)
-                    .await?
-                    .ok_or_else(|| {
-                        BuiltinsError::AttributeValueDoesNotHaveParent(*attribute_value.id())
-                    })?;
-
-                // Ensure the parent project is an object. Technically, we should ensure that every
-                // prop in entire lineage is of kind object, but this should (hopefully) suffice
-                // for now. Ideally, this would be handled in a query.
-                let parent_prop = Prop::get_by_id(ctx, &parent_attribute_value.context.prop_id())
-                    .await?
-                    .ok_or_else(|| {
-                        BuiltinsError::PropNotFound(parent_attribute_value.context.prop_id())
-                    })?;
-                if parent_prop.kind() != &PropKind::Object {
-                    return Err(BuiltinsError::ParentPropIsNotObjectForPropWithDefaultValue(
-                        *parent_prop.kind(),
-                    ));
-                }
-
-                let context = AttributeContextBuilder::from(attribute_read_context).to_context()?;
-                AttributeValue::update_for_context(
-                    ctx,
-                    *attribute_value.id(),
-                    Some(*parent_attribute_value.id()),
-                    context,
-                    Some(value),
-                    None,
-                )
-                .await?;
-                Ok(())
-            }
-            _ => Err(BuiltinsError::NonPrimitivePropKind(*prop.kind())),
-        }
+        Ok(prop.set_default_value(ctx, value).await?)
     }
 
     /// Find a single [`Func`](crate::Func) and [`FuncArgument`](crate::FuncArgument) by providing

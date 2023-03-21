@@ -109,6 +109,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -126,6 +127,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -143,6 +145,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -164,6 +167,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -188,6 +192,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -234,6 +239,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora-updated",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -251,6 +257,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -268,6 +275,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -289,6 +297,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -326,6 +335,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -409,6 +419,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora-updated-twice",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -427,6 +438,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine-updated",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -444,6 +456,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -465,6 +478,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -513,6 +527,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },

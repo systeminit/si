@@ -36,6 +36,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "13700KF",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -59,6 +60,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "13700KF",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },

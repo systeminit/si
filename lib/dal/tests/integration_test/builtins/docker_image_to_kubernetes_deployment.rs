@@ -25,6 +25,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "tail",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -42,6 +43,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "deployment",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -98,6 +100,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "tail",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -115,6 +118,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "deployment",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },
@@ -150,6 +154,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "ironsides",
+                "color": "#4695E7",
                 "type": "component",
                 "protected": false,
             },
@@ -168,6 +173,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         serde_json::json![{
             "si": {
                 "name": "deployment",
+                "color": "#30BA78",
                 "type": "component",
                 "protected": false,
             },

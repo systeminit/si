@@ -28,7 +28,7 @@ use crate::{
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
-    DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropError, PropKind,
+    DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropKind,
     SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
@@ -94,8 +94,6 @@ pub enum AttributePrototypeError {
     ParentNotAllowed(AttributePrototypeId, PropKind),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
