@@ -1,23 +1,24 @@
 CREATE TABLE edges
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
-    tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
-    visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    creation_user_pk            ident,
-    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    kind                        text                     NOT NULL,
-    head_node_id                ident                   NOT NULL,
-    head_object_kind            text                     NOT NULL,
-    head_object_id              ident                   NOT NULL,
-    head_socket_id              ident                   NOT NULL,
-    tail_node_id                ident                   NOT NULL,
-    tail_object_kind            text                     NOT NULL,
-    tail_object_id              ident                   NOT NULL,
-    tail_socket_id              ident                   NOT NULL,
-    deletion_user_pk            ident
+    pk                       ident primary key                 default ident_create_v1(),
+    id                       ident                    not null default ident_create_v1(),
+    tenancy_workspace_pk     ident,
+    visibility_change_set_pk ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at    timestamp with time zone,
+    created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    creation_user_pk         ident,
+    updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    kind                     text                     NOT NULL,
+    head_node_id             ident                    NOT NULL,
+    head_object_kind         text                     NOT NULL,
+    head_object_id           ident                    NOT NULL,
+    head_socket_id           ident                    NOT NULL,
+    tail_node_id             ident                    NOT NULL,
+    tail_object_kind         text                     NOT NULL,
+    tail_object_id           ident                    NOT NULL,
+    tail_socket_id           ident                    NOT NULL,
+    deletion_user_pk         ident,
+    deleted_implicitly       bool                     NOT NULL DEFAULT FALSE
 );
 SELECT standard_model_table_constraints_v1('edges');
 
