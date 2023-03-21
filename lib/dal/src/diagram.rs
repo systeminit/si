@@ -179,12 +179,16 @@ impl Diagram {
                 socket.label == "Frame" && socket.direction == SocketDirection::Output
             });
 
+            let edges_with_deleted =
+                Edge::list_for_component(ctx_with_deleted, *component.id()).await?;
+
             let mut parent_node_id = None;
 
             if let Some(socket_to_parent) = maybe_socket_to_parent {
-                for edge in &edges {
+                for edge in &edges_with_deleted {
                     if edge.tail_node_id() == *node.id()
                         && edge.tail_socket_id().to_string() == socket_to_parent.id
+                        && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly)
                     {
                         parent_node_id = Some(edge.head_node_id());
                         break;
@@ -199,9 +203,10 @@ impl Diagram {
 
             let mut child_node_ids = vec![];
             if let Some(socket_from_children) = maybe_socket_from_children {
-                for edge in &edges {
+                for edge in &edges_with_deleted {
                     if edge.head_node_id() == *node.id()
                         && edge.head_socket_id().to_string() == socket_from_children.id
+                        && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly)
                     {
                         child_node_ids.push(edge.tail_node_id());
                     }

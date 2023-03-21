@@ -131,6 +131,7 @@ pub struct Edge {
     tail_socket_id: SocketId,
     pub creation_user_pk: Option<UserPk>,
     pub deletion_user_pk: Option<UserPk>,
+    pub deleted_implicitly: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]

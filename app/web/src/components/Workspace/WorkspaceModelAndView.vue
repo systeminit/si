@@ -83,12 +83,10 @@
     </template>
   </SiPanel>
 
-  <Modal ref="deleteBlockedModalRef" title="Can't delete component">
+  <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
     <Stack space="sm">
       <p>
-        You cannot delete a frame that still has children.
-        <br />
-        Delete them before proceeding.
+        {{ actionBlockedModalText }}
       </p>
 
       <div class="flex space-x-sm justify-end">
@@ -389,10 +387,12 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
 }
 
 const confirmDeleteModalRef = ref<InstanceType<typeof Modal>>();
-const deleteBlockedModalRef = ref<InstanceType<typeof Modal>>();
+const actionBlockedModalRef = ref<InstanceType<typeof Modal>>();
+const actionBlockedModalTitle = ref<string>();
+const actionBlockedModalText = ref<string>();
 
 function closeDeleteBlockedModal() {
-  deleteBlockedModalRef.value?.close();
+  actionBlockedModalRef.value?.close();
 }
 
 const deletableSelectedComponents = computed(() => {
@@ -425,14 +425,18 @@ function triggerDeleteSelection() {
 
   const deletionSubjectHasChildren =
     selectedComponents.value?.filter((el) => {
-      if (el.childNodeIds.length > 0) {
-        return true;
-      }
-      return false;
+      const activeChildren = el.childNodeIds.filter((childId) => {
+        const child = componentsStore.componentsByNodeId[childId];
+        return _.isNil(child?.deletedInfo);
+      });
+      return activeChildren.length > 0;
     }).length > 0;
 
   if (deletionSubjectHasChildren) {
-    deleteBlockedModalRef.value?.open();
+    actionBlockedModalTitle.value = "Can't delete component";
+    actionBlockedModalText.value =
+      "You cannot delete a frame that still has children. Delete them before proceeding.";
+    actionBlockedModalRef.value?.open();
     return;
   }
 
@@ -460,6 +464,27 @@ async function triggerRestoreSelection() {
   if (selectedEdgeId.value) {
     await componentsStore.RESTORE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
+    // Block restoring child of deleted frame
+    const parentIds = _.compact(
+      _.map(
+        selectedComponentIds.value,
+        (id) => componentsStore.componentsById[id].parentId,
+      ),
+    );
+
+    const hasDeletedParent = parentIds.find(
+      (id) => !_.isNil(componentsStore.componentsById[id].deletedInfo),
+    );
+
+    if (hasDeletedParent) {
+      actionBlockedModalTitle.value = "Can't restore component";
+      actionBlockedModalText.value =
+        "You cannot restore a component inside a deleted frame. Restore the parent before restoring its children.";
+
+      actionBlockedModalRef.value?.open();
+      return;
+    }
+
     await componentsStore.RESTORE_COMPONENTS(selectedComponentIds.value);
   }
 }

@@ -30,7 +30,7 @@ BEGIN
                            ON sbtep.object_id = e.head_socket_id
         WHERE e.tail_object_id = this_component_id
     LOOP
-        PERFORM delete_by_id_v1('edges', this_tenancy, this_visibility, target_id);
+        SELECT delete_by_id_v1('edges', this_tenancy, this_visibility, target_id) INTO deleted_timestamp;
 
         -- We have to get the edge head values so we can update them after edge deletion
         RETURN QUERY SELECT row_to_json(av.*) AS object
@@ -38,6 +38,14 @@ BEGIN
                      WHERE attribute_context_component_id = peer_component_id
                        AND (attribute_context_internal_provider_id = internal_provider_id OR
                             attribute_context_external_provider_id = external_provider_id);
+
+        PERFORM update_by_id_v1('edges',
+                                'deleted_implicitly',
+                                this_tenancy,
+                                this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                                target_id,
+                                true);
+
     END LOOP;
 
 
@@ -45,7 +53,20 @@ BEGIN
         SELECT id, 'edges' as table_name -- Incoming Edges
         FROM edges_v1(this_tenancy, this_visibility)
         WHERE head_object_id = this_component_id
-        UNION
+    LOOP
+        -- In the future, we'll possibly want to deal differently with edges that don't exist on HEAD vs the ones that do
+        -- we don't make that distinction right now
+        SELECT delete_by_id_v1(table_name, this_tenancy, this_visibility, target_id) INTO deleted_timestamp;
+
+        PERFORM update_by_id_v1('edges',
+                                'deleted_implicitly',
+                                this_tenancy,
+                                this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                                target_id,
+                                true);
+    END LOOP;
+
+    FOR target_id, table_name IN
         SELECT nbtc.object_id, 'nodes' as table_name
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
         WHERE nbtc.belongs_to_id = this_component_id
@@ -54,8 +75,6 @@ BEGIN
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
         WHERE nbtc.belongs_to_id = this_component_id
     LOOP
-        -- In the future, we'll possibly want to deal differently with edges that don't exist on HEAD vs the ones that do
-        -- we don't make that distinction right now
         PERFORM delete_by_id_v1(table_name, this_tenancy, this_visibility, target_id);
     END LOOP;
 

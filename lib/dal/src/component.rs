@@ -180,6 +180,9 @@ pub enum ComponentError {
     /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
     #[error("component protection is none for component ({0}) and attribute value ({1}")]
     ComponentProtectionIsNone(ComponentId, AttributeValueId),
+    /// No "protected" boolean was found for the appropriate
+    #[error("component({0}) can't be restored because it's inside a deleted frame ({1})")]
+    InsideDeletedFrame(ComponentId, ComponentId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -986,7 +989,7 @@ impl Component {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
-        // TODO - This is temporary for now until we allow deleting frames
+        // Block deletion of frames with children
         if self.get_type(ctx).await? != ComponentType::Component {
             let frame_edges = Edge::list_for_component(ctx, self.id).await?;
             let frame_node = self
@@ -1052,6 +1055,42 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Option<Self>> {
+        // Check if component has deleted frame before restoring
+        {
+            let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+
+            let component = Self::get_by_id(ctx_with_deleted, &component_id)
+                .await?
+                .ok_or_else(|| ComponentError::NotFound(component_id))?;
+
+            let sockets = Socket::list_for_component(ctx_with_deleted, component_id).await?;
+
+            let maybe_socket_to_parent = sockets.iter().find(|socket| {
+                socket.name() == "Frame"
+                    && *socket.edge_kind() == SocketEdgeKind::ConfigurationOutput
+            });
+
+            let edges_with_deleted = Edge::list(ctx_with_deleted).await?;
+
+            let mut maybe_deleted_parent_id = None;
+
+            if let Some(socket_to_parent) = maybe_socket_to_parent {
+                for edge in &edges_with_deleted {
+                    if edge.tail_object_id() == (*component.id()).into()
+                        && edge.tail_socket_id() == *socket_to_parent.id()
+                        && (edge.visibility().deleted_at.is_some() && edge.deleted_implicitly)
+                    {
+                        maybe_deleted_parent_id = Some(edge.head_object_id().into());
+                        break;
+                    }
+                }
+            };
+
+            if let Some(parent_id) = maybe_deleted_parent_id {
+                return Err(ComponentError::InsideDeletedFrame(component_id, parent_id));
+            }
+        }
+
         let rows = ctx
             .txns()
             .pg()
