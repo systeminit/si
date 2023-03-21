@@ -1,11 +1,11 @@
 /*
-Normally I'd just use redis directly...
-but since we aren't running redis yet and our needs are super basic, we'll add a wrapper
-so that we can use an in-memory cache for now, and then swap in hosted redis on prod
-should be easy enough to change this later if we want to...
+small wrapper around redis so taht we can use in-memory cache when running locally
+if/when we add a redis component anything else, we can delete this and just use it directly
 */
 
 // for now we'll say everything being cached should be an object... can allow raw strings/etc later if necessary
+import { redis, REDIS_ENABLED } from './redis';
+
 type CacheableInfo = Record<string, any>;
 
 // if we decide to use an in memory cache on production, we'll at least swap in
@@ -24,14 +24,17 @@ export async function setCache(
     expiresIn?: number;
   },
 ) {
-  inMemoryCache[key] = val;
+  if (REDIS_ENABLED) {
+    await redis.setJSON(key, val, options);
+  } else {
+    inMemoryCache[key] = val;
 
-  // obviously this is dumb and incomplete...
-  // will eventually swap in something full featured or just use redis
-  if (options?.expiresIn) {
-    expireTimeouts[key] = setTimeout(async () => {
-      await deleteCacheKey(key);
-    }, options.expiresIn * 1000);
+    // obviously this is dumb and incomplete... but is only used for local dev
+    if (options?.expiresIn) {
+      expireTimeouts[key] = setTimeout(async () => {
+        await deleteCacheKey(key);
+      }, options.expiresIn * 1000);
+    }
   }
 }
 
@@ -39,18 +42,28 @@ export async function getCache<T extends CacheableInfo>(
   key: string,
   deleteKey = false,
 ): Promise<T | undefined> {
-  const val = inMemoryCache[key];
-  if (val === undefined) return undefined;
+  if (REDIS_ENABLED) {
+    const obj = redis.getJSON(key, { delete: deleteKey });
+    if (obj) return obj as unknown as T;
+    else return obj;
+  } else {
+    const val = inMemoryCache[key];
+    if (val === undefined) return undefined;
 
-  if (deleteKey) {
-    await deleteCacheKey(key);
+    if (deleteKey) {
+      await deleteCacheKey(key);
+    }
+    return val as T;
   }
-  return val as T;
 }
 
 export async function deleteCacheKey(key: string) {
-  delete inMemoryCache[key];
-  if (expireTimeouts[key]) {
-    clearTimeout(expireTimeouts[key]);
+  if (REDIS_ENABLED) {
+    await redis.del(key);
+  } else {
+    delete inMemoryCache[key];
+    if (expireTimeouts[key]) {
+      clearTimeout(expireTimeouts[key]);
+    }
   }
 }

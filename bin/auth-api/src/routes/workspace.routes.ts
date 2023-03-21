@@ -78,7 +78,7 @@ router.post("/complete-auth-connect", async (ctx) => {
     code: z.string(),
   }));
 
-  const connectPayload = await getCache(`auth:connect:${reqBody.code}`);
+  const connectPayload = await getCache(`auth:connect:${reqBody.code}`, true);
   if (!connectPayload) throw new ApiError('Forbidden', 'Invalid authentication code');
 
   const workspace = await getWorkspaceById(connectPayload.workspaceId);

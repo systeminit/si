@@ -23,7 +23,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18.15.0
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -33,7 +33,7 @@ jobs:
         id: pnpm-cache
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          echo "STORE_PATH=$(pnpm store path | tr -d '\n')" >> $GITHUB_OUTPUT
       - name: Setup pnpm cache
         uses: actions/cache@v3
         with:
