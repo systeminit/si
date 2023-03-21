@@ -405,6 +405,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 value: Some(serde_json::json!["quantum"]),
                 logs: Default::default(),
                 message: Default::default(),
+                last_synced: Default::default(),
             },
             true,
         )

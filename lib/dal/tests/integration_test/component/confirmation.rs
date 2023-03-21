@@ -224,6 +224,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 value: Some(serde_json::json!["poop"]),
                 message: None,
                 logs: vec![],
+                last_synced: Default::default(),
             },
             true,
         )
@@ -266,6 +267,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 value: None,
                 message: None,
                 logs: vec![],
+                last_synced: Default::default(),
             },
             true,
         )
@@ -592,6 +594,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 value: None,
                 message: None,
                 logs: vec![],
+                last_synced: Default::default(),
             },
             true,
         )
