@@ -51,6 +51,7 @@
             kubeval
             libtool
             gnumake
+	    openssl
             protobuf
             skopeo
             jq
