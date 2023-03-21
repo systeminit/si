@@ -35,7 +35,7 @@ impl JobProcessorConnector for NatsProcessor {
         alive_marker: mpsc::Sender<()>,
     ) -> Result<(Self::Client, Box<dyn JobQueueProcessor + Send + Sync>), ServerError> {
         let job_client = Server::connect_to_nats(config.nats()).await?;
-        let job_processor = Box::new(NatsProcessor::new(job_client.clone(), alive_marker))
+        let job_processor = Box::new(NatsProcessor::new(job_client.clone(), alive_marker, None))
             as Box<dyn JobQueueProcessor + Send + Sync>;
         Ok((job_client, job_processor))
     }

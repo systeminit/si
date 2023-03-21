@@ -6,17 +6,22 @@ use dal::{
     PropKind, StandardModel,
 };
 use dal_test::{
-    helpers::{component_payload::ComponentPayload, setup_identity_func},
+    helpers::{
+        commit_waiting_for_jobs_and_continue, component_payload::ComponentPayload,
+        setup_identity_func,
+    },
     test,
     test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn inter_component_identity_update(ctx: &DalContext) {
+async fn inter_component_identity_update(ctx: DalContext) {
     // Setup both components used for inter component identity update.
-    let esp_payload = setup_esp(ctx).await;
-    let swings_payload = setup_swings(ctx).await;
+    let esp_payload = setup_esp(&ctx).await;
+    let swings_payload = setup_swings(&ctx).await;
+
+    let ctx = commit_waiting_for_jobs_and_continue(ctx).await;
 
     // Ensure setup went as expected.
     assert_eq!(
@@ -33,7 +38,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 },
             },
         }], // expected
-        esp_payload.component_view_properties_raw(ctx).await // actual
+        esp_payload.component_view_properties_raw(&ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -44,7 +49,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             },
             "domain": {},
         }], // expected
-        swings_payload.component_view_properties_raw(ctx).await // actual
+        swings_payload.component_view_properties_raw(&ctx).await // actual
     );
 
     // Collect the identity func information we need.
@@ -53,32 +58,34 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         id_func_arg_id,
-    ) = setup_identity_func(ctx).await;
+    ) = setup_identity_func(&ctx).await;
 
     // Setup the "esp" intra component update functionality from "source" to "intermediate".
     let intermediate_attribute_value = AttributeValue::find_for_context(
-        ctx,
+        &ctx,
         esp_payload.attribute_read_context_with_prop_id("/root/domain/object/intermediate"),
     )
     .await
     .expect("cannot find attribute value")
     .expect("attribute value not found");
     let mut intermediate_attribute_prototype = intermediate_attribute_value
-        .attribute_prototype(ctx)
+        .attribute_prototype(&ctx)
         .await
         .expect("cannot find attribute prototype")
         .expect("attribute prototype not found");
     intermediate_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(&ctx, identity_func_id)
         .await
         .expect("could not set func id on attribute prototype");
-    let source_internal_provider =
-        InternalProvider::find_for_prop(ctx, esp_payload.get_prop_id("/root/domain/object/source"))
-            .await
-            .expect("could not get internal provider")
-            .expect("internal provider not found");
+    let source_internal_provider = InternalProvider::find_for_prop(
+        &ctx,
+        esp_payload.get_prop_id("/root/domain/object/source"),
+    )
+    .await
+    .expect("could not get internal provider")
+    .expect("internal provider not found");
     AttributePrototypeArgument::new_for_intra_component(
-        ctx,
+        &ctx,
         *intermediate_attribute_prototype.id(),
         id_func_arg_id,
         *source_internal_provider.id(),
@@ -89,7 +96,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Update the "esp" field, "source", to see if the intra component connection continues to work.
     esp_payload
         .update_attribute_value_for_prop_name(
-            ctx,
+            &ctx,
             "/root/domain/object/source",
             Some(serde_json::json!["one"]),
         )
@@ -110,7 +117,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 },
             },
         }], // expected
-        esp_payload.component_view_properties_raw(ctx).await // actual
+        esp_payload.component_view_properties_raw(&ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -121,12 +128,12 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             },
             "domain": {},
         }], // expected
-        swings_payload.component_view_properties_raw(ctx).await // actual
+        swings_payload.component_view_properties_raw(&ctx).await // actual
     );
 
     // Create the "esp" external provider for inter component connection.
     let (esp_external_provider, _socket) = ExternalProvider::new_with_socket(
-        ctx,
+        &ctx,
         esp_payload.schema_id,
         esp_payload.schema_variant_id,
         "output",
@@ -140,14 +147,14 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not create external provider");
     let esp_intermediate_internal_provider = InternalProvider::find_for_prop(
-        ctx,
+        &ctx,
         esp_payload.get_prop_id("/root/domain/object/intermediate"),
     )
     .await
     .expect("could not get internal provider")
     .expect("internal provider not found");
     AttributePrototypeArgument::new_for_intra_component(
-        ctx,
+        &ctx,
         *esp_external_provider
             .attribute_prototype_id()
             .expect("no attribute prototype id for external provider"),
@@ -159,7 +166,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
 
     // Create the "swings" explicit internal provider for intra component connection.
     let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
+        &ctx,
         swings_payload.schema_variant_id,
         "swings",
         identity_func_id,
@@ -171,23 +178,23 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not create explicit internal provider");
     let swings_destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
+        &ctx,
         swings_payload.attribute_read_context_with_prop_id("/root/domain/destination"),
     )
     .await
     .expect("cannot find attribute value")
     .expect("attribute value not found");
     let mut swings_destination_attribute_prototype = swings_destination_attribute_value
-        .attribute_prototype(ctx)
+        .attribute_prototype(&ctx)
         .await
         .expect("could not find attribute prototype")
         .expect("attribute prototype not found");
     swings_destination_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(&ctx, identity_func_id)
         .await
         .expect("could not set func id on attribute prototype");
     AttributePrototypeArgument::new_for_intra_component(
-        ctx,
+        &ctx,
         *swings_destination_attribute_prototype.id(),
         id_func_arg_id,
         *swings_explicit_internal_provider.id(),
@@ -212,7 +219,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 },
             },
         }], // expected
-        esp_payload.component_view_properties_raw(ctx).await // actual
+        esp_payload.component_view_properties_raw(&ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -223,12 +230,12 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             },
             "domain": {},
         }], // expected
-        swings_payload.component_view_properties_raw(ctx).await // actual
+        swings_payload.component_view_properties_raw(&ctx).await // actual
     );
 
     // Connect the two components.
     Edge::connect_providers_for_components(
-        ctx,
+        &ctx,
         *swings_explicit_internal_provider.id(),
         swings_payload.component_id,
         *esp_external_provider.id(),
@@ -252,7 +259,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 },
             },
         }], // expected
-        esp_payload.component_view_properties_raw(ctx).await // actual
+        esp_payload.component_view_properties_raw(&ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -263,13 +270,13 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             },
             "domain": {},
         }], // expected
-        swings_payload.component_view_properties_raw(ctx).await // actual
+        swings_payload.component_view_properties_raw(&ctx).await // actual
     );
 
     // Update the "esp" field, "source", again.
     esp_payload
         .update_attribute_value_for_prop_name(
-            ctx,
+            &ctx,
             "/root/domain/object/source",
             Some(serde_json::json!["two"]),
         )
@@ -290,7 +297,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 },
             },
         }], // expected
-        esp_payload.component_view_properties_raw(ctx).await // actual
+        esp_payload.component_view_properties_raw(&ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -303,7 +310,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "destination": "two",
             },
         }], // expected
-        swings_payload.component_view_properties_raw(ctx).await // actual
+        swings_payload.component_view_properties_raw(&ctx).await // actual
     );
 }
 

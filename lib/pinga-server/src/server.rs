@@ -90,6 +90,30 @@ pub struct Server {
 impl Server {
     #[instrument(name = "pinga.init.from_config", skip_all)]
     pub async fn from_config(config: Config) -> Result<Self> {
+        dal::init()?;
+
+        let encryption_key =
+            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+        let nats = Self::connect_to_nats(config.nats()).await?;
+        let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        Self::new(
+            pg_pool,
+            nats,
+            encryption_key,
+            config.concurrency(),
+            config.subject_prefix().map(ToString::to_string),
+        )
+        .await
+    }
+
+    #[instrument(name = "pinga.init.new", skip_all)]
+    pub async fn new(
+        pg_pool: PgPool,
+        nats: NatsClient,
+        encryption_key: Arc<EncryptionKey>,
+        concurrency_limit: usize,
+        subject_prefix: Option<String>,
+    ) -> Result<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
         // A watch channel used to notify internal parts of the server that a shutdown event is in
@@ -101,21 +125,18 @@ impl Server {
 
         let (alive_marker, job_processor_alive_marker_rx) = mpsc::channel(1);
 
-        let encryption_key =
-            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
-        let nats = Self::connect_to_nats(config.nats()).await?;
-        let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
-        let job_processor = Self::create_job_processor(nats.clone(), alive_marker);
+        let job_processor =
+            Self::create_job_processor(nats.clone(), alive_marker, subject_prefix.as_deref());
 
         let graceful_shutdown_rx =
             prepare_graceful_shutdown(external_shutdown_rx, shutdown_watch_tx)?;
 
         Ok(Server {
-            concurrency_limit: config.concurrency(),
+            concurrency_limit,
             pg_pool,
             nats,
-            subject_prefix: config.subject_prefix().map(|s| s.to_string()),
+            subject_prefix,
             veritech,
             encryption_key,
             job_processor,
@@ -185,8 +206,10 @@ impl Server {
     fn create_job_processor(
         nats: NatsClient,
         alive_marker: mpsc::Sender<()>,
+        subject_prefix: Option<&str>,
     ) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(NatsProcessor::new(nats, alive_marker)) as Box<dyn JobQueueProcessor + Send + Sync>
+        Box::new(NatsProcessor::new(nats, alive_marker, subject_prefix))
+            as Box<dyn JobQueueProcessor + Send + Sync>
     }
 }
 

@@ -84,6 +84,16 @@ impl TestContext {
     }
 
     pub async fn init_with_settings(settings: &TestConfig) -> Self {
+        let encryption_key = EncryptionKey::load(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key"),
+        )
+        .await
+        .expect("failed to load dev encryption key");
+
+        let nats_subject_prefix = nats_prefix();
+        let council_subject_prefix = format!("{nats_subject_prefix}.council");
+        let pinga_subject_prefix = format!("{nats_subject_prefix}.pinga");
+
         let tmp_event_log_fs_root = tempfile::tempdir().expect("could not create temp dir");
         let pg = PgPool::new(&settings.pg)
             .await
@@ -92,13 +102,13 @@ impl TestContext {
             .await
             .expect("failed to connect to NATS");
         let (alive_marker, _job_processor_shutdown_rx) = mpsc::channel(1);
-        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone(), alive_marker))
-            as Box<dyn JobQueueProcessor + Send + Sync>;
-
-        let nats_subject_prefix = nats_prefix();
+        let job_processor = Box::new(NatsProcessor::new(
+            nats_conn.clone(),
+            alive_marker,
+            Some(&pinga_subject_prefix),
+        )) as Box<dyn JobQueueProcessor + Send + Sync>;
 
         // Create a dedicated Council server with a unique subject prefix for each test
-        let council_subject_prefix = format!("{nats_subject_prefix}.council");
         let council_server =
             council_server(settings.nats.clone(), council_subject_prefix.clone()).await;
         let (_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
@@ -112,6 +122,19 @@ impl TestContext {
         });
         subscription_started_rx.changed().await.unwrap();
 
+        let server = pinga_server::Server::new(
+            pg.clone(),
+            nats_conn.clone(),
+            Arc::new(encryption_key),
+            5,
+            Some(pinga_subject_prefix),
+        )
+        .await
+        .expect("unable to create pinga server");
+        tokio::spawn(async move {
+            server.run().await.unwrap();
+        });
+
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let veritech_subject_prefix = format!("{nats_subject_prefix}.veritech");
         let veritech_server =
@@ -122,11 +145,6 @@ impl TestContext {
             nats_conn.clone(),
             veritech_subject_prefix,
         );
-        let encryption_key = EncryptionKey::load(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key"),
-        )
-        .await
-        .expect("failed to load dev encryption key");
         let secret_key = settings.jwt_encrypt.clone();
         let telemetry = telemetry::NoopClient;
 

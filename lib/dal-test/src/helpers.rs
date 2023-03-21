@@ -18,6 +18,16 @@ pub mod component_payload;
 
 /// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
 /// underlying [`dal::Connections`] and with identical state.
+///
+/// Waits for all jobs published to finish
+pub async fn commit_waiting_for_jobs_and_continue(ctx: DalContext) -> DalContext {
+    ctx.commit_waiting_for_jobs_and_continue()
+        .await
+        .expect("unable to commit waiting for jobs and continue")
+}
+
+/// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
+/// underlying [`dal::Connections`] and with identical state.
 pub async fn commit_and_continue(ctx: DalContext) -> DalContext {
     ctx.commit_and_continue()
         .await

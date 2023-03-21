@@ -109,7 +109,7 @@ async fn connect_processor(
     job_client: NatsClient,
     alive_marker: mpsc::Sender<()>,
 ) -> Result<Box<dyn JobQueueProcessor + Send + Sync>> {
-    let job_processor = Box::new(NatsProcessor::new(job_client, alive_marker))
+    let job_processor = Box::new(NatsProcessor::new(job_client, alive_marker, None))
         as Box<dyn JobQueueProcessor + Send + Sync>;
     Ok(job_processor)
 }

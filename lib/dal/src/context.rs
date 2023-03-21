@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
@@ -122,6 +123,12 @@ impl DalContext {
     }
 
     /// Consumes context, commiting transactions, returning new context with new transaction
+    pub async fn commit_waiting_for_jobs_and_continue(self) -> Result<Self, TransactionsError> {
+        let (builder, conns, request_ctx) = self.commit_into_parts_waiting_for_jobs().await?;
+        builder.build_with_conns(request_ctx, conns).await
+    }
+
+    /// Consumes context, commiting transactions, returning new context with new transaction
     pub async fn commit_and_continue(self) -> Result<Self, TransactionsError> {
         let (builder, conns, request_ctx) = self.commit_into_parts().await?;
         builder.build_with_conns(request_ctx, conns).await
@@ -131,6 +138,24 @@ impl DalContext {
     /// underlying connections.
     pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         self.txns.commit_into_conns().await
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// the context parts which can be used to build a new context.
+    ///
+    /// Waits for all jobs published to finish executing
+    pub async fn commit_into_parts_waiting_for_jobs(
+        self,
+    ) -> Result<(DalContextBuilder, Connections, RequestContext), TransactionsError> {
+        let conns = self.txns.commit_into_conns_waiting_for_jobs().await?;
+        let builder = self.services_context.into_builder();
+        let request_ctx = RequestContext {
+            tenancy: self.tenancy,
+            visibility: self.visibility,
+            history_actor: self.history_actor,
+        };
+
+        Ok((builder, conns, request_ctx))
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
@@ -577,6 +602,8 @@ pub enum TransactionsError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
+    #[error("no nats listener available")]
+    NoNatsListenerAvailable,
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -657,6 +684,27 @@ impl Transactions {
     /// Gets a reference to the NATS transaction.
     pub fn nats(&self) -> &NatsTxn {
         &self.nats_txn
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections.
+    pub async fn commit_into_conns_waiting_for_jobs(
+        self,
+    ) -> Result<Connections, TransactionsError> {
+        let pg_conn = self.pg_txn.commit_into_conn().await?;
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
+        let subscriptions = self.job_processor.process_queue().await?;
+        for mut subscription in subscriptions {
+            if let Some(message) = subscription.try_next().await? {
+                if message.data().is_empty() {
+                    return Err(TransactionsError::NoNatsListenerAvailable);
+                }
+            }
+            subscription.unsubscribe().await?;
+        }
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+
+        Ok(conns)
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns

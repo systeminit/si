@@ -162,7 +162,7 @@ async fn main() -> Result<()> {
     let pg_pool = PgPool::new(config.pg_pool()).await?;
     let veritech = veritech_client::Client::new(nats.clone());
     let (alive_marker, mut _job_processor_shutdown_rx) = mpsc::channel(1);
-    let job_processor = NatsProcessor::new(nats.clone(), alive_marker);
+    let job_processor = NatsProcessor::new(nats.clone(), alive_marker, None);
     let services_context = ServicesContext::new(
         pg_pool.clone(),
         nats.clone(),

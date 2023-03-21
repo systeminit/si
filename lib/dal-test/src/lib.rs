@@ -11,9 +11,7 @@ use std::{
 use dal::builtins::BuiltinSchemaOption;
 #[cfg(debug_assertions)]
 use dal::check_runtime_dependencies;
-use dal::{
-    job::processor::JobQueueProcessor, DalContext, JwtSecretKey, NatsProcessor, ServicesContext,
-};
+use dal::{job::processor::JobQueueProcessor, DalContext, JwtSecretKey, ServicesContext};
 use lazy_static::lazy_static;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -281,14 +279,17 @@ impl TestContextBuilder {
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling.
     async fn build(&self) -> Result<TestContext> {
-        let pg_pool = PgPool::new(&self.config.pg_pool)
+        let _pg_pool = PgPool::new(&self.config.pg_pool)
             .await
             .wrap_err("failed to create PgPool")?;
-        let nats_conn = NatsClient::new(&self.config.nats)
+        let _nats_conn = NatsClient::new(&self.config.nats)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let (alive_marker, _job_processor_shutdown_rx) = mpsc::channel(1);
-        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone(), alive_marker))
+        let (_alive_marker, _job_processor_shutdown_rx) = mpsc::channel::<()>(1);
+        println!("{:?} {:?}", self.encryption_key, self.jwt_secret_key);
+        todo!();
+        /*
+        let job_processor = Box::new(NatsProcessor::new(nats_conn, alive_marker, subject_prefix))
             as Box<dyn JobQueueProcessor + Send + Sync>;
 
         Ok(TestContext {
@@ -299,6 +300,7 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             jwt_secret_key: self.jwt_secret_key.clone(),
         })
+        */
     }
 }
 
@@ -384,9 +386,10 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     }
 
     let nats_subject_prefix = nats_subject_prefix();
+    let pinga_subject_prefix = format!("{nats_subject_prefix}.pinga");
+    let council_subject_prefix = format!("{nats_subject_prefix}.council");
 
     // Create a dedicated Council server with a unique subject prefix for each test
-    let council_subject_prefix = format!("{nats_subject_prefix}.council");
     let council_server = council_server(
         test_context.config.nats.clone(),
         council_subject_prefix.clone(),
@@ -402,6 +405,24 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     });
     subscription_started_rx.changed().await?;
 
+    // Create a `ServicesContext`
+    let services_ctx = test_context
+        .create_services_context(&nats_subject_prefix)
+        .await;
+
+    let server = pinga_server::Server::new(
+        services_ctx.pg_pool().clone(),
+        services_ctx.nats_conn().clone(),
+        Arc::new(*services_ctx.encryption_key()),
+        5,
+        Some(pinga_subject_prefix),
+    )
+    .await
+    .expect("unable to create pinga server");
+    tokio::spawn(async move {
+        server.run().await.unwrap();
+    });
+
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
     let veritech_server = veritech_server_for_uds_cyclone(
@@ -411,11 +432,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     .await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
     tokio::spawn(veritech_server.run());
-
-    // Create a `ServicesContext`
-    let services_ctx = test_context
-        .create_services_context(&nats_subject_prefix)
-        .await;
 
     info!("testing database connection");
     services_ctx
