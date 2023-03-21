@@ -6,8 +6,8 @@ use crate::{
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     socket::SocketArity,
     validation::Validation,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
-    ExternalProvider, InternalProvider, PropKind, SchemaVariant, StandardModel,
+    AttributePrototypeArgument, BuiltinsResult, DalContext, ExternalProvider, InternalProvider,
+    PropKind, SchemaVariant, StandardModel,
 };
 
 // Documentation URL(s)
@@ -170,26 +170,12 @@ impl MigrationDriver {
         )
         .await?;
 
-        let region_attribute_value_read_context =
-            AttributeReadContext::default_with_prop(*region_prop.id());
-        let region_attribute_value =
-            AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    region_attribute_value_read_context,
-                ))?;
-        let mut region_attribute_prototype = region_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        region_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
-            .await?;
-        AttributePrototypeArgument::new_for_intra_component(
+        self.link_region_prop_to_explicit_internal_provider(
             ctx,
-            *region_attribute_prototype.id(),
+            region_prop.id(),
+            identity_func_item.func_id,
             identity_func_item.func_argument_id,
-            *region_explicit_internal_provider.id(),
+            region_explicit_internal_provider.id(),
         )
         .await?;
 

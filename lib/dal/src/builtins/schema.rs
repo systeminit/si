@@ -17,12 +17,13 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    ActionPrototype, ActionPrototypeContext, BuiltinSchemaOption, BuiltinsError, BuiltinsResult,
-    DalContext, ExternalProvider, Func, FuncDescription, FuncDescriptionContents, FuncError,
-    FuncId, InternalProvider, LeafInput, LeafInputLocation, LeafKind, Prop, PropError, PropId,
-    PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
-    StandardModel, ValidationPrototype, ValidationPrototypeContext, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, BuiltinSchemaOption, BuiltinsError, BuiltinsResult, DalContext,
+    ExternalProvider, Func, FuncDescription, FuncDescriptionContents, FuncError, FuncId,
+    InternalProvider, InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropError,
+    PropId, PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod aws_ami;
@@ -462,6 +463,37 @@ impl MigrationDriver {
                 BuiltinsError::BuiltinMissingFuncArgument(func_name, func_argument_name.to_string())
             })?;
         Ok((func_id, *func_argument.id()))
+    }
+
+    pub async fn link_region_prop_to_explicit_internal_provider(
+        &self,
+        ctx: &DalContext,
+        region_prop_id: &PropId,
+        func_id: FuncId,
+        func_argument_id: FuncArgumentId,
+        region_internal_provider: &InternalProviderId,
+    ) -> BuiltinsResult<()> {
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop_id);
+        let region_attribute_value =
+            AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    region_attribute_value_read_context,
+                ))?;
+        let mut region_attribute_prototype = region_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        region_attribute_prototype.set_func_id(ctx, func_id).await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *region_attribute_prototype.id(),
+            func_argument_id,
+            *region_internal_provider,
+        )
+        .await?;
+        Ok(())
     }
 
     pub async fn add_deletion_confirmation_and_workflow(
