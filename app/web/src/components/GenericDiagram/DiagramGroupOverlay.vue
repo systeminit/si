@@ -42,7 +42,7 @@
       v-if="isDeleted"
       :icon="deleteIcon"
       :color="diagramConfig?.toneColors?.destructive"
-      :size="deletedXSize"
+      :size="deletedIconSize"
       :x="0"
       :y="nodeHeight / 2"
     />
@@ -118,8 +118,8 @@ const nodeHeight = computed(
 
 const position = computed(() => props.tempPosition || props.group.def.position);
 const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
-const deletedXSize = computed(() =>
-  Math.min(nodeHeight.value, nodeWidth.value),
+const deletedIconSize = computed(() =>
+  Math.min(nodeHeight.value, nodeWidth.value, 300),
 );
 
 const overlay = ref();
