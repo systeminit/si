@@ -21,7 +21,7 @@ jobs:
       pinga-changed: ${{ steps.check-component-changes.outputs.bin--pinga }}
       council-changed: ${{ steps.check-component-changes.outputs.bin--council }}
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1000
       - id: check-component-changes
@@ -139,6 +139,6 @@ jobs:
       VERITECH_STATUS: ${{ needs.veritech.result }}
       WEB_STATUS: ${{ needs.web.result }}
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
+      - uses: actions/checkout@v2
       - id: check-build-statuses
         run: ./ci/scripts/check-image-build-statuses.sh
