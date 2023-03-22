@@ -47,6 +47,7 @@ veritech-client = { path = "../../lib/veritech-client" }
 which = "4.3.0"
 ulid = { version = "1", features = ["serde"] }
 hex = "0.4.3"
+backtrace = "0.3.67"
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

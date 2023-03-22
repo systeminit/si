@@ -18,7 +18,6 @@ mod history;
 mod info;
 mod list;
 mod resolve;
-mod run;
 
 #[derive(Error, Debug)]
 pub enum WorkflowError {
@@ -78,7 +77,6 @@ pub fn routes() -> Router {
     Router::new()
         .route("/list", get(list::list))
         .route("/resolve", post(resolve::resolve))
-        .route("/run", post(run::run))
         .route("/history", get(history::history))
         .route("/info", get(info::info))
 }
