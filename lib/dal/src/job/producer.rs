@@ -1,20 +1,22 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use std::{collections::HashMap, convert::TryFrom};
+use std::{collections::HashMap, collections::VecDeque, convert::TryFrom};
 use thiserror::Error;
 use ulid::Ulid;
 
-use super::consumer::{JobConsumer, JobConsumerCustomPayload, JobInfo};
+use super::consumer::{JobConsumerCustomPayload, JobConsumerMetadata, JobInfo};
 
 #[derive(Error, Debug)]
 pub enum JobProducerError {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("arg {0:?} not found at index {1}")]
+    ArgNotFound(JobInfo, usize),
 }
 
 pub type JobProducerResult<T> = Result<T, JobProducerError>;
 
-pub trait JobProducer: std::fmt::Debug + Send + JobConsumer {
+pub trait JobProducer: std::fmt::Debug + Send + JobConsumerMetadata {
     fn args(&self) -> JobProducerResult<serde_json::Value>;
     fn meta(&self) -> JobProducerResult<JobMeta>;
     fn identity(&self) -> String;
@@ -25,8 +27,6 @@ pub trait JobProducer: std::fmt::Debug + Send + JobConsumer {
 pub struct JobMeta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retry: Option<isize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reserve_for: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
@@ -60,6 +60,35 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
             custom: JobConsumerCustomPayload {
                 extra: job_producer_meta.custom,
             },
+            subsequent_jobs: VecDeque::new(),
         })
+    }
+}
+
+impl JobProducer for JobInfo {
+    fn args(&self) -> JobProducerResult<serde_json::Value> {
+        self.args
+            .get(0)
+            .cloned()
+            .ok_or(JobProducerError::ArgNotFound(self.clone(), 0))
+    }
+    fn meta(&self) -> JobProducerResult<JobMeta> {
+        Ok(JobMeta {
+            at: self.at,
+            retry: self.retry,
+            custom: self.custom.extra.clone(),
+        })
+    }
+
+    fn identity(&self) -> String {
+        serde_json::to_string(&serde_json::json!({
+            "args": self.args,
+            "kind": self.kind,
+        }))
+        .expect("Cannot serialize JobInfo")
+    }
+
+    fn backtrace(&self) -> String {
+        self.backtrace.clone()
     }
 }

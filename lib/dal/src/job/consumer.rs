@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -68,6 +68,8 @@ pub enum JobConsumerError {
     ActionNotFound(String, ComponentId),
     #[error(transparent)]
     StatusUpdaterError(#[from] StatusUpdaterError),
+    #[error("arg {0:?} not found at index {1}")]
+    ArgNotFound(JobInfo, usize),
 }
 
 impl From<JobConsumerError> for std::io::Error {
@@ -77,6 +79,12 @@ impl From<JobConsumerError> for std::io::Error {
 }
 
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NextJobInfo {
+    pub job: JobInfo,
+    pub wait_for_execution: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
@@ -90,6 +98,7 @@ pub struct JobInfo {
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
     pub backtrace: String,
+    pub subsequent_jobs: VecDeque<NextJobInfo>,
 }
 
 impl JobInfo {
@@ -102,6 +111,34 @@ impl JobInfo {
     }
 }
 
+impl JobConsumerMetadata for JobInfo {
+    fn type_name(&self) -> String {
+        self.kind.clone()
+    }
+
+    fn access_builder(&self) -> AccessBuilder {
+        serde_json::from_value(
+            self.args
+                .get(1)
+                .cloned()
+                .ok_or(JobConsumerError::ArgNotFound(self.clone(), 1))
+                .expect("unable to get access builder"),
+        )
+        .expect("unable to deserialize access builder")
+    }
+
+    fn visibility(&self) -> Visibility {
+        serde_json::from_value(
+            self.args
+                .get(2)
+                .cloned()
+                .ok_or(JobConsumerError::ArgNotFound(self.clone(), 2))
+                .expect("unable to get access builder"),
+        )
+        .expect("unable to deserialize access builder")
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JobConsumerCustomPayload {
     #[serde(flatten)]
@@ -109,12 +146,15 @@ pub struct JobConsumerCustomPayload {
 }
 
 #[async_trait]
-// Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
-pub trait JobConsumer: std::fmt::Debug + Sync {
+pub trait JobConsumerMetadata: std::fmt::Debug + Sync {
     fn type_name(&self) -> String;
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
+}
 
+#[async_trait]
+// Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
+pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
     /// Horrible hack, exists to support sync processor, they need that all jobs run within the provided DalContext, without commiting any transactions, or writing to unrelated transactions
     /// And since it's sync the data sharing issue that appears in dependent values update running in parallel in pinga, sharing data, synchronized by council, stops existing
     fn set_sync(&mut self) {}

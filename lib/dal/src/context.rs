@@ -231,6 +231,12 @@ impl DalContext {
     }
 
     /// Updates this context with a new [`Visibility`].
+    pub fn update_access_builder(&mut self, access_builder: AccessBuilder) {
+        self.tenancy = access_builder.tenancy;
+        self.history_actor = access_builder.history_actor;
+    }
+
+    /// Updates this context with a new [`Visibility`].
     pub fn update_visibility(&mut self, visibility: Visibility) {
         self.visibility = visibility;
     }
@@ -283,6 +289,13 @@ impl DalContext {
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
         self.txns().job_processor.enqueue_job(job, self).await
+    }
+
+    pub async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
+        self.txns()
+            .job_processor
+            .enqueue_blocking_job(job, self)
+            .await
     }
 
     /// Gets the dal context's txns.
@@ -533,6 +546,10 @@ impl DalContextBuilder {
     /// Gets a reference to the NATS connection.
     pub fn nats_conn(&self) -> &NatsClient {
         &self.services_context.nats_conn
+    }
+
+    pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
+        self.services_context.job_processor.clone()
     }
 
     /// Builds and returns a new [`Connections`].
