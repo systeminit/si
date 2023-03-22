@@ -3,12 +3,12 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::edge::EdgeKind;
+use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
@@ -16,9 +16,7 @@ use crate::{
 };
 use crate::{DalContext, Edge, SchemaError};
 
-const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
-const LIST_CONNECTED_FOR_KIND: &str = include_str!("queries/node/list_connected_for_kind.sql");
-const LIST_LIVE_NODES: &str = include_str!("queries/node/list_live.sql");
+const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");
 
 #[derive(Error, Debug)]
 pub enum NodeError {
@@ -134,165 +132,112 @@ impl Node {
         result: NodeResult,
     );
 
-    pub async fn list_live(ctx: &DalContext) -> NodeResult<Vec<Self>> {
+    /// List all "live" [`Nodes`](Node) for a given [`NodeKind`](NodeKind).
+    ///
+    /// The [`DalContext`](crate::DalContext) should be provided with "deletion"
+    /// [`Visibility`](crate::Visibility).
+    pub async fn list_live(ctx: &DalContext, kind: NodeKind) -> NodeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                LIST_LIVE_NODES,
-                &[ctx.tenancy(), &ctx.visibility().to_deleted()],
+                LIST_LIVE,
+                &[
+                    ctx.tenancy(),
+                    &ctx.visibility().to_deleted(),
+                    &kind.as_ref(),
+                ],
             )
             .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// Find all [`NodeIds`](Self) for a given [`NodeKind`].
-    #[instrument(skip_all)]
-    pub async fn list_for_kind(ctx: &DalContext, kind: NodeKind) -> NodeResult<HashSet<NodeId>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_FOR_KIND,
-                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
-            )
-            .await?;
-        let mut node_ids = HashSet::new();
-        for row in rows {
-            let node_id: NodeId = row.try_get("node_id")?;
-            node_ids.insert(node_id);
-        }
-        Ok(node_ids)
-    }
-
-    /// Find all [`NodeIds`](Self) for a given [`NodeKind`] that are connected to at least one
-    /// [`Edge`](crate::Edge).
-    #[instrument(skip_all)]
-    pub async fn list_connected_for_kind(
-        ctx: &DalContext,
-        kind: NodeKind,
-    ) -> NodeResult<HashSet<NodeId>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_CONNECTED_FOR_KIND,
-                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
-            )
-            .await?;
-        let mut node_ids = HashSet::new();
-        for row in rows {
-            let node_id: NodeId = row.try_get("node_id")?;
-            node_ids.insert(node_id);
-        }
-        Ok(node_ids)
+        Ok(objects_from_rows(rows)?)
     }
 
     /// List all [`Nodes`](Self) of kind [`configuration`](NodeKind::Configuration) in
-    /// [`topological-ish`](https://en.wikipedia.org/wiki/Topological_sorting) order.
-    pub async fn list_topologically_ish_sorted_configuration_nodes(
+    /// [`topological`](https://en.wikipedia.org/wiki/Topological_sorting) order. The order will
+    /// be also be stable.
+    pub async fn list_topologically_sorted_configuration_nodes_with_stable_ordering(
         ctx: &DalContext,
         shuffle_edges: bool,
     ) -> NodeResult<Vec<NodeId>> {
         let total_start = std::time::Instant::now();
-        let ctx = &ctx.clone_with_delete_visibility();
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
-        // Gather all the edges, nodes, and connected nodes. There are likely many nodes that are
-        // connected, so there's data duplication here that can be fixed in the future. In addition,
-        // we optionally shuffle edges if a test requires it.
-        let mut edges = Edge::list_for_kind(ctx, EdgeKind::Configuration)
+        // Gather all nodes with at least one edge.
+        let mut edges = Edge::list_for_kind(ctx_with_deleted, EdgeKind::Configuration)
             .await
             .map_err(|e| NodeError::Edge(e.to_string()))?;
         if shuffle_edges {
             edges.shuffle(&mut thread_rng());
         }
-        let all_nodes = Self::list_for_kind(ctx, NodeKind::Configuration).await?;
-        let all_connected_nodes =
-            Self::list_connected_for_kind(ctx, NodeKind::Configuration).await?;
 
-        // We must track destinations because all nodes are sources, but are not destinations.
-        //
-        // Runtime complexity: O(n) where "n" is an edge
-        let mut nodes_with_immediate_destinations: HashMap<NodeId, HashSet<NodeId>> =
-            HashMap::new();
+        // Populate the nodes map based on all configuration edges. The "key" is every node with at
+        // least one edge. The "value" is a set of nodes that the "key" node depends on (i.e. the
+        // set of nodes are sources/tails in edges and the "key" node is the destination/head in
+        // in edges).
+        let mut nodes: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
         for edge in edges {
-            match nodes_with_immediate_destinations.entry(edge.tail_node_id()) {
-                Entry::Occupied(entry) => {
-                    entry.into_mut().insert(edge.head_node_id());
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert({
-                        let mut set = HashSet::new();
-                        set.insert(edge.head_node_id());
-                        set
-                    });
-                }
+            nodes
+                .entry(edge.head_node_id())
+                .and_modify(|set| {
+                    set.insert(edge.tail_node_id());
+                })
+                .or_insert_with(|| {
+                    let mut set = HashSet::new();
+                    set.insert(edge.tail_node_id());
+                    set
+                });
+        }
+
+        // Add all floating nodes (those without edges).
+        for potential_floating_node in
+            Self::list_live(ctx_with_deleted, NodeKind::Configuration).await?
+        {
+            if nodes.get(potential_floating_node.id()).is_none() {
+                nodes.insert(*potential_floating_node.id(), HashSet::new());
             }
         }
 
-        // Add the full destination lineage for every node.
-        //
-        // Runtime complexity: O(n*m) where "n" is a node and "m" is a full lineage node (i.e. a
-        // "head" of "n" or a "head of a head, etc." of "n")
-        let mut nodes_with_full_destination_lineage: HashMap<NodeId, HashSet<NodeId>> =
-            HashMap::new();
-        for (node_id, destinations) in &nodes_with_immediate_destinations {
-            let mut full_destination_lineage = HashSet::new();
-            let mut destinations_work_queue: VecDeque<NodeId> = VecDeque::new();
-            destinations_work_queue.extend(destinations.clone());
+        // Gather all results based on the nodes and their "depends_on" sets. This is a topological
+        // sort with stable ordering.
+        let mut results = Vec::new();
+        loop {
+            let mut siblings: Vec<NodeId> = Vec::new();
 
-            while let Some(destination) = destinations_work_queue.pop_front() {
-                full_destination_lineage.insert(destination);
-                if let Some(nested_destinations) =
-                    nodes_with_immediate_destinations.get(&destination)
-                {
-                    destinations_work_queue.extend(nested_destinations);
+            // For each node in the map, find siblings (those whose "depends_on" sets are empty)
+            for (node, depends_on) in &mut nodes {
+                if depends_on.is_empty() {
+                    siblings.push(*node);
                 }
             }
 
-            nodes_with_full_destination_lineage.insert(*node_id, full_destination_lineage);
-        }
-
-        // Sort all the node ids based on their full lineages. Insert immediately when we find the
-        // first destination and continue the outer loop.
-        //
-        // Runtime complexity: O(n*log(n)) where "n" is a node (this is loglinear because we
-        // immediately check for "floating" nodes and we insert at the first destination
-        // encountered)
-        let mut sorted: Vec<NodeId> = Vec::new();
-        'outer: for (node_id, destinations) in &nodes_with_full_destination_lineage {
-            if destinations.is_empty() {
-                sorted.insert(0, *node_id);
+            // If we found no siblings, then we have processed every node in the map and are ready
+            // to exit the loop.
+            if siblings.is_empty() {
+                break;
             }
 
-            for (index, sorted_node_id) in sorted.iter().enumerate() {
-                if destinations.contains(sorted_node_id) {
-                    sorted.insert(index, *node_id);
-                    continue 'outer;
+            // Remove each sibling from the map's "keys".
+            for sibling in &siblings {
+                nodes.remove(sibling);
+            }
+
+            // Remove each sibling from the map's "values".
+            nodes.iter_mut().for_each(|(_, depends_on)| {
+                for sibling in &siblings {
+                    depends_on.remove(sibling);
                 }
-            }
+            });
 
-            // If no destinations were found, push to the back.
-            sorted.push(*node_id);
+            // Provide stable ordering by sorting the siblings before extending the results.
+            siblings.sort();
+            results.extend(siblings);
         }
 
-        // Finally, add all nodes that do not have edges to the front (i.e. "floating" nodes) and
-        // push all connected nodes that are not tails for other edges (i.e. "terminating" nodes in
-        // the directed acyclic graph) to the back.
-        //
-        // Runtime complexity: O(n) where "n" is a node
-        for node_id in all_nodes {
-            if !all_connected_nodes.contains(&node_id) {
-                sorted.insert(0, node_id);
-            } else if !nodes_with_full_destination_lineage.contains_key(&node_id) {
-                sorted.push(node_id);
-            }
-        }
         debug!(
-            "listing topologically-ish sorted configuration nodes took {:?}",
+            "listing topologically sorted configuration nodes with stable ordering took {:?}",
             total_start.elapsed()
         );
-        Ok(sorted)
+        Ok(results)
     }
 
     pub async fn set_geometry(

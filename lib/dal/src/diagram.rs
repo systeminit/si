@@ -152,7 +152,7 @@ impl Diagram {
             }
         }
 
-        let nodes = Node::list_live(ctx_with_deleted).await?;
+        let nodes = Node::list_live(ctx_with_deleted, NodeKind::Configuration).await?;
 
         let mut component_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
