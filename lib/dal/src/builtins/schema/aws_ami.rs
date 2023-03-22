@@ -5,9 +5,8 @@ use crate::{
     schema::variant::definition::SchemaVariantDefinitionMetadataJson,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     socket::SocketArity,
-    validation::Validation,
-    AttributePrototypeArgument, BuiltinsResult, DalContext, ExternalProvider, InternalProvider,
-    PropKind, SchemaVariant, StandardModel,
+    AttributePrototypeArgument, BuiltinsResult, DalContext, ExternalProvider, Func, FuncArgument,
+    FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
 };
 
 // Documentation URL(s)
@@ -56,17 +55,17 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
-            ctx,
-            Validation::StringHasPrefix {
-                value: None,
-                expected: "ami-".to_string(),
-            },
-            *image_id_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
+        // self.create_validation(
+        //     ctx,
+        //     Validation::StringHasPrefix {
+        //         value: None,
+        //         expected: "ami-".to_string(),
+        //     },
+        //     *image_id_prop.id(),
+        //     *schema.id(),
+        //     *schema_variant.id(),
+        // )
+        // .await?;
 
         let region_prop = self
             .create_prop(
@@ -76,6 +75,83 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        let _executable_users_prop = self
+            .create_prop(
+                ctx,
+                "ExecutableUsers",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+
+        let _owners_prop = self
+            .create_prop(
+                ctx,
+                "Owners",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+
+        let filters_prop = self
+            .create_prop(
+                ctx,
+                "Filters",
+                PropKind::Array,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+
+        let filter_prop = self
+            .create_prop(
+                ctx,
+                "Filter",
+                PropKind::Object,
+                None,
+                Some(*filters_prop.id()),
+                None,
+            )
+            .await?;
+
+        let _name_prop = self
+            .create_prop(
+                ctx,
+                "Name",
+                PropKind::String,
+                None,
+                Some(*filter_prop.id()),
+                None,
+            )
+            .await?;
+
+        let _value_prop = self
+            .create_prop(
+                ctx,
+                "Value",
+                PropKind::String,
+                None,
+                Some(*filter_prop.id()),
+                None,
+            )
+            .await?;
+
+        let _use_most_recent_prop = self
+            .create_prop(
+                ctx,
+                "UseMostRecent",
+                PropKind::Boolean,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
             )
             .await?;
 
@@ -101,20 +177,6 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (image_id_external_provider, _output_socket) = ExternalProvider::new_with_socket(
-            ctx,
-            *schema.id(),
-            *schema_variant.id(),
-            "Image ID",
-            None,
-            identity_func_item.func_id,
-            identity_func_item.func_binding_id,
-            identity_func_item.func_binding_return_value_id,
-            SocketArity::Many,
-            false,
-        )
-        .await?;
-
         let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
@@ -129,24 +191,121 @@ impl MigrationDriver {
             .await?;
 
         // Qualifications
+        let qualification_func_name = "si:qualificationAmiExists";
         let (qualification_func_id, qualification_func_argument_id) = self
-            .find_func_and_single_argument_by_names(ctx, "si:qualificationAmiExists", "domain")
+            .find_func_and_single_argument_by_names(ctx, qualification_func_name, "domain")
             .await?;
+        let code_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", qualification_func_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        qualification_func_name.to_string(),
+                        "code".to_string(),
+                    )
+                })?;
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
             *schema_variant.id(),
             None,
             LeafKind::Qualification,
-            vec![LeafInput {
-                location: LeafInputLocation::Domain,
-                func_argument_id: qualification_func_argument_id,
-            }],
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::Domain,
+                    func_argument_id: qualification_func_argument_id,
+                },
+                LeafInput {
+                    location: LeafInputLocation::Code,
+                    func_argument_id: *code_func_argument.id(),
+                },
+            ],
         )
         .await?;
 
         // Wrap it up.
         schema_variant.finalize(ctx, None).await?;
+
+        let transformation_func_name = "si:awsAmiImageIdFromApi";
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
+        let transformation_func_id = *transformation_func.id();
+        let (transformation_func_binding, transformation_func_binding_return_value) =
+            FuncBinding::create_and_execute(ctx, serde_json::json!({}), transformation_func_id)
+                .await?;
+
+        let (image_id_external_provider, _output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Image ID",
+            None,
+            transformation_func_id,
+            *transformation_func_binding.id(),
+            *transformation_func_binding_return_value.id(),
+            SocketArity::Many,
+            false,
+        )
+        .await?;
+
+        let image_id_external_provider_attribute_prototype_id = image_id_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *image_id_external_provider.id(),
+                )
+            })?;
+
+        let domain_internal_provider =
+            InternalProvider::find_for_prop(ctx, root_prop.domain_prop_id)
+                .await?
+                .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                    root_prop.domain_prop_id,
+                ))?;
+
+        let code_internal_provider = InternalProvider::find_for_prop(ctx, root_prop.code_prop_id)
+            .await?
+            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                root_prop.code_prop_id,
+            ))?;
+
+        let domain_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "domain", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        "si:awsAmiImageIdFromApi".to_owned(),
+                        "domain".to_owned(),
+                    )
+                })?;
+
+        let code_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        "si:awsAmiImageIdFromApi".to_owned(),
+                        "code".to_owned(),
+                    )
+                })?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *image_id_external_provider_attribute_prototype_id,
+            *domain_func_argument.id(),
+            *domain_internal_provider.id(),
+        )
+        .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *image_id_external_provider_attribute_prototype_id,
+            *code_func_argument.id(),
+            *code_internal_provider.id(),
+        )
+        .await?;
 
         // Connect the props to providers.
         let external_provider_attribute_prototype_id = image_id_external_provider

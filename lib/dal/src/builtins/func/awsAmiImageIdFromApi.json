@@ -1,0 +1,16 @@
+{
+  "kind": "Json",
+  "response_type": "String",
+  "code_file": "awsAmiImageIdFromApi.js",
+  "code_entrypoint": "extract",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    },
+    {
+      "name": "code",
+      "kind": "Object"
+    }
+  ]
+}
