@@ -128,7 +128,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             s.edge_kind() == &SocketEdgeKind::ConfigurationInput
                 && s.kind() == &SocketKind::Provider
                 && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
+                && s.arity() == &SocketArity::One
                 && s.name() == "Region"
         })
         .expect("cannot find input socket");
