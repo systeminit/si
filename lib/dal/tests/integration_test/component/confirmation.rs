@@ -558,9 +558,20 @@ async fn list_confirmations(mut octx: DalContext) {
     assert!(view.recommendations.is_empty());
 
     // Observe that the confirmation worked after "creation".
-    let component_view = ComponentView::new(ctx, *component.id())
+    let mut component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not generate component view");
+
+    // Remove the `last_synced` element if present as it is a timestamp which makes it hard to
+    // diff against
+    component_view
+        .properties
+        .get_mut("resource")
+        .expect("failed to get resource under properties")
+        .as_object_mut()
+        .expect("failed to treat resource as json object")
+        .remove("last_synced");
+
     assert_eq!(
         serde_json::json![{
             "si": {
