@@ -1,6 +1,7 @@
 use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
+use backtrace::Backtrace;
 use serde::{Deserialize, Serialize};
 
 use crate::fix::FixError;
@@ -48,6 +49,7 @@ pub struct FixesJob {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
+    backtrace: String,
 }
 
 impl FixesJob {
@@ -76,6 +78,7 @@ impl FixesJob {
             access_builder,
             visibility,
             job: None,
+            backtrace: format!("{:?}", Backtrace::new()),
         })
     }
 }
@@ -105,6 +108,10 @@ impl JobProducer for FixesJob {
 
     fn identity(&self) -> String {
         serde_json::to_string(self).expect("Cannot serialize FixesJob")
+    }
+
+    fn backtrace(&self) -> String {
+        self.backtrace.clone()
     }
 }
 
@@ -256,6 +263,7 @@ impl TryFrom<JobInfo> for FixesJob {
             started: args.started,
             access_builder,
             visibility,
+            backtrace: job.backtrace.clone(),
             job: Some(job),
         })
     }

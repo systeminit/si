@@ -3,7 +3,7 @@ use std::{io, path::Path, sync::Arc};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{FixesJob, WorkflowRun},
+        definition::FixesJob,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
@@ -322,14 +322,12 @@ async fn job_request_task(ctx_builder: DalContextBuilder, request: Request<JobIn
 
 async fn job_request(ctx_builder: DalContextBuilder, request: Request<JobInfo>) -> Result<()> {
     let (job_info, _) = request.into_parts();
-    debug!(job = ?job_info, "executing job");
+    info!(id = %job_info.id, kind = %job_info.kind, args = ?job_info.args, "\n\n\nexecuting job");
+    trace!(backtrace = %job_info.backtrace, "caller backtrace");
 
     let job = match job_info.kind() {
         stringify!(DependentValuesUpdate) => Box::new(DependentValuesUpdate::try_from(job_info)?)
             as Box<dyn JobConsumer + Send + Sync>,
-        stringify!(WorkflowRun) => {
-            Box::new(WorkflowRun::try_from(job_info)?) as Box<dyn JobConsumer + Send + Sync>
-        }
         stringify!(FixesJob) => {
             Box::new(FixesJob::try_from(job_info)?) as Box<dyn JobConsumer + Send + Sync>
         }

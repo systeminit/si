@@ -89,6 +89,7 @@ pub struct JobInfo {
     pub args: Vec<Value>,
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
+    pub backtrace: String,
 }
 
 impl JobInfo {
