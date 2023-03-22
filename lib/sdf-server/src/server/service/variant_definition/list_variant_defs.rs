@@ -43,6 +43,7 @@ pub async fn list_variant_defs(
         .await?
         .iter()
         .map(|def| ListedVariantDef {
+            // TODO: Ensure we pass an actor for created / updated / deleted to the frontend
             id: def.id().to_owned(),
             name: def.name().to_owned(),
             menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),

@@ -23,7 +23,8 @@
         <span class="font-bold">Created At: </span>
         <Timestamp :date="assetStore.selectedAsset.createdAt" size="long" />
       </div>
-      <div><span class="font-bold">Created By: </span>sally@systeminit.com</div>
+      <!-- TODO: Populate the created by from SDF actorHistory-->
+      <div><span class="font-bold">Created By: </span>System Initiative</div>
       <SiChip
         v-if="assetStore.selectedAsset.variantExists"
         variant="warning"
