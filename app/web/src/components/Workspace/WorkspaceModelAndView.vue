@@ -136,11 +136,20 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
+import {
+  VButton2,
+  Modal,
+  Stack,
+  TabGroup,
+  TabGroupItem,
+  DropdownMenu,
+  DropdownMenuItemObjectDef,
+} from "@si/vue-lib/design-system";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {
@@ -148,15 +157,8 @@ import {
   EdgeId,
   useComponentsStore,
 } from "@/store/components.store";
-import DropdownMenu, {
-  MenuItemObjectDef,
-} from "@/ui-lib/menus/DropdownMenu.vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
+
 import SiPanel from "@/components/SiPanel.vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -604,7 +606,7 @@ const typeDisplayName = (action = "delete") => {
 };
 
 const rightClickMenuItems = computed(() => {
-  const items: MenuItemObjectDef[] = [];
+  const items: DropdownMenuItemObjectDef[] = [];
   if (isViewMode.value) {
     return items;
   }

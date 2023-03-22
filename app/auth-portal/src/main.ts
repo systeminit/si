@@ -1,13 +1,11 @@
 import { ViteSSG } from "vite-ssg";
 
-import "./style.css";
+import "@si/vue-lib/tailwind/main.css";
+import "@si/vue-lib/tailwind/tailwind.css";
+
 import App from "./App.vue";
 import routes from "./routes";
 import store from "./store";
-
-// createApp(App).mount('#app')
-// const app = createSSRApp(App)
-// app.mount('#app')
 
 export const createApp = ViteSSG(
   // the root component

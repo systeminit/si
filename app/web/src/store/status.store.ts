@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib";
+import * as _ from "lodash-es";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -428,7 +428,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "StatusUpdate",
-            callback: (update, metadata) => {
+            callback: (update, _metadata) => {
               // fill in update metadata if this the first time we're seeing this specific update
               if (!this.updateMetadataByPk[update.pk]) {
                 this.updateMetadataByPk[update.pk] = { actor: update.actor };

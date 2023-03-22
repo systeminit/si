@@ -13,7 +13,7 @@
 <script lang="ts" setup>
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
-import { useTheme } from "@/ui-lib/theme_tools";
+import { useTheme } from "@si/vue-lib/design-system";
 
 const props = defineProps({
   fromPoint: {

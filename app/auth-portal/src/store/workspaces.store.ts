@@ -1,5 +1,6 @@
+import * as _ from "lodash-es";
 import { defineStore } from "pinia";
-import { ApiRequest, _ } from "@si/vue-lib";
+import { ApiRequest } from "@si/vue-lib/pinia";
 import { UserId } from "./auth.store";
 import { ISODateString } from "./shared-types";
 

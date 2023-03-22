@@ -52,10 +52,8 @@
 import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
+import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import { useTheme } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },

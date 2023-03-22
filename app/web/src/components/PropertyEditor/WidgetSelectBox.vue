@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import SiSelectBox from "@/components/SiSelectBox.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";

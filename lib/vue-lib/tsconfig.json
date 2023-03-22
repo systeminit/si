@@ -3,8 +3,13 @@
   "compilerOptions": {
     // "composite": true,
     "types": [
-      "vite/client"
-    ]
+      "vite/client",
+      "unplugin-icons/types/raw"
+    ],
+    // some weird PNPM related issues around linking types
+    // that pop up in form-validation.ts without disabling declarations
+    "declaration": false,
+    "declarationMap": false,
   },
   "include": [
     "src/**/*.ts",

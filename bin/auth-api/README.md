@@ -30,6 +30,7 @@ While working on the auth stack, we still need to run it locally and configure t
   ```
 - point sdf to the auth api (TODO: figure out best way to pull from env)
 - (OPTIONAL) set auth-api redis url to a local redis instance in .env.local (ex: `REDIS_URL=127.0.0.1:6379`) only if needing to test redis. Falls back to in-memory storage...
+- run the db migrations (`pnpm run db:reset`) locally after booting your local database 
 - run the auth api `pnmp run dev` in this directory or `pnpm dev:auth-api` at the root
 - run the auth portal `pnmp run dev` in `app/auth-portal` or `pnpm dev:auth-portal` at the root
 - (or run both by running `pnpm run dev:auth` at the root)

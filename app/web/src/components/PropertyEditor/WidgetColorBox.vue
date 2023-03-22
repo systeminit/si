@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch, onBeforeUnmount } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import SiColorBox from "@/components/SiColorBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import {

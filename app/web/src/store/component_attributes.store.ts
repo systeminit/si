@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib";
+import * as _ from "lodash-es";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import {
   PropertyEditorSchema,

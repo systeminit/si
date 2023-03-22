@@ -1,9 +1,18 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import path from "path";
+import { readFileSync } from "fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
+import IconsPlugin from "unplugin-icons/vite";
+import svgLoaderPlugin from "vite-svg-loader";
 import packageJson from "./package.json";
+import postcss from "./postcss.config.cjs";
+
+const lessVars = readFileSync(
+  "./node_modules/@si/vue-lib/src/tailwind/less_vars.less",
+  "utf-8",
+);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,6 +22,9 @@ export default defineConfig({
   },
   plugins: [
     vue(),
+
+    svgLoaderPlugin(),
+    IconsPlugin({ compiler: "raw" }),
 
     ...(process.env.NODE_ENV !== "production"
       ? [
@@ -28,6 +40,12 @@ export default defineConfig({
         ]
       : []),
   ],
+  css: {
+    postcss,
+    preprocessorOptions: {
+      less: { additionalData: lessVars },
+    },
+  },
   resolve: {
     alias: [
       {

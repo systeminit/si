@@ -93,11 +93,13 @@
 
 <script lang="ts" setup>
 import { computed, watch } from "vue";
+import {
+  Icon,
+  RequestStatusMessage,
+  Timestamp,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import { usePackageStore } from "@/store/package.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import Timestamp from "@/ui-lib/Timestamp.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const packageStore = usePackageStore();
 const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");

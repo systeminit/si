@@ -38,11 +38,11 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { computed, PropType } from "vue";
 import tinycolor from "tinycolor2";
-import { useTheme } from "@/ui-lib/theme_tools";
+import { useTheme } from "@si/vue-lib/design-system";
 import { useStatusStore } from "@/store/status.store";
 import {
   DiagramDrawEdgeState,

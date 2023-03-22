@@ -162,15 +162,15 @@ import {
   PropType,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
+import { IconNames } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/GenericDiagram/DiagramGroupOverlay.vue";
-import { IconNames } from "@/ui-lib/icons/icon_set";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,

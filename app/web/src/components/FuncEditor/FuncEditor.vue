@@ -22,10 +22,9 @@
 <script lang="ts" setup>
 import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { LoadingMessage, ErrorMessage } from "@si/vue-lib/design-system";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import CodeEditor from "@/components/CodeEditor.vue";
-import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },

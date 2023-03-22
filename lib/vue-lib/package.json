@@ -2,21 +2,64 @@
   "name": "@si/vue-lib",
   "private": true,
   "version": "0.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./tailwind/": {
+      "default": "./src/tailwind/"
+    },
+    "./design-system": {
+      "default": "./src/design-system/index.ts"
+    },
+    "./pinia": {
+      "default": "./src/pinia/index.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "index": [
+        "./src/index.ts"
+      ],
+      "design-system": [
+        "./src/design-system/index.ts"
+      ],
+      "pinia": [
+        "./src/pinia/index.ts"
+      ]
+    }
+  },
   "dependencies": {
+    "@headlessui/tailwindcss": "^0.1.2",
+    "@headlessui/vue": "^1.7.10",
     "@si/ts-lib": "workspace:*",
+    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/line-clamp": "^0.4.2",
     "@types/lodash-es": "^4.17.6",
     "axios": "^0.27.2",
+    "clsx": "^1.2.1",
+    "date-fns": "^2.29.2",
     "is-promise": "^4.0.0",
+    "javascript-time-ago": "^2.5.7",
+    "local-storage-fallback": "^4.1.2",
     "lodash-es": "^4.17.21",
     "pinia": "^2.0.32",
-    "vue": "^3.2.45"
+    "tailwindcss-capsize": "^3.0.3",
+    "vue": "^3.2.45",
+    "vue-router": "^4.1.6"
   },
   "devDependencies": {
+    "@iconify/json": "^2.1.142",
     "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
     "@types/lodash": "^4.14.191",
-    "vite": "^4.1.4"
+    "autoprefixer": "^10.4.8",
+    "postcss": "^8.4.16",
+    "postcss-comment": "^2.0.0",
+    "postcss-each": "^1.1.0",
+    "tailwindcss": "^3.2.2",
+    "unplugin-icons": "^0.14.14",
+    "vite": "^4.1.4",
+    "vite-svg-loader": "^3.4.0"
   }
 }

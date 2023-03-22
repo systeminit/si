@@ -48,10 +48,10 @@
 
 <script setup lang="ts">
 import { computed, toRef } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { Icon } from "@si/vue-lib/design-system";
 import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import SiSelect from "./SiSelect.vue";
 import SiValidation from "./SiValidation.vue";
 

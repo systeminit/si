@@ -94,16 +94,18 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeMount } from "vue";
+import {
+  Icon,
+  ErrorMessage,
+  VButton2,
+  Stack,
+  TabGroup,
+  TabGroupItem,
+} from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";

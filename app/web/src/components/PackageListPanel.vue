@@ -57,13 +57,15 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import {
+  Modal,
+  RequestStatusMessage,
+  ScrollArea,
+  VButton2,
+} from "@si/vue-lib/design-system";
 import SiPackageListItem from "@/components/SiPackageListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import ScrollArea from "@/ui-lib/ScrollArea.vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
 import SiCollapsible from "./SiCollapsible.vue";
 import PackageExportModal from "./PackageExportModal.vue";
 

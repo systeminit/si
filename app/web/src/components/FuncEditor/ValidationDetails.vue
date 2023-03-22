@@ -53,7 +53,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
-import isEqual from "lodash/isEqual";
+import * as _ from "lodash-es";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import {
@@ -133,7 +133,7 @@ const addValidation = () => {
 
 const deleteValidation = (protoToDelete: ValidationPrototypeView) => {
   const prototypes = props.modelValue.prototypes.filter(
-    (proto) => !isEqual(proto, protoToDelete),
+    (proto) => !_.isEqual(proto, protoToDelete),
   );
   emit("update:modelValue", { type: "validation", prototypes });
   emit("change", { type: "validation", prototypes });

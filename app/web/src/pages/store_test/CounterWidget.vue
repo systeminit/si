@@ -13,9 +13,8 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import { Inline, VButton2 } from "@si/vue-lib/design-system";
 import { useCounterStore } from "@/store/counter.store";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
 
 const emit = defineEmits(["destroy"]);
 

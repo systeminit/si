@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { RouteLocationNormalizedLoaded } from "vue-router";
 
 export const useRouterStore = defineStore("router", {

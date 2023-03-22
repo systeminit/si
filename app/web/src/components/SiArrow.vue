@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 
 const props = defineProps<{
   nudge?: boolean;

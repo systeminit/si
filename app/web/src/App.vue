@@ -16,10 +16,10 @@
 import { computed } from "vue";
 import "floating-vue/dist/style.css";
 
+import { tw } from "@si/vue-lib";
+import { useThemeContainer } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
-import { useThemeContainer } from "@/ui-lib/theme_tools";
 import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
-import { tw } from "./utils/style_helpers";
 import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
@@ -60,20 +60,6 @@ const realtimeStore = useRealtimeStore();
 </script>
 
 <style>
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  background: transparent;
-}
-
-#app {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 .v-popper__arrow-container {
   display: none;
 }

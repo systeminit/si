@@ -126,9 +126,9 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { Icon } from "@si/vue-lib/design-system";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import SiArrow from "./SiArrow.vue";
 
 export interface SelectPropsOption {

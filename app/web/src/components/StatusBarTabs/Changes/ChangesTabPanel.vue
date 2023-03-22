@@ -79,13 +79,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { ErrorMessage } from "@si/vue-lib/design-system";
 import CodeViewer from "@/components/CodeViewer.vue";
 import StatusBarTabPanelComponentList, {
   FilterOption,
 } from "@/components/StatusBar/StatusBarTabPanelComponentList.vue";
 import { useComponentsStore } from "@/store/components.store";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 

@@ -8,8 +8,8 @@
       ]
     },
     "types": [
-      "vite/client"
-      //   "unplugin-icons/types/raw"
+      "vite/client",
+      "unplugin-icons/types/raw",
     ],
   },
   "include": [

@@ -29,10 +29,9 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
 
+import { VButton2, RequestStatusMessage } from "@si/vue-lib/design-system";
 import { usePackageStore } from "@/store/package.store";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 const packageStore = usePackageStore();
 const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");

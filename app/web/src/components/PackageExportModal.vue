@@ -72,14 +72,16 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
+import {
+  Modal,
+  VButton2,
+  VormInput,
+  useModal,
+  Stack,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import { usePackageStore, PkgExportRequest } from "@/store/package.store";
 import { useComponentsStore } from "@/store/components.store";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import { useModal } from "@/ui-lib/modals/modal_utils";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const packageStore = usePackageStore();
 const componentStore = useComponentsStore();

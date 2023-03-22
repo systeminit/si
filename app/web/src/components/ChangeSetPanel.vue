@@ -131,21 +131,23 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import JSConfetti from "js-confetti";
+import {
+  VButton2,
+  Icon,
+  VormInput,
+  VormInputOption,
+  Divider,
+  Stack,
+  Modal,
+  useValidatedInputGroup,
+} from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import Divider from "@/ui-lib/layout/Divider.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
-import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import { useStatusStore } from "@/store/status.store";
-import Wipe from "@/ui-lib/Wipe.vue";
+import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();

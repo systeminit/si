@@ -74,7 +74,7 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 
 export interface Option {
   label: string;

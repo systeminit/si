@@ -27,7 +27,7 @@
 import { computed, ref, useSlots } from "vue";
 import { RouterLink } from "vue-router";
 import clsx from "clsx";
-import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
+import { DropdownMenu } from "@si/vue-lib/design-system";
 
 const props = defineProps({
   selected: { type: Boolean },

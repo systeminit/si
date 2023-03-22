@@ -34,9 +34,8 @@
 </template>
 
 <script lang="ts" setup>
+import { Icon, DropdownMenuItem } from "@si/vue-lib/design-system";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import SiArrow from "@/components/SiArrow.vue";
 import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";

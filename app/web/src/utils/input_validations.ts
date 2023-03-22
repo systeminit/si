@@ -1,5 +1,5 @@
 import { ref, Ref, computed } from "vue";
-import find from "lodash/find";
+import * as _ from "lodash-es";
 import { PropertyEditorValidation } from "@/api/sdf/dal/property_editor";
 
 export const VALID_USERNAME_REGEX = /^[a-z0-9._-]+$/i;
@@ -31,7 +31,7 @@ export const useValidations = (
   const setInError = (errors: ErrorsArray) => {
     let nextInError = false;
     if (errors.length === 1) {
-      if (find(errors, (e) => e.id === "required")) {
+      if (_.find(errors, (e) => e.id === "required")) {
         if (dirty.value) {
           nextInError = true;
         }

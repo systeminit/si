@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib";
+import * as _ from "lodash-es";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";

@@ -55,10 +55,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import {
+  VButton2,
+  DropdownMenu,
+  DropdownMenuItem,
+} from "@si/vue-lib/design-system";
+
 import { useComponentsStore } from "@/store/components.store";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 
 export interface ComponentListItem {

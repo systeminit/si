@@ -72,17 +72,16 @@
 <script lang="ts" setup>
 import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
 import {
   ChangeSetId,
   useChangeSetsStore,
   changeSetIdNil,
 } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import PlaceholderComposeView from "@/components/layout/PlaceholderComposeView.vue";
 import StatusBar from "@/components/StatusBar.vue";
 

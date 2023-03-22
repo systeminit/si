@@ -53,14 +53,16 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed } from "vue";
+import {
+  Icon,
+  VButton2,
+  Inline,
+  Stack,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 

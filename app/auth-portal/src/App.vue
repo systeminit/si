@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="m-auto text-center p-2xl">
     <template v-if="checkAuthReq.isPending">
       checking if you are logged in...
     </template>
@@ -7,10 +7,16 @@
       <nav>
         <template v-if="userIsLoggedIn">
           <p>hello {{ authStore.bestUserLabel }}!</p>
-          <a class="button" :href="`${API_URL}/auth/logout`">Log out!</a>
+          <VButton2
+            tone="neutral"
+            icon="x"
+            variant="ghost"
+            :href="`${API_URL}/auth/logout`"
+            >Log out!</VButton2
+          >
         </template>
         <template v-else>
-          <a class="button" :href="`${API_URL}/auth/login`">Log in!</a>
+          <VButton2 :href="`${API_URL}/auth/login`">Log in!</VButton2>
         </template>
       </nav>
       <RouterView />
@@ -19,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { VButton2 } from "@si/vue-lib/design-system";
 import { computed, onBeforeMount } from "vue";
 import { RouterView } from "vue-router";
 import { useAuthStore } from "./store/auth.store";
@@ -36,4 +43,4 @@ onBeforeMount(async () => {
 });
 </script>
 
-<style scoped></style>
+<style></style>

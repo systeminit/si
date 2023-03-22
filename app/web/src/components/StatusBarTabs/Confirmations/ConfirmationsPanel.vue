@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 

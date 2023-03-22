@@ -12,8 +12,7 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
-import { useModal } from "@/ui-lib/modals/modal_utils";
+import { Modal, useModal } from "@si/vue-lib/design-system";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);

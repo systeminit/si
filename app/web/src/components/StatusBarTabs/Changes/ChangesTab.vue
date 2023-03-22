@@ -35,9 +35,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { Icon } from "@si/vue-lib/design-system";
 import StatusBarTab from "@/components/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/components/StatusBar/StatusBarTabPill.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 

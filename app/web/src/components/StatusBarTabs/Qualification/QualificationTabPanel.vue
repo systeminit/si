@@ -46,7 +46,8 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { Icon } from "@si/vue-lib/design-system";
 import QualificationViewerMultiple from "@/components/StatusBarTabs/Qualification/QualificationViewerMultiple.vue";
 import StatusBarTabPanelComponentList, {
   FilterOption,
@@ -54,7 +55,6 @@ import StatusBarTabPanelComponentList, {
 import { useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 
 const qualificationsStore = useQualificationsStore();
 const componentsStore = useComponentsStore();

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
-import { ApiRequest } from "@si/vue-lib";
+import { ApiRequest } from "@si/vue-lib/pinia";
 
 export type UserId = string;
 

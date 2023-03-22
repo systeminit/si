@@ -179,16 +179,18 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed } from "vue";
 import clsx from "clsx";
-import { themeClasses } from "@/ui-lib/theme_tools";
+import {
+  themeClasses,
+  Timestamp,
+  TabGroup,
+  TabGroupItem,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes.store";
-import Timestamp from "@/ui-lib/Timestamp.vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";

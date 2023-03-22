@@ -36,14 +36,16 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { watch, ref, nextTick } from "vue";
+import {
+  RequestStatusMessage,
+  TabGroup,
+  TabGroupItem,
+} from "@si/vue-lib/design-system";
 import FuncEditor from "@/components/FuncEditor/FuncEditor.vue";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
 const props = defineProps({
   funcId: { type: String },

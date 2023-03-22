@@ -117,13 +117,11 @@
 
 <script lang="ts" setup>
 import { computed, PropType, ref } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 
 import clsx from "clsx";
+import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
-
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { themeClasses } from "@/ui-lib/theme_tools";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import

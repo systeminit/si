@@ -34,13 +34,15 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { onMounted } from "vue";
+import {
+  ScrollArea,
+  VButton2,
+  RequestStatusMessage,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import AssetListItem from "./AssetListItem.vue";
 
 const assetStore = useAssetStore();

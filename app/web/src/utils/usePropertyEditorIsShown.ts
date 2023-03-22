@@ -1,5 +1,5 @@
 import { Ref, computed } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
 
 export function usePropertyEditorIsShown(

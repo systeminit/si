@@ -2,7 +2,7 @@ ARG BUILDER_IMAGE=cache
 ARG RUST_VERSION=1.57.0
 
 ARG BUILDER_LANG_JS_IMAGE=cache_lang_js
-ARG NODE_VERSION=16.13.1
+ARG NODE_VERSION=18.15.0
 
 ###########################################################################
 # Cache Stage

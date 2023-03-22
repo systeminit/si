@@ -302,12 +302,12 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, PropType, ref, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@/ui-lib/theme_tools";
+import { useTheme } from "@si/vue-lib/design-system";
 import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
 import {
   SOCKET_GAP,

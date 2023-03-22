@@ -65,7 +65,12 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import {
+  RequestStatusMessage,
+  ScrollArea,
+  ErrorMessage,
+} from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
@@ -73,10 +78,7 @@ import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
-import ScrollArea from "@/ui-lib/ScrollArea.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();

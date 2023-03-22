@@ -23,9 +23,9 @@ it from the diagram config's registry of icons */
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
-import { getIconByName } from "@/ui-lib/icons/icon_set";
+import { getIconByName } from "@si/vue-lib/design-system";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
 

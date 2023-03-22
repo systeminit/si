@@ -32,11 +32,9 @@
 <script lang="ts" setup>
 /* eslint-disable */
 import { computed, reactive, ref } from "vue";
-import _ from "lodash";
-import VButton2 from "@/ui-lib/VButton2.vue";
+import * as _ from "lodash-es";
+import { VButton2, Stack, Inline } from "@si/vue-lib/design-system";
 import { useCounterStore, useCounterStore2 } from "@/store/counter.store";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
 import CounterWidget from "./CounterWidget.vue";
 
 const widgets = reactive({} as Record<number, true>);

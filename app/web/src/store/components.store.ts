@@ -1,8 +1,9 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import async from "async";
 import { Vector2d } from "konva/lib/types";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { IconNames } from "@si/vue-lib/design-system";
 
 import {
   DiagramEdgeDef,
@@ -22,7 +23,6 @@ import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
-import { IconNames } from "@/ui-lib/icons/icon_set";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";

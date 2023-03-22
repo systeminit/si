@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { parseISO } from "date-fns";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";

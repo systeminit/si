@@ -30,9 +30,12 @@
 </template>
 
 <script setup lang="ts">
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { userOverrideTheme, useTheme } from "@/ui-lib/theme_tools";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import {
+  Icon,
+  DropdownMenuItem,
+  userOverrideTheme,
+  useTheme,
+} from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
 
 const { theme: currentTheme } = useTheme();

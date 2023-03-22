@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import jwtDecode from "jwt-decode";
 import { useRouter } from "vue-router";
-import { ApiRequest } from "@si/vue-lib";
+import { ApiRequest } from "@si/vue-lib/pinia";
 
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
