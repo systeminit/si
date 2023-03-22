@@ -82,7 +82,8 @@ impl Component {
     // TODO(nick): big query potential here.
     pub async fn list_confirmations(ctx: &DalContext) -> ComponentResult<Vec<ConfirmationView>> {
         let sorted_node_ids =
-            Node::list_topologically_ish_sorted_configuration_nodes(ctx, false).await?;
+            Node::list_topologically_sorted_configuration_nodes_with_stable_ordering(ctx, false)
+                .await?;
 
         // Go through all sorted nodes, assemble confirmations and order them by primary action
         // kind.
@@ -126,7 +127,7 @@ impl Component {
 
         // We need to invert the order of the delete results before we create the final results.
         // The final results are in the following order: destroy, create, other and "no
-        // recommendations" based on a topological-ish sort of the nodes.
+        // recommendations" based on a topological sort of the nodes.
         let mut results = Vec::new();
         delete_results.reverse();
         results.extend(delete_results);
