@@ -30,8 +30,9 @@
     <!-- List of components -->
     <div class="overflow-y-auto flex-expand">
       <div
-        v-for="component in props.componentList"
+        v-for="(component, index) in props.componentList"
         :key="component.id"
+        v-tooltip="overflowTooltips[index]"
         :class="
           component.id === selectedComponentId
             ? 'bg-action-500'
@@ -40,7 +41,10 @@
         class="py-xs px-xs cursor-pointer flex justify-between items-center leading-tight h-10"
         @click="componentsStore.setSelectedComponentId(component.id)"
       >
-        <span class="shrink h-full min-w-0 truncate mr-3">
+        <span
+          ref="componentsListRef"
+          class="shrink h-full min-w-0 truncate mr-3"
+        >
           {{ component.name }}
         </span>
         <slot name="icon" v-bind="{ component }"></slot>
@@ -98,4 +102,37 @@ const filterOptions = computed(() => {
 
 const componentsStore = useComponentsStore();
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
+
+const componentsListRef = ref();
+const overflowTooltips = computed(() => {
+  type TooltipInfo = {
+    content?: string;
+    delay?: { show: number; hide: number };
+  };
+
+  const tooltips: TooltipInfo[] = [];
+
+  if (!componentsListRef.value) {
+    return tooltips;
+  }
+
+  props.componentList.forEach((c) => {
+    const el = componentsListRef.value[props.componentList.indexOf(c)];
+
+    if (el.offsetWidth < el.scrollWidth) {
+      tooltips.push({ content: c.name, delay: { show: 700, hide: 10 } });
+    } else {
+      tooltips.push({});
+    }
+  });
+
+  return tooltips;
+});
+
+// const el = componentsListRef.value[props.componentList.indexOf(component)];
+// if (el.offsetWidth < el.scrollWidth) {
+//   return { content: component.name, delay: { show: 700, hide: 10 } };
+// } else {
+//   return {};
+// }
 </script>

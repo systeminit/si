@@ -84,50 +84,7 @@
             </template>
           </TabGroupItem>
           <TabGroupItem label="Resource" slug="resource">
-            <CodeViewer
-              v-if="selectedComponent.resource.data !== null"
-              :code="
-                selectedComponent.resource.data
-                  ? JSON.stringify(selectedComponent.resource.data, null, 2)
-                  : ''
-              "
-              class="dark:text-neutral-50 text-neutral-900 pt-2"
-            >
-              <template #title>
-                <StatusIndicatorIcon
-                  type="resource"
-                  :status="selectedComponent.resource.status"
-                />
-                <div class="grow font-bold pl-xs line-clamp-2">
-                  {{
-                    selectedComponent.resource.message
-                      ? selectedComponent.resource.message
-                      : `Health ${selectedComponent.resource.status}`
-                  }}
-                </div>
-                <div class="pr-sm">
-                  <FixDetails
-                    v-if="
-                      selectedComponent.resource.logs &&
-                      selectedComponent.resource.logs.length > 0
-                    "
-                    :health="selectedComponent.resource.status"
-                    :message="
-                      [selectedComponent.resource.message ?? ''].filter(
-                        (f) => f.length > 0,
-                      )
-                    "
-                    :details="selectedComponent.resource.logs"
-                  />
-                </div>
-              </template>
-            </CodeViewer>
-            <div
-              v-else
-              class="w-full text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900"
-            >
-              This component does not have a resource associated with it yet
-            </div>
+            <ComponentDetailsResource />
           </TabGroupItem>
         </TabGroup>
       </div>
@@ -149,8 +106,7 @@ import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
-import FixDetails from "./FixDetails.vue";
+import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 
 const props = defineProps<{
   disabled?: boolean;

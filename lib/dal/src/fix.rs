@@ -361,6 +361,7 @@ impl Fix {
                 message: Some("Execution timed-out".to_owned()),
                 // TODO: add proper logs here
                 logs: vec![],
+                last_synced: None,
             }
         } else {
             // Note: at least one resource is required for fixes that finished, but it's not clear

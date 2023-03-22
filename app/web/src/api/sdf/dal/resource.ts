@@ -18,6 +18,7 @@ export interface Resource {
   status: ResourceHealth;
   message: string | null;
   logs: string[];
+  lastSynced?: string;
 }
 
 export interface OutputStream {

@@ -564,9 +564,10 @@ impl Component {
             None => None,
         };
 
-        let parent_attribute_value = attribute_value.parent_attribute_value(ctx).await?.ok_or(
-            ComponentError::ParentAttributeValueNotFound(*attribute_value.id()),
-        )?;
+        let parent_attribute_value = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or_else(|| ComponentError::ParentAttributeValueNotFound(*attribute_value.id()))?;
         let (_, _) = AttributeValue::update_for_context(
             ctx,
             *attribute_value.id(),
@@ -597,9 +598,10 @@ impl Component {
             RootPropChild::DeletedAt,
         )
         .await?;
-        let parent_attribute_value = attribute_value.parent_attribute_value(ctx).await?.ok_or(
-            ComponentError::ParentAttributeValueNotFound(*attribute_value.id()),
-        )?;
+        let parent_attribute_value = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or_else(|| ComponentError::ParentAttributeValueNotFound(*attribute_value.id()))?;
         let attribute_context = AttributeContext::builder()
             .set_component_id(self.id)
             .set_prop_id(attribute_value.context.prop_id())
@@ -770,9 +772,12 @@ impl Component {
             SiPropChild::Protected,
         )
         .await?;
-        let raw_value = protected_attribute_value.get_value(ctx).await?.ok_or(
-            ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id()),
-        )?;
+        let raw_value = protected_attribute_value
+            .get_value(ctx)
+            .await?
+            .ok_or_else(|| {
+                ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id())
+            })?;
         let protected: bool = serde_json::from_value(raw_value)?;
         Ok(protected)
     }

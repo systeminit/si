@@ -40,9 +40,9 @@
 
     <DiagramIcon
       v-if="isDeleted"
-      icon="x"
+      :icon="deleteIcon"
       :color="diagramConfig?.toneColors?.destructive"
-      :size="deletedXSize"
+      :size="deletedIconSize"
       :x="0"
       :y="nodeHeight / 2"
     />
@@ -58,8 +58,8 @@ import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
 } from "@/components/GenericDiagram/diagram_constants";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import { DiagramGroupData, Size2D } from "./diagram_types";
-
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
@@ -76,6 +76,8 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+
+  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 });
 
 const diagramConfig = useDiagramConfig();
@@ -116,8 +118,8 @@ const nodeHeight = computed(
 
 const position = computed(() => props.tempPosition || props.group.def.position);
 const isDeleted = computed(() => props.group?.def.changeStatus === "deleted");
-const deletedXSize = computed(() =>
-  Math.min(nodeHeight.value, nodeWidth.value),
+const deletedIconSize = computed(() =>
+  Math.min(nodeHeight.value, nodeWidth.value, 300),
 );
 
 const overlay = ref();

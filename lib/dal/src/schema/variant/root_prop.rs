@@ -360,6 +360,13 @@ impl RootProp {
             .set_parent_prop(ctx, resource_prop_id)
             .await?;
 
+        let mut resource_last_synced_prop =
+            Prop::new(ctx, "last_synced", PropKind::String, None).await?;
+        resource_last_synced_prop.set_hidden(ctx, true).await?;
+        resource_last_synced_prop
+            .set_parent_prop(ctx, resource_prop_id)
+            .await?;
+
         Ok(resource_prop_id)
     }
 

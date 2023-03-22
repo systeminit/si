@@ -21,7 +21,7 @@
           hide-bottom-border
         >
           <template #label>
-            <div class="flex flex-row items-center gap-2">
+            <div class="flex flex-row flex-wrap items-center gap-1">
               <span class="font-bold flex flex-row items-center">
                 <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
                 <div
@@ -30,7 +30,7 @@
                     fixBatch.fixes.filter((f) => f.status === 'success')
                       .length === fixBatch.fixes.length
                   "
-                  class="pl-xs"
+                  class="pl-xs whitespace-nowrap"
                 >
                   All fixes succeeded
                 </div>
@@ -48,12 +48,16 @@
                 v-if="fixBatch.startedAt"
                 :class="
                   clsx(
-                    'text-xs',
+                    'text-xs italic',
                     themeClasses('text-neutral-700', 'text-neutral-300'),
                   )
                 "
               >
-                <Timestamp size="mini" :date="new Date(fixBatch.startedAt)" />
+                <Timestamp
+                  size="mini"
+                  show-time-if-today
+                  :date="new Date(fixBatch.startedAt)"
+                />
               </span>
             </div>
           </template>

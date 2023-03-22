@@ -1,42 +1,54 @@
 <template>
   <div class="m-xs mt-0 text-xs italic text-neutral-300">
-    <Inline
-      spacing="2xs"
-      :class="clsx(changeStatus === 'added' && 'text-success-500')"
+    <div
+      :class="
+        clsx(
+          changeStatus === 'added' && 'text-success-500',
+          'flex flex-row gap-2xs items-center',
+        )
+      "
     >
-      <Icon name="plus-circle" size="xs" />
-      {{ formatters.timeAgo(created.timestamp) }} by
-      {{ created.actor.label }}
-    </Inline>
-    <Inline
+      <Icon name="plus-circle" size="xs" class="shrink-0" />
+      <div class="grow truncate">
+        {{ formatters.timeAgo(created.timestamp) }} by
+        {{ created.actor.label }}
+      </div>
+    </div>
+    <div
       v-if="
         modified &&
         (changeStatus === 'modified' || changeStatus === 'unmodified') &&
         created?.timestamp !== modified?.timestamp
       "
-      spacing="2xs"
-      :class="clsx(changeStatus === 'modified' && 'text-warning-500')"
+      :class="
+        clsx(
+          changeStatus === 'modified' && 'text-warning-500',
+          'flex flex-row gap-2xs items-center',
+        )
+      "
     >
       <Icon name="tilde-circle" size="xs" />
-      {{ formatters.timeAgo(modified?.timestamp) }} by
-      {{ modified?.actor.label }}
-    </Inline>
-    <Inline
+      <div class="grow truncate">
+        {{ formatters.timeAgo(modified?.timestamp) }} by
+        {{ modified?.actor.label }}
+      </div>
+    </div>
+    <div
       v-if="changeStatus === 'deleted'"
-      class="text-destructive-500"
-      spacing="2xs"
+      class="flex flex-row gap-2xs items-center text-destructive-500"
     >
       <Icon name="minus-circle" size="xs" />
-      {{ formatters.timeAgo(deleted?.timestamp) }} by
-      {{ deleted?.actor.label }}
-    </Inline>
+      <div class="grow truncate">
+        {{ formatters.timeAgo(deleted?.timestamp) }} by
+        {{ deleted?.actor.label }}
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { PropType } from "vue";
 import clsx from "clsx";
-import Inline from "@/ui-lib/layout/Inline.vue";
 import formatters from "@/ui-lib/helpers/formatting";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/store/components.store";

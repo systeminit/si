@@ -13,6 +13,7 @@ export type TimestampSize = "mini" | "normal" | "long" | "extended";
 const props = defineProps({
   date: { type: Date, default: new Date() },
   relative: { type: Boolean, default: false },
+  showTimeIfToday: { type: Boolean, default: false },
   size: {
     type: String as PropType<TimestampSize>,
     default: "normal",
@@ -24,6 +25,17 @@ const timeAgo = new TimeAgo("en-US");
 
 const dateStr = computed(() => {
   const d = props.date;
+  if (
+    !props.relative &&
+    props.showTimeIfToday &&
+    d.toDateString() === new Date().toDateString()
+  ) {
+    if (props.size === "long" || props.size === "extended") {
+      return `Today at ${format(d, "h:mm:ss a")}`;
+    }
+    return format(d, "h:mm:ss a");
+  }
+
   if (props.size === "mini") {
     if (props.relative) {
       return timeAgo.format(d, "mini-minute-now");
