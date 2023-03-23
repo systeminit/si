@@ -66,6 +66,9 @@ export const useFuncStore = () => {
         return this.funcDetailsById[this.urlSelectedFuncId || ""];
       },
 
+      nameForSchemaVariantId: (_state) => (schemaVariantId: string) =>
+        componentsStore.schemaVariantsById[schemaVariantId]?.schemaName,
+
       funcById: (state) => (funcId: string) => state.funcDetailsById[funcId],
 
       funcList: (state) => _.values(state.funcsById),
@@ -91,11 +94,15 @@ export const useFuncStore = () => {
           value: sv.id,
         }));
       },
-      componentOptions() {
-        return componentsStore.allComponents.map(({ displayName, id }) => ({
-          label: displayName,
-          value: id,
-        }));
+      componentOptions(): { label: string; value: string }[] {
+        return componentsStore.allComponents.map(
+          ({ displayName, id, schemaVariantId }) => ({
+            label: `${displayName} (${
+              this.nameForSchemaVariantId(schemaVariantId) ?? "unknown"
+            })`,
+            value: id,
+          }),
+        );
       },
       providerIdToSourceName() {
         const idMap: { [key: string]: string } = {};
