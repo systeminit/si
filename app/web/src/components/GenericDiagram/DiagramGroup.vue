@@ -212,7 +212,7 @@
           verticalAlign: 'top',
           align: 'left',
           width: headerWidth - GROUP_HEADER_ICON_SIZE - 2,
-          text: `${group.def.subtitle}: ${group.def.childNodeIds?.length ?? 0}`,
+          text: `${group.def.subtitle}: ${childCount ?? 0}`,
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,
@@ -321,6 +321,7 @@ import {
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_HEADER_ICON_SIZE,
 } from "@/components/GenericDiagram/diagram_constants";
+import { useComponentsStore } from "@/store/components.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -376,6 +377,19 @@ const size = computed(
 const isDeleted = computed(() => props.group.def.changeStatus === "deleted");
 const isModified = computed(() => props.group.def.changeStatus === "modified");
 const isAdded = computed(() => props.group.def.changeStatus === "added");
+
+const childCount = computed(() => {
+  const mappedChildren = _.map(
+    props.group.def.childNodeIds,
+    (child) => useComponentsStore().componentsByNodeId[child],
+  );
+
+  const undeletedChildren = _.filter(mappedChildren, (child) =>
+    _.isNil(child?.deletedInfo),
+  );
+
+  return undeletedChildren.length;
+});
 
 const overlayIconSize = computed(() => nodeWidth.value / 3);
 

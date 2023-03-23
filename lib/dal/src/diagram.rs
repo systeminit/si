@@ -206,9 +206,43 @@ impl Diagram {
                 for edge in &edges_with_deleted {
                     if edge.head_node_id() == *node.id()
                         && edge.head_socket_id().to_string() == socket_from_children.id
-                        && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly)
+                        && (edge.visibility().deleted_at.is_none()
+                            || (edge.deleted_implicitly && edge.visibility().in_change_set()))
                     {
-                        child_node_ids.push(edge.tail_node_id());
+                        let child_node = Node::get_by_id(ctx_with_deleted, &edge.tail_node_id())
+                            .await?
+                            .ok_or(DiagramError::NodeNotFound)?;
+
+                        // This is a node in the current changeset and it is not deleted
+                        if child_node.visibility().in_change_set()
+                            && child_node.visibility().deleted_at.is_none()
+                        {
+                            child_node_ids.push(edge.tail_node_id());
+                            continue;
+                        }
+
+                        // this is a node in the current changeset that has been marked as deleted
+                        // now we need to check to see if it is exists in head
+                        // if it does, then it's a ghosted node and should be included as a child
+                        if child_node.visibility().in_change_set()
+                            && child_node.visibility().deleted_at.is_some()
+                        {
+                            let head_ctx = &ctx.clone_with_head();
+                            let head_node = Node::get_by_id(head_ctx, &edge.tail_node_id()).await?;
+                            if head_node.is_some() {
+                                child_node_ids.push(edge.tail_node_id());
+                                continue;
+                            }
+                        }
+
+                        // if the node is in head, doesn't exist directly on the changeset
+                        // and not marked as deleted in head, then it's also a valid child
+                        // *Remember*: a node won't exist in the changeset until a change is
+                        // made to a node!!
+                        if child_node.visibility().is_head() {
+                            child_node_ids.push(edge.tail_node_id());
+                            continue;
+                        }
                     }
                 }
             };

@@ -1092,7 +1092,13 @@ impl Component {
             };
 
             if let Some(parent_id) = maybe_deleted_parent_id {
-                return Err(ComponentError::InsideDeletedFrame(component_id, parent_id));
+                let parent_comp = Self::get_by_id(ctx_with_deleted, &parent_id)
+                    .await?
+                    .ok_or_else(|| ComponentError::NotFound(parent_id))?;
+
+                if parent_comp.visibility().deleted_at.is_some() {
+                    return Err(ComponentError::InsideDeletedFrame(component_id, parent_id));
+                }
             }
         }
 
