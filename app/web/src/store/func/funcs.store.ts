@@ -183,7 +183,7 @@ export const useFuncStore = () => {
         return new ApiRequest<{ success: true }>({
           method: "post",
           url: "func/exec_func",
-          params: { id: funcId },
+          params: { id: funcId, ...visibility },
         });
       },
 

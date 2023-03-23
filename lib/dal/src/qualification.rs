@@ -9,7 +9,7 @@ use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentError, ComponentId, DalContext, StandardModel, StandardModelError,
+    Component, ComponentError, ComponentId, DalContext, FuncId, StandardModel, StandardModelError,
     WsEventResult,
 };
 
@@ -156,14 +156,22 @@ impl QualificationView {
         ctx: &DalContext,
         qualification_name: String,
         qualification_entry: QualificationEntry,
+        attribute_prototype_func_id: FuncId,
         func_binding_return_value_id: FuncBindingReturnValueId,
-    ) -> Result<Self, QualificationError> {
+    ) -> Result<Option<Self>, QualificationError> {
         let func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &func_binding_return_value_id)
                 .await?
                 .ok_or(FuncBindingReturnValueError::NotFound(
                     func_binding_return_value_id,
                 ))?;
+
+        // If the func binding return value on this does not match the prototype func, it means
+        // the qualification has not yet been run
+        if *func_binding_return_value.func_id() != attribute_prototype_func_id {
+            return Ok(None);
+        }
+
         let func_metadata = func_binding_return_value.func_metadata_view(ctx).await?;
 
         let output_streams = func_binding_return_value.get_output_stream(ctx).await?;
@@ -197,14 +205,14 @@ impl QualificationView {
             sub_checks: vec![sub_check],
         });
 
-        Ok(QualificationView {
+        Ok(Some(QualificationView {
             title: func_metadata.display_name,
             description: func_metadata.description.map(Into::into),
             link: func_metadata.link.map(Into::into),
             output,
             result,
             qualification_name,
-        })
+        }))
     }
 }
 
