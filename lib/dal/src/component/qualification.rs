@@ -5,7 +5,6 @@ use telemetry::prelude::*;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::qualification::{
     QualificationResult, QualificationSubCheck, QualificationSubCheckStatus, QualificationView,
 };
@@ -66,19 +65,26 @@ impl Component {
                 .ok_or(AttributeValueError::NotFoundForReadContext(
                     prop_qualification_map_attribute_read_context,
                 ))?;
-        let mut entry_attribute_values: HashMap<String, FuncBindingReturnValueId> = HashMap::new();
+        let mut entry_attribute_values = HashMap::new();
         for entry_attribute_value in prop_qualification_map_attribute_value
             .child_attribute_values(ctx)
             .await?
         {
             let entry_attribute_value_id = *entry_attribute_value.id();
             let func_binding_return_value_id = entry_attribute_value.func_binding_return_value_id();
+            let entry_prototype_id = entry_attribute_value
+                .attribute_prototype(ctx)
+                .await?
+                .ok_or(ComponentError::MissingAttributePrototype(
+                    entry_attribute_value_id,
+                ))?
+                .func_id();
             let key = entry_attribute_value
                 .key
                 .ok_or(ComponentError::FoundMapEntryWithoutKey(
                     entry_attribute_value_id,
                 ))?;
-            entry_attribute_values.insert(key, func_binding_return_value_id);
+            entry_attribute_values.insert(key, (func_binding_return_value_id, entry_prototype_id));
         }
 
         // Now, check all qualifications in the tree.
@@ -103,21 +109,26 @@ impl Component {
                 serde_json::from_value(qualification_map_value)?;
 
             for (qualification_name, entry) in qualification_map {
-                let found_func_binding_return_value_id = entry_attribute_values
-                    .get(&qualification_name)
-                    .ok_or_else(|| {
-                        ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
-                            qualification_name.clone(),
-                        )
-                    })?;
-                let qual_view = QualificationView::new(
+                let (found_func_binding_return_value_id, attribute_prototype_func_id) =
+                    entry_attribute_values
+                        .get(&qualification_name)
+                        .ok_or_else(|| {
+                            ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
+                                qualification_name.clone(),
+                            )
+                        })?;
+
+                if let Some(qual_view) = QualificationView::new(
                     ctx,
                     qualification_name,
                     entry,
+                    *attribute_prototype_func_id,
                     *found_func_binding_return_value_id,
                 )
-                .await?;
-                results.push(qual_view);
+                .await?
+                {
+                    results.push(qual_view);
+                }
             }
         }
 

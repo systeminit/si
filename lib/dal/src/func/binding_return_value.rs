@@ -11,8 +11,9 @@ use crate::func::FuncMetadataView;
 use crate::{
     func::binding::FuncBindingId,
     func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
-    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId,
-    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    DalContext, FuncId, HistoryEventError, StandardModel, StandardModelError, Timestamp,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -122,6 +123,7 @@ impl FuncBindingReturnValue {
         FuncBindingReturnValueResult
     );
     standard_model_accessor!(value, OptionJson<JsonValue>, FuncBindingReturnValueResult);
+    standard_model_accessor_ro!(func_id, FuncId);
 
     pub async fn get_output_stream(
         &self,
