@@ -71,12 +71,12 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
+import { Icon } from "@si/vue-lib/design-system";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 
 const instructionsRef = ref();

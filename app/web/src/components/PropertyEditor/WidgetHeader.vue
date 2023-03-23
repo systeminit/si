@@ -57,12 +57,12 @@
 
 <script setup lang="ts">
 import { computed, toRefs } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import clsx from "clsx";
+import { Icon } from "@si/vue-lib/design-system";
 import SiButtonIcon from "@/components/SiButtonIcon.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
-import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps<{
   name: string;

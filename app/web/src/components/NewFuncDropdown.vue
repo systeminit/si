@@ -25,12 +25,14 @@
 
 <script setup lang="ts">
 import { PropType, ref } from "vue";
-import { ApiRequestStatus } from "@si/vue-lib";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  VButton2,
+} from "@si/vue-lib/design-system";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import { FuncVariant } from "@/api/sdf/dal/func";
-import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 
 const props = defineProps({
   label: { type: String, required: true },

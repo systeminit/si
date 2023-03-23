@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import clsx from "clsx";
 import SiPanelResizer from "./SiPanelResizer.vue";
 

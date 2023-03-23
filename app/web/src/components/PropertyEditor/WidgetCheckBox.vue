@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import {

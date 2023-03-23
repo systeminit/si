@@ -43,8 +43,7 @@
 import { computed, useSlots, PropType, toRef } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
 import clsx from "clsx";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { themeClasses } from "@/ui-lib/theme_tools";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 
 const props = defineProps({
   label: { type: String },

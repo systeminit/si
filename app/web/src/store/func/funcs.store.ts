@@ -1,7 +1,7 @@
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { watch } from "vue";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncVariant } from "@/api/sdf/dal/func";

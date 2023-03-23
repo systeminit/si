@@ -22,8 +22,8 @@ import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
+import { useTheme } from "@si/vue-lib/design-system";
 import { createLintSource } from "@/utils/typescriptLinter";
-import { useTheme } from "@/ui-lib/theme_tools";
 
 const props = defineProps<{
   modelValue: string;

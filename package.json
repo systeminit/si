@@ -31,5 +31,8 @@
     "toml": "^3.0.0",
     "turbo": "^1.6.3"
   },
+  "volta": {
+    "node": "18.15.0"
+  },
   "packageManager": "pnpm@7.18.1"
 }

@@ -12,7 +12,7 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
 import { EdgeId, useComponentsStore } from "@/store/components.store";
 import ComponentCard from "./ComponentCard.vue";

@@ -45,11 +45,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { DropdownMenuItem } from "@si/vue-lib/design-system";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiLogoWtsDev from "@/assets/images/si-logo-wts-dev.svg?url";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import SiArrow from "@/components/SiArrow.vue";
 import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";

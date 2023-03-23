@@ -55,9 +55,8 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { Timestamp, RequestStatusMessage } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import Timestamp from "@/ui-lib/Timestamp.vue";
 import SiChip from "@/components/SiChip.vue";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";

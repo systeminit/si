@@ -30,12 +30,10 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed } from "vue";
+import { Icon, Inline, Stack } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
 import ComponentCard from "./ComponentCard.vue";
 
 const componentsStore = useComponentsStore();

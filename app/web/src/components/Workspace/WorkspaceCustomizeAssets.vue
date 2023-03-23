@@ -23,7 +23,7 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { watch } from "vue";
 import { useAssetStore } from "@/store/asset.store";
 import ChangeSetPanel from "../ChangeSetPanel.vue";

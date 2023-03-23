@@ -51,10 +51,10 @@
 
 <script setup lang="ts">
 import { computed, toRef } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { Switch } from "@headlessui/vue";
+import { Icon } from "@si/vue-lib/design-system";
 import { useValidations, ValidatorArray } from "@/utils/input_validations";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import SiValidation from "./SiValidation.vue";
 
 const props = defineProps<{

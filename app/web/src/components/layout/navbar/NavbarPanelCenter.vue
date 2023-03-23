@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();

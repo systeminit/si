@@ -39,8 +39,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { useTheme } from "@/ui-lib/theme_tools";
-import { colors } from "../../utils/design_token_values";
+import { COLOR_PALETTE, useTheme } from "@si/vue-lib/design-system";
 
 const props = defineProps({
   gridMinX: { type: Number, required: true },
@@ -78,9 +77,13 @@ const ySteps = computed(() =>
 
 const { theme } = useTheme();
 const bgColor = computed(() =>
-  theme.value === "dark" ? colors.neutral[900] : colors.neutral[50],
+  theme.value === "dark"
+    ? COLOR_PALETTE.neutral[900]
+    : COLOR_PALETTE.neutral[50],
 );
 const lineColor = computed(() =>
-  theme.value === "dark" ? colors.neutral[700] : colors.neutral[200],
+  theme.value === "dark"
+    ? COLOR_PALETTE.neutral[700]
+    : COLOR_PALETTE.neutral[200],
 );
 </script>

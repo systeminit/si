@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import clsx from "clsx";
 import { computed } from "vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 import ProgressBar from "./ProgressBar.vue";
 
 const props = defineProps({

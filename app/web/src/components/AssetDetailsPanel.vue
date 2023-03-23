@@ -115,11 +115,13 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
+import {
+  VButton2,
+  VormInput,
+  RequestStatusMessage,
+  Modal,
+} from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");

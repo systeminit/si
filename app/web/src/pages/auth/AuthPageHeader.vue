@@ -15,8 +15,7 @@
 </template>
 
 <script lang="ts" setup>
-import Stack from "@/ui-lib/layout/Stack.vue";
-import RichText from "@/ui-lib/RichText.vue";
+import { Stack, RichText } from "@si/vue-lib/design-system";
 import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 
 const props = defineProps({

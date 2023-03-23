@@ -1,14 +1,15 @@
+import { COLOR_PALETTE } from "@si/vue-lib/design-system";
 import { DiagramConfig } from "./diagram_types";
-import { colors } from "../../utils/design_token_values";
 
 export const baseConfig: DiagramConfig = {
+  // TODO: pull in tones instead
   toneColors: {
-    success: colors.success[500],
-    warning: colors.warning[500],
-    destructive: colors.destructive[500],
-    error: colors.destructive[500],
-    action: colors.action[500],
-    info: colors.action[500],
-    neutral: colors.neutral[500],
+    success: COLOR_PALETTE.success[500],
+    warning: COLOR_PALETTE.warning[500],
+    destructive: COLOR_PALETTE.destructive[500],
+    error: COLOR_PALETTE.destructive[500],
+    action: COLOR_PALETTE.action[500],
+    info: COLOR_PALETTE.action[500],
+    neutral: COLOR_PALETTE.neutral[500],
   },
 };

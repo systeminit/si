@@ -49,10 +49,10 @@
 <script lang="ts" setup>
 import { PropType } from "vue";
 import clsx from "clsx";
-import formatters from "@/ui-lib/helpers/formatting";
+import { formatters } from "@si/vue-lib";
+import { Icon } from "@si/vue-lib/design-system";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/store/components.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
   changeStatus: { type: String as PropType<ChangeStatus> },

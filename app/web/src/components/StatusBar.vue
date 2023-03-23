@@ -168,16 +168,15 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
+import { Icon, useThemeContainer } from "@si/vue-lib/design-system";
 import SiPanel from "@/components/SiPanel.vue";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/components/StatusBarTabs/Qualification/QualificationTab.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ChangeSetTabPanel from "@/components/StatusBarTabs/Changes/ChangesTabPanel.vue";
 import ChangeSetTab from "@/components/StatusBarTabs/Changes/ChangesTab.vue";
 import FixHistoryTab from "@/components/StatusBarTabs/Fixes/FixHistoryTab.vue";

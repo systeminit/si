@@ -1,6 +1,6 @@
 import { createPinia } from "pinia";
 
-import { piniaHooksPlugin, initPiniaApiToolkitPlugin } from "@si/vue-lib";
+import { piniaHooksPlugin, initPiniaApiToolkitPlugin } from "@si/vue-lib/pinia";
 import api from "./api";
 
 // initialize root pinia store/instance

@@ -1,9 +1,9 @@
 // This is a map of valid websocket events to the shape of their payload
 // used in the subscribe fn to limit valid event names and set callback payload type
 
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ComponentId } from "../components.store";
 import { FixStatus } from "../fixes.store";
-import { ActorView } from "@/api/sdf/dal/history_actor";
 import {
   AttributeValueId,
   AttributeValueKind,

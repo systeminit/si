@@ -23,9 +23,9 @@
 
 <script lang="ts" setup>
 import { toRefs } from "vue";
+import { VButton2 } from "@si/vue-lib/design-system";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import { AddToArray, PropertyPath } from "@/api/sdf/dal/property_editor";
-import VButton2 from "@/ui-lib/VButton2.vue";
 import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{

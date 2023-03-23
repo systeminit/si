@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch, onBeforeUnmount } from "vue";
-import _, { parseInt } from "lodash";
+import * as _ from "lodash-es";
 import SiTextBox from "@/components/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import {
@@ -98,7 +98,7 @@ const setField = () => {
   ) {
     if (props.propKind === "integer") {
       emit("updatedProperty", {
-        value: parseInt(currentValue.value, 10),
+        value: _.parseInt(currentValue.value, 10),
         propId: propId.value,
         valueId: valueId.value,
       });

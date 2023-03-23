@@ -75,13 +75,15 @@ import {
   provide,
   ref,
 } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import {
+  ErrorMessage,
+  RequestStatusMessage,
+  ScrollArea,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 
 import { ComponentId, useComponentsStore } from "@/store/components.store";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 
 const outlineRef = ref<HTMLElement>();

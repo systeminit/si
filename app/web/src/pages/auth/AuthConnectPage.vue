@@ -32,14 +32,11 @@ import { onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useHead } from "@vueuse/head";
 
+import { Card, ErrorMessage, Stack, RichText } from "@si/vue-lib/design-system";
 import AppLayout from "@/components/layout/AppLayout.vue";
-import Card from "@/ui-lib/Card.vue";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
-import Stack from "@/ui-lib/layout/Stack.vue";
 import { useAuthStore } from "@/store/auth.store";
 
-import RichText from "@/ui-lib/RichText.vue";
 import AuthPageHeader from "./AuthPageHeader.vue";
 
 const router = useRouter();

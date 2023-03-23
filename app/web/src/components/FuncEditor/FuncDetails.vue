@@ -145,17 +145,19 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import {
+  VButton2,
+  TabGroup,
+  TabGroupItem,
+  LoadingMessage,
+  VormInput,
+} from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
-import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";

@@ -51,12 +51,14 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import clsx from "clsx";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { tw } from "@/utils/style_helpers";
-import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import { tw } from "@si/vue-lib";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  Icon,
+} from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];

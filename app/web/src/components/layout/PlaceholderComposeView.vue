@@ -20,7 +20,7 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import GenericDiagram from "@/components/GenericDiagram/GenericDiagram.vue";
 import SiPanel from "@/components/SiPanel.vue";

@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { ref, watch, toRefs } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { ValidatorArray, ErrorsArray } from "@/utils/input_validations";
 
 const props = defineProps<{

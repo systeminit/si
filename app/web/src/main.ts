@@ -3,8 +3,8 @@ import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
 
-import "@/assets/style/main.css";
-import "@/assets/style/tailwind.css";
+import "@si/vue-lib/tailwind/main.css";
+import "@si/vue-lib/tailwind/tailwind.css";
 
 import App from "@/App.vue";
 import "./utils/posthog";

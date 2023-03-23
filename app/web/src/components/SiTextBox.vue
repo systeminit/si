@@ -84,10 +84,10 @@
 
 <script setup lang="ts">
 import { computed, PropType, toRefs } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { Icon } from "@si/vue-lib/design-system";
 import { useFormSettings } from "@/utils/formSettings";
 import { ValidatorArray, useValidations } from "@/utils/input_validations";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import SiValidation from "./SiValidation.vue";
 
 const props = defineProps({

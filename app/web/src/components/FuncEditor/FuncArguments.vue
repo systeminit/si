@@ -57,10 +57,9 @@
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
+import { Inline, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import VButton from "@/components/VButton.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributeAssocations } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";

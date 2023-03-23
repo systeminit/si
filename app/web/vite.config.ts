@@ -9,7 +9,13 @@ import packageJson from "./package.json";
 import postcss from "./postcss.config.cjs";
 import ViteGitRevisionPlugin from "./build-src/vite_git_revision_plugin";
 
-const lessVars = readFileSync("./src/assets/style/less_vars.less", "utf-8");
+// can't import a random file as a string :(
+// importing via node_modules at least lest us sort of import it from the module rather
+// than using a relative path
+const lessVars = readFileSync(
+  "./node_modules/@si/vue-lib/src/tailwind/less_vars.less",
+  "utf-8",
+);
 
 // see https://vitejs.dev/config/ for more info
 export default (opts: { mode: string }) => {

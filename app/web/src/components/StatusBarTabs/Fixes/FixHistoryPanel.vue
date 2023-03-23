@@ -154,10 +154,9 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-// import Timestamp from "@/ui-lib/Timestamp.vue";
+import { Timestamp } from "@si/vue-lib/design-system";
 import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "@/components/CodeViewer.vue";
-import Timestamp from "@/ui-lib/Timestamp.vue";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import FixDetails from "@/components/FixDetails.vue";
 

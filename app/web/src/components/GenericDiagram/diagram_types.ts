@@ -1,5 +1,5 @@
 import { Vector2d } from "konva/lib/types";
-import { IconNames } from "@/ui-lib/icons/icon_set";
+import { IconNames } from "@si/vue-lib/design-system";
 import { useComponentsStore, ComponentId } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 

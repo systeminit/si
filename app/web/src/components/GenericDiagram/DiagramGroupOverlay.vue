@@ -51,14 +51,14 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, PropType, ref, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
+import { IconNames } from "@si/vue-lib/design-system";
 import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
 } from "@/components/GenericDiagram/diagram_constants";
-import { IconNames } from "@/ui-lib/icons/icon_set";
 import { DiagramGroupData, Size2D } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";

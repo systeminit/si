@@ -42,9 +42,7 @@ export type IconType = keyof typeof CONFIG;
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
-import Icon, { IconSizes } from "@/ui-lib/icons/Icon.vue";
-import { IconNames } from "@/ui-lib/icons/icon_set";
-import { Tones } from "@/ui-lib/helpers/tones";
+import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
 
 // TODO: remove this after refactoring StatusMessageBox
 // TODO(nick,paulo,paul,wendy): remove "neverStarted" once the fix flow is working again.

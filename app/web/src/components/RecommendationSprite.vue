@@ -127,12 +127,14 @@
 <script setup lang="ts">
 import { Ref, computed, PropType, ref, watch, onBeforeUnmount } from "vue";
 import clsx from "clsx";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { IconNames } from "@/ui-lib/icons/icon_set";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
+import {
+  Timestamp,
+  themeClasses,
+  VormInput,
+  Icon,
+  IconNames,
+} from "@si/vue-lib/design-system";
 import { Recommendation } from "@/store/fixes.store";
-import { themeClasses } from "@/ui-lib/theme_tools";
-import Timestamp from "@/ui-lib/Timestamp.vue";
 import SiCollapsible from "./SiCollapsible.vue";
 
 const props = defineProps({

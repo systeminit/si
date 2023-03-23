@@ -52,7 +52,9 @@
       <template v-if="isAdded">
         <DiagramIcon
           icon="plus"
-          :color="theme === 'dark' ? colors.shade[100] : colors.shade[0]"
+          :color="
+            theme === 'dark' ? COLOR_PALETTE.shade[100] : COLOR_PALETTE.shade[0]
+          "
           circle-bg
           :bg-color="diagramConfig?.toneColors?.success"
           :size="20"
@@ -73,8 +75,7 @@
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
-import { colors } from "@/utils/design_token_values";
-import { useTheme } from "@/ui-lib/theme_tools";
+import { COLOR_PALETTE, useTheme } from "@si/vue-lib/design-system";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
@@ -109,7 +110,7 @@ const isDeleted = computed(() => props.edge.def.changeStatus === "deleted");
 const isAdded = computed(() => props.edge.def.changeStatus === "added");
 
 const defaultStrokeColor = computed(() =>
-  theme.value === "dark" ? colors.shade[0] : colors.shade[100],
+  theme.value === "dark" ? COLOR_PALETTE.shade[0] : COLOR_PALETTE.shade[100],
 );
 
 const strokeColor = computed(() => {
@@ -117,8 +118,8 @@ const strokeColor = computed(() => {
     return "rgba(100,50,255,0.1)";
   }
 
-  if (isAdded.value) return colors.success[500];
-  if (isDeleted.value) return colors.destructive[500];
+  if (isAdded.value) return COLOR_PALETTE.success[500];
+  if (isDeleted.value) return COLOR_PALETTE.destructive[500];
   return defaultStrokeColor.value;
 });
 

@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { watch } from "vue";
 
 import storage from "local-storage-fallback";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";

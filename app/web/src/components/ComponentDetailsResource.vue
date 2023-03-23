@@ -61,8 +61,8 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import { Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import Timestamp from "@/ui-lib/Timestamp.vue";
 import CodeViewer from "./CodeViewer.vue";
 import FixDetails from "./FixDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";

@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { computed, PropType } from "vue";
 import { useRoute } from "vue-router";
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 import { PackageId, usePackageStore } from "@/store/package.store";
 
 const props = defineProps({

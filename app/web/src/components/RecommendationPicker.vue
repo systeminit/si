@@ -127,15 +127,17 @@
 <script lang="ts" setup>
 import { reactive, ref, computed, onBeforeUnmount, onBeforeMount } from "vue";
 import clsx from "clsx";
+import {
+  TabGroup,
+  TabGroupItem,
+  VButton2,
+  Icon,
+  VormInput,
+  themeClasses,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
 import { useFixesStore } from "@/store/fixes.store";
-import { themeClasses } from "@/ui-lib/theme_tools";
 import RecommendationSprite from "@/components/RecommendationSprite.vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
 const selectAll = (checked: boolean) => {
   for (const recommendation of recommendations.value) {

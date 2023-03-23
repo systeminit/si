@@ -238,14 +238,13 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, PropType, ref, watch } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@/ui-lib/theme_tools";
-import { IconNames } from "@/ui-lib/icons/icon_set";
+import { IconNames, useTheme } from "@si/vue-lib/design-system";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,

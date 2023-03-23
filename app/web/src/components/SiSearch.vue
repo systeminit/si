@@ -19,9 +19,9 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { ref, watch } from "vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
+import { Icon } from "@si/vue-lib/design-system";
 
 // TODO: we may want to swap this over to vmodel instead, but we'll see
 const searchString = ref("");

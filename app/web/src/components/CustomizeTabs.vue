@@ -20,8 +20,7 @@
 <script lang="ts" setup>
 import { useRouter, useRoute } from "vue-router";
 import { PropType } from "vue";
-import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
-import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
+import { TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 
 const router = useRouter();
 const route = useRoute();

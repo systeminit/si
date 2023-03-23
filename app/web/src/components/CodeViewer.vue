@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { ref, computed, watch, PropType, onMounted, onBeforeMount } from "vue";
 import { basicSetup, EditorView } from "codemirror";
 import { StreamLanguage } from "@codemirror/language";
@@ -59,10 +59,10 @@ import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/prop
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
+import { themeClasses, useTheme } from "@si/vue-lib/design-system";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
 import SiButtonIcon from "@/components/SiButtonIcon.vue";
-import { themeClasses, useTheme } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
   code: { type: String },

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ApiRequest } from "@si/vue-lib";
+import { ApiRequest } from "@si/vue-lib/pinia";
 
 export const useSystemStatusStore = defineStore("system-status", {
   state: () => ({

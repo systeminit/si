@@ -106,9 +106,8 @@ import {
   ComboboxButton,
 } from "@headlessui/vue";
 import clsx from "clsx";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import Icon from "@/ui-lib/icons/Icon.vue";
-import { themeClasses } from "@/ui-lib/theme_tools";
 import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import SiValidation from "./SiValidation.vue";
 

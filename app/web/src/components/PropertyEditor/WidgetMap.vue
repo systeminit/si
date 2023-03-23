@@ -29,10 +29,10 @@
 
 <script lang="ts" setup>
 import { computed, ref, toRefs } from "vue";
+import { VButton2 } from "@si/vue-lib/design-system";
 import SiTextBox from "@/components/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import { AddToMap, PropertyPath } from "@/api/sdf/dal/property_editor";
-import VButton2 from "@/ui-lib/VButton2.vue";
 import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{

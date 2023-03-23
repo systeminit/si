@@ -6,7 +6,7 @@ const redisConnectionObj = parseRedisUrl(process.env.REDIS_URL);
 export const REDIS_ENABLED = !!process.env.REDIS_URL;
 
 export const redis = new IORedis({
-  ...redisConnectionObj,
+  ...redisConnectionObj[0],
   lazyConnect: true,
 }) as ExtendedIORedis;
 

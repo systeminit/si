@@ -160,7 +160,8 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from "vue";
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { tw } from "@si/vue-lib";
 import {
   PropertyEditorProp,
   PropertyEditorValidation,
@@ -170,7 +171,6 @@ import {
   AddToMap,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
-import { tw } from "@/utils/style_helpers";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";

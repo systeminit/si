@@ -41,9 +41,12 @@
 
 <script lang="ts" setup>
 import { reactive, ref, watch } from "vue";
-import _ from "lodash";
-import { colors } from "@/utils/design_token_values";
-import { useThemeContainer, ThemeValue } from "@/ui-lib/theme_tools";
+import * as _ from "lodash-es";
+import {
+  useThemeContainer,
+  ThemeValue,
+  COLOR_PALETTE,
+} from "@si/vue-lib/design-system";
 import GenericDiagram from "./GenericDiagram.vue";
 import {
   DeleteElementsEvent,
@@ -122,7 +125,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     type: "regular",
     position: { x: 0, y: 0 },
     sockets: getSockets("n1"),
-    color: colors.action[500],
+    color: COLOR_PALETTE.action[500],
     typeIcon: "logo-docker",
     isLoading: false,
     nodeType: "component",
