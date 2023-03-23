@@ -22,7 +22,6 @@ partial-pganalyze: init-partial
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
 			up --detach
 
 partial-local-pg: init-partial
@@ -52,7 +51,6 @@ prod:
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
 			-f $(MAKEPATH)/docker-compose.prod.yml \
 			--profile si \
 			up --detach
