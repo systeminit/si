@@ -370,16 +370,9 @@ impl Fix {
             return Ok(None);
         };
 
-        let component = Component::get_by_id(ctx, &self.component_id())
-            .await?
-            .ok_or_else(|| ComponentError::NotFound(self.component_id()))?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or_else(|| ComponentError::NoSchema(self.component_id()))?;
-        let category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
-            .await?
-            .map(|um| um.category().to_string());
+        // Gather component-related information, even if the component has been deleted.
+        let (component_name, schema_name, category) =
+            Self::component_details_for_history_view(ctx, self.component_id).await?;
 
         Ok(Some(FixHistoryView {
             id: self.id,
@@ -388,15 +381,46 @@ impl Fix {
                 .copied()
                 .unwrap_or(FixCompletionStatus::Failure),
             action: self.action().to_owned(),
-            schema_name: schema.name().to_owned(),
+            schema_name,
             attribute_value_id: *self.attribute_value_id(),
-            component_name: component.name(ctx).await?,
-            component_id: *component.id(),
+            component_name,
+            component_id: self.component_id,
             provider: category,
             resource: ResourceView::new(resource),
             started_at: self.started_at().map(|s| s.to_string()),
             finished_at: self.finished_at().map(|s| s.to_string()),
         }))
+    }
+
+    /// Gather details related to the [`Component`](crate::Component) for assembling a
+    /// [`FixHistoryView`].
+    ///
+    /// This private method should only be called by [`Self::history_view`].
+    async fn component_details_for_history_view(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> FixResult<(String, String, Option<String>)> {
+        // For the component-related information, we want to ensure that we can gather the
+        // fix history view if the component has been deleted. This is helpful if deletion fixes
+        // fail and the component still needs to be deleted.
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+
+        let component = Component::get_by_id(ctx_with_deleted, &component_id)
+            .await?
+            .ok_or_else(|| ComponentError::NotFound(component_id))?;
+        let schema = component
+            .schema(ctx_with_deleted)
+            .await?
+            .ok_or_else(|| ComponentError::NoSchema(component_id))?;
+        let category = SchemaUiMenu::find_for_schema(ctx_with_deleted, *schema.id())
+            .await?
+            .map(|um| um.category().to_string());
+
+        Ok((
+            component.name(ctx_with_deleted).await?,
+            schema.name().to_owned(),
+            category,
+        ))
     }
 }
 
