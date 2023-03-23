@@ -16,6 +16,7 @@ use crate::{
 };
 use crate::{DalContext, Edge, SchemaError};
 
+const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");
 
 #[derive(Error, Debug)]
@@ -152,6 +153,25 @@ impl Node {
         Ok(objects_from_rows(rows)?)
     }
 
+    /// Find all [`NodeIds`](Self) for a given [`NodeKind`].
+    #[instrument(skip_all)]
+    pub async fn list_for_kind(ctx: &DalContext, kind: NodeKind) -> NodeResult<HashSet<NodeId>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_KIND,
+                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
+            )
+            .await?;
+        let mut node_ids = HashSet::new();
+        for row in rows {
+            let node_id: NodeId = row.try_get("node_id")?;
+            node_ids.insert(node_id);
+        }
+        Ok(node_ids)
+    }
+
     /// List all [`Nodes`](Self) of kind [`configuration`](NodeKind::Configuration) in
     /// [`topological`](https://en.wikipedia.org/wiki/Topological_sorting) order. The order will
     /// be also be stable.
@@ -190,10 +210,10 @@ impl Node {
 
         // Add all floating nodes (those without edges).
         for potential_floating_node in
-            Self::list_live(ctx_with_deleted, NodeKind::Configuration).await?
+            Self::list_for_kind(ctx_with_deleted, NodeKind::Configuration).await?
         {
-            if nodes.get(potential_floating_node.id()).is_none() {
-                nodes.insert(*potential_floating_node.id(), HashSet::new());
+            if nodes.get(&potential_floating_node).is_none() {
+                nodes.insert(potential_floating_node, HashSet::new());
             }
         }
 
