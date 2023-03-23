@@ -9,7 +9,9 @@ use tokio::{sync::Mutex, task::JoinSet};
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
 use crate::{
-    job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
+    job::consumer::{
+        JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+    },
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
@@ -107,18 +109,9 @@ impl JobProducer for DependentValuesUpdate {
     }
 }
 
-#[async_trait]
-impl JobConsumer for DependentValuesUpdate {
+impl JobConsumerMetadata for DependentValuesUpdate {
     fn type_name(&self) -> String {
         "DependentValuesUpdate".to_string()
-    }
-
-    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
-    /// The sync processor needs everything to run within a single transaction, so we check for it
-    fn set_sync(&mut self) {
-        self.single_transaction = true;
-        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
-        self.job = Some(boxed.try_into().unwrap());
     }
 
     fn access_builder(&self) -> AccessBuilder {
@@ -127,6 +120,17 @@ impl JobConsumer for DependentValuesUpdate {
 
     fn visibility(&self) -> Visibility {
         self.visibility
+    }
+}
+
+#[async_trait]
+impl JobConsumer for DependentValuesUpdate {
+    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
+    /// The sync processor needs everything to run within a single transaction, so we check for it
+    fn set_sync(&mut self) {
+        self.single_transaction = true;
+        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
+        self.job = Some(boxed.try_into().unwrap());
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
