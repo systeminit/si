@@ -142,10 +142,9 @@ async fn fail(ctx: &mut DalContext) {
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
     ctx.update_visibility(Visibility::new_head(false));
 
-    let (_, state, _, _) =
-        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true, true)
-            .await
-            .expect("unable to run workflow");
+    let (_, state, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
+        .await
+        .expect("unable to run workflow");
     assert_eq!(
         state.error_message().expect("no error message found"),
         "oopsie!"
@@ -192,7 +191,7 @@ async fn run(ctx: &mut DalContext) {
     ctx.update_visibility(Visibility::new_head(false));
 
     let (_runner, state, _func_bindings, _) =
-        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true, true)
+        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
             .await
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);
