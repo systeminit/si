@@ -42,6 +42,8 @@ pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 pub enum Error {
     #[error(transparent)]
     DirectivesParse(#[from] ParseError),
+    #[error("failed to parse span event fmt token: {0}")]
+    SpanEventParse(String),
     #[error(transparent)]
     Trace(#[from] TraceError),
     #[error(transparent)]
@@ -79,9 +81,21 @@ pub struct TelemetryConfig {
 
     #[builder(
         setter(into, strip_option),
+        default = "self.default_log_span_events_env_var()?"
+    )]
+    log_span_events_env_var: Option<String>,
+
+    #[builder(
+        setter(into, strip_option),
         default = "self.default_secondary_log_env_var()"
     )]
     secondary_log_env_var: Option<String>,
+
+    #[builder(
+        setter(into, strip_option),
+        default = "self.default_secondary_log_span_events_env_var()"
+    )]
+    secondary_log_span_events_env_var: Option<String>,
 
     #[builder(default = "true")]
     enable_opentelemetry: bool,
@@ -124,9 +138,35 @@ impl TelemetryConfigBuilder {
         }
     }
 
+    fn default_log_span_events_env_var(
+        &self,
+    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
+        match (&self.log_env_var_prefix, &self.service_name) {
+            (Some(Some(prefix)), Some(service_name)) => Ok(Some(format!(
+                "{}_{}_LOG_SPAN_EVENTS",
+                prefix.to_uppercase(),
+                service_name.to_uppercase()
+            ))),
+            (Some(None) | None, Some(service_name)) => Ok(Some(format!(
+                "{}_LOG_SPAN_EVENTS",
+                service_name.to_uppercase()
+            ))),
+            (None | Some(_), None) => Err(TelemetryConfigBuilderError::ValidationError(
+                "service_name must be set".to_string(),
+            )),
+        }
+    }
+
     fn default_secondary_log_env_var(&self) -> Option<String> {
         match &self.log_env_var_prefix {
             Some(Some(prefix)) => Some(format!("{}_LOG", prefix.to_uppercase())),
+            Some(None) | None => None,
+        }
+    }
+
+    fn default_secondary_log_span_events_env_var(&self) -> Option<String> {
+        match &self.log_env_var_prefix {
+            Some(Some(prefix)) => Some(format!("{}_LOG_SPAN_EVENTS", prefix.to_uppercase())),
             Some(None) | None => None,
         }
     }
@@ -154,8 +194,9 @@ type OtelLayerHandler = reload::Handle<
 pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracing_level = default_tracing_level(&config);
+    let span_events_fmt = default_span_events_fmt(&config)?;
     let (subscriber, env_handle, otel_handle, inner_otel_layer) =
-        tracing_subscriber(&config, &tracing_level)?;
+        tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
     let telemetry_client = start_telemetry_update_tasks(
         config,
@@ -187,9 +228,48 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
     TracingLevel::new(Verbosity::default(), Some(config.app_modules.as_ref()))
 }
 
+fn default_span_events_fmt(config: &TelemetryConfig) -> Result<FmtSpan> {
+    if let Some(log_span_events_env_var) = config.log_span_events_env_var.as_deref() {
+        if let Ok(value) = env::var(log_span_events_env_var.to_uppercase()) {
+            if !value.is_empty() {
+                return fmt_span_from_str(&value);
+            }
+        }
+    }
+    if let Some(log_env_var) = config.secondary_log_span_events_env_var.as_deref() {
+        if let Ok(value) = env::var(log_env_var.to_uppercase()) {
+            if !value.is_empty() {
+                return fmt_span_from_str(&value);
+            }
+        }
+    }
+
+    Ok(FmtSpan::NONE)
+}
+
+fn fmt_span_from_str(value: &str) -> Result<FmtSpan> {
+    let mut filters = Vec::new();
+    for filter in value.to_ascii_lowercase().split(',') {
+        match filter.trim() {
+            "new" => filters.push(FmtSpan::NEW),
+            "enter" => filters.push(FmtSpan::ENTER),
+            "exit" => filters.push(FmtSpan::EXIT),
+            "close" => filters.push(FmtSpan::CLOSE),
+            "active" => filters.push(FmtSpan::ACTIVE),
+            "full" => filters.push(FmtSpan::FULL),
+            invalid => return Err(Error::SpanEventParse(invalid.to_string())),
+        };
+    }
+
+    Ok(filters
+        .into_iter()
+        .fold(FmtSpan::NONE, |acc, filter| filter | acc))
+}
+
 fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
+    span_events_fmt: FmtSpan,
 ) -> Result<(
     impl Subscriber + Send + Sync,
     EnvLayerHandle,
@@ -216,7 +296,7 @@ fn tracing_subscriber(
         .with(
             tracing_subscriber::fmt::layer()
                 .with_thread_ids(true)
-                .with_span_events(FmtSpan::NONE),
+                .with_span_events(span_events_fmt),
         );
 
     Ok((registry, env_handle, otel_handle, inner_otel_layer))
