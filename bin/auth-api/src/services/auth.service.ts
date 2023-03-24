@@ -82,7 +82,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
 
   if (!user) {
     wipeAuthCookie(ctx);
-    throw new ApiError('Conflict', 'Cannot find user data');
+    throw new ApiError('Unauthorized', 'AuthUserMissing', 'Cannot find user data');
   }
 
   ctx.state.authUser = user;

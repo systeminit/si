@@ -82,11 +82,7 @@ pub async fn auth_connect(
         return Err(SessionError::AuthApiError(res_err_body.message));
     }
 
-    // println!("body text = {:?}", res.text().await);
-
     let res_body = res.json::<AuthApiConnectResponse>().await?;
-    // .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
-    println!("body = {:?}", res_body);
 
     let mut ctx = builder
         .build(

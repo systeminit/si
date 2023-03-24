@@ -58,6 +58,7 @@ export default (opts: { mode: string }) => {
     server: {
       host: config.DEV_HOST,
       port: parseInt(config.DEV_PORT),
+      strictPort: true,
       fs: {
         strict: true,
       },

@@ -146,7 +146,9 @@ export async function errorHandlingMiddleware(ctx: Koa.Context, next: Koa.Next) 
       ctx.status = err.httpStatusCode;
       // this is the format exposed to clients
       // we can alter it here and vary with api version request if necessary
-      ctx.body = _.pick(err, "kind", "message", "details");
+      ctx.body = {
+        ..._.pick(err, "kind", "message", "details"),
+      };
 
       // otherwise, it was unexpected, so we want to respond with a 500
     } else {

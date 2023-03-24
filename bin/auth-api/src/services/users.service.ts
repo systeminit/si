@@ -5,24 +5,11 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 import { createWorkspace } from "./workspaces.service";
 import { LATEST_TOS_VERSION_ID } from './tos.service';
+import { tracker } from '../lib/tracker';
 
 const prisma = new PrismaClient();
 
 export type UserId = string;
-
-// export type User = {
-//   id: string; // our id
-//   auth0Id: string; // auth0 id - based on 3rd party
-//   auth0Details?: any; // json blob, just store auth0 details for now
-//   nickname: string;
-//   firstName?: string;
-//   lastName?: string;
-//   email: string;
-//   emailVerified: boolean;
-//   pictureUrl?: string;
-
-//   needsTosUpdate?: boolean;
-// };
 
 export async function getUserById(id: UserId) {
   const userWithTosAgreement = await prisma.user.findUnique({
@@ -39,6 +26,7 @@ export async function getUserById(id: UserId) {
       },
     },
   });
+  if (!userWithTosAgreement) return null;
 
   const agreedTosVersion = userWithTosAgreement?.TosAgreement?.[0]?.tosVersionId;
   const needsTosUpdate = !agreedTosVersion || agreedTosVersion < LATEST_TOS_VERSION_ID;
@@ -49,7 +37,7 @@ export async function getUserById(id: UserId) {
     needsTosUpdate,
   };
 }
-export type UserWithTosStatus = Awaited<ReturnType<typeof getUserById>>;
+export type UserWithTosStatus = NonNullable<Awaited<ReturnType<typeof getUserById>>>;
 
 export async function getUserByAuth0Id(auth0Id: string) {
   return prisma.user.findUnique({ where: { auth0Id } });
@@ -72,6 +60,11 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     email: auth0UserData.email!,
     emailVerified: auth0UserData.email_verified || false,
     pictureUrl: auth0UserData.picture,
+
+    // fairly certain nickname is github username
+    ...auth0Id.startsWith('github|') && {
+      githubUsername: auth0UserData.nickname,
+    },
   };
 
   if (existingUser) {
@@ -80,6 +73,8 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
       where: { id: existingUser.id },
       data: _.omit(existingUser, 'id', 'auth0Id', 'auth0Details'),
     });
+
+    tracker.identifyUser(existingUser);
     return existingUser;
   } else {
     const newUser = await prisma.user.create({
@@ -89,20 +84,28 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
         ...userData,
       },
     });
-    // for new users we'll want to create a default workspace, do some tracking, etc...
+
+    tracker.identifyUser(newUser);
+
+    // user is new, so we create a default dev workspace
     await createWorkspace(newUser);
-    // TODO: probably fire off some info to posthog
+
     return newUser;
   }
 }
 
-// const updateUserData = Prisma.validator<Prisma.UserArgs>()({
-//   select: { email: true, name: true },
-// })
-// export async function updateUser(
-//   userId: UserId,
-//   data:
-// ) {
-
-//   usersById[user.id] = _.omit(user, 'needsTosUpdate');
-// }
+export async function saveUser(user: UserWithTosStatus) {
+  await prisma.user.update({
+    where: { id: user.id },
+    data: _.omit(
+      user,
+      'id',
+      'auth0Id',
+      'auth0Details',
+      'needsTosUpdate',
+      'agreedTosVersion',
+    ),
+  });
+  tracker.identifyUser(user);
+  return user;
+}

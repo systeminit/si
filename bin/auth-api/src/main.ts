@@ -16,6 +16,8 @@ import { loadAuthMiddleware } from "./services/auth.service";
 import { detectClientIp } from "./lib/client-ip";
 import { CustomAppContext, CustomAppState } from "./custom-state";
 
+import './lib/posthog';
+
 const prisma = new PrismaClient();
 
 const app = new Koa<CustomAppState, CustomAppContext>();

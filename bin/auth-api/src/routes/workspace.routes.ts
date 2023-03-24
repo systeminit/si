@@ -1,15 +1,14 @@
 import { nanoid } from "nanoid";
 import { z } from 'zod';
-import { Workspace } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
-  getUserWorkspaces, getWorkspaceById, WorkspaceId,
+  getUserWorkspaces, getWorkspaceById,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
-import { CustomAppState } from "../custom-state";
+import { CustomRouteContext } from "../custom-state";
 import { createSdfAuthToken } from "../services/auth.service";
 import { router } from ".";
 
@@ -21,22 +20,19 @@ router.get("/workspaces", async (ctx) => {
   ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
 });
 
-// our param handler ensures authUser and workspace are set
-type WorkspaceRoutesCtxState = {
-  workspace: Workspace
-} & Required<Pick<CustomAppState, 'authUser'>>;
+// :workspaceId named param handler - little easier for TS this way than using router.param
+async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
+  if (!ctx.params.workspaceId) {
+    throw new Error('Only use this fn with routes containing :workspaceId param');
+  }
 
-// named param handler - will fire for all routes with :workspaceId in url
-router.param('workspaceId', async (id: WorkspaceId, ctx, next) => {
   // ensure user is logged in
   if (!ctx.state.authUser) {
     throw new ApiError('Unauthorized', "You are not logged in");
   }
 
-  // TODO: maybe some checking/validation on the id itself
-
   // find workspace by id
-  const workspace = await getWorkspaceById(id);
+  const workspace = await getWorkspaceById(ctx.params.workspaceId);
   if (!workspace) {
     throw new ApiError('NotFound', 'Workspace not found');
   }
@@ -46,21 +42,23 @@ router.param('workspaceId', async (id: WorkspaceId, ctx, next) => {
     throw new ApiError('Forbidden', 'You do not have access to that workspace');
   }
 
-  // store workspace on ctx.state for use by other routes
-  (ctx.state as any).workspace = workspace;
-  return next();
+  return workspace;
+}
+
+router.get("/workspaces/:workspaceId", async (ctx) => {
+  const workspace = await handleWorkspaceIdParam(ctx);
+  ctx.body = workspace;
 });
 
-router.get<WorkspaceRoutesCtxState>("/workspaces/:workspaceId", async (ctx) => {
-  ctx.body = ctx.state.workspace;
+router.patch("/workspaces/:workspaceId", async (ctx) => {
+  const workspace = await handleWorkspaceIdParam(ctx);
+  // TODO: update workspace name and other settings...
+  ctx.body = workspace;
 });
 
-router.patch<WorkspaceRoutesCtxState>("/workspaces/:workspaceId", async (ctx) => {
-  ctx.body = ctx.state.workspace;
-});
-
-router.get<WorkspaceRoutesCtxState>("/workspaces/:workspaceId/go", async (ctx) => {
-  const { authUser, workspace } = ctx.state;
+router.get("/workspaces/:workspaceId/go", async (ctx) => {
+  const workspace = await handleWorkspaceIdParam(ctx);
+  const authUser = ctx.state.authUser!;
 
   // generate a new single use authentication code that we will send to the instance
   const connectCode = nanoid(24);

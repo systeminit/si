@@ -30,7 +30,7 @@ model User {
   /// public url to profile photo
   pictureUrl    String? @map("picture_url")
 
-  /// user's discord username
+  /// user's discord username/tag - ex: coolbeans#1234
   discordUsername String? @map("discord_username")
   /// user's github username
   githubUsername  String? @map("github_username")

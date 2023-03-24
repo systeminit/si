@@ -33,8 +33,12 @@ import Arrow from "~icons/heroicons-solid/arrow-up";
 import Chevron from "~icons/heroicons-solid/chevron-up";
 
 import Save from "~icons/heroicons-solid/save";
+import Download from "~icons/heroicons-solid/download";
 import Trash from "~icons/heroicons-solid/trash";
 import TrashRestore from "~icons/material-symbols/restore-from-trash";
+
+import ThumbsUp from "~icons/heroicons-solid/thumb-up";
+import ThumbsDown from "~icons/heroicons-solid/thumb-down";
 
 import PlayCircle from "~icons/heroicons-solid/play";
 import Beaker from "~icons/heroicons-solid/beaker";
@@ -115,6 +119,7 @@ export const ICONS = Object.freeze({
   diagram: Diagram,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,
+  download: Download,
   edit: Pencil,
   "exclamation-circle": ExclamationCircle,
   "external-link": ExternalLink,
@@ -151,6 +156,8 @@ export const ICONS = Object.freeze({
   selector: Selector,
   show: Eye,
   sun: Sun,
+  "thumbs-down": ThumbsDown,
+  "thumbs-up": ThumbsUp,
   tilde: Tilde,
   "tilde-circle": TildeCircle,
   tools: Tools,

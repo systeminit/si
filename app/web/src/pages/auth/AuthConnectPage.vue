@@ -63,7 +63,7 @@ onMounted(async () => {
 
     // TODO: we probably want to allow passing in a more specific URL to redirect to
     // in case they tried to access that URL and were then redirected to login
-    await router.push({ name: "workspace-single", params: { workspacePk } });
+    await router.replace({ name: "workspace-single", params: { workspacePk } });
   }
 });
 </script>

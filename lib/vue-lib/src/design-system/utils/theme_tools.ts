@@ -28,19 +28,27 @@ const THEME_STORAGE_KEY = "SI:THEME";
 const THEME_INJECTION_KEY: InjectionKey<ComputedRef<ThemeValue>> =
   Symbol("THEME");
 
+
+// NOTE - some issues with window here when running SSG. Tried a few things but try/catch finally worked...
+
 // track the system theme - based off of `prefers-color-scheme`
 function getSystemTheme(): ThemeValue {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  } catch (err) {
+    return "dark";
+  }
 }
 export const systemTheme = ref(getSystemTheme());
-window
-  .matchMedia("(prefers-color-scheme: dark)")
-  .addEventListener("change", () => {
-    systemTheme.value = getSystemTheme();
-  });
-
+try {
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => {
+      systemTheme.value = getSystemTheme();
+    });
+} catch (err) {}
 // single user-selected theme (overriding the system theme) saved to localstorage
 // we export the user-set theme directly, but we only need to use it for theme switcher components
 // as most components will get current value via inject in `useTheme()`

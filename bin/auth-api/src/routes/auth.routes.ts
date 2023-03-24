@@ -60,13 +60,13 @@ router.get("/auth/login-callback", async (ctx) => {
   ctx.cookies.set(SI_COOKIE_NAME, siToken, {
     // TODO: verify these settings
     httpOnly: true,
-    secure: !(process.env.AUTH_API_URL as string).includes('localhost'),
+    secure: (process.env.AUTH_API_URL as string).startsWith('https://'),
     // domain:,
   });
 
   // ctx.body = { authToken: siToken, profile };
 
-  ctx.redirect(`${process.env.AUTH_PORTAL_URL}/dashboard`);
+  ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login-success`);
 });
 
 router.get("/auth/logout", async (ctx) => {

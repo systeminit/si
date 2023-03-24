@@ -14,7 +14,7 @@ const router = useRouter();
 
 onBeforeMount(async () => {
   if (authStore.userIsLoggedIn) {
-    await router.push({ name: "dashboard" });
+    await router.push({ name: "login-success" });
   }
 });
 </script>

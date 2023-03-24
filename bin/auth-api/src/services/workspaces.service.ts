@@ -1,5 +1,6 @@
 import { InstanceEnvType, PrismaClient, User } from '@prisma/client';
 import { ulid } from 'ulidx';
+import { tracker } from '../lib/tracker';
 import { UserId } from "./users.service";
 
 export type WorkspaceId = string;
@@ -33,6 +34,11 @@ export async function createWorkspace(creatorUser: User) {
       creatorUserId: creatorUser.id,
     },
   });
+  tracker.trackEvent(creatorUser, 'create_workspace', {
+    workspaceId: newWorkspace.id,
+    // TODO: track env type and other data when it becomes useful
+  });
+
   return newWorkspace;
 }
 
