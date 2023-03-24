@@ -261,7 +261,6 @@ const computedClasses = computed(() => ({
   .vbutton__icon {
     flex-grow: 0;
     flex-shrink: 0;
-    margin-left: -5%;
   }
 
   // &:focus {
@@ -297,6 +296,9 @@ const computedClasses = computed(() => ({
 
   &.--size-md {
     padding: 6px 8px;
+    .vbutton__inner {
+      gap: 4px;
+    }
     .vbutton__icon {
       width: 24px;
       height: 24px;
@@ -307,6 +309,9 @@ const computedClasses = computed(() => ({
     padding: 14px 24px;
     border-width: 2px;
     font-size: 18px;
+    .vbutton__inner {
+      gap: 8px;
+    }
     .vbutton__icon {
       width: 32px;
       height: 32px;

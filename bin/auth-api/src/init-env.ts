@@ -11,8 +11,8 @@ const mode = process.env.NODE_ENV || 'development';
 const envFiles = [
   // actual ENV vars override everything,
   // then the following files in order of precedence
-  `.env.local`, // local overrides (gitignored!)
   `.env.${mode}.local`, // local overrides for specific env (not recommended to use...)
+  `.env.local`, // local overrides (gitignored!)
   `.env.${mode}`, // specific env mode, ex `.env.production`
   `.env`, // defaults
 ];

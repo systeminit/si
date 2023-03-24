@@ -23,13 +23,15 @@ Use `pnpx prisma` to run prisma commands locally. For example
 By default, our system is set up to hit the production auth stack because we still want real auth when running local dev instances.
 
 While working on the auth stack, we still need to run it locally and configure things to point to our local auth stack:
-- point our web app at the local auth stack by adding this to `app/web/.env.local`
+- update auth-api env vars in `bin/auth-api/.env.local`
+  - fill in `AUTH0_CLIENT_SECRET` (get from 1pass?)
+  - (OPTIONAL) set auth-api redis url to a locally running redis instance (ex: `REDIS_URL=127.0.0.1:6379`) only if needing to test redis. Falls back to in-memory storage...
+- update web app env vars (`app/web/.env.local`) to point to local auth stack
   ```
     VITE_AUTH_API_URL=http://localhost:9001
     VITE_AUTH_PORTAL_URL=http://localhost:9000
   ```
 - point sdf to the auth api (TODO: figure out best way to pull from env)
-- (OPTIONAL) set auth-api redis url to a local redis instance in .env.local (ex: `REDIS_URL=127.0.0.1:6379`) only if needing to test redis. Falls back to in-memory storage...
 - run the db migrations (`pnpm run db:reset`) locally after booting your local database 
 - run the auth api `pnmp run dev` in this directory or `pnpm dev:auth-api` at the root
 - run the auth portal `pnmp run dev` in `app/auth-portal` or `pnpm dev:auth-portal` at the root

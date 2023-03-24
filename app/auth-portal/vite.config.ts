@@ -6,6 +6,8 @@ import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
 import IconsPlugin from "unplugin-icons/vite";
 import svgLoaderPlugin from "vite-svg-loader";
+// import MarkdownPlugin from "vite-plugin-md";
+import MarkdownPlugin, { Mode as MdPluginMode } from "vite-plugin-markdown";
 import packageJson from "./package.json";
 import postcss from "./postcss.config.cjs";
 
@@ -21,7 +23,8 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [
-    vue(),
+    vue({}),
+    MarkdownPlugin({ mode: [MdPluginMode.VUE] }),
 
     svgLoaderPlugin(),
     IconsPlugin({ compiler: "raw" }),

@@ -17,6 +17,8 @@ export type User = {
   emailVerified: boolean;
   pictureUrl?: string;
   needsTosUpdate?: boolean;
+  githubUsername?: string;
+  discordUsername?: string;
 };
 
 export type TosDetails = {
@@ -29,6 +31,7 @@ export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
     tosDetails: null as TosDetails | null,
+    waitingForAccess: false,
   }),
   getters: {
     // userIsLoggedIn: (state) => !!state.token,
@@ -42,9 +45,14 @@ export const useAuthStore = defineStore("auth", {
         "user"
       );
     },
+    // useful to keep this logic in one place
+    needsProfileUpdate: (state) =>
+      !state.user?.githubUsername || !state.user?.discordUsername,
   },
   actions: {
     // fetches user + billing account info - called on page refresh
+    // split from LOAD_USER since it will likely change
+    // and because this request loading blocks the whole page/app
     async CHECK_AUTH() {
       return new ApiRequest<{ user: User }>({
         url: "/whoami",
@@ -55,6 +63,26 @@ export const useAuthStore = defineStore("auth", {
           /* eslint-disable-next-line no-console */
           console.log("RESTORE AUTH FAILED!", e);
           // trigger logout?
+        },
+      });
+    },
+
+    async LOAD_USER() {
+      return new ApiRequest<{ user: User }>({
+        url: "/whoami",
+        onSuccess: (response) => {
+          this.user = response.user;
+        },
+      });
+    },
+    async UPDATE_USER(user: Partial<User>) {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/users/${this.user.id}`,
+        params: user,
+        onSuccess: (response) => {
+          this.user = response.user;
         },
       });
     },

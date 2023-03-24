@@ -267,6 +267,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         // TODO: we may want to reverse the order here of calling success and marking received?
         // ideally we would mark received at the same time as the changes made during onSuccess, but not sure it's possible
         store.$patch((state) => {
+          state.apiRequestStatuses[trackingKey].lastSuccessAt = new Date();
           state.apiRequestStatuses[trackingKey].receivedAt = new Date();
         });
 
@@ -314,7 +315,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         });
 
         // call explicit failure handler if one is defined (usually rare)
-        if (typeof onFail === "function") onFail(err.response?.data);
+        if (typeof onFail === "function") {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          onFail(err.response?.data);
+        }
 
         // return false so caller can easily detect a failure
         completed.resolve({
@@ -406,6 +410,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           ...(rawStatus.error && {
             errorMessage:
               rawStatus.error.data?.error?.message ||
+              rawStatus.error.data?.message ||
               rawStatus.error.statusText,
             errorCode: rawStatus.error.data?.error?.type,
           }),

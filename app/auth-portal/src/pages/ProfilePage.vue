@@ -3,62 +3,88 @@
   <div>
     <h2>Update your profile!</h2>
 
-    <template v-if="reloadUserReqStatus.isPending"> loading... </template>
-    <template v-else-if="reloadUserReqStatus.isError">
-      Error loading TOS - {{ reloadUserReqStatus.errorMessage }}
+    <template v-if="loadUserReqStatus.isPending">
+      <Icon name="loader" size="xl" />
     </template>
-    <template v-else-if="reloadUserReqStatus.isSuccess && draftUser">
-      <p>{{ storeUser?.email }}</p>
+    <template v-else-if="loadUserReqStatus.isError">
+      <ErrorMessage :request-status="loadUserReqStatus" />
+    </template>
+    <template v-else-if="draftUser">
+      <Stack spacing="lg">
+        <Stack>
+          <!-- this text only shows the first time / user is in onboarding -->
+          <template v-if="isOnboarding">
+            <h2 class="font-bold text-lg">
+              Welcome to the preview of System Initiative!
+            </h2>
+            <p>
+              In order to get you access to the software, we need to know a
+              little more about you: specifically, we need your GitHub Username
+              and your Discord ID. We will use your GitHub Username to add you
+              to our private repository, and your Discord ID to ensure you have
+              access to private channels to discuss System Initiative with other
+              folks in the preview.
+            </p>
+          </template>
+          <!-- this is the default text -->
+          <template v-else> </template>
+        </Stack>
 
-      <Stack>
-        <ErrorMessage :request-status="updateUserReqStatus" />
-        <Inline>
-          <VormInput v-model="draftUser.firstName" label="First Name" />
-          <VormInput v-model="draftUser.lastName" label="Last Name" />
-        </Inline>
-        <VormInput v-model="draftUser.nickname" label="Nickname" required />
-        <VormInput
-          v-model="draftUser.email"
-          label="Email"
-          type="email"
-          required
-        />
-        <VormInput
-          v-model="draftUser.githubUsername"
-          label="Github Username"
-          placeholder="ex: devopsdude42"
-          required
-          :regex="GITHUB_USERNAME_REGEX"
-          regex-message="Invalid github username"
-        />
-        <VormInput
-          v-model="draftUser.discordUsername"
-          label="Discord Tag"
-          placeholder="ex: eggscellent#1234"
-          required
-          :regex="DISCORD_TAG_REGEX"
-          regex-message="Invalid discord tag"
-        >
-          <template #instructions> where to find your handle </template>
-        </VormInput>
-        <VButton2
-          :disabled="validationState.isError"
-          :request-status="updateUserReqStatus"
-          @click="saveHandler"
-        >
-          Save
-        </VButton2>
+        <Stack>
+          <ErrorMessage :request-status="updateUserReqStatus" />
+          <Inline>
+            <VormInput v-model="draftUser.firstName" label="First Name" />
+            <VormInput v-model="draftUser.lastName" label="Last Name" />
+          </Inline>
+          <VormInput v-model="draftUser.nickname" label="Nickname" required />
+          <VormInput
+            v-model="draftUser.email"
+            label="Email"
+            type="email"
+            required
+          />
+          <VormInput
+            v-model="draftUser.githubUsername"
+            label="Github Username"
+            placeholder="ex: devopsdude42"
+            required
+            :regex="GITHUB_USERNAME_REGEX"
+            regex-message="Invalid github username"
+          />
+          <VormInput
+            v-model="draftUser.discordUsername"
+            label="Discord Username"
+            placeholder="ex: eggscellent#1234"
+            required
+            :regex="DISCORD_TAG_REGEX"
+            regex-message="Invalid discord tag"
+          />
+
+          <VButton2
+            icon-right="chevron--right"
+            :disabled="validationState.isError"
+            :request-status="updateUserReqStatus"
+            loading-text="Saving your profile..."
+            success-text="Updated your profile!"
+            @click="saveHandler"
+          >
+            Save
+          </VButton2>
+        </Stack>
       </Stack>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
 import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   ErrorMessage,
+  Icon,
   Inline,
   Stack,
   useValidatedInputGroup,
@@ -69,30 +95,46 @@ import { useAuthStore, User } from "@/store/auth.store";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
-  /^((?!(discordtag|everyone|here)#)((?!@|#|:|```).{2,32})#\d{4})/;
+  /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#\d{4})/;
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
 const router = useRouter();
 
-const reloadUserReqStatus = authStore.getRequestStatus("RELOAD_USER_DATA");
+const loadUserReqStatus = authStore.getRequestStatus("LOAD_USER");
+const checkAuthReqStatus = authStore.getRequestStatus("CHECK_AUTH");
 const updateUserReqStatus = authStore.getRequestStatus("UPDATE_USER");
 
 const storeUser = computed(() => authStore.user);
 const draftUser = ref<User>();
 
+const isOnboarding = ref(authStore.needsProfileUpdate);
 function resetDraftUser() {
   draftUser.value = _.cloneDeep(storeUser.value!);
 }
-watch(storeUser, resetDraftUser);
+watch(storeUser, resetDraftUser, { immediate: true });
 
 onBeforeMount(() => {
+  // normally when landing on this page, we should probably make sure we have the latest profile info
+  // but we already load user info with CHECK_AUTH so can skip if it was just loaded
+  // (this will likely go away if we start fetching more profile info than what gets fetched while checking auth)
+  if (+checkAuthReqStatus.value.lastSuccessAt! > +new Date() - 10000) {
+    return;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  authStore.RELOAD_USER_DATA();
+  authStore.LOAD_USER();
 });
 
 async function saveHandler() {
   if (validationMethods.hasError()) return;
-  await authStore.UPDATE_USER(draftUser.value!);
+
+  // if this is first time, we will take them off profile page after save
+  const goToNextStepOnSave = isOnboarding.value;
+  const updateReq = await authStore.UPDATE_USER(draftUser.value!);
+  if (updateReq.result.success && goToNextStepOnSave) {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    router.push({ name: "login-success" });
+  }
 }
 </script>
