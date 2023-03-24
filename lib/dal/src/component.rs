@@ -183,6 +183,8 @@ pub enum ComponentError {
     /// No "protected" boolean was found for the appropriate
     #[error("component({0}) can't be restored because it's inside a deleted frame ({1})")]
     InsideDeletedFrame(ComponentId, ComponentId),
+    #[error("qualification result for {0} on component {1} has no value")]
+    QualificationResultEmpty(String, ComponentId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
