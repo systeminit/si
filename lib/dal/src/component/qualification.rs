@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValue;
@@ -65,70 +64,50 @@ impl Component {
                 .ok_or(AttributeValueError::NotFoundForReadContext(
                     prop_qualification_map_attribute_read_context,
                 ))?;
-        let mut entry_attribute_values = HashMap::new();
         for entry_attribute_value in prop_qualification_map_attribute_value
             .child_attribute_values(ctx)
             .await?
         {
             let entry_attribute_value_id = *entry_attribute_value.id();
             let func_binding_return_value_id = entry_attribute_value.func_binding_return_value_id();
-            let entry_prototype_id = entry_attribute_value
+            let entry_prototype_func_id = entry_attribute_value
                 .attribute_prototype(ctx)
                 .await?
                 .ok_or(ComponentError::MissingAttributePrototype(
                     entry_attribute_value_id,
                 ))?
                 .func_id();
-            let key = entry_attribute_value
-                .key
-                .ok_or(ComponentError::FoundMapEntryWithoutKey(
-                    entry_attribute_value_id,
-                ))?;
-            entry_attribute_values.insert(key, (func_binding_return_value_id, entry_prototype_id));
-        }
 
-        // Now, check all qualifications in the tree.
-        let implicit_qualification_map_attribute_read_context = AttributeReadContext {
-            internal_provider_id: Some(*qualification_map_implicit_internal_provider.id()),
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
-        let implicit_qualification_map_attribute_value = AttributeValue::find_for_context(
-            ctx,
-            implicit_qualification_map_attribute_read_context,
-        )
-        .await?
-        .ok_or(AttributeValueError::NotFoundForReadContext(
-            implicit_qualification_map_attribute_read_context,
-        ))?;
-        let maybe_qualification_map_value = implicit_qualification_map_attribute_value
-            .get_value(ctx)
-            .await?;
-        if let Some(qualification_map_value) = maybe_qualification_map_value {
-            let qualification_map: HashMap<String, QualificationEntry> =
-                serde_json::from_value(qualification_map_value)?;
+            let entry: QualificationEntry = serde_json::from_value(
+                entry_attribute_value
+                    .get_unprocessed_value(ctx)
+                    .await?
+                    .ok_or(ComponentError::QualificationResultEmpty(
+                        entry_attribute_value
+                            .key
+                            .clone()
+                            .unwrap_or("unknown".to_string()),
+                        *component.id(),
+                    ))?,
+            )?;
 
-            for (qualification_name, entry) in qualification_map {
-                let (found_func_binding_return_value_id, attribute_prototype_func_id) =
-                    entry_attribute_values
-                        .get(&qualification_name)
-                        .ok_or_else(|| {
-                            ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
-                                qualification_name.clone(),
-                            )
-                        })?;
+            let key =
+                entry_attribute_value
+                    .key()
+                    .ok_or(ComponentError::FoundMapEntryWithoutKey(
+                        entry_attribute_value_id,
+                    ))?;
 
-                if let Some(qual_view) = QualificationView::new(
-                    ctx,
-                    qualification_name,
-                    entry,
-                    *attribute_prototype_func_id,
-                    *found_func_binding_return_value_id,
-                )
-                .await?
-                {
-                    results.push(qual_view);
-                }
+            if let Some(qual_view) = QualificationView::new(
+                ctx,
+                key,
+                entry,
+                entry_prototype_func_id,
+                func_binding_return_value_id,
+            )
+            .await?
+            {
+                results.push(qual_view);
             }
         }
 

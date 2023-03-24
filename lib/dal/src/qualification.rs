@@ -154,7 +154,7 @@ pub struct QualificationView {
 impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
-        qualification_name: String,
+        qualification_name: &str,
         qualification_entry: QualificationEntry,
         attribute_prototype_func_id: FuncId,
         func_binding_return_value_id: FuncBindingReturnValueId,
@@ -211,7 +211,7 @@ impl QualificationView {
             link: func_metadata.link.map(Into::into),
             output,
             result,
-            qualification_name,
+            qualification_name: qualification_name.to_string(),
         }))
     }
 }
