@@ -22,9 +22,7 @@ CREATE TABLE fixes
 --     ON fixes (attribute_value_id,
 --               component_id,
 --               tenancy_workspace_pk,
---               visibility_change_set_pk,
---               (visibility_deleted_at IS NULL))
---     WHERE visibility_deleted_at IS NULL;
+--               visibility_change_set_pk);
 
 SELECT standard_model_table_constraints_v1('fixes');
 SELECT belongs_to_table_create_v1(

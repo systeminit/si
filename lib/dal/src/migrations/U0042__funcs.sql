@@ -22,8 +22,7 @@ CREATE TABLE funcs
 CREATE UNIQUE INDEX unique_func_name_live ON funcs (
 	name,
 	tenancy_workspace_pk,
-	visibility_change_set_pk,
-	(visibility_deleted_at IS NULL));
+	visibility_change_set_pk);
 SELECT standard_model_table_constraints_v1('funcs');
 
 CREATE TABLE func_bindings
@@ -60,8 +59,7 @@ CREATE TABLE func_binding_return_values
 CREATE UNIQUE INDEX unique_value_func_binding_return_value_live ON func_binding_return_values (
   func_binding_id,
   tenancy_workspace_pk,
-  visibility_change_set_pk,
-  (visibility_deleted_at IS NULL));
+  visibility_change_set_pk);
 SELECT standard_model_table_constraints_v1('func_binding_return_values');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)

@@ -92,6 +92,7 @@ BEGIN
                            '      SELECT id ' ||
                            '      FROM %1$I ' ||
                            '      WHERE visibility_change_set_pk = %2$L ' ||
+                           '        AND in_tenancy_v1(%3$L, tenancy_workspace_pk) ' ||
                            '        AND visibility_deleted_at IS NOT NULL ' ||
                            '  )', this_table_name, this_change_set_pk, this_tenancy);
 
@@ -100,8 +101,7 @@ BEGIN
                             '                            AND in_tenancy_v1(%5$L, tenancy_workspace_pk) ' ||
                             'ON CONFLICT (id, ' ||
                             '              tenancy_workspace_pk, ' ||
-                            '              visibility_change_set_pk, ' ||
-                            '              (visibility_deleted_at IS NULL)) ' ||
+                            '              visibility_change_set_pk) ' ||
                             'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
                             'RETURNING pk, id, tenancy_workspace_pk',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names, this_tenancy);

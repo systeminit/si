@@ -204,17 +204,15 @@ BEGIN
                       )
               AND information_schema.columns.is_generated = 'NEVER'
             INTO copy_change_set_column_names;
-            EXECUTE format('INSERT INTO %1$I ( '
-                               '    %2$s, '
-                               '    visibility_change_set_pk, '
-                               '    tenancy_workspace_pk, '
-                               '    %3$s) '
-                               ' SELECT %4$L, %5$L, %8$L, %3$s FROM %1$I WHERE '
-                               ' %1$I.id = %6$L '
-                               ' AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
-                               ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
-                               ' AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
-                               ' RETURNING updated_at',
+            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, tenancy_workspace_pk, %3$s) '
+                           '   SELECT %4$L, %5$L, %8$L, %3$s '
+			   '   FROM %1$I '
+			   '   WHERE %1$I.id = %6$L '
+                           '         AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
+                           '         AND %1$I.visibility_change_set_pk = ident_nil_v1() '
+                           '         AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
+		           ' ON CONFLICT (id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING ' 
+                           ' RETURNING updated_at',
                            this_table,
                            this_column,
                            copy_change_set_column_names,
@@ -600,8 +598,7 @@ BEGIN
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_workspace_pk, '
-                           '                                    visibility_change_set_pk, '
-                           '                                    (visibility_deleted_at IS NULL)); '
+                           '                                    visibility_change_set_pk); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, object_id)); '
@@ -610,8 +607,7 @@ BEGIN
                            '        CHECK (check_id_in_table_v1(%3$L, belongs_to_id)); '
                            'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
                            '                                        tenancy_workspace_pk, '
-                           '                                        visibility_change_set_pk, '
-                           '                                        (visibility_deleted_at IS NULL)); '
+                           '                                        visibility_change_set_pk); '
                            'CREATE INDEX ON %1$I (object_id); '
                            'CREATE INDEX ON %1$I (belongs_to_id); '
                            'CREATE FUNCTION is_visible_v1( '
@@ -693,8 +689,7 @@ DECLARE
 BEGIN
     alter_query := format('CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                           '                                    tenancy_workspace_pk, '
-                          '                                    visibility_change_set_pk, '
-                          '                                    (visibility_deleted_at IS NULL)); '
+                          '                                    visibility_change_set_pk); '
                           'CREATE INDEX ON %1$I (id); '
                           'CREATE INDEX ON %1$I (visibility_deleted_at NULLS FIRST); '
                           'CREATE INDEX ON %1$I (visibility_change_set_pk); '
@@ -796,8 +791,7 @@ BEGIN
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_workspace_pk, '
-                           '                                    visibility_change_set_pk, '
-                           '                                    (visibility_deleted_at IS NULL)); '
+                           '                                    visibility_change_set_pk); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_left_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, left_object_id)); '

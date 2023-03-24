@@ -19,9 +19,7 @@ CREATE UNIQUE INDEX unique_external_providers
                            schema_id,
                            schema_variant_id,
                            tenancy_workspace_pk,
-                           visibility_change_set_pk,
-                           (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL;
+                           visibility_change_set_pk);
 
 CREATE INDEX ON external_providers (schema_id);
 CREATE INDEX ON external_providers (schema_variant_id);
