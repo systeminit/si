@@ -27,6 +27,7 @@
               loading-text="Executing"
               label="Execute"
               :request-status="execFuncReqStatus"
+              success-text="Finished"
               @click="execFunc"
             />
 
@@ -38,6 +39,7 @@
               loading-text="Reverting"
               label="Revert"
               :request-status="revertFuncReqStatus"
+              success-text="Finished"
               @click="revertFunc"
             />
           </div>

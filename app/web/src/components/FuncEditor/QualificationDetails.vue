@@ -1,25 +1,24 @@
 <template>
   <div class="p-3 flex flex-col gap-2">
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-      Run this qualification on the selected components and component types
-      below.
+      Run this qualification on the selected asset and assets of type below.
     </h1>
     <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Component:
+      Run on Asset:
     </h2>
     <RunOnSelector
       v-model="selectedComponents"
-      thing-label="components"
+      thing-label="asset"
       :options="componentOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
     />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Schema Variant:
+      Run on Assets of Type:
     </h2>
     <RunOnSelector
       v-model="selectedVariants"
-      thing-label="schema variants"
+      thing-label="assets of type"
       :options="schemaVariantOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
