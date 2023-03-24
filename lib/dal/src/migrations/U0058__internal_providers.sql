@@ -19,19 +19,15 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
     ON internal_providers (prop_id,
                            schema_variant_id,
                            tenancy_workspace_pk,
-                           visibility_change_set_pk,
-                           (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL
-        AND NOT prop_id = ident_nil_v1();
+                           visibility_change_set_pk)
+    WHERE prop_id != ident_nil_v1();
 
 CREATE UNIQUE INDEX unique_explicit_internal_providers
     ON internal_providers (name,
                            schema_variant_id,
                            tenancy_workspace_pk,
-                           visibility_change_set_pk,
-                           (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL
-        AND prop_id = ident_nil_v1();
+                           visibility_change_set_pk)
+    WHERE prop_id = ident_nil_v1();
 
 CREATE INDEX ON internal_providers (prop_id);
 CREATE INDEX ON internal_providers (schema_variant_id);

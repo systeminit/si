@@ -17,9 +17,7 @@ CREATE TABLE workflow_runner_states
 CREATE UNIQUE INDEX unique_workflow_runner_states
     ON workflow_runner_states (workflow_runner_id,
                                tenancy_workspace_pk,
-                               visibility_change_set_pk,
-                               (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL;
+                               visibility_change_set_pk);
 
 SELECT standard_model_table_constraints_v1('workflow_runner_states');
 

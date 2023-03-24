@@ -22,21 +22,17 @@ CREATE UNIQUE INDEX intra_component_argument_with_two_internal_providers
                                       head_component_id,
                                       tail_component_id,
                                       tenancy_workspace_pk,
-                                      visibility_change_set_pk,
-                                      (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL
-        AND external_provider_id = ident_nil_v1();
+                                      visibility_change_set_pk)
+    WHERE external_provider_id = ident_nil_v1();
 
 CREATE UNIQUE INDEX intra_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
                                       func_argument_id,
                                       internal_provider_id,
                                       tenancy_workspace_pk,
-                                      visibility_change_set_pk,
-                                      (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL
-        AND (head_component_id = ident_nil_v1()
-            AND tail_component_id = ident_nil_v1());
+                                      visibility_change_set_pk)
+    WHERE head_component_id = ident_nil_v1()
+          AND tail_component_id = ident_nil_v1();
 
 CREATE UNIQUE INDEX inter_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
@@ -45,10 +41,8 @@ CREATE UNIQUE INDEX inter_component_argument
                                       tail_component_id,
                                       head_component_id,
                                       tenancy_workspace_pk,
-                                      visibility_change_set_pk,
-                                      (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL
-        AND internal_provider_id = ident_nil_v1();
+                                      visibility_change_set_pk)
+    WHERE internal_provider_id = ident_nil_v1();
 
 CREATE INDEX ON attribute_prototype_arguments (attribute_prototype_id);
 CREATE INDEX ON attribute_prototype_arguments (external_provider_id);

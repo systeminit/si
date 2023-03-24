@@ -17,8 +17,7 @@ CREATE UNIQUE INDEX unique_validation_resolver_value_live ON validation_resolver
 	validation_func_binding_id,
 	attribute_value_id,
 	tenancy_workspace_pk,
-	visibility_change_set_pk,
-	(visibility_deleted_at IS NULL));
+	visibility_change_set_pk);
 SELECT standard_model_table_constraints_v1('validation_resolvers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)

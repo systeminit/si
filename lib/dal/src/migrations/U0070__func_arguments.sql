@@ -18,9 +18,7 @@ CREATE UNIQUE INDEX func_argument_name
     ON func_arguments (func_id,
                        name,
                        tenancy_workspace_pk,
-                       visibility_change_set_pk,
-                       (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL;
+                       visibility_change_set_pk);
 
 SELECT standard_model_table_constraints_v1('func_arguments');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
