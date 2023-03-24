@@ -10,12 +10,11 @@ use crate::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
-        definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext, Fix,
-    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild, StandardModel,
-    Visibility, WsEvent,
+    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -180,9 +179,7 @@ impl JobConsumer for FixesJob {
             .await?
             .ok_or(FixError::MissingFix(fix_item.id))?;
         let run_id = rand::random();
-        let resources = fix
-            .run(ctx, run_id, workflow_prototype_id, false, false)
-            .await?;
+        let resources = fix.run(ctx, run_id, workflow_prototype_id, true).await?;
         let completion_status: FixCompletionStatus = *fix
             .completion_status()
             .ok_or(FixError::EmptyCompletionStatus)?;
@@ -203,19 +200,6 @@ impl JobConsumer for FixesJob {
             .flat_map(|l| l.split('\n'))
             .map(|l| l.to_owned())
             .collect();
-
-        // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
-        if !resources.is_empty() {
-            let attribute_value = Component::root_prop_child_attribute_value_for_component(
-                ctx,
-                *component.id(),
-                RootPropChild::Resource,
-            )
-            .await?;
-
-            ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
-                .await;
-        }
 
         WsEvent::fix_return(
             ctx,

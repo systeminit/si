@@ -85,7 +85,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         result: CommandRunResult,
-        trigger_dependent_values_update: bool,
+        blocking_dependent_values_update: bool,
     ) -> ComponentResult<bool> {
         if !ctx.visibility().is_head() {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
@@ -113,7 +113,7 @@ impl Component {
                 .set_component_id(self.id)
                 .to_context()?;
 
-        if trigger_dependent_values_update {
+        if blocking_dependent_values_update {
             let (_, _) = AttributeValue::update_for_context(
                 ctx,
                 *resource_attribute_value.id(),
@@ -124,11 +124,12 @@ impl Component {
             )
             .await?;
         } else {
-            // Jacob / Paulo / Victor / Paul:
-            // We use this func to stop enqueueing another DependentValuesUpdate job
-            // The fix job was running DependentValuesUpdate inline and this func was also
-            // queueing a DependentValuesUpdate.
-            let (_, _) = AttributeValue::update_for_context_without_propagating_dependent_values(
+            // Paulo:
+            // We use this function to ensure the dependent values propagation happens
+            // before any other job that is scheduled after it in this transaction
+            // this means the fix flow can trust that the next fix step will only happen
+            // after the previous one propagated its resource, as they may depend on it
+            let (_, _) = AttributeValue::update_for_context_blocking_dependent_values_update(
                 ctx,
                 *resource_attribute_value.id(),
                 Some(*root_attribute_value.id()),
@@ -164,14 +165,8 @@ impl Component {
 
         let prototype = action.workflow_prototype(ctx).await?;
         let run_id: usize = rand::random();
-        let (_runner, _state, _func_binding_return_values, resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true, true).await?;
-        if !resources.is_empty() {
-            WsEvent::resource_refreshed(ctx, self.id)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
+        let (_runner, _state, _func_binding_return_values, _resources) =
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
         Ok(())
     }
 }

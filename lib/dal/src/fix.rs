@@ -253,20 +253,21 @@ impl Fix {
         ctx: &DalContext,
         run_id: usize,
         action_workflow_prototype_id: WorkflowPrototypeId,
-        should_trigger_confirmations: bool,
-        trigger_dependent_values_update: bool,
+        blocking_dependent_values_update: bool,
     ) -> FixResult<Vec<CommandRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
-        let runner_result = WorkflowRunner::run(
-            ctx,
-            run_id,
-            action_workflow_prototype_id,
-            self.component_id,
-            should_trigger_confirmations,
-            trigger_dependent_values_update,
-        )
-        .await;
+        let runner_result = if blocking_dependent_values_update {
+            WorkflowRunner::run_blocking_value_propagation(
+                ctx,
+                run_id,
+                action_workflow_prototype_id,
+                self.component_id,
+            )
+            .await
+        } else {
+            WorkflowRunner::run(ctx, run_id, action_workflow_prototype_id, self.component_id).await
+        };
 
         // Evaluate the workflow result.
         match runner_result {

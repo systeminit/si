@@ -695,7 +695,7 @@ impl AttributeValue {
         .await
     }
 
-    pub async fn update_for_context_without_propagating_dependent_values(
+    pub async fn update_for_context_blocking_dependent_values_update(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -749,7 +749,7 @@ impl AttributeValue {
         // TODO: Allow updating the key
         key: Option<String>,
         create_child_proxies: bool,
-        propagate_dependent_values: bool,
+        blocking_dependent_values_update: bool,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         let row = ctx.pg_txn().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -770,7 +770,13 @@ impl AttributeValue {
         // TODO(fnichol): we might want to fire off a status even at this point, however we've
         // already updated the initial attribute value, so is there much value?
 
-        if propagate_dependent_values {
+        if blocking_dependent_values_update {
+            ctx.enqueue_blocking_job(DependentValuesUpdate::new(
+                ctx,
+                vec![new_attribute_value_id],
+            ))
+            .await;
+        } else {
             ctx.enqueue_job(DependentValuesUpdate::new(
                 ctx,
                 vec![new_attribute_value_id],
