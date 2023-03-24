@@ -29,7 +29,7 @@
   "devDependencies": {
     "fast-glob": "^3.2.12",
     "toml": "^3.0.0",
-    "turbo": "^1.6.3"
+    "turbo": "^1.8.5"
   },
   "volta": {
     "node": "18.15.0"
