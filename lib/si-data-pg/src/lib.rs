@@ -26,7 +26,7 @@ use ouroboros::self_referencing;
 use serde::{Deserialize, Serialize};
 use si_std::{ResultExt, SensitiveString};
 use telemetry::prelude::*;
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, task, time};
 use tokio_postgres::{
     row::RowIndex,
     types::{BorrowToSql, FromSql, ToSql, Type},
@@ -40,11 +40,16 @@ const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 const TEST_QUERY: &str = "SELECT 1";
+const CURRENT_TXID_QUERY: &str = "SELECT txid_current()";
+
+const DROP_INNER_PG_CLIENT_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
     #[error(transparent)]
     Pg(#[from] tokio_postgres::Error),
+    #[error("timeout error: {0}")]
+    Timeout(&'static str),
     #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
     TxnCommitNotExclusive(usize),
     #[error(
@@ -985,6 +990,27 @@ impl fmt::Debug for InstrumentedClient {
         f.debug_struct("InstrumentedClient")
             .field("metadata", &self.metadata)
             .finish_non_exhaustive()
+    }
+}
+
+impl Drop for InstrumentedClient {
+    fn drop(&mut self) {
+        let inner = self
+            .inner
+            .take()
+            .expect("inner should be some until drop impl is called--this is an internal bug");
+
+        // Spawn a task taking the inner object to determine whether it should be returned to the
+        // pool or removed from the pool if sufficiently unhealthy
+        match task::Builder::new()
+            .name("drop-inner-pg-client-task")
+            .spawn(drop_inner_pg_client_task(inner))
+        {
+            Ok(handle) => drop(handle),
+            Err(err) => {
+                error!(error = ?err, "failed to spawn drop-inner-pg-client-task")
+            }
+        }
     }
 }
 
@@ -2664,4 +2690,65 @@ impl PgOwnedTransaction {
 
 async fn test_connection_task(check_pool: PgPool) {
     let _result = check_pool.test_connection().await;
+}
+
+async fn drop_inner_pg_client_task(object: Object<Manager>) {
+    if let Err(err) = drop_inner_pg_client(object).await {
+        warn!(error = ?err, "async drop of pg instrumented client failed");
+    }
+}
+
+async fn drop_inner_pg_client(object: Object<Manager>) -> Result<(), PgError> {
+    // We want to test that the current conneciton is healthy, responsive, and *not* in a
+    // transaction. In this case we're running a query to get the transaction id of the current
+    // statement to make sure that both statements are not in the same transaction. Additionally we
+    // have a timeout to make sure that the client is responsive and able to execute a query.
+    let is_txn_open = time::timeout(DROP_INNER_PG_CLIENT_TIMEOUT, async {
+        let txid_1: i64 = object
+            .query_one(CURRENT_TXID_QUERY, &[])
+            .await?
+            .try_get("txid_current")?;
+        let txid_2: i64 = object
+            .query_one(CURRENT_TXID_QUERY, &[])
+            .await?
+            .try_get("txid_current")?;
+
+        Result::<_, PgError>::Ok(txid_1 == txid_2)
+    })
+    .await;
+
+    let ret_val = match is_txn_open {
+        // We found that we get the same txn id twice within the timeout
+        Ok(Ok(true)) => {
+            warn!(
+                "identical txid values returned after 2 calls, \
+                there is an open txn on this conneciton, removing pg connection from pool"
+            );
+            Ok(())
+        }
+        // We found 2 txn ids, this connection appears to be healthy, so allow it to return to the
+        // pool
+        Ok(Ok(false)) => {
+            drop(object);
+            return Ok(());
+        }
+        // An error occured during our 2 queries so consider this connection not healthy and remove
+        // it from the pool
+        Ok(Err(err)) => Err(err),
+        // As we've exceed the timeout above, this signals to use that we coulldn't run 2
+        // simple queries to completion. This could be a sign that the connection still has a
+        // query in progress so we'll consider this connection unhealthy and remove it from the
+        // pool.
+        Err(_elapsed) => Err(PgError::Timeout(
+            "timeout exceeded while waiting on txn check during teardown",
+        )),
+    };
+
+    // Remmove this object from the pool, which also reduce the *size* of the pool, and leaves the
+    // *max_size* unchanged
+    let client_wrapper = Object::<Manager>::take(object);
+    drop(client_wrapper);
+    trace!("client wrapper dropped, connection closed");
+
+    ret_val
 }
