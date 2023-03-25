@@ -47,9 +47,12 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
             created_at: Some(Utc::now()),
             enqueued_at: None,
             at: job_producer_meta.at,
-            #[cfg(debug_assertions)]
-            backtrace: format!("{:?}", job_producer.backtrace()).replace("\\n", "\n"),
-            #[cfg(not(debug_assertions))]
+            //
+            // This code path causes *havoc*, I say. Havoc! Beware!
+            //
+            //            #[cfg(debug_assertions)]
+            //            backtrace: format!("{:?}", job_producer.backtrace()).replace("\\n", "\n"),
+            //            #[cfg(not(debug_assertions))]
             backtrace: "<no debug information available to generate backtrace>".to_owned(),
             args: vec![
                 job_producer.args()?,
