@@ -20,8 +20,8 @@ tokio = { version = "1.2.0", features = ["full"] }
 veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
-base64 = "0.13.0"
-indoc = "1.0.3"
+base64 = "0.21"
+indoc = "2.0"
 test-log = { version = "0.2.7", default-features = false, features = ["trace"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }

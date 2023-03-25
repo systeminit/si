@@ -426,6 +426,7 @@ impl Default for ClientConfig {
 mod tests {
     use std::{borrow::Cow, env, path::Path};
 
+    use base64::{engine::general_purpose, Engine};
     use cyclone_core::{
         ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
         ValidationRequest,
@@ -518,6 +519,10 @@ mod tests {
         tokio::spawn(async move { server.run().await });
 
         Client::http(socket).expect("failed to create client")
+    }
+
+    fn base64_encode(input: impl AsRef<[u8]>) -> String {
+        general_purpose::STANDARD_NO_PAD.encode(input)
     }
 
     #[test(tokio::test)]
@@ -715,7 +720,7 @@ mod tests {
                 ],
             },
             response_type: cyclone_core::ResolverFunctionResponseType::Object,
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
@@ -804,7 +809,7 @@ mod tests {
                 ],
             },
             response_type: cyclone_core::ResolverFunctionResponseType::Object,
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
@@ -874,7 +879,7 @@ mod tests {
             execution_id: "1337".to_string(),
             handler: "validate".to_string(),
             value: "a string is a sequence of bytes".into(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function validate(value) {
                     console.log('i came here to chew bubblegum and validate prop values');
                     console.log('and i\'m all out of gum');
@@ -973,7 +978,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
@@ -1048,7 +1053,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
@@ -1122,7 +1127,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
@@ -1196,7 +1201,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 r#"function workit() {
                     console.log('first');
                     console.log('second');

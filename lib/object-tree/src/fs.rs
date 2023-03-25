@@ -101,8 +101,12 @@ impl TreeFileSystemReader {
     /// Returns `Err` if the Tar file does not exist or cannot be opened
     pub async fn tar(tar_file: impl Into<PathBuf>) -> Result<Self, FsError> {
         let tar_file = tar_file.into();
-        let tar_file_clone = tar_file.clone();
-        let fs = asyncify(move || TarFS::new(tar_file_clone).map_err(FsError::OpenRead)).await?;
+        let file = File::open(&tar_file)
+            .await
+            .map_err(FsError::IoRead)?
+            .into_std()
+            .await;
+        let fs = asyncify(move || TarFS::from_std_file(&file).map_err(FsError::OpenRead)).await?;
         let vfs_path = VfsPath::new(fs);
 
         Ok(Self::Tar { vfs_path, tar_file })

@@ -1,5 +1,6 @@
 use std::{io, path::Path};
 
+use base64::{engine::general_purpose, Engine};
 use sodiumoxide::crypto::box_::PublicKey;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -40,7 +41,7 @@ impl EncryptionKey {
 
     pub fn encrypt_and_encode(&self, message: impl AsRef<[u8]>) -> String {
         let crypted = sodiumoxide::crypto::sealedbox::seal(message.as_ref(), &self.public_key);
-        base64::encode_config(crypted, base64::STANDARD_NO_PAD)
+        general_purpose::STANDARD_NO_PAD.encode(crypted)
     }
 }
 

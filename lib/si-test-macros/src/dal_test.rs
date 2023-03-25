@@ -15,9 +15,10 @@ use std::sync::Arc;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    parse_quote, punctuated::Punctuated, token::Comma, AttributeArgs, Expr, FnArg, ItemFn, Path,
-    ReturnType, Type,
+    parse_quote, punctuated::Punctuated, token::Comma, Expr, FnArg, ItemFn, Path, ReturnType, Type,
 };
+
+use crate::Args;
 
 const LOG_ENV_VAR: &str = "SI_TEST_LOG";
 const SPAN_EVENTS_ENV_VAR: &str = "SI_TEST_LOG_SPAN_EVENTS";
@@ -25,7 +26,7 @@ const SPAN_EVENTS_ENV_VAR: &str = "SI_TEST_LOG_SPAN_EVENTS";
 const RT_DEFAULT_WORKER_THREADS: usize = 2;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
-pub(crate) fn expand(item: ItemFn, _args: AttributeArgs) -> TokenStream {
+pub(crate) fn expand(item: ItemFn, _args: Args) -> TokenStream {
     if item.sig.asyncness.is_none() {
         panic!("test function must be async--blocking tests not supported");
     }

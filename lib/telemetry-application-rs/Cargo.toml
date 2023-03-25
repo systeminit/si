@@ -6,7 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-derive_builder = { version = "0.11.2" }
+derive_builder = { version = "0.12" }
 opentelemetry-otlp = { version = "0.11.0" }
 opentelemetry-semantic-conventions = { version = "0.10.0" }
 tracing-opentelemetry = { version = "0.18.0" }

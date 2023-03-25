@@ -2,8 +2,30 @@ extern crate proc_macro;
 
 mod dal_test;
 
+use std::collections::HashSet;
+
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, AttributeArgs, ItemFn};
+use syn::{
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    Ident, ItemFn, Token,
+};
+
+#[allow(dead_code)] // We aren't current using args on the macro, but when we do we can drop this
+                    // line
+struct Args {
+    pub(crate) vars: HashSet<Ident>,
+}
+
+impl Parse for Args {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let vars = Punctuated::<Ident, Token![,]>::parse_terminated(input)?;
+        Ok(Self {
+            vars: vars.into_iter().collect(),
+        })
+    }
+}
 
 /// A procedural macro which helps to streamline, setup, and manage DAL object-related tests.
 ///
@@ -174,7 +196,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// function.
 #[proc_macro_attribute]
 pub fn dal_test(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr as AttributeArgs);
+    let args = parse_macro_input!(attr as Args);
     let item = parse_macro_input!(input as ItemFn);
     dal_test::expand(item, args).into()
 }

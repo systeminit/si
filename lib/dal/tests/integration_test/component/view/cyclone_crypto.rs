@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use dal::DalContext;
 
 use dal_test::test;
@@ -38,7 +39,7 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
             parents: Vec::new(),
         },
         response_type: ResolverFunctionResponseType::Boolean,
-        code_base64: base64::encode(&code),
+        code_base64: general_purpose::STANDARD_NO_PAD.encode(&code),
     };
     let result = ctx
         .veritech()
