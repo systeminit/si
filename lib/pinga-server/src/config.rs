@@ -107,7 +107,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             cyclone_encryption_key_path,
-            concurrency_limit: 10,
+            concurrency_limit: 0,
         }
     }
 }
