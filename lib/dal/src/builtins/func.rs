@@ -104,6 +104,7 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     for builtin_func_file in ASSETS.iter() {
+        let ctx = ctx.clone_with_new_transactions().await?;
         let builtin_path = std::path::Path::new(builtin_func_file.relative_path);
         match builtin_path.extension() {
             Some(extension) => {
@@ -132,14 +133,14 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 .to_string_lossy()
         );
 
-        let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+        let existing_func = Func::find_by_attr(&ctx, "name", &func_name).await?;
         if !existing_func.is_empty() {
             warn!("skipping {:?}: func already exists", &func_name);
             continue;
         }
 
         let mut new_func = Func::new(
-            ctx,
+            &ctx,
             &func_name,
             func_metadata.kind,
             func_metadata.response_type,
@@ -168,42 +169,43 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 })?;
             let code = base64::encode(code.contents_str);
             new_func
-                .set_code_base64(ctx, Some(code))
+                .set_code_base64(&ctx, Some(code))
                 .await
                 .expect("cannot set code");
         }
 
         new_func
-            .set_handler(ctx, func_metadata.code_entrypoint)
+            .set_handler(&ctx, func_metadata.code_entrypoint)
             .await
             .expect("cannot set handler");
 
         new_func
-            .set_display_name(ctx, func_metadata.display_name)
+            .set_display_name(&ctx, func_metadata.display_name)
             .await
             .expect("cannot set display name");
         new_func
-            .set_description(ctx, func_metadata.description)
+            .set_description(&ctx, func_metadata.description)
             .await
             .expect("cannot set func description");
         new_func
-            .set_link(ctx, func_metadata.link)
+            .set_link(&ctx, func_metadata.link)
             .await
             .expect("cannot set func link");
         new_func
-            .set_hidden(ctx, func_metadata.hidden.unwrap_or(false))
+            .set_hidden(&ctx, func_metadata.hidden.unwrap_or(false))
             .await
             .expect("cannot set func hidden");
         new_func
-            .set_builtin(ctx, true)
+            .set_builtin(&ctx, true)
             .await
             .expect("cannot set func builtin");
 
         if let Some(arguments) = func_metadata.arguments {
             for arg in arguments {
-                FuncArgument::new(ctx, &arg.name, arg.kind, None, *new_func.id()).await?;
+                FuncArgument::new(&ctx, &arg.name, arg.kind, None, *new_func.id()).await?;
             }
         }
+        ctx.commit().await?;
     }
 
     Ok(())

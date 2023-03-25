@@ -19,7 +19,7 @@ use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     DalContext, ExternalProviderId, FuncError, PropError, PropId, SchemaError, SchemaVariantId,
-    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    StandardModelError, TransactionsError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -102,6 +102,8 @@ pub enum BuiltinsError {
     ExternalProviderNotFound(String),
     #[error("schema variant definition error")]
     SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
+    #[error("error creating new transactions")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
