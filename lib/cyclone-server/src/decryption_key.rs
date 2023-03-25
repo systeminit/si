@@ -1,5 +1,6 @@
 use std::{io, path::Path};
 
+use base64::{engine::general_purpose, Engine};
 use sodiumoxide::crypto::box_::{PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -56,7 +57,7 @@ impl DecryptionKey {
         &self,
         base64_encoded: impl AsRef<str>,
     ) -> Result<Vec<u8>, DecryptionKeyError> {
-        let crypted = base64::decode_config(base64_encoded.as_ref(), base64::STANDARD_NO_PAD)?;
+        let crypted = general_purpose::STANDARD_NO_PAD.decode(base64_encoded.as_ref())?;
         sodiumoxide::crypto::sealedbox::open(&crypted, &self.public_key, &self.secret_key)
             .map_err(|_| DecryptionKeyError::DecryptionFailed)
     }

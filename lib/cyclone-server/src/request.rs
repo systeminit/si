@@ -243,15 +243,13 @@ impl DecryptRequest for ValidationRequest {
 
 #[cfg(test)]
 mod tests {
+    use base64::{engine::general_purpose, Engine};
     use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
 
     use super::*;
 
     fn encrypt_and_encode(message: &[u8], pkey: &PublicKey) -> String {
-        base64::encode_config(
-            sodiumoxide::crypto::sealedbox::seal(message, pkey),
-            base64::STANDARD_NO_PAD,
-        )
+        general_purpose::STANDARD_NO_PAD.encode(sodiumoxide::crypto::sealedbox::seal(message, pkey))
     }
 
     fn gen_keypair() -> (PublicKey, SecretKey) {

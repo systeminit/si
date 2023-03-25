@@ -1,6 +1,7 @@
 use crate::Tenancy;
 use std::fmt;
 
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
@@ -377,10 +378,11 @@ pub enum SecretKind {
 }
 
 fn encode_crypted(crypted: &[u8]) -> String {
-    base64::encode_config(crypted, base64::STANDARD_NO_PAD)
+    general_purpose::STANDARD_NO_PAD.encode(crypted)
 }
 
 mod crypted_serde {
+    use base64::{engine::general_purpose, Engine};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     use super::encode_crypted;
@@ -398,8 +400,9 @@ mod crypted_serde {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let buffer =
-            base64::decode_config(s, base64::STANDARD_NO_PAD).map_err(serde::de::Error::custom)?;
+        let buffer = general_purpose::STANDARD_NO_PAD
+            .decode(s)
+            .map_err(serde::de::Error::custom)?;
         Ok(buffer)
     }
 }

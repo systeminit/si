@@ -2,17 +2,17 @@
 name = "council-server"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+rust-version = "1.64"
+publish = false
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-ulid = { version = "1", features = ["serde"] }
-si-data-nats = { path = "../../lib/si-data-nats" }
-thiserror = "1.0.24"
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+derive_builder = { version = "0.12" }
 futures = "0.3.13"
-derive_builder = { version = "0.11.2" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.64", features = ["preserve_order"] }
+si-data-nats = { path = "../../lib/si-data-nats" }
 si-settings = { path = "../../lib/si-settings" }
 telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = "1.0.24"
 tokio = { version = "1.12.0", features = ["full"] }
+ulid = { version = "1", features = ["serde"] }

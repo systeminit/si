@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -128,13 +129,11 @@ impl KeyPair {
 }
 
 fn encode_public_key(key: &BoxPublicKey) -> String {
-    let s = base64::encode_config(key.as_ref(), base64::STANDARD_NO_PAD);
-    s
+    general_purpose::STANDARD_NO_PAD.encode(key.as_ref())
 }
 
 fn encode_secret_key(key: &BoxSecretKey) -> String {
-    let s = base64::encode_config(key.as_ref(), base64::STANDARD_NO_PAD);
-    s
+    general_purpose::STANDARD_NO_PAD.encode(key.as_ref())
 }
 
 /// A database-persisted libsodium box public key.

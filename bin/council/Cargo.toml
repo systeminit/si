@@ -12,16 +12,6 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4.0.14", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = { version = "0.6.1" }
+council-server = { path = "../../lib/council-server" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 tokio = { version = "1.12.0", features = ["full"] }
-thiserror = { version = "1.0" }
-futures = "0.3"
-
-council-server = { path = "../../lib/council-server" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-ulid = { version = "1", features = ["serde"] }
-
-derive_builder = { version = "0.11.2" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1"
-si-settings = { path = "../../lib/si-settings" }

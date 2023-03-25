@@ -1,5 +1,6 @@
 use std::string::FromUtf8Error;
 
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -143,7 +144,9 @@ impl Func {
     #[allow(clippy::result_large_err)]
     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
         Ok(match self.code_base64() {
-            Some(base64_code) => Some(String::from_utf8(base64::decode(base64_code)?)?),
+            Some(base64_code) => Some(String::from_utf8(
+                general_purpose::STANDARD_NO_PAD.decode(base64_code)?,
+            )?),
             None => None,
         })
     }
@@ -153,8 +156,12 @@ impl Func {
         ctx: &DalContext,
         code: Option<&'_ str>,
     ) -> FuncResult<()> {
-        self.set_code_base64(ctx, code.as_ref().map(base64::encode))
-            .await
+        self.set_code_base64(
+            ctx,
+            code.as_ref()
+                .map(|code| general_purpose::STANDARD_NO_PAD.encode(code)),
+        )
+        .await
     }
 
     pub fn metadata_view(&self) -> FuncMetadataView {

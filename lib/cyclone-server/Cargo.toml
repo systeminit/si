@@ -8,11 +8,11 @@ publish = false
 [dependencies]
 async-trait = { version = "0.1.51" }
 axum = { version = "0.5.4", features = ["ws"] }
-base64 = { version = "0.13.0" }
+base64 = { version = "0.21" }
 bytes-lines-codec = { path = "../bytes-lines-codec" }
 chrono = { version = "0.4.19" }
 cyclone-core = { path = "../../lib/cyclone-core" }
-derive_builder = { version = "0.11.2" }
+derive_builder = { version = "0.12" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"] }
 pin-project-lite = { version = "0.2.7" }

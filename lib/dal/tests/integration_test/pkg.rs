@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use dal::{installed_pkg::*, pkg::*, DalContext, Func, Schema, SchemaVariant, StandardModel};
 use dal_test::test;
 use si_pkg::{
@@ -62,7 +63,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .expect("able to make schema spec");
 
     let code = "function truth() { return true; }";
-    let code_base64 = base64::encode(code.as_bytes());
+    let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.as_bytes());
 
     let func_spec = FuncSpec::builder()
         .name("si:truthy")

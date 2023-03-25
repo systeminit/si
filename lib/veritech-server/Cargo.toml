@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 deadpool-cyclone = { path = "../../lib/deadpool-cyclone" }
-derive_builder = { version = "0.11.2" }
+derive_builder = { version = "0.12" }
 futures = { version = "0.3.17" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 serde = "1.0.123"

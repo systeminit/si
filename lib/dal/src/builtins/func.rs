@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
+use base64::engine::general_purpose;
+use base64::Engine;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -166,7 +168,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 .ok_or_else(|| {
                     BuiltinsError::FuncMetadata(format!("Code file not found: {code_file:?}"))
                 })?;
-            let code = base64::encode(code.contents_str);
+            let code = general_purpose::STANDARD_NO_PAD.encode(code.contents_str);
             new_func
                 .set_code_base64(ctx, Some(code))
                 .await

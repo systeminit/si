@@ -276,6 +276,7 @@ async fn forward_output_task(
 mod tests {
     use std::env;
 
+    use base64::{engine::general_purpose, Engine};
     use si_data_nats::NatsConfig;
     use test_log::test;
     use tokio::task::JoinHandle;
@@ -337,6 +338,10 @@ mod tests {
         tokio::spawn(veritech_server_for_uds_cyclone(subject_prefix).await.run())
     }
 
+    fn base64_encode(input: impl AsRef<[u8]>) -> String {
+        general_purpose::STANDARD_NO_PAD.encode(input)
+    }
+
     #[test(tokio::test)]
     async fn executes_simple_resolver_function() {
         let prefix = nats_prefix();
@@ -362,7 +367,7 @@ mod tests {
                 parents: vec![],
             },
             response_type: ResolverFunctionResponseType::Integer,
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 "function numberOfInputs(input) { return Object.keys(input)?.length ?? 0; }",
             ),
         };
@@ -429,7 +434,7 @@ mod tests {
                     parents: vec![],
                 },
                 response_type,
-                code_base64: base64::encode(
+                code_base64: base64_encode(
                     "function returnInputValue(input) { return input.value; }",
                 ),
             };
@@ -492,7 +497,7 @@ mod tests {
                     parents: vec![],
                 },
                 response_type: response_type.clone(),
-                code_base64: base64::encode(
+                code_base64: base64_encode(
                     "function returnInputValue(input) { return input.value; }",
                 ),
             };
@@ -533,7 +538,7 @@ mod tests {
             execution_id: "31337".to_string(),
             handler: "isThirtyThree".to_string(),
             value: 33.into(),
-            code_base64: base64::encode(
+            code_base64: base64_encode(
                 "function isThirtyThree(value) { return { valid: value === 33 }; };",
             ),
         };
@@ -572,7 +577,7 @@ mod tests {
             execution_id: "112233".to_string(),
             handler: "workItOut".to_string(),
             // TODO(fnichol): rewrite this function once we settle on contract
-            code_base64: base64::encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
+            code_base64: base64_encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
             args: Default::default(),
         };
 
