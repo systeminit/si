@@ -32,13 +32,13 @@ pub type NatsError = Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("async runtime error")]
+    #[error("async runtime error: {0}")]
     Async(#[from] task::JoinError),
-    #[error("nats client error")]
+    #[error("nats client error: {0}")]
     Nats(#[from] io::Error),
-    #[error("crossbeam select error")]
+    #[error("crossbeam select error: {0}")]
     CrossBeamChannel(#[from] RecvError),
-    #[error("error serializing object")]
+    #[error("error serializing object: {0}")]
     Serialize(#[source] serde_json::Error),
 }
 
