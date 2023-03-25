@@ -7,6 +7,7 @@ mod request;
 mod result;
 mod routes;
 mod server;
+mod state;
 mod timestamp;
 mod tower;
 mod uds;

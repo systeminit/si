@@ -5,7 +5,8 @@ use std::sync::{
 
 use async_trait::async_trait;
 use axum::{
-    extract::{Extension, FromRequest, RequestParts},
+    extract::{Extension, FromRequestParts},
+    http::request::Parts,
     Json,
 };
 use hyper::StatusCode;
@@ -50,14 +51,14 @@ impl Drop for LimitRequestGuard {
 }
 
 #[async_trait]
-impl<P> FromRequest<P> for LimitRequestGuard
+impl<S> FromRequestParts<S> for LimitRequestGuard
 where
-    P: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(limiter) = Extension::<RequestLimiter>::from_request(req)
+    async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(limiter) = Extension::<RequestLimiter>::from_request_parts(req, state)
             .await
             .map_err(internal_error)?;
 

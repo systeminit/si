@@ -15,6 +15,8 @@ use dal::{
     StandardModelError, TenancyError, TransactionsError,
 };
 
+use crate::server::state::AppState;
+
 pub mod get_summary;
 
 // code endpoints here are deprecated, removing them from the module tree
@@ -82,6 +84,6 @@ impl IntoResponse for QualificationError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new().route("/get_summary", get(get_summary::get_summary))
 }

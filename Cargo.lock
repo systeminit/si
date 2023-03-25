@@ -149,46 +149,14 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.5.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acee9fd5073ab6b045a275b3e709c163dd36c90685219cb21804a147b58dba43"
-dependencies = [
- "async-trait",
- "axum-core 0.2.9",
- "base64 0.13.1",
- "bitflags",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "hyper",
- "itoa",
- "matchit 0.5.0",
- "memchr",
- "mime",
- "percent-encoding",
- "pin-project-lite",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sha-1",
- "sync_wrapper",
- "tokio",
- "tokio-tungstenite 0.17.2",
- "tower",
- "tower-http",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "axum"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f8ccfd9221ee7d1f3d4b33e1f8319b3a81ed8f61f2ea40b37b859794b4491"
 dependencies = [
  "async-trait",
- "axum-core 0.3.3",
+ "axum-core",
+ "axum-macros",
+ "base64 0.21.0",
  "bitflags",
  "bytes",
  "futures-util",
@@ -196,31 +164,21 @@ dependencies = [
  "http-body",
  "hyper",
  "itoa",
- "matchit 0.7.0",
+ "matchit",
  "memchr",
  "mime",
  "percent-encoding",
  "pin-project-lite",
  "rustversion",
  "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_urlencoded",
+ "sha1",
  "sync_wrapper",
+ "tokio",
+ "tokio-tungstenite",
  "tower",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "axum-core"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e5939e02c56fecd5c017c37df4238c0a839fa76b7f97acdd7efb804fd181cc"
-dependencies = [
- "async-trait",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "mime",
  "tower-layer",
  "tower-service",
 ]
@@ -244,14 +202,14 @@ dependencies = [
 
 [[package]]
 name = "axum-macros"
-version = "0.2.3"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6293dae2ec708e679da6736e857cf8532886ef258e92930f38279c12641628b8"
+checksum = "2bb524613be645939e280b7279f7b017f98cf7f5ef084ec374df373530e73277"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
 ]
 
 [[package]]
@@ -787,7 +745,7 @@ dependencies = [
  "test-log",
  "thiserror",
  "tokio",
- "tokio-tungstenite 0.18.0",
+ "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
 ]
@@ -811,7 +769,7 @@ name = "cyclone-server"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "axum 0.5.17",
+ "axum",
  "base64 0.21.0",
  "bytes-lines-codec",
  "chrono",
@@ -2032,12 +1990,6 @@ checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
  "regex-automata",
 ]
-
-[[package]]
-name = "matchit"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73cbba799671b762df5a175adf59ce145165747bb891505c43d09aefbbf38beb"
 
 [[package]]
 name = "matchit"
@@ -3311,7 +3263,7 @@ name = "sdf-server"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "axum 0.5.17",
+ "axum",
  "axum-macros",
  "base64 0.21.0",
  "chrono",
@@ -3342,7 +3294,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
- "tokio-tungstenite 0.18.0",
+ "tokio-tungstenite",
  "tower",
  "tower-http",
  "veritech-client",
@@ -3444,6 +3396,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_path_to_error"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7f05c1d5476066defcdfacce1f52fc3cae3af1d3089727100c02ae92e5abbe0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_repr"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3524,17 +3485,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "sha-1"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5058ada175748e33390e40e872bd0fe59a19f265d0158daa551c5a88a76009c"
-dependencies = [
- "cfg-if",
- "cpufeatures",
- "digest 0.10.6",
 ]
 
 [[package]]
@@ -4165,18 +4115,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f714dd15bead90401d77e04243611caec13726c2408afd5b31901dfcdcb3b181"
-dependencies = [
- "futures-util",
- "log",
- "tokio",
- "tungstenite 0.17.3",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54319c93411147bced34cb5609a80e0a8e44c5999c93903a81cd866630ec0bfd"
@@ -4184,7 +4122,7 @@ dependencies = [
  "futures-util",
  "log",
  "tokio",
- "tungstenite 0.18.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -4252,7 +4190,7 @@ checksum = "8f219fad3b929bef19b1f86fbc0358d35daed8f2cac972037ac0dc10bbb8d5fb"
 dependencies = [
  "async-stream",
  "async-trait",
- "axum 0.6.12",
+ "axum",
  "base64 0.13.1",
  "bytes",
  "futures-core",
@@ -4311,9 +4249,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.3.5"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f873044bf02dd1e8239e9c1293ea39dad76dc594ec16185d0a1bf31d8dc8d858"
+checksum = "5d1d42a9b3f3ec46ba828e8d376aec14592ea199f70a06a548587ecd1c4ab658"
 dependencies = [
  "bitflags",
  "bytes",
@@ -4323,7 +4261,6 @@ dependencies = [
  "http-body",
  "http-range-header",
  "pin-project-lite",
- "tower",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -4443,25 +4380,6 @@ name = "try-lock"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3528ecfd12c466c6f163363caf2d02a71161dd5e1cc6ae7b34207ea2d42d81ed"
-
-[[package]]
-name = "tungstenite"
-version = "0.17.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e27992fd6a8c29ee7eef28fc78349aa244134e10ad447ce3b9f0ac0ed0fa4ce0"
-dependencies = [
- "base64 0.13.1",
- "byteorder",
- "bytes",
- "http",
- "httparse",
- "log",
- "rand",
- "sha-1",
- "thiserror",
- "url",
- "utf-8",
-]
 
 [[package]]
 name = "tungstenite"

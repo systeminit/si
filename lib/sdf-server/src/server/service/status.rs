@@ -7,6 +7,8 @@ use dal::{StatusUpdateError, TransactionsError};
 use hyper::StatusCode;
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod list_active_statuses;
 
 #[derive(Error, Debug)]
@@ -31,7 +33,7 @@ impl IntoResponse for StatusError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new().route(
         "/list-active-statuses",
         get(list_active_statuses::list_active_statuses),

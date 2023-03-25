@@ -156,12 +156,10 @@ macro_rules! test_setup {
             $jwt_secret_key,
             $council_subject_prefix,
         ) = $ctx.entries();
-        let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
         let ($app, _, _) = sdf_server::build_service(
-            telemetry,
             $pg.clone(),
             $nats_conn.clone(),
             $job_processor.clone(),

@@ -5,6 +5,8 @@ use dal::TransactionsError;
 use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 #[derive(Debug, Error)]
 pub enum WsError {
     #[error(transparent)]
@@ -33,7 +35,7 @@ impl IntoResponse for WsError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new().route(
         "/workspace_updates",
         get(workspace_updates::workspace_updates),

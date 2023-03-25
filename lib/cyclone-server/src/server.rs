@@ -17,8 +17,8 @@ use tokio::{
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
-    routes::routes, Config, DecryptionKey, DecryptionKeyError, IncomingStream, UdsIncomingStream,
-    UdsIncomingStreamError,
+    routes::routes, state::AppState, Config, DecryptionKey, DecryptionKeyError, IncomingStream,
+    UdsIncomingStream, UdsIncomingStreamError,
 };
 
 #[derive(Debug, Error)]
@@ -148,7 +148,9 @@ fn build_service(
 ) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(config, shutdown_tx, telemetry_level, decryption_key)
+    let state = AppState::new(config.lang_server_path(), decryption_key, telemetry_level);
+
+    let routes = routes(config, state, shutdown_tx)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(

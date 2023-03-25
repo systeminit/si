@@ -8,7 +8,7 @@ use std::{
 use axum::{
     extract::{
         ws::{self, WebSocket},
-        Extension, WebSocketUpgrade,
+        Extension, State, WebSocketUpgrade,
     },
     response::IntoResponse,
 };
@@ -19,21 +19,18 @@ use cyclone_core::{
 };
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
-use telemetry::{prelude::*, TelemetryLevel};
+use telemetry::prelude::*;
 
-use super::{
-    extract::LimitRequestGuard,
-    routes::{LangServerPath, WatchKeepalive},
-};
-use crate::result::LangServerValidationResultSuccess;
+use super::extract::LimitRequestGuard;
 use crate::{
     execution::{self, Execution},
     request::{DecryptRequest, ListSecrets},
     result::{
         LangServerCommandRunResultSuccess, LangServerResolverFunctionResultSuccess,
-        LangServerWorkflowResolveResultSuccess,
+        LangServerValidationResultSuccess, LangServerWorkflowResolveResultSuccess,
     },
-    watch, DecryptionKey,
+    state::{DecryptionKey, LangServerPath, TelemetryLevel, WatchKeepalive},
+    watch,
 };
 
 #[allow(clippy::unused_async)]
@@ -85,9 +82,9 @@ pub async fn ws_execute_ping(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
-    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
-    Extension(key): Extension<Arc<DecryptionKey>>,
-    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    State(lang_server_path): State<LangServerPath>,
+    State(key): State<DecryptionKey>,
+    State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
@@ -99,7 +96,7 @@ pub async fn ws_execute_resolver(
             socket,
             lang_server_path,
             telemetry_level.is_debug_or_lower(),
-            key,
+            key.into(),
             limit_request_guard,
             "resolverfunction".to_owned(),
             request,
@@ -112,9 +109,9 @@ pub async fn ws_execute_resolver(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_validation(
     wsu: WebSocketUpgrade,
-    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
-    Extension(key): Extension<Arc<DecryptionKey>>,
-    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    State(lang_server_path): State<LangServerPath>,
+    State(key): State<DecryptionKey>,
+    State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
@@ -126,7 +123,7 @@ pub async fn ws_execute_validation(
             socket,
             lang_server_path,
             telemetry_level.is_debug_or_lower(),
-            key,
+            key.into(),
             limit_request_guard,
             "validation".to_owned(),
             request,
@@ -139,9 +136,9 @@ pub async fn ws_execute_validation(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_workflow_resolve(
     wsu: WebSocketUpgrade,
-    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
-    Extension(key): Extension<Arc<DecryptionKey>>,
-    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    State(lang_server_path): State<LangServerPath>,
+    State(key): State<DecryptionKey>,
+    State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
@@ -153,7 +150,7 @@ pub async fn ws_execute_workflow_resolve(
             socket,
             lang_server_path,
             telemetry_level.is_debug_or_lower(),
-            key,
+            key.into(),
             limit_request_guard,
             "workflowResolve".to_owned(),
             request,
@@ -166,14 +163,12 @@ pub async fn ws_execute_workflow_resolve(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_command_run(
     wsu: WebSocketUpgrade,
-    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
-    Extension(key): Extension<Arc<DecryptionKey>>,
-    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    State(lang_server_path): State<LangServerPath>,
+    State(key): State<DecryptionKey>,
+    State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
-
-    // Hey! Let's upgrade from http communication to websocket communication.
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<CommandRunRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerCommandRunResultSuccess> = PhantomData;
@@ -182,7 +177,7 @@ pub async fn ws_execute_command_run(
             socket,
             lang_server_path,
             telemetry_level.is_debug_or_lower(),
-            key,
+            key.into(),
             limit_request_guard,
             "commandRun".to_owned(),
             request,
@@ -197,7 +192,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
-    key: Arc<DecryptionKey>,
+    key: Arc<crate::DecryptionKey>,
     _limit_request_guard: LimitRequestGuard,
     sub_command: String,
     _request_marker: PhantomData<Request>,

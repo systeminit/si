@@ -11,6 +11,8 @@ use dal::{
 };
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod apply_change_set;
 pub mod create_change_set;
 pub mod get_change_set;
@@ -55,7 +57,7 @@ impl IntoResponse for ChangeSetError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/list_open_change_sets",

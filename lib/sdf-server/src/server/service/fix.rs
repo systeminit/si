@@ -13,6 +13,8 @@ use dal::{
     TransactionsError, UserError, UserPk, WorkflowRunnerError,
 };
 
+use crate::server::state::AppState;
+
 pub mod confirmations;
 pub mod list;
 pub mod run;
@@ -64,7 +66,7 @@ impl IntoResponse for FixError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/confirmations", get(confirmations::confirmations))
         .route("/list", get(list::list))

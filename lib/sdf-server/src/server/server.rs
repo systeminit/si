@@ -15,7 +15,7 @@ use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_std::SensitiveString;
-use telemetry::{prelude::*, TelemetryClient};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -25,6 +25,7 @@ use tokio::{
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
+use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
 #[derive(Debug, Error)]
@@ -74,7 +75,6 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub fn http(
         config: Config,
-        telemetry: telemetry::ApplicationTelemetryClient,
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
@@ -87,7 +87,6 @@ impl Server<(), ()> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
-                    telemetry,
                     pg_pool,
                     nats,
                     job_processor,
@@ -122,7 +121,6 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub async fn uds(
         config: Config,
-        telemetry: telemetry::ApplicationTelemetryClient,
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
@@ -135,7 +133,6 @@ impl Server<(), ()> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
-                    telemetry,
                     pg_pool,
                     nats,
                     job_processor,
@@ -325,9 +322,8 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_service(
-    telemetry: impl TelemetryClient,
     pg_pool: PgPool,
-    nats: NatsClient,
+    nats_conn: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: VeritechClient,
     encryption_key: EncryptionKey,
@@ -339,25 +335,31 @@ pub fn build_service(
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
-    let routes = routes(
-        telemetry,
+    let services_context = ServicesContext::new(
         pg_pool,
-        nats,
+        nats_conn,
         job_processor,
         veritech,
-        encryption_key,
-        jwt_secret_key,
-        signup_secret,
+        Arc::new(encryption_key),
         council_subject_prefix,
-        shutdown_tx,
-        shutdown_broadcast_tx.clone(),
-        pkgs_path,
-    )
-    // TODO(fnichol): customize http tracing further, using:
-    // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
-    .layer(
-        TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)),
+        pkgs_path.map(|path| path.to_path_buf()),
     );
+
+    let state = AppState::new(
+        services_context,
+        signup_secret,
+        jwt_secret_key,
+        shutdown_broadcast_tx.clone(),
+        shutdown_tx,
+    );
+
+    let routes = routes(state)
+        // TODO(fnichol): customize http tracing further, using:
+        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
+        );
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 

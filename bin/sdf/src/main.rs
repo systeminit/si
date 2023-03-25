@@ -143,7 +143,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         IncomingStream::HTTPSocket(_) => {
             let (server, initial_shutdown_broadcast_rx) = Server::http(
                 config,
-                telemetry,
                 pg_pool.clone(),
                 nats.clone(),
                 job_processor,
@@ -182,7 +181,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         IncomingStream::UnixDomainSocket(_) => {
             let (server, initial_shutdown_broadcast_rx) = Server::uds(
                 config,
-                telemetry,
                 pg_pool.clone(),
                 nats.clone(),
                 job_processor,

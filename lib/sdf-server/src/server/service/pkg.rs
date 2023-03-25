@@ -1,4 +1,4 @@
-use crate::server::impl_default_error_into_response;
+use crate::server::{impl_default_error_into_response, state::AppState};
 use axum::{
     response::Response,
     routing::{get, post},
@@ -161,7 +161,7 @@ pub async fn pkg_open(builder: &DalContextBuilder, name: &str) -> PkgResult<SiPk
     Ok(SiPkg::load_from_file(&real_pkg_path).await?)
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/export_pkg", post(export_pkg::export_pkg))
         .route("/get_pkg", get(get_pkg::get_pkg))
