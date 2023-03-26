@@ -1,4 +1,4 @@
-use crate::server::impl_default_error_into_response;
+use crate::server::{impl_default_error_into_response, state::AppState};
 use crate::service::func::get_func::GetFuncResponse;
 use axum::{
     response::Response,
@@ -425,7 +425,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
     })
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route("/get_func", get(get_func::get_func))

@@ -7,8 +7,8 @@ publish = false
 
 [dependencies]
 async-trait = "0.1.51"
-axum = { version = "0.5.4", features = ["ws"] }
-axum-macros = { version = "0.2.3", optional = true } # enable: cargo build --features axum-macro
+axum = { version = "0.6.12", features = ["macros", "ws"] }
+axum-macros = { version = "0.3", optional = true } # enable: cargo build --features axum-macro
 base64 = "0.21"
 chrono = { version = "0.4.19", features = ["serde"] }
 convert_case = "0.6.0"
@@ -37,7 +37,7 @@ thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
 tokio-tungstenite = "0.18"
 tower = { version = "0.4.10" }
-tower-http = { version = "0.3", features = ["trace"] }
+tower-http = { version = "0.4", features = ["trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [build-dependencies]

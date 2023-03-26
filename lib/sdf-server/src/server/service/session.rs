@@ -9,6 +9,8 @@ use dal::{
 };
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod auth_connect;
 pub mod get_defaults;
 pub mod restore_authentication;
@@ -60,7 +62,7 @@ impl IntoResponse for SessionError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/connect", post(auth_connect::auth_connect))
         .route(

@@ -6,6 +6,8 @@ use dal::{StandardModelError, TransactionsError};
 
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod list_all_providers;
 
 #[derive(Debug, Error)]
@@ -45,7 +47,7 @@ impl IntoResponse for ProviderError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new().route(
         "/list_all_providers",
         get(list_all_providers::list_all_providers),

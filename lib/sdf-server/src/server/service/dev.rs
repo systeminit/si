@@ -1,3 +1,4 @@
+use crate::server::state::AppState;
 use crate::service::dev::create_builtin_func::create_builtin_func;
 use crate::service::dev::save_builtin_func::save_builtin_func;
 use crate::service::func;
@@ -56,7 +57,7 @@ impl IntoResponse for DevError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/get_current_git_sha",

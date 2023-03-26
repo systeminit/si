@@ -8,6 +8,8 @@ use dal::{
 };
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod create_secret;
 pub mod get_public_key;
 pub mod list_secrets;
@@ -53,7 +55,7 @@ impl IntoResponse for SecretError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/get_public_key", get(get_public_key::get_public_key))
         .route("/create_secret", post(create_secret::create_secret))

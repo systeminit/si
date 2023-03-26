@@ -1,6 +1,6 @@
 use super::WsError;
 use axum::{
-    extract::{ws::WebSocket, Extension, WebSocketUpgrade},
+    extract::{ws::WebSocket, State, WebSocketUpgrade},
     response::IntoResponse,
 };
 use dal::WorkspacePk;
@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 
 use crate::server::{
     extract::{Nats, WsAuthorization},
-    routes::ShutdownBroadcast,
+    state::ShutdownBroadcast,
 };
 
 #[instrument(skip(wsu, nats))]
@@ -19,7 +19,7 @@ pub async fn workspace_updates(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
     WsAuthorization(claim): WsAuthorization,
-    Extension(shutdown_broadcast): Extension<ShutdownBroadcast>,
+    State(shutdown_broadcast): State<ShutdownBroadcast>,
 ) -> Result<impl IntoResponse, WsError> {
     async fn handle_socket(
         socket: WebSocket,

@@ -6,6 +6,8 @@ use axum::Router;
 use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError};
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod create_schema;
 pub mod get_schema;
 pub mod list_schemas;
@@ -45,7 +47,7 @@ impl IntoResponse for SchemaError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/create_schema", post(create_schema::create_schema))
         .route("/list_schemas", get(list_schemas::list_schemas))

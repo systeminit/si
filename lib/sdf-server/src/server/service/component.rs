@@ -14,7 +14,7 @@ use dal::{
 };
 use thiserror::Error;
 
-use crate::service::schema::SchemaError;
+use crate::{server::state::AppState, service::schema::SchemaError};
 
 pub mod get_code;
 pub mod get_components_metadata;
@@ -110,7 +110,7 @@ impl IntoResponse for ComponentError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/get_components_metadata",

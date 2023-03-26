@@ -12,6 +12,8 @@ use dal::{
 };
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 pub mod clone_variant_def;
 pub mod create_variant_def;
 pub mod exec_variant_def;
@@ -57,7 +59,7 @@ impl IntoResponse for SchemaVariantDefinitionError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/list_variant_defs",

@@ -14,6 +14,8 @@ use dal::{
 
 use thiserror::Error;
 
+use crate::server::state::AppState;
+
 mod history;
 mod info;
 mod list;
@@ -73,7 +75,7 @@ impl IntoResponse for WorkflowError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list", get(list::list))
         .route("/resolve", post(resolve::resolve))

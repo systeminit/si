@@ -1,54 +1,22 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::sync::Arc;
 
 use axum::{routing::get, Extension, Router};
-use telemetry::{prelude::*, TelemetryLevel};
+use telemetry::prelude::*;
 use tokio::sync::mpsc;
 
-use crate::{extract::RequestLimiter, handlers, watch, Config, DecryptionKey, ShutdownSource};
+use crate::{
+    extract::RequestLimiter,
+    handlers,
+    state::{AppState, WatchKeepalive},
+    watch, Config, ShutdownSource,
+};
 
-#[derive(Debug)]
-pub struct LangServerPath(PathBuf);
-
-impl LangServerPath {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
-        Self(path.into())
-    }
-
-    pub fn as_path(&self) -> &Path {
-        self.0.as_path()
-    }
-}
-
-pub struct WatchKeepalive {
-    tx: mpsc::Sender<()>,
-    timeout: Duration,
-}
-
-impl WatchKeepalive {
-    pub fn clone_tx(&self) -> mpsc::Sender<()> {
-        self.tx.clone()
-    }
-
-    /// Gets a reference to the watch keepalive tx's timeout.
-    pub fn timeout(&self) -> Duration {
-        self.timeout
-    }
-}
-
-#[must_use]
 pub fn routes(
     config: &Config,
+    state: AppState,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
-    telemetry_level: Box<dyn TelemetryLevel>,
-    decryption_key: DecryptionKey,
 ) -> Router {
-    let lang_server_path = LangServerPath::new(config.lang_server_path());
-
-    let mut router = Router::new()
+    let mut router: Router<AppState> = Router::new()
         .route(
             "/liveness",
             get(handlers::liveness).head(handlers::liveness),
@@ -69,10 +37,7 @@ pub fn routes(
             keepalive_rx,
         ));
 
-        let watch_keepalive = WatchKeepalive {
-            tx: keepalive_tx,
-            timeout: watch_timeout,
-        };
+        let watch_keepalive = WatchKeepalive::new(keepalive_tx, watch_timeout);
 
         router = router.merge(
             Router::new()
@@ -81,14 +46,10 @@ pub fn routes(
         );
     }
 
-    router = router
-        .layer(Extension(Arc::new(lang_server_path)))
-        .layer(Extension(Arc::new(decryption_key)))
-        .layer(Extension(Arc::new(telemetry_level)));
-    router
+    router.with_state(state)
 }
 
-fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router {
+fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router<AppState> {
     let mut router = Router::new();
 
     if config.enable_ping() {

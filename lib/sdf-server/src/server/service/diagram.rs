@@ -14,6 +14,7 @@ use dal::{
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
 
+use crate::server::state::AppState;
 use crate::service::schema::SchemaError;
 
 mod connect_component_to_frame;
@@ -115,7 +116,7 @@ impl IntoResponse for DiagramError {
     }
 }
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/get_diagram", get(get_diagram::get_diagram))
         .route(

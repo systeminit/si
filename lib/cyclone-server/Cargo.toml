@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 async-trait = { version = "0.1.51" }
-axum = { version = "0.5.4", features = ["ws"] }
+axum = { version = "0.6.12", features = ["macros", "ws"] }
 base64 = { version = "0.21" }
 bytes-lines-codec = { path = "../bytes-lines-codec" }
 chrono = { version = "0.4.19" }
@@ -26,4 +26,4 @@ tokio = { version = "1.12.0", features = ["full"] }
 tokio-serde = { version = "0.8.0", features = ["json"] }
 tokio-util = { version = "0.7.1", features = ["codec"] }
 tower = { version = "0.4.8" }
-tower-http = { version = "0.3", features = ["trace"] }
+tower-http = { version = "0.4", features = ["trace"] }

@@ -3,17 +3,17 @@ pub use config::{
     StandardConfigFile,
 };
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor, SyncProcessor};
-pub use routes::{routes, AppError, AppResult};
+pub use routes::{routes, AppError};
 pub use server::{build_service, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
 pub(crate) mod extract;
-mod handlers;
 pub(crate) mod job_processor;
 mod routes;
 mod server;
 pub mod service;
+mod state;
 mod uds;
 
 macro_rules! impl_default_error_into_response {
