@@ -11,6 +11,7 @@ pub struct AppState {
     services_context: ServicesContext,
     signup_secret: SignupSecret,
     jwt_secret_key: JwtSecretKey,
+    posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
 
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
@@ -24,6 +25,7 @@ impl AppState {
         services_context: impl Into<ServicesContext>,
         signup_secret: impl Into<SignupSecret>,
         jwt_secret_key: impl Into<JwtSecretKey>,
+        posthog_client: impl Into<PosthogClient>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
@@ -31,6 +33,7 @@ impl AppState {
             services_context: services_context.into(),
             signup_secret: signup_secret.into(),
             jwt_secret_key: jwt_secret_key.into(),
+            posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }
@@ -38,6 +41,39 @@ impl AppState {
 
     pub fn services_context(&self) -> &ServicesContext {
         &self.services_context
+    }
+
+    pub fn posthog_client(&self) -> &PosthogClient {
+        &self.posthog_client
+    }
+}
+
+#[derive(Clone, Debug, FromRef)]
+pub struct PosthogClient(si_posthog_rs::PosthogClient);
+
+impl PosthogClient {
+    pub fn into_inner(self) -> si_posthog_rs::PosthogClient {
+        self.into()
+    }
+}
+
+impl Deref for PosthogClient {
+    type Target = si_posthog_rs::PosthogClient;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<si_posthog_rs::PosthogClient> for PosthogClient {
+    fn from(value: si_posthog_rs::PosthogClient) -> Self {
+        Self(value)
+    }
+}
+
+impl From<PosthogClient> for si_posthog_rs::PosthogClient {
+    fn from(value: PosthogClient) -> Self {
+        value.0
     }
 }
 

@@ -50,6 +50,8 @@ pub struct Config {
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
+    posthog_api_endpoint: String,
+    posthog_api_key: String,
 }
 
 impl StandardConfig for Config {
@@ -104,6 +106,16 @@ impl Config {
     pub fn pkgs_path(&self) -> &Path {
         self.pkgs_path.as_path()
     }
+
+    #[must_use]
+    pub fn posthog_api_endpoint(&self) -> &str {
+        &self.posthog_api_endpoint
+    }
+
+    #[must_use]
+    pub fn posthog_api_key(&self) -> &str {
+        &self.posthog_api_key
+    }
 }
 
 impl ConfigBuilder {
@@ -125,6 +137,8 @@ pub struct ConfigFile {
     cyclone_encryption_key_path: String,
     signup_secret: SensitiveString,
     pkgs_path: String,
+    posthog_api_endpoint: String,
+    posthog_api_key: String,
 }
 
 impl Default for ConfigFile {
@@ -169,6 +183,8 @@ impl Default for ConfigFile {
             cyclone_encryption_key_path,
             signup_secret: DEFAULT_SIGNUP_SECRET.into(),
             pkgs_path,
+            posthog_api_endpoint: "https://e.systeminit.com".to_string(),
+            posthog_api_key: "phc_SoQak5PP054RdTumd69bOz7JhM0ekkxxTXEQsbn3Zg9".to_string(),
         }
     }
 }
@@ -189,6 +205,8 @@ impl TryFrom<ConfigFile> for Config {
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
+        config.posthog_api_endpoint(value.posthog_api_endpoint);
+        config.posthog_api_key(value.posthog_api_key);
         config.build().map_err(Into::into)
     }
 }

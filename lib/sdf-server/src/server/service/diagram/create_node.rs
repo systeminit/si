@@ -1,3 +1,4 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +10,8 @@ use dal::{
     Visibility, WsEvent,
 };
 
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
 use crate::service::diagram::{DiagramError, DiagramResult};
 
@@ -34,6 +36,8 @@ pub struct CreateNodeResponse {
 pub async fn create_node(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateNodeRequest>,
 ) -> DiagramResult<Json<CreateNodeResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -86,6 +90,20 @@ pub async fn create_node(
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "component_created",
+        serde_json::json!({
+                    "schema_id": schema.id(),
+                    "schema_name": schema.name(),
+                    "schema_variant_id": &schema_variant_id,
+                    "component_id": component.id(),
+                    "component_name": &name,
+        }),
+    );
 
     ctx.commit().await?;
 

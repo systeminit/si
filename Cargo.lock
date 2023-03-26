@@ -3286,6 +3286,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-pkg",
+ "si-posthog-rs",
  "si-settings",
  "si-std",
  "sodiumoxide",
@@ -3582,6 +3583,18 @@ dependencies = [
  "thiserror",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "si-posthog-rs"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

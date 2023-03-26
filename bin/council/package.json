@@ -19,10 +19,8 @@
     "dev:backend": "CARGO_MANIFEST_DIR=${PWD} ../../target/debug/council"
   },
   "dependencies": {
-    "telemetry-application": "workspace:*",
     "council-server": "workspace:*",
-    "si-data-nats": "workspace:*",
-    "si-settings": "workspace:*"
+    "telemetry-application": "workspace:*"
   },
   "devDependencies": {}
 }

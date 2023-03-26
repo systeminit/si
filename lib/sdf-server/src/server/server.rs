@@ -14,6 +14,7 @@ use dal::{
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_posthog_rs::PosthogClient;
 use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -60,6 +61,8 @@ pub enum ServerError {
     EncryptionKey(#[from] EncryptionKeyError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
+    #[error(transparent)]
+    Posthog(#[from] si_posthog_rs::error::PosthogError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -82,6 +85,7 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
+        posthog_client: PosthogClient,
         pkgs_path: &Path,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
@@ -95,6 +99,7 @@ impl Server<(), ()> {
                     jwt_secret_key,
                     config.signup_secret().clone(),
                     council_subject_prefix,
+                    posthog_client,
                     Some(pkgs_path),
                 )?;
 
@@ -128,6 +133,7 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
+        posthog_client: PosthogClient,
         pkgs_path: &Path,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
@@ -141,6 +147,7 @@ impl Server<(), ()> {
                     jwt_secret_key,
                     config.signup_secret().clone(),
                     council_subject_prefix,
+                    posthog_client,
                     Some(pkgs_path),
                 )?;
 
@@ -167,6 +174,25 @@ impl Server<(), ()> {
 
     pub fn init() -> Result<()> {
         Ok(dal::init()?)
+    }
+
+    pub async fn start_posthog(
+        posthog_api_endpoint: impl Into<String>,
+        posthog_api_key: impl Into<String>,
+        enable: bool,
+    ) -> Result<PosthogClient> {
+        let (posthog_client, posthog_sender) = si_posthog_rs::new(
+            posthog_api_endpoint,
+            posthog_api_key,
+            std::time::Duration::from_millis(800),
+        )?;
+
+        tokio::spawn(async move { posthog_sender.run().await });
+
+        if !enable {
+            posthog_client.disable()?;
+        }
+        Ok(posthog_client)
     }
 
     #[instrument(name = "sdf.init.generate_jwt_secret_key", skip_all)]
@@ -330,6 +356,7 @@ pub fn build_service(
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
     council_subject_prefix: String,
+    posthog_client: PosthogClient,
     pkgs_path: Option<&Path>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
@@ -349,6 +376,7 @@ pub fn build_service(
         services_context,
         signup_secret,
         jwt_secret_key,
+        posthog_client,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
     );
