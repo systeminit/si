@@ -1,8 +1,8 @@
 WATCH_PATHS ?= .
 WATCH_TASK ?= clippy
 SI_TEST_ARGS ?=
+SI_RUN_ARGS ?=
 SI_TEST_FILTER ?=
-SI_LOG ?= info
 
 PKGID = $(shell cargo pkgid --offline --quiet)
 WORKSPACE_ROOT = $(shell cargo metadata --offline --no-deps --quiet \
@@ -89,13 +89,13 @@ default--run:
 			if ($$0 ~ /^.+#[^#]+@[^@]+$$/) {print $$2} \
 			else {print $$1} \
 		}' \
-		| xargs basename)"
+		| xargs basename)" -- $(SI_RUN_ARGS)
 .PHONY: default--run
 
 ## watch: Runs `cargo watch` for the Rust crate
 default--watch:
 	$(call header,$@)
-	env SI_LOG=$(SI_LOG) cargo watch \
+	cargo watch \
 		$(foreach path,$(WATCH_PATHS),-w $(path)) -x $(WATCH_TASK)
 .PHONY: default--watch
 
