@@ -4,8 +4,10 @@ use crate::{
 };
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    poem(ctx).await?;
-    failure(ctx).await?;
+    let ctx = ctx.clone_with_new_transactions().await?;
+    poem(&ctx).await?;
+    failure(&ctx).await?;
+    ctx.commit().await?;
     Ok(())
 }
 
