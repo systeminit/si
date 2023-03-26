@@ -49,7 +49,7 @@ pub(crate) struct Args {
 
     /// Database migration mode on startup
     #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
-    pub(crate) migration_mode: Option<MigrationMode>,
+    pub(crate) migration_mode: Option<String>,
 
     /// Disable OpenTelemetry on startup
     #[arg(long)]
@@ -104,7 +104,7 @@ impl TryFrom<Args> for Config {
                 config_map.set("pg.user", user);
             }
             if let Some(migration_mode) = args.migration_mode {
-                config_map.set("migration_mode", migration_mode.to_string());
+                config_map.set("migration_mode", migration_mode);
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
@@ -118,6 +118,8 @@ impl TryFrom<Args> for Config {
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);
             }
+
+            config_map.set("pg.application_name", NAME);
         })?
         .try_into()
     }
