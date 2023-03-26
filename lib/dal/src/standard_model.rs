@@ -49,7 +49,7 @@ pub enum TypeHint {
     TimestampWithTimeZone,
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -65,7 +65,7 @@ pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     Ok(object)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -85,7 +85,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 // This likely has some fun bugs living inside it when the value you pass is not
 // a string. Bright side - so far, only strings! :)
 // Hugs, Adam
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn find_by_attr<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -109,7 +109,7 @@ pub async fn find_by_attr<V: Send + Sync + ToString + Debug, OBJECT: Deserialize
     objects_from_rows(rows)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -126,7 +126,7 @@ pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
     objects_from_rows(rows)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn find_by_attr_in<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -150,7 +150,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToString + Debug, OBJECT: Deserial
     objects_from_rows(rows)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -187,7 +187,7 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     }
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -211,7 +211,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     object_option_from_row_option(row_option)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -234,7 +234,7 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -250,7 +250,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn hard_unset_belongs_to_in_change_set<ObjectId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -266,7 +266,7 @@ pub async fn hard_unset_belongs_to_in_change_set<ObjectId: Send + Sync + ToSql>(
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -282,7 +282,7 @@ pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn hard_unset_all_belongs_to_in_change_set<BelongsToId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -298,7 +298,7 @@ pub async fn hard_unset_all_belongs_to_in_change_set<BelongsToId: Send + Sync + 
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -323,7 +323,7 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
@@ -355,7 +355,7 @@ pub async fn many_to_many<
     objects_from_rows(rows)
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -378,7 +378,7 @@ pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send +
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn disassociate_many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
@@ -404,7 +404,7 @@ pub async fn disassociate_many_to_many<
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn disassociate_all_many_to_many<LeftId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -448,7 +448,7 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
     Ok(result)
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 #[allow(clippy::too_many_arguments)]
 pub async fn update<ID, VALUE>(
     ctx: &DalContext,
@@ -486,7 +486,7 @@ where
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn list<OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -502,7 +502,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
     objects_from_rows(rows)
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
     ctx: &DalContext,
     table: &str,
@@ -520,7 +520,7 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
     ctx: &DalContext,
     table: &str,
@@ -538,7 +538,7 @@ pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
     ctx: &DalContext,
     table: &str,
@@ -556,7 +556,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -574,7 +574,7 @@ pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: De
     Ok(serde_json::from_value(json)?)
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip(ctx))]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
     ctx: &DalContext,
     row: PgRow,
@@ -620,7 +620,7 @@ pub trait StandardModel {
         format!("{} {}", Self::history_event_message_name(), msg)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn get_by_pk(ctx: &DalContext, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
@@ -629,7 +629,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn get_by_id(ctx: &DalContext, id: &Self::Id) -> StandardModelResult<Option<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -638,7 +638,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn find_by_attr<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -652,7 +652,7 @@ pub trait StandardModel {
         Ok(objects)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn find_by_attr_null(ctx: &DalContext, attr_name: &str) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -666,7 +666,7 @@ pub trait StandardModel {
     /// provided in `value` (equivalent to `WHERE attr_name IN (a, b, c)`). Same
     /// caveats as `find_by_attr`: `V` is almost always &String, untested with
     /// other types.
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn find_by_attr_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -681,6 +681,7 @@ pub trait StandardModel {
         )
     }
 
+    #[instrument(level = "trace", skip(ctx), fields(table = %Self::table_name()))]
     async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
@@ -695,7 +696,7 @@ pub trait StandardModel {
         )
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name()))]
     async fn list(ctx: &DalContext) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
@@ -704,7 +705,7 @@ pub trait StandardModel {
         Ok(result)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
     async fn delete_by_pk(&mut self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
@@ -729,7 +730,7 @@ pub trait StandardModel {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), id = %self.id()))]
     async fn delete_by_id(&mut self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
@@ -754,7 +755,7 @@ pub trait StandardModel {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
     async fn undelete(&mut self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
@@ -781,7 +782,7 @@ pub trait StandardModel {
 
     /// Permanently delete this object from the database. This is not reversible!
     /// However, we do store the object's json representation as a HistoryEvent.
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), pk = %self.pk()))]
     async fn hard_delete(self, ctx: &DalContext) -> StandardModelResult<Self>
     where
         Self: Send + Sync + Sized + Serialize + DeserializeOwned,
@@ -799,7 +800,7 @@ pub trait StandardModel {
         Ok(obj)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all, fields(table = %Self::table_name(), id = %self.id()))]
     async fn exists_in_head(&self, ctx: &DalContext) -> StandardModelResult<bool>
     where
         Self: Send + Sync + Sized + Serialize + DeserializeOwned,

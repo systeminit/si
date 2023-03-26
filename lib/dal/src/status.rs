@@ -470,13 +470,12 @@ impl StatusUpdater {
     /// # Errors
     ///
     /// Returns [`Err`] if the datastore is unable to update the status update.
+    #[instrument(name = "status_updater.values_queued", skip(ctx), level = "debug")]
     pub async fn values_queued(
         &mut self,
         ctx: &DalContext,
         value_ids: Vec<AttributeValueId>,
     ) -> Result<(), StatusUpdaterError> {
-        let now = std::time::Instant::now();
-
         let mut dependent_values_metadata: HashMap<AttributeValueId, AttributeValueMetadata> =
             HashMap::new();
 
@@ -638,9 +637,6 @@ impl StatusUpdater {
                     .collect(),
             )
             .await?;
-
-        let elapsed_time = now.elapsed();
-        info!("StatusUpdater.values_queued took {:?}", elapsed_time);
 
         Self::publish_immediately(
             ctx,
