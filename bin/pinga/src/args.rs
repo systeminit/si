@@ -87,6 +87,8 @@ impl TryFrom<Args> for Config {
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));
             }
+
+            config_map.set("pg.application_name", NAME);
         })?
         .try_into()
     }

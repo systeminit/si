@@ -108,7 +108,7 @@ impl Default for PgPoolConfig {
             user: String::from("si"),
             password: SensitiveString::from("bugbear"),
             dbname: String::from("si"),
-            application_name: String::from("sdf"),
+            application_name: String::from("si-unknown-app"),
             hostname: String::from("localhost"),
             port: 5432,
             pool_max_size,
