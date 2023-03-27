@@ -185,7 +185,39 @@ impl WorkflowRunner {
         run_id: usize,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
-        should_trigger_confirmations: bool,
+    ) -> WorkflowRunnerResult<(
+        Self,
+        WorkflowRunnerState,
+        Vec<FuncBindingReturnValue>,
+        Vec<CommandRunResult>,
+    )> {
+        Self::run_raw(ctx, run_id, prototype_id, component_id, true).await
+    }
+
+    /// Version of `Self::run` that doesn't trigger dependent values update for /root/resource updates
+    ///
+    /// Create a [`WorkflowRunner`](Self) and "run" it immediately. This not only creates the
+    /// runner, but also a corresponding, _terminating_
+    /// [`WorkflowRunnerState`](crate::workflow_runner::workflow_runner_state::WorkflowRunnerState).
+    pub async fn run_without_triggering_dependent_values_update(
+        ctx: &DalContext,
+        run_id: usize,
+        prototype_id: WorkflowPrototypeId,
+        component_id: ComponentId,
+    ) -> WorkflowRunnerResult<(
+        Self,
+        WorkflowRunnerState,
+        Vec<FuncBindingReturnValue>,
+        Vec<CommandRunResult>,
+    )> {
+        Self::run_raw(ctx, run_id, prototype_id, component_id, false).await
+    }
+
+    pub async fn run_raw(
+        ctx: &DalContext,
+        run_id: usize,
+        prototype_id: WorkflowPrototypeId,
+        component_id: ComponentId,
         trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(
         Self,
@@ -215,7 +247,6 @@ impl WorkflowRunner {
             ctx,
             &func_binding_return_values,
             component_id,
-            should_trigger_confirmations,
             trigger_dependent_values_update,
         )
         .await?;
@@ -287,7 +318,6 @@ impl WorkflowRunner {
         ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         component_id: ComponentId,
-        should_trigger_confirmations: bool,
         trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<CommandRunResult>)> {
         let (identity, func_binding, mut func_binding_return_value) =
@@ -323,7 +353,6 @@ impl WorkflowRunner {
                     .set_resource(ctx, result.clone(), trigger_dependent_values_update)
                     .await
                     .map_err(Box::new)?
-                    && should_trigger_confirmations
                 {
                     Component::run_all_confirmations(ctx)
                         .await

@@ -180,9 +180,7 @@ impl JobConsumer for FixesJob {
             .await?
             .ok_or(FixError::MissingFix(fix_item.id))?;
         let run_id = rand::random();
-        let resources = fix
-            .run(ctx, run_id, workflow_prototype_id, false, false)
-            .await?;
+        let resources = fix.run(ctx, run_id, workflow_prototype_id).await?;
         let completion_status: FixCompletionStatus = *fix
             .completion_status()
             .ok_or(FixError::EmptyCompletionStatus)?;
