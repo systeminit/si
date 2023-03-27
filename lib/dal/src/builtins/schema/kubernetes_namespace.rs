@@ -29,7 +29,7 @@ impl MigrationDriver {
         ui_menu_category: &str,
         node_color: &str,
     ) -> BuiltinsResult<()> {
-        let (schema, mut schema_variant, root_prop, _, _, _) = match self
+        let (mut schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
@@ -48,6 +48,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        schema.set_ui_hidden(ctx, true).await?;
 
         schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
 
