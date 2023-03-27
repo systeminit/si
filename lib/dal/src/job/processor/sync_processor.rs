@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
-use crate::job::definition::{DependentValuesUpdate, FixesJob, RefreshJob};
 use crate::{
-    job::consumer::{JobConsumer, JobInfo},
-    job::producer::JobProducer,
+    job::{
+        consumer::{JobConsumer, JobInfo},
+        definition::{DependentValuesUpdate, FixesJob, RefreshJob},
+        producer::{BlockingJobResult, JobProducer},
+    },
     DalContext,
 };
 
@@ -57,6 +59,15 @@ impl JobQueueProcessor for SyncProcessor {
         ctx: &DalContext,
     ) {
         self.enqueue_job(job, ctx).await
+    }
+
+    async fn block_on_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        ctx: &DalContext,
+    ) -> BlockingJobResult {
+        self.enqueue_job(job, ctx).await;
+        Ok(())
     }
 
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {

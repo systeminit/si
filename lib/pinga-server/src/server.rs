@@ -4,7 +4,7 @@ use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
         definition::{FixesJob, RefreshJob},
-        producer::JobProducer,
+        producer::{BlockingJobError, JobProducer},
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
     JobFailureError, JobInvocationId, JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -439,8 +439,20 @@ async fn execute_job_task(
         format!("{} process", &messaging_destination).as_str(),
     );
 
-    match execute_job(id, &metadata, messaging_destination, ctx_builder, request).await {
-        Ok(_) => span.record_ok(),
+    let maybe_reply_channel = request.reply_mailbox.clone();
+    let reply_message = match execute_job(
+        id,
+        &metadata,
+        messaging_destination,
+        ctx_builder.clone(),
+        request,
+    )
+    .await
+    {
+        Ok(_) => {
+            span.record_ok();
+            Ok(())
+        }
         Err(err) => {
             error!(
                 error = ?err,
@@ -448,7 +460,22 @@ async fn execute_job_task(
                 job.instance = &metadata.job_instance,
                 "job execution failed"
             );
+            let new_err = Err(BlockingJobError::JobExecution(err.to_string()));
             span.record_err(err);
+
+            new_err
+        }
+    };
+
+    if let Some(reply_channel) = maybe_reply_channel {
+        if let Ok(message) = serde_json::to_vec(&reply_message) {
+            if let Err(err) = ctx_builder
+                .nats_conn()
+                .publish(reply_channel, message)
+                .await
+            {
+                error!(error = ?err, "Unable to notify spawning job of blocking job completion");
+            };
         }
     }
 }

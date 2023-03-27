@@ -3,7 +3,7 @@ use dyn_clone::DynClone;
 use thiserror::Error;
 
 use super::producer::{JobProducer, JobProducerError};
-use crate::DalContext;
+use crate::{job::producer::BlockingJobResult, DalContext};
 
 pub mod nats_processor;
 pub mod sync_processor;
@@ -24,6 +24,11 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
     async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
     async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
+    async fn block_on_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        ctx: &DalContext,
+    ) -> BlockingJobResult;
     async fn process_queue(&self) -> JobQueueProcessorResult<()>;
 }
 

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use futures::StreamExt;
 use si_data_nats::NatsClient;
 use std::{collections::VecDeque, convert::TryInto};
 use telemetry::prelude::*;
@@ -7,13 +8,15 @@ use tokio::sync::mpsc;
 use crate::{
     job::{
         consumer::{JobInfo, NextJobInfo},
-        producer::{JobProducer, JobProducerError},
+        producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
         queue::JobQueue,
     },
     DalContext,
 };
 
 use super::{JobQueueProcessor, JobQueueProcessorError, JobQueueProcessorResult};
+
+const NATS_JOB_QUEUE: &str = "pinga-jobs";
 
 #[derive(Clone, Debug)]
 pub struct NatsProcessor {
@@ -57,7 +60,7 @@ impl NatsProcessor {
 
             if let Err(err) = self
                 .client
-                .publish("pinga-jobs", serde_json::to_vec(&job_info)?)
+                .publish(NATS_JOB_QUEUE, serde_json::to_vec(&job_info)?)
                 .await
             {
                 error!("Nats job push failed, some jobs will be dropped");
@@ -80,6 +83,49 @@ impl JobQueueProcessor for NatsProcessor {
         _ctx: &DalContext,
     ) {
         self.queue.enqueue_blocking_job(job).await
+    }
+
+    async fn block_on_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        _ctx: &DalContext,
+    ) -> BlockingJobResult {
+        let job_info: JobInfo = job
+            .try_into()
+            .map_err(|e: JobProducerError| BlockingJobError::JobProducer(e.to_string()))?;
+        let job_reply_inbox = self.client.new_inbox();
+        let mut reply_subscription = self
+            .client
+            .subscribe(&job_reply_inbox)
+            .await
+            .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
+        self.client
+            .publish_request(
+                NATS_JOB_QUEUE,
+                &job_reply_inbox,
+                serde_json::to_vec(&job_info)
+                    .map_err(|e| BlockingJobError::Serde(e.to_string()))?,
+            )
+            .await
+            .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
+
+        match reply_subscription.next().await {
+            Some(Ok(message)) => {
+                match serde_json::from_slice::<BlockingJobResult>(message.data())
+                    .map_err(|e| BlockingJobError::Serde(e.to_string()))?
+                {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(err),
+                }
+            }
+            Some(Err(err)) => {
+                error!("Internal nats error: {err}");
+                Err(BlockingJobError::Nats(err.to_string()))
+            }
+            None => Err(BlockingJobError::Nats(
+                "Subscription or connection no longer valid".to_string(),
+            )),
+        }
     }
 
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {

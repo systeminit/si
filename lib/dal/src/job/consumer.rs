@@ -75,6 +75,8 @@ pub enum JobConsumerError {
     StatusUpdaterError(#[from] StatusUpdaterError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
+    #[error("nats is unavailable")]
+    NatsUnavailable,
 }
 
 impl From<JobConsumerError> for std::io::Error {

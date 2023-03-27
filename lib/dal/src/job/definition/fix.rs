@@ -3,18 +3,17 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::fix::FixError;
 use crate::{
+    fix::FixError,
     job::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
-        definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext, Fix,
-    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild, StandardModel,
-    Visibility, WsEvent,
+    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -196,16 +195,17 @@ impl JobConsumer for FixesJob {
             .collect();
 
         // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
-        let attribute_value = Component::root_prop_child_attribute_value_for_component(
-            ctx,
-            *component.id(),
-            RootPropChild::Resource,
-        )
-        .await?;
+        todo!();
+        // let attribute_value = Component::root_prop_child_attribute_value_for_component(
+        //     ctx,
+        //     *component.id(),
+        //     RootPropChild::Resource,
+        // )
+        // .await?;
 
-        // Always retriggers confirmations, and propagates resource if it changed.
-        ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
-            .await;
+        // // Always retriggers confirmations, and propagates resource if it changed.
+        // ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
+        //     .await;
 
         WsEvent::fix_return(
             ctx,

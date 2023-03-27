@@ -10,7 +10,7 @@ use veritech_client::{Client as VeritechClient, EncryptionKey};
 use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
-        producer::JobProducer,
+        producer::{BlockingJobResult, JobProducer},
     },
     HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
@@ -312,6 +312,14 @@ impl DalContext {
             .job_processor
             .enqueue_blocking_job(job, self)
             .await
+    }
+
+    /// Similar to `enqueue_job`, except that instead of waiting to flush the job to
+    /// the processing system on `commit`, the job is immediately flushed, and the
+    /// processor is expected to not return until the job has finished. Returns the
+    /// result of executing the job.
+    pub async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
+        self.txns().job_processor.block_on_job(job, self).await
     }
 
     /// Gets the dal context's txns.
