@@ -32,8 +32,8 @@ pub struct AuthApiUser {
     // but we may want to cache name and email? TBD...
     pub id: UserPk,
     pub nickname: String,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub picture_url: Option<String>,
     pub email: String,
 }
@@ -94,7 +94,6 @@ pub async fn auth_connect(
             .build_head(),
         )
         .await?;
-
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, res_body.user.id).await?;
     let user = match maybe_user {

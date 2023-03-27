@@ -10,6 +10,9 @@
     "./tailwind/": {
       "default": "./src/tailwind/"
     },
+    "./brand-assets/": {
+      "default": "./src/brand-assets/"
+    },
     "./design-system": {
       "default": "./src/design-system/index.ts"
     },

@@ -1,7 +1,8 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
-  <div>
-    <template v-if="waitingForAccess">
+  <div v-if="docsLoaded">
+    <Confetti :active="activeStepSlug === 'next_steps'" start-top />
+    <template v-if="!onboardingStore.stepsCompleted.github_access">
       <p>
         Thank you! We're double checking everything and getting your access to
         the github repository. Be on the lookout for the invitation from GitHub!
@@ -9,15 +10,15 @@
         availability. If you have any questions, or run into trouble, you can
         email us at
         <a href="mailto:preview@systeminit.com" target="_blank"
-          >preview@systeminit.com</a
+          >preview@systeminit.com </a
         >, or hit us up on <a href="https://discord.com/asdf">discord</a>.
       </p>
     </template>
     <template v-else>
       <h2 class="mb-lg">Tutorial!</h2>
 
-      <Icon :name="devFrontendOnline ? 'check' : 'loader'" />
-      <Icon :name="devBackendOnline ? 'check' : 'loader'" />
+      <Icon :name="onboardingStore.devFrontendOnline ? 'check' : 'loader'" />
+      <Icon :name="onboardingStore.devBackendOnline ? 'check' : 'loader'" />
 
       <div class="flex gap-md">
         <div class="flex-none w-[220px]">
@@ -25,19 +26,43 @@
             <div
               v-for="step in tutorialSteps"
               :key="step.slug"
-              class="cursor-pointer flex items-center gap-xs"
+              :class="
+                clsx(
+                  'cursor-pointer flex items-center gap-xs',
+                  activeStepSlug === step.slug &&
+                    ' border-action-300 border-l-2',
+                )
+              "
               @click="activeStepSlug = step.slug"
             >
-              <Icon name="check-circle" />
+              <Icon
+                :name="
+                  _.get(onboardingStore.stepsCompleted, step.slug)
+                    ? 'check-circle'
+                    : 'minus-circle'
+                "
+              />
               {{ step.title }}
             </div>
           </div>
         </div>
         <div class="grow">
-          <Component
-            :is="tutorialSteps[activeStepSlug].component"
-            v-if="tutorialSteps && activeStepSlug"
-          />
+          <RichText>
+            <Component
+              :is="tutorialSteps[activeStepSlug].component"
+              v-if="tutorialSteps[activeStepSlug]"
+            />
+          </RichText>
+          <VButton2
+            class="w-full mt-lg"
+            icon-right="arrow--right"
+            variant="solid"
+            tone="action"
+            :disabled="!_.get(onboardingStore.stepsCompleted, activeStepSlug)"
+            @click="stepContinueHandler"
+          >
+            Continue
+          </VButton2>
         </div>
       </div>
 
@@ -68,18 +93,15 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import {
-  ComponentOptions,
-  computed,
-  onBeforeMount,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-} from "vue";
-import { Icon } from "@si/vue-lib/design-system";
-import Axios from "axios";
-import { useAuthStore } from "@/store/auth.store";
+import clsx from "clsx";
+import { ComponentOptions, onBeforeMount, onMounted, ref } from "vue";
+import { Icon, Inline, RichText, VButton2 } from "@si/vue-lib/design-system";
+import Confetti from "@/components/Confetti.vue";
+
 import FrieNDAModal from "@/components/FrieNDAModal.vue";
+import { useOnboardingStore } from "@/store/onboarding.store";
+
+const onboardingStore = useOnboardingStore();
 
 const tutorialSteps = {} as Record<
   string,
@@ -90,57 +112,43 @@ const tutorialSteps = {} as Record<
     component: ComponentOptions;
   }
 >;
+
+const docsLoaded = ref(false);
 onBeforeMount(async () => {
   const docImports = import.meta.glob(`@/content/tutorial/*.md`);
   for (const fileName in docImports) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const importedDoc = (await docImports[fileName]()) as any;
-    tutorialSteps[importedDoc.attributes.slug] = {
+    const slug = fileName.replace(/.*\/\d\d-/, "").replace(".md", "");
+    tutorialSteps[slug] = {
       title: importedDoc.attributes.title,
-      slug: importedDoc.attributes.slug,
+      slug,
       fileName,
-      component: importedDoc.VueComponent,
+      component: importedDoc.VueComponentWith({
+        Icon,
+        Inline,
+      }),
     };
   }
+  docsLoaded.value = true;
 });
 
-const activeStepSlug = ref();
-
-const authStore = useAuthStore();
-
-const devFrontendOnline = ref(false);
-const devBackendOnline = ref(false);
-async function checkDevEnvOnline() {
-  try {
-    const _req = await Axios.get("http://localhost:8080/up.txt");
-    devFrontendOnline.value = true;
-  } catch (err) {
-    devFrontendOnline.value = false;
-  }
-
-  try {
-    const _req = await Axios.get("http://localhost:8080/api/demo");
-    devBackendOnline.value = true;
-  } catch (err) {
-    devBackendOnline.value = false;
-  }
+const activeStepSlug = ref("intro");
+function stepContinueHandler() {
+  const currentStepIndex = _.indexOf(
+    _.keys(tutorialSteps),
+    activeStepSlug.value,
+  );
+  const nextStepSlug = _.keys(tutorialSteps)[currentStepIndex + 1];
+  activeStepSlug.value = nextStepSlug;
 }
-
-let checkInterval: ReturnType<typeof setInterval>;
-onMounted(async () => {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  await checkDevEnvOnline();
-  checkInterval = setInterval(checkDevEnvOnline, 5000);
-});
-onBeforeUnmount(() => {
-  clearInterval(checkInterval);
-});
-
-const waitingForAccess = computed(() => authStore.waitingForAccess);
 
 const friendaRef = ref();
 onMounted(() => {
-  if (!waitingForAccess.value) {
+  if (
+    onboardingStore.stepsCompleted.github_access &&
+    !onboardingStore.stepsCompleted.frienda
+  ) {
     friendaRef.value?.open();
   }
 });

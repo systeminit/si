@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { ApiRequest } from "@si/vue-lib/pinia";
+import { posthog } from "posthog-js";
 
 export type UserId = string;
 
@@ -21,16 +22,9 @@ export type User = {
   discordUsername?: string;
 };
 
-export type TosDetails = {
-  id: string;
-  pdfUrl: string;
-  html: string;
-};
-
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
-    tosDetails: null as TosDetails | null,
     waitingForAccess: false,
   }),
   getters: {
@@ -58,6 +52,7 @@ export const useAuthStore = defineStore("auth", {
         url: "/whoami",
         onSuccess: (response) => {
           this.user = response.user;
+          posthog.identify(this.user.id);
         },
         onFail(e) {
           /* eslint-disable-next-line no-console */
@@ -87,21 +82,12 @@ export const useAuthStore = defineStore("auth", {
       });
     },
 
-    async LOAD_TOS_DETAILS() {
-      return new ApiRequest<TosDetails>({
-        url: "/tos-details",
-        onSuccess: (response) => {
-          this.tosDetails = response;
-        },
-      });
-    },
-    async AGREE_TOS() {
-      if (!this.tosDetails) throw new Error("TOS details not loaded");
+    async AGREE_TOS(tosVersionId: string) {
       return new ApiRequest({
         method: "post",
         url: "/tos-agreement",
         params: {
-          tosVersionId: this.tosDetails.id,
+          tosVersionId,
         },
         onSuccess: (response) => {
           if (!this.user) throw new Error("user not set");
