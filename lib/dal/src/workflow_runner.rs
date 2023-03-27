@@ -14,7 +14,7 @@ use crate::{
     ComponentId, Func, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
     SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
     WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowResolverError, WorkflowResolverId, WsEvent, WsEventError,
+    WorkflowResolverError, WorkflowResolverId, WsEventError,
 };
 use crate::{DalContext, FuncError};
 
@@ -185,40 +185,8 @@ impl WorkflowRunner {
         run_id: usize,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(
-        Self,
-        WorkflowRunnerState,
-        Vec<FuncBindingReturnValue>,
-        Vec<CommandRunResult>,
-    )> {
-        Self::run_raw(ctx, run_id, prototype_id, component_id, false).await
-    }
-
-    /// Create a [`WorkflowRunner`](Self) and "run" it immediately. This not only creates the
-    /// runner, but also a corresponding, _terminating_
-    /// [`WorkflowRunnerState`](crate::workflow_runner::workflow_runner_state::WorkflowRunnerState).
-    ///
-    /// DependentValuesUpdate scheduled will be blocking, so it will be executed before any other job that is enqueued after this call
-    pub async fn run_blocking_value_propagation(
-        ctx: &DalContext,
-        run_id: usize,
-        prototype_id: WorkflowPrototypeId,
-        component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(
-        Self,
-        WorkflowRunnerState,
-        Vec<FuncBindingReturnValue>,
-        Vec<CommandRunResult>,
-    )> {
-        Self::run_raw(ctx, run_id, prototype_id, component_id, true).await
-    }
-
-    async fn run_raw(
-        ctx: &DalContext,
-        run_id: usize,
-        prototype_id: WorkflowPrototypeId,
-        component_id: ComponentId,
-        blocking_dependent_values_update: bool,
+        should_trigger_confirmations: bool,
+        trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(
         Self,
         WorkflowRunnerState,
@@ -247,7 +215,8 @@ impl WorkflowRunner {
             ctx,
             &func_binding_return_values,
             component_id,
-            blocking_dependent_values_update,
+            should_trigger_confirmations,
+            trigger_dependent_values_update,
         )
         .await?;
         let (workflow_runner_status, error_message) =
@@ -318,7 +287,8 @@ impl WorkflowRunner {
         ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         component_id: ComponentId,
-        blocking_dependent_values_update: bool,
+        should_trigger_confirmations: bool,
+        trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<CommandRunResult>)> {
         let (identity, func_binding, mut func_binding_return_value) =
             Func::identity_with_binding_and_return_value(ctx).await?;
@@ -350,14 +320,14 @@ impl WorkflowRunner {
                 }
 
                 if component
-                    .set_resource(ctx, result.clone(), blocking_dependent_values_update)
+                    .set_resource(ctx, result.clone(), trigger_dependent_values_update)
                     .await
                     .map_err(Box::new)?
+                    && should_trigger_confirmations
                 {
-                    WsEvent::resource_refreshed(ctx, *component.id())
-                        .await?
-                        .publish_on_commit(ctx)
-                        .await?;
+                    Component::run_all_confirmations(ctx)
+                        .await
+                        .map_err(Box::new)?;
                 }
 
                 resources.push(result);
