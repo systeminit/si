@@ -67,7 +67,7 @@ export type Fix = {
 export type FixBatchId = string;
 export type FixBatch = {
   id: FixBatchId;
-  status: FixStatus;
+  status?: FixStatus;
   author: string;
   fixes: Fix[];
   startedAt?: string;

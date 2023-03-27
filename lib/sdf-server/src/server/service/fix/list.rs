@@ -19,7 +19,7 @@ pub struct ListFixesRequest {
 #[serde(rename_all = "camelCase")]
 pub struct BatchHistoryView {
     pub id: FixBatchId,
-    pub status: FixCompletionStatus,
+    pub status: Option<FixCompletionStatus>,
     author: String,
     fixes: Vec<FixHistoryView>,
     started_at: Option<String>,
@@ -41,14 +41,14 @@ pub async fn list(
         let mut batch_timed_out = false;
         // FIXME(paulo): hardcoding 3 minutes timeout to avoid hiding broken batches forever
         let completion_status = if let Some(status) = batch.completion_status() {
-            *status
+            Some(*status)
         } else if Utc::now().signed_duration_since(batch.timestamp().created_at)
             > chrono::Duration::minutes(3)
         {
             batch_timed_out = true;
-            FixCompletionStatus::Failure
+            Some(FixCompletionStatus::Failure)
         } else {
-            continue;
+            None
         };
 
         let mut fix_views = Vec::new();
