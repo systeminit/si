@@ -1064,17 +1064,20 @@ CREATE OR REPLACE FUNCTION hard_unset_belongs_to_in_change_set_v1(this_table_nam
 $$
 DECLARE
     update_query text;
+    visibility_change_set_pk ident;
 BEGIN
+    SELECT (this_visibility ->> 'visibility_change_set_pk')
+    INTO visibility_change_set_pk;
 
     update_query :=
             format('DELETE FROM %1$I '
                    '  WHERE object_id = %2$L '
-                   '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
+                   '        AND visibility_change_set_pk = %4$L '
                    '        AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk)',
                    this_table_name,
                    this_object_id,
                    this_tenancy,
-                   this_visibility
+                   visibility_change_set_pk
                 );
     RAISE DEBUG 'unset belongs to: %', update_query;
     EXECUTE update_query;
@@ -1116,17 +1119,20 @@ CREATE OR REPLACE FUNCTION hard_unset_all_belongs_to_in_change_set_v1(this_table
 $$
 DECLARE
     update_query text;
+    visibility_change_set_pk ident;
 BEGIN
+    SELECT (this_visibility ->> 'visibility_change_set_pk')
+    INTO visibility_change_set_pk;
 
     update_query :=
             format('DELETE FROM %1$I '
                    '  WHERE belongs_to_id = %2$L '
-                   '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
+                   '        AND visibility_change_set_pk = %4$L '
                    '        AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk)',
                    this_table_name,
                    this_belongs_to_id,
                    this_tenancy,
-                   this_visibility
+                   visibility_change_set_pk
                 );
     RAISE DEBUG 'unset belongs to: %', update_query;
     EXECUTE update_query;

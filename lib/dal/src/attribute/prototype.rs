@@ -264,7 +264,8 @@ impl AttributePrototype {
                 Some(v) => v,
                 None => return Ok(()),
             };
-        if attribute_prototype.context.is_least_specific() {
+        let parent_proto_key = attribute_prototype.key.is_none();
+        if attribute_prototype.context.is_least_specific() && parent_proto_key {
             return Err(
                 AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
                     *attribute_prototype_id,
@@ -304,7 +305,7 @@ impl AttributePrototype {
 
             // Delete the prototype if we find one and if its context is not "least-specific".
             if let Some(current_prototype) = current_value.attribute_prototype(ctx).await? {
-                if current_prototype.context.is_least_specific() {
+                if current_prototype.context.is_least_specific() && parent_proto_key {
                     return Err(
                         AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
                             *current_prototype.id(),
@@ -334,7 +335,7 @@ impl AttributePrototype {
             }
 
             // Delete the value if its context is not "least-specific".
-            if current_value.context.is_least_specific() {
+            if current_value.context.is_least_specific() && parent_proto_key {
                 return Err(
                     AttributePrototypeError::LeastSpecificContextValueRemovalNotAllowed(
                         *current_value.id(),
