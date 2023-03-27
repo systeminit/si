@@ -16,9 +16,10 @@ use crate::{
     func::backend::js_command::CommandRunResult, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
     ActionPrototypeError, AttributeValueId, Component, ComponentError, ComponentId, DalContext,
-    FixResolverError, FuncError, HistoryEventError, ResourceView, SchemaError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
-    WorkflowRunnerId, WorkflowRunnerStatus, WsEvent, WsPayload,
+    DependentValuesUpdate, FixResolverError, FuncError, HistoryEventError, ResourceView,
+    SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId, WorkflowRunnerStatus, WsEvent,
+    WsPayload,
 };
 use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
@@ -270,7 +271,7 @@ impl Fix {
         };
 
         // Evaluate the workflow result.
-        match runner_result {
+        let resources = match runner_result {
             Ok(post_run_data) => {
                 let (runner, runner_state, _func_binding_return_values, resources) = post_run_data;
                 self.set_workflow_runner_id(ctx, Some(runner.id())).await?;
@@ -284,7 +285,7 @@ impl Fix {
                 )
                 .await?;
 
-                Ok(resources)
+                resources
             }
             Err(e) => {
                 error!("Unable to run fix: {e}");
@@ -292,9 +293,19 @@ impl Fix {
                 // the error as a message.
                 self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{e:?}")))
                     .await?;
-                Ok(Vec::new())
+                Vec::new()
             }
+        };
+
+        // Ensures confirmations for this component gets re-run even if the resource didn't change
+        if resources.is_empty() {
+            let attribute_value =
+                Component::resource_attribute_value_by_id(ctx, self.component_id).await?;
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
+                .await;
         }
+
+        Ok(resources)
     }
 
     /// A safe wrapper around setting completion-related columns.
