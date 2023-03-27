@@ -15,6 +15,8 @@ declare module "pinia" {
   export interface DefineStoreOptionsBase<S, Store> {
     // adds our new custom option for activation/deactivation hook
     onActivated?: (this: Store) => MaybePromise<void | (() => void)>;
+    // adds our new custom option for hook that first on first use/activation only
+    onInit?: (this: Store) => MaybePromise<void>;
   }
   export interface PiniaCustomStateProperties<S> {
     trackStoreUsedByComponent(component: ComponentInternalInstance): void;
@@ -43,6 +45,8 @@ export const piniaHooksPlugin: PiniaPlugin = ({
   // might not need this check, but not sure this plugin code is guaranteed to only be called once
   if (store._trackedStoreUsers) return;
 
+  store._initHookCalled = false;
+
   // keep a list of all components using this store
   store._trackedStoreUsers = reactive<Record<string, boolean>>({});
   store._trackedStoreUsersCount = computed(
@@ -63,6 +67,13 @@ export const piniaHooksPlugin: PiniaPlugin = ({
     if (store._trackedStoreUsers[trackedComponentId]) return;
 
     store._trackedStoreUsers[trackedComponentId] = true;
+    
+    if (!store._initHookCalled && storeOptions.onInit) {
+      // TODO: what to do if this errors?
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      storeOptions.onInit.call(store);
+    }
+    
     // console.log(store.$id, "+");
     // store._trackedStoreUsersCount++;
     if (store._trackedStoreUsersCount === 1 && storeOptions.onActivated) {
@@ -73,6 +84,7 @@ export const piniaHooksPlugin: PiniaPlugin = ({
       // activate could be async, so need to resolve if so...
       // TODO may need to think more about this - what if activate errors out?
       if (isPromise(store.onDeactivated)) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         store.onDeactivated.then((resolvedOnDeactivate) => {
           store.onDeactivated = resolvedOnDeactivate;
         });

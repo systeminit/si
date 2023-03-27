@@ -18,6 +18,7 @@ import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
 import { useThemeContainer } from "@si/vue-lib/design-system";
+import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo.svg?url";
 import { useHead } from "@vueuse/head";
 import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
 import { useAuthStore } from "./store/auth.store";
@@ -40,6 +41,7 @@ useHead(
     htmlAttrs: {
       style: `color-scheme: ${rootTheme.value};`,
     },
+    link: [{ rel: "icon", href: SiLogoUrl }],
     // set up title template and a default
     titleTemplate: "%s | System Init",
     title: "DevOps without papercuts",

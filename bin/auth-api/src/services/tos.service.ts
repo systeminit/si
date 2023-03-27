@@ -1,9 +1,8 @@
-import _ from 'lodash';
 import { ulid } from "ulidx";
-import { marked } from 'marked';
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, User } from '@prisma/client';
 import { UserId, UserWithTosStatus } from './users.service';
+import { tracker } from "../lib/tracker";
 
 const prisma = new PrismaClient();
 
@@ -27,54 +26,16 @@ export type TosVersions = {
   html?: string;
 };
 
-// could store in db, or just in file-system of this repo...
-// will need flexible solution eventually for custom TOS versions, but should be simple for now
-const tosVersions: TosVersions[] = [
-  {
-    id: '2023-03-02',
-    pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    markdown: `
-# Terms of service (2023-01-01)
-
-old terms
-
-## Subheading
-
-blah blah blah`,
-  },
-  {
-    id: '2023-03-09',
-    pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    markdown: `
-# Terms of service (2023-03-09)
-
-latest TOS version
-
-## Subheading
-
-blah blah blah`,
-  },
-];
-
-// hacky... just generating html once for each. Will do this somewhere else once we have real data
-tosVersions.forEach((tos) => {
-  tos.html = marked.parse(tos.markdown);
-});
-
-export const LATEST_TOS_VERSION_ID = _.max(_.map(tosVersions, (t) => t.id))!;
-
-export async function getTosVersionById(id: TosVersionId) {
-  return _.find(tosVersions, (t) => t.id === id);
-}
+export const LATEST_TOS_VERSION_ID = '2023-03-30';
 
 export async function findLatestTosForUser(user: UserWithTosStatus) {
   // eventually this logic may be more complex...
   if (user.agreedTosVersion === LATEST_TOS_VERSION_ID) return null;
-  return getTosVersionById(LATEST_TOS_VERSION_ID);
+  return LATEST_TOS_VERSION_ID;
 }
 
 export async function saveTosAgreement(
-  userId: UserId,
+  user: User,
   tosVersionId: TosVersionId,
   ipAddress: IpAddressString,
 ) {
@@ -82,12 +43,13 @@ export async function saveTosAgreement(
   const newAgreement = await prisma.tosAgreement.create({
     data: {
       id: ulid(),
-      userId,
+      userId: user.id,
       tosVersionId,
       ipAddress,
       timestamp: new Date().toISOString(),
     },
   });
+  tracker.trackEvent(user, 'legal_agreed', { version: tosVersionId });
 
   return newAgreement;
 }

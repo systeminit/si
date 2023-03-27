@@ -86,6 +86,9 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     });
 
     tracker.identifyUser(newUser);
+    tracker.trackEvent(newUser, 'auth_connected', {
+      // login type?
+    });
 
     // user is new, so we create a default dev workspace
     await createWorkspace(newUser);

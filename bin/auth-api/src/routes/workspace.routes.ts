@@ -93,16 +93,3 @@ router.post("/complete-auth-connect", async (ctx) => {
     token,
   };
 });
-
-router.get("/test", async (ctx) => {
-  const reqQuery = validate(ctx.request.query, z.object({
-    code: z.number().optional().transform((v) => {
-      if (v === undefined) return undefined;
-      if (v < 0) return 0;
-      if (v > 100) return 100;
-      return Math.round(v);
-    }),
-  }));
-
-  ctx.body = reqQuery;
-});

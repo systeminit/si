@@ -1,6 +1,5 @@
 ---
-slug: build-model
-title: Build a model
+title: Modeling your infrastructure
 ---
 
 # Step 3

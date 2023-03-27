@@ -1,11 +1,38 @@
 ---
-slug: discord
-title: Join our discord
+title: Introduction
 ---
 
-Hey you should join our discord!
+### Welcome to System Initiative!
+
+We're so excited to have you as part of this invite-only preview of what we've been up to for the last while. The whole thing will be open sourced and we'll have a wider public release soon, but blah blah blah...
+
+## FrieNDA
+This is an invite-only preview release,
+intended to let you experience System Initiative and for us to shake out
+the (probably many) issues you might have. We ask that you not speak
+publicly about your use (positively or negatively), share screenshots,
+etc. There are private channels we will invite you to in Discord where you
+will be able to discuss System Initiative with us, and with other
+participants in the preview. We're not asking you to sign an NDA - but we
+are relying on your good-will and judgement as a friend of System Initiative.
+
+**Things you should do:**
+- <Icon name="check-circle"></Icon>Talk with us privately on discord
+- <Icon name="check-circle"></Icon>Tell us what you love and 
+hate about the product
+- <Icon name="check-circle"></Icon>Send a pull-request to change something
+
+**Things you should NOT do:**
+- <Icon name="x-circle"></Icon>Post screenshots of the product on twitter
+- <Icon name="x-circle"></Icon>Tell folks in public places what you love / hate
+
+
 
 ![Image 1](/tutorial-img/img1.png)
+
+
+
+
 
 I'm baby williamsburg tote bag fingerstache jianbing art party coloring book, yuccie hoodie artisan organic shoreditch air plant gluten-free iceland plaid. Glossier meditation woke disrupt, cupping forage blue bottle viral distillery. Occupy woke aesthetic, hell of roof party gastropub knausgaard banjo affogato church-key street art skateboard. Semiotics live-edge pitchfork vibecession man bun, chillwave gentrify blackbird spyplane farm-to-table hell of marfa.
 

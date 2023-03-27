@@ -21,6 +21,8 @@
         </template>
         <template v-else>
           <nav>
+            <img :src="SiLogoUrl" class="w-[40px] h-[40px]" />
+
             <template v-if="userIsLoggedIn">
               <p class="font-bold my-sm">Hi {{ authStore.bestUserLabel }}!</p>
 
@@ -59,6 +61,8 @@ import {
   userOverrideTheme,
   VButton2,
 } from "@si/vue-lib/design-system";
+import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo.svg?url";
+import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";
 import { computed, onBeforeMount, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
@@ -77,6 +81,8 @@ useHead(
     htmlAttrs: {
       style: `color-scheme: ${rootTheme.value};`,
     },
+    link: [{ rel: "icon", href: SiLogoNoBorderUrl }],
+
     // set up title template and a default
     titleTemplate: "%s | System Init",
     title: "DevOps without papercuts",

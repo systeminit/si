@@ -47,12 +47,13 @@ router.patch("/users/:userId", async (ctx) => {
 
   const reqBody = validate(ctx.request.body, z.object({
     // TODO: add checks on usernames looking right
-    discordUsername: z.string(),
-    githubUsername: z.string(),
-    firstName: z.string(),
-    lastName: z.string(),
-    email: z.string().email(),
-    pictureUrl: z.string().url(),
+    // TODO: figure out way to avoid marking everything as nullable
+    discordUsername: z.string().nullable(),
+    githubUsername: z.string().nullable(),
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    email: z.string().email().nullable(),
+    pictureUrl: z.string().url().nullable(),
   }).partial());
 
   _.assign(user, reqBody);
@@ -65,8 +66,8 @@ router.get("/tos-details", async (ctx) => {
   if (!ctx.state.authUser) {
     throw new ApiError('Unauthorized', 'You are not logged in');
   }
-  const latestTos = await findLatestTosForUser(ctx.state.authUser);
-  ctx.body = _.omit(latestTos, 'markdown');
+  const latestTosVersion = await findLatestTosForUser(ctx.state.authUser);
+  ctx.body = { tosVersion: latestTosVersion };
 });
 
 router.post("/tos-agreement", async (ctx) => {
@@ -80,10 +81,10 @@ router.post("/tos-agreement", async (ctx) => {
     tosVersionId: z.string(),
   }));
 
-  const latestTosVersion = ctx.state.authUser.agreedTosVersion;
-  if (latestTosVersion && latestTosVersion <= reqBody.tosVersionId) {
+  const userAgreedVersion = ctx.state.authUser.agreedTosVersion;
+  if (userAgreedVersion && userAgreedVersion > reqBody.tosVersionId) {
     throw new ApiError('Conflict', 'Cannot agree to earlier version of TOS');
   }
-  const agreemenet = await saveTosAgreement(ctx.state.authUser.id, reqBody.tosVersionId, ctx.state.clientIp);
+  const agreemenet = await saveTosAgreement(ctx.state.authUser, reqBody.tosVersionId, ctx.state.clientIp);
   ctx.body = agreemenet;
 });

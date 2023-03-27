@@ -14,12 +14,15 @@ import { Modal, Stack, useModal, VButton2 } from "@si/vue-lib/design-system";
 import { ref } from "vue";
 
 import { VueComponent as FrieNDAContent } from "@/content/frienda.md";
+import { useOnboardingStore } from "@/store/onboarding.store";
+
+const onboardingStore = useOnboardingStore();
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);
 defineExpose({ open, close });
 function agreeButtonHandler() {
-  // TODO: save this agreement?
+  onboardingStore.acknowledgeFrienda();
   close();
 }
 </script>

@@ -3,13 +3,10 @@
   <div>
     <h2 class="mb-lg">Review the TOS!</h2>
 
-    <template v-if="loadTosReqStatus.isPending"> loading... </template>
-    <template v-else-if="loadTosReqStatus.isError">
-      Error loading TOS - {{ loadTosReqStatus.errorMessage }}
-    </template>
-    <template v-else-if="loadTosReqStatus.isSuccess">
-      <!-- <div class="legal-markdown" v-html="authStore.tosDetails?.html" /> -->
+    <!-- <div class="legal-markdown" v-html="authStore.tosDetails?.html" /> -->
 
+    <template v-if="!docsLoaded"> Loading... </template>
+    <template v-else>
       <p class="mb-lg">
         In order to use System Initiative, we need you to review and agree to
         our terms:
@@ -37,8 +34,10 @@
             class="mb-xl"
             :data-doc-slug="doc.slug"
           >
-            <h1 class="text-xl font-bold">{{ doc.title }}</h1>
-            <Component :is="doc.component" />
+            <RichText>
+              <h2>{{ doc.title }}</h2>
+              <Component :is="doc.component" />
+            </RichText>
             <VButton2
               icon="download"
               variant="ghost"
@@ -59,7 +58,7 @@
           >I have read and agree to the terms above</VormInput
         >
         <VButton2
-          variant="ghost"
+          variant="solid"
           icon="arrow--right"
           :disabled="disableContinueButton"
           :request-status="agreeTosReqStatus"
@@ -75,34 +74,45 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { ComponentOptions, computed, onBeforeMount, ref, watch } from "vue";
-import { Stack, VButton2, VormInput } from "@si/vue-lib/design-system";
+import {
+  RichText,
+  Stack,
+  VButton2,
+  VormInput,
+} from "@si/vue-lib/design-system";
 import { useAuthStore } from "@/store/auth.store";
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const loadTosReqStatus = authStore.getRequestStatus("LOAD_TOS_DETAILS");
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
 const CURRENT_VERSION = "2023-03-30";
-const docs = [] as {
-  title: string;
-  slug: string;
-  fileName: string;
-  component: ComponentOptions;
-}[];
+
+const docsLoaded = ref(false);
+const docs = {} as Record<
+  string,
+  {
+    title: string;
+    slug: string;
+    fileName: string;
+    component: ComponentOptions;
+  }
+>;
 onBeforeMount(async () => {
   const docImports = import.meta.glob(`@/content/legal/2023-03-30/*.md`);
   for (const fileName in docImports) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const importedDoc = (await docImports[fileName]()) as any;
-    docs.push({
+    const slug = fileName.replace(/.md$/, "").replace(/.*\/\d+-/, "");
+    docs[slug] = {
       title: importedDoc.attributes.title,
-      slug: fileName.replace(/.md$/, "").replace(/.*\//, ""),
+      slug,
       fileName,
       component: importedDoc.VueComponent,
-    });
+    };
   }
+  docsLoaded.value = true;
 });
 
 const userAgreed = ref(false);
@@ -118,7 +128,6 @@ async function loadTosDetails() {
   if (authStore.user?.needsTosUpdate === false) {
     return router.push({ name: "login-success" });
   }
-  await authStore.LOAD_TOS_DETAILS();
 }
 
 watch(() => authStore.user?.needsTosUpdate, loadTosDetails, {
@@ -126,7 +135,7 @@ watch(() => authStore.user?.needsTosUpdate, loadTosDetails, {
 });
 
 async function agreeButtonHandler() {
-  const agreeReq = await authStore.AGREE_TOS();
+  const agreeReq = await authStore.AGREE_TOS(CURRENT_VERSION);
   if (agreeReq.result.success) {
     await router.push({ name: "login-success" });
   }

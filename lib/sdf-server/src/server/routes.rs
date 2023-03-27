@@ -1,8 +1,11 @@
 use axum::{
+    response::Json,
     response::{IntoResponse, Response},
-    Json, Router,
+    routing::get,
+    Router,
 };
 use hyper::StatusCode;
+use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
@@ -13,6 +16,7 @@ use super::{server::ServerError, state::AppState};
 pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
+        .route("/api", get(system_status_route))
         .nest(
             "/api/change_set",
             crate::server::service::change_set::routes(),
@@ -45,6 +49,10 @@ pub fn routes(state: AppState) -> Router {
     router = dev_routes(router);
 
     router.with_state(state)
+}
+
+async fn system_status_route() -> Json<Value> {
+    Json(json!({ "ok": true }))
 }
 
 #[cfg(debug_assertions)]
