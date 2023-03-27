@@ -62,8 +62,8 @@ impl ResourceScheduler {
 
     #[instrument(name = "resource_scheduler.run", skip_all, level = "debug")]
     async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Refresh resources");
         let components = self.components().await?;
-        info!("Refresh resources of {} components", components.len());
 
         for component in components {
             // First we're building a ctx with no tenancy at head, then updating it with a
@@ -124,15 +124,6 @@ impl ResourceScheduler {
                  FROM components
                  WHERE is_visible_v1($1, visibility_change_set_pk, visibility_deleted_at)
                        AND (visibility_deleted_at IS NULL OR needs_destroy)
-                       AND id NOT IN (SELECT DISTINCT(fixes.component_id)
-                                      FROM fixes
-                                      INNER JOIN fix_belongs_to_fix_batch bt ON bt.object_id = fixes.id
-                                            AND is_visible_v1($1, bt.visibility_change_set_pk, bt.visibility_deleted_at)
-                                      INNER JOIN fix_batches ON fix_batches.id = bt.belongs_to_id
-                                            AND is_visible_v1($1, fix_batches.visibility_change_set_pk, fix_batches.visibility_deleted_at)
-                                      WHERE fix_batches.finished_at IS NULL
-                                            AND NOW() - fix_batches.created_at < INTERVAL '3 minutes'
-                                            AND is_visible_v1($1, fixes.visibility_change_set_pk, fixes.visibility_deleted_at))
                  ORDER BY id",
                 &[ctx.visibility()],
             )
