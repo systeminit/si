@@ -28,25 +28,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<CommandRunResult> {
-        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
-        let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
-            ctx,
-            schema_variant_id,
-            RootPropChild::Resource,
-        )
-        .await?;
-
-        let value_context = AttributeReadContext {
-            internal_provider_id: Some(*implicit_internal_provider.id()),
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
-
-        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
-            .await?
-            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                value_context,
-            ))?;
+        let attribute_value = Self::resource_attribute_value_by_id(ctx, component_id).await?;
 
         let func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
@@ -74,6 +56,32 @@ impl Component {
             });
         let result = CommandRunResult::deserialize(&value)?;
         Ok(result)
+    }
+
+    pub async fn resource_attribute_value_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValue> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
+            ctx,
+            schema_variant_id,
+            RootPropChild::Resource,
+        )
+        .await?;
+
+        let value_context = AttributeReadContext {
+            internal_provider_id: Some(*implicit_internal_provider.id()),
+            component_id: Some(component_id),
+            ..AttributeReadContext::default()
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                value_context,
+            ))?;
+        Ok(attribute_value)
     }
 
     /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
@@ -165,7 +173,7 @@ impl Component {
         let prototype = action.workflow_prototype(ctx).await?;
         let run_id: usize = rand::random();
         let (_runner, _state, _func_binding_return_values, resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true, true).await?;
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
         if !resources.is_empty() {
             WsEvent::resource_refreshed(ctx, self.id)
                 .await?
