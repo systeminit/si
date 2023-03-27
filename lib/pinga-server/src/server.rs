@@ -37,6 +37,8 @@ pub enum ServerError {
     Nats(#[from] NatsError),
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
@@ -321,9 +323,21 @@ async fn job_request_task(ctx_builder: DalContextBuilder, request: Request<JobIn
     }
 }
 
+#[instrument(
+    name = "pinga.job_request",
+    skip_all,
+    level = "info",
+    fields(job_info.id, job_info.kind, job_info.args)
+)]
 async fn job_request(ctx_builder: DalContextBuilder, request: Request<JobInfo>) -> Result<()> {
     let (job_info, _) = request.into_parts();
-    info!(id = %job_info.id, kind = %job_info.kind, args = ?job_info.args, "\n\n\nexecuting job");
+    let current_span = tracing::Span::current();
+    if !current_span.is_disabled() {
+        tracing::Span::current().record("job_info.id", &job_info.id);
+        tracing::Span::current().record("job_info.kind", job_info.kind());
+        let args_str = serde_json::to_string(&job_info.args().to_vec())?;
+        tracing::Span::current().record("job_info.args", args_str);
+    }
     trace!(backtrace = %job_info.backtrace, "caller backtrace");
 
     let job = match job_info.kind() {

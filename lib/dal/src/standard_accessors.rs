@@ -14,7 +14,7 @@ macro_rules! standard_model_many_to_many {
         returns: $returns:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $lookup_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -32,7 +32,7 @@ macro_rules! standard_model_many_to_many {
             Ok(r)
         }
 
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $associate_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -55,7 +55,7 @@ macro_rules! standard_model_many_to_many {
             Ok(())
         }
 
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $disassociate_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -78,7 +78,7 @@ macro_rules! standard_model_many_to_many {
             Ok(())
         }
 
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $disassociate_all_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -112,7 +112,7 @@ macro_rules! standard_model_many_to_many {
         returns: $returns:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $lookup_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -130,7 +130,7 @@ macro_rules! standard_model_many_to_many {
             Ok(r)
         }
 
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $associate_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -153,7 +153,7 @@ macro_rules! standard_model_many_to_many {
             Ok(())
         }
 
-        #[telemetry::tracing::instrument(skip_all)]
+        #[telemetry::tracing::instrument(skip_all, level = "trace")]
         pub async fn $disassociate_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -187,7 +187,7 @@ macro_rules! standard_model_has_many {
         returns: $has_many:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip(ctx))]
+        #[telemetry::tracing::instrument(skip(ctx), level = "trace")]
         pub async fn $lookup_fn(&self, ctx: &$crate::DalContext) -> $result_type<Vec<$has_many>> {
             let r =
                 $crate::standard_model::has_many(ctx, $table, $retrieve_table, &self.id()).await?;
@@ -208,7 +208,7 @@ macro_rules! standard_model_belongs_to {
         returns: $belongs_to:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip(ctx))]
+        #[telemetry::tracing::instrument(skip(ctx), level = "trace")]
         pub async fn $lookup_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -223,7 +223,7 @@ macro_rules! standard_model_belongs_to {
             Ok(r)
         }
 
-        #[telemetry::tracing::instrument(skip(ctx))]
+        #[telemetry::tracing::instrument(skip(ctx), level = "trace")]
         pub async fn $set_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -246,7 +246,7 @@ macro_rules! standard_model_belongs_to {
             Ok(())
         }
 
-        #[telemetry::tracing::instrument(skip(ctx))]
+        #[telemetry::tracing::instrument(skip(ctx), level = "trace")]
         pub async fn $unset_fn(
             &self,
             ctx: &$crate::DalContext,
@@ -282,7 +282,7 @@ macro_rules! standard_model_accessor_ro {
 macro_rules! standard_model_accessor {
     (@set_column $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip_all)]
+            #[telemetry::tracing::instrument(skip_all, level = "trace")]
             pub async fn [<set_ $column>](
                 &mut self,
                 ctx: &$crate::DalContext,
@@ -318,7 +318,7 @@ macro_rules! standard_model_accessor {
 
     (@set_column_copy $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip_all)]
+            #[telemetry::tracing::instrument(skip_all, level = "trace")]
             pub async fn [<set_ $column>](
                 &mut self,
                 ctx: &$crate::DalContext,
@@ -354,7 +354,7 @@ macro_rules! standard_model_accessor {
 
     (@set_column_with_option $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip_all)]
+            #[telemetry::tracing::instrument(skip_all, level = "trace")]
             pub async fn [<set_ $column>](
                 &mut self,
                 ctx: &$crate::DalContext,
@@ -389,7 +389,7 @@ macro_rules! standard_model_accessor {
 
     (@set_column_as_ref $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip(ctx, value))]
+            #[telemetry::tracing::instrument(skip(ctx, value), level = "trace")]
             pub async fn [<set_ $column>](
                 &mut self,
                 ctx: &$crate::DalContext,
@@ -424,7 +424,7 @@ macro_rules! standard_model_accessor {
 
     (@set_column_with_option_as_ref $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip_all)]
+            #[telemetry::tracing::instrument(skip_all, level = "trace")]
             pub async fn [<set_ $column>](
                 &mut self,
                 ctx: &$crate::DalContext,

@@ -72,6 +72,7 @@ impl Server {
         let mut complete_graph = ChangeSetGraph::default();
         loop {
             if let Some(reply_channel) = value_create_queue.fetch_next() {
+                info!(%reply_channel, "OK to create AttributeValues");
                 self.nats
                     .publish(
                         reply_channel,
@@ -82,6 +83,7 @@ impl Server {
             }
 
             for (reply_channel, node_id) in complete_graph.fetch_all_available() {
+                info!(%reply_channel, %node_id, "Ok to process AttributeValue");
                 self.nats
                     .publish(
                         reply_channel,
@@ -169,8 +171,6 @@ impl Server {
                     .unwrap();
                 }
                 Request::Bye { change_set_id } => {
-                    dbg!(&value_create_queue);
-                    dbg!(&complete_graph);
                     job_is_going_away(
                         &mut complete_graph,
                         &mut value_create_queue,
@@ -229,6 +229,7 @@ pub enum Error {
     ShouldNotBeProcessingByJob,
 }
 
+#[instrument(level = "info")]
 pub async fn job_would_like_to_create_attribute_values(
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
@@ -238,6 +239,7 @@ pub async fn job_would_like_to_create_attribute_values(
     Ok(())
 }
 
+#[instrument(level = "info")]
 pub async fn job_finished_value_creation(
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
@@ -245,6 +247,7 @@ pub async fn job_finished_value_creation(
     value_create_queue.finished_processing(&reply_channel)
 }
 
+#[instrument(level = "info")]
 pub async fn register_graph_from_job(
     complete_graph: &mut ChangeSetGraph,
     reply_channel: String,
@@ -254,6 +257,7 @@ pub async fn register_graph_from_job(
     complete_graph.merge_dependency_graph(reply_channel, new_dependency_data, change_set_id)
 }
 
+#[instrument(level = "info", skip(nats, complete_graph))]
 pub async fn job_processed_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
@@ -264,6 +268,7 @@ pub async fn job_processed_a_value(
     for reply_channel in
         complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
     {
+        info!(%reply_channel, "AttributeValue has been processed by another job");
         nats.publish(
             reply_channel,
             serde_json::to_vec(&Response::BeenProcessed { node_id }).unwrap(),
@@ -271,9 +276,11 @@ pub async fn job_processed_a_value(
         .await
         .unwrap();
     }
+    debug!(?complete_graph);
     Ok(())
 }
 
+#[instrument(level = "info")]
 pub async fn job_is_going_away(
     complete_graph: &mut ChangeSetGraph,
     value_create_queue: &mut ValueCreationQueue,
@@ -282,6 +289,7 @@ pub async fn job_is_going_away(
 ) -> Result<(), Error> {
     value_create_queue.remove(&reply_channel);
     complete_graph.remove_channel(change_set_id, &reply_channel);
+    debug!(?complete_graph, ?value_create_queue);
 
     Ok(())
 }

@@ -259,7 +259,7 @@ impl_standard_model! {
 }
 
 impl AttributeValue {
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip(ctx, key), fields(key))]
     pub async fn new(
         ctx: &DalContext,
         func_binding_id: FuncBindingId,
@@ -268,6 +268,7 @@ impl AttributeValue {
         key: Option<impl Into<String>>,
     ) -> AttributeValueResult<Self> {
         let key: Option<String> = key.map(|s| s.into());
+        tracing::Span::current().record("key", &key);
         let row = ctx
             .txns()
             .pg()
@@ -794,7 +795,7 @@ impl AttributeValue {
     /// appropriate [`AttributeValue`] to use. By using this function,
     /// [`update_for_context()`](AttributeValue::update_for_context()) is called after we have created an appropriate
     /// [`AttributeValue`] to use.
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub async fn insert_for_context(
         ctx: &DalContext,
         item_attribute_context: AttributeContext,
@@ -813,7 +814,7 @@ impl AttributeValue {
         .await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub async fn insert_for_context_without_creating_proxies(
         ctx: &DalContext,
         parent_context: AttributeContext,
@@ -832,7 +833,7 @@ impl AttributeValue {
         .await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     async fn insert_for_context_raw(
         ctx: &DalContext,
         item_attribute_context: AttributeContext,
@@ -865,7 +866,7 @@ impl AttributeValue {
         Ok(new_attribute_value_id)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "debug")]
     pub async fn update_parent_index_map(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         let _row = ctx
             .pg_txn()
@@ -931,12 +932,11 @@ impl AttributeValue {
         }
     }
 
+    #[instrument(skip(ctx), level = "debug")]
     pub async fn create_dependent_values(
         ctx: &DalContext,
         attribute_value_ids: &[AttributeValueId],
     ) -> AttributeValueResult<()> {
-        let total_start = std::time::Instant::now();
-
         let _rows = ctx
             .pg_txn()
             .query(
@@ -944,10 +944,6 @@ impl AttributeValue {
                 &[&ctx.tenancy(), &ctx.visibility(), &attribute_value_ids],
             )
             .await?;
-        info!(
-            "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
-            total_start.elapsed()
-        );
         Ok(())
     }
 
@@ -962,16 +958,11 @@ impl AttributeValue {
     /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
     /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
     /// [`AttributeValue`].
+    #[instrument(skip(ctx), level = "debug")]
     pub async fn dependent_value_graph(
         ctx: &DalContext,
         attribute_value_ids: &[AttributeValueId],
     ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        info!(
-            "AttributeValue.dependent_value_graph(): {:?}",
-            attribute_value_ids
-        );
-        let total_start = std::time::Instant::now();
-
         let rows = ctx
             .txns()
             .pg()
@@ -979,11 +970,8 @@ impl AttributeValue {
                 FETCH_UPDATE_GRAPH_DATA,
                 &[&ctx.tenancy(), ctx.visibility(), &attribute_value_ids],
             )
+            .instrument(debug_span!("Graph SQL query"))
             .await?;
-        info!(
-            "AttributeValue.dependent_value_graph(): Graph query took {:?}",
-            total_start.elapsed(),
-        );
 
         let mut result: HashMap<AttributeValueId, Vec<AttributeValueId>> = HashMap::new();
         for row in rows.into_iter() {
@@ -992,11 +980,6 @@ impl AttributeValue {
                 row.try_get("dependent_attribute_value_ids")?;
             result.insert(attr_val_id, dependencies);
         }
-
-        info!(
-            "AttributeValue.dependent_value_graph(): Total elapsed {:?}",
-            total_start.elapsed()
-        );
 
         Ok(result)
     }
@@ -1026,12 +1009,19 @@ impl AttributeValue {
     /// does not have a parent `Prop` (this is typically the `InternalProvider` for
     /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
     /// `CodeGeneration` job for the `Component`.
+    #[instrument(
+        name = "attribute_value.update_from_prototype_function",
+        skip_all,
+        level = "debug",
+        fields(
+            attribute_value.id = %self.id,
+            change_set_pk = %ctx.visibility().change_set_pk,
+        )
+    )]
     pub async fn update_from_prototype_function(
         &mut self,
         ctx: &DalContext,
     ) -> AttributeValueResult<()> {
-        let update_start_time = std::time::Instant::now();
-
         // Check if this AttributeValue is for an implicit InternalProvider as they have special behavior that doesn't involve
         // AttributePrototype and AttributePrototypeArguments.
         if self
@@ -1055,11 +1045,7 @@ impl AttributeValue {
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
-                info!(
-                        "update_from_prototype_function({:?}) took {:?} InternalProvider is internal consumer",
-                        self.id,
-                        update_start_time.elapsed()
-                    );
+                debug!("InternalProvider is internal consumer");
 
                 return Ok(());
             }
@@ -1111,20 +1097,18 @@ impl AttributeValue {
             };
         }
 
-        let execution_start = std::time::Instant::now();
+        let func_id = attribute_prototype.func_id();
         let (func_binding, mut func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
-            serde_json::to_value(func_binding_args)?,
+            serde_json::to_value(func_binding_args.clone())?,
             attribute_prototype.func_id(),
         )
+        .instrument(debug_span!(
+            "Func execution",
+            "func.id" = %func_id,
+            ?func_binding_args,
+        ))
         .await?;
-
-        info!(
-            "update_from_prototype_function({:?}): Func {:?} execution took {:?}",
-            self.id,
-            attribute_prototype.func_id(),
-            execution_start.elapsed()
-        );
 
         self.set_func_binding_id(ctx, *func_binding.id()).await?;
         self.set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
@@ -1194,12 +1178,6 @@ impl AttributeValue {
                 }
             }
         }
-
-        info!(
-            "update_from_prototype_function({:?}) took {:?}",
-            self.id,
-            update_start_time.elapsed()
-        );
 
         Ok(())
     }

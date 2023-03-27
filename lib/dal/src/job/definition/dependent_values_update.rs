@@ -133,10 +133,17 @@ impl JobConsumer for DependentValuesUpdate {
         self.job = Some(boxed.try_into().unwrap());
     }
 
+    #[instrument(
+        name = "dependent_values_update.run",
+        skip_all,
+        level = "info",
+        fields(
+            attribute_values = ?self.attribute_values,
+            single_transaction = ?self.single_transaction,
+        )
+    )]
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let mut ctx = self.clone_ctx_with_new_transactions(ctx).await?;
-
-        let now = std::time::Instant::now();
 
         let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
 
@@ -159,6 +166,8 @@ impl JobConsumer for DependentValuesUpdate {
         ctx = self.commit_and_continue(ctx).await?;
 
         council.finished_creating_values().await?;
+
+        debug!("Finished creating values");
 
         let mut dependency_graph =
             AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
@@ -184,10 +193,7 @@ impl JobConsumer for DependentValuesUpdate {
             dependency_graph.remove(&id);
         }
 
-        info!(
-            "DependentValuesUpdate for {:?}: dependency_graph {:?}",
-            self.attribute_values, &dependency_graph
-        );
+        debug!(?dependency_graph, "Generated dependency graph");
 
         if dependency_graph.is_empty() {
             return Ok(());
@@ -345,12 +351,6 @@ impl JobConsumer for DependentValuesUpdate {
             ctx.commit().await?;
         }
 
-        let elapsed_time = now.elapsed();
-        info!(
-            "DependentValuesUpdate for {:?} took {:?}",
-            &self.attribute_values, elapsed_time
-        );
-
         council.bye().await?;
 
         Ok(())
@@ -359,6 +359,14 @@ impl JobConsumer for DependentValuesUpdate {
 
 /// Wrapper around `AttributeValue.update_from_prototype_function(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
+#[instrument(
+    name = "dependent_values_update.update_value",
+    skip_all,
+    level = "info",
+    fields(
+        attribute_value.id = %attribute_value.id(),
+    )
+)]
 async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
@@ -366,14 +374,7 @@ async fn update_value(
     council: council_server::PubClient,
     status_updater: Arc<Mutex<StatusUpdater>>,
 ) -> AttributeValueResult<()> {
-    info!("DependentValueUpdate {:?}: START", attribute_value.id());
-    let start = std::time::Instant::now();
     attribute_value.update_from_prototype_function(&ctx).await?;
-    info!(
-        "DependentValueUpdate {:?}: DONE {:?}",
-        attribute_value.id(),
-        start.elapsed()
-    );
 
     // Send a completed status for this value and *remove* it from the hash
     status_updater
