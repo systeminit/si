@@ -125,6 +125,16 @@ services:
       - "nats-server.conf"
       - "-DVV"
 
+  jaeger:
+    image: "index.docker.io/jaegertracing/all-in-one:1.43"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    ports:
+      - "5317:4317"
+      - "16686:16686"
+    environment:
+      - "COLLECTOR_OTLP_ENABLED=true"
+
   otel:
     image: "index.docker.io/systeminit/otelcol:stable"
     labels:
@@ -132,6 +142,8 @@ services:
     ports:
       - "4317:4317"
       - "55679:55679"
+    depends_on:
+      - jaeger
 
   # NOTE(nick): watchtower requires full image names for private registries,
   # which include prefixes like "index.docker.io".
