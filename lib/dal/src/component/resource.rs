@@ -28,7 +28,25 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<CommandRunResult> {
-        let attribute_value = Self::resource_attribute_value_by_id(ctx, component_id).await?;
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
+            ctx,
+            schema_variant_id,
+            RootPropChild::Resource,
+        )
+        .await?;
+
+        let value_context = AttributeReadContext {
+            internal_provider_id: Some(*implicit_internal_provider.id()),
+            component_id: Some(component_id),
+            ..AttributeReadContext::default()
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                value_context,
+            ))?;
 
         let func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
@@ -56,34 +74,6 @@ impl Component {
             });
         let result = CommandRunResult::deserialize(&value)?;
         Ok(result)
-    }
-
-    /// Find the object corresponding to "/root/resource".
-    pub async fn resource_attribute_value_by_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<AttributeValue> {
-        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
-        let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
-            ctx,
-            schema_variant_id,
-            RootPropChild::Resource,
-        )
-        .await?;
-
-        let value_context = AttributeReadContext {
-            internal_provider_id: Some(*implicit_internal_provider.id()),
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
-
-        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
-            .await?
-            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                value_context,
-            ))?;
-
-        Ok(attribute_value)
     }
 
     /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
@@ -124,12 +114,7 @@ impl Component {
                 .to_context()?;
 
         if blocking_dependent_values_update {
-            // Paulo:
-            // We use this function to ensure the dependent values propagation happens
-            // before any other job that is scheduled after it in this transaction
-            // this means the fix flow can trust that the next fix step will only happen
-            // after the previous one propagated its resource, as they may depend on it
-            let (_, _) = AttributeValue::update_for_context_blocking_dependent_values_update(
+            let (_, _) = AttributeValue::update_for_context(
                 ctx,
                 *resource_attribute_value.id(),
                 Some(*root_attribute_value.id()),
@@ -139,7 +124,12 @@ impl Component {
             )
             .await?;
         } else {
-            let (_, _) = AttributeValue::update_for_context(
+            // Paulo:
+            // We use this function to ensure the dependent values propagation happens
+            // before any other job that is scheduled after it in this transaction
+            // this means the fix flow can trust that the next fix step will only happen
+            // after the previous one propagated its resource, as they may depend on it
+            let (_, _) = AttributeValue::update_for_context_blocking_dependent_values_update(
                 ctx,
                 *resource_attribute_value.id(),
                 Some(*root_attribute_value.id()),
