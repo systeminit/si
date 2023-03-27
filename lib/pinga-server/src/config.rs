@@ -10,8 +10,9 @@ use thiserror::Error;
 
 pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
+use ulid::Ulid;
 
-const CONCURRENCY_DEFAULT: usize = 10;
+const CONCURRENCY_DEFAULT: usize = 0;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -40,6 +41,8 @@ pub struct Config {
 
     #[builder(default = "CONCURRENCY_DEFAULT")]
     concurrency: usize,
+
+    instance_id: String,
 }
 
 impl StandardConfig for Config {
@@ -74,6 +77,11 @@ impl Config {
     pub fn concurrency(&self) -> usize {
         self.concurrency
     }
+
+    /// Gets the config's instance ID.
+    pub fn instance_id(&self) -> &str {
+        self.instance_id.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -81,7 +89,8 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
     cyclone_encryption_key_path: String,
-    concurrency_limit: u32,
+    concurrency_limit: usize,
+    instance_id: String,
 }
 
 impl Default for ConfigFile {
@@ -107,7 +116,8 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             cyclone_encryption_key_path,
-            concurrency_limit: 0,
+            concurrency_limit: CONCURRENCY_DEFAULT,
+            instance_id: random_instance_id(),
         }
     }
 }
@@ -124,6 +134,11 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
+        config.instance_id(value.instance_id);
         config.build().map_err(Into::into)
     }
+}
+
+fn random_instance_id() -> String {
+    Ulid::new().to_string()
 }
