@@ -231,7 +231,6 @@ export const useFixesStore = () => {
             onSuccess: (response) => {
               this.confirmations = response;
               this.populatingFixes =
-                response.length === 0 ||
                 response.some((c) => c.status === "neverStarted") ||
                 response.some((c) => c.status === "running");
             },
