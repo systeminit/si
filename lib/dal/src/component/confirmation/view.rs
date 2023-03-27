@@ -433,7 +433,7 @@ pub struct Recommendation {
     /// The [`kind`](crate::action_prototype::ActionKind) of
     /// [`ActionPrototype`](crate::ActionPrototype) that the recommended
     /// [action](crate::ActionPrototype) corresponds to.
-    action_kind: ActionKind,
+    pub action_kind: ActionKind,
     /// The last recorded [`status`](RecommendationStatus) of the [recommendation](Self).
     pub status: RecommendationStatus,
     /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the

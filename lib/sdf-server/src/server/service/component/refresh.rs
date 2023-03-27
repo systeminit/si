@@ -18,15 +18,15 @@ pub struct RefreshRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct RefreshRequestResponse {
-    success: bool,
+pub struct RefreshResponse {
+    pub success: bool,
 }
 
 pub async fn refresh(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RefreshRequest>,
-) -> ComponentResult<Json<RefreshRequestResponse>> {
+) -> ComponentResult<Json<RefreshResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // If a component does not exist on head, we should just consider it "refreshed" right away.
@@ -38,7 +38,7 @@ pub async fn refresh(
                 .await?;
             ctx.commit().await?;
 
-            return Ok(Json(RefreshRequestResponse { success: true }));
+            return Ok(Json(RefreshResponse { success: true }));
         }
     }
 
@@ -57,5 +57,5 @@ pub async fn refresh(
 
     ctx.commit().await?;
 
-    Ok(Json(RefreshRequestResponse { success: true }))
+    Ok(Json(RefreshResponse { success: true }))
 }

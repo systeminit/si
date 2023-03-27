@@ -68,7 +68,7 @@ pub mod workspace;
 pub mod ws_event;
 
 pub use action_prototype::{
-    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
+    ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
 };
 pub use actor_view::ActorView;
 pub use attribute::value::view::AttributeView;

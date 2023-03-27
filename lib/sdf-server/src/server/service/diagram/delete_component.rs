@@ -13,12 +13,18 @@ pub struct DeleteComponentRequest {
     pub visibility: Visibility,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteComponentResponse {
+    pub success: bool,
+}
+
 /// Delete a [`Component`](dal::Component) via its componentId.
 pub async fn delete_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<DeleteComponentRequest>,
-) -> DiagramResult<()> {
+) -> DiagramResult<Json<DeleteComponentResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut comp = Component::get_by_id(&ctx, &request.component_id)
@@ -34,5 +40,5 @@ pub async fn delete_component(
 
     ctx.commit().await?;
 
-    Ok(())
+    Ok(Json(DeleteComponentResponse { success: true }))
 }

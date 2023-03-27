@@ -5,7 +5,6 @@ mod change_set;
 mod component;
 mod diagram;
 mod edge;
-mod fix;
 mod func;
 mod func_execution;
 mod graph;
