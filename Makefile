@@ -264,6 +264,8 @@ test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf-server
 
 test//lib/si-pkg//RTESTDEPS: test//lib/dal
 
+test//lib/si-posthog-rs//RTESTDEPS: test//lib/sdf-server
+
 test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf-server//TEST
 
 test//lib/si-std//RTESTDEPS: test//lib/dal-test test//lib/sdf-server
