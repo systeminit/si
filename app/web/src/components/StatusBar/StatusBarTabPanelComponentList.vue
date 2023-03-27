@@ -122,7 +122,7 @@ const overflowTooltips = computed(() => {
   props.componentList.forEach((c) => {
     const el = componentsListRef.value[props.componentList.indexOf(c)];
 
-    if (el.offsetWidth < el.scrollWidth) {
+    if (el !== undefined && el.offsetWidth < el.scrollWidth) {
       tooltips.push({ content: c.name, delay: { show: 700, hide: 10 } });
     } else {
       tooltips.push({});
