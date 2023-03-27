@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
-use std::{collections::HashMap, collections::VecDeque, convert::TryFrom};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -20,6 +20,22 @@ pub trait JobProducer: std::fmt::Debug + Send + JobConsumerMetadata {
     fn args(&self) -> JobProducerResult<serde_json::Value>;
     fn meta(&self) -> JobProducerResult<JobMeta>;
     fn identity(&self) -> String;
+}
+
+pub type BlockingJobResult = Result<(), BlockingJobError>;
+
+#[derive(Error, Clone, Debug, Serialize, Deserialize)]
+pub enum BlockingJobError {
+    #[error("A nats error occurred: {0}")]
+    Nats(String),
+    #[error("Error during job execution: {0}")]
+    JobExecution(String),
+    #[error("JobProducer error: {0}")]
+    JobProducer(String),
+    #[error("serde error: {0}")]
+    Serde(String),
+    #[error("A transactions error occurred: {0}")]
+    Transactions(String),
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -55,7 +71,6 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
             custom: JobConsumerCustomPayload {
                 extra: job_producer_meta.custom,
             },
-            subsequent_jobs: VecDeque::new(),
         })
     }
 }

@@ -3,18 +3,17 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::fix::FixError;
 use crate::{
+    fix::FixError,
     job::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
-        definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext, Fix,
-    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild, StandardModel,
-    Visibility, WsEvent,
+    AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext,
+    DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver,
+    RootPropChild, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +90,7 @@ impl JobProducer for FixesJob {
         let mut custom = HashMap::new();
         custom.insert(
             "access_builder".to_string(),
-            serde_json::to_value(self.access_builder.clone())?,
+            serde_json::to_value(self.access_builder)?,
         );
         custom.insert(
             "visibility".to_string(),
@@ -116,7 +115,7 @@ impl JobConsumerMetadata for FixesJob {
     }
 
     fn access_builder(&self) -> AccessBuilder {
-        self.access_builder.clone()
+        self.access_builder
     }
 
     fn visibility(&self) -> Visibility {
@@ -126,7 +125,7 @@ impl JobConsumerMetadata for FixesJob {
 
 #[async_trait]
 impl JobConsumer for FixesJob {
-    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
         // Mark the batch as started if it has not been yet.
         if !self.started {
             let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
@@ -195,7 +194,6 @@ impl JobConsumer for FixesJob {
             .map(|l| l.to_owned())
             .collect();
 
-        // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
         let attribute_value = Component::root_prop_child_attribute_value_for_component(
             ctx,
             *component.id(),
@@ -203,9 +201,19 @@ impl JobConsumer for FixesJob {
         )
         .await?;
 
-        // Always re-trigger confirmations, and propagate a resource if it changed.
-        ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
-            .await;
+        // Always retriggers confirmations, and propagates resource if it changed.
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![*attribute_value.id()],
+        ))
+        .await?;
+
+        // Commit progress so far, and wait for dependent values propagation so we can run
+        // consecutive fixes that depend on the /root/resource from the previous fix.
+        // `blocking_commit()` will wait for any jobs that have ben created through
+        // `enqueue_job(...)` to finish before moving on.
+        ctx.blocking_commit().await?;
 
         WsEvent::fix_return(
             ctx,
@@ -228,7 +236,7 @@ impl JobConsumer for FixesJob {
                 self.fixes.iter().skip(1).cloned().collect(),
                 self.batch_id,
             ))
-            .await;
+            .await?;
         }
 
         Ok(())

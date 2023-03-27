@@ -1,4 +1,4 @@
-use crate::{Func, Tenancy};
+use crate::{Func, Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data_nats::NatsError;
@@ -34,6 +34,8 @@ pub enum FuncBindingReturnValueError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("not found: {0}")]
     NotFound(FuncBindingReturnValueId),
     #[error("func not found by id: {0}")]
@@ -93,6 +95,7 @@ impl FuncBindingReturnValue {
     ) -> FuncBindingReturnValueResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -144,6 +147,7 @@ impl FuncBindingReturnValue {
     ) -> FuncBindingReturnValueResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 "SELECT fbrv FROM func_binding_return_value_get_by_func_binding_id_v1($1, $2, $3)",

@@ -60,11 +60,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "Connections" => {
-                                let var = expander.setup_owned_connections();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "DalContext" => {
                                 let var = expander.setup_dal_context_default();
                                 let var = var.as_ref();
@@ -95,12 +90,17 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "PingaShutdownHandle" => {
+                                let var = expander.setup_pinga_shutdown_handle();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "ShutdownHandle" => {
+                            "VeritechShutdownHandle" => {
                                 let var = expander.setup_veritech_shutdown_handle();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
@@ -192,10 +192,10 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
         // the future, but for now (as before), every test starts with its own veritech server with
         // a randomized subject prefix
         expander.setup_start_veritech_server();
+        expander.setup_start_pinga_server();
         expander.setup_start_council_server();
     }
 
-    expander.drop_transactions_clone_if_created();
     expander.finish()
 }
 
@@ -219,14 +219,14 @@ struct SdfTestFnSetupExpander {
     nats_subject_prefix: Option<Arc<Ident>>,
     council_server: Option<Arc<Ident>>,
     start_council_server: Option<()>,
+    pinga_server: Option<Arc<Ident>>,
+    pinga_shutdown_handle: Option<Arc<Ident>>,
+    start_pinga_server: Option<()>,
     veritech_server: Option<Arc<Ident>>,
     veritech_shutdown_handle: Option<Arc<Ident>>,
     start_veritech_server: Option<()>,
     services_context: Option<Arc<Ident>>,
     dal_context_builder: Option<Arc<Ident>>,
-    connections: Option<Arc<Ident>>,
-    owned_connections: Option<Arc<Ident>>,
-    transactions: Option<Arc<Ident>>,
     workspace_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     workspace_pk: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
@@ -252,14 +252,14 @@ impl SdfTestFnSetupExpander {
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
+            pinga_server: None,
+            pinga_shutdown_handle: None,
+            start_pinga_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
             start_veritech_server: None,
             services_context: None,
             dal_context_builder: None,
-            connections: None,
-            owned_connections: None,
-            transactions: None,
             workspace_signup: None,
             workspace_pk: None,
             dal_context_default: None,
@@ -338,8 +338,6 @@ impl SdfTestFnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let nats_subject_prefix = self.setup_nats_subject_prefix();
-        let nats_subject_prefix = nats_subject_prefix.as_ref();
         let jwt_secret_key = self.setup_jwt_secret_key();
         let jwt_secret_key = jwt_secret_key.as_ref();
         let jwt_public_signing_key = self.setup_jwt_public_signing_key();
@@ -352,7 +350,7 @@ impl SdfTestFnSetupExpander {
         let var = Ident::new("router", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-                let s_ctx = #test_context.create_services_context(&#nats_subject_prefix).await;
+                let s_ctx = #test_context.create_services_context().await;
                 let (service, _, _) = ::sdf_server::build_service(
                     s_ctx,
                     #jwt_secret_key.clone(),
@@ -459,6 +457,30 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
         self.start_council_server = value;
     }
 
+    fn pinga_server(&self) -> Option<&Arc<Ident>> {
+        self.pinga_server.as_ref()
+    }
+
+    fn set_pinga_server(&mut self, value: Option<Arc<Ident>>) {
+        self.pinga_server = value;
+    }
+
+    fn pinga_shutdown_handle(&self) -> Option<&Arc<Ident>> {
+        self.pinga_shutdown_handle.as_ref()
+    }
+
+    fn set_pinga_shutdown_handle(&mut self, value: Option<Arc<Ident>>) {
+        self.pinga_shutdown_handle = value;
+    }
+
+    fn start_pinga_server(&self) -> Option<()> {
+        self.start_pinga_server
+    }
+
+    fn set_start_pinga_server(&mut self, value: Option<()>) {
+        self.start_pinga_server = value;
+    }
+
     fn veritech_server(&self) -> Option<&Arc<Ident>> {
         self.veritech_server.as_ref()
     }
@@ -497,30 +519,6 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_dal_context_builder(&mut self, value: Option<Arc<Ident>>) {
         self.dal_context_builder = value;
-    }
-
-    fn connections(&self) -> Option<&Arc<Ident>> {
-        self.connections.as_ref()
-    }
-
-    fn set_connections(&mut self, value: Option<Arc<Ident>>) {
-        self.connections = value;
-    }
-
-    fn owned_connections(&self) -> Option<&Arc<Ident>> {
-        self.owned_connections.as_ref()
-    }
-
-    fn set_owned_connections(&mut self, value: Option<Arc<Ident>>) {
-        self.owned_connections = value;
-    }
-
-    fn transactions(&self) -> Option<&Arc<Ident>> {
-        self.transactions.as_ref()
-    }
-
-    fn set_transactions(&mut self, value: Option<Arc<Ident>>) {
-        self.transactions = value;
     }
 
     fn workspace_signup(&self) -> Option<&(Arc<Ident>, Arc<Ident>)> {

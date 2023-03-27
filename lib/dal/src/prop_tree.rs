@@ -1,6 +1,6 @@
 use crate::{
     DalContext, InternalProviderId, Prop, PropId, PropKind, SchemaVariantId, StandardModel,
-    StandardModelError,
+    StandardModelError, TransactionsError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -16,6 +16,8 @@ pub enum PropTreeError {
     StandardModel(#[from] StandardModelError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type PropTreeResult<T> = Result<T, PropTreeError>;
@@ -60,7 +62,9 @@ impl PropTree {
         let mut root_props = vec![];
 
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 PROP_TREE_FOR_ALL_SCHEMA_VARIANTS,
                 &[ctx.tenancy(), ctx.visibility()],

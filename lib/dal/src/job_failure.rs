@@ -69,6 +69,7 @@ impl JobFailure {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM job_failure_create_v1($1, $2, $3, $4)",

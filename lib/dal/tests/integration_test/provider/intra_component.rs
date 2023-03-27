@@ -39,6 +39,10 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
             .await
@@ -126,6 +130,10 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .await
     .expect("cannot set value for context");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure that our rendered data matches what was intended.
     assert_eq!(
         serde_json::json![{
@@ -185,6 +193,10 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not create attribute prototype argument");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure that the shape has not changed after creating the provider and updating the prototype.
     assert_eq!(
         serde_json::json![{
@@ -219,6 +231,10 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not update attribute value");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Observe that both the source and destination fields were updated.
     assert_eq!(
         serde_json::json![{
@@ -252,6 +268,10 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     )
     .await
     .expect("could not update attribute value");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe it again!
     assert_eq!(
@@ -309,6 +329,10 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let freya_provider = InternalProvider::find_for_prop(ctx, *freya_prop.id())
         .await
@@ -413,6 +437,10 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     .await
     .expect("run update for context");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let base_attribute_read_context = AttributeReadContext {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
@@ -475,8 +503,17 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .update_from_prototype_function(ctx)
         .await
         .expect("update from proto func");
-    ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*freya_value.id()]))
-        .await;
+    ctx.enqueue_job(DependentValuesUpdate::new(
+        ctx.access_builder(),
+        *ctx.visibility(),
+        vec![*freya_value.id()],
+    ))
+    .await
+    .expect("failed to enqueue job");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let external_provider_av = AttributeValue::find_for_context(
         ctx,

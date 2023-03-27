@@ -79,6 +79,11 @@ async fn new(ctx: &DalContext) {
 #[test]
 async fn create_delete_and_restore_edges(ctx: &DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let from_aws_region = harness
         .create_component(ctx, "from", Builtin::AwsRegion)
         .await;
@@ -153,6 +158,10 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // check that the value of the ec2 instance region
     assert_eq!(
         serde_json::json![{
@@ -176,8 +185,16 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             }
         }], // expected
         to_aws_ec2_instance
@@ -189,7 +206,13 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     );
 
     // delete the edge
-    let _result = Connection::delete_for_edge(ctx, connection.id).await;
+    Connection::delete_for_edge(ctx, connection.id)
+        .await
+        .expect("Unable to delete connection");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // check that the region of the ec2 instance is empty
     assert_eq!(
@@ -213,8 +236,16 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         to_aws_ec2_instance
@@ -226,7 +257,13 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     );
 
     // restore the edge
-    let _result = Connection::restore_for_edge(ctx, connection.id).await;
+    Connection::restore_for_edge(ctx, connection.id)
+        .await
+        .expect("Unable to restore connection");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // check that the value of the ec2 instance region
     assert_eq!(
@@ -251,8 +288,16 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         to_aws_ec2_instance
@@ -267,6 +312,11 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
 #[test]
 async fn create_multiple_connections_and_delete(ctx: &DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let nginx_container = harness
         .create_component(ctx, "nginx", Builtin::DockerImage)
         .await;
@@ -283,6 +333,10 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
     let butane_instance = harness
         .create_component(ctx, "userdata", Builtin::CoreOsButane)
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let docker_image_schema_variant =
         SchemaVariant::get_by_id(ctx, &nginx_container.schema_variant_id)
@@ -356,6 +410,10 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // check that the value of the butance instance
     assert_eq!(
         serde_json::json![{
@@ -403,6 +461,10 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         .await
         .expect("Deletion should work");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -441,6 +503,10 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     // delete the nginx connection
     let _result = Connection::delete_for_edge(ctx, connect_from_apache2.id).await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{

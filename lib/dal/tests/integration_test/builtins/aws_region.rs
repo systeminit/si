@@ -23,6 +23,10 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -78,6 +82,10 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -127,6 +135,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         .create_component(ctx, "region", Builtin::AwsRegion)
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure the component type is a frame, which should be the default.
     let region_component = region_payload.component(ctx).await;
     let component_type = region_component
@@ -146,6 +158,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             Some(serde_json::json!["us-east-2"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure setup worked.
     assert_eq!(
@@ -188,8 +204,16 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -229,6 +253,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     )
     .await
     .expect("could not connect providers");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure the view did not drift.
     assert_eq!(
@@ -271,8 +299,16 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -291,6 +327,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             Some(serde_json::json!["us-west-2"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observed that it worked.
     assert_eq!(
@@ -334,8 +374,16 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -356,6 +404,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     let region_payload = harness
         .create_component(ctx, "region", Builtin::AwsRegion)
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Switch the component type to a component, which should not be the default.
     let region_component = region_payload.component(ctx).await;
@@ -389,6 +441,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
@@ -430,8 +486,16 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -471,6 +535,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     )
     .await
     .expect("could not connect providers");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure the view did not drift.
     assert_eq!(
@@ -513,8 +581,16 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -533,6 +609,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             Some(serde_json::json!["us-west-2"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observed that it worked.
     assert_eq!(
@@ -576,8 +656,16 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {},
-                "si:confirmationResourceNeedsDeletion": {},
+                "si:confirmationResourceExists": {
+                    "success": false,
+                    "recommendedActions": [
+                        "create",
+                    ],
+                },
+                "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload

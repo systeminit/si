@@ -15,6 +15,10 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         .create_component(ctx, "bloodscythe", Builtin::DockerImage)
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure that setup worked
     assert_eq!(
         serde_json::json![{
@@ -65,6 +69,10 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -114,6 +122,10 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             Some(serde_json::json!["soulrender-updated"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{

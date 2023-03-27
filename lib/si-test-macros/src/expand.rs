@@ -216,6 +216,15 @@ pub(crate) trait FnSetupExpander {
     fn start_council_server(&self) -> Option<()>;
     fn set_start_council_server(&mut self, value: Option<()>);
 
+    fn pinga_server(&self) -> Option<&Arc<Ident>>;
+    fn set_pinga_server(&mut self, value: Option<Arc<Ident>>);
+
+    fn pinga_shutdown_handle(&self) -> Option<&Arc<Ident>>;
+    fn set_pinga_shutdown_handle(&mut self, value: Option<Arc<Ident>>);
+
+    fn start_pinga_server(&self) -> Option<()>;
+    fn set_start_pinga_server(&mut self, value: Option<()>);
+
     fn veritech_server(&self) -> Option<&Arc<Ident>>;
     fn set_veritech_server(&mut self, value: Option<Arc<Ident>>);
 
@@ -230,15 +239,6 @@ pub(crate) trait FnSetupExpander {
 
     fn dal_context_builder(&self) -> Option<&Arc<Ident>>;
     fn set_dal_context_builder(&mut self, value: Option<Arc<Ident>>);
-
-    fn connections(&self) -> Option<&Arc<Ident>>;
-    fn set_connections(&mut self, value: Option<Arc<Ident>>);
-
-    fn owned_connections(&self) -> Option<&Arc<Ident>>;
-    fn set_owned_connections(&mut self, value: Option<Arc<Ident>>);
-
-    fn transactions(&self) -> Option<&Arc<Ident>>;
-    fn set_transactions(&mut self, value: Option<Arc<Ident>>);
 
     fn workspace_signup(&self) -> Option<&(Arc<Ident>, Arc<Ident>)>;
     fn set_workspace_signup(&mut self, value: Option<(Arc<Ident>, Arc<Ident>)>);
@@ -313,14 +313,11 @@ pub(crate) trait FnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let nats_subject_prefix = self.setup_nats_subject_prefix();
-        let nats_subject_prefix = nats_subject_prefix.as_ref();
 
         let var = Ident::new("council_server", Span::call_site());
         self.code_extend(quote! {
             let #var = ::dal_test::council_server(
                 #test_context.nats_config().clone(),
-                format!("{}.council", #nats_subject_prefix),
             ).await?;
         });
         self.set_council_server(Some(Arc::new(var)));
@@ -350,6 +347,56 @@ pub(crate) trait FnSetupExpander {
         self.set_start_council_server(Some(()));
     }
 
+    fn setup_pinga_server(&mut self) -> Arc<Ident> {
+        if let Some(ident) = self.pinga_server() {
+            return ident.clone();
+        }
+
+        let dal_context_builder = self.setup_dal_context_builder();
+        let dal_context_builder = dal_context_builder.as_ref();
+
+        let var = Ident::new("pinga_server", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::pinga_server(
+                #dal_context_builder.services_context(),
+            )?;
+        });
+        self.set_pinga_server(Some(Arc::new(var)));
+
+        self.pinga_server().unwrap().clone()
+    }
+
+    fn setup_pinga_shutdown_handle(&mut self) -> Arc<Ident> {
+        if let Some(ident) = self.pinga_shutdown_handle() {
+            return ident.clone();
+        }
+
+        let pinga_server = self.setup_pinga_server();
+        let pinga_server = pinga_server.as_ref();
+
+        let var = Ident::new("pinga_shutdown_handle", Span::call_site());
+        self.code_extend(quote! {
+            let #var = #pinga_server.shutdown_handle();
+        });
+        self.set_pinga_shutdown_handle(Some(Arc::new(var)));
+
+        self.pinga_shutdown_handle().unwrap().clone()
+    }
+
+    fn setup_start_pinga_server(&mut self) {
+        if self.start_pinga_server().is_some() {
+            return;
+        }
+
+        let pinga_server = self.setup_pinga_server();
+        let pinga_server = pinga_server.as_ref();
+
+        self.code_extend(quote! {
+            ::tokio::spawn(#pinga_server.run());
+        });
+        self.set_start_pinga_server(Some(()));
+    }
+
     fn setup_veritech_server(&mut self) -> Arc<Ident> {
         if let Some(ident) = self.veritech_server() {
             return ident.clone();
@@ -357,14 +404,11 @@ pub(crate) trait FnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let nats_subject_prefix = self.setup_nats_subject_prefix();
-        let nats_subject_prefix = nats_subject_prefix.as_ref();
 
         let var = Ident::new("veritech_server", Span::call_site());
         self.code_extend(quote! {
             let #var = ::dal_test::veritech_server_for_uds_cyclone(
                 #test_context.nats_config().clone(),
-                format!("{}.veritech", #nats_subject_prefix),
             ).await?;
         });
         self.set_veritech_server(Some(Arc::new(var)));
@@ -410,12 +454,10 @@ pub(crate) trait FnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let nats_subject_prefix = self.setup_nats_subject_prefix();
-        let nats_subject_prefix = nats_subject_prefix.as_ref();
 
         let var = Ident::new("services_context", Span::call_site());
         self.code_extend(quote! {
-            let #var = #test_context.create_services_context(&#nats_subject_prefix).await;
+            let #var = #test_context.create_services_context().await;
         });
         self.set_services_context(Some(Arc::new(var)));
 
@@ -439,66 +481,6 @@ pub(crate) trait FnSetupExpander {
         self.dal_context_builder().unwrap().clone()
     }
 
-    fn setup_connections(&mut self) -> Arc<Ident> {
-        if let Some(ident) = self.connections() {
-            return ident.clone();
-        }
-
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
-
-        let var = Ident::new("connections", Span::call_site());
-        self.code_extend(quote! {
-            let mut #var = #dal_context_builder
-                .connections()
-                .await
-                .wrap_err("failed to build connections")?;
-        });
-        self.set_connections(Some(Arc::new(var)));
-
-        self.connections().unwrap().clone()
-    }
-
-    fn setup_owned_connections(&mut self) -> Arc<Ident> {
-        if let Some(ident) = self.owned_connections() {
-            return ident.clone();
-        }
-
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
-
-        let var = Ident::new("owned_connections", Span::call_site());
-        self.code_extend(quote! {
-            let #var = #dal_context_builder
-                .connections()
-                .await
-                .wrap_err("failed to build connections")?;
-        });
-        self.set_owned_connections(Some(Arc::new(var)));
-
-        self.owned_connections().unwrap().clone()
-    }
-
-    fn setup_transactions(&mut self) -> Arc<Ident> {
-        if let Some(ident) = self.transactions() {
-            return ident.clone();
-        }
-
-        let connections = self.setup_connections();
-        let connections = connections.as_ref();
-
-        let var = Ident::new("transactions", Span::call_site());
-        self.code_extend(quote! {
-            let mut #var = #connections
-                .start_txns()
-                .await
-                .wrap_err("failed to start transactions")?;
-        });
-        self.set_transactions(Some(Arc::new(var)));
-
-        self.transactions().unwrap().clone()
-    }
-
     fn setup_workspace_signup(&mut self) -> (Arc<Ident>, Arc<Ident>) {
         if let Some(idents) = self.workspace_signup() {
             return idents.clone();
@@ -506,8 +488,6 @@ pub(crate) trait FnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
 
@@ -515,12 +495,18 @@ pub(crate) trait FnSetupExpander {
         let var_auth_token = Ident::new("auth_token", Span::call_site());
         self.code_extend(quote! {
             let (#var_nw, #var_auth_token) = {
-                let ctx = #dal_context_builder.build_default_with_txns(#transactions);
+                let ctx = #dal_context_builder
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for workspace_signup")?;
                 let r = ::dal_test::helpers::workspace_signup(
                     &ctx,
                     #test_context.jwt_secret_key(),
                 ).await?;
-                #transactions = ctx.into();
+                ctx.commit()
+                    .await
+                    .wrap_err("failed to commit workspace_signup")?;
+
                 r
             };
         });
@@ -553,17 +539,22 @@ pub(crate) trait FnSetupExpander {
 
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
         let var = Ident::new("default_dal_context", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-                let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
+                let mut ctx = #dal_context_builder
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for dal_context_default")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
+                ctx.commit()
+                    .await
+                    .wrap_err("failed to commit create_change_set_and_update_ctx")?;
+
                 ctx
             };
         });
@@ -579,17 +570,22 @@ pub(crate) trait FnSetupExpander {
 
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
         let var = Ident::new("dal_context_default_mut", Span::call_site());
         self.code_extend(quote! {
             let mut #var = {
-                let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
+                let mut ctx = #dal_context_builder
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
+                ctx.commit()
+                    .await
+                    .wrap_err("failed to commit create_change_set_and_update_ctx_mut")?;
+
                 ctx
             };
         });
@@ -605,8 +601,6 @@ pub(crate) trait FnSetupExpander {
 
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
@@ -614,10 +608,9 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::default(),
-                        #transactions.clone(),
-                    );
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for dal_context_head")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
 
                 ::dal_test::DalContextHead(ctx)
@@ -635,8 +628,6 @@ pub(crate) trait FnSetupExpander {
 
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
@@ -644,11 +635,11 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let _dchr = {
                 let mut ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::default(),
-                        #transactions.clone(),
-                    );
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for dal_context_head_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+
                 ctx
             };
             let #var = ::dal_test::DalContextHeadRef(&_dchr);
@@ -665,8 +656,6 @@ pub(crate) trait FnSetupExpander {
 
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
@@ -674,11 +663,11 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let mut _dchmr = {
                 let mut ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::default(),
-                        #transactions.clone(),
-                    );
+                    .build_default()
+                    .await
+                    .wrap_err("failed to build default dal ctx for dal_context_head_mut_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+
                 ctx
             };
             let #var = ::dal_test::DalContextHeadMutRef(&mut _dchmr);
@@ -686,24 +675,5 @@ pub(crate) trait FnSetupExpander {
         self.set_dal_context_head_mut_ref(Some(Arc::new(var)));
 
         self.dal_context_head_mut_ref().unwrap().clone()
-    }
-
-    fn drop_transactions_clone_if_created(&mut self) {
-        if !self.has_transactions() {
-            return;
-        }
-
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
-
-        self.code_extend(quote! {
-            // Drop remaining clone so that no copies of the transaction can outlive a commit or
-            // rollback
-            drop(#transactions);
-        });
-    }
-
-    fn has_transactions(&self) -> bool {
-        self.transactions().is_some()
     }
 }

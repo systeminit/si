@@ -2,9 +2,9 @@ use std::{io, path::Path, sync::Arc};
 
 use dal::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
+        consumer::{JobConsumer, JobConsumerError, JobInfo},
         definition::{FixesJob, RefreshJob},
-        producer::JobProducer,
+        producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
     JobFailureError, JobInvocationId, JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -80,11 +80,9 @@ pub struct Server {
     concurrency_limit: usize,
     encryption_key: Arc<EncryptionKey>,
     nats: NatsClient,
-    subject_prefix: Option<String>,
     pg_pool: PgPool,
     veritech: VeritechClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    job_processor_alive_marker_rx: mpsc::Receiver<()>,
     /// An internal shutdown watch receiver handle which can be provided to internal tasks which
     /// want to be notified when a shutdown event is in progress.
     shutdown_watch_rx: watch::Receiver<()>,
@@ -100,6 +98,37 @@ pub struct Server {
 impl Server {
     #[instrument(name = "pinga.init.from_config", skip_all)]
     pub async fn from_config(config: Config) -> Result<Self> {
+        dal::init()?;
+
+        let encryption_key =
+            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+        let nats = Self::connect_to_nats(config.nats()).await?;
+        let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let veritech = Self::create_veritech_client(nats.clone());
+        let job_processor = Self::create_job_processor(nats.clone());
+
+        Self::from_services(
+            config.instance_id().to_string(),
+            config.concurrency(),
+            encryption_key,
+            nats,
+            pg_pool,
+            veritech,
+            job_processor,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(name = "pinga.init.from_services", skip_all)]
+    pub fn from_services(
+        instance_id: impl Into<String>,
+        concurrency_limit: usize,
+        encryption_key: Arc<EncryptionKey>,
+        nats: NatsClient,
+        pg_pool: PgPool,
+        veritech: VeritechClient,
+        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    ) -> Result<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
         // A watch channel used to notify internal parts of the server that a shutdown event is in
@@ -109,17 +138,8 @@ impl Server {
 
         dal::init()?;
 
-        let (alive_marker, job_processor_alive_marker_rx) = mpsc::channel(1);
-
-        let encryption_key =
-            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
-        let nats = Self::connect_to_nats(config.nats()).await?;
-        let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
-        let veritech = Self::create_veritech_client(nats.clone());
-        let job_processor = Self::create_job_processor(nats.clone(), alive_marker);
-
         let metadata = ServerMetadata {
-            job_instance: config.instance_id().to_string(),
+            job_instance: instance_id.into(),
             job_invoked_provider: "si",
         };
 
@@ -127,14 +147,12 @@ impl Server {
             prepare_graceful_shutdown(external_shutdown_rx, shutdown_watch_tx)?;
 
         Ok(Server {
-            concurrency_limit: config.concurrency(),
+            concurrency_limit,
             pg_pool,
             nats,
-            subject_prefix: config.subject_prefix().map(|s| s.to_string()),
             veritech,
             encryption_key,
             job_processor,
-            job_processor_alive_marker_rx,
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
@@ -142,7 +160,7 @@ impl Server {
         })
     }
 
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
         let (tx, rx) = mpsc::unbounded_channel();
 
         // Span a task to receive and process jobs from the unbounded channel
@@ -158,7 +176,6 @@ impl Server {
             self.metadata,
             self.pg_pool,
             self.nats,
-            self.subject_prefix.as_deref(),
             self.veritech,
             self.job_processor,
             self.encryption_key,
@@ -166,20 +183,16 @@ impl Server {
         )
         .await;
 
-        // Blocks until all job processors are gone so we don't skip jobs that are still being sent
-        info!("waiting for all job processors to finish pushing jobs");
-        let _ = self.job_processor_alive_marker_rx.recv().await;
-
         let _ = self.graceful_shutdown_rx.await;
         info!("received and processed graceful shutdown, terminating server instance");
 
         Ok(())
     }
 
-    /// Gets a [`ShutdownHandle`] that can externally or on demand trigger the server's shutdown
+    /// Gets a [`ShutdownHandle`](PingaShutdownHandle) that can externally or on demand trigger the server's shutdown
     /// process.
-    pub fn shutdown_handle(&self) -> ShutdownHandle {
-        ShutdownHandle {
+    pub fn shutdown_handle(&self) -> PingaShutdownHandle {
+        PingaShutdownHandle {
             shutdown_tx: self.external_shutdown_tx.clone(),
         }
     }
@@ -209,11 +222,8 @@ impl Server {
     }
 
     #[instrument(name = "pinga.init.create_job_processor", skip_all)]
-    fn create_job_processor(
-        nats: NatsClient,
-        alive_marker: mpsc::Sender<()>,
-    ) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(NatsProcessor::new(nats, alive_marker)) as Box<dyn JobQueueProcessor + Send + Sync>
+    fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
+        Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
     }
 }
 
@@ -223,11 +233,11 @@ pub struct ServerMetadata {
     job_invoked_provider: &'static str,
 }
 
-pub struct ShutdownHandle {
+pub struct PingaShutdownHandle {
     shutdown_tx: mpsc::Sender<ShutdownSource>,
 }
 
-impl ShutdownHandle {
+impl PingaShutdownHandle {
     pub async fn shutdown(self) {
         if let Err(err) = self.shutdown_tx.send(ShutdownSource::Handle).await {
             warn!(error = ?err, "shutdown tx returned error, receiver is likely already closed");
@@ -260,12 +270,11 @@ impl Subscriber {
         metadata: Arc<ServerMetadata>,
         pg_pool: PgPool,
         nats: NatsClient,
-        subject_prefix: Option<&str>,
         veritech: veritech_client::Client,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         encryption_key: Arc<veritech_client::EncryptionKey>,
     ) -> Result<impl Stream<Item = JobItem>> {
-        let subject = nats_jobs_subject(subject_prefix);
+        let subject = nats_jobs_subject(nats.metadata().subject_prefix());
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for job requests"
@@ -277,7 +286,6 @@ impl Subscriber {
             job_processor,
             veritech.clone(),
             encryption_key,
-            "council".to_owned(),
             None,
         );
         let ctx_builder = DalContext::builder(services_context);
@@ -303,7 +311,6 @@ async fn receive_job_requests_task(
     metadata: Arc<ServerMetadata>,
     pg_pool: PgPool,
     nats: NatsClient,
-    subject_prefix: Option<&str>,
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     encryption_key: Arc<veritech_client::EncryptionKey>,
@@ -314,7 +321,6 @@ async fn receive_job_requests_task(
         metadata,
         pg_pool,
         nats,
-        subject_prefix,
         veritech,
         job_processor,
         encryption_key,
@@ -332,7 +338,6 @@ async fn receive_job_requests(
     metadata: Arc<ServerMetadata>,
     pg_pool: PgPool,
     nats: NatsClient,
-    subject_prefix: Option<&str>,
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     encryption_key: Arc<veritech_client::EncryptionKey>,
@@ -342,7 +347,6 @@ async fn receive_job_requests(
         metadata,
         pg_pool,
         nats,
-        subject_prefix,
         veritech,
         job_processor,
         encryption_key,
@@ -438,8 +442,20 @@ async fn execute_job_task(
         format!("{} process", &messaging_destination).as_str(),
     );
 
-    match execute_job(id, &metadata, messaging_destination, ctx_builder, request).await {
-        Ok(_) => span.record_ok(),
+    let maybe_reply_channel = request.reply_mailbox.clone();
+    let reply_message = match execute_job(
+        id,
+        &metadata,
+        messaging_destination,
+        ctx_builder.clone(),
+        request,
+    )
+    .await
+    {
+        Ok(_) => {
+            span.record_ok();
+            Ok(())
+        }
         Err(err) => {
             error!(
                 error = ?err,
@@ -447,7 +463,22 @@ async fn execute_job_task(
                 job.instance = &metadata.job_instance,
                 "job execution failed"
             );
+            let new_err = Err(BlockingJobError::JobExecution(err.to_string()));
             span.record_err(err);
+
+            new_err
+        }
+    };
+
+    if let Some(reply_channel) = maybe_reply_channel {
+        if let Ok(message) = serde_json::to_vec(&reply_message) {
+            if let Err(err) = ctx_builder
+                .nats_conn()
+                .publish(reply_channel, message)
+                .await
+            {
+                error!(error = ?err, "Unable to notify spawning job of blocking job completion");
+            };
         }
     }
 }
@@ -483,31 +514,9 @@ async fn execute_job(
 
     info!("Processing job");
 
-    let (access_builder, visibility) = (job.access_builder(), job.visibility());
     if let Err(err) = job.run_job(ctx_builder.clone()).await {
         // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
         record_job_failure(ctx_builder.clone(), job, err).await?;
-    }
-
-    let mut ctx = ctx_builder.build(access_builder.build(visibility)).await?;
-
-    for next in job_info.subsequent_jobs {
-        ctx.update_visibility(next.job.visibility());
-        ctx.update_access_builder(next.job.access_builder());
-
-        let boxed = Box::new(next.job) as Box<dyn JobProducer + Send + Sync>;
-        if next.wait_for_execution {
-            ctx_builder
-                .job_processor()
-                .enqueue_blocking_job(boxed, &ctx)
-                .await;
-        } else {
-            ctx_builder.job_processor().enqueue_job(boxed, &ctx).await;
-        }
-    }
-
-    if let Err(err) = ctx.commit().await {
-        error!("Unable to push jobs to nats: {err}");
     }
 
     info!("Finished processing job");

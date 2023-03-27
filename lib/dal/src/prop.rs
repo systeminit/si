@@ -23,7 +23,7 @@ use crate::{
     AttributeReadContext, DalContext, Func, FuncId, HistoryEventError, SchemaVariant,
     SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
+use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
@@ -56,6 +56,8 @@ pub enum PropError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
     ParentNotAllowed(PropId, PropKind),
     #[error("unable to set default value for non scalar prop type")]
@@ -169,6 +171,7 @@ impl Prop {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
@@ -282,7 +285,9 @@ impl Prop {
         schema_variant_id: SchemaVariantId,
     ) -> PropResult<Option<Prop>> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_opt(
                 FIND_ROOT_FOR_SCHEMA_VARIANT,
                 &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
@@ -295,7 +300,9 @@ impl Prop {
     /// Ancestor props are ordered by depth, starting from the root prop.
     pub async fn all_ancestor_props(ctx: &DalContext, prop_id: PropId) -> PropResult<Vec<Self>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 ALL_ANCESTOR_PROPS,
                 &[ctx.tenancy(), ctx.visibility(), &prop_id],

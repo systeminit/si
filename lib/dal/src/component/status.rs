@@ -112,7 +112,9 @@ impl ComponentStatus {
         let actor_user_pk = Self::user_pk(ctx.history_actor());
 
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_one(COMPONENT_STATUS_UPDATE_BY_PK, &[&self.pk, &actor_user_pk])
             .await?;
         let updated_at = row.try_get("updated_at").map_err(|_| {

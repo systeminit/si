@@ -206,6 +206,7 @@ impl InstalledPkgAsset {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM installed_pkg_asset_create_v1($1, $2, $3, $4, $5, $6)",
@@ -302,6 +303,7 @@ impl InstalledPkgAsset {
     ) -> InstalledPkgResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_INSTALLED_PKG_ID,
@@ -319,6 +321,7 @@ impl InstalledPkgAsset {
     ) -> InstalledPkgResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_KIND_AND_HASH,

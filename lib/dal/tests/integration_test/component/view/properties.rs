@@ -36,12 +36,12 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     .await
     .expect("could not create func");
     let code_generation_func_id = *code_generation_func.id();
-    let code = "function generate(input) {
+    let code = r##"function generate(input) {
         return {
-            code: input.domain?.poop,
-            format: \"json\"
+            code: (input?.domain?.poop ?? ""),
+            format: "json"
         };
-    }";
+    }"##;
     code_generation_func
         .set_code_plaintext(ctx, Some(code))
         .await
@@ -80,9 +80,18 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Check the view and properties before updating the poop field.
     let component_view = ComponentView::new(ctx, *component.id())
@@ -96,7 +105,10 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
                 "protected": false
             },
             "code": {
-                "test:codeGeneration": {}
+                "test:codeGeneration": {
+                    "code": "",
+                    "format": "json"
+                }
             },
             "domain": {},
         }], // expected
@@ -148,6 +160,10 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     )
     .await
     .expect("could not update for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Check the value with and without the code subtree.
     let component_view = ComponentView::new(ctx, *component.id())

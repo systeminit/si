@@ -61,6 +61,7 @@ impl Workspace {
     pub async fn builtin(ctx: &DalContext) -> WorkspaceResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM workspace_find_or_create_builtin_v1()",
@@ -81,6 +82,7 @@ impl Workspace {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM workspace_create_v1($1, $2)",
@@ -136,6 +138,7 @@ impl Workspace {
     pub async fn find_by_name(ctx: &DalContext, name: &str) -> WorkspaceResult<Option<Workspace>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(WORKSPACE_FIND_BY_NAME, &[&name])
             .await?;
@@ -149,6 +152,7 @@ impl Workspace {
     ) -> WorkspaceResult<Option<Workspace>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(WORKSPACE_GET_BY_PK, &[&pk])
             .await?;

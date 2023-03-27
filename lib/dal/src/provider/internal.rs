@@ -83,7 +83,7 @@ use crate::{
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
     FuncError, FuncId, HistoryEventError, Prop, PropError, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility,
+    Tenancy, Timestamp, TransactionsError, Visibility,
 };
 use crate::{
     standard_model_has_many, AttributeContext, AttributeContextError, AttributeValue, DalContext,
@@ -135,6 +135,8 @@ pub enum InternalProviderError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
 
@@ -232,6 +234,7 @@ impl InternalProvider {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -296,6 +299,7 @@ impl InternalProvider {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -501,6 +505,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
@@ -518,6 +523,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_EXPLICIT_FOR_SCHEMA_VARIANT,
@@ -538,6 +544,7 @@ impl InternalProvider {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME,
@@ -555,6 +562,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_EXPLICIT_FOR_SOCKET,
@@ -572,6 +580,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE,
@@ -585,6 +594,7 @@ impl InternalProvider {
     pub async fn list_for_input_sockets(ctx: &DalContext) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(LIST_FOR_INPUT_SOCKETS, &[ctx.tenancy(), ctx.visibility()])
             .await?;
@@ -605,7 +615,9 @@ impl InternalProvider {
         prop_id: PropId,
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_opt(FIND_FOR_PROP, &[ctx.tenancy(), ctx.visibility(), &prop_id])
             .await?;
         Ok(object_option_from_row_option(row)?)

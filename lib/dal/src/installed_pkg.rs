@@ -6,7 +6,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, DalContext,
-    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility,
 };
 
 pub mod asset;
@@ -34,6 +35,8 @@ pub enum InstalledPkgError {
         InstalledPkgAssetKind,
         InstalledPkgAssetKind,
     ),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type InstalledPkgResult<T> = Result<T, InstalledPkgError>;
@@ -78,6 +81,7 @@ impl InstalledPkg {
         let root_hash = root_hash.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM installed_pkg_create_v1($1, $2, $3, $4)",

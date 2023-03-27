@@ -76,6 +76,10 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) = Component::new(ctx, "component", *schema_variant.id())
         .await
         .expect("cannot create component");
@@ -108,6 +112,10 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
     )
     .await
     .expect("could not perform update for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe that the code generation worked.
     let component_view = ComponentView::new(ctx, *component.id())
@@ -291,6 +299,11 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (navi_component, _) = Component::new(ctx, "navi", *navi_schema_variant.id())
         .await
         .expect("cannot create component");
@@ -300,6 +313,10 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
     let (_kru_two_component, _) = Component::new(ctx, "kru-two", *kru_schema_variant.id())
         .await
         .expect("cannot create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Test our function and perform assertions on the results.
     check_results(ctx).await;
@@ -332,6 +349,11 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
     )
     .await
     .expect("could not perform update for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *navi_component.id())
         .await
         .expect("could not generate component view");

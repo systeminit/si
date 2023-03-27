@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures::{StreamExt, TryStreamExt};
 use nats_subscriber::{SubscriberError, Subscription};
 use serde::{de::DeserializeOwned, Serialize};
@@ -42,22 +40,15 @@ pub type ClientResult<T> = Result<T, ClientError>;
 #[derive(Clone, Debug)]
 pub struct Client {
     nats: NatsClient,
-    subject_prefix: Option<Arc<String>>,
 }
 
 impl Client {
     pub fn new(nats: NatsClient) -> Self {
-        Self {
-            nats,
-            subject_prefix: None,
-        }
+        Self { nats }
     }
 
-    pub fn with_subject_prefix(nats: NatsClient, subject_prefix: impl Into<String>) -> Self {
-        Self {
-            nats,
-            subject_prefix: Some(Arc::new(subject_prefix.into())),
-        }
+    fn nats_subject_prefix(&self) -> Option<&str> {
+        self.nats.metadata().subject_prefix()
     }
 
     #[instrument(name = "client.execute_resolver_function", skip_all)]
@@ -67,7 +58,7 @@ impl Client {
         request: &ResolverFunctionRequest,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
         self.execute_request(
-            nats_resolver_function_subject(self.subject_prefix()),
+            nats_resolver_function_subject(self.nats_subject_prefix()),
             output_tx,
             request,
         )
@@ -82,7 +73,7 @@ impl Client {
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
         self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
+            nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,
             request,
         )
@@ -96,7 +87,7 @@ impl Client {
         request: &ValidationRequest,
     ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
         self.execute_request(
-            nats_validation_subject(self.subject_prefix()),
+            nats_validation_subject(self.nats_subject_prefix()),
             output_tx,
             request,
         )
@@ -111,7 +102,7 @@ impl Client {
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
         self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
+            nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,
             request,
         )
@@ -125,7 +116,7 @@ impl Client {
         request: &WorkflowResolveRequest,
     ) -> ClientResult<FunctionResult<WorkflowResolveResultSuccess>> {
         self.execute_request(
-            nats_workflow_resolve_subject(self.subject_prefix()),
+            nats_workflow_resolve_subject(self.nats_subject_prefix()),
             output_tx,
             request,
         )
@@ -140,7 +131,7 @@ impl Client {
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<WorkflowResolveResultSuccess>> {
         self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
+            nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,
             request,
         )
@@ -154,7 +145,7 @@ impl Client {
         request: &CommandRunRequest,
     ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
         self.execute_request(
-            nats_command_run_subject(self.subject_prefix()),
+            nats_command_run_subject(self.nats_subject_prefix()),
             output_tx,
             request,
         )
@@ -169,7 +160,7 @@ impl Client {
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
         self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
+            nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,
             request,
         )
@@ -262,11 +253,6 @@ impl Client {
             }
         }
     }
-
-    /// Gets a reference to the client's subject prefix.
-    pub fn subject_prefix(&self) -> Option<&str> {
-        self.subject_prefix.as_deref().map(String::as_str)
-    }
 }
 
 async fn forward_output_task(
@@ -306,16 +292,17 @@ mod tests {
 
     use super::*;
 
-    fn nats_config() -> NatsConfig {
+    fn nats_config(subject_prefix: String) -> NatsConfig {
         let mut config = NatsConfig::default();
         if let Ok(value) = env::var("SI_TEST_NATS_URL") {
             config.url = value;
         }
+        config.subject_prefix = Some(subject_prefix);
         config
     }
 
-    async fn nats() -> NatsClient {
-        NatsClient::new(&nats_config())
+    async fn nats(subject_prefix: String) -> NatsClient {
+        NatsClient::new(&nats_config(subject_prefix))
             .await
             .expect("failed to connect to NATS")
     }
@@ -337,8 +324,7 @@ mod tests {
                 .expect("failed to build cyclone spec"),
         );
         let config = Config::builder()
-            .nats(nats_config())
-            .subject_prefix(subject_prefix)
+            .nats(nats_config(subject_prefix.clone()))
             .cyclone_spec(cyclone_spec)
             .build()
             .expect("failed to build spec");
@@ -348,7 +334,7 @@ mod tests {
     }
 
     async fn client(subject_prefix: String) -> Client {
-        Client::with_subject_prefix(nats().await, subject_prefix)
+        Client::new(nats(subject_prefix).await)
     }
 
     async fn run_veritech_server_for_uds_cyclone(

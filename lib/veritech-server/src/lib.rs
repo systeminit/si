@@ -8,7 +8,7 @@ pub use crate::{
         Config, ConfigBuilder, ConfigError, ConfigFile, CycloneSpec, CycloneStream, StandardConfig,
         StandardConfigFile,
     },
-    server::{Server, ServerError, ShutdownHandle},
+    server::{Server, ServerError, VeritechShutdownHandle},
 };
 pub(crate) use crate::{
     publisher::{Publisher, PublisherError},

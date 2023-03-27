@@ -20,6 +20,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
@@ -102,6 +106,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     .await
     .expect("could not connect providers");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
@@ -162,6 +170,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             Some(serde_json::json!["look-at-me-mom-i-updated"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observed that it worked.
     assert_eq!(

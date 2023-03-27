@@ -16,14 +16,6 @@ use names::{Generator, Name};
 pub mod builtins;
 pub mod component_payload;
 
-/// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
-/// underlying [`dal::Connections`] and with identical state.
-pub async fn commit_and_continue(ctx: DalContext) -> DalContext {
-    ctx.commit_and_continue()
-        .await
-        .expect("unable to commit and continue")
-}
-
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }

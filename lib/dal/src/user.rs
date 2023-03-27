@@ -71,6 +71,7 @@ impl User {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM user_create_v1($1, $2, $3, $4)",
@@ -101,7 +102,12 @@ impl User {
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
-        let row = ctx.txns().pg().query_opt(USER_GET_BY_PK, &[&pk]).await?;
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(USER_GET_BY_PK, &[&pk])
+            .await?;
         if let Some(row) = row {
             let json: serde_json::Value = row.try_get("object")?;
             Ok(serde_json::from_value(json)?)
@@ -121,6 +127,7 @@ impl User {
         workspace_pk: WorkspacePk,
     ) -> UserResult<()> {
         ctx.txns()
+            .await?
             .pg()
             .execute(
                 "SELECT user_associate_workspace_v1($1, $2)",

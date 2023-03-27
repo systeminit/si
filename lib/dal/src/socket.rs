@@ -9,7 +9,7 @@ use crate::{
     standard_model_belongs_to, standard_model_many_to_many, ComponentId, DalContext, DiagramKind,
     ExternalProvider, ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId,
     NodeId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    TransactionsError, Visibility,
 };
 
 const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
@@ -26,6 +26,8 @@ pub enum SocketError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 
     /// Propagate a [`SchemaVariantError`](crate::SchemaVariantError) wrapped as a string.
     #[error("schema variant error: {0}")]
@@ -140,6 +142,7 @@ impl Socket {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -225,6 +228,7 @@ impl Socket {
     ) -> SocketResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 FIND_FRAME_SOCKET_FOR_NODE,
@@ -247,6 +251,7 @@ impl Socket {
     ) -> SocketResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_COMPONENT,
@@ -268,6 +273,7 @@ impl Socket {
         let name = name.as_ref();
         let maybe_row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE,

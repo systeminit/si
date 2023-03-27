@@ -6,7 +6,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::validation::ValidationError;
-use crate::DalContext;
 use crate::{
     func::{
         binding::FuncBindingId, binding_return_value::FuncBindingReturnValue,
@@ -18,6 +17,7 @@ use crate::{
     ComponentId, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
     ValidationPrototype, ValidationPrototypeId, Visibility,
 };
+use crate::{DalContext, TransactionsError};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
@@ -32,6 +32,8 @@ pub enum ValidationResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("component error: {0}")]
@@ -103,6 +105,7 @@ impl ValidationResolver {
     ) -> ValidationResolverResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5)",
@@ -143,6 +146,7 @@ impl ValidationResolver {
     ) -> ValidationResolverResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_FOR_ATTRIBUTE_VALUE_AND_FUNC_BINDING,
@@ -178,6 +182,7 @@ impl ValidationResolver {
         };
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_STATUS,

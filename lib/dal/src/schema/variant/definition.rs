@@ -16,7 +16,7 @@ use crate::{
     SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp,
     Visibility,
 };
-use crate::{SchemaError, SchemaId};
+use crate::{SchemaError, SchemaId, TransactionsError};
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
@@ -30,6 +30,8 @@ pub enum SchemaVariantDefinitionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
     #[error("{0} is not a valid hex color string")]
@@ -159,6 +161,7 @@ impl SchemaVariantDefinition {
     ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM schema_variant_definition_create_v1(

@@ -16,7 +16,7 @@ use tokio::{
     task::JoinError,
 };
 
-use crate::{pk, DalContext, UserClaim, UserPk, WorkspacePk};
+use crate::{pk, DalContext, TransactionsError, UserClaim, UserPk, WorkspacePk};
 
 const JWT_KEY_EXISTS: &str = include_str!("queries/jwt_key/exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -50,6 +50,8 @@ pub enum JwtKeyError {
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("{0}")]
     TaskJoin(#[from] JoinError),
     #[error("failed to convert into PEM format")]
@@ -216,6 +218,7 @@ pub async fn get_jwt_signing_key(
 ) -> JwtKeyResult<RS256KeyPair> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(JWT_KEY_GET_LATEST_PRIVATE_KEY, &[])
         .await?;

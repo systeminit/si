@@ -10,6 +10,7 @@ color-eyre = { version = "0.6.1" }
 dal = { path = "../../lib/dal" }
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
+pinga-server = { path = "../../lib/pinga-server" }
 serde = { version = "1.0.123", features = ["rc", "derive"] }
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
 si-data-nats = { path = "../../lib/si-data-nats" }

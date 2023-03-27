@@ -6,7 +6,6 @@ use dal::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use tokio::sync::mpsc;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
@@ -16,7 +15,7 @@ async fn main() -> Result<()> {
     let mut args = env::args();
     let tar_file = args.nth(1).expect("usage: program <PKG_FILE>");
 
-    let (mut ctx, _shutdown_rx) = ctx().await?;
+    let mut ctx = ctx().await?;
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
@@ -31,15 +30,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn ctx() -> Result<(DalContext, mpsc::Receiver<()>)> {
+async fn ctx() -> Result<DalContext> {
     let encryption_key = Arc::new(load_encryption_key().await?);
     let pg_pool = create_pg_pool().await?;
     let nats_conn = connect_to_nats().await?;
     let veritech = create_veritech_client(nats_conn.clone());
-    let council_subject_prefix = "council".to_owned();
 
-    let (alive_marker, job_processor_shutdown_rx) = mpsc::channel(1);
-    let job_processor = connect_processor(nats_conn.clone(), alive_marker).await?;
+    let job_processor = connect_processor(nats_conn.clone()).await?;
 
     let services_context = ServicesContext::new(
         pg_pool,
@@ -47,16 +44,12 @@ async fn ctx() -> Result<(DalContext, mpsc::Receiver<()>)> {
         job_processor,
         veritech,
         encryption_key,
-        council_subject_prefix,
         None,
     );
 
-    Ok((
-        DalContext::builder(services_context)
-            .build_default()
-            .await?,
-        job_processor_shutdown_rx,
-    ))
+    Ok(DalContext::builder(services_context)
+        .build_default()
+        .await?)
 }
 
 async fn create_pg_pool() -> Result<PgPool> {
@@ -83,9 +76,8 @@ async fn load_encryption_key() -> Result<EncryptionKey> {
 
 async fn connect_processor(
     job_client: NatsClient,
-    alive_marker: mpsc::Sender<()>,
 ) -> Result<Box<dyn JobQueueProcessor + Send + Sync>> {
-    let job_processor = Box::new(NatsProcessor::new(job_client, alive_marker))
-        as Box<dyn JobQueueProcessor + Send + Sync>;
+    let job_processor =
+        Box::new(NatsProcessor::new(job_client)) as Box<dyn JobQueueProcessor + Send + Sync>;
     Ok(job_processor)
 }

@@ -86,7 +86,6 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         jwt_public_signing_key: JwtPublicSigningKey,
-        council_subject_prefix: String,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
@@ -98,7 +97,6 @@ impl Server<(), ()> {
                     job_processor,
                     veritech,
                     Arc::new(encryption_key),
-                    council_subject_prefix,
                     Some(pkgs_path),
                 );
 
@@ -140,7 +138,6 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         jwt_public_signing_key: JwtPublicSigningKey,
-        council_subject_prefix: String,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
@@ -152,7 +149,6 @@ impl Server<(), ()> {
                     job_processor,
                     veritech,
                     Arc::new(encryption_key),
-                    council_subject_prefix,
                     Some(pkgs_path),
                 );
 
@@ -242,17 +238,8 @@ impl Server<(), ()> {
         jwt_secret_key: &JwtSecretKey,
         veritech: VeritechClient,
         encryption_key: &EncryptionKey,
-        council_subject_prefix: String,
     ) -> Result<()> {
-        dal::migrate_all(
-            pg,
-            nats,
-            job_processor,
-            veritech,
-            encryption_key,
-            council_subject_prefix,
-        )
-        .await?;
+        dal::migrate_all_with_progress(pg, nats, job_processor, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
@@ -274,7 +261,6 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
-        council_subject_prefix: String,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
         let services_context = ServicesContext::new(
@@ -283,7 +269,6 @@ impl Server<(), ()> {
             job_processor,
             veritech,
             Arc::new(encryption_key),
-            council_subject_prefix,
             None,
         );
         ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
@@ -295,7 +280,6 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
-        council_subject_prefix: String,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) -> Result<()> {
         let services_context = ServicesContext::new(
@@ -304,7 +288,6 @@ impl Server<(), ()> {
             job_processor,
             veritech,
             Arc::new(encryption_key),
-            council_subject_prefix,
             None,
         );
         StatusReceiver::new(services_context)

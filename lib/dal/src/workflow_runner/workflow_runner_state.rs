@@ -9,11 +9,7 @@ use telemetry::prelude::*;
 
 use crate::standard_model::option_object_from_row;
 use crate::workflow_runner::WorkflowRunnerResult;
-use crate::{
-    impl_standard_model, pk,
-    standard_model::{self},
-    Tenancy, Timestamp, Visibility,
-};
+use crate::{impl_standard_model, pk, standard_model, Tenancy, Timestamp, Visibility};
 use crate::{DalContext, WorkflowRunnerId};
 
 const FIND_FOR_WORKFLOW_RUNNER: &str =
@@ -100,6 +96,7 @@ impl WorkflowRunnerState {
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM workflow_runner_state_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -125,6 +122,7 @@ impl WorkflowRunnerState {
     ) -> WorkflowRunnerResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_WORKFLOW_RUNNER,

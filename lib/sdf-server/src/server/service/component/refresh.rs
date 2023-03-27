@@ -67,7 +67,12 @@ pub async fn refresh(
         }),
     );
 
-    ctx.enqueue_job(RefreshJob::new(&ctx, component_ids)).await;
+    ctx.enqueue_job(RefreshJob::new(
+        ctx.access_builder(),
+        *ctx.visibility(),
+        component_ids,
+    ))
+    .await?;
 
     ctx.commit().await?;
 

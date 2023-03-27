@@ -6,9 +6,9 @@ use dal::{
         PropDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
         SocketDefinition,
     },
-    AccessBuilder, ChangeSetPk, DalContext, ExternalProvider, HistoryActor, InternalProvider, Prop,
-    PropId, PropKind, Schema, ServicesContext, StandardModel, SyncProcessor, Tenancy, Visibility,
-    WorkspacePk,
+    AccessBuilder, ChangeSetPk, DalContext, ExternalProvider, HistoryActor, InternalProvider,
+    NatsProcessor, Prop, PropId, PropKind, Schema, ServicesContext, StandardModel, Tenancy,
+    Visibility, WorkspacePk,
 };
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
@@ -160,14 +160,13 @@ async fn main() -> Result<()> {
     let nats = NatsClient::new(config.nats()).await?;
     let pg_pool = PgPool::new(config.pg_pool()).await?;
     let veritech = veritech_client::Client::new(nats.clone());
-    let job_processor = SyncProcessor::new();
+    let job_processor = NatsProcessor::new(nats.clone());
     let services_context = ServicesContext::new(
         pg_pool.clone(),
         nats.clone(),
         Box::new(job_processor),
         veritech.clone(),
         Arc::new(encryption_key),
-        "council".to_owned(),
         None,
     );
 

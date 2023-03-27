@@ -29,6 +29,10 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         .create_component(ctx, "alpine", Builtin::DockerImage)
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Cache schema variants to increase clarity in the test structure.
     assert_eq!(
         spongebob_deployment_payload.schema_variant_id,
@@ -103,6 +107,10 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             Some(serde_json::json!["squidward-system"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure setup worked.
     assert_eq!(
@@ -237,6 +245,10 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             Some(serde_json::json!["fedora-updated"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Check that the update worked.
     assert_eq!(
@@ -421,6 +433,10 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             Some(serde_json::json!["fedora-updated-twice"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observed that it worked.
     assert_eq!(

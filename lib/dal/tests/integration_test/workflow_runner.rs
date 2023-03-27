@@ -171,6 +171,10 @@ async fn run(ctx: &mut DalContext) {
             .await
             .expect("cannot create component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert!(component
         .resource(ctx)
         .await
@@ -196,6 +200,10 @@ async fn run(ctx: &mut DalContext) {
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
         ctx,
         *component.id(),
@@ -205,10 +213,16 @@ async fn run(ctx: &mut DalContext) {
     .expect("unable to find attribute value");
 
     ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx,
+        ctx.access_builder(),
+        *ctx.visibility(),
         vec![*resource_attribute_value.id()],
     ))
-    .await;
+    .await
+    .expect("failed to enqueue job");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert!(component
         .resource(ctx)

@@ -47,12 +47,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NatsConfig {
     pub url: String,
+    pub subject_prefix: Option<String>,
 }
 
 impl Default for NatsConfig {
     fn default() -> Self {
         Self {
             url: "localhost".to_string(),
+            subject_prefix: None,
         }
     }
 }
@@ -85,7 +87,12 @@ pub struct Client {
 impl Client {
     #[instrument(name = "client::new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
-        Self::connect_with_options(&config.url, Options::default()).await
+        Self::connect_with_options(
+            &config.url,
+            config.subject_prefix.clone(),
+            Options::default(),
+        )
+        .await
     }
 
     #[instrument(
@@ -118,6 +125,7 @@ impl Client {
     /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
     /// let nc = Client::connect_with_options(
     ///         "demo.nats.io",
+    ///         None,
     ///         Options::default(),
     ///     ).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -131,6 +139,7 @@ impl Client {
     /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
     /// let nc = Client::connect_with_options(
     ///         "nats://demo.nats.io:4222,tls://demo.nats.io:4443",
+    ///         None,
     ///         Options::default(),
     ///     )
     ///     .await?;
@@ -152,6 +161,7 @@ impl Client {
     )]
     pub async fn connect_with_options(
         nats_url: impl Into<String>,
+        subject_prefix: Option<String>,
         options: Options,
     ) -> Result<Self> {
         let nats_url = nats_url.into();
@@ -162,6 +172,7 @@ impl Client {
             messaging_system: "nats",
             messaging_url: nats_url.clone(),
             net_transport: "ip_tcp",
+            subject_prefix,
         };
 
         let span = Span::current();
@@ -191,7 +202,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let sub = nc.subscribe("foo").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -242,7 +253,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let sub = nc.queue_subscribe("foo", "production").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -299,7 +310,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// nc.publish("foo", "Hello World!").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -314,7 +325,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let reply = nc.new_inbox();
     /// let rsub = nc.subscribe(&reply).await?;
     /// nc.publish_request("foo", &reply, "Help me!").await?;
@@ -367,7 +378,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let reply = nc.new_inbox();
     /// let rsub = nc.subscribe(&reply).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -384,7 +395,7 @@ impl Client {
     /// ```no_run
     /// # use futures::{TryStreamExt};
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// # nc.subscribe("foo").await?;
     /// let resp = nc.request("foo", "Help me?").await?;
@@ -438,7 +449,7 @@ impl Client {
     /// ```no_run
     /// # use futures::{TryStreamExt};
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// # nc.subscribe("foo").await?;
     /// let resp = nc.request_timeout("foo", "Help me?", std::time::Duration::from_secs(2)).await?;
@@ -491,7 +502,7 @@ impl Client {
     /// ```no_run
     /// # use futures::{TryStreamExt, StreamExt};
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// for msg in nc.request_multi("foo", "Help").await?.take(1).next().await {}
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -570,7 +581,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// nc.flush().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -611,7 +622,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// nc.flush_timeout(std::time::Duration::from_secs(8)).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -652,7 +663,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// nc.close().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -691,7 +702,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// println!("server rtt: {:?}", nc.rtt().await);
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -728,7 +739,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// println!("ip: {:?}", nc.client_ip());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -742,7 +753,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// println!("ip: {:?}", nc.client_id());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -765,7 +776,7 @@ impl Client {
     /// ```no_run
     /// # use std::sync::{Arc, atomic::{AtomicBool, Ordering::SeqCst}};
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let received = Arc::new(AtomicBool::new(false));
     /// let received_2 = received.clone();
     ///
@@ -814,7 +825,7 @@ impl Client {
     /// ```no_run
     /// # use futures::StreamExt;
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let mut sub = nc.subscribe("foo.headers").await?;
     /// let headers = [("header1", "value1"),
     ///                ("header2", "value2")].iter().collect();
@@ -881,7 +892,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// println!("max payload: {:?}", nc.max_payload());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -902,6 +913,7 @@ pub struct ConnectionMetadata {
     messaging_protocol: &'static str,
     messaging_system: &'static str,
     messaging_url: String,
+    subject_prefix: Option<String>,
     net_transport: &'static str,
 }
 
@@ -929,6 +941,11 @@ impl ConnectionMetadata {
     /// Gets a reference to the connection metadata's net transport.
     pub fn net_transport(&self) -> &str {
         self.net_transport
+    }
+
+    /// Gets the common prefix for use on all subjects.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
     }
 }
 

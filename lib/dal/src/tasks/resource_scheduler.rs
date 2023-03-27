@@ -106,6 +106,7 @@ impl ResourceScheduler {
         // We need to bypass tenancy checks, only lists components on head as they are the only ones refreshed
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 "SELECT DISTINCT ON (id) id, row_to_json(components.*) as object

@@ -251,6 +251,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Gather the identity func.
     let (
         identity_func_id,
@@ -353,6 +357,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
     .await
     .expect("could not connect providers for components");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure everything looks correct post connection.
     let ekwb_component_view = ComponentView::new(ctx, ekwb_component_id)
         .await
@@ -394,6 +402,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         .await
         .expect("cannot apply change set");
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     ctx.update_visibility(Visibility::new_head(false));
 
     // Update the resource field on HEAD for the tail end of the relationship.
@@ -411,6 +424,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         )
         .await
         .expect("could not set resource field");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure the value is propagated end-to-end.
     let ekwb_component_view = ComponentView::new(ctx, ekwb_component_id)
@@ -582,6 +599,10 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // check that the value of the butane instance
     assert_eq!(
         serde_json::json![{
@@ -624,6 +645,11 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .apply(ctx)
         .await
         .expect("could not apply change set");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let change_set_2 = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");
@@ -637,6 +663,10 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     comp.delete_and_propagate(ctx)
         .await
         .expect("Deletion of nginx component should work");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -671,6 +701,10 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     Component::restore_and_propagate(ctx, nginx_container.component_id)
         .await
         .expect("Restoring nginx component should work");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // check that the value of the butane instance
     assert_eq!(

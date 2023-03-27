@@ -11,8 +11,7 @@ use crate::{
         },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentId, DalContext, DalContextBuilder, StandardModel,
-    Visibility, WsEvent,
+    AccessBuilder, Component, ComponentId, DalContext, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,7 +29,6 @@ impl From<RefreshJob> for RefreshJobArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct RefreshJob {
-    single_transaction: bool,
     component_ids: Vec<ComponentId>,
     access_builder: AccessBuilder,
     visibility: Visibility,
@@ -38,25 +36,17 @@ pub struct RefreshJob {
 }
 
 impl RefreshJob {
-    pub fn new(ctx: &DalContext, component_ids: Vec<ComponentId>) -> Box<Self> {
-        let access_builder = AccessBuilder::from(ctx.clone());
-        let visibility = *ctx.visibility();
-
+    pub fn new(
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        component_ids: Vec<ComponentId>,
+    ) -> Box<Self> {
         Box::new(Self {
             component_ids,
             access_builder,
             visibility,
             job: None,
-            single_transaction: false,
         })
-    }
-
-    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
-        if self.single_transaction {
-            Ok(ctx)
-        } else {
-            Ok(ctx.commit_and_continue().await?)
-        }
     }
 }
 
@@ -69,7 +59,7 @@ impl JobProducer for RefreshJob {
         let mut custom = HashMap::new();
         custom.insert(
             "access_builder".to_string(),
-            serde_json::to_value(self.access_builder.clone())?,
+            serde_json::to_value(self.access_builder)?,
         );
         custom.insert(
             "visibility".to_string(),
@@ -94,7 +84,7 @@ impl JobConsumerMetadata for RefreshJob {
     }
 
     fn access_builder(&self) -> AccessBuilder {
-        self.access_builder.clone()
+        self.access_builder
     }
 
     fn visibility(&self) -> Visibility {
@@ -104,53 +94,31 @@ impl JobConsumerMetadata for RefreshJob {
 
 #[async_trait]
 impl JobConsumer for RefreshJob {
-    /// This method is a hack to support SyncProcessor in RefreshJob, since we commit transactions mid job, and write to multiple ones
-    /// The sync processor needs everything to run within a single transaction, so we check for it
-    fn set_sync(&mut self) {
-        self.single_transaction = true;
-        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
-        self.job = Some(boxed.try_into().unwrap());
-    }
-
-    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        assert!(self.single_transaction);
-        self.run_owned(ctx.clone()).await
-    }
-
-    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
-        assert!(!self.single_transaction);
-        let ctx = ctx_builder
-            .build(self.access_builder().build(self.visibility()))
-            .await?;
-        self.run_owned(ctx).await
-    }
-}
-
-impl RefreshJob {
     #[instrument(
-        name = "refresh_job.run_owned",
+        name = "refresh_job.run",
         skip_all,
         level = "info",
         fields(
             component_ids = ?self.component_ids,
-            single_transaction = ?self.single_transaction,
         )
     )]
-    async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         ctx.update_with_deleted_visibility();
 
         for component_id in &self.component_ids {
-            let component = Component::get_by_id(&ctx, component_id)
+            let component = Component::get_by_id(ctx, component_id)
                 .await?
                 .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
-            component.act(&ctx, "refresh").await?;
+            component.act(ctx, "refresh").await?;
 
-            WsEvent::resource_refreshed(&ctx, *component.id())
+            WsEvent::resource_refreshed(ctx, *component.id())
                 .await?
-                .publish_on_commit(&ctx)
+                .publish_on_commit(ctx)
                 .await?;
 
-            ctx = self.commit_and_continue(ctx).await?;
+            // Save the refreshed resource for the component
+            ctx.commit().await?;
         }
 
         Ok(())
@@ -176,7 +144,6 @@ impl TryFrom<JobInfo> for RefreshJob {
             component_ids: args.component_ids,
             access_builder,
             visibility,
-            single_transaction: false,
             job: Some(job),
         })
     }

@@ -13,7 +13,7 @@ use crate::{
     standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use crate::{PropKind, ValidationPrototypeContext};
+use crate::{PropKind, TransactionsError, ValidationPrototypeContext};
 
 pub mod context;
 
@@ -29,6 +29,8 @@ pub enum ValidationPrototypeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 
     #[error("prop for validation prototype context is not of primitive prop kind, found: {0:?}")]
     ContextPropKindIsNotPrimitive(PropKind),
@@ -87,6 +89,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -121,6 +124,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(LIST_FOR_PROP, &[ctx.tenancy(), ctx.visibility(), &prop_id])
             .await?;
@@ -140,6 +144,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
@@ -158,6 +163,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(LIST_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
             .await?;
@@ -171,6 +177,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_FOR_CONTEXT,

@@ -1,7 +1,7 @@
 //! Contains the ability to resolve _current_ fixes, provided by
 //! [`FixResolver`](crate::FixResolver).
 
-use crate::{AttributeValueId, DalContext, FixId};
+use crate::{AttributeValueId, DalContext, FixId, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use telemetry::prelude::*;
@@ -20,6 +20,8 @@ pub enum FixResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type FixResolverResult<T> = Result<T, FixResolverError>;
@@ -75,6 +77,7 @@ impl FixResolver {
     ) -> FixResolverResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6)",
@@ -100,6 +103,7 @@ impl FixResolver {
     ) -> FixResolverResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE,

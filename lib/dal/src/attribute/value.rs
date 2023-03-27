@@ -275,6 +275,7 @@ impl AttributeValue {
         tracing::Span::current().record("key", &key);
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT new_attribute_value AS object FROM attribute_value_new_v1($1, $2, $3, $4, $5, $6)",
@@ -345,6 +346,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         let _row = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 "SELECT attribute_value_set_parent_attribute_value_v1($1, $2, $3, $4)",
@@ -406,7 +408,9 @@ impl AttributeValue {
         attribute_read_context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT,
                 &[
@@ -429,6 +433,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
@@ -453,7 +458,9 @@ impl AttributeValue {
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_opt(
                 FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT,
                 &[
@@ -486,6 +493,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_CONTEXT,
@@ -514,6 +522,7 @@ impl AttributeValue {
         AttributeContextBuilder::from(context).to_context()?;
         let mut rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_CONTEXT,
@@ -532,6 +541,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<Prop> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 FIND_PROP_FOR_VALUE,
@@ -570,6 +580,7 @@ impl AttributeValue {
 
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT,
@@ -627,6 +638,7 @@ impl AttributeValue {
 
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT,
@@ -759,8 +771,11 @@ impl AttributeValue {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         let ctx = &ctx.clone_without_deleted_visibility();
 
-        let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+        let row = ctx.txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -780,10 +795,11 @@ impl AttributeValue {
 
         if propagate_dependent_values {
             ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx,
+                ctx.access_builder(),
+                *ctx.visibility(),
                 vec![new_attribute_value_id],
             ))
-            .await;
+            .await?;
         }
 
         Ok((value, new_attribute_value_id))
@@ -843,7 +859,7 @@ impl AttributeValue {
         key: Option<String>,
         create_child_proxies: bool,
     ) -> AttributeValueResult<AttributeValueId> {
-        let row = ctx.pg_txn().query_one(
+        let row = ctx.txns().await?.pg().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_insert_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7)",
             &[
                 ctx.tenancy(),
@@ -859,10 +875,11 @@ impl AttributeValue {
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx,
+            ctx.access_builder(),
+            *ctx.visibility(),
             vec![new_attribute_value_id],
         ))
-        .await;
+        .await?;
 
         Ok(new_attribute_value_id)
     }
@@ -870,7 +887,9 @@ impl AttributeValue {
     #[instrument(skip_all, level = "debug")]
     pub async fn update_parent_index_map(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         let _row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 "SELECT attribute_value_update_parent_index_map_v1($1, $2, $3)",
                 &[ctx.tenancy(), ctx.visibility(), &self.id],
@@ -887,7 +906,9 @@ impl AttributeValue {
         unprocessed_value: serde_json::Value,
     ) -> AttributeValueResult<()> {
         let _row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 "SELECT attribute_value_populate_nested_values_v1($1, $2, $3, $4, $5)",
                 &[
@@ -915,6 +936,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<bool> {
         let maybe_row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP,
@@ -938,15 +960,14 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_ids: &[AttributeValueId],
     ) -> AttributeValueResult<()> {
-        debug!("Running attribute_value_create_new_affected_values_v1");
-        let _rows = ctx
-            .pg_txn()
-            .query(
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
                 "SELECT attribute_value_create_new_affected_values_v1($1, $2, $3)",
                 &[&ctx.tenancy(), &ctx.visibility(), &attribute_value_ids],
             )
             .await?;
-        debug!("Finished running attribute_value_create_new_affected_values_v1");
         Ok(())
     }
 
@@ -968,6 +989,7 @@ impl AttributeValue {
     ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FETCH_UPDATE_GRAPH_DATA,
@@ -991,7 +1013,7 @@ impl AttributeValue {
         &self,
         ctx: &DalContext,
     ) -> AttributeValueResult<AttributeValueId> {
-        let row = ctx.pg_txn().query_one(
+        let row = ctx.txns().await?.pg().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5)",
         &[
             ctx.tenancy(),

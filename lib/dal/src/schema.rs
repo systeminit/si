@@ -9,7 +9,6 @@ use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
-use crate::Tenancy;
 use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, pk,
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
@@ -18,6 +17,7 @@ use crate::{
     HistoryEventError, PropError, StandardModel, StandardModelError, Timestamp,
     ValidationPrototypeError, Visibility, WsEventError,
 };
+use crate::{Tenancy, TransactionsError};
 
 pub use ui_menu::SchemaUiMenu;
 pub use variant::root_prop::RootProp;
@@ -70,6 +70,8 @@ pub enum SchemaError {
     StandardModel(#[from] StandardModelError),
     #[error("schema ui menu not found: {0}")]
     SchemaUiMenuNotFound(SchemaUiMenuId),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
     #[error("validation prototype error: {0}")]
@@ -119,6 +121,7 @@ impl Schema {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM schema_create_v1($1, $2, $3, $4)",

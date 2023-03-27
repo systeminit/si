@@ -8,6 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::standard_model::objects_from_rows;
+use crate::TransactionsError;
 use crate::{ComponentId, DalContext, Edge, StandardModelError};
 
 const LIST_MODIFIED_COMPONENTS: &str =
@@ -23,6 +24,8 @@ pub enum ChangeStatusError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Tranactions(#[from] TransactionsError),
 }
 
 pub type ChangeStatusResult<T> = Result<T, ChangeStatusError>;
@@ -72,6 +75,7 @@ impl ComponentChangeStatus {
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_ADDED_COMPONENTS,
@@ -87,6 +91,7 @@ impl ComponentChangeStatus {
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_DELETED_COMPONENTS,
@@ -106,6 +111,7 @@ impl ComponentChangeStatus {
 
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_MODIFIED_COMPONENTS,
@@ -152,6 +158,7 @@ impl EdgeChangeStatus {
     pub async fn list_deleted(ctx: &DalContext) -> ChangeStatusResult<Vec<Edge>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_DELETED_EDGES,

@@ -176,7 +176,7 @@ impl Client {
         self.clone_into_pub().processed_value(node_id).await
     }
 
-    pub async fn bye(self) -> Result<()> {
+    pub async fn bye(&self) -> Result<()> {
         self.clone_into_pub().bye().await
     }
 }

@@ -29,7 +29,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
     DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropKind,
-    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility,
 };
 
 pub mod argument;
@@ -98,6 +99,8 @@ pub enum AttributePrototypeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("cannot remove prototype with a least-specific context: {0}")]
     LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
     #[error("cannot remove value with a least-specific context: {0}")]
@@ -162,7 +165,7 @@ impl AttributePrototype {
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
-        let row = ctx.pg_txn().query_one(
+        let row = ctx.txns().await?.pg().query_one(
             "SELECT new_attribute_prototype AS object FROM attribute_prototype_new_v1($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
                 ctx.tenancy(),
@@ -191,6 +194,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT new_attribute_prototype_id AS prototype_id
@@ -228,6 +232,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
@@ -486,6 +491,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_CONTEXT,
@@ -510,6 +516,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT,
@@ -532,7 +539,9 @@ impl AttributePrototype {
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 LIST_FROM_INTERNAL_PROVIDER_USE,
                 &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
@@ -549,7 +558,9 @@ impl AttributePrototype {
         tail_component_id: ComponentId,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeGroupByHeadComponentId>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL,
                 &[
@@ -582,7 +593,9 @@ impl AttributePrototype {
         attribute_write_context: AttributeContext,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentValues>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID,
                 &[
@@ -607,7 +620,9 @@ impl AttributePrototype {
         context: AttributeReadContext,
     ) -> AttributePrototypeResult<Vec<AttributeValue>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER,
                 &[
@@ -760,6 +775,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(FIND_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), func_id])
             .await?;
@@ -774,7 +790,9 @@ impl AttributePrototype {
         let mut result = vec![];
 
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT,
                 &[ctx.tenancy(), ctx.visibility(), &func_id],
@@ -798,6 +816,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = if key.is_some() {
             ctx.txns()
+                .await?
                 .pg()
                 .query(
                     FIND_FOR_CONTEXT_AND_KEY,
@@ -814,6 +833,7 @@ impl AttributePrototype {
                 .await?
         } else {
             ctx.txns()
+                .await?
                 .pg()
                 .query(
                     FIND_FOR_CONTEXT_NULL_KEY,

@@ -10,8 +10,8 @@ use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor,
     workflow_resolver::WorkflowResolverContext, Component, ComponentId, ComponentView, DalContext,
     Func, FuncBinding, FuncBindingError, FuncError, HistoryEventError, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WorkflowError,
-    WorkflowResolver, WorkflowResolverError, WorkflowView, WsEvent, WsEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    WorkflowError, WorkflowResolver, WorkflowResolverError, WorkflowView, WsEvent, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -26,6 +26,8 @@ pub enum WorkflowPrototypeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
     #[error(transparent)]
@@ -149,6 +151,7 @@ impl WorkflowPrototype {
         let title = title.into();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM workflow_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -288,6 +291,7 @@ impl WorkflowPrototype {
     ) -> WorkflowPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_FOR_CONTEXT,

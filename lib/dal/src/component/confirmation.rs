@@ -50,6 +50,7 @@ impl Component {
     ) -> ComponentResult<Vec<AttributeValue>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES,
@@ -68,13 +69,14 @@ impl Component {
             Component::list_all_resource_implicit_internal_provider_attribute_values(ctx).await?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx,
+            ctx.access_builder(),
+            *ctx.visibility(),
             resource_attribute_values
                 .iter()
                 .map(|av| *av.id())
                 .collect::<Vec<AttributeValueId>>(),
         ))
-        .await;
+        .await?;
 
         Ok(())
     }

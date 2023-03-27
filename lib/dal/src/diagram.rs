@@ -140,19 +140,34 @@ impl Diagram {
         }
 
         let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
-        for deleted_edge in deleted_edges {
-            if *deleted_edge.kind() == EdgeKind::Configuration {
-                let conn = Connection::from_edge(&deleted_edge);
-                let mut diagram_edge_view =
-                    DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
-                diagram_edge_view
-                    .set_actor_details(ctx_with_deleted, &deleted_edge)
-                    .await?;
-                diagram_edges.push(diagram_edge_view);
-            }
-        }
 
-        let nodes = Node::list_live(ctx_with_deleted, NodeKind::Configuration).await?;
+        let deleted_diagram_edges = ctx
+            .run_with_deleted_visibility(|ctx_with_deleted| async move {
+                let mut deleted_diagram_edges = Vec::new();
+
+                for deleted_edge in deleted_edges {
+                    if *deleted_edge.kind() == EdgeKind::Configuration {
+                        let conn = Connection::from_edge(&deleted_edge);
+                        let mut diagram_edge_view =
+                            DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
+                        diagram_edge_view
+                            .set_actor_details(&ctx_with_deleted, &deleted_edge)
+                            .await?;
+                        deleted_diagram_edges.push(diagram_edge_view);
+                    }
+                }
+
+                Ok::<_, DiagramError>(deleted_diagram_edges)
+            })
+            .await?;
+
+        diagram_edges.extend(deleted_diagram_edges);
+
+        let nodes = ctx
+            .run_with_deleted_visibility(|ctx_with_deleted| async move {
+                Node::list_live(&ctx_with_deleted, NodeKind::Configuration).await
+            })
+            .await?;
 
         let mut component_views = Vec::with_capacity(nodes.len());
         for node in &nodes {

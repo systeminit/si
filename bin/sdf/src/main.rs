@@ -10,7 +10,6 @@ use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
     TelemetryClient, TelemetryConfig,
 };
-use tokio::sync::mpsc;
 
 mod args;
 
@@ -83,23 +82,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let jwt_public_signing_key = Server::load_jwt_public_signing_key().await?;
 
     let nats = Server::connect_to_nats(config.nats()).await?;
-    let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
 
-    let (job_client, job_processor) = JobProcessor::connect(&config, alive_marker).await?;
+    let (job_client, job_processor) = JobProcessor::connect(&config).await?;
 
-    let (resource_alive_marker, mut resource_job_processor_shutdown_rx) = mpsc::channel(1);
-    let (_resource_job_client, resource_job_processor) =
-        JobProcessor::connect(&config, resource_alive_marker).await?;
-    let (status_receiver_alive_marker, mut status_receiver_job_processor_shutdown_rx) =
-        mpsc::channel(1);
-    let (_, status_receiver_job_processor) =
-        JobProcessor::connect(&config, status_receiver_alive_marker).await?;
+    let (_resource_job_client, resource_job_processor) = JobProcessor::connect(&config).await?;
+    let (_, status_receiver_job_processor) = JobProcessor::connect(&config).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     let veritech = Server::create_veritech_client(nats.clone());
-
-    let council_subject_prefix = "council".to_owned();
 
     let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
 
@@ -111,7 +102,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
-            council_subject_prefix.clone(),
         )
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
@@ -140,7 +130,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 encryption_key,
                 jwt_secret_key,
                 jwt_public_signing_key,
-                council_subject_prefix.clone(),
                 posthog_client,
                 pkgs_path,
             )?;
@@ -152,7 +141,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 resource_job_processor,
                 veritech.clone(),
                 encryption_key,
-                council_subject_prefix.clone(),
                 initial_shutdown_broadcast_rx,
             )
             .await;
@@ -163,7 +151,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 status_receiver_job_processor,
                 veritech,
                 encryption_key,
-                council_subject_prefix.clone(),
                 second_shutdown_broadcast_rx,
             )
             .await?;
@@ -180,7 +167,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 encryption_key,
                 jwt_secret_key,
                 jwt_public_signing_key,
-                council_subject_prefix.clone(),
                 posthog_client,
                 pkgs_path,
             )
@@ -193,7 +179,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 resource_job_processor,
                 veritech.clone(),
                 encryption_key,
-                council_subject_prefix.clone(),
                 initial_shutdown_broadcast_rx,
             )
             .await;
@@ -204,7 +189,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 status_receiver_job_processor,
                 veritech,
                 encryption_key,
-                council_subject_prefix.clone(),
                 second_shutdown_broadcast_rx,
             )
             .await?;
@@ -212,14 +196,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             server.run().await?;
         }
     }
-
-    // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to job transport
-    info!("Waiting for job processors to finish pushing jobs");
-    let _ = job_processor_shutdown_rx.recv().await;
-    info!("Waiting for resource job processors to finish pushing jobs");
-    let _ = resource_job_processor_shutdown_rx.recv().await;
-    info!("Waiting for status receiver job processors to finish pushing jobs");
-    let _ = status_receiver_job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
