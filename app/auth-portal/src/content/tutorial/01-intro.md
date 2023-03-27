@@ -14,7 +14,7 @@ publicly about your use (positively or negatively), share screenshots,
 etc. There are private channels we will invite you to in Discord where you
 will be able to discuss System Initiative with us, and with other
 participants in the preview. We're not asking you to sign an NDA - but we
-are relying on your good-will and judgement as a friend of System Initiative.
+are relying on your good-will and judgement as a friend of System Initiative, Inc.
 
 **Things you should do:**
 - <Icon name="check-circle"></Icon>Talk with us privately on discord
