@@ -97,7 +97,7 @@ impl ExtractPayload for CommandRunResultSuccess {
             status: self.status,
             message: self.message.or(self.error),
             logs: Default::default(),
-            last_synced: Some(Utc::now().to_string()),
+            last_synced: Some(Utc::now().to_rfc3339()),
         })
     }
 }
