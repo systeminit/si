@@ -344,42 +344,23 @@ async fn process_job_requests(
                     let invocation_id = JobInvocationId::new();
 
                     // Spawn a task and process the request
-                    match task::Builder::new()
-                        .name("execute-job-task")
-                        .spawn(execute_job_task(
-                            invocation_id,
-                            job.metadata,
-                            job.messaging_destination,
-                            job.ctx_builder,
-                            request,
-                        )) {
-                        // Task has spawned on the runtime and the `JoinHandle` future is provided.
-                        //
-                        // In order for a concurrency limit to be enforced we await the
-                        // `JoinHandle`, which is how `for_each_concurrent` knows the task has
-                        // completed.
-                        Ok(join_handle) => {
-                            if let Err(err) = join_handle.await {
-                                // NOTE(fnichol): This likely happens when there is contention or
-                                // an error in the Tokio runtime so we will be loud and log an
-                                // error under the assumptions that 1) this event rarely
-                                // happens and 2) the task code did not contribute to trigger
-                                // the `JoinError`.
-                                error!(
-                                    error = ?err,
-                                    "execute-job-task failed to execute to completion"
-                                );
-                            }
-                        }
-                        // Tokio failed to successfully span a new task on the runtime.
-                        //
-                        // NOTE(fnichol): While this is a catastrophic failure, there is also not
-                        // much we can do and the job will *not* have been attempted as a
-                        // result, which is why until we have job retry logic, we log and error
-                        // and not a warn.
-                        Err(err) => {
-                            error!(error = ?err, "failed to spawn execute-job-task");
-                        }
+                    let join_handle = task::spawn(execute_job_task(
+                        invocation_id,
+                        job.metadata,
+                        job.messaging_destination,
+                        job.ctx_builder,
+                        request,
+                    ));
+                    if let Err(err) = join_handle.await {
+                        // NOTE(fnichol): This likely happens when there is contention or
+                        // an error in the Tokio runtime so we will be loud and log an
+                        // error under the assumptions that 1) this event rarely
+                        // happens and 2) the task code did not contribute to trigger
+                        // the `JoinError`.
+                        error!(
+                            error = ?err,
+                            "execute-job-task failed to execute to completion"
+                        );
                     };
                 }
                 Err(err) => {

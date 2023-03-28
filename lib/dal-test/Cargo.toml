@@ -20,7 +20,7 @@ sodiumoxide = "0.2.6"
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = "3.2.0"
 thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full", "tracing"] }
+tokio = { version = "1.2.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
 veritech-client = { path = "../../lib/veritech-client" }

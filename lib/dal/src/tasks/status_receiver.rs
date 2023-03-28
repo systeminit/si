@@ -3,9 +3,7 @@
 //! over [NATS](https://nats.io) in order to perform arbitrary tasks based on what's been received.
 
 use std::collections::{HashMap, HashSet};
-use std::panic::AssertUnwindSafe;
 
-use futures::FutureExt;
 use futures::StreamExt;
 use nats_subscriber::{Request, SubscriberError, Subscription};
 use serde::Deserialize;
@@ -117,9 +115,13 @@ impl StatusReceiver {
                 request = requests.next() => {
                     match request {
                         Some(Ok(request)) => {
-                            // Spawn a task and process the request. Use the wrapper to handle
-                            // returned errors.
-                            tokio::spawn(Self::process_wrapper(services_context.clone().into_builder(), request));
+                            // Spawn a task and process the request.
+                            let context_clone = services_context.clone();
+                            tokio::spawn(
+                                async move {
+                                    Self::process(context_clone.into_builder(), request).await.expect("Task failed successfully")
+                                }
+                            );
                         }
                         Some(Err(err)) => {
                             warn!(error = ?err, "next status receiver request errored");
@@ -140,34 +142,6 @@ impl StatusReceiver {
         // Unsubscribe from subscription.
         if let Err(e) = requests.unsubscribe().await {
             error!("could not unsubscribe from nats: {:?}", e);
-        }
-    }
-
-    /// A wrapper around [`Self::process()`] to handle returned errors.
-    async fn process_wrapper(
-        ctx_builder: DalContextBuilder,
-        request: Request<StatusReceiverRequest>,
-    ) {
-        match AssertUnwindSafe(Self::process(ctx_builder, request))
-            .catch_unwind()
-            .await
-        {
-            Ok(Ok(())) => {}
-            Ok(Err(err)) => error!("{err}"),
-            Err(any) => {
-                // Technically, panics can be of any shape, but most should be of type "&str" or
-                // "String".
-                match any.downcast::<String>() {
-                    Ok(msg) => error!("panic: {msg}"),
-                    Err(any) => match any.downcast::<&str>() {
-                        Ok(msg) => error!("panic: {msg}"),
-                        Err(any) => {
-                            let id = any.type_id();
-                            error!("panic message downcast failed of {id:?}",);
-                        }
-                    },
-                }
-            }
         }
     }
 

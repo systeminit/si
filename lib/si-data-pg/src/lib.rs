@@ -1002,15 +1002,7 @@ impl Drop for InstrumentedClient {
 
         // Spawn a task taking the inner object to determine whether it should be returned to the
         // pool or removed from the pool if sufficiently unhealthy
-        match task::Builder::new()
-            .name("drop-inner-pg-client-task")
-            .spawn(drop_inner_pg_client_task(inner))
-        {
-            Ok(handle) => drop(handle),
-            Err(err) => {
-                error!(error = ?err, "failed to spawn drop-inner-pg-client-task")
-            }
-        }
+        drop(task::spawn(drop_inner_pg_client_task(inner)));
     }
 }
 
