@@ -167,7 +167,6 @@ impl ChangeSetGraph {
         }
 
         if node_is_complete {
-            // Note: Timeout could race here
             let node_metadata = change_set_graph_data.remove(&node_id).unwrap();
 
             for node_metadata in change_set_graph_data.values_mut() {

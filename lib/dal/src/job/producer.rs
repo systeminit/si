@@ -20,7 +20,6 @@ pub trait JobProducer: std::fmt::Debug + Send + JobConsumerMetadata {
     fn args(&self) -> JobProducerResult<serde_json::Value>;
     fn meta(&self) -> JobProducerResult<JobMeta>;
     fn identity(&self) -> String;
-    fn backtrace(&self) -> String;
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -47,13 +46,6 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
             created_at: Some(Utc::now()),
             enqueued_at: None,
             at: job_producer_meta.at,
-            //
-            // This code path causes *havoc*, I say. Havoc! Beware!
-            //
-            //            #[cfg(debug_assertions)]
-            //            backtrace: format!("{:?}", job_producer.backtrace()).replace("\\n", "\n"),
-            //            #[cfg(not(debug_assertions))]
-            backtrace: "<no debug information available to generate backtrace>".to_owned(),
             args: vec![
                 job_producer.args()?,
                 serde_json::to_value(job_producer.access_builder())?,
@@ -89,9 +81,5 @@ impl JobProducer for JobInfo {
             "kind": self.kind,
         }))
         .expect("Cannot serialize JobInfo")
-    }
-
-    fn backtrace(&self) -> String {
-        self.backtrace.clone()
     }
 }
