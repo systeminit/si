@@ -1,7 +1,6 @@
 use std::{collections::HashMap, collections::HashSet, convert::TryFrom, sync::Arc};
 
 use async_trait::async_trait;
-use backtrace::Backtrace;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::{sync::Mutex, task::JoinSet};
@@ -37,7 +36,6 @@ pub struct DependentValuesUpdate {
     visibility: Visibility,
     job: Option<JobInfo>,
     single_transaction: bool,
-    backtrace: String,
 }
 
 impl DependentValuesUpdate {
@@ -51,7 +49,6 @@ impl DependentValuesUpdate {
             visibility,
             job: None,
             single_transaction: false,
-            backtrace: format!("{:?}", Backtrace::new()),
         })
     }
 
@@ -102,10 +99,6 @@ impl JobProducer for DependentValuesUpdate {
 
     fn identity(&self) -> String {
         serde_json::to_string(self).expect("Cannot serialize DependentValueUpdate")
-    }
-
-    fn backtrace(&self) -> String {
-        self.backtrace.clone()
     }
 }
 
@@ -416,7 +409,6 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             attribute_values: args.attribute_values,
             access_builder,
             visibility,
-            backtrace: job.backtrace.clone(),
             job: Some(job),
             single_transaction: false,
         })

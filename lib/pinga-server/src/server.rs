@@ -461,7 +461,6 @@ async fn execute_job(
         let args_str = serde_json::to_string(&job_info.args().to_vec())?;
         tracing::Span::current().record("job_info.args", args_str);
     }
-    trace!(backtrace = %job_info.backtrace, "caller backtrace");
 
     let job = match job_info.kind() {
         stringify!(DependentValuesUpdate) => {

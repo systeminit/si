@@ -100,7 +100,6 @@ pub struct JobInfo {
     pub args: Vec<Value>,
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
-    pub backtrace: String,
     pub subsequent_jobs: VecDeque<NextJobInfo>,
 }
 
