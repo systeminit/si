@@ -43,11 +43,6 @@ impl ValueCreationQueue {
 }
 
 #[derive(Default, Debug)]
-pub struct ChangeSetGraph {
-    dependency_data: HashMap<Id, HashMap<Id, NodeMetadata>>,
-}
-
-#[derive(Default, Debug)]
 pub struct NodeMetadata {
     // This should really be an ordered set, to remove duplicates, but we'll deal with
     // that later.
@@ -90,7 +85,16 @@ impl NodeMetadata {
     }
 }
 
+#[derive(Default, Debug)]
+pub struct ChangeSetGraph {
+    dependency_data: HashMap<Id, HashMap<Id, NodeMetadata>>,
+}
+
 impl ChangeSetGraph {
+    pub fn is_empty(&self) -> bool {
+        self.dependency_data.is_empty()
+    }
+
     pub fn fetch_all_available(&mut self) -> Vec<(String, Id)> {
         let mut result = Vec::new();
         for graph in self.dependency_data.values_mut() {

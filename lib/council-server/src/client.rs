@@ -1,5 +1,7 @@
 use futures::TryStreamExt;
 use si_data_nats::{NatsClient, Subscription};
+use std::time::Duration;
+use telemetry::prelude::*;
 
 use crate::{Graph, Id, Request, Response};
 
@@ -119,7 +121,19 @@ impl Client {
     pub async fn fetch_response(&mut self) -> Result<Option<Response>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
         // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
-        match self.subscription.try_next().await? {
+        let msg = loop {
+            let res =
+                tokio::time::timeout(Duration::from_secs(60), self.subscription.try_next()).await;
+
+            match res {
+                Ok(msg) => break msg?,
+                Err(_) => {
+                    warn!(change_set_id = ?self.change_set_id, pub_channel = ?self.pub_channel, reply_channel = ?self.reply_channel, "Council client waiting for response for 60 seconds");
+                }
+            }
+        };
+
+        match msg {
             Some(msg) => {
                 if msg.data().is_empty() {
                     return Err(Error::NoListenerAvailable);

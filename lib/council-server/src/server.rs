@@ -96,8 +96,19 @@ impl Server {
                     .unwrap();
             }
 
+            let sleep = tokio::time::sleep(Duration::from_secs(60));
+            tokio::pin!(sleep);
             // FIXME: handle timeouts
             let (reply_channel, request) = tokio::select! {
+                _ = &mut sleep => {
+                    if value_create_queue.is_busy() {
+                        warn!(?value_create_queue, "Council is waiting for a job to create values for at least 60 seconds");
+                    }
+                    if !complete_graph.is_empty() {
+                        warn!(?complete_graph, "Council has values in graph but has been waiting for messages for 60 seconds");
+                    }
+                    continue;
+                }
                 req = subscription.next() => match req {
                     Some(Ok(msg)) => match (serde_json::from_slice::<Request>(msg.data()), msg.reply()) {
                         (Ok(req), Some(reply)) => (reply.to_owned(), req),
@@ -234,6 +245,10 @@ pub async fn job_would_like_to_create_attribute_values(
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
 ) -> Result<(), Error> {
+    debug!(
+        %reply_channel,
+        "Job would like to create new AttributeValues"
+    );
     value_create_queue.push(reply_channel);
 
     Ok(())
@@ -244,6 +259,7 @@ pub async fn job_finished_value_creation(
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
 ) -> Result<(), Error> {
+    debug!(%reply_channel, "Job finished creating new AttributeValues");
     value_create_queue.finished_processing(&reply_channel)
 }
 
@@ -254,6 +270,7 @@ pub async fn register_graph_from_job(
     change_set_id: Id,
     new_dependency_data: Graph,
 ) -> Result<(), Error> {
+    debug!(%reply_channel, %change_set_id, ?new_dependency_data, ?complete_graph, "Job registered graph of work");
     complete_graph.merge_dependency_graph(reply_channel, new_dependency_data, change_set_id)
 }
 
@@ -265,6 +282,7 @@ pub async fn job_processed_a_value(
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
+    debug!(%reply_channel, %change_set_id, %node_id, "Job finished processing graph node");
     for reply_channel in
         complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
     {
@@ -287,6 +305,7 @@ pub async fn job_is_going_away(
     reply_channel: String,
     change_set_id: Id,
 ) -> Result<(), Error> {
+    debug!(%reply_channel, %change_set_id, ?complete_graph, ?value_create_queue, "Job is going away");
     value_create_queue.remove(&reply_channel);
     complete_graph.remove_channel(change_set_id, &reply_channel);
     debug!(?complete_graph, ?value_create_queue);
