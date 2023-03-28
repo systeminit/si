@@ -1,9 +1,8 @@
 //! This module contains [`ResourceScheduler`], which is a "long-running" tasks that performs
 //! [`resource`](crate::component::resource) syncing on a cadence.
 
-use std::{panic::AssertUnwindSafe, time::Duration};
+use std::time::Duration;
 
-use futures::future::FutureExt;
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPoolError};
 use telemetry::prelude::*;
@@ -90,22 +89,9 @@ impl ResourceScheduler {
         let mut interval = time::interval(Duration::from_secs(300));
         loop {
             interval.tick().await;
-            match AssertUnwindSafe(self.run()).catch_unwind().await {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) => error!("{err}"),
-                Err(any) => {
-                    // Note: Technically panics can be of any form, but most should be &str or String
-                    match any.downcast::<String>() {
-                        Ok(msg) => error!("panic: {msg}"),
-                        Err(any) => match any.downcast::<&str>() {
-                            Ok(msg) => error!("panic: {msg}"),
-                            Err(any) => {
-                                let id = any.type_id();
-                                error!("panic message downcast failed of {id:?}",);
-                            }
-                        },
-                    }
-                }
+            match self.run().await {
+                Ok(()) => {}
+                Err(err) => error!("{err}"),
             }
         }
     }

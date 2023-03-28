@@ -456,6 +456,8 @@ async fn execute_job(
             kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
         };
 
+    info!("Processing job");
+
     let (access_builder, visibility) = (job.access_builder(), job.visibility());
     if let Err(err) = job.run_job(ctx_builder.clone()).await {
         // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
@@ -482,6 +484,8 @@ async fn execute_job(
     if let Err(err) = ctx.commit().await {
         error!("Unable to push jobs to nats: {err}");
     }
+
+    info!("Finished processing job");
 
     Ok(())
 }
