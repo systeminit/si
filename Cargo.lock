@@ -2684,7 +2684,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
- "uuid",
+ "ulid",
  "veritech-client",
 ]
 

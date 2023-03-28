@@ -56,6 +56,13 @@ pub(crate) struct Args {
     /// The number of concurrent jobs that can be processed [default: 10]
     #[arg(long)]
     pub(crate) concurrency: Option<u32>,
+
+    /// Instance ID [example: 01GWEAANW5BVFK5KDRVS6DEY0F"]
+    ///
+    /// And instance ID is used when tracking the execution of jobs in a way that can be traced
+    /// back to an instance of a Pinga service.
+    #[arg(long)]
+    pub(crate) instance_id: Option<String>,
 }
 
 impl TryFrom<Args> for Config {
@@ -86,6 +93,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));
+            }
+            if let Some(instance_id) = args.instance_id {
+                config_map.set("instance_id", instance_id);
             }
 
             config_map.set("pg.application_name", NAME);
