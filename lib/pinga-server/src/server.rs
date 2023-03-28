@@ -19,9 +19,13 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     signal::unix,
-    sync::{mpsc, oneshot, watch},
+    sync::{
+        mpsc::{self, UnboundedReceiver, UnboundedSender},
+        oneshot, watch,
+    },
     task,
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
 use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
@@ -139,9 +143,19 @@ impl Server {
     }
 
     pub async fn run(mut self) -> Result<()> {
-        process_job_requests_task(
-            self.metadata,
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        // Span a task to receive and process jobs from the unbounded channel
+        drop(task::spawn(process_job_requests_task(
+            rx,
             self.concurrency_limit,
+        )));
+
+        // Run "the main loop" which pulls message from a subscription off NATS and forwards each
+        // request to an unbounded channel
+        receive_job_requests_task(
+            tx,
+            self.metadata,
             self.pg_pool,
             self.nats,
             self.subject_prefix.as_deref(),
@@ -284,9 +298,9 @@ impl Subscriber {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn process_job_requests_task(
+async fn receive_job_requests_task(
+    tx: UnboundedSender<JobItem>,
     metadata: Arc<ServerMetadata>,
-    concurrency_limit: usize,
     pg_pool: PgPool,
     nats: NatsClient,
     subject_prefix: Option<&str>,
@@ -295,9 +309,9 @@ async fn process_job_requests_task(
     encryption_key: Arc<veritech_client::EncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
 ) {
-    if let Err(err) = process_job_requests(
+    if let Err(err) = receive_job_requests(
+        tx,
         metadata,
-        concurrency_limit,
         pg_pool,
         nats,
         subject_prefix,
@@ -313,9 +327,9 @@ async fn process_job_requests_task(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn process_job_requests(
+async fn receive_job_requests(
+    tx: UnboundedSender<JobItem>,
     metadata: Arc<ServerMetadata>,
-    concurrency_limit: usize,
     pg_pool: PgPool,
     nats: NatsClient,
     subject_prefix: Option<&str>,
@@ -324,7 +338,7 @@ async fn process_job_requests(
     encryption_key: Arc<veritech_client::EncryptionKey>,
     mut shutdown_watch_rx: watch::Receiver<()>,
 ) -> Result<()> {
-    let requests = Subscriber::jobs(
+    let mut requests = Subscriber::jobs(
         metadata,
         pg_pool,
         nats,
@@ -333,12 +347,26 @@ async fn process_job_requests(
         job_processor,
         encryption_key,
     )
-    .await?;
+    .await?
+    .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
 
-    requests
-        .take_until_if(shutdown_watch_rx.changed().map(|_| true))
+    // Forward each request off the stream to a consuming task via an *unbounded* channel so we
+    // buffer requests until we run out of memory. Have fun!
+    while let Some(job) = requests.next().await {
+        if let Err(_job) = tx.send(job) {
+            error!("process_job_requests rx has already closed");
+        }
+    }
+
+    Ok(())
+}
+
+async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_limit: usize) {
+    UnboundedReceiverStream::new(rx)
         .for_each_concurrent(concurrency_limit, |job| async move {
             // Got the next message from the subscriber
+            trace!("pulled request into an available concurrent task");
+
             match job.request {
                 Ok(request) => {
                     let invocation_id = JobInvocationId::new();
@@ -369,8 +397,6 @@ async fn process_job_requests(
             }
         })
         .await;
-
-    Ok(())
 }
 
 #[instrument(
