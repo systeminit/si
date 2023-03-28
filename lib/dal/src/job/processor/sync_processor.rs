@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
-use crate::job::definition::{DependentValuesUpdate, FixesJob};
+use crate::job::definition::{DependentValuesUpdate, FixesJob, RefreshJob};
 use crate::{
     job::consumer::{JobConsumer, JobInfo},
     job::producer::JobProducer,
@@ -36,6 +36,10 @@ impl JobQueueProcessor for SyncProcessor {
                 as Box<dyn JobConsumer + Send + Sync>,
             stringify!(FixesJob) => {
                 Box::new(FixesJob::try_from(job_info).expect("unable to obtain FixesJob"))
+                    as Box<dyn JobConsumer + Send + Sync>
+            }
+            stringify!(RefreshJob) => {
+                Box::new(RefreshJob::try_from(job_info).expect("unable to obtain RefreshJob"))
                     as Box<dyn JobConsumer + Send + Sync>
             }
             kind => panic!("job kind not supported: {kind:?}"),

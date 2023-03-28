@@ -931,6 +931,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_ids: &[AttributeValueId],
     ) -> AttributeValueResult<()> {
+        debug!("Running attribute_value_create_new_affected_values_v1");
         let _rows = ctx
             .pg_txn()
             .query(
@@ -938,6 +939,7 @@ impl AttributeValue {
                 &[&ctx.tenancy(), &ctx.visibility(), &attribute_value_ids],
             )
             .await?;
+        debug!("Finished running attribute_value_create_new_affected_values_v1");
         Ok(())
     }
 

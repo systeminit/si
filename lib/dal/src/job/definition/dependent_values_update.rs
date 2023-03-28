@@ -70,6 +70,10 @@ impl DependentValuesUpdate {
             Ok(ctx.commit_and_continue().await?)
         }
     }
+
+    fn job_id(&self) -> Option<String> {
+        self.job.as_ref().map(|j| j.id.clone())
+    }
 }
 
 impl JobProducer for DependentValuesUpdate {
@@ -150,17 +154,20 @@ impl JobConsumer for DependentValuesUpdate {
         .await?;
         let pub_council = council.clone_into_pub();
 
+        debug!(job_id = ?self.job_id(), "Waiting to create AttributeValues");
         if let council_server::client::State::Shutdown = council.wait_to_create_values().await? {
             return Ok(());
         }
 
+        debug!(job_id = ?self.job_id(), "Creating AttributeValues");
         AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
+        debug!(job_id = ?self.job_id(), "Create AttributeValues SQL finished");
 
         ctx = self.commit_and_continue(ctx).await?;
+        debug!(job_id = ?self.job_id(), "Transaction committed");
 
         council.finished_creating_values().await?;
-
-        debug!("Finished creating values");
+        debug!(job_id = ?self.job_id(), "Finished creating values");
 
         let mut dependency_graph =
             AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
@@ -220,6 +227,7 @@ impl JobConsumer for DependentValuesUpdate {
             match council.fetch_response().await? {
                 Some(response) => match response {
                     council_server::Response::OkToProcess { node_ids } => {
+                        debug!(?node_ids, job_id = ?self.job_id(), "Ok to start processing nodes");
                         for node_id in node_ids {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
@@ -247,6 +255,7 @@ impl JobConsumer for DependentValuesUpdate {
                         }
                     }
                     council_server::Response::BeenProcessed { node_id } => {
+                        debug!(?node_id, job_id = ?self.job_id(), "Node has been processed by another job");
                         let id = AttributeValueId::from(node_id);
                         dependency_graph.remove(&id);
 
