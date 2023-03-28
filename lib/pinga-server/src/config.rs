@@ -12,7 +12,7 @@ pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
 
-const CONCURRENCY_DEFAULT: usize = 0;
+const CONCURRENCY_DEFAULT: usize = 50;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
