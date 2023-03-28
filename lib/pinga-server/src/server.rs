@@ -3,7 +3,7 @@ use std::{io, path::Path, sync::Arc};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
-        definition::FixesJob,
+        definition::{FixesJob, RefreshJob},
         producer::JobProducer,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
@@ -443,16 +443,18 @@ async fn execute_job(
         tracing::Span::current().record("job_info.args", args_str);
     }
 
-    let job = match job_info.kind() {
-        stringify!(DependentValuesUpdate) => {
-            Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>
-        }
-        stringify!(FixesJob) => {
-            Box::new(FixesJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
-        }
-        kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
-    };
+    let job =
+        match job_info.kind() {
+            stringify!(DependentValuesUpdate) => {
+                Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+                    as Box<dyn JobConsumer + Send + Sync>
+            }
+            stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>,
+            stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>,
+            kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
+        };
 
     let (access_builder, visibility) = (job.access_builder(), job.visibility());
     if let Err(err) = job.run_job(ctx_builder.clone()).await {

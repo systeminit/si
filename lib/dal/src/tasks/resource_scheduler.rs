@@ -62,8 +62,9 @@ impl ResourceScheduler {
 
     #[instrument(name = "resource_scheduler.run", skip_all, level = "debug")]
     async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Refresh resources");
+        /*
         let components = self.components().await?;
+        info!("Refresh {} resources", components.len());
 
         for component in components {
             // First we're building a ctx with no tenancy at head, then updating it with a
@@ -77,6 +78,7 @@ impl ResourceScheduler {
             component.act(&ctx, "refresh").await?;
             ctx.commit().await?;
         }
+        */
         Ok(())
     }
 
@@ -110,7 +112,7 @@ impl ResourceScheduler {
 
     /// Gets a list of all the resources in the database.
     #[instrument(skip_all, level = "debug")]
-    async fn components(&self) -> ResourceSchedulerResult<Vec<Component>> {
+    pub async fn components(&self) -> ResourceSchedulerResult<Vec<Component>> {
         let builder = self.services_context.clone().into_builder();
         let mut ctx = builder.build_default().await?;
         ctx.update_with_deleted_visibility();

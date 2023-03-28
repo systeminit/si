@@ -24,6 +24,7 @@ pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod insert_property_editor_value;
 pub mod list_qualifications;
+pub mod refresh;
 pub mod set_type;
 pub mod update_property_editor_value;
 
@@ -143,4 +144,5 @@ pub fn routes() -> Router<AppState> {
             get(get_property_editor_validations::get_property_editor_validations),
         )
         .route("/set_type", post(set_type::set_type))
+        .route("/refresh", post(refresh::refresh))
 }
