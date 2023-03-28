@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -8,14 +11,14 @@ use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
+use ulid::Ulid;
 
-use crate::fix::FixError;
-use crate::status::StatusUpdaterError;
 use crate::{
-    func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
-    AccessBuilder, ActionPrototypeError, AttributeValueError, ComponentError, ComponentId,
-    DalContext, DalContextBuilder, FixBatchId, FixResolverError, StandardModelError,
-    TransactionsError, Visibility, WsEventError,
+    fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
+    status::StatusUpdaterError, workflow_runner::WorkflowRunnerError, AccessBuilder,
+    ActionPrototypeError, AttributeValueError, ComponentError, ComponentId, DalContext,
+    DalContextBuilder, FixBatchId, FixResolverError, StandardModelError, TransactionsError,
+    Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -136,6 +139,27 @@ impl JobConsumerMetadata for JobInfo {
                 .expect("unable to get access builder"),
         )
         .expect("unable to deserialize access builder")
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct JobInvocationId(Ulid);
+
+impl JobInvocationId {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for JobInvocationId {
+    fn default() -> Self {
+        Self(Ulid::new())
+    }
+}
+
+impl fmt::Display for JobInvocationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 

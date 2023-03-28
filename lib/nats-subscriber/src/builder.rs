@@ -46,11 +46,11 @@ impl<T> SubscriptionBuilder<T> {
     /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
     pub async fn start(self, nats: &NatsClient) -> SubscriberResult<Subscription<T>> {
         let inner = if let Some(queue_name) = self.queue_name {
-            nats.queue_subscribe(self.subject, queue_name)
+            nats.queue_subscribe(self.subject.clone(), queue_name)
                 .await
                 .map_err(SubscriberError::NatsSubscribe)?
         } else {
-            nats.subscribe(self.subject)
+            nats.subscribe(self.subject.clone())
                 .await
                 .map_err(SubscriberError::NatsSubscribe)?
         };
@@ -58,6 +58,7 @@ impl<T> SubscriptionBuilder<T> {
         Ok(Subscription {
             inner,
             _phantom: PhantomData::<T>,
+            subject: self.subject,
             final_message_header_key: self.final_message_header_key,
             check_for_reply_mailbox: self.check_for_reply_mailbox,
         })

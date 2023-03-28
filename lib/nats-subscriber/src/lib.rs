@@ -65,6 +65,7 @@ pin_project! {
         #[pin]
         inner: si_data_nats::Subscription,
         _phantom: PhantomData<T>,
+        subject: String,
         final_message_header_key: Option<String>,
         check_for_reply_mailbox: bool,
     }
@@ -81,7 +82,7 @@ impl<T> Subscription<T> {
     /// # Errors
     ///
     /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
-    #[allow(dead_code, missing_docs, clippy::missing_errors_doc)]
+    #[allow(dead_code)]
     pub async fn drain(&self) -> SubscriberResult<()> {
         self.inner.drain().await.map_err(SubscriberError::NatsDrain)
     }
@@ -96,6 +97,11 @@ impl<T> Subscription<T> {
             .unsubscribe()
             .await
             .map_err(SubscriberError::NatsUnsubscribe)
+    }
+
+    /// Returns the NATS subject to which this subscription is subscribed.
+    pub fn subject(&self) -> &str {
+        &self.subject
     }
 }
 
