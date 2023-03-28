@@ -65,7 +65,7 @@ impl Visibility {
 
     /// Determines if this [`Visibility`] is a head [`Visibility`].
     pub fn is_head(&self) -> bool {
-        self.change_set_pk == ChangeSetPk::NONE && self.deleted_at.is_none()
+        self.change_set_pk == ChangeSetPk::NONE
     }
 
     /// Constructs a new change set `Visibility`.

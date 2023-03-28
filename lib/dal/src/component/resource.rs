@@ -11,9 +11,9 @@ use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
 use crate::{
-    func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext,
-    ChangeSetPk, Component, ComponentError, ComponentId, DalContext, SchemaVariant, StandardModel,
-    WorkflowRunner, WsPayload,
+    func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
+    ComponentError, ComponentId, DalContext, SchemaVariant, StandardModel, WorkflowRunner,
+    WsPayload,
 };
 use crate::{RootPropChild, WsEventResult};
 
@@ -95,7 +95,9 @@ impl Component {
         result: CommandRunResult,
         trigger_dependent_values_update: bool,
     ) -> ComponentResult<bool> {
-        if ctx.visibility().change_set_pk != ChangeSetPk::NONE {
+        let ctx = &ctx.clone_without_deleted_visibility();
+
+        if !ctx.visibility().is_head() {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
         }
 

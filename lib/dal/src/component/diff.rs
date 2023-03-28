@@ -39,7 +39,7 @@ impl ComponentDiff {
         // live any longer (that is, it's garbage collected at a reasonable time)
         let head_ctx = ctx.clone_with_head();
 
-        if ctx.visibility().is_head() || !head_ctx.visibility().is_head() {
+        if ctx.visibility().is_head() || ctx.visibility().deleted_at.is_some() {
             return Err(ComponentError::InvalidContextForDiff);
         }
 
