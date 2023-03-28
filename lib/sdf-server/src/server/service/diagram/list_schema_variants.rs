@@ -74,6 +74,14 @@ pub async fn list_schema_variants(
 
     let mut variants_view = Vec::with_capacity(variants.len());
     for variant in variants {
+        let schema = variant
+            .schema(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
+
+        if schema.ui_hidden() {
+            continue;
+        }
         let mut input_sockets = Vec::new();
         let mut output_sockets = Vec::new();
 
@@ -111,10 +119,6 @@ pub async fn list_schema_variants(
             }
         }
 
-        let schema = variant
-            .schema(&ctx)
-            .await?
-            .ok_or(DiagramError::SchemaNotFound)?;
         variants_view.push(SchemaVariantView {
             id: *variant.id(),
             name: variant.name().to_owned(),

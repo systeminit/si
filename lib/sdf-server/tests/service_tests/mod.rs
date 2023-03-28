@@ -159,6 +159,15 @@ macro_rules! test_setup {
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
+        let (posthog_client, posthog_sender) = si_posthog_rs::new(
+            "http://localhost:9999",
+            "poop",
+            std::time::Duration::from_millis(800),
+        )
+        .expect("cannot create posthog client and sender");
+        tokio::spawn(async move { posthog_sender.run().await });
+        posthog_client.disable().expect("disable posthog");
+
         let ($app, _, _) = sdf_server::build_service(
             $pg.clone(),
             $nats_conn.clone(),
@@ -168,6 +177,7 @@ macro_rules! test_setup {
             $jwt_secret_key.clone(),
             "myunusedsignupsecret".into(),
             $council_subject_prefix.to_owned(),
+            posthog_client,
             None,
         )
         .expect("cannot build new server");

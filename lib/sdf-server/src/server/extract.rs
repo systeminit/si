@@ -49,6 +49,20 @@ impl FromRequestParts<AppState> for HandlerContext {
     }
 }
 
+pub struct PosthogClient(pub super::state::PosthogClient);
+
+#[async_trait]
+impl FromRequestParts<AppState> for PosthogClient {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(Self(state.posthog_client().clone()))
+    }
+}
+
 pub struct Nats(pub si_data_nats::NatsClient);
 
 #[async_trait]

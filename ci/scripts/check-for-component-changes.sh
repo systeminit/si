@@ -24,6 +24,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/council-server/**
   lib/si-data-nats/**
   lib/si-data-pg/**
+  lib/si-posthog-rs/**
   lib/si-settings/**
   lib/si-std/**
   lib/si-test-macros/**

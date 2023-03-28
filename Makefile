@@ -61,6 +61,7 @@ COMPONENTS = \
 	lib/si-data-nats \
 	lib/si-data-pg \
 	lib/si-pkg \
+	lib/si-posthog-rs \
 	lib/si-settings \
 	lib/si-std \
 	lib/si-test-macros \
@@ -262,6 +263,8 @@ test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-
 test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf-server
 
 test//lib/si-pkg//RTESTDEPS: test//lib/dal
+
+test//lib/si-posthog-rs//RTESTDEPS: test//lib/sdf-server
 
 test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf-server//TEST
 

@@ -27,6 +27,15 @@ pub enum HistoryActor {
     SystemInit,
 }
 
+impl HistoryActor {
+    pub fn distinct_id(&self) -> String {
+        match self {
+            HistoryActor::User(pk) => pk.to_string(),
+            HistoryActor::SystemInit => "unknown-backend".to_string(),
+        }
+    }
+}
+
 impl From<UserPk> for HistoryActor {
     fn from(pk: UserPk) -> Self {
         HistoryActor::User(pk)

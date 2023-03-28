@@ -14,6 +14,7 @@ mod routes;
 mod server;
 pub mod service;
 mod state;
+pub mod tracking;
 mod uds;
 
 macro_rules! impl_default_error_into_response {

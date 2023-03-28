@@ -130,6 +130,12 @@ A-si-pkg:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-si-posthog-rs:
+  - lib/si-posthog-rs/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-settings:
   - lib/si-settings/**/*
   - .cargo/**/*

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
-import { posthog } from "posthog-js";
+import { posthog } from "@/utils/posthog";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 

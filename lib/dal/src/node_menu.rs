@@ -221,6 +221,9 @@ impl GenerateMenuItem {
 
         for ui_menu in ui_menus.into_iter() {
             if let Some(schema) = ui_menu.schema(ctx).await? {
+                if schema.ui_hidden() {
+                    continue;
+                }
                 item_list.push((
                     ui_menu.category_path(),
                     Item::new(ui_menu.name(), *schema.id()),

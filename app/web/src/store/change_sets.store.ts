@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
+import { posthog } from "@/utils/posthog";
 
 import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
@@ -83,6 +84,7 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
+              posthog.capture("wa-change_set_created", { name });
             },
           });
         },

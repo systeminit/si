@@ -292,13 +292,9 @@ importers:
   bin/council:
     specifiers:
       council-server: workspace:*
-      si-data-nats: workspace:*
-      si-settings: workspace:*
       telemetry-application: workspace:*
     dependencies:
       council-server: link:../../lib/council-server
-      si-data-nats: link:../../lib/si-data-nats
-      si-settings: link:../../lib/si-settings
       telemetry-application: link:../../lib/telemetry-application-rs
 
   bin/cyclone:
@@ -574,6 +570,7 @@ importers:
       si-data-nats: workspace:*
       si-data-pg: workspace:*
       si-pkg: workspace:*
+      si-posthog-rs: workspace:*
       si-settings: workspace:*
       si-std: workspace:*
       telemetry: workspace:*
@@ -583,6 +580,7 @@ importers:
       si-data-nats: link:../si-data-nats
       si-data-pg: link:../si-data-pg
       si-pkg: link:../si-pkg
+      si-posthog-rs: link:../si-posthog-rs
       si-settings: link:../si-settings
       si-std: link:../si-std
       telemetry: link:../telemetry-rs
@@ -607,6 +605,9 @@ importers:
       object-tree: workspace:*
     dependencies:
       object-tree: link:../object-tree
+
+  lib/si-posthog-rs:
+    specifiers: {}
 
   lib/si-settings:
     specifiers:

@@ -19,6 +19,7 @@ on:
       - lib/nats-subscriber/**
       - lib/object-tree/**
       - lib/si-pkg/**
+      - lib/si-posthog-rs/**
       - lib/si-settings/**
       - lib/si-std/**
       - lib/telemetry-application-rs/**
