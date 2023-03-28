@@ -13,7 +13,7 @@ use crate::{
     },
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, DalContextBuilder, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -130,8 +130,22 @@ impl JobConsumer for DependentValuesUpdate {
         self.job = Some(boxed.try_into().unwrap());
     }
 
+    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        assert!(self.single_transaction);
+        self.run_owned(ctx.clone()).await
+    }
+
+    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
+        let ctx = ctx_builder
+            .build(self.access_builder().build(self.visibility()))
+            .await?;
+        self.run_owned(ctx).await
+    }
+}
+
+impl DependentValuesUpdate {
     #[instrument(
-        name = "dependent_values_update.run",
+        name = "dependent_values_update.run_owned",
         skip_all,
         level = "info",
         fields(
@@ -139,9 +153,7 @@ impl JobConsumer for DependentValuesUpdate {
             single_transaction = ?self.single_transaction,
         )
     )]
-    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let mut ctx = self.clone_ctx_with_new_transactions(ctx).await?;
-
+    async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
         let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
 
         let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;

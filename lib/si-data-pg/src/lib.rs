@@ -26,7 +26,7 @@ use ouroboros::self_referencing;
 use serde::{Deserialize, Serialize};
 use si_std::{ResultExt, SensitiveString};
 use telemetry::prelude::*;
-use tokio::{sync::Mutex, task, time};
+use tokio::sync::Mutex;
 use tokio_postgres::{
     row::RowIndex,
     types::{BorrowToSql, FromSql, ToSql, Type},
@@ -40,16 +40,11 @@ const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 const TEST_QUERY: &str = "SELECT 1";
-const CURRENT_TXID_QUERY: &str = "SELECT txid_current()";
-
-const DROP_INNER_PG_CLIENT_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
     #[error(transparent)]
     Pg(#[from] tokio_postgres::Error),
-    #[error("timeout error: {0}")]
-    Timeout(&'static str),
     #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
     TxnCommitNotExclusive(usize),
     #[error(
@@ -314,7 +309,7 @@ impl PgPool {
         let inner = self.pool.get().await?;
 
         Ok(InstrumentedClient {
-            inner: Some(inner),
+            inner,
             metadata: self.metadata.clone(),
         })
     }
@@ -365,23 +360,11 @@ impl PgPool {
 
 /// An instrumented wrapper for `deadpool::managed::Object<deadpool_postgres::Manager>`
 pub struct InstrumentedClient {
-    inner: Option<Object<Manager>>,
+    inner: Object<Manager>,
     metadata: Arc<ConnectionMetadata>,
 }
 
 impl InstrumentedClient {
-    fn inner(&self) -> &Object<Manager> {
-        self.inner
-            .as_ref()
-            .expect("inner should only be none during drop--this is an internal bug")
-    }
-
-    fn inner_mut(&mut self) -> &mut Object<Manager> {
-        self.inner
-            .as_mut()
-            .expect("inner should only be none during drop--this is an internal bug")
-    }
-
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
@@ -401,7 +384,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
-        self.inner().prepare_cached(query).await.map_err(Into::into)
+        self.inner.prepare_cached(query).await.map_err(Into::into)
     }
 
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
@@ -427,7 +410,7 @@ impl InstrumentedClient {
         query: &str,
         types: &[Type],
     ) -> Result<Statement, PgError> {
-        self.inner()
+        self.inner
             .prepare_typed_cached(query, types)
             .await
             .map_err(Into::into)
@@ -453,11 +436,9 @@ impl InstrumentedClient {
         )
     )]
     pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
-        let metadata = self.metadata.clone();
-
         Ok(InstrumentedTransaction::new(
-            self.inner_mut().transaction().await?,
-            metadata,
+            self.inner.transaction().await?,
+            self.metadata.clone(),
             Span::current(),
         ))
     }
@@ -468,11 +449,9 @@ impl InstrumentedClient {
     /// isolation level and other
     /// attributes.
     pub fn build_transaction(&mut self) -> InstrumentedTransactionBuilder {
-        let metadata = self.metadata.clone();
-
         InstrumentedTransactionBuilder {
-            inner: self.inner_mut().build_transaction(),
-            metadata,
+            inner: self.inner.build_transaction(),
+            metadata: self.metadata.clone(),
         }
     }
 
@@ -498,7 +477,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
-        self.inner().prepare(query).await.map_err(Into::into)
+        self.inner.prepare(query).await.map_err(Into::into)
     }
 
     /// Like `prepare`, but allows the types of query parameters to be explicitly specified.
@@ -527,7 +506,7 @@ impl InstrumentedClient {
         query: &str,
         parameter_types: &[Type],
     ) -> Result<Statement, PgError> {
-        self.inner()
+        self.inner
             .prepare_typed(query, parameter_types)
             .await
             .map_err(Into::into)
@@ -568,7 +547,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
         let r = self
-            .inner()
+            .inner
             .query(statement, params)
             .await
             .map(|rows| {
@@ -620,7 +599,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<PgRow, PgError> {
         let r = self
-            .inner()
+            .inner
             .query_one(statement, params)
             .await
             .map(|inner| PgRow { inner })
@@ -668,7 +647,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<PgRow>, PgError> {
         let r = self
-            .inner()
+            .inner
             .query_opt(statement, params)
             .await
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
@@ -725,7 +704,7 @@ impl InstrumentedClient {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner()
+        self.inner
             .query_raw(statement, params)
             .await
             .map(|row_stream| {
@@ -770,7 +749,7 @@ impl InstrumentedClient {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<u64, PgError> {
-        self.inner()
+        self.inner
             .execute(statement, params)
             .await
             .map_err(Into::into)
@@ -812,7 +791,7 @@ impl InstrumentedClient {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner()
+        self.inner
             .execute_raw(statement, params)
             .await
             .map_err(Into::into)
@@ -847,7 +826,7 @@ impl InstrumentedClient {
         T: ?Sized + ToStatement,
         U: Buf + 'static + Send,
     {
-        self.inner().copy_in(statement).await.map_err(Into::into)
+        self.inner.copy_in(statement).await.map_err(Into::into)
     }
 
     /// Executes a `COPY TO STDOUT` statement, returning a stream of the resulting data.
@@ -877,7 +856,7 @@ impl InstrumentedClient {
     where
         T: ?Sized + ToStatement,
     {
-        self.inner().copy_out(statement).await.map_err(Into::into)
+        self.inner.copy_out(statement).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol, returning the
@@ -912,7 +891,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
-        self.inner().simple_query(query).await.map_err(Into::into)
+        self.inner.simple_query(query).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol.
@@ -943,13 +922,13 @@ impl InstrumentedClient {
         )
     )]
     pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
-        self.inner().batch_execute(query).await.map_err(Into::into)
+        self.inner.batch_execute(query).await.map_err(Into::into)
     }
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
     pub fn cancel_token(&self) -> CancelToken {
-        self.inner().cancel_token()
+        self.inner.cancel_token()
     }
 
     /// Clears the client's type information cache.
@@ -974,14 +953,14 @@ impl InstrumentedClient {
         )
     )]
     pub fn clear_type_cache(&self) {
-        self.inner().clear_type_cache();
+        self.inner.clear_type_cache();
     }
 
     /// Determines if the connection to the server has already closed.
     ///
     /// In that case, all future queries will fail.
     pub fn is_closed(&self) -> bool {
-        self.inner().is_closed()
+        self.inner.is_closed()
     }
 }
 
@@ -990,19 +969,6 @@ impl fmt::Debug for InstrumentedClient {
         f.debug_struct("InstrumentedClient")
             .field("metadata", &self.metadata)
             .finish_non_exhaustive()
-    }
-}
-
-impl Drop for InstrumentedClient {
-    fn drop(&mut self) {
-        let inner = self
-            .inner
-            .take()
-            .expect("inner should be some until drop impl is called--this is an internal bug");
-
-        // Spawn a task taking the inner object to determine whether it should be returned to the
-        // pool or removed from the pool if sufficiently unhealthy
-        drop(task::spawn(drop_inner_pg_client_task(inner)));
     }
 }
 
@@ -2682,65 +2648,4 @@ impl PgOwnedTransaction {
 
 async fn test_connection_task(check_pool: PgPool) {
     let _result = check_pool.test_connection().await;
-}
-
-async fn drop_inner_pg_client_task(object: Object<Manager>) {
-    if let Err(err) = drop_inner_pg_client(object).await {
-        warn!(error = ?err, "async drop of pg instrumented client failed");
-    }
-}
-
-async fn drop_inner_pg_client(object: Object<Manager>) -> Result<(), PgError> {
-    // We want to test that the current conneciton is healthy, responsive, and *not* in a
-    // transaction. In this case we're running a query to get the transaction id of the current
-    // statement to make sure that both statements are not in the same transaction. Additionally we
-    // have a timeout to make sure that the client is responsive and able to execute a query.
-    let is_txn_open = time::timeout(DROP_INNER_PG_CLIENT_TIMEOUT, async {
-        let txid_1: i64 = object
-            .query_one(CURRENT_TXID_QUERY, &[])
-            .await?
-            .try_get("txid_current")?;
-        let txid_2: i64 = object
-            .query_one(CURRENT_TXID_QUERY, &[])
-            .await?
-            .try_get("txid_current")?;
-
-        Result::<_, PgError>::Ok(txid_1 == txid_2)
-    })
-    .await;
-
-    let ret_val = match is_txn_open {
-        // We found that we get the same txn id twice within the timeout
-        Ok(Ok(true)) => {
-            warn!(
-                "identical txid values returned after 2 calls, \
-                there is an open txn on this conneciton, removing pg connection from pool"
-            );
-            Ok(())
-        }
-        // We found 2 txn ids, this connection appears to be healthy, so allow it to return to the
-        // pool
-        Ok(Ok(false)) => {
-            drop(object);
-            return Ok(());
-        }
-        // An error occured during our 2 queries so consider this connection not healthy and remove
-        // it from the pool
-        Ok(Err(err)) => Err(err),
-        // As we've exceed the timeout above, this signals to use that we coulldn't run 2
-        // simple queries to completion. This could be a sign that the connection still has a
-        // query in progress so we'll consider this connection unhealthy and remove it from the
-        // pool.
-        Err(_elapsed) => Err(PgError::Timeout(
-            "timeout exceeded while waiting on txn check during teardown",
-        )),
-    };
-
-    // Remmove this object from the pool, which also reduce the *size* of the pool, and leaves the
-    // *max_size* unchanged
-    let client_wrapper = Object::<Manager>::take(object);
-    drop(client_wrapper);
-    trace!("client wrapper dropped, connection closed");
-
-    ret_val
 }
