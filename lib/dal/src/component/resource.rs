@@ -172,14 +172,8 @@ impl Component {
 
         let prototype = action.workflow_prototype(ctx).await?;
         let run_id: usize = rand::random();
-        let (_runner, _state, _func_binding_return_values, resources) =
+        let (_runner, _state, _func_binding_return_values, _resources) =
             WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
-        if !resources.is_empty() {
-            WsEvent::resource_refreshed(ctx, self.id)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
         Ok(())
     }
 }

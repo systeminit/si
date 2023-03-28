@@ -14,7 +14,7 @@ use crate::{
     ComponentId, Func, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
     SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
     WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowResolverError, WorkflowResolverId, WsEventError,
+    WorkflowResolverError, WorkflowResolverId, WsEvent, WsEventError,
 };
 use crate::{DalContext, FuncError};
 
@@ -354,9 +354,10 @@ impl WorkflowRunner {
                     .await
                     .map_err(Box::new)?
                 {
-                    Component::run_all_confirmations(ctx)
-                        .await
-                        .map_err(Box::new)?;
+                    WsEvent::resource_refreshed(ctx, *component.id())
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
                 }
 
                 resources.push(result);
