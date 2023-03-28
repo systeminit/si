@@ -525,7 +525,7 @@ async fn model_and_fix_flow_whiskers() {
         fix_batch_history_view.id, // actual
     );
     assert_eq!(
-        FixCompletionStatus::Success, // expected
+        Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 
@@ -574,7 +574,9 @@ async fn model_and_fix_flow_whiskers() {
     );
     let mut found_fix_batches: HashMap<FixBatchId, FixCompletionStatus> = HashMap::new();
     for view in fix_batch_history_views {
-        found_fix_batches.insert(view.id, view.status);
+        if let Some(status) = view.status {
+            found_fix_batches.insert(view.id, status);
+        }
     }
     assert_eq!(
         2,                              // expected

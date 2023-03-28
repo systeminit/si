@@ -360,9 +360,7 @@ impl Fix {
                 last_synced: None,
             }
         } else {
-            // Note: at least one resource is required for fixes that finished, but it's not clear
-            // if we want to break this route if the assumption is incorrect or just hide the fix
-            warn!("Fix didn't have any resource: {self:?}");
+            // If a fix hasn't finished we don't show it in the front-end
             return Ok(None);
         };
 

@@ -155,7 +155,7 @@ async fn model_and_fix_flow_aws_key_pair() {
         fix_batch_history_view.id, // actual
     );
     assert_eq!(
-        FixCompletionStatus::Success, // expected
+        Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 }

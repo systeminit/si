@@ -1,6 +1,13 @@
 <template>
   <div>
-    <template v-if="route.name === 'print-legal'">
+    <template v-if="onMobile">
+      <div class="fixed top-0 left-0 w-full h-full">
+        <div class="flex flex-row items-center align-middle w-full h-full" >
+          <div class="text-2xl p-md text-center dark:text-neutral-300 text-neutral-700 font-bold">You are accessing this page from a mobile device. System Initiative can only be used on a desktop computer.</div>
+        </div>
+      </div>
+    </template>
+    <template v-else-if="route.name === 'print-legal'">
       <RouterView />
     </template>
     <template v-else>
@@ -148,6 +155,14 @@ function toggleTheme() {
   // TODO: could match our normal behaviour and allow setting to system/dark/light
   userOverrideTheme.value = rootTheme.value === "dark" ? "light" : "dark";
 }
+
+const onMobile = computed(() => {
+  if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
+    return true;
+  }
+  return false;
+});
+
 </script>
 
 <style></style>
