@@ -26,7 +26,7 @@
 
     <v-group
       :config="{
-        ...(node.def.changeStatus === 'deleted' && { opacity: 0.5 }),
+        ...(isDeleted && { opacity: 0.5 }),
       }"
     >
       <!-- box background - also used by layout manager to figure out nodes location and size -->
