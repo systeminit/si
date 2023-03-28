@@ -309,7 +309,7 @@ impl PgPool {
         let inner = self.pool.get().await?;
 
         Ok(InstrumentedClient {
-            inner: Some(inner),
+            inner,
             metadata: self.metadata.clone(),
         })
     }
@@ -360,23 +360,11 @@ impl PgPool {
 
 /// An instrumented wrapper for `deadpool::managed::Object<deadpool_postgres::Manager>`
 pub struct InstrumentedClient {
-    inner: Option<Object<Manager>>,
+    inner: Object<Manager>,
     metadata: Arc<ConnectionMetadata>,
 }
 
 impl InstrumentedClient {
-    fn inner(&self) -> &Object<Manager> {
-        self.inner
-            .as_ref()
-            .expect("inner should only be none during drop--this is an internal bug")
-    }
-
-    fn inner_mut(&mut self) -> &mut Object<Manager> {
-        self.inner
-            .as_mut()
-            .expect("inner should only be none during drop--this is an internal bug")
-    }
-
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
@@ -396,7 +384,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
-        self.inner().prepare_cached(query).await.map_err(Into::into)
+        self.inner.prepare_cached(query).await.map_err(Into::into)
     }
 
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
@@ -422,7 +410,7 @@ impl InstrumentedClient {
         query: &str,
         types: &[Type],
     ) -> Result<Statement, PgError> {
-        self.inner()
+        self.inner
             .prepare_typed_cached(query, types)
             .await
             .map_err(Into::into)
@@ -448,11 +436,9 @@ impl InstrumentedClient {
         )
     )]
     pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
-        let metadata = self.metadata.clone();
-
         Ok(InstrumentedTransaction::new(
-            self.inner_mut().transaction().await?,
-            metadata,
+            self.inner.transaction().await?,
+            self.metadata.clone(),
             Span::current(),
         ))
     }
@@ -463,11 +449,9 @@ impl InstrumentedClient {
     /// isolation level and other
     /// attributes.
     pub fn build_transaction(&mut self) -> InstrumentedTransactionBuilder {
-        let metadata = self.metadata.clone();
-
         InstrumentedTransactionBuilder {
-            inner: self.inner_mut().build_transaction(),
-            metadata,
+            inner: self.inner.build_transaction(),
+            metadata: self.metadata.clone(),
         }
     }
 
@@ -493,7 +477,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
-        self.inner().prepare(query).await.map_err(Into::into)
+        self.inner.prepare(query).await.map_err(Into::into)
     }
 
     /// Like `prepare`, but allows the types of query parameters to be explicitly specified.
@@ -522,7 +506,7 @@ impl InstrumentedClient {
         query: &str,
         parameter_types: &[Type],
     ) -> Result<Statement, PgError> {
-        self.inner()
+        self.inner
             .prepare_typed(query, parameter_types)
             .await
             .map_err(Into::into)
@@ -563,7 +547,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
         let r = self
-            .inner()
+            .inner
             .query(statement, params)
             .await
             .map(|rows| {
@@ -615,7 +599,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<PgRow, PgError> {
         let r = self
-            .inner()
+            .inner
             .query_one(statement, params)
             .await
             .map(|inner| PgRow { inner })
@@ -663,7 +647,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<PgRow>, PgError> {
         let r = self
-            .inner()
+            .inner
             .query_opt(statement, params)
             .await
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
@@ -720,7 +704,7 @@ impl InstrumentedClient {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner()
+        self.inner
             .query_raw(statement, params)
             .await
             .map(|row_stream| {
@@ -765,7 +749,7 @@ impl InstrumentedClient {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<u64, PgError> {
-        self.inner()
+        self.inner
             .execute(statement, params)
             .await
             .map_err(Into::into)
@@ -807,7 +791,7 @@ impl InstrumentedClient {
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner()
+        self.inner
             .execute_raw(statement, params)
             .await
             .map_err(Into::into)
@@ -842,7 +826,7 @@ impl InstrumentedClient {
         T: ?Sized + ToStatement,
         U: Buf + 'static + Send,
     {
-        self.inner().copy_in(statement).await.map_err(Into::into)
+        self.inner.copy_in(statement).await.map_err(Into::into)
     }
 
     /// Executes a `COPY TO STDOUT` statement, returning a stream of the resulting data.
@@ -872,7 +856,7 @@ impl InstrumentedClient {
     where
         T: ?Sized + ToStatement,
     {
-        self.inner().copy_out(statement).await.map_err(Into::into)
+        self.inner.copy_out(statement).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol, returning the
@@ -907,7 +891,7 @@ impl InstrumentedClient {
         )
     )]
     pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
-        self.inner().simple_query(query).await.map_err(Into::into)
+        self.inner.simple_query(query).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol.
@@ -938,13 +922,13 @@ impl InstrumentedClient {
         )
     )]
     pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
-        self.inner().batch_execute(query).await.map_err(Into::into)
+        self.inner.batch_execute(query).await.map_err(Into::into)
     }
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
     pub fn cancel_token(&self) -> CancelToken {
-        self.inner().cancel_token()
+        self.inner.cancel_token()
     }
 
     /// Clears the client's type information cache.
@@ -969,14 +953,14 @@ impl InstrumentedClient {
         )
     )]
     pub fn clear_type_cache(&self) {
-        self.inner().clear_type_cache();
+        self.inner.clear_type_cache();
     }
 
     /// Determines if the connection to the server has already closed.
     ///
     /// In that case, all future queries will fail.
     pub fn is_closed(&self) -> bool {
-        self.inner().is_closed()
+        self.inner.is_closed()
     }
 }
 
