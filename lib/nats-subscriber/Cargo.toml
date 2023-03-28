@@ -13,4 +13,4 @@ serde_json = { version = "1.0.94", features = ["preserve_order"] }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = "1.0.40"
-tokio = { version = "1.26.0", features = ["full", "tracing"] }
+tokio = { version = "1.26.0", features = ["full"] }

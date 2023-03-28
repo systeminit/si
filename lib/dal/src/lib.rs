@@ -119,6 +119,7 @@ pub use func::{
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
+pub use job::consumer::JobInvocationId;
 pub use job::definition::DependentValuesUpdate;
 pub use job::processor::{
     nats_processor::NatsProcessor, sync_processor::SyncProcessor, JobQueueProcessor,

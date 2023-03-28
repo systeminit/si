@@ -6,32 +6,26 @@ receivers:
 
 processors:
   batch:
-  probabilistic_sampler:
-    sampling_percentage: 10
-    hash_seed: 42
 
 exporters:
   logging:
-    loglevel: "warn"
+    verbosity: normal
   otlp:
-    endpoint: "api.honeycomb.io:443"
-    headers:
-      "x-honeycomb-team": "${HONEYCOMB_TOKEN}"
-      "x-honeycomb-dataset": "${HONEYCOMB_DATASET}"
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
 
 extensions:
-  health_check:
-  pprof:
   zpages:
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [probabilistic_sampler, batch]
+      processors: [batch]
       exporters: [logging, otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]
       exporters: [logging, otlp]
-  extensions: [health_check, pprof, zpages]
+  extensions: [zpages]

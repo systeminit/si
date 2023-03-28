@@ -237,16 +237,13 @@ impl JobConsumer for DependentValuesUpdate {
                                 .ok_or_else(|| {
                                     AttributeValueError::NotFound(id, self.visibility())
                                 })?;
-                            update_tasks
-                                .build_task()
-                                .name("AttributeValue.update_from_prototype_function")
-                                .spawn(update_value(
-                                    task_ctx,
-                                    attribute_value,
-                                    self.single_transaction,
-                                    pub_council.clone(),
-                                    status_updater.clone(),
-                                ))?;
+                            update_tasks.spawn(update_value(
+                                task_ctx,
+                                attribute_value,
+                                self.single_transaction,
+                                pub_council.clone(),
+                                status_updater.clone(),
+                            ));
                         }
                     }
                     council_server::Response::BeenProcessed { node_id } => {

@@ -41,7 +41,7 @@ strum = "0.24.0"
 strum_macros = "0.24.0"
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full", "tracing"] }
+tokio = { version = "1.2.0", features = ["full"] }
 tokio-stream = "0.1.3"
 ulid = { version = "1", features = ["serde"] }
 url = "2.2.2"

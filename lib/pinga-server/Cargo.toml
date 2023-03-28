@@ -19,5 +19,5 @@ stream-cancel = "0.8.1"
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
-uuid = { version = "1.1.2", features = ["serde", "v4"] }
+ulid = { version = "1.0.0", features = ["serde"] }
 veritech-client = { path = "../../lib/veritech-client" }

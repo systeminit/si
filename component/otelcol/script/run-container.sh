@@ -6,7 +6,7 @@ main() {
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
   local version img name
-  version="${VERSION:-0.29.0}"
+  version="${VERSION:-0.74.0}"
   img="${IMG:-otelcol}"
   name="${NAME:-otelcol}"
 
