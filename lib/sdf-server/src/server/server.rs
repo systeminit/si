@@ -254,6 +254,7 @@ impl Server<(), ()> {
     }
 
     /// Start the basic resource refresh scheduler
+    #[allow(unused_variables)]
     pub async fn start_resource_refresh_scheduler(
         pg: PgPool,
         nats: NatsClient,
@@ -263,16 +264,20 @@ impl Server<(), ()> {
         council_subject_prefix: String,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
-        let services_context = ServicesContext::new(
-            pg,
-            nats,
-            job_processor,
-            veritech,
-            Arc::new(encryption_key),
-            council_subject_prefix,
-            None,
-        );
-        ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
+        return;
+        #[allow(unreachable_code)]
+        {
+            let services_context = ServicesContext::new(
+                pg,
+                nats,
+                job_processor,
+                veritech,
+                Arc::new(encryption_key),
+                council_subject_prefix,
+                None,
+            );
+            ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
+        }
     }
 
     pub async fn start_status_updater(
