@@ -13,23 +13,38 @@
       NODE ID = {{ selectedComponent.nodeId }}
     </div>
     <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
-    <template v-if="currentStatus && currentStatus.isUpdating">
+
+    <div
+      v-if="currentStatus && currentStatus.isUpdating"
+      class="flex flex-row items-center gap-xs pl-xs"
+    >
       <!-- currently updating -->
-      <div class="flex flex-row items-center gap-xs pl-xs">
-        <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
-        <div class="grow truncate py-xs">
-          {{ currentStatus.statusMessage }}
-        </div>
-        <!-- <span class="text-sm">Details</span> -->
+      <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
+      <div class="grow truncate py-xs">
+        {{ currentStatus.statusMessage }}
       </div>
-    </template>
-    <DetailsPanelTimestamps
-      v-else
-      :change-status="selectedComponent.changeStatus"
-      :created="selectedComponent.createdInfo"
-      :modified="selectedComponent.updatedInfo"
-      :deleted="selectedComponent.deletedInfo"
-    />
+    </div>
+    <div v-else class="flex flex-row items-center">
+      <DetailsPanelTimestamps
+        :change-status="selectedComponent.changeStatus"
+        :created="selectedComponent.createdInfo"
+        :modified="selectedComponent.updatedInfo"
+        :deleted="selectedComponent.deletedInfo"
+      />
+      <div class="pr-xs shrink-0">
+        <VButton2
+          icon="refresh"
+          size="sm"
+          variant="ghost"
+          loading-icon="refresh-active"
+          loading-text="Refreshing..."
+          :loading="refreshing"
+          @click="onClickRefreshButton"
+        >
+          Resource
+        </VButton2>
+      </div>
+    </div>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
       <Stack v-if="!props.disabled" class="p-sm">
@@ -93,7 +108,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -148,5 +163,19 @@ const currentStatus = computed(() =>
   selectedComponentId.value
     ? statusStore.componentStatusById[selectedComponentId.value]
     : undefined,
+);
+
+const refreshing = ref(false);
+
+const onClickRefreshButton = () => {
+  refreshing.value = true;
+  componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+};
+
+watch(
+  () => selectedComponent.value.resource.lastSynced,
+  () => {
+    refreshing.value = false;
+  },
 );
 </script>

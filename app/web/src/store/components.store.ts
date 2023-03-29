@@ -33,6 +33,7 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { ConfirmationStatus, useFixesStore } from "./fixes.store";
 import { useStatusStore } from "./status.store";
+import { nilId } from "@/utils/nilId";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -780,7 +781,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             url: "component/refresh",
             params: {
               componentId,
-              ...visibilityParams,
+              workspaceId: visibilityParams.workspaceId,
+              visibility_change_set_pk: nilId(),
             },
             onSuccess: (response) => {
               // do nothing
@@ -793,7 +795,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: "component/refresh",
             params: {
-              ...visibilityParams,
+              workspaceId: visibilityParams.workspaceId,
+              visibility_change_set_pk: nilId(),
             },
             onSuccess: (response) => {
               // do nothing

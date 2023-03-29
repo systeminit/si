@@ -48,12 +48,6 @@
             :details="selectedComponent.resource.logs"
           />
         </div>
-        <div class="pr-sm">
-          <VButton2
-            icon="refresh"
-            @click="componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.id)"
-          />
-        </div>
       </template>
     </CodeViewer>
     <div
@@ -67,7 +61,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { Timestamp, VButton2 } from "@si/vue-lib/design-system";
+import { Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import CodeViewer from "./CodeViewer.vue";
 import FixDetails from "./FixDetails.vue";

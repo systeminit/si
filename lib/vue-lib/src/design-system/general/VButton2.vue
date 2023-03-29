@@ -8,7 +8,7 @@
   >
     <div class="vbutton__inner">
       <template v-if="computedLoading">
-        <Icon class="vbutton__icon" name="loader" />
+        <Icon class="vbutton__icon" :name="loadingIcon" />
         <span class="vbutton__text"> {{ loadingText }}</span>
       </template>
       <template v-else-if="showSuccess">
@@ -69,6 +69,7 @@ const props = defineProps({
   disabled: Boolean,
   loading: Boolean,
   loadingText: { type: String, default: "Loading..." },
+  loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
 
   requestStatus: {
     type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'

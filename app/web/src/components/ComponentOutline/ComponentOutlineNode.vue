@@ -73,7 +73,7 @@
 
         <div class="ml-auto flex flex-none">
           <!-- refresh resource button -->
-          <div class="pr-xs">
+          <div class="pr-xs group-hover:block hidden">
             <VButton2
               v-if="component.resource.data"
               icon="refresh"
