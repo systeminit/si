@@ -1,4 +1,4 @@
-use crate::builtins::schema::MigrationDriver;
+use crate::builtins::schema::{MigrationDriver, ValidationKind};
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
@@ -79,10 +79,10 @@ impl MigrationDriver {
 
         self.create_validation(
             ctx,
-            Validation::StringHasPrefix {
+            ValidationKind::Builtin(Validation::StringHasPrefix {
                 value: None,
                 expected: "ami-".to_string(),
-            },
+            }),
             *image_id_prop.id(),
             *schema.id(),
             *schema_variant.id(),
@@ -113,11 +113,11 @@ impl MigrationDriver {
 
         self.create_validation(
             ctx,
-            Validation::StringInStringArray {
+            ValidationKind::Builtin(Validation::StringInStringArray {
                 value: None,
                 expected: expected_instance_types,
                 display_expected: false,
-            },
+            }),
             *instance_type_prop.id(),
             *schema.id(),
             *schema_variant.id(),
