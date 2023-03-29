@@ -116,7 +116,18 @@
             v-if="recommendations.length === 0"
             class="p-4 italic !delay-0 !duration-0 hidden first:block"
           >
-            No recommendations are available at this time.
+            <div class="pb-sm">
+              No recommendations are available at this time.
+            </div>
+            <div>
+              You can go to the
+              <span class="font-bold text-action-500 hover:underline">
+                <RouterLink :to="{ name: 'workspace-view' }">
+                  Analyze</RouterLink
+                >
+              </span>
+              page to view the status of your resources.
+            </div>
           </li>
         </TransitionGroup>
       </div>
