@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 use crate::{
     job::{
@@ -10,7 +11,8 @@ use crate::{
         },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentId, DalContext, StandardModel, Visibility,
+    AccessBuilder, Component, ComponentId, DalContext, DalContextBuilder, StandardModel,
+    Visibility,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -28,6 +30,7 @@ impl From<RefreshJob> for RefreshJobArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct RefreshJob {
+    single_transaction: bool,
     component_ids: Vec<ComponentId>,
     access_builder: AccessBuilder,
     visibility: Visibility,
@@ -44,7 +47,16 @@ impl RefreshJob {
             access_builder,
             visibility,
             job: None,
+            single_transaction: false,
         })
+    }
+
+    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
+        if self.single_transaction {
+            Ok(ctx)
+        } else {
+            Ok(ctx.commit_and_continue().await?)
+        }
     }
 }
 
@@ -92,13 +104,46 @@ impl JobConsumerMetadata for RefreshJob {
 
 #[async_trait]
 impl JobConsumer for RefreshJob {
+    /// This method is a hack to support SyncProcessor in RefreshJob, since we commit transactions mid job, and write to multiple ones
+    /// The sync processor needs everything to run within a single transaction, so we check for it
+    fn set_sync(&mut self) {
+        self.single_transaction = true;
+        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
+        self.job = Some(boxed.try_into().unwrap());
+    }
+
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        assert!(self.single_transaction);
+        self.run_owned(ctx.clone()).await
+    }
+
+    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
+        let ctx = ctx_builder
+            .build(self.access_builder().build(self.visibility()))
+            .await?;
+        self.run_owned(ctx).await
+    }
+}
+
+impl RefreshJob {
+    #[instrument(
+        name = "refresh_job.run_owned",
+        skip_all,
+        level = "info",
+        fields(
+            component_ids = ?self.component_ids,
+            single_transaction = ?self.single_transaction,
+        )
+    )]
+    async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
         let deleted_ctx = &ctx.clone_with_delete_visibility();
         for component_id in &self.component_ids {
             let component = Component::get_by_id(deleted_ctx, component_id)
                 .await?
                 .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
             component.act(deleted_ctx, "refresh").await?;
+
+            ctx = self.commit_and_continue(ctx).await?;
         }
 
         Ok(())
@@ -124,6 +169,7 @@ impl TryFrom<JobInfo> for RefreshJob {
             component_ids: args.component_ids,
             access_builder,
             visibility,
+            single_transaction: false,
             job: Some(job),
         })
     }
