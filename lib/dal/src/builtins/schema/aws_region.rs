@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    builtins::schema::MigrationDriver,
+    builtins::schema::{MigrationDriver, ValidationKind},
     builtins::BuiltinsError,
     component::ComponentKind,
     edit_field::widget::WidgetKind,
@@ -89,7 +89,7 @@ impl MigrationDriver {
         // Validation Creation
         self.create_validation(
             ctx,
-            Validation::StringIsNotEmpty { value: None },
+            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None }),
             *region_prop.id(),
             *schema.id(),
             *schema_variant.id(),
@@ -102,11 +102,11 @@ impl MigrationDriver {
             .collect::<Vec<String>>();
         self.create_validation(
             ctx,
-            Validation::StringInStringArray {
+            ValidationKind::Builtin(Validation::StringInStringArray {
                 value: None,
                 expected,
                 display_expected: true,
-            },
+            }),
             *region_prop.id(),
             *schema.id(),
             *schema_variant.id(),

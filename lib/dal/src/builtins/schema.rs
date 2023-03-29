@@ -52,6 +52,11 @@ const NODE_COLOR_DOCKER: &str = "#4695E7";
 // It does not reflect an official branding Kubernetes color.
 const NODE_COLOR_KUBERNETES: &str = "#30BA78";
 
+pub enum ValidationKind {
+    Builtin(Validation),
+    Custom(FuncId),
+}
+
 pub async fn migrate(
     ctx: &DalContext,
     builtin_schema_option: BuiltinSchemaOption,
@@ -237,14 +242,20 @@ impl MigrationDriver {
     pub async fn create_validation(
         &self,
         ctx: &DalContext,
-        validation: Validation,
+        validation_kind: ValidationKind,
         prop_id: PropId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<()> {
-        let validation_func_id = self
-            .get_func_id("si:validation")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?;
+        let (validation_func_id, validation_args) = match validation_kind {
+            ValidationKind::Builtin(validation) => (
+                self.get_func_id("si:validation")
+                    .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?,
+                serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+            ),
+
+            ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
+        };
 
         let mut builder = ValidationPrototypeContext::builder();
         builder
@@ -255,7 +266,7 @@ impl MigrationDriver {
         ValidationPrototype::new(
             ctx,
             validation_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+            validation_args,
             builder.to_context(ctx).await?,
         )
         .await?;

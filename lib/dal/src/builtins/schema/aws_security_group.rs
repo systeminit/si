@@ -1,4 +1,4 @@
-use crate::builtins::schema::MigrationDriver;
+use crate::builtins::schema::{MigrationDriver, ValidationKind};
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
@@ -70,7 +70,22 @@ impl MigrationDriver {
 
         self.create_validation(
             ctx,
-            Validation::StringIsNotEmpty { value: None },
+            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None }),
+            *description_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
+        let validate_fn_name = "si:awsSecurityGroupValidateDescription";
+        let validate_fn = Func::find_by_attr(ctx, "name", &validate_fn_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validate_fn_name.to_owned()))?;
+
+        self.create_validation(
+            ctx,
+            ValidationKind::Custom(*validate_fn.id()),
             *description_prop.id(),
             *schema.id(),
             *schema_variant.id(),
