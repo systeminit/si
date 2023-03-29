@@ -15,32 +15,32 @@ use crate::{
 
 #[derive(Debug, Deserialize, Serialize)]
 struct RefreshJobArgs {
-    component_id: ComponentId,
+    component_ids: Vec<ComponentId>,
 }
 
 impl From<RefreshJob> for RefreshJobArgs {
     fn from(value: RefreshJob) -> Self {
         Self {
-            component_id: value.component_id,
+            component_ids: value.component_ids,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct RefreshJob {
-    component_id: ComponentId,
+    component_ids: Vec<ComponentId>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
 }
 
 impl RefreshJob {
-    pub fn new(ctx: &DalContext, component_id: ComponentId) -> Box<Self> {
+    pub fn new(ctx: &DalContext, component_ids: Vec<ComponentId>) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
-            component_id,
+            component_ids,
             access_builder,
             visibility,
             job: None,
@@ -94,10 +94,12 @@ impl JobConsumerMetadata for RefreshJob {
 impl JobConsumer for RefreshJob {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let deleted_ctx = &ctx.clone_with_delete_visibility();
-        let component = Component::get_by_id(deleted_ctx, &self.component_id)
-            .await?
-            .ok_or(JobConsumerError::ComponentNotFound(self.component_id))?;
-        component.act(deleted_ctx, "refresh").await?;
+        for component_id in &self.component_ids {
+            let component = Component::get_by_id(deleted_ctx, component_id)
+                .await?
+                .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
+            component.act(deleted_ctx, "refresh").await?;
+        }
 
         Ok(())
     }
@@ -109,7 +111,8 @@ impl TryFrom<JobInfo> for RefreshJob {
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ component_id: <ComponentId> }, <AccessBuilder>, <Visibility>]"#.to_string(),
+                r#"[{ component_ids: Vec<ComponentId> }, <AccessBuilder>, <Visibility>]"#
+                    .to_string(),
                 job.args().to_vec(),
             ));
         }
@@ -118,7 +121,7 @@ impl TryFrom<JobInfo> for RefreshJob {
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
         Ok(Self {
-            component_id: args.component_id,
+            component_ids: args.component_ids,
             access_builder,
             visibility,
             job: Some(job),

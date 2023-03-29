@@ -28,19 +28,19 @@
     <div class="w-0.5 h-8 self-center mx-xs bg-white"></div>
 
     <NavbarButton
-      tooltip-text="Analyze"
-      :selected="route.name === 'workspace-view'"
-      :link-to="{ name: 'workspace-view' }"
-    >
-      <Icon name="eye" />
-    </NavbarButton>
-
-    <NavbarButton
       tooltip-text="Apply"
       :selected="route.name === 'workspace-fix'"
       :link-to="{ name: 'workspace-fix' }"
     >
       <Icon name="tools" />
+    </NavbarButton>
+
+    <NavbarButton
+      tooltip-text="Analyze"
+      :selected="route.name === 'workspace-view'"
+      :link-to="{ name: 'workspace-view' }"
+    >
+      <Icon name="eye" />
     </NavbarButton>
   </div>
 </template>

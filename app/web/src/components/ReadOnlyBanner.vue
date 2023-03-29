@@ -1,11 +1,11 @@
 <template>
   <div
-    ref="readOnlyRef"
-    class="dark:border-neutral-600 text-sm leading-tight text-neutral-500 flex flex-col items-center"
+    class="dark:border-neutral-600 text-sm leading-tight text-neutral-500 flex flex-row items-center pr-xs"
   >
-    <div class="text-center font-bold text-xl pt-xs">Read Only</div>
-    <div class="flex flex-row items-center gap-4 px-xs pb-xs">
-      <!-- <a
+    <div class="flex flex-col grow items-center">
+      <div class="text-center font-bold text-xl pt-xs">Read Only</div>
+      <div class="text-left flex flex-row items-center gap-4 px-xs pb-xs">
+        <!-- <a
         href="#"
         class="hover:text-neutral-600 dark:hover:text-neutral-400"
         @click="hideReadOnly"
@@ -13,28 +13,36 @@
         <Icon name="x-circle" />
       </a> -->
 
-      <div class="text-sm italic">
-        You cannot make changes here. To make changes, go to the
-        <RouterLink
-          :to="{
-            name: 'workspace-compose',
-            params: { changeSetId: 'auto' },
-          }"
-          class="text-action-500 hover:underline"
-          >model view</RouterLink
-        >
-        and select a change set.
+        <div class="text-sm italic line-clamp-3">
+          You cannot make changes here. To make changes, go to the
+          <RouterLink
+            :to="{
+              name: 'workspace-compose',
+              params: { changeSetId: 'auto' },
+            }"
+            class="text-action-500 hover:underline"
+            >model view</RouterLink
+          >
+          and select a change set.
+        </div>
       </div>
     </div>
+    <VButton2
+      v-if="showRefreshAllButton"
+      icon="refresh"
+      @click="componentsStore.REFRESH_ALL_RESOURCE_INFO()"
+      >Refresh All</VButton2
+    >
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { VButton2 } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
 
-const readOnlyRef = ref();
+const componentsStore = useComponentsStore();
 
-// const hideReadOnly = () => {
-//   readOnlyRef.value.classList.add("hidden");
-// };
+defineProps({
+  showRefreshAllButton: { type: Boolean, default: false },
+});
 </script>

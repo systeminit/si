@@ -27,7 +27,7 @@
         )
       "
     >
-      <ReadOnlyBanner />
+      <ReadOnlyBanner show-refresh-all-button />
     </div>
     <GlobalStatusOverlay v-else />
     <GenericDiagram

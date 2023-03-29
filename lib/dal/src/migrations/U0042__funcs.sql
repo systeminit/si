@@ -161,11 +161,11 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO func_binding_return_values (tenancy_workspace_pk,
-                                            visibility_change_set_pk, visibility_deleted_at,
+                                            visibility_change_set_pk,
                                             unprocessed_value, value, func_id, func_binding_id, func_execution_pk)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_unprocessed_value, this_value, this_func_id, this_func_binding_id, this_func_execution_pk)
+            this_unprocessed_value, this_value, this_func_id, this_func_binding_id, this_func_execution_pk)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
