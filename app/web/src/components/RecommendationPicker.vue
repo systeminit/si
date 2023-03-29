@@ -103,6 +103,7 @@
                   `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
                 ]
               "
+              :icon-delay-after-exec="2500"
               @toggle="
                 (c) => {
                   recommendationSelection[
