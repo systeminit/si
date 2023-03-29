@@ -141,6 +141,7 @@ const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
+  iconDelayAfterExec: { type: Number },
 });
 
 let delayTimeout: Timeout;
@@ -154,7 +155,7 @@ watch(
       iconDelayActive.value = true;
       delayTimeout = setTimeout(() => {
         iconDelayActive.value = false;
-      }, 2000);
+      }, props.iconDelayAfterExec);
     }
   },
 );
