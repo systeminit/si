@@ -10,6 +10,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
+use crate::ChangeSetPk;
 use crate::{
     func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
     ComponentError, ComponentId, DalContext, SchemaVariant, StandardModel, WorkflowRunner,
@@ -95,7 +96,7 @@ impl Component {
         result: CommandRunResult,
         trigger_dependent_values_update: bool,
     ) -> ComponentResult<bool> {
-        if !ctx.visibility().is_head() {
+        if ctx.visibility().change_set_pk != ChangeSetPk::NONE {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
         }
 
