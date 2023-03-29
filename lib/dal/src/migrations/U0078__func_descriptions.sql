@@ -43,14 +43,12 @@ BEGIN
 
     INSERT INTO func_descriptions (tenancy_workspace_pk,
                                    visibility_change_set_pk,
-                                   visibility_deleted_at,
                                    func_id,
                                    schema_variant_id,
                                    serialized_contents,
                                    response_type)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_func_id,
             this_schema_variant_id,
             this_serialized_contents,

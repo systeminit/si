@@ -126,7 +126,6 @@ BEGIN
 
     INSERT INTO encrypted_secrets (tenancy_workspace_pk,
                                    visibility_change_set_pk,
-                                   visibility_deleted_at,
                                    name,
                                    object_type,
                                    kind,
@@ -136,7 +135,6 @@ BEGIN
 			           key_pair_pk)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_name,
             this_object_type,
             this_kind,

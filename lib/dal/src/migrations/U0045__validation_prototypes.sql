@@ -39,7 +39,6 @@ BEGIN
 
     INSERT INTO validation_prototypes (tenancy_workspace_pk,
                                        visibility_change_set_pk,
-                                       visibility_deleted_at,
                                        func_id,
                                        args,
                                        prop_id,
@@ -47,7 +46,6 @@ BEGIN
                                        schema_variant_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_func_id,
             this_args,
             this_prop_id,

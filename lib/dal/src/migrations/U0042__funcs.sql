@@ -20,9 +20,9 @@ CREATE TABLE funcs
     code_sha256                 text GENERATED ALWAYS AS (COALESCE(ENCODE(DIGEST(code_base64, 'sha256'), 'hex'), '0')) STORED
 );
 CREATE UNIQUE INDEX unique_func_name_live ON funcs (
-	name,
-	tenancy_workspace_pk,
-	visibility_change_set_pk);
+        name,
+        tenancy_workspace_pk,
+        visibility_change_set_pk);
 SELECT standard_model_table_constraints_v1('funcs');
 
 CREATE TABLE func_bindings
@@ -86,11 +86,11 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO funcs (tenancy_workspace_pk,
-                       visibility_change_set_pk, visibility_deleted_at,
+                       visibility_change_set_pk,
                        name, backend_kind, backend_response_type)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_name, this_backend_kind, this_backend_response_type)
+            this_name, this_backend_kind, this_backend_response_type)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
@@ -117,14 +117,12 @@ BEGIN
     INSERT INTO func_bindings (
         tenancy_workspace_pk,
         visibility_change_set_pk,
-        visibility_deleted_at,
         args,
         backend_kind,
         code_sha256
     )
     VALUES (this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
-        this_visibility_record.visibility_deleted_at,
         this_args,
         this_backend_kind,
         COALESCE(this_code_sha256, '0')

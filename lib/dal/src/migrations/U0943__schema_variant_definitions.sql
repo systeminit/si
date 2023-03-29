@@ -43,13 +43,13 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO schema_variant_definitions (
-        tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at,
+        tenancy_workspace_pk, visibility_change_set_pk,
         name, menu_name, category, link, definition, color, component_kind,
         description
     ) VALUES (
         this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
-        this_visibility_record.visibility_deleted_at, this_name,
+	this_name,
         this_menu_name, this_category, this_link, this_definition, this_color,
         this_component_kind, this_description
     )

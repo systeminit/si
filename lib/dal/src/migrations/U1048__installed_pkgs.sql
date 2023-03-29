@@ -35,12 +35,12 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO installed_pkgs (
-        tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at,
+        tenancy_workspace_pk, visibility_change_set_pk,
         name, root_hash
     ) VALUES (
         this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
-        this_visibility_record.visibility_deleted_at, this_name, this_root_hash 
+	this_name, this_root_hash 
     )
     RETURNING * INTO this_new_row;
 
@@ -90,12 +90,12 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO installed_pkg_assets (
-        tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at,
+        tenancy_workspace_pk, visibility_change_set_pk,
         installed_pkg_id, asset_id, asset_kind, asset_hash
     ) VALUES (
         this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
-        this_visibility_record.visibility_deleted_at, this_installed_pkg_id,
+	this_installed_pkg_id,
         this_asset_id, this_asset_kind, this_asset_hash
     )
     RETURNING * INTO this_new_row;

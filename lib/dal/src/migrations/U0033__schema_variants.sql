@@ -33,9 +33,9 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO schema_variants (tenancy_workspace_pk,
-                                 visibility_change_set_pk, visibility_deleted_at, name)
+                                 visibility_change_set_pk, name)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_name)
+            this_visibility_record.visibility_change_set_pk, this_name)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

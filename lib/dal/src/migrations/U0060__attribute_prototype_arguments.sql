@@ -74,7 +74,6 @@ BEGIN
 
     INSERT INTO attribute_prototype_arguments (tenancy_workspace_pk,
                                                visibility_change_set_pk,
-                                               visibility_deleted_at,
                                                attribute_prototype_id,
                                                func_argument_id,
                                                internal_provider_id,
@@ -83,7 +82,6 @@ BEGIN
                                                head_component_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_attribute_prototype_argument_id,
             this_func_argument_id,
             this_internal_provider_id,
