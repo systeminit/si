@@ -136,12 +136,13 @@ impl RefreshJob {
         )
     )]
     async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
-        let deleted_ctx = &ctx.clone_with_delete_visibility();
+        ctx.update_with_deleted_visibility();
+
         for component_id in &self.component_ids {
-            let component = Component::get_by_id(deleted_ctx, component_id)
+            let component = Component::get_by_id(&ctx, component_id)
                 .await?
                 .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
-            component.act(deleted_ctx, "refresh").await?;
+            component.act(&ctx, "refresh").await?;
 
             ctx = self.commit_and_continue(ctx).await?;
         }
