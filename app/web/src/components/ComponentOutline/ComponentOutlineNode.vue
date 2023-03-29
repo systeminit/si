@@ -72,6 +72,12 @@
         </div>
 
         <div class="ml-auto flex flex-none">
+          <!-- refresh resource button -->
+          <div class="pr-xs">
+            <!-- TODO(WENDY) REFRESH RESOURCE BUTTON -->
+            <VButton2 icon="refresh" size="xs" variant="ghost" />
+          </div>
+
           <!-- other status icons -->
           <div
             :class="
@@ -120,7 +126,7 @@ import { computed, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
-import { themeClasses, Icon } from "@si/vue-lib/design-system";
+import { themeClasses, Icon, VButton2 } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";

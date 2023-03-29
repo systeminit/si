@@ -48,6 +48,10 @@
             :details="selectedComponent.resource.logs"
           />
         </div>
+        <div class="pr-sm">
+          <!-- TODO(WENDY) REFRESH RESOURCE BUTTON -->
+          <VButton2 icon="refresh" />
+        </div>
       </template>
     </CodeViewer>
     <div
@@ -61,7 +65,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { Timestamp } from "@si/vue-lib/design-system";
+import { Timestamp, VButton2, Icon } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import CodeViewer from "./CodeViewer.vue";
 import FixDetails from "./FixDetails.vue";

@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="readOnlyRef"
     class="dark:border-neutral-600 text-sm leading-tight text-neutral-500 flex flex-row items-center pr-xs"
   >
     <div class="flex flex-col grow items-center">
@@ -28,17 +27,15 @@
         </div>
       </div>
     </div>
-    <VButton2>Refresh All</VButton2>
+    <!-- TODO(WENDY) REFRESH RESOURCE BUTTON -->
+    <VButton2 v-if="showRefreshAllButton" icon="refresh">Refresh All</VButton2>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { VButton2 } from "@si/vue-lib/design-system";
-import { ref } from "vue";
 
-const readOnlyRef = ref();
-
-// const hideReadOnly = () => {
-//   readOnlyRef.value.classList.add("hidden");
-// };
+defineProps({
+  showRefreshAllButton: { type: Boolean, default: false },
+});
 </script>
