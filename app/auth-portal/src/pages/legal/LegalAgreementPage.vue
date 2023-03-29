@@ -14,15 +14,31 @@
 
       <div class="flex gap-md">
         <div class="flex-none w-[220px]">
-          <div class="sticky top-sm flex flex-col gap-sm">
+          <div class="sticky top-md flex flex-col gap-md">
             <div
               v-for="doc in docs"
               :key="doc.fileName"
-              class="cursor-pointer flex items-center gap-xs"
+              :class="
+                clsx(
+                  'cursor-pointer flex items-center gap-xs',
+                  doc.slug === activeDocSlug && '',
+                )
+              "
               @click="scrollToDoc(doc.slug)"
             >
               <!-- <Icon name="check-circle" /> -->
-              <div class="grow">{{ doc.title }}</div>
+              <a
+                :class="
+                  clsx(
+                    'underline-link w-auto',
+                    doc.slug === activeDocSlug && '--active',
+                  )
+                "
+                href="#"
+                @click.prevent
+              >
+                {{ doc.title }}
+              </a>
               <!-- <Icon name="download" size="sm" /> -->
             </div>
           </div>
@@ -38,48 +54,63 @@
               <h2>{{ doc.title }}</h2>
               <Component :is="doc.component" />
             </RichText>
-            <VButton2
-              icon="download"
-              variant="ghost"
-              size="sm"
-              :link-to="{
-                name: 'print-legal',
-                params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
-              }"
-              target="_blank"
-              >Print / Download
-            </VButton2>
+            <div class="">
+              <VButton2
+                icon="download"
+                variant="soft"
+                tone="shade"
+                size="sm"
+                :link-to="{
+                  name: 'print-legal',
+                  params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
+                }"
+                target="_blank"
+                >Print / Download
+              </VButton2>
+            </div>
           </div>
+
+          <Stack>
+            <VormInput v-model="userAgreed" type="checkbox"
+              >I have read and agree to the terms above</VormInput
+            >
+            <VButton2
+              variant="solid"
+              icon="arrow--right"
+              :disabled="disableContinueButton"
+              :request-status="agreeTosReqStatus"
+              @click="agreeButtonHandler"
+            >
+              Agree & Continue
+            </VButton2>
+          </Stack>
         </div>
       </div>
-
-      <Stack>
-        <VormInput v-model="userAgreed" type="checkbox"
-          >I have read and agree to the terms above</VormInput
-        >
-        <VButton2
-          variant="solid"
-          icon="arrow--right"
-          :disabled="disableContinueButton"
-          :request-status="agreeTosReqStatus"
-          @click="agreeButtonHandler"
-        >
-          Agree & Continue
-        </VButton2>
-      </Stack>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
-import { ComponentOptions, computed, onBeforeMount, ref, watch } from "vue";
+import {
+  ComponentOptions,
+  computed,
+  nextTick,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import {
   RichText,
   Stack,
   VButton2,
   VormInput,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useAuthStore } from "@/store/auth.store";
 
 const authStore = useAuthStore();
@@ -141,8 +172,48 @@ async function agreeButtonHandler() {
   }
 }
 
+// const activeDocSlug = ref("tos");
+
 function scrollToDoc(slug: string) {
   const el = document.querySelector(`[data-doc-slug="${slug}"]`);
   el?.scrollIntoView({ behavior: "smooth" });
 }
+
+// track all intersecting secitons, and current one should be the last in the list
+const intersectingDocs = reactive<Record<string, boolean>>({});
+const activeDocSlug = ref("tos");
+const observer = new IntersectionObserver(
+  (entries) => {
+    const entry = entries[0];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const slug = entry.target.getAttribute("data-doc-slug")!;
+    if (entry.isIntersecting) {
+      intersectingDocs[slug] = true;
+    } else {
+      intersectingDocs[slug] = false;
+    }
+
+    activeDocSlug.value = _.last(_.keys(_.pickBy(intersectingDocs))) || "tos";
+  },
+  { threshold: [0] },
+);
+
+watch(docsLoaded, () => {
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  nextTick(activateObserver);
+});
+
+function activateObserver() {
+  const sectionEls = document.querySelectorAll("[data-doc-slug]");
+  sectionEls.forEach((el) => {
+    observer.observe(el);
+  });
+}
+
+onMounted(() => {
+  // window.addEventListener("scroll", scrollHandler);
+});
+onBeforeUnmount(() => {
+  observer.disconnect();
+});
 </script>

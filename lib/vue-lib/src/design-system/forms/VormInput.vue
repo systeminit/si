@@ -155,7 +155,7 @@ you can pass in options as props too */
 import { ref, computed, onMounted, onUpdated, watch, toRefs } from "vue";
 import * as _ from "lodash-es";
 
-import Icon from "../icons/Icon.vue"
+import Icon from "../icons/Icon.vue";
 
 import { useValidatedInput, validators } from "./helpers/form-validation";
 import { useDisabledBySelfOrParent } from "./helpers/form-disabling";

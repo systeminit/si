@@ -12,7 +12,7 @@
   font-size: 16px;
   line-height: 1.4em;
 
-  a {
+  a:not(.vbutton) {
     color: @colors-action-300;
     text-decoration: underline;
     text-decoration-thickness: 0.05em;

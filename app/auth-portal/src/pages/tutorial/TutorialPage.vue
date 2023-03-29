@@ -17,22 +17,13 @@
     <template v-else>
       <h2 class="mb-lg">Tutorial!</h2>
 
-      <Icon :name="onboardingStore.devFrontendOnline ? 'check' : 'loader'" />
-      <Icon :name="onboardingStore.devBackendOnline ? 'check' : 'loader'" />
-
-      <div class="flex gap-md">
+      <div class="flex gap-lg">
         <div class="flex-none w-[220px]">
           <div class="sticky top-sm flex flex-col gap-sm">
             <div
               v-for="step in tutorialSteps"
               :key="step.slug"
-              :class="
-                clsx(
-                  'cursor-pointer flex items-center gap-xs',
-                  activeStepSlug === step.slug &&
-                    ' border-action-300 border-l-2',
-                )
-              "
+              :class="clsx('cursor-pointer flex items-center gap-xs')"
               @click="activeStepSlug = step.slug"
             >
               <Icon
@@ -41,8 +32,27 @@
                     ? 'check-circle'
                     : 'minus-circle'
                 "
+                size="lg"
+                :class="
+                  clsx(
+                    _.get(onboardingStore.stepsCompleted, step.slug)
+                      ? 'text-success-500'
+                      : 'opacity-20',
+                  )
+                "
               />
-              {{ step.title }}
+              <a
+                href="#"
+                :class="
+                  clsx(
+                    'underline-link',
+                    activeStepSlug === step.slug && '--active',
+                  )
+                "
+                @click.prevent
+              >
+                {{ step.title }}
+              </a>
             </div>
           </div>
         </div>

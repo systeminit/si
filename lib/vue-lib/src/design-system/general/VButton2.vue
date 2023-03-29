@@ -411,7 +411,7 @@ const computedClasses = computed(() => ({
   }
 
   &.--tone-action {
-    .button-theme-generator(@colors-action-400);
+    .button-theme-generator(@colors-action-500);
   }
   &.--tone-destructive {
     .button-theme-generator(@colors-destructive-500);

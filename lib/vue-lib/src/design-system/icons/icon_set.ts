@@ -68,6 +68,7 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
+import UserCircle from "~icons/heroicons/user-circle-solid";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
 import TreeParents from "~icons/fluent-mdl2/breadcrumb";
@@ -164,6 +165,7 @@ export const ICONS = Object.freeze({
   trash: Trash,
   "trash-restore": TrashRestore,
   "tree-parents": TreeParents,
+  "user-circle": UserCircle,
   x: X,
   "x-circle": XCircle,
   "x-square": XSquare,

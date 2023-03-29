@@ -8,6 +8,8 @@
         clsx(
           'z-100 fixed text-sm rounded-md p-2xs shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
           'bg-black text-white',
+          // 'outline dark:outline-1 dark:focus:outline-2 outline-pink',
+          'outline outline-0 dark:outline-1 outline-offset-0 dark:outline-neutral-300',
           isRepositioning && 'opacity-0',
           // themeClasses('bg-white text-black', 'bg-black text-white'),
         )
@@ -69,7 +71,9 @@ import {
 } from "vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
 
-export type DropdownMenuItemObjectDef = InstanceType<typeof DropdownMenuItem>["$props"];
+export type DropdownMenuItemObjectDef = InstanceType<
+  typeof DropdownMenuItem
+>["$props"];
 
 const props = defineProps({
   anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
@@ -232,10 +236,12 @@ function readjustMenuPosition() {
   // try positioning the menu aligned left with the anchor, and if goes off screen align right with end of screen
   hAlign.value = "left";
   posX.value = anchorRect.x;
+  // NOTE - window.innerWidth was including scrollbar width, so throwing off calc
+  const windowWidth = document.documentElement.clientWidth;
   if (props.forceAlignRight) {
     hAlign.value = "right";
-    posX.value = window.innerWidth - anchorRect.right;
-  } else if (posX.value + menuRect.width > window.innerWidth) {
+    posX.value = windowWidth - anchorRect.right;
+  } else if (posX.value + menuRect.width > windowWidth) {
     hAlign.value = "right";
     posX.value = 4; // if overflowing off the screen, we right align with a small buffer
   }
@@ -279,9 +285,11 @@ function onKeyboardEvent(e: KeyboardEvent) {
       focusedItemIndex.value = sortedItemIds.value.length - 1;
     else focusedItemIndex.value -= 1;
     // focusedItemEl.value?.focus({ preventScroll: true });
+    e.preventDefault();
   } else if (e.key === "ArrowDown") {
     if (focusedItemIndex.value === undefined) focusedItemIndex.value = 0;
     else focusedItemIndex.value += 1;
+    e.preventDefault();
   } else if (e.key === "Enter" || e.key === " ") {
     focusedItemEl.value.click();
     e.preventDefault();

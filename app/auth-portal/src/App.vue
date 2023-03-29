@@ -1,9 +1,12 @@
 <template>
   <div>
-    <template v-if="onMobile">
-      <div class="fixed top-0 left-0 w-full h-full">
-        <div class="flex flex-row items-center align-middle w-full h-full" >
-          <div class="text-2xl p-md text-center dark:text-neutral-300 text-neutral-700 font-bold">You are accessing this page from a mobile device. System Initiative can only be used on a desktop computer.</div>
+    <template v-if="BROWSER_IS_MOBILE">
+      <div class="fixed inset-0 flex items-center justify-center p-md">
+        <div
+          class="text-2xl text-center dark:text-neutral-300 text-neutral-700 font-bold"
+        >
+          You are accessing this page from a mobile device.
+          <br /><br />System Initiative can only be used on a desktop computer.
         </div>
       </div>
     </template>
@@ -11,52 +14,94 @@
       <RouterView />
     </template>
     <template v-else>
-      <div class="m-auto text p-2xl">
-        <div class="fixed left-0 bottom-0 p-sm">
-          <VButton2
-            :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
-            tone="shade"
-            variant="transparent"
-            size="md"
-            @click="toggleTheme"
-          />
+      <header class="flex p-md items-center">
+        <div class="mr-md shrink-0">
+          <img :src="SiLogoUrl" class="w-[40px] h-[40px]" />
         </div>
 
+        <template v-if="userIsLoggedIn">
+          <Stack spacing="md">
+            <!-- <p class="capsize text-lg font-bold">
+              Hi {{ authStore.bestUserLabel }}!
+            </p> -->
+
+            <nav class="flex gap-md font-bold">
+              <!-- <RouterLink :to="{ name: 'profile' }">Profile</RouterLink> -->
+              <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
+                >Tutorial</RouterLink
+              >
+              <RouterLink :to="{ name: 'dashboard' }" class="underline-link"
+                >Dashboard</RouterLink
+              >
+              <!-- <RouterLink :to="{ name: 'logout' }">Logout</RouterLink> -->
+            </nav>
+          </Stack>
+
+          <!-- dark/light mode toggle, floating in bottom left -->
+          <div class="fixed left-0 bottom-0 p-sm">
+            <VButton2
+              :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
+              tone="shade"
+              variant="transparent"
+              size="md"
+              @click="toggleTheme"
+            />
+          </div>
+
+          <a
+            href="#"
+            class="ml-auto flex items-center gap-sm children:pointer-events-none"
+            @click.prevent="profileMenuRef?.open"
+          >
+            <div>Hi Theo!</div>
+            <div class="hover:opacity-90 cursor-pointer flex">
+              <img
+                v-if="user?.pictureUrl"
+                :src="user.pictureUrl"
+                class="w-[30px] h-[30px] block rounded-full"
+                referrerpolicy="no-referrer"
+              />
+              <Icon v-else name="user-circle" size="lg" />
+            </div>
+          </a>
+          <!-- <VButton2
+        tone="neutral"
+        icon="x"
+        variant="ghost"
+        :href="`${API_URL}/auth/logout`"
+        >Log out!</VButton2
+      > -->
+        </template>
+      </header>
+      <DropdownMenu ref="profileMenuRef" force-align-right>
+        <DropdownMenuItem icon="user-circle" link-to-named-route="profile"
+          >Profile</DropdownMenuItem
+        >
+        <DropdownMenuItem icon="logout" link-to-named-route="logout"
+          >Log out</DropdownMenuItem
+        >
+      </DropdownMenu>
+
+      <div class="">
         <template v-if="!checkAuthReq.isRequested || checkAuthReq.isPending">
           <Icon name="loader" size="xl" />
           checking if you are logged in...
         </template>
         <template v-else>
-          <nav>
-            <img :src="SiLogoUrl" class="w-[40px] h-[40px]" />
-
-            <template v-if="userIsLoggedIn">
-              <p class="font-bold my-sm">Hi {{ authStore.bestUserLabel }}!</p>
-
-              <div class="flex gap-md">
-                <RouterLink :to="{ name: 'profile' }">Profile</RouterLink>
-                <RouterLink :to="{ name: 'tutorial' }">Tutorial</RouterLink>
-                <RouterLink :to="{ name: 'dashboard' }">Dashboard</RouterLink>
-                <RouterLink :to="{ name: 'logout' }">Logout</RouterLink>
-              </div>
-              <!-- <VButton2
-            tone="neutral"
-            icon="x"
-            variant="ghost"
-            :href="`${API_URL}/auth/logout`"
-            >Log out!</VButton2
-          > -->
-            </template>
-            <template v-else>
-              <VButton2 :href="`${API_URL}/auth/login`">Log in!</VButton2>
-            </template>
-          </nav>
-          <div class="p-md border m-md">
-            <RouterView />
+          <div class="m-auto max-w-[1200px]">
+            <div
+              class="m-lg mb-xl p-md dark:bg-neutral-800 bg-neutral-200 rounded-md"
+            >
+              <RouterView />
+            </div>
           </div>
         </template>
       </div>
     </template>
+
+    <div class="text-sm opacity-30 p-xs text-center">
+      &copy; 2023 System Initiative Inc
+    </div>
   </div>
 </template>
 
@@ -67,13 +112,17 @@ import {
   useThemeContainer,
   userOverrideTheme,
   VButton2,
+  Stack,
+  DropdownMenu,
+  DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo.svg?url";
 import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";
-import { computed, onBeforeMount, watch } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "./store/auth.store";
+import { BROWSER_IS_MOBILE } from "./lib/browser";
 
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
@@ -98,8 +147,6 @@ useHead(
 
 const authStore = useAuthStore();
 const checkAuthReq = authStore.getRequestStatus("CHECK_AUTH");
-
-const API_URL = import.meta.env.VITE_AUTH_API_URL;
 
 const userIsLoggedIn = computed(() => authStore.userIsLoggedIn);
 const user = computed(() => authStore.user);
@@ -156,13 +203,5 @@ function toggleTheme() {
   userOverrideTheme.value = rootTheme.value === "dark" ? "light" : "dark";
 }
 
-const onMobile = computed(() => {
-  if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
-    return true;
-  }
-  return false;
-});
-
+const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 </script>
-
-<style></style>

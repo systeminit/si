@@ -77,6 +77,7 @@ export const useOnboardingStore = () => {
             // hitting SDF via the front-end api proxy...
             // probably want to change this, but will need to adjust cors settings to do so
             const _req = await Axios.get("http://localhost:8080/api");
+            // const _req = await Axios.get("http://localhost:5156/api");
             this.devBackendOnline = true;
           } catch (err) {
             this.devBackendOnline = false;
