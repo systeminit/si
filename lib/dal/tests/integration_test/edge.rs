@@ -368,12 +368,12 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
                         {
                             "name": "nginx.service",
                             "enabled": true,
-                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull nginx\nExecStart=/bin/podman run --name nginx nginx\n\n[Install]\nWantedBy=multi-user.target",
+                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull docker.io/library/nginx\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\n\n[Install]\nWantedBy=multi-user.target",
                         },
                         {
                             "name": "apache2.service",
                             "enabled": true,
-                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull apache2\nExecStart=/bin/podman run --name apache2 apache2\n\n[Install]\nWantedBy=multi-user.target",
+                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull docker.io/library/apache2\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\n\n[Install]\nWantedBy=multi-user.target",
                         },
                     ],
                 },
@@ -382,7 +382,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
             },
             "code": {
                 "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull nginx\\nExecStart=/bin/podman run --name nginx nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      },\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull apache2\\nExecStart=/bin/podman run --name apache2 apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull docker.io/library/nginx\\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      },\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull docker.io/library/apache2\\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
                     "format": "json",
                 },
             },
@@ -413,7 +413,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
                         {
                             "name": "apache2.service",
                             "enabled": true,
-                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull apache2\nExecStart=/bin/podman run --name apache2 apache2\n\n[Install]\nWantedBy=multi-user.target",
+                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull docker.io/library/apache2\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\n\n[Install]\nWantedBy=multi-user.target",
                         },
                     ],
                 },
@@ -422,7 +422,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
             },
             "code": {
                 "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull apache2\\nExecStart=/bin/podman run --name apache2 apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull docker.io/library/apache2\\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
                     "format": "json",
                 },
             },
