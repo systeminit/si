@@ -74,8 +74,13 @@
         <div class="ml-auto flex flex-none">
           <!-- refresh resource button -->
           <div class="pr-xs">
-            <!-- TODO(WENDY) REFRESH RESOURCE BUTTON -->
-            <VButton2 icon="refresh" size="xs" variant="ghost" />
+            <VButton2
+              v-if="component.resource.data"
+              icon="refresh"
+              size="xs"
+              variant="ghost"
+              @click="componentsStore.REFRESH_RESOURCE_INFO(component.id)"
+            />
           </div>
 
           <!-- other status icons -->

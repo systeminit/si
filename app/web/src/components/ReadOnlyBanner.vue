@@ -27,13 +27,20 @@
         </div>
       </div>
     </div>
-    <!-- TODO(WENDY) REFRESH RESOURCE BUTTON -->
-    <VButton2 v-if="showRefreshAllButton" icon="refresh">Refresh All</VButton2>
+    <VButton2
+      v-if="showRefreshAllButton"
+      icon="refresh"
+      @click="componentsStore.REFRESH_ALL_RESOURCE_INFO()"
+      >Refresh All</VButton2
+    >
   </div>
 </template>
 
 <script lang="ts" setup>
 import { VButton2 } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
+
+const componentsStore = useComponentsStore();
 
 defineProps({
   showRefreshAllButton: { type: Boolean, default: false },

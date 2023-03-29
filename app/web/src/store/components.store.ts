@@ -773,6 +773,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           this.hoveredComponentId = null;
           this.hoveredEdgeId = id;
         },
+
+        async REFRESH_RESOURCE_INFO(componentId: ComponentId) {
+          return new ApiRequest({
+            method: "post",
+            url: "component/refresh",
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // do nothing
+            },
+          });
+        },
+
+        async REFRESH_ALL_RESOURCE_INFO() {
+          return new ApiRequest({
+            method: "post",
+            url: "component/refresh",
+            params: {
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // do nothing
+            },
+          });
+        },
       },
       onActivated() {
         if (!changeSetId) return;
