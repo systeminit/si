@@ -266,6 +266,60 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Get the SI Name Prop and internal provider
+        let si_name_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
+            .await?;
+        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+            })?;
+
+        // Create a custom function to set the default description for a SG
+        let description_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext::default_with_prop(*description_prop.id()),
+        )
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+
+        let mut description_attribute_prototype = description_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(AttributeValueError::MissingAttributePrototype)?;
+
+        let default_description_func_name = "si:awsSecurityGroupDefaultDescription";
+        let default_description_func =
+            Func::find_by_attr(ctx, "name", &default_description_func_name)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    SchemaError::FuncNotFound(default_description_func_name.to_owned())
+                })?;
+
+        let default_description_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "name", *default_description_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        default_description_func_name.to_owned(),
+                        "name".to_string(),
+                    )
+                })?;
+
+        description_attribute_prototype
+            .set_func_id(ctx, default_description_func.id())
+            .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *description_attribute_prototype.id(),
+            *default_description_func_argument.id(),
+            *si_name_internal_provider.id(),
+        )
+        .await?;
+
         // Bind sockets to providers
         let tags_map_attribute_read_context =
             AttributeReadContext::default_with_prop(*tags_map_prop.id());
@@ -288,15 +342,6 @@ impl MigrationDriver {
         .await?;
 
         // Connect props to providers.
-
-        let si_name_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
-            .await?;
-        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
-            .await?
-            .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
-            })?;
         let name_tags_item_attribute_value =
             AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
                 .await?
@@ -386,14 +431,6 @@ impl MigrationDriver {
         group_name_attribute_proto
             .set_func_id(ctx, identity_func_item.func_id)
             .await?;
-        let si_name_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
-            .await?;
-        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
-            .await?
-            .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
-            })?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
             *group_name_attribute_proto.id(),

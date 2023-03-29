@@ -1,0 +1,16 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "name",
+      "kind": "String"
+    }
+  ],
+  "response_type": "String",
+  "hidden": false,
+  "display_name": "si:awsSecurityGroupDefaultDescription",
+  "description": null,
+  "link": null,
+  "code_file": "awsSecurityGroupDefaultDescription.js",
+  "code_entrypoint": "setDefaultDescription"
+}
