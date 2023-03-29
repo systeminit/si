@@ -49,12 +49,12 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO edges (tenancy_workspace_pk,
-                       visibility_change_set_pk, visibility_deleted_at, kind,
+                       visibility_change_set_pk, kind,
                        head_node_id, head_object_kind, head_object_id, head_socket_id,
                        tail_node_id, tail_object_kind, tail_object_id, tail_socket_id, creation_user_pk)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_kind,
+	    this_kind,
             this_head_node_id, this_head_object_kind, this_head_object_id,
             this_head_socket_id, this_tail_node_id, this_tail_object_kind,
             this_tail_object_id, this_tail_socket_id, this_user_pk)

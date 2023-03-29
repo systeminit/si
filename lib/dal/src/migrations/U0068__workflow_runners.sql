@@ -44,7 +44,6 @@ BEGIN
 
     INSERT INTO workflow_runners (tenancy_workspace_pk,
                                   visibility_change_set_pk,
-                                  visibility_deleted_at,
                                   workflow_prototype_id,
                                   workflow_resolver_id,
                                   func_id,
@@ -55,7 +54,6 @@ BEGIN
                                   resources)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_workflow_prototype_id,
             this_workflow_resolver_id,
             this_func_id,

@@ -39,7 +39,6 @@ BEGIN
 
     INSERT INTO attribute_prototypes (tenancy_workspace_pk,
                                       visibility_change_set_pk,
-                                      visibility_deleted_at,
                                       attribute_context_prop_id,
                                       attribute_context_internal_provider_id,
                                       attribute_context_external_provider_id,
@@ -48,7 +47,6 @@ BEGIN
                                       key)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_attribute_context_record.attribute_context_prop_id,
             this_attribute_context_record.attribute_context_internal_provider_id,
             this_attribute_context_record.attribute_context_external_provider_id,

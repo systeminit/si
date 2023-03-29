@@ -56,20 +56,20 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO components (tenancy_workspace_pk,
-                            visibility_change_set_pk, visibility_deleted_at, kind, creation_user_pk)
+                            visibility_change_set_pk, kind, creation_user_pk)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_kind,
+            this_visibility_record.visibility_change_set_pk, this_kind,
             this_user_pk)
     RETURNING * INTO this_new_row;
 
     -- Create a parallel record to store creation and update status, meaning that this table's id refers to components.id
     INSERT INTO component_statuses (id,
                                     tenancy_workspace_pk,
-                                    visibility_change_set_pk, visibility_deleted_at,
+                                    visibility_change_set_pk,
                                     creation_user_pk, update_user_pk)
     VALUES (this_new_row.id,
             this_new_row.tenancy_workspace_pk,
-            this_new_row.visibility_change_set_pk, this_new_row.visibility_deleted_at,
+            this_new_row.visibility_change_set_pk,
             this_user_pk, this_user_pk);
 
     object := row_to_json(this_new_row);

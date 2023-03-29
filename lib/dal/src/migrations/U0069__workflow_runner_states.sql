@@ -44,7 +44,6 @@ BEGIN
 
     INSERT INTO workflow_runner_states (tenancy_workspace_pk,
                                         visibility_change_set_pk,
-                                        visibility_deleted_at,
                                         workflow_runner_id,
                                         status,
                                         execution_id,
@@ -52,7 +51,6 @@ BEGIN
                                         error_message)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_workflow_runner_id,
             this_status,
             this_execution_id,

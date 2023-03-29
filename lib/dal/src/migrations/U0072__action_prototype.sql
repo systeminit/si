@@ -52,7 +52,6 @@ BEGIN
 
     INSERT INTO action_prototypes (tenancy_workspace_pk,
                                    visibility_change_set_pk,
-                                   visibility_deleted_at,
                                    workflow_prototype_id,
                                    name,
                                    kind,
@@ -61,7 +60,6 @@ BEGIN
                                    schema_variant_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_workflow_prototype_id,
             this_name,
             this_kind,

@@ -40,7 +40,6 @@ BEGIN
 
     INSERT INTO workflow_resolvers (tenancy_workspace_pk,
                                     visibility_change_set_pk,
-                                    visibility_deleted_at,
                                     workflow_prototype_id,
                                     func_id,
                                     func_binding_id,
@@ -49,7 +48,6 @@ BEGIN
                                     schema_variant_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_workflow_prototype_id,
             this_func_id,
             this_func_binding_id,

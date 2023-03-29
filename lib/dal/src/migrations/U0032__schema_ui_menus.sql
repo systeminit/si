@@ -41,10 +41,10 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO schema_ui_menus (tenancy_workspace_pk,
-                                 visibility_change_set_pk, visibility_deleted_at,
+                                 visibility_change_set_pk,
                                  name, category)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
+            this_visibility_record.visibility_change_set_pk,
             this_name, this_category)
     RETURNING * INTO this_new_row;
 

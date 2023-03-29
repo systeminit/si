@@ -31,9 +31,9 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO fix_batches (tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at, author)
+    INSERT INTO fix_batches (tenancy_workspace_pk, visibility_change_set_pk, author)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_author)
+            this_visibility_record.visibility_change_set_pk, this_author)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

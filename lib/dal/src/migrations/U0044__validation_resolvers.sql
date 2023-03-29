@@ -62,7 +62,6 @@ BEGIN
 
     INSERT INTO validation_resolvers (tenancy_workspace_pk,
                                       visibility_change_set_pk,
-                                      visibility_deleted_at,
                                       validation_prototype_id,
                                       attribute_value_id,
                                       validation_func_id,
@@ -70,7 +69,6 @@ BEGIN
                                       attribute_value_func_binding_return_value_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_validation_prototype_id,
             this_attribute_value_id,
             this_func_id,

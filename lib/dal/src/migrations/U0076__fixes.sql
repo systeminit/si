@@ -51,10 +51,10 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO fixes (tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at,
+    INSERT INTO fixes (tenancy_workspace_pk, visibility_change_set_pk,
                        attribute_value_id, component_id, action)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
+            this_visibility_record.visibility_change_set_pk,
             this_attribute_value_id, this_component_id, this_action)
     RETURNING * INTO this_new_row;
 

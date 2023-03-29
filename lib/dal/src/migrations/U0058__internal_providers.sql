@@ -60,7 +60,6 @@ BEGIN
 
     INSERT INTO internal_providers (tenancy_workspace_pk,
                                     visibility_change_set_pk,
-                                    visibility_deleted_at,
                                     prop_id,
                                     schema_variant_id,
                                     name,
@@ -68,7 +67,6 @@ BEGIN
                                     outbound_type_definition)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at,
             this_prop_id,
             this_schema_variant_id,
             this_name,
