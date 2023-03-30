@@ -33,7 +33,7 @@
 
             <VButton2
               class="--tone-neutral"
-              :disabled="!editingFunc.isRevertible"
+              :disabled="!isRevertible"
               icon="x"
               size="md"
               loading-text="Reverting"
@@ -159,7 +159,7 @@ import {
 } from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore, FuncWithDetails } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
@@ -202,6 +202,10 @@ watch(loadFuncDetailsReqStatus, () => {
     resetEditingFunc();
   }
 });
+
+const isRevertible = computed(() =>
+  funcId ? funcStore.funcDetailsById[funcId]?.isRevertible : false,
+);
 
 const updateFunc = () => {
   if (!funcId || !editingFunc.value) return;
