@@ -25,10 +25,10 @@ pub use cyclone_client::{
     ClientError, CycloneClient, EncryptionKey, EncryptionKeyError, ExecutionError,
 };
 pub use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, ComponentView, FunctionResult, OutputStream,
-    ProgressMessage, ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CommandRunRequest, CommandRunResultSuccess, ComponentView, FunctionResult,
+    FunctionResultFailure, FunctionResultFailureError, OutputStream, ProgressMessage,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 /// [`Instance`] implementations.
