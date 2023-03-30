@@ -19,7 +19,10 @@
                 "name": "contents",
                 "kind": "string",
                 "docLink": "https://coreos.github.io/butane/config-fcos-v1_4/",
-                "children": []
+                "children": [],
+                "widget": {
+                  "kind": "textArea"
+                }
               },
               {
                 "name": "enabled",
