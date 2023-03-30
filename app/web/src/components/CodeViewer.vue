@@ -165,3 +165,9 @@ function copyCodeToClipboard() {
   navigator.clipboard.writeText(code);
 }
 </script>
+
+<style>
+.cm-activeLine {
+  background-color: transparent !important;
+}
+</style>

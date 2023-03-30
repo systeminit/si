@@ -140,4 +140,8 @@ onMounted(() => {
 .cm-editor .cm-gutter {
   font-size: 14px;
 }
+
+.cm-activeLine {
+  background-color: transparent !important;
+}
 </style>
