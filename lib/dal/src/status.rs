@@ -6,9 +6,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPoolError};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 use crate::{
     pk, schema::variant::leaves::LeafKind, standard_model::objects_from_rows, ActorView,
@@ -430,6 +434,9 @@ pub enum StatusUpdaterError {
     /// When a [NATS](https://nats.io) error is encountered
     #[error("nats error: {0}")]
     NatsError(#[from] si_data_nats::Error),
+    /// When an attrbute value violates invariants
+    #[error("attrbute value violates invariants; attribute_value_id={0}")]
+    MalformedAttributeValue(AttributeValueId),
 }
 
 impl StatusUpdaterError {
@@ -442,16 +449,93 @@ impl StatusUpdaterError {
 /// Tracks and maintains the persisted and realtime state of a [`StatusUpdate`].
 #[derive(Clone, Debug)]
 pub struct StatusUpdater {
-    model: StatusUpdate,
+    inner: Arc<Mutex<Option<StatusUpdaterInner>>>,
 }
 
 impl StatusUpdater {
-    /// Intializes a `StatusUpdater` with an underlying [`StatusUpdate`].
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the datastore is unable to persist the new object.
-    pub async fn initialize(ctx: &DalContext) -> Result<Self, StatusUpdaterError> {
+    /// Intializes a `StatusUpdaterInner` with an underlying [`StatusUpdate`].
+    pub async fn initialize(ctx: &DalContext) -> Self {
+        let inner = match StatusUpdaterInner::initialize(ctx).await {
+            Ok(inner) => Some(inner),
+            Err(err) => {
+                error!(error = ?err, "failed to initialize; setting inner to none");
+                None
+            }
+        };
+
+        Self {
+            inner: Arc::new(Mutex::new(inner)),
+        }
+    }
+
+    /// Updates the [`StatusUpdate`] with a new set of queued values, represented with their
+    /// [`AttributeValueId`s](AttributeValueId).
+    #[instrument(name = "status_updater.values_queued", skip(ctx), level = "debug")]
+    pub async fn values_queued(&mut self, ctx: &DalContext, value_ids: Vec<AttributeValueId>) {
+        match self.inner.lock().await.as_mut() {
+            Some(inner) => {
+                if let Err(err) = inner.values_queued(ctx, value_ids).await {
+                    error!(error = ?err, "failed to update queued values");
+                }
+            }
+            None => {
+                trace!("unable to call values_queued; inner is not initialized");
+            }
+        }
+    }
+
+    /// Updates the [`StatusUpdate`] with a new set of running values, represented with their
+    /// [`AttributeValueId`s](AttributeValueId).
+    pub async fn values_running(&mut self, ctx: &DalContext, value_ids: Vec<AttributeValueId>) {
+        match self.inner.lock().await.as_mut() {
+            Some(inner) => {
+                if let Err(err) = inner.values_running(ctx, value_ids).await {
+                    error!(error = ?err, "failed to update running values");
+                }
+            }
+            None => {
+                trace!("unable to call values_running; inner is not initialized");
+            }
+        }
+    }
+
+    /// Updates the [`StatusUpdate`] with a new set of completed values, represented with their
+    /// [`AttributeValueId`s](AttributeValueId).
+    pub async fn values_completed(&mut self, ctx: &DalContext, value_ids: Vec<AttributeValueId>) {
+        match self.inner.lock().await.as_mut() {
+            Some(inner) => {
+                if let Err(err) = inner.values_completed(ctx, value_ids).await {
+                    error!(error = ?err, "failed to update completed values");
+                }
+            }
+            None => {
+                trace!("unable to call values_completed; inner is not initialized");
+            }
+        }
+    }
+
+    /// Marks the [`StatusUpdate`] as finished, and ensures that there are no unprocessed values.
+    pub async fn finish(self, ctx: &DalContext) {
+        match self.inner.lock().await.as_mut() {
+            Some(inner) => {
+                if let Err(err) = inner.finish(ctx).await {
+                    error!(error = ?err, "failed to mark the update as finished");
+                }
+            }
+            None => {
+                trace!("unable to call finish; inner is not initialized");
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct StatusUpdaterInner {
+    model: StatusUpdate,
+}
+
+impl StatusUpdaterInner {
+    async fn initialize(ctx: &DalContext) -> Result<Self, StatusUpdaterError> {
         let model = StatusUpdate::new(ctx).await?;
 
         Self::publish_immediately(
@@ -464,14 +548,7 @@ impl StatusUpdater {
         Ok(Self { model })
     }
 
-    /// Updates the [`StatusUpdate`] with a new set of queued values, represented with their
-    /// [`AttributeValueId`s](AttributeValueId).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the datastore is unable to update the status update.
-    #[instrument(name = "status_updater.values_queued", skip(ctx), level = "debug")]
-    pub async fn values_queued(
+    async fn values_queued(
         &mut self,
         ctx: &DalContext,
         value_ids: Vec<AttributeValueId>,
@@ -518,7 +595,12 @@ impl StatusUpdater {
                     .await
                     .map_err(StatusUpdaterError::metadata)?
                     .pop()
-                    .expect("no sockets in vec");
+                    .ok_or_else(|| {
+                        StatusUpdaterError::GenericError(format!(
+                            "unable to find socket for external provider id {}",
+                            external_provider.id()
+                        ))
+                    })?;
                 value_kind = AttributeValueKind::OutputSocket(*socket.id());
 
                 // does this value look like an input socket?
@@ -544,7 +626,12 @@ impl StatusUpdater {
                         .await
                         .map_err(StatusUpdaterError::metadata)?
                         .pop()
-                        .expect("no sockets in vec");
+                        .ok_or_else(|| {
+                            StatusUpdaterError::GenericError(format!(
+                                "unable to find socket for internal provider id {}",
+                                internal_provider.id()
+                            ))
+                        })?;
                     value_kind = AttributeValueKind::InputSocket(*socket.id());
                 } else {
                     value_kind = AttributeValueKind::Internal;
@@ -613,7 +700,13 @@ impl StatusUpdater {
                     }
                 }
             } else {
-                unreachable!("unexpectedly found a value that is not internal but has no prop id")
+                error!(
+                    attribute_value_id = %attribute_value.id(),
+                    "unexpectedly found a value that is not internal but has no prop id"
+                );
+                return Err(StatusUpdaterError::MalformedAttributeValue(
+                    *attribute_value.id(),
+                ));
             }
 
             dependent_values_metadata.insert(
@@ -653,13 +746,7 @@ impl StatusUpdater {
         Ok(())
     }
 
-    /// Updates the [`StatusUpdate`] with a new set of running values, represented with their
-    /// [`AttributeValueId`s](AttributeValueId).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the datastore is unable to update the status update.
-    pub async fn values_running(
+    async fn values_running(
         &mut self,
         ctx: &DalContext,
         value_ids: Vec<AttributeValueId>,
@@ -684,13 +771,7 @@ impl StatusUpdater {
         Ok(())
     }
 
-    /// Updates the [`StatusUpdate`] with a new set of completed values, represented with their
-    /// [`AttributeValueId`s](AttributeValueId).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the datastore is unable to update the status update.
-    pub async fn values_completed(
+    async fn values_completed(
         &mut self,
         ctx: &DalContext,
         value_ids: Vec<AttributeValueId>,
@@ -728,12 +809,7 @@ impl StatusUpdater {
         Ok(())
     }
 
-    /// Marks the [`StatusUpdate`] as finished, and ensures that there are no unprocessed values.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if there are unprocessed values.
-    pub async fn finish(mut self, ctx: &DalContext) -> Result<(), StatusUpdaterError> {
+    async fn finish(&mut self, ctx: &DalContext) -> Result<(), StatusUpdaterError> {
         self.model.finish(ctx).await?;
 
         let all_value_ids = self

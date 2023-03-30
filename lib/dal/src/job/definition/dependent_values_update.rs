@@ -1,9 +1,9 @@
-use std::{collections::HashMap, collections::HashSet, convert::TryFrom, sync::Arc};
+use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use tokio::{sync::Mutex, task::JoinSet};
+use tokio::task::JoinSet;
 
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
@@ -154,7 +154,7 @@ impl DependentValuesUpdate {
         )
     )]
     async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
-        let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
+        let mut status_updater = StatusUpdater::initialize(&ctx).await;
 
         let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;
         let mut council = council_server::Client::new(
@@ -225,11 +225,7 @@ impl DependentValuesUpdate {
 
         let mut enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
         enqueued.extend(dependency_graph.values().flatten().copied());
-        status_updater
-            .lock()
-            .await
-            .values_queued(&ctx, enqueued)
-            .await?;
+        status_updater.values_queued(&ctx, enqueued).await;
 
         ctx = self.commit_and_continue(ctx).await?;
 
@@ -244,11 +240,7 @@ impl DependentValuesUpdate {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
 
-                            status_updater
-                                .lock()
-                                .await
-                                .values_running(&ctx, vec![id])
-                                .await?;
+                            status_updater.values_running(&ctx, vec![id]).await;
                             ctx = self.commit_and_continue(ctx).await?;
 
                             let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
@@ -272,16 +264,8 @@ impl DependentValuesUpdate {
                         dependency_graph.remove(&id);
 
                         // Send a completed status for this value and *remove* it from the hash
-                        status_updater
-                            .lock()
-                            .await
-                            .values_running(&ctx, vec![id])
-                            .await?;
-                        status_updater
-                            .lock()
-                            .await
-                            .values_completed(&ctx, vec![id])
-                            .await?;
+                        status_updater.values_running(&ctx, vec![id]).await;
+                        status_updater.values_completed(&ctx, vec![id]).await;
 
                         ctx = self.commit_and_continue(ctx).await?;
                     }
@@ -335,11 +319,7 @@ impl DependentValuesUpdate {
 
         ctx = self.commit_and_continue(ctx).await?;
 
-        Arc::try_unwrap(status_updater)
-            .unwrap()
-            .into_inner()
-            .finish(&ctx)
-            .await?;
+        status_updater.finish(&ctx).await;
 
         WsEvent::change_set_written(&ctx)
             .await?
@@ -383,17 +363,14 @@ async fn update_value(
     mut attribute_value: AttributeValue,
     single_transaction: bool,
     council: council_server::PubClient,
-    status_updater: Arc<Mutex<StatusUpdater>>,
+    mut status_updater: StatusUpdater,
 ) -> AttributeValueResult<()> {
     attribute_value.update_from_prototype_function(&ctx).await?;
 
     // Send a completed status for this value and *remove* it from the hash
     status_updater
-        .lock()
-        .await
         .values_completed(&ctx, vec![*attribute_value.id()])
-        .await
-        .map_err(Box::new)?;
+        .await;
 
     WsEvent::change_set_written(&ctx)
         .await?
