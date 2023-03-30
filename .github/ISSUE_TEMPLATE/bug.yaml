@@ -1,0 +1,68 @@
+name: Bug Report
+description: Report an issue
+labels: [ triage ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this report! Please give us as much context in the form below to help us solve this.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproducible
+    attributes:
+      label: How can we reproduce this?
+      description: Please give us a little background as to what you were doing when this occurred and if this was reproducible
+    validations:
+      required: true
+  - type: textarea
+    id: os
+    attributes:
+      label: Operating system
+      description: 'The operating system you are running System Initiative on'
+      options:
+        - Linux / Unix
+        - macOS
+        - windows
+    validations:
+      required: true
+  - type: textarea
+    id: arch
+    attributes:
+      label: Architecture
+      description: 'The OS architecture you are running System Initiative on'
+      options:
+        - am64d / x86_64
+        - arm64 / aarch64
+    validations:
+      required: true
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: What browsers are you seeing the problem on?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/systeminit/si/blob/main/CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+  - type: textarea
+    id: ctx
+    attributes:
+      label: Additional context
+      description: Anything else you would like to add
+    validations:
+      required: false
