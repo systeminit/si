@@ -9,6 +9,7 @@
 
 <script setup lang="ts">
 import { RichText } from "@si/vue-lib/design-system";
+import { useHead } from "@vueuse/head";
 import { ComponentOptions, nextTick, onBeforeMount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -58,4 +59,11 @@ function triggerPrint() {
     window.close();
   };
 }
+
+useHead({
+  htmlAttrs: {
+    style: "color-scheme: light;",
+    class: "light",
+  },
+});
 </script>

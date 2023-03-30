@@ -13,6 +13,15 @@
   // so likely will need some work if we do that more...
   // for now, I try to not apply styling if something is in an element with class "escape"
 
+  line-height: 1.4em;
+
+  > * {
+    margin-bottom: 1em;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
   :not(.escape) a:not(.vbutton) {
     html.dark & {
       color: @colors-action-300;
@@ -34,27 +43,22 @@
     vertical-align: middle;
     margin-right: 0.4em;
   }
-  > p {
-    font-size: 16px;
-    line-height: 1.4em;
-    &:not(:last-child) {
-      margin-bottom: 1em;
-    }
+
+  blockquote {
+    padding-left: 2em;
   }
 
   > h1,
   > h2,
-  > h3,
-  > h4 {
+  > h3 {
     font-weight: bold;
-    line-height: 1.4em;
-
-    &:not(:last-child) {
-      margin-bottom: 0.5em;
+    padding-top: 0.8em;
+    &:first-child {
+      padding-top: 0;
     }
   }
   > h1 {
-    font-size: 30px;
+    font-size: 28px;
   }
   > h2 {
     font-size: 24px;
@@ -68,11 +72,33 @@
 
   > ul {
     margin-bottom: 1em;
-    // doing this to fix icon alignment... we'll see if it holds true as we use this component in more places
-    > li {
-      display: flex;
-      align-items: center;
-      padding-bottom: 0.2em;
+    padding-left: 1em;
+    li {
+      list-style-type: disc;
+
+      // hide list bullet if icon
+      &:has(> .icon:first-child) {
+        list-style: none;
+        margin-left: -1em;
+      }
+      > .icon:first-child {
+        display: inline-block;
+        vertical-align: bottom;
+        margin-right: 0.5em;
+      }
+      li {
+        list-style-type: circle;
+        li {
+          list-style-type: square;
+        }
+      }
+      // display: flex;
+      // align-items: center;
+      padding-bottom: 0.3em;
+    }
+    ul {
+      padding-left: 1em;
+      padding-top: 0.5em;
     }
   }
   > img,
@@ -80,6 +106,26 @@
     width: 100%;
     max-width: 700px;
     margin: 0 auto;
+  }
+
+  > table {
+    width: 100%;
+
+    th {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    tr,
+    td,
+    th {
+      text-align: left;
+      border: 1px solid white;
+      html.light & {
+        border-color: black;
+      }
+      padding: 0.5em;
+      vertical-align: top;
+    }
   }
 }
 </style>

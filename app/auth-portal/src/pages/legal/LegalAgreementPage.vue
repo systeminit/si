@@ -59,7 +59,7 @@
             class="mb-xl"
             :data-doc-slug="doc.slug"
           >
-            <RichText>
+            <RichText class="text-sm">
               <h2>{{ doc.title }}</h2>
               <Component :is="doc.component" />
             </RichText>
@@ -118,6 +118,7 @@ import {
   Stack,
   VButton2,
   VormInput,
+  Tiles,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useAuthStore } from "@/store/auth.store";
@@ -153,7 +154,9 @@ onBeforeMount(async () => {
       title: importedDoc.attributes.title,
       slug,
       fileName,
-      component: importedDoc.VueComponent,
+      component: importedDoc.VueComponentWith({
+        Tiles,
+      }),
     };
   }
   docsLoaded.value = true;
