@@ -1063,7 +1063,7 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<Option<Self>> {
         // Check if component has deleted frame before restoring
-        {
+        let component = {
             let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
             let component = Self::get_by_id(ctx_with_deleted, &component_id)
@@ -1102,7 +1102,11 @@ impl Component {
                     return Err(ComponentError::InsideDeletedFrame(component_id, parent_id));
                 }
             }
-        }
+
+            component
+        };
+
+        component.set_deleted_at(ctx, None).await?;
 
         let rows = ctx
             .txns()
