@@ -20,7 +20,7 @@ body:
       description: Please give us a little background as to what you were doing when this occurred and if this was reproducible
     validations:
       required: true
-  - type: textarea
+  - type: dropdown
     id: os
     attributes:
       label: Operating system
@@ -31,7 +31,7 @@ body:
         - windows
     validations:
       required: true
-  - type: textarea
+  - type: dropdown
     id: arch
     attributes:
       label: Architecture
