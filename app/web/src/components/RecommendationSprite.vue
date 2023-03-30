@@ -15,10 +15,7 @@
   >
     <template #prefix>
       <VormInput
-        v-if="
-          recommendation.status === 'unstarted' ||
-          (recommendation.status === 'failure' && !iconDelayActive)
-        "
+        v-if="enableCheckbox"
         :model-value="selected"
         type="checkbox"
         class="flex-none pl-1"
@@ -128,7 +125,15 @@
 </template>
 
 <script setup lang="ts">
-import { Ref, computed, PropType, ref, watch, onBeforeUnmount } from "vue";
+import {
+  Ref,
+  computed,
+  PropType,
+  ref,
+  watch,
+  onBeforeUnmount,
+  toRef,
+} from "vue";
 import clsx from "clsx";
 import {
   Timestamp,
@@ -146,14 +151,18 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
   iconDelayAfterExec: { type: Number },
 });
+const recommendation = toRef(props, "recommendation");
 
 let delayTimeout: Timeout;
 const iconDelayActive = ref(false);
 
 watch(
-  () => props.recommendation.status,
-  (newVal, oldVal) => {
-    if (oldVal === "running") {
+  [
+    () => props.recommendation.hasRunningFix,
+    () => props.recommendation.lastFix,
+  ],
+  ([_newHasRunningFix, _newLastFix], [oldHasRunningFix, oldLastFix]) => {
+    if (oldHasRunningFix || oldLastFix?.status === "running") {
       emit("toggle", false);
       iconDelayActive.value = true;
       delayTimeout = setTimeout(() => {
@@ -175,7 +184,7 @@ const emit = defineEmits<{
 
 const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
   () => {
-    switch (props.recommendation.status) {
+    switch (props.recommendation.lastFix?.status) {
       case "failure":
         return { name: "alert-triangle", color: "text-destructive-500" };
       case "success":
@@ -185,6 +194,39 @@ const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
     }
   },
 );
+
+// FIXME(nick): this is neither the fault of the frontend nor the backend, but we will need more
+// information in order to discern if we are able to re-use a recommendation (e.g. you created a
+// resource for a component, deleted the resource in the real world, ran a resource sync, and
+// then see the same recommendation appear). The problem is likely architectural: recommendations
+// are ephemeral and the confirmations that generate them live on the prop tree. Thus, we cannot
+// store recommendations in the database unless there's a side hack (probably stemming from a side
+// task from a "dependent values update"). Although, that's just one example. There are a lot of
+// ways to approach this problem... none of which are things the frontend can solely control today
+// unless you make a LOT of assumptions about fixes in flight or recently completed fixes (e.g.
+// "hey this fix succeeded 10 seconds ago, so if the recommendation shows up again, we need to
+// assume that they can run the fix again", which smells dangerous). If you made it this far, you
+// can tell my hair is on fire.
+const enableCheckbox = computed((): boolean => {
+  if (recommendation.value.lastFix) {
+    if (
+      recommendation.value.lastFix.status === "failure" &&
+      !iconDelayActive.value
+    ) {
+      // If we have a "lastFix", it's a failure, and the delay is not active, then
+      // we need to enable the checkbox. We want the user to be able to re-run the fix.
+      return true;
+    }
+    // If we have a "lastFix" and it does not fit the "failure and inactive delay" condition,
+    // then we should not enable the checkbox.
+    return false;
+  }
+
+  // If we do not have a "lastFix", then we need to fallback on the "hasRunningFix" boolean. The
+  // "hasRunningFix" boolean ensures that we can immeidately indicate to the user that the
+  // recommendation has been applied in case the "lastFix" has not yet been populated.
+  return !recommendation.value.hasRunningFix;
+});
 
 // const recommendationIcon = (recommendationAction: ActionKind) => {
 //   if (recommendationAction === "create") {

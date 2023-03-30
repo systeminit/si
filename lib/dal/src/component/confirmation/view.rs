@@ -202,24 +202,6 @@ impl ConfirmationView {
                     .await?
                     .ok_or_else(|| ActionPrototypeError::NotFoundByName(action.clone()))?;
 
-            // Check if a fix is running before gathering the last recorded status of the
-            // recommendation and the ability to run the recommendation.
-            let is_running = confirmation_status == ConfirmationStatus::Running
-                || running_fixes.iter().any(|r| {
-                    r.component_id() == component_id && r.action() == action_prototype.name()
-                });
-
-            // Track the last recorded status of the recommendation.
-            let recommendation_status = if is_running {
-                RecommendationStatus::Running
-            } else {
-                match maybe_fix_resolver.as_ref().and_then(FixResolver::success) {
-                    Some(true) => RecommendationStatus::Success,
-                    Some(false) => RecommendationStatus::Failure,
-                    None => RecommendationStatus::Unstarted,
-                }
-            };
-
             // Find the last fix ran. If a fix has never been ran before for this
             // recommendation (i.e. no fix resolver), that is fine!
             let maybe_last_fix: Option<FixHistoryView> = match maybe_fix_resolver.as_ref() {
@@ -234,23 +216,6 @@ impl ConfirmationView {
                 None => None,
             };
 
-            // Track the ability to run the recommendation.
-            // TODO(nick): we do not need an enum here since "running" will be accurate for the
-            // "is_running" boolean. We should consider replacing the enum with a boolean.
-            let recommendation_is_runnable = if is_running {
-                RecommendationIsRunnable::Running
-            } else {
-                let resource = Component::resource_by_id(ctx, component_id).await?;
-                match (action_prototype.kind(), resource.value) {
-                    (ActionKind::Create, Some(_)) => RecommendationIsRunnable::No,
-                    (ActionKind::Create, None) => RecommendationIsRunnable::Yes,
-                    (ActionKind::Other, Some(_)) => RecommendationIsRunnable::Yes,
-                    (ActionKind::Other, None) => RecommendationIsRunnable::No,
-                    (ActionKind::Destroy, Some(_)) => RecommendationIsRunnable::Yes,
-                    (ActionKind::Destroy, None) => RecommendationIsRunnable::No,
-                }
-            };
-
             let workflow_prototype = action_prototype.workflow_prototype(ctx).await?;
             let recommendation_action_kind = action_prototype.kind().to_owned();
 
@@ -262,9 +227,10 @@ impl ConfirmationView {
                 name: workflow_prototype.title().to_owned(),
                 recommended_action: action_prototype.name().to_owned(),
                 action_kind: recommendation_action_kind,
-                status: recommendation_status,
                 last_fix: maybe_last_fix,
-                is_runnable: recommendation_is_runnable,
+                has_running_fix: running_fixes.iter().any(|r| {
+                    r.component_id() == component_id && r.action() == action_prototype.name()
+                }),
             });
         }
 
@@ -294,7 +260,6 @@ impl ConfirmationView {
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ConfirmationStatus {
-    Running,
     Failure,
     Success,
     // FIXME(nick,paulo,paul,wendy): probably remove this once the fix flow is working again.
@@ -327,43 +292,12 @@ pub struct RecommendationView {
     /// [`ActionPrototype`](crate::ActionPrototype) that the recommended
     /// [action](crate::ActionPrototype) corresponds to.
     pub action_kind: ActionKind,
-    /// The last recorded [`status`](RecommendationStatus) of the [recommendation](Self).
-    pub status: RecommendationStatus,
-    /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the
-    /// [recommendation](Self).
-    is_runnable: RecommendationIsRunnable,
+
+    /// Indicates if an associated [`Fix`](crate::Fix) is in-flight for the [`RecommendationView`].
+    /// The running [`Fix`] may also be (or will become) the "last_fix".
+    pub has_running_fix: bool,
     /// Gives the [`history view`](crate::fix::FixHistoryView) of the last [`Fix`](crate::Fix) ran.
     /// This will be empty if the [`RecommendationView`] had never had a corresponding
     /// [`Fix`](crate::Fix) ran before.
     pub last_fix: Option<FixHistoryView>,
-}
-
-/// Tracks the last known status of a [`RecommendationView`] (corresponds to the
-/// [`FixResolver`](crate::FixResolver)).
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum RecommendationStatus {
-    /// The last execution of the [`RecommendationView`] succeeded.
-    Success,
-    /// The last execution of the [`RecommendationView`] failed.
-    Failure,
-    /// The last execution of the [`RecommendationView`] is still running.
-    Running,
-    /// The [`RecommendationView`] has never been ran.
-    Unstarted,
-}
-
-/// Tracks the ability to run a [`RecommendationView`] (corresponds to the state of "/root/resource"
-/// and the [`ActionKind`](crate::action_prototype::ActionKind) on the corresponding
-/// [`ActionPrototype`](crate::ActionPrototype).
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-enum RecommendationIsRunnable {
-    /// The [`RecommendationView`] is ready to be ran.
-    Yes,
-    /// The [`RecommendationView`] is not ready to be ran.
-    No,
-    /// There is a [`Fix`](crate::Fix) in-flight that prevents the [`RecommendationView`] from being
-    /// able to be ran.
-    Running,
 }

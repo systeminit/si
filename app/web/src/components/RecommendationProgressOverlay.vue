@@ -58,7 +58,8 @@ const fixState = computed(() => {
     let highlightedSummary = "";
     if (rate === 1) {
       summary = "Recommendations are up to date.";
-      const { length } = fixesStore.unstartedRecommendations;
+      const { length } = fixesStore.newRecommendations;
+
       if (length !== 0) {
         highlightedSummary = `${length} recommendation${
           length > 1 ? "s" : ""

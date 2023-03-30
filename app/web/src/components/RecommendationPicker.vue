@@ -195,7 +195,7 @@ const selectedRecommendations = computed(() => {
     return (
       recommendationSelection[
         `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
-      ] && recommendation.isRunnable === "yes"
+      ] && !recommendation.hasRunningFix
     );
   });
 });
