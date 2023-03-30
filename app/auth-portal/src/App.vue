@@ -53,22 +53,7 @@
 
           <template v-if="userIsLoggedIn">
             <nav class="flex gap-md font-bold items-center">
-              <template v-if="route.name === 'review-legal'">
-                <RouterLink
-                  :to="{ name: 'review-legal' }"
-                  class="underline-link"
-                  >Review ToS</RouterLink
-                >
-              </template>
-              <template v-else-if="authStore.needsProfileUpdate">
-                <RouterLink :to="{ name: 'legal' }" class="underline-link">
-                  ToS
-                </RouterLink>
-                <RouterLink :to="{ name: 'profile' }" class="underline-link">
-                  Setup Account
-                </RouterLink>
-              </template>
-              <template v-else>
+              <template v-if="!(authStore.needsProfileUpdate || authStore.user?.needsTosUpdate)">
                 <!-- <RouterLink :to="{ name: 'profile' }">Profile</RouterLink> -->
                 <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
                   >Tutorial</RouterLink
@@ -77,31 +62,25 @@
                   >Dashboard</RouterLink
                 >
               </template>
+            </nav>
 
+            <nav class="flex gap-sm mr-xs items-center ml-auto">
               <a
                 href="https://github.com/systeminit/si"
                 target="_blank"
-                class="underline-link"
+                class="hover:dark:text-action-300 hover:text-action-700"
               >
                 <Icon name="logo-github" />
               </a>
               <a
                 href="https://discord.gg/system-init"
                 target="_blank"
-                class="underline-link"
+                class="hover:dark:text-action-300 hover:text-action-700"
               >
                 <Icon name="logo-discord" />
               </a>
-              <!-- <a
-                class="underline-link"
-                href="https://discord.gg/system-init"
-                target="_blank"
-                >SI Discord</a
-              > -->
-              <!-- <RouterLink :to="{ name: 'logout' }">Logout</RouterLink> -->
+              <span class="opacity-50">|</span>
             </nav>
-
-            <nav class="flex gap-sm mx-xl items-center ml-auto"></nav>
 
             <!-- <a
             href="#"
@@ -166,6 +145,7 @@
             :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
             tone="shade"
             variant="transparent"
+            rounded
             size="md"
             @click="toggleTheme"
           />
@@ -182,19 +162,19 @@
         </div>
 
         <footer
-          class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-600"
+          class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-800 dark:text-neutral-200"
         >
           <a
-            class="underline-link"
+            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
             href="mailto:help@systeminit.com"
             target="_blank"
             >Help</a
           >
-          <span class="opacity-30">|</span>
-          <RouterLink class="underline-link" :to="{ name: 'legal' }"
+          <span class="opacity-50">|</span>
+          <RouterLink class="hover:underline hover:dark:text-action-300 hover:text-action-700" :to="{ name: 'legal' }"
             >Legal</RouterLink
           >
-          <span class="opacity-30">|</span>
+          <span class="opacity-50">|</span>
           <div class="text-center">&copy; System Initiative Inc</div>
         </footer>
       </div>
@@ -211,6 +191,7 @@ import {
   VButton2,
   DropdownMenu,
   DropdownMenuItem,
+RichText,
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo.svg?component";
 import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";

@@ -9,8 +9,9 @@
     <NavbarButton tooltip-text="Profile">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
-          <CheechSvg
+          <img
             class="h-8 w-8 rounded-full bg-white border-black border-2"
+            src=""
           />
           <SiArrow :nudge="open || hovered" class="ml-1" />
         </div>
@@ -35,7 +36,6 @@
 
 <script lang="ts" setup>
 import { Icon, DropdownMenuItem } from "@si/vue-lib/design-system";
-import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import SiArrow from "@/components/SiArrow.vue";
 import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
