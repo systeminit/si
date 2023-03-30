@@ -53,13 +53,30 @@
 
           <template v-if="userIsLoggedIn">
             <nav class="flex gap-md font-bold items-center">
-              <!-- <RouterLink :to="{ name: 'profile' }">Profile</RouterLink> -->
-              <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
-                >Tutorial</RouterLink
-              >
-              <RouterLink :to="{ name: 'dashboard' }" class="underline-link"
-                >Dashboard</RouterLink
-              >
+              <template v-if="route.name === 'review-legal'">
+                <RouterLink
+                  :to="{ name: 'review-legal' }"
+                  class="underline-link"
+                  >Review ToS</RouterLink
+                >
+              </template>
+              <template v-else-if="authStore.needsProfileUpdate">
+                <RouterLink :to="{ name: 'legal' }" class="underline-link">
+                  ToS
+                </RouterLink>
+                <RouterLink :to="{ name: 'profile' }" class="underline-link">
+                  Setup Account
+                </RouterLink>
+              </template>
+              <template v-else>
+                <!-- <RouterLink :to="{ name: 'profile' }">Profile</RouterLink> -->
+                <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
+                  >Tutorial</RouterLink
+                >
+                <RouterLink :to="{ name: 'dashboard' }" class="underline-link"
+                  >Dashboard</RouterLink
+                >
+              </template>
 
               <a
                 href="https://github.com/systeminit/si"
@@ -132,7 +149,10 @@
           </template>
         </header>
         <DropdownMenu ref="profileMenuRef" force-align-right>
-          <DropdownMenuItem icon="user-circle" link-to-named-route="profile"
+          <DropdownMenuItem
+            v-if="route.name !== 'review-legal'"
+            icon="user-circle"
+            link-to-named-route="profile"
             >Profile</DropdownMenuItem
           >
           <DropdownMenuItem icon="logout" link-to-named-route="logout"
@@ -281,7 +301,7 @@ watch([checkAuthReq, route], () => {
   }
   // check user has reviewed/completed their profile
   if (authStore.needsProfileUpdate) {
-    if (currentRouteName !== "profile") {
+    if (currentRouteName !== "profile" && currentRouteName !== "legal") {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       return router.push({ name: "profile" });
     }

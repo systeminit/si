@@ -474,7 +474,7 @@ function onFocus() {
 function onBlur() {
   isFocus.value = false;
   // inputs with child options fire change events from the VormInputOption component
-  if (!isTypeWithOptions.value && props.modelValue) {
+  if (!isTypeWithOptions.value && props.modelValue !== undefined) {
     emit("update:modelValue", cleanValue(props.modelValue));
   }
   validationMethods.touch();
