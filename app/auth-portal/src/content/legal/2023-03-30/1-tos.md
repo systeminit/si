@@ -2,8 +2,7 @@
 title: Terms & Conditions
 ---
 
-**SYSTEM INITIATIVE**<br/>
-**SOFTWARE LICENSE AGREEMENT TERMS AND CONDITIONS**
+# SOFTWARE LICENSE AGREEMENT TERMS AND CONDITIONS
 
 Welcome, and thank you for your interest in System Initiative, Inc. (“**System Initiative**”) and System Initiative’s server and database management software.  Please read these Software License Agreement Terms and Conditions (“**T&Cs**”) carefully.  
 

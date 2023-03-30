@@ -67,9 +67,7 @@
               leave-to-class="opacity-0"
             >
               <WorkspaceLinkWidget
-                v-if="
-                  activeStepSlug !== 'intro' && activeStepSlug !== 'dev_setup'
-                "
+                v-if="!tutorialSteps[activeStepSlug].hideWorkspaceLink"
                 compact
                 class="mt-xs"
               />
@@ -97,36 +95,14 @@
           </VButton2>
         </div>
       </div>
-
-      <!-- <template v-if="loadTosReqStatus.isPending"> loading... </template>
-    <template v-else-if="loadTosReqStatus.isError">
-      Error loading TOS - {{ loadTosReqStatus.errorMessage }}
     </template>
-    <template v-else-if="loadTosReqStatus.isSuccess">
-      <div class="legal-markdown" v-html="authStore.tosDetails?.html" />
-
-      <VormInput v-model="userAgreed" type="checkbox"
-        >I have read and agree to the terms above</VormInput
-      >
-      <VButton2
-        variant="ghost"
-        icon="arrow--right"
-        :disabled="disableContinueButton"
-        :request-status="agreeTosReqStatus"
-        @click="agreeButtonHandler"
-      >
-        Agree & Continue
-      </VButton2>
-    </template> -->
-    </template>
-    <FrieNDAModal ref="friendaRef" />
   </div>
 </template>
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import { ComponentOptions, onBeforeMount, onMounted, ref } from "vue";
+import { ComponentOptions, onBeforeMount, ref } from "vue";
 import {
   Icon,
   IconNames,
@@ -138,7 +114,6 @@ import { RouterLink } from "vue-router";
 import Confetti from "@/components/Confetti.vue";
 
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
-import FrieNDAModal from "@/components/FrieNDAModal.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 
@@ -151,6 +126,7 @@ const tutorialSteps = {} as Record<
     slug: string;
     completeIcon?: IconNames;
     incompleteIcon?: IconNames;
+    hideWorkspaceLink?: boolean;
     fileName: string;
     component: ComponentOptions;
   }
@@ -164,10 +140,8 @@ onBeforeMount(async () => {
     const importedDoc = (await docImports[fileName]()) as any;
     const slug = fileName.replace(/.*\/\d\d-/, "").replace(".md", "");
     tutorialSteps[slug] = {
-      title: importedDoc.attributes.title,
       slug,
-      completeIcon: importedDoc.attributes.completeIcon,
-      incompleteIcon: importedDoc.attributes.incompleteIcon,
+      ...importedDoc.attributes,
       fileName,
       component: importedDoc.VueComponentWith({
         Icon,
@@ -189,16 +163,6 @@ function stepContinueHandler() {
   const nextStepSlug = _.keys(tutorialSteps)[currentStepIndex + 1];
   activeStepSlug.value = nextStepSlug;
 }
-
-const friendaRef = ref();
-onMounted(() => {
-  if (
-    onboardingStore.stepsCompleted.github_access &&
-    !onboardingStore.stepsCompleted.frienda
-  ) {
-    friendaRef.value?.open();
-  }
-});
 
 const workspacesStore = useWorkspacesStore();
 onBeforeMount(() => {

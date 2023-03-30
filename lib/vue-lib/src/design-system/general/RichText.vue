@@ -38,36 +38,34 @@
     }
   }
 
-  > .icon {
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 0.4em;
-  }
-
   blockquote {
     padding-left: 2em;
   }
 
   > h1,
   > h2,
-  > h3 {
+  > h3,
+  > h4,
+  > h5 {
     font-weight: bold;
+    line-height: 1.4em;
     padding-top: 0.8em;
     &:first-child {
       padding-top: 0;
     }
   }
   > h1 {
-    font-size: 28px;
+    font-size: 24px;
   }
   > h2 {
-    font-size: 24px;
+    font-size: 20px;
   }
   > h3 {
     font-size: 18px;
   }
   > h4 {
     font-size: 16px;
+    text-decoration: underline;
   }
 
   > ul {
