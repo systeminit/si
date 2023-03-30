@@ -376,6 +376,9 @@ export const useFixesStore = () => {
                 this.LOAD_FIX_BATCHES();
                 return;
               }
+              if (batch.status !== update.status) {
+                batch.status = update.status;
+              }
             },
           },
         ]);
