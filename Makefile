@@ -331,9 +331,7 @@ ifeq ($(shell [[ $(FORCE) == "true" && $(LOCAL_PG) == "true" ]] && echo "true"),
 
 else ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial
-	@echo "- waiting for postgres to boot up -"
-# pg_isready is not available in ci :(
-	@sleep 10
+	@$(MAKEPATH)/scripts/wait-for-pg.sh
 else
 	@echo "  - Skipping $@ outside of CI; set FORCE=true if you want this to happen automatically."
 endif
