@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+chrono = "0.4.24"
 deadpool-cyclone = { path = "../../lib/deadpool-cyclone" }
 derive_builder = { version = "0.12" }
 futures = { version = "0.3.17" }

@@ -226,12 +226,13 @@ impl Client {
         let mut root_subscription = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         self.nats
-            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root), None, msg)
+            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root.clone()), None, msg)
             .await?;
 
         tokio::select! {
             // Wait for one message on the result reply mailbox
             result = result_subscription.try_next() => {
+                root_subscription.unsubscribe().await?;
                 result_subscription.unsubscribe().await?;
                 match result? {
                     Some(result) => Ok(result.payload),
@@ -239,6 +240,24 @@ impl Client {
                 }
             }
             reply = root_subscription.next() => {
+                match &reply {
+                    Some(maybe_msg) => {
+                        error!(
+                            subject = reply_mailbox_root,
+                            maybe_msg = ?maybe_msg,
+                            "received an unexpected message or error on reply subject prefix"
+                        )
+                    }
+                    None => {
+                        error!(
+                            subject = reply_mailbox_root,
+                            "reply subject prefix subscription unexpectedly closed"
+                        )
+                    }
+                };
+
+                // In all cases, we're considering a message on this subscription to be fatal and
+                // will return with an error
                 Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)??))
             }
         }

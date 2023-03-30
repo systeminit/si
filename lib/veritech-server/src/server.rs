@@ -1,8 +1,10 @@
+use chrono::Utc;
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
-    CycloneClient, Manager, Pool, ProgressMessage, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CycloneClient, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Manager,
+    Pool, ProgressMessage, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
@@ -257,20 +259,65 @@ async fn resolver_function_request_task(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
 ) {
-    if let Err(err) = resolver_function_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "resolver function execution failed");
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = match reply_mailbox {
+        Some(reply_mailbox) => reply_mailbox,
+        None => {
+            error!("no reply mailbox found");
+            return;
+        }
+    };
+    let execution_id = cyclone_request.execution_id.clone();
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+
+    let function_result =
+        resolver_function_request(&publisher, cyclone_pool, cyclone_request).await;
+
+    if let Err(err) = publisher.finalize_output().await {
+        error!(error = ?err, "failed to finalize output by sending final message");
+        let result = deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+            FunctionResultFailure {
+                execution_id,
+                error: FunctionResultFailureError {
+                    kind: "veritechServer".to_string(),
+                    message: "failed to finalize output by sending final message".to_string(),
+                },
+                timestamp: timestamp(),
+            },
+        );
+        if let Err(err) = publisher.publish_result(&result).await {
+            error!(error = ?err, "failed to publish errored result");
+        }
+        return;
     }
+
+    let function_result = match function_result {
+        Ok(fr) => fr,
+        Err(err) => {
+            error!(error = ?err, "failure trying to run function to completion");
+            deadpool_cyclone::FunctionResult::Failure::<ResolverFunctionResultSuccess>(
+                FunctionResultFailure {
+                    execution_id,
+                    error: FunctionResultFailureError {
+                        kind: "veritechServer".to_string(),
+                        message: err.to_string(),
+                    },
+                    timestamp: timestamp(),
+                },
+            )
+        }
+    };
+
+    if let Err(err) = publisher.publish_result(&function_result).await {
+        error!(error = ?err, "failed to publish result");
+    };
 }
 
 async fn resolver_function_request(
-    nats: NatsClient,
+    publisher: &Publisher<'_>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<ResolverFunctionRequest>,
-) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
+    cyclone_request: ResolverFunctionRequest,
+) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
     let mut client = cyclone_pool
         .get()
         .await
@@ -295,12 +342,10 @@ async fn resolver_function_request(
             }
         }
     }
-    publisher.finalize_output().await?;
 
     let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
 
-    Ok(())
+    Ok(function_result)
 }
 
 async fn process_validation_requests_task(
@@ -700,6 +745,10 @@ fn prepare_graceful_shutdown(
     });
 
     Ok(graceful_shutdown_rx)
+}
+
+pub fn timestamp() -> u64 {
+    u64::try_from(std::cmp::max(Utc::now().timestamp(), 0)).expect("timestamp not be negative")
 }
 
 #[derive(Debug, Eq, PartialEq)]
