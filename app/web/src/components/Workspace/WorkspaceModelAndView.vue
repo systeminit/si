@@ -607,66 +607,76 @@ const typeDisplayName = (action = "delete") => {
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
-  if (isViewMode.value) {
-    return items;
+  if (!isViewMode.value) {
+    if (selectedEdgeId.value) {
+      // single selected edge
+      if (selectedEdge.value.changeStatus === "deleted") {
+        items.push({
+          label: "Restore edge",
+          icon: "trash-restore",
+          onSelect: triggerRestoreSelection,
+        });
+      } else {
+        items.push({
+          label: "Delete edge",
+          icon: "trash",
+          onSelect: triggerDeleteSelection,
+        });
+      }
+    } else if (selectedComponentId.value) {
+      // single selected component
+      if (selectedComponent.value.changeStatus === "deleted") {
+        items.push({
+          label: `Restore ${typeDisplayName()} "${
+            selectedComponent.value.displayName
+          }"`,
+          icon: "trash-restore",
+          onSelect: triggerRestoreSelection,
+        });
+      } else {
+        items.push({
+          label: `Delete ${typeDisplayName()} "${
+            selectedComponent.value.displayName
+          }"`,
+          icon: "trash",
+          onSelect: triggerDeleteSelection,
+        });
+      }
+    } else if (selectedComponentIds.value.length) {
+      // Multiple selected components
+      if (deletableSelectedComponents.value.length > 0) {
+        items.push({
+          label: `Delete ${deletableSelectedComponents.value.length} ${plur(
+            typeDisplayName("delete"),
+            deletableSelectedComponents.value.length,
+          )}`,
+          icon: "trash",
+          onSelect: triggerDeleteSelection,
+        });
+      }
+      if (restorableSelectedComponents.value.length > 0) {
+        items.push({
+          label: `Restore ${restorableSelectedComponents.value.length} ${plur(
+            typeDisplayName("restore"),
+            restorableSelectedComponents.value.length,
+          )}`,
+          icon: "trash-restore",
+          onSelect: triggerRestoreSelection,
+        });
+      }
+    }
   }
-  if (selectedEdgeId.value) {
-    // single selected edge
-    if (selectedEdge.value.changeStatus === "deleted") {
-      items.push({
-        label: "Restore edge",
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-      });
-    } else {
-      items.push({
-        label: "Delete edge",
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-      });
-    }
-  } else if (selectedComponentId.value) {
-    // single selected component
-    if (selectedComponent.value.changeStatus === "deleted") {
-      items.push({
-        label: `Restore ${typeDisplayName()} "${
-          selectedComponent.value.displayName
-        }"`,
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-      });
-    } else {
-      items.push({
-        label: `Delete ${typeDisplayName()} "${
-          selectedComponent.value.displayName
-        }"`,
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-      });
-    }
-  } else if (selectedComponentIds.value.length) {
-    // Multiple selected components
-    if (deletableSelectedComponents.value.length > 0) {
-      items.push({
-        label: `Delete ${deletableSelectedComponents.value.length} ${plur(
-          typeDisplayName("delete"),
-          deletableSelectedComponents.value.length,
-        )}`,
-        icon: "trash",
-        onSelect: triggerDeleteSelection,
-      });
-    }
-    if (restorableSelectedComponents.value.length > 0) {
-      items.push({
-        label: `Restore ${restorableSelectedComponents.value.length} ${plur(
-          typeDisplayName("restore"),
-          restorableSelectedComponents.value.length,
-        )}`,
-        icon: "trash-restore",
-        onSelect: triggerRestoreSelection,
-      });
-    }
+  if (selectedComponentId.value && selectedComponent.value.resource.data) {
+    items.push({
+      label: "Refresh resource",
+      icon: "refresh",
+      onSelect: refreshResourceForSelectedComponent,
+    });
   }
   return items;
 });
+
+const refreshResourceForSelectedComponent = () => {
+  componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+};
 </script>
