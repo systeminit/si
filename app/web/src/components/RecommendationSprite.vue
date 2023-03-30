@@ -15,7 +15,10 @@
   >
     <template #prefix>
       <VormInput
-        v-if="recommendation.isRunnable === 'yes' && !iconDelayActive"
+        v-if="
+          recommendation.status === 'unstarted' ||
+          (recommendation.status === 'failure' && !iconDelayActive)
+        "
         :model-value="selected"
         type="checkbox"
         class="flex-none pl-1"
@@ -148,9 +151,9 @@ let delayTimeout: Timeout;
 const iconDelayActive = ref(false);
 
 watch(
-  () => props.recommendation.isRunnable,
+  () => props.recommendation.status,
   (newVal, oldVal) => {
-    if (oldVal === "running" && newVal === "yes") {
+    if (oldVal === "running") {
       emit("toggle", false);
       iconDelayActive.value = true;
       delayTimeout = setTimeout(() => {
