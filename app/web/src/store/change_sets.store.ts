@@ -1,10 +1,10 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-import { posthog } from "@/utils/posthog";
 
 import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { posthog } from "@/utils/posthog";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";

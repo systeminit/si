@@ -108,7 +108,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -165,17 +165,16 @@ const currentStatus = computed(() =>
     : undefined,
 );
 
-const refreshing = ref(false);
+const refreshing = computed(() => {
+  const componentId = selectedComponent.value?.id;
+  if (componentId) {
+    return componentsStore.refreshingStatus[componentId] ?? false;
+  }
+
+  return false;
+});
 
 const onClickRefreshButton = () => {
-  refreshing.value = true;
   componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
 };
-
-watch(
-  () => selectedComponent.value?.resource?.lastSynced,
-  () => {
-    refreshing.value = false;
-  },
-);
 </script>

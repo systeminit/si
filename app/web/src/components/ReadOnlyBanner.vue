@@ -42,7 +42,7 @@
 
 <script lang="ts" setup>
 import { VButton2 } from "@si/vue-lib/design-system";
-import { ref } from "vue";
+import { ref, onBeforeUnmount } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 
 const componentsStore = useComponentsStore();
@@ -53,8 +53,17 @@ defineProps({
   showRefreshAllButton: { type: Boolean, default: false },
 });
 
+let timeout: Timeout;
+
 const onClickRefreshButton = () => {
   refreshing.value = true;
   componentsStore.REFRESH_ALL_RESOURCE_INFO();
+  timeout = setTimeout(() => {
+    refreshing.value = false;
+  }, 3000);
 };
+
+onBeforeUnmount(() => {
+  clearTimeout(timeout);
+});
 </script>

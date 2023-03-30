@@ -29,7 +29,11 @@
           <div
             class="truncate mr-3 whitespace-nowrap flex flex-row gap-2 items-center"
           >
-            <StatusIndicatorIcon v-if="fixBatch.status" type="fix" :status="fixBatch.status" />
+            <StatusIndicatorIcon
+              v-if="fixBatch.status"
+              type="fix"
+              :status="fixBatch.status"
+            />
             <div class="flex flex-col">
               <div class="text-sm font-bold truncate">
                 {{ fixBatch.author }}

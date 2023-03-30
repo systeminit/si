@@ -12,7 +12,7 @@ use crate::{
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, Component, ComponentId, DalContext, DalContextBuilder, StandardModel,
-    Visibility,
+    Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -143,6 +143,11 @@ impl RefreshJob {
                 .await?
                 .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
             component.act(&ctx, "refresh").await?;
+
+            WsEvent::resource_refreshed(&ctx, *component.id())
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
 
             ctx = self.commit_and_continue(ctx).await?;
         }
