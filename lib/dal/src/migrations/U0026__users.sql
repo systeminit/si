@@ -5,6 +5,7 @@ CREATE TABLE users
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     email                       text                     NOT NULL,
+    picture_url                 text,
     visibility_deleted_at       timestamp with time zone
 );
 CREATE UNIQUE INDEX ON users (pk);
@@ -29,13 +30,14 @@ CREATE OR REPLACE FUNCTION user_create_v1(
     this_pk ident,
     this_name text,
     this_email text,
+    this_picture_url text,
     OUT object json) AS
 $$
 DECLARE
     this_new_row           users%ROWTYPE;
 BEGIN
-    INSERT INTO users (pk, name, email)
-    VALUES (this_pk, this_name, this_email)
+    INSERT INTO users (pk, name, email, picture_url)
+    VALUES (this_pk, this_name, this_email, this_picture_url)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

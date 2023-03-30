@@ -43,6 +43,8 @@ pub struct User {
     pk: UserPk,
     name: String,
     email: String,
+    // TODO: should be serialized in api as camelCase
+    picture_url: Option<String>,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -62,6 +64,7 @@ impl User {
         pk: UserPk,
         name: impl AsRef<str>,
         email: impl AsRef<str>,
+        picture_url: Option<impl AsRef<str>>,
     ) -> UserResult<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
@@ -70,8 +73,13 @@ impl User {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2, $3)",
-                &[&pk, &name, &email],
+                "SELECT object FROM user_create_v1($1, $2, $3, $4)",
+                &[
+                    &pk,
+                    &name,
+                    &email,
+                    &picture_url.as_ref().map(|p| p.as_ref()),
+                ],
             )
             .await?;
 

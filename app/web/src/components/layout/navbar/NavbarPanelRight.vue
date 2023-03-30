@@ -10,9 +10,11 @@
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
           <img
+            v-if="authStore.user?.picture_url"
             class="h-8 w-8 rounded-full bg-white border-black border-2"
-            src=""
+            :src="authStore.user?.picture_url"
           />
+          <Icon v-else name="user-circle" />
           <SiArrow :nudge="open || hovered" class="ml-1" />
         </div>
       </template>
@@ -37,6 +39,7 @@
 <script lang="ts" setup>
 import { Icon, DropdownMenuItem } from "@si/vue-lib/design-system";
 import SiArrow from "@/components/SiArrow.vue";
+import { useAuthStore } from "@/store/auth.store";
 import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
 
@@ -46,4 +49,6 @@ const copyURL = () => {
 
 // Cannot use inside the template directly.
 const isDevMode = import.meta.env.DEV;
+
+const authStore = useAuthStore();
 </script>
