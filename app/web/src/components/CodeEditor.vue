@@ -74,14 +74,26 @@ const language = new Compartment();
 const readOnly = new Compartment();
 const themeCompartment = new Compartment();
 const lintCompartment = new Compartment();
+const styleExtensionCompartment = new Compartment();
 
 const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
   appTheme.value === "dark" ? gruvboxDark : basicLight,
 );
+const styleExtension = computed(() => {
+  const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
+  return EditorView.theme({
+    ".cm-scroller": { overflow: "auto" },
+    ".cm-focused .cm-selectionBackground .cm-activeLine, .cm-selectionBackground, .cm-content .cm-activeLine ::selection":
+      { backgroundColor: `${activeLineHighlight} !important` },
+  });
+});
 watch(codeMirrorTheme, () => {
   view.dispatch({
-    effects: [themeCompartment.reconfigure(codeMirrorTheme.value)],
+    effects: [
+      themeCompartment.reconfigure(codeMirrorTheme.value),
+      styleExtensionCompartment.reconfigure(styleExtension.value),
+    ],
   });
 });
 
@@ -112,6 +124,7 @@ const mountEditor = async () => {
     extensions: extensions.concat([
       keymap.of([indentWithTab]),
       themeCompartment.of(codeMirrorTheme.value),
+      styleExtensionCompartment.of(styleExtension.value),
       keymap.of([indentWithTab]),
       readOnly.of(EditorState.readOnly.of(disabled.value)),
       updateListener,

@@ -100,12 +100,15 @@ const editorThemeExtension = computed(() => {
 });
 
 const editorStyleExtension = computed(() => {
+  const activeLineHighlight = theme.value === "dark" ? "#7c6f64" : "#e0dee9";
   return EditorView.theme({
     "&": {
       height: "100%",
       ..._.pick(props, "fontSize", "height"),
     },
     ".cm-scroller": { overflow: "auto" },
+    ".cm-focused .cm-selectionBackground .cm-activeLine, .cm-selectionBackground, .cm-content .cm-activeLine ::selection":
+      { backgroundColor: `${activeLineHighlight} !important` },
   });
 });
 
