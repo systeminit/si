@@ -1,5 +1,5 @@
 <template>
-  <div class="m-xs mt-0 text-xs italic text-neutral-300">
+  <div class="m-xs mt-0 text-xs italic text-neutral-300 grow">
     <div
       :class="
         clsx(
@@ -50,7 +50,7 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import { formatters } from "@si/vue-lib";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, VButton2 } from "@si/vue-lib/design-system";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/store/components.store";
 

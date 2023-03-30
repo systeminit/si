@@ -8,7 +8,7 @@ const CONFIG = {
     added: { iconName: "plus-circle", tone: "success" },
     deleted: { iconName: "x", tone: "destructive" },
     modified: { iconName: "tilde-circle", tone: "warning" },
-    unmodified: { iconName: "none" },
+    unmodified: { iconName: "minus", tone: "neutral" },
   },
   confirmation: {
     success: { iconName: "check-square", tone: "success" },

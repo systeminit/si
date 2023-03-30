@@ -30,19 +30,31 @@
     <VButton2
       v-if="showRefreshAllButton"
       icon="refresh"
-      @click="componentsStore.REFRESH_ALL_RESOURCE_INFO()"
-      >Refresh All</VButton2
+      variant="ghost"
+      loading-icon="refresh-active"
+      loading-text="Refreshing..."
+      :loading="refreshing"
+      @click="onClickRefreshButton"
+      >Resources</VButton2
     >
   </div>
 </template>
 
 <script lang="ts" setup>
 import { VButton2 } from "@si/vue-lib/design-system";
+import { ref } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 
 const componentsStore = useComponentsStore();
 
+const refreshing = ref(false);
+
 defineProps({
   showRefreshAllButton: { type: Boolean, default: false },
 });
+
+const onClickRefreshButton = () => {
+  refreshing.value = true;
+  componentsStore.REFRESH_ALL_RESOURCE_INFO();
+};
 </script>

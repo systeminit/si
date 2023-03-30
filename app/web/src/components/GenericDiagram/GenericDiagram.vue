@@ -459,7 +459,7 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === "?" || e.key === "/") helpModalRef.value?.open();
 
   // handle arrow keys - nudge and alignment
-  if (e.key.startsWith("Arrow")) {
+  if (!props.readOnly && e.key.startsWith("Arrow")) {
     const direction = convertArrowKeyToDirection(e.key);
     if (e.metaKey) alignSelection(direction);
     else nudgeSelection(direction, e.shiftKey);
@@ -480,7 +480,9 @@ function onKeyDown(e: KeyboardEvent) {
     if (insertElementActive.value) endInsertElement();
     if (dragSelectActive.value) endDragSelect(false);
   }
-  if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
+  if (!props.readOnly && (e.key === "Delete" || e.key === "Backspace")) {
+    deleteSelected();
+  }
 }
 function onKeyUp(e: KeyboardEvent) {
   if (e.key === " ") spaceKeyIsDown.value = false;
