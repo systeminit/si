@@ -173,7 +173,7 @@ const onClickRefreshButton = () => {
 };
 
 watch(
-  () => selectedComponent.value.resource.lastSynced,
+  () => selectedComponent.value?.resource?.lastSynced,
   () => {
     refreshing.value = false;
   },
