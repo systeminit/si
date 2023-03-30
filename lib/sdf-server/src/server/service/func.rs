@@ -20,7 +20,7 @@ use dal::{
     FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
     PropError, PropId, PrototypeListForFuncError, SchemaVariantId, StandardModel,
     StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationPrototypeId, Visibility, WsEventError,
+    ValidationPrototypeError, ValidationPrototypeId, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -263,11 +263,16 @@ pub struct FuncArgumentView {
 }
 
 async fn is_func_revertible(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
+    // refetch to get updated visibility
+    let is_in_change_set = match Func::get_by_id(ctx, func.id()).await? {
+        Some(func) => func.visibility().in_change_set(),
+        None => return Ok(false),
+    };
     // Clone a new ctx vith head visibility
-    let ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
+    let ctx = ctx.clone_with_head();
     let head_func = Func::get_by_id(&ctx, func.id()).await?;
 
-    Ok(head_func.is_some() && func.visibility().in_change_set())
+    Ok(head_func.is_some() && is_in_change_set)
 }
 
 async fn prototype_view_for_attribute_prototype(

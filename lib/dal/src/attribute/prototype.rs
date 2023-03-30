@@ -104,6 +104,8 @@ pub enum AttributePrototypeError {
     LeastSpecificContextValueRemovalNotAllowed(AttributeValueId),
     #[error("unable to construct component view for attribute function execution")]
     ComponentView,
+    #[error("cannot hard delete prototype from changeset if corresponding prototype does not exist on head or if the prototype does not represent an element of a map or array")]
+    HardDeletePrototypeWithNoHeadPrototypeOrKey(AttributePrototypeId),
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
@@ -254,7 +256,10 @@ impl AttributePrototype {
     /// to the HEAD state. Marking them as soft-deleted would propagate the deletion up to
     /// HEAD. The implementation here is almost identical to that of
     /// [`AttributePrototype::remove`](crate::AttributePrototype::remove)` but (1)
-    /// checks for in_change_set and (2) hard deletes.
+    /// checks for in_change_set and (2) hard deletes. Least-specific checks are not necessary here
+    /// because we only do this for prototypes that exist only in a changeset. A corresponding
+    /// prototype for this prop will exist in head, and it will take priority when this one is
+    /// deleted.
     pub async fn hard_delete_if_in_changeset(
         ctx: &DalContext,
         attribute_prototype_id: &AttributePrototypeId,
@@ -264,13 +269,27 @@ impl AttributePrototype {
                 Some(v) => v,
                 None => return Ok(()),
             };
-        let parent_proto_key = attribute_prototype.key.is_none();
-        if attribute_prototype.context.is_least_specific() && parent_proto_key {
-            return Err(
-                AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
-                    *attribute_prototype_id,
-                ),
-            );
+
+        // Ensure a prototype matching this context exists on head, or the prototype is for a
+        // map/array element
+        {
+            let head_ctx = ctx.clone_with_head();
+            let has_head_proto = AttributePrototype::find_for_context_and_key(
+                &head_ctx,
+                attribute_prototype.context,
+                &attribute_prototype.key,
+            )
+            .await?
+            .pop()
+            .is_some();
+
+            if !(has_head_proto || attribute_prototype.key().is_some()) {
+                return Err(
+                    AttributePrototypeError::HardDeletePrototypeWithNoHeadPrototypeOrKey(
+                        *attribute_prototype_id,
+                    ),
+                );
+            }
         }
 
         // Delete all values and arguments found for a prototype before deleting the prototype.
@@ -305,13 +324,6 @@ impl AttributePrototype {
 
             // Delete the prototype if we find one and if its context is not "least-specific".
             if let Some(current_prototype) = current_value.attribute_prototype(ctx).await? {
-                if current_prototype.context.is_least_specific() && parent_proto_key {
-                    return Err(
-                        AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
-                            *current_prototype.id(),
-                        ),
-                    );
-                }
                 // Delete all arguments found for a prototype before deleting the prototype.
                 for argument in AttributePrototypeArgument::list_for_attribute_prototype(
                     ctx,
@@ -334,14 +346,6 @@ impl AttributePrototype {
                 }
             }
 
-            // Delete the value if its context is not "least-specific".
-            if current_value.context.is_least_specific() && parent_proto_key {
-                return Err(
-                    AttributePrototypeError::LeastSpecificContextValueRemovalNotAllowed(
-                        *current_value.id(),
-                    ),
-                );
-            }
             if current_value.visibility().in_change_set() {
                 standard_model::hard_unset_belongs_to_in_change_set(
                     ctx,
