@@ -51,6 +51,8 @@ pub enum JobConsumerError {
     Nats(#[from] NatsError),
     #[error(transparent)]
     Council(#[from] council_server::client::Error),
+    #[error("Protocol error with council: {0}")]
+    CouncilProtocol(String),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
