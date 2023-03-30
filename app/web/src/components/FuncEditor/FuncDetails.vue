@@ -16,7 +16,7 @@
     v-else-if="selectedFuncId && editingFunc"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
-    <TabGroup>
+    <TabGroup remember-selected-tab-key="func_details">
       <TabGroupItem label="Properties" slug="properties">
         <template #top>
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">

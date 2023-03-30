@@ -10,6 +10,7 @@
     :default-size="320"
     :min-size="280"
   >
+    <!-- TODO - we should replace this with our own TabGroup component eventually -->
     <TabGroup
       class="flex flex-col w-full h-full bg-neutral-900 text-white"
       as="div"

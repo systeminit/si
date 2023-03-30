@@ -2,6 +2,7 @@
   <div class="relative flex-grow">
     <TabGroup
       :start-selected-tab-slug="tabContentSlug"
+      remember-selected-tab-key="customize_main"
       @update:selected-tab="onTabChange"
     >
       <TabGroupItem slug="functions" label="FUNCTIONS">
