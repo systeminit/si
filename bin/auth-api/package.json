@@ -12,7 +12,7 @@
     "lint": "eslint src --ext .ts,.cjs",
     "lint:strict": "STRICT_LINT=1 pnpm run lint",
     "lint:fix": "pnpm run lint --fix",
-    "db:reset": "prisma migrate reset --force && prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force && prisma migrate deploy && prisma generate",
     "docker:build:aws": "cd ../.. && docker buildx build --output type=docker --platform=linux/amd64 -f bin/auth-api/Dockerfile . -t si/si-auth-api",
     "docker:tag:aws": "docker tag si/si-auth-api:latest 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",
     "docker:push:aws": "docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",

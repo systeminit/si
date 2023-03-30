@@ -8,6 +8,7 @@ async fn new(ctx: &DalContext) {
         UserPk::generate(),
         "funky",
         "bobotclown@systeminit.com",
+        None::<String>,
     )
     .await
     .expect("cannot create user");

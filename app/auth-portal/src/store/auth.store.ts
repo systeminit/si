@@ -12,11 +12,11 @@ export type User = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   externalDetails?: any; // json blob, just store auth0 details for now
   nickname: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string | null;
+  lastName: string | null;
   email?: string;
   emailVerified: boolean;
-  pictureUrl?: string;
+  pictureUrl: string | null;
   needsTosUpdate?: boolean;
   githubUsername?: string;
   discordUsername?: string;

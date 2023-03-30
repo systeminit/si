@@ -104,6 +104,7 @@ pub async fn auth_connect(
                 res_body.user.id,
                 res_body.user.nickname,
                 res_body.user.email,
+                res_body.user.picture_url,
             )
             .await?
         }

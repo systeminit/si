@@ -68,7 +68,7 @@
       <ComponentDetails
         v-if="selectedComponent"
         :key="selectedComponent.id"
-        :disabled="isViewMode"
+        :is-view-mode="isViewMode"
         @delete="triggerDeleteSelection"
         @restore="triggerRestoreSelection"
       />

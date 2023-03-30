@@ -174,6 +174,7 @@ const tabRefs = ref({} as Record<string, HTMLElement | null>);
 
 const props = defineProps({
   startSelectedTabSlug: { type: String },
+  rememberSelectedTabKey: { type: String },
   closeable: { type: Boolean, default: false },
   firstTabMarginLeft: {
     type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md">,
@@ -222,8 +223,11 @@ function selectTab(slug?: string) {
   else selectedTabSlug.value = undefined;
   emit("update:selectedTab", selectedTabSlug.value);
 
-  // adjust the tab position if it is offscreen
   if (selectedTabSlug.value) {
+    if (tabKey.value) {
+      window.localStorage.setItem(tabKey.value, selectedTabSlug.value);
+    }
+    // adjust the tab position if it is offscreen
     const tabEl = tabRefs.value[selectedTabSlug.value];
     if (tabEl) {
       const tabElRect = tabEl.getBoundingClientRect();
@@ -242,7 +246,26 @@ function selectTab(slug?: string) {
   }
 }
 
+const tabKey = computed(() => {
+  if (props.rememberSelectedTabKey) {
+    return `tab_group_${props.rememberSelectedTabKey}`;
+  } else {
+    return false;
+  }
+});
+
 function autoSelectTab() {
+  if (tabKey.value) {
+    const slug = window.localStorage.getItem(tabKey.value);
+    if (slug && tabs[slug]) {
+      selectTab(slug);
+      return;
+    } else if (props.startSelectedTabSlug) {
+      window.localStorage.setItem(tabKey.value, props.startSelectedTabSlug);
+      selectTab(props.startSelectedTabSlug);
+      return;
+    }
+  }
   if (isNoTabs.value) {
     // can't select anything if there are no tabs
     selectTab();

@@ -273,6 +273,7 @@ pub async fn create_user(ctx: &DalContext) -> User {
         UserPk::generate(),
         &name,
         &format!("{name}@test.systeminit.com"),
+        None::<&str>,
     )
     .await
     .expect("cannot create user")

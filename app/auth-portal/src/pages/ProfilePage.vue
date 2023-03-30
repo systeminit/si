@@ -30,26 +30,62 @@
               <RichText>
                 <h2>Update your profile</h2>
                 <p>Use this page to update your profile info.</p>
-                <p>We won't share your info with anyone...</p>
+                <p>We won't share your info with anyone.</p>
               </RichText>
             </template>
           </Stack>
         </div>
 
-        <form class="grow my-lg p-md">
+        <form class="grow my-md p-md">
           <Stack spacing="lg">
             <Stack>
               <ErrorMessage :request-status="updateUserReqStatus" />
+              <VormInput label="Profile Image" type="container">
+                <div
+                  v-if="draftUser.pictureUrl"
+                  class="flex flex-row items-center gap-sm"
+                >
+                  <img
+                    :src="draftUser.pictureUrl"
+                    class="rounded-full w-xl h-xl"
+                  />
+                  <VButton2
+                    tone="destructive"
+                    size="xs"
+                    variant="ghost"
+                    @click="clearPicture"
+                    >Clear Picture</VButton2
+                  >
+                </div>
+                <div v-else class="h-xl items-center flex flex-row gap-sm">
+                  <div class="italic text-sm">No image set.</div>
+                  <VButton2
+                    v-if="storeUser?.pictureUrl"
+                    tone="action"
+                    size="xs"
+                    variant="ghost"
+                    @click="restorePicture"
+                    >Restore Picture</VButton2
+                  >
+                </div>
+
+                <!--
+  v-model="draftUser.pictureUrl"
+              placeholder="Leave blank to have no profile picture"
+-->
+              </VormInput>
               <Tiles columns="2" spacing="sm" columns-mobile="1">
                 <VormInput
                   v-model="draftUser.firstName"
                   label="First Name"
                   autocomplete="given-name"
+                  placeholder="Your first name"
                 />
                 <VormInput
                   v-model="draftUser.lastName"
                   label="Last Name"
                   autocomplete="last-name"
+                  placeholder="Your last name"
                 />
               </Tiles>
               <VormInput
@@ -57,6 +93,7 @@
                 label="Nickname"
                 autocomplete="username"
                 required
+                placeholder="This name will be shown in the application"
               />
               <VormInput
                 v-model="draftUser.email"
@@ -64,6 +101,7 @@
                 type="email"
                 autocomplete="email"
                 required
+                placeholder="ex: yourname@somewhere.com"
               />
               <VormInput
                 v-model="draftUser.githubUsername"
@@ -166,4 +204,15 @@ async function saveHandler() {
     router.push({ name: "login-success" });
   }
 }
+
+const clearPicture = () => {
+  if (draftUser.value) {
+    draftUser.value.pictureUrl = null;
+  }
+};
+const restorePicture = () => {
+  if (draftUser.value && storeUser.value) {
+    draftUser.value.pictureUrl = storeUser.value.pictureUrl;
+  }
+};
 </script>

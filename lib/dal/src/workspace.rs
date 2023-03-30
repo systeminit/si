@@ -114,7 +114,14 @@ impl Workspace {
         let workspace = Workspace::new(ctx, WorkspacePk::generate(), workspace_name).await?;
         let key_pair = KeyPair::new(ctx, "default").await?;
 
-        let user = User::new(ctx, UserPk::generate(), &user_name, &user_email).await?;
+        let user = User::new(
+            ctx,
+            UserPk::generate(),
+            &user_name,
+            &user_email,
+            None::<&str>,
+        )
+        .await?;
         ctx.update_history_actor(HistoryActor::User(user.pk()));
 
         ctx.import_builtins().await?;

@@ -143,21 +143,18 @@ impl FixBatch {
 #[serde(rename_all = "camelCase")]
 pub struct FixBatchReturn {
     id: FixBatchId,
-    completion_status: FixCompletionStatus,
+    status: FixCompletionStatus,
 }
 
 impl WsEvent {
     pub async fn fix_batch_return(
         ctx: &DalContext,
         id: FixBatchId,
-        completion_status: FixCompletionStatus,
+        status: FixCompletionStatus,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::FixBatchReturn(FixBatchReturn {
-                id,
-                completion_status,
-            }),
+            WsPayload::FixBatchReturn(FixBatchReturn { id, status }),
         )
         .await
     }

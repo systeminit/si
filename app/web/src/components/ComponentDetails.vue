@@ -33,6 +33,7 @@
       />
       <div class="pr-xs shrink-0">
         <VButton2
+          v-if="selectedComponent.resource.data"
           icon="refresh"
           size="sm"
           variant="ghost"
@@ -47,7 +48,7 @@
     </div>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
-      <Stack v-if="!props.disabled" class="p-sm">
+      <Stack v-if="!isViewMode" class="p-sm">
         <ErrorMessage icon="alert-triangle" tone="warning">
           This component will be removed from your model when this change set is
           merged
@@ -67,11 +68,16 @@
 
     <template v-else>
       <div class="flex-grow relative">
-        <TabGroup start-selected-tab-slug="attributes">
+        <TabGroup
+          :start-selected-tab-slug="isViewMode ? 'resource' : 'attributes'"
+          :remember-selected-tab-key="`component_details_${
+            isViewMode ? 'view' : 'model'
+          }`"
+        >
           <TabGroupItem label="Attributes" slug="attributes">
             <AttributeViewer
               class="dark:text-neutral-50 text-neutral-900"
-              :disabled="props.disabled"
+              :disabled="isViewMode"
             />
           </TabGroupItem>
           <TabGroupItem label="Code" slug="code">
@@ -126,7 +132,7 @@ import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
 
 const props = defineProps<{
-  disabled?: boolean;
+  isViewMode?: boolean;
 }>();
 
 const emit = defineEmits(["delete", "restore"]);
