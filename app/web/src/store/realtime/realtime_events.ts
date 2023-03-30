@@ -32,9 +32,9 @@ export type WsEventPayloadMap = {
 
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
-  // ResourceRefreshed: {
-  //   componentId: string;
-  // }
+  ResourceRefreshed: {
+    componentId: string;
+  };
   // UpdatedDependentValue: {
   //   componentId: string;
   // }

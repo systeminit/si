@@ -47,10 +47,10 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, computed} from "vue";
-import SelectMenu, {Option} from "@/components/SelectMenu.vue";
+import { ref, computed } from "vue";
+import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import VButton from "@/components/VButton.vue";
-import {nilId} from "@/utils/nilId";
+import { nilId } from "@/utils/nilId";
 
 const props = defineProps<{
   options: Option[];
@@ -64,12 +64,10 @@ const emit = defineEmits<{
   (e: "change", v: Option[]): void;
 }>();
 
-const noneVariant = {label: "select schema variant", value: nilId()};
+const noneVariant = { label: "select schema variant", value: nilId() };
 const optionsState = ref<Option>(noneVariant);
 
-const addIsDisabled = computed(() =>
-  optionsState.value.value === nilId()
-)
+const addIsDisabled = computed(() => optionsState.value.value === nilId());
 
 const addOptions = () => {
   const newOptions = Array.from(

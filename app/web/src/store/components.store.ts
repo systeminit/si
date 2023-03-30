@@ -24,6 +24,7 @@ import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
+import { nilId } from "@/utils/nilId";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -33,7 +34,6 @@ import {
 import { useWorkspacesStore } from "./workspaces.store";
 import { ConfirmationStatus, useFixesStore } from "./fixes.store";
 import { useStatusStore } from "./status.store";
-import { nilId } from "@/utils/nilId";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -185,6 +185,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         // used by the diagram to track which schema is selected for insertion
         selectedInsertSchemaId: null as SchemaId | null,
+
+        refreshingStatus: {} as Record<ComponentId, boolean>,
       }),
       getters: {
         // transforming the diagram-y data back into more generic looking data
@@ -776,6 +778,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async REFRESH_RESOURCE_INFO(componentId: ComponentId) {
+          this.refreshingStatus[componentId] = true;
           return new ApiRequest({
             method: "post",
             url: "component/refresh",
@@ -836,6 +839,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             eventType: "CodeGenerated",
             callback: (codeGeneratedEvent) => {
               this.FETCH_COMPONENT_CODE(codeGeneratedEvent.componentId);
+            },
+          },
+          {
+            eventType: "ResourceRefreshed",
+            callback: (resourceRefreshedEvent) => {
+              if (resourceRefreshedEvent?.componentId) {
+                this.refreshingStatus[resourceRefreshedEvent.componentId] =
+                  false;
+              }
             },
           },
         ]);

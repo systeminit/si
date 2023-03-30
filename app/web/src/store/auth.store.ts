@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import jwtDecode from "jwt-decode";
-import { posthog } from "@/utils/posthog";
 import { useRouter } from "vue-router";
 import { ApiRequest } from "@si/vue-lib/pinia";
+import { posthog } from "@/utils/posthog";
 
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
@@ -118,7 +118,9 @@ export const useAuthStore = defineStore("auth", {
       // store the token in localstorage
       storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, loginResponse.token);
       // identify the user in posthog
-      posthog.identify(loginResponse.user.pk, { email: loginResponse.user.email });
+      posthog.identify(loginResponse.user.pk, {
+        email: loginResponse.user.email,
+      });
     },
   },
 });

@@ -1,6 +1,8 @@
 use axum::Json;
 
-use dal::{job::definition::RefreshJob, Component, ComponentId, StandardModel, Visibility};
+use dal::{
+    job::definition::RefreshJob, Component, ComponentId, StandardModel, Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -26,6 +28,19 @@ pub async fn refresh(
     Json(request): Json<RefreshRequest>,
 ) -> ComponentResult<Json<RefreshRequestResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    // If a component does not exist on head, we should just consider it "refreshed" right away.
+    if let Some(component_id) = request.component_id {
+        if Component::get_by_id(&ctx, &component_id).await?.is_none() {
+            WsEvent::resource_refreshed(&ctx, component_id)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+            ctx.commit().await?;
+
+            return Ok(Json(RefreshRequestResponse { success: true }));
+        }
+    }
 
     let component_ids = if let Some(component_id) = request.component_id {
         vec![component_id]
