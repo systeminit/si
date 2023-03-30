@@ -1,0 +1,31 @@
+a.underline-link {
+  position: relative;
+
+  &:after {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 0%;
+    height: 1px;
+    margin-top: 2px;
+
+    background: currentColor;
+    background: @colors-action-500;
+    transition: all 0.5s;
+  }
+
+  &:hover {
+    &:after {
+      width: 100%;
+    }
+  }
+
+  &.router-link-active,
+  &.--active {
+    &:after {
+      width: 100%;
+      height: 2px;
+      background: currentColor;
+    }
+  }
+}

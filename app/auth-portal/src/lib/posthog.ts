@@ -1,6 +1,6 @@
 import posthog, { CaptureOptions, Properties } from "posthog-js";
 
-if (import.meta.env.VITE_POSTHOG_PUBLIC_KEY) {
+if (!import.meta.env.SSR && import.meta.env.VITE_POSTHOG_PUBLIC_KEY) {
   posthog.init(import.meta.env.VITE_POSTHOG_PUBLIC_KEY, {
     api_host: import.meta.env.VITE_POSTHOG_API_HOST,
   });

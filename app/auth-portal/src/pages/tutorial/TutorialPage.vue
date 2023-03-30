@@ -3,50 +3,82 @@
   <div v-if="docsLoaded">
     <Confetti :active="activeStepSlug === 'next_steps'" start-top />
     <template v-if="!onboardingStore.stepsCompleted.github_access">
-      <p>
-        Thank you! We're double checking everything and getting your access to
-        the github repository. Be on the lookout for the invitation from GitHub!
-        It may take us an hour or more to process things, depending on our
-        availability. If you have any questions, or run into trouble, you can
-        email us at
-        <a href="mailto:preview@systeminit.com" target="_blank"
-          >preview@systeminit.com </a
-        >, or hit us up on <a href="https://discord.com/asdf">discord</a>.
-      </p>
+      <RichText>
+        <h3>We're getting you access</h3>
+        <p>
+          Thank you! We're double checking everything and getting your access to
+          the github repository. Be on the lookout for the invitation from
+          GitHub! It may take us an hour or more to process things, depending on
+          our availability. If you have any questions, or run into trouble, you
+          can email us at
+          <a href="mailto:preview@systeminit.com" target="_blank"
+            >preview@systeminit.com</a
+          >, or hit us up on <a href="https://discord.com/asdf">discord</a>.
+        </p>
+      </RichText>
     </template>
     <template v-else>
-      <h2 class="mb-lg">Tutorial!</h2>
-
-      <Icon :name="onboardingStore.devFrontendOnline ? 'check' : 'loader'" />
-      <Icon :name="onboardingStore.devBackendOnline ? 'check' : 'loader'" />
-
-      <div class="flex gap-md">
-        <div class="flex-none w-[220px]">
-          <div class="sticky top-sm flex flex-col gap-sm">
+      <div class="flex gap-lg">
+        <div class="flex-none w-[250px]">
+          <div class="sticky top-md flex flex-col gap-sm">
             <div
               v-for="step in tutorialSteps"
               :key="step.slug"
-              :class="
-                clsx(
-                  'cursor-pointer flex items-center gap-xs',
-                  activeStepSlug === step.slug &&
-                    ' border-action-300 border-l-2',
-                )
-              "
+              :class="clsx('cursor-pointer flex items-center gap-xs leading-5')"
               @click="activeStepSlug = step.slug"
             >
               <Icon
                 :name="
                   _.get(onboardingStore.stepsCompleted, step.slug)
-                    ? 'check-circle'
-                    : 'minus-circle'
+                    ? step.completeIcon || 'check-circle'
+                    : step.incompleteIcon || 'minus-circle'
+                "
+                size="lg"
+                :class="
+                  clsx(
+                    '-ml-[2px]',
+                    _.get(onboardingStore.stepsCompleted, step.slug)
+                      ? 'text-success-500'
+                      : activeStepSlug !== step.slug
+                      ? 'text-neutral-400'
+                      : '',
+                  )
                 "
               />
-              {{ step.title }}
+
+              <a
+                href="#"
+                :class="
+                  clsx(
+                    'underline-link',
+                    activeStepSlug === step.slug && '--active',
+                  )
+                "
+                @click.prevent
+              >
+                {{ step.title }}
+              </a>
             </div>
+
+            <Transition
+              class="duration-500"
+              enter-from-class="transform opacity-0"
+              enter-to-class="opacity-100"
+              leave-to-class="opacity-0"
+            >
+              <WorkspaceLinkWidget
+                v-if="
+                  activeStepSlug !== 'intro' && activeStepSlug !== 'dev_setup'
+                "
+                compact
+                class="mt-xs"
+              />
+            </Transition>
           </div>
         </div>
-        <div class="grow">
+        <div
+          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+        >
           <RichText>
             <Component
               :is="tutorialSteps[activeStepSlug].component"
@@ -95,11 +127,20 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { ComponentOptions, onBeforeMount, onMounted, ref } from "vue";
-import { Icon, Inline, RichText, VButton2 } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  Inline,
+  RichText,
+  VButton2,
+} from "@si/vue-lib/design-system";
+import { RouterLink } from "vue-router";
 import Confetti from "@/components/Confetti.vue";
 
+import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import FrieNDAModal from "@/components/FrieNDAModal.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 
 const onboardingStore = useOnboardingStore();
 
@@ -108,6 +149,8 @@ const tutorialSteps = {} as Record<
   {
     title: string;
     slug: string;
+    completeIcon?: IconNames;
+    incompleteIcon?: IconNames;
     fileName: string;
     component: ComponentOptions;
   }
@@ -123,10 +166,14 @@ onBeforeMount(async () => {
     tutorialSteps[slug] = {
       title: importedDoc.attributes.title,
       slug,
+      completeIcon: importedDoc.attributes.completeIcon,
+      incompleteIcon: importedDoc.attributes.incompleteIcon,
       fileName,
       component: importedDoc.VueComponentWith({
         Icon,
         Inline,
+        "workspace-link-widget": WorkspaceLinkWidget,
+        "router-link": RouterLink,
       }),
     };
   }
@@ -151,5 +198,11 @@ onMounted(() => {
   ) {
     friendaRef.value?.open();
   }
+});
+
+const workspacesStore = useWorkspacesStore();
+onBeforeMount(() => {
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  workspacesStore.LOAD_WORKSPACES();
 });
 </script>

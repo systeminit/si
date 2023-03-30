@@ -142,9 +142,8 @@ const routes: RouteRecordRaw[] = [
       authStore.localLogout();
 
       window.location.href = `${AUTH_PORTAL_URL}/logout`;
-      return { name: "login" };
     },
-    component: () => import("@/pages/auth/AuthConnectPage.vue"), // just need something here for TS, but guard always redirects
+    component: () => import("@/pages/auth/LogoutPage.vue"), // just need something here for TS, but guard always redirects
   },
 
   // 404

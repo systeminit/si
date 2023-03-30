@@ -48,12 +48,13 @@ router.patch("/users/:userId", async (ctx) => {
   const reqBody = validate(ctx.request.body, z.object({
     // TODO: add checks on usernames looking right
     // TODO: figure out way to avoid marking everything as nullable
-    discordUsername: z.string().nullable(),
-    githubUsername: z.string().nullable(),
     firstName: z.string().nullable(),
     lastName: z.string().nullable(),
-    email: z.string().email().nullable(),
+    nickname: z.string(),
+    email: z.string().email(),
     pictureUrl: z.string().url().nullable(),
+    discordUsername: z.string().nullable(),
+    githubUsername: z.string().nullable(),
   }).partial());
 
   _.assign(user, reqBody);

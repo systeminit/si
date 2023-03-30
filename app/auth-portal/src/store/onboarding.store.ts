@@ -38,14 +38,17 @@ export const useOnboardingStore = () => {
           devFrontendOnline: false,
         };
       },
-      getters: {},
+      getters: {
+        devInstanceOnline: (state) =>
+          state.devBackendOnline && state.devFrontendOnline,
+      },
       actions: {
         handleNewFeatureFlags() {
           _.each(
             {
               frienda: "vro-frienda_accepted",
               github_access: "vro-github_access_granted",
-              // tutorial steps (NOTE - intro doesn't have a flag)
+              // tutorial steps (NOTE - intro doesn't have a flag as it starts complete)
               dev_setup: "vro-dev_setup_completed",
               model: "vro-model_completed",
               apply: "vro-apply_completed",
@@ -53,7 +56,8 @@ export const useOnboardingStore = () => {
               model_survey: "vro-model_survey_completed",
               customize: "vro-customize_completed",
               customize_survey: "vro-customize_survey_completed",
-              next_steps: "vro-next_steps_completed",
+              // next_steps has no step to complete... so we mark it complete when everything else is done
+              next_steps: "vro-customize_survey_completed",
             } as Record<keyof typeof this.stepsCompleted, string>,
             (featureToggleName, stepSlug) => {
               if (posthog.isFeatureEnabled(featureToggleName)) {
@@ -77,6 +81,7 @@ export const useOnboardingStore = () => {
             // hitting SDF via the front-end api proxy...
             // probably want to change this, but will need to adjust cors settings to do so
             const _req = await Axios.get("http://localhost:8080/api");
+            // const _req = await Axios.get("http://localhost:5156/api");
             this.devBackendOnline = true;
           } catch (err) {
             this.devBackendOnline = false;

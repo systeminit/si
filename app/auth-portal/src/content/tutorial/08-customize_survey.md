@@ -2,4 +2,4 @@
 title: "Survey: Customization"
 ---
 
-scrub-a-dub-dub
+take a survey about customizing

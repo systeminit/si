@@ -1,8 +1,6 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <h2>Update your profile!</h2>
-
     <template v-if="loadUserReqStatus.isPending">
       <Icon name="loader" size="xl" />
     </template>
@@ -10,68 +8,98 @@
       <ErrorMessage :request-status="loadUserReqStatus" />
     </template>
     <template v-else-if="draftUser">
-      <Stack spacing="lg">
-        <Stack>
-          <!-- this text only shows the first time / user is in onboarding -->
-          <template v-if="isOnboarding">
-            <h2 class="font-bold text-lg">
-              Welcome to the preview of System Initiative!
-            </h2>
-            <p>
-              In order to get you access to the software, we need to know a
-              little more about you: specifically, we need your GitHub Username
-              and your Discord ID. We will use your GitHub Username to add you
-              to our private repository, and your Discord ID to ensure you have
-              access to private channels to discuss System Initiative with other
-              folks in the preview.
-            </p>
-          </template>
-          <!-- this is the default text -->
-          <template v-else> </template>
-        </Stack>
+      <div class="flex gap-xl">
+        <div class="w-[35%] flex items-center pl-md">
+          <Stack>
+            <!-- this text only shows the first time / user is in onboarding -->
+            <template v-if="isOnboarding">
+              <RichText>
+                <h2>Welcome to the preview of System Initiative!</h2>
+                <p>
+                  In order to get you access to the software, we need to know a
+                  little more about you: specifically, we need your GitHub
+                  Username and your Discord ID. We will use your GitHub Username
+                  to add you to our private repository, and your Discord ID to
+                  ensure you have access to private channels to discuss System
+                  Initiative with other folks in the preview.
+                </p>
+              </RichText>
+            </template>
+            <!-- this is the default text -->
+            <template v-else>
+              <RichText>
+                <h2>Update your profile</h2>
+                <p>Use this page to update your profile info.</p>
+                <p>We won't share your info with anyone...</p>
+              </RichText>
+            </template>
+          </Stack>
+        </div>
 
-        <Stack>
-          <ErrorMessage :request-status="updateUserReqStatus" />
-          <Inline>
-            <VormInput v-model="draftUser.firstName" label="First Name" />
-            <VormInput v-model="draftUser.lastName" label="Last Name" />
-          </Inline>
-          <VormInput v-model="draftUser.nickname" label="Nickname" required />
-          <VormInput
-            v-model="draftUser.email"
-            label="Email"
-            type="email"
-            required
-          />
-          <VormInput
-            v-model="draftUser.githubUsername"
-            label="Github Username"
-            placeholder="ex: devopsdude42"
-            required
-            :regex="GITHUB_USERNAME_REGEX"
-            regex-message="Invalid github username"
-          />
-          <VormInput
-            v-model="draftUser.discordUsername"
-            label="Discord Username"
-            placeholder="ex: eggscellent#1234"
-            required
-            :regex="DISCORD_TAG_REGEX"
-            regex-message="Invalid discord tag"
-          />
+        <form class="grow my-lg p-md">
+          <Stack spacing="lg">
+            <Stack>
+              <ErrorMessage :request-status="updateUserReqStatus" />
+              <Tiles columns="2" spacing="sm" columns-mobile="1">
+                <VormInput
+                  v-model="draftUser.firstName"
+                  label="First Name"
+                  autocomplete="given-name"
+                />
+                <VormInput
+                  v-model="draftUser.lastName"
+                  label="Last Name"
+                  autocomplete="last-name"
+                />
+              </Tiles>
+              <VormInput
+                v-model="draftUser.nickname"
+                label="Nickname"
+                autocomplete="username"
+                required
+              />
+              <VormInput
+                v-model="draftUser.email"
+                label="Email"
+                type="email"
+                autocomplete="email"
+                required
+              />
+              <VormInput
+                v-model="draftUser.githubUsername"
+                label="Github Username"
+                name="github_username"
+                placeholder="ex: devopsdude42"
+                required
+                :regex="GITHUB_USERNAME_REGEX"
+                regex-message="Invalid github username"
+              />
+              <VormInput
+                v-model="draftUser.discordUsername"
+                label="Discord Username"
+                name="discord_username"
+                placeholder="ex: eggscellent#1234"
+                required
+                :regex="DISCORD_TAG_REGEX"
+                regex-message="Invalid discord tag"
+              />
 
-          <VButton2
-            icon-right="chevron--right"
-            :disabled="validationState.isError"
-            :request-status="updateUserReqStatus"
-            loading-text="Saving your profile..."
-            success-text="Updated your profile!"
-            @click="saveHandler"
-          >
-            Save
-          </VButton2>
-        </Stack>
-      </Stack>
+              <VButton2
+                icon-right="chevron--right"
+                :disabled="validationState.isError"
+                :request-status="updateUserReqStatus"
+                loading-text="Saving your profile..."
+                success-text="Updated your profile!"
+                tone="action"
+                variant="solid"
+                @click="saveHandler"
+              >
+                Save
+              </VButton2>
+            </Stack>
+          </Stack>
+        </form>
+      </div>
     </template>
   </div>
 </template>
@@ -85,11 +113,12 @@ import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   ErrorMessage,
   Icon,
-  Inline,
+  Tiles,
   Stack,
   useValidatedInputGroup,
   VButton2,
   VormInput,
+  RichText,
 } from "@si/vue-lib/design-system";
 import { useAuthStore, User } from "@/store/auth.store";
 

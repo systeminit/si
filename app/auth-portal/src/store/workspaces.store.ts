@@ -4,7 +4,7 @@ import { ApiRequest } from "@si/vue-lib/pinia";
 import { UserId } from "./auth.store";
 import { ISODateString } from "./shared-types";
 
-type WorkspaceId = string;
+export type WorkspaceId = string;
 
 // TODO: do we want to share this type with the backend?
 type Workspace = {
@@ -23,6 +23,8 @@ export const useWorkspacesStore = defineStore("workspaces", {
   }),
   getters: {
     workspaces: (state) => _.values(state.workspacesById),
+    // when we have multiple workspaces, we'll want to track which one was the default...
+    defaultWorkspace: (state) => _.values(state.workspacesById)[0],
   },
   actions: {
     async LOAD_WORKSPACES() {
