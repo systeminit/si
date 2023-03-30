@@ -57,8 +57,16 @@
                     >Clear Picture</VButton2
                   >
                 </div>
-                <div v-else class="italic h-xl items-center flex flex-row">
-                  No image set.
+                <div v-else class="h-xl items-center flex flex-row gap-sm">
+                  <div class="italic text-sm">No image set.</div>
+                  <VButton2
+                    v-if="storeUser?.pictureUrl"
+                    tone="action"
+                    size="xs"
+                    variant="ghost"
+                    @click="restorePicture"
+                    >Restore Picture</VButton2
+                  >
                 </div>
 
                 <!--
@@ -200,6 +208,11 @@ async function saveHandler() {
 const clearPicture = () => {
   if (draftUser.value) {
     draftUser.value.pictureUrl = null;
+  }
+};
+const restorePicture = () => {
+  if (draftUser.value && storeUser.value) {
+    draftUser.value.pictureUrl = storeUser.value.pictureUrl;
   }
 };
 </script>
