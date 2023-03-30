@@ -2,11 +2,11 @@
 title: Introduction
 ---
 
-### Welcome to System Initiative!
+## Welcome to System Initiative!
 
 We're so excited to have you as part of this invite-only preview of what we've been up to for the last while. The whole thing will be open sourced and we'll have a wider public release soon, but blah blah blah...
 
-## FrieNDA
+### FrieNDA
 This is an invite-only preview release,
 intended to let you experience System Initiative and for us to shake out
 the (probably many) issues you might have. We ask that you not speak

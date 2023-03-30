@@ -1,18 +1,25 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <h2 class="mb-lg">Review the TOS!</h2>
-
     <!-- <div class="legal-markdown" v-html="authStore.tosDetails?.html" /> -->
 
     <template v-if="!docsLoaded"> Loading... </template>
     <template v-else>
-      <p class="mb-lg">
-        In order to use System Initiative, we need you to review and agree to
-        our terms:
-      </p>
+      <RichText class="mb-xl">
+        <template v-if="viewOnlyMode">
+          <h1>Our Legal docs...</h1>
+          <p>Here's some legal mumbo jumbo...</p>
+          <p>Last updated 2023-03-30</p>
+        </template>
+        <template v-else>
+          <p>
+            In order to use System Initiative, we need you to review and agree
+            to our terms:
+          </p>
+        </template>
+      </RichText>
 
-      <div class="flex gap-md">
+      <div class="flex gap-lg">
         <div class="flex-none w-[220px]">
           <div class="sticky top-md flex flex-col gap-md">
             <div
@@ -43,7 +50,9 @@
             </div>
           </div>
         </div>
-        <div class="grow">
+        <div
+          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+        >
           <div
             v-for="doc in docs"
             :key="doc.fileName"
@@ -54,7 +63,7 @@
               <h2>{{ doc.title }}</h2>
               <Component :is="doc.component" />
             </RichText>
-            <div class="">
+            <div class="mt-md">
               <VButton2
                 icon="download"
                 variant="soft"
@@ -70,7 +79,7 @@
             </div>
           </div>
 
-          <Stack>
+          <Stack v-if="!viewOnlyMode">
             <VormInput v-model="userAgreed" type="checkbox"
               >I have read and agree to the terms above</VormInput
             >
@@ -92,7 +101,7 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
   ComponentOptions,
   computed,
@@ -115,6 +124,10 @@ import { useAuthStore } from "@/store/auth.store";
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+
+// this page handles 2 modes, public view-only and review/agreement
+const viewOnlyMode = route.name === "legal";
 
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
@@ -156,6 +169,7 @@ const disableContinueButton = computed(() => {
 
 async function loadTosDetails() {
   if (import.meta.env.SSR) return;
+  if (viewOnlyMode) return;
   if (authStore.user?.needsTosUpdate === false) {
     return router.push({ name: "login-success" });
   }
@@ -171,8 +185,6 @@ async function agreeButtonHandler() {
     await router.push({ name: "login-success" });
   }
 }
-
-// const activeDocSlug = ref("tos");
 
 function scrollToDoc(slug: string) {
   const el = document.querySelector(`[data-doc-slug="${slug}"]`);

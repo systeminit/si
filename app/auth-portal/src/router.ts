@@ -17,6 +17,11 @@ export const routerOptions: RouterOptions = {
     { path: "/login", name: "login", component: LoginPage },
     { path: "/logout", name: "logout", component: LogoutPage },
     {
+      path: "/legal",
+      name: "legal",
+      component: LegalAgreementPage,
+    },
+    {
       path: "/review-legal",
       name: "review-legal",
       component: LegalAgreementPage,

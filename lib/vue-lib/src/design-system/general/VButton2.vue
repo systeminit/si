@@ -19,7 +19,9 @@
       </template>
 
       <template v-else>
-        <Icon v-if="icon" class="vbutton__icon" :name="icon" />
+        <slot name="icon">
+          <Icon v-if="icon" class="vbutton__icon" :name="icon" />
+        </slot>
         <span class="vbutton__text">
           <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
             |
@@ -31,7 +33,9 @@
           </slot>
           <slot v-else>{{ label }}</slot>
         </span>
-        <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
+        <slot name="iconRight">
+          <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
+        </slot>
       </template>
     </div>
   </component>

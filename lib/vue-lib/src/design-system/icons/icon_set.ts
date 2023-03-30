@@ -72,6 +72,7 @@ import UserCircle from "~icons/heroicons/user-circle-solid";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
 import TreeParents from "~icons/fluent-mdl2/breadcrumb";
+// import ExternalLink rom "~icons/heroicons/arrow-top-right-on-square-20-solid";
 
 import EmptyIcon from "./custom-icons/empty-icon.svg?raw";
 
@@ -92,10 +93,15 @@ import SiLogo from "./custom-icons/si-logo-icon.svg?raw";
 import DockerLogo from "~icons/mdi/docker";
 // import KubernetesCircleLogo from "~icons/carbon/logo-kubernetes";
 import KubernetesLogo from "~icons/carbon/kubernetes";
+import DiscordLogo from "~icons/carbon/logo-discord";
+import GithubLogo from "~icons/carbon/logo-github";
 
 // carbon
 import Hashtag from "~icons/carbon/hashtag";
 import Create from "~icons/carbon/intent-request-create";
+
+import Laptop from "~icons/material-symbols/laptop-mac-outline";
+import Celebrate from "~icons/game-icons/party-popper";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -107,6 +113,7 @@ export const ICONS = Object.freeze({
   bell: Bell,
   bolt: Bolt,
   cat: Cat,
+  celebrate: Celebrate,
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
@@ -133,6 +140,7 @@ export const ICONS = Object.freeze({
   hashtag: Hashtag,
   "help-circle": QuestionMarkCircle,
   hide: EyeOff,
+  laptop: Laptop,
   link: Link,
   loader: Loader,
   lock: Lock,
@@ -189,6 +197,9 @@ export const LOGO_ICONS = Object.freeze({
   "logo-docker": DockerLogo,
   "logo-k8s": KubernetesLogo,
   "logo-si": SiLogo,
+  // others - not used in providers currently
+  "logo-discord": DiscordLogo,
+  "logo-github": GithubLogo,
 });
 
 /*
