@@ -4,6 +4,7 @@ use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::tasks::{StatusReceiver, StatusReceiverError};
+use dal::JwtPublicSigningKey;
 use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     job::processor::JobQueueProcessor,
@@ -84,6 +85,7 @@ impl Server<(), ()> {
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
+        jwt_public_signing_key: JwtPublicSigningKey,
         council_subject_prefix: String,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
@@ -103,6 +105,7 @@ impl Server<(), ()> {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_secret_key,
+                    jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
                 )?;
@@ -136,6 +139,7 @@ impl Server<(), ()> {
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
+        jwt_public_signing_key: JwtPublicSigningKey,
         council_subject_prefix: String,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
@@ -155,6 +159,7 @@ impl Server<(), ()> {
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_secret_key,
+                    jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
                 )?;
@@ -210,6 +215,18 @@ impl Server<(), ()> {
     #[instrument(name = "sdf.init.load_jwt_secret_key", skip_all)]
     pub async fn load_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
         Ok(JwtSecretKey::load(path).await?)
+    }
+
+    #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
+    pub async fn load_jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
+        // FIXME(fnichol): further extract decision into args & config, even if driven via env var
+        let public_key_string = match option_env!("LOCAL_ENV_STACK") {
+            Some(_) => include_str!("../dev.jwt_signing_public_key.pem"),
+            None => include_str!("../prod.jwt_signing_public_key.pem"),
+        };
+        let public_key = JwtPublicSigningKey::from_key_string(public_key_string).await?;
+
+        Ok(public_key)
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
@@ -346,6 +363,7 @@ where
 pub fn build_service(
     services_context: ServicesContext,
     jwt_secret_key: JwtSecretKey,
+    jwt_public_signing_key: JwtPublicSigningKey,
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
@@ -356,6 +374,7 @@ pub fn build_service(
         services_context,
         signup_secret,
         jwt_secret_key,
+        jwt_public_signing_key,
         posthog_client,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,

@@ -57,18 +57,20 @@ pub struct AuthApiConnectResponse {
     pub token: String,
 }
 
-// TODO: pull from env so we can toggle to localhost without updating code
-const AUTH_API_URL: &str = "https://auth-api.systeminit.com";
-// const AUTH_API_URL: &str = "http://localhost:9001";
-
 pub async fn auth_connect(
     HandlerContext(builder): HandlerContext,
     Json(request): Json<AuthConnectRequest>,
 ) -> SessionResult<Json<AuthConnectResponse>> {
+    // TODO: pull value from env vars / dotenv files
+    let auth_api_url = match option_env!("LOCAL_ENV_STACK") {
+        Some(_) => "http://localhost:9001",
+        None => "https://auth-api.systeminit.com",
+    };
+
     let client = reqwest::Client::new();
     let res = client
         // TODO: pull this from an env var
-        .post(format!("{}/complete-auth-connect", AUTH_API_URL))
+        .post(format!("{}/complete-auth-connect", auth_api_url))
         .json(&json!({"code": request.code }))
         .send()
         .await?;

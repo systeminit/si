@@ -7,7 +7,7 @@ use tokio::task::JoinError;
 
 use crate::{
     jwt_key::JwtKeyError, pk, standard_model_accessor_ro, DalContext, HistoryEvent,
-    HistoryEventError, Tenancy, Timestamp, TransactionsError, WorkspacePk,
+    HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
@@ -146,10 +146,10 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        ctx: &DalContext,
+        public_key: JwtPublicSigningKey,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
-        let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
+        let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
         Ok(claims.custom)
     }
 }

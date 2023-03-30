@@ -125,7 +125,7 @@ pub use job::processor::{
     nats_processor::NatsProcessor, sync_processor::SyncProcessor, JobQueueProcessor,
 };
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
-pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
+pub use jwt_key::{create_jwt_key_if_missing, JwtPublicSigningKey, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::NodeId;

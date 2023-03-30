@@ -1,9 +1,11 @@
 use dal::{DalContext, JwtSecretKey, Tenancy, WorkspacePk};
-use dal_test::{test, test_harness::workspace_signup};
+use dal_test::{helpers::workspace_signup, test};
 
 #[test]
 async fn check_workspace_pk_identical(ctx: &mut DalContext, jwt_secret_key: &JwtSecretKey) {
-    let (nw, _) = workspace_signup(ctx, jwt_secret_key).await;
+    let (nw, _) = workspace_signup(ctx, jwt_secret_key)
+        .await
+        .expect("cannot signup new workspace");
     let tenancy = Tenancy::new(*nw.workspace.pk());
 
     let check = tenancy
@@ -15,7 +17,9 @@ async fn check_workspace_pk_identical(ctx: &mut DalContext, jwt_secret_key: &Jwt
 
 #[test]
 async fn check_workspace_pk_mismatched(ctx: &mut DalContext, jwt_secret_key: &JwtSecretKey) {
-    let (nw, _) = workspace_signup(ctx, jwt_secret_key).await;
+    let (nw, _) = workspace_signup(ctx, jwt_secret_key)
+        .await
+        .expect("cannot signup new workspace");
     let tenancy = Tenancy::new(*nw.workspace.pk());
     let other_tenancy = Tenancy::new(WorkspacePk::NONE);
 
