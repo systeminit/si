@@ -48,7 +48,7 @@ pub async fn refresh(
         Component::list(&ctx)
             .await?
             .into_iter()
-            .filter(|c| c.needs_destroy())
+            .filter(|c| c.visibility().deleted_at.is_none() || c.needs_destroy())
             .map(|c| *c.id())
             .collect()
     };
