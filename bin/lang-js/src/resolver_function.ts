@@ -69,40 +69,42 @@ export interface TypeCheckSuccess {
 
 export type TypeCheckResult = TypeCheckFailure | TypeCheckSuccess;
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isArray = (value: any): TypeCheckResult =>
+const isArray = (value: unknown): TypeCheckResult =>
   _.isArray(value)
     ? { valid: true }
     : { valid: false, message: "Return type must be an array." };
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isBoolean = (value: any): TypeCheckResult =>
+const isBoolean = (value: unknown): TypeCheckResult =>
   _.isBoolean(value)
     ? { valid: true }
     : { valid: false, message: "Return type must be a boolean." };
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isInteger = (value: any): TypeCheckResult =>
+const isInteger = (value: unknown): TypeCheckResult =>
   _.isInteger(value)
     ? { valid: true }
     : { valid: false, message: `Return type must be an integer.` };
 
-// This check is not 100% good because javascript 'objects' are annoyingly
-// weird.
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isObject = (value: any): TypeCheckResult =>
-  _.isObject(value) && !_.isArray(value) && !_.isNull(value)
+// This check is not 100% valid because javascript does not distinguish
+// between objects, arrays, functions and null in typeof checks. This
+// could return true if the function returns another function.
+const isObject = (value: unknown): TypeCheckResult =>
+  typeof value === 'object' && _.isObject(value) && !_.isArray(value) && !_.isNull(value)
     ? { valid: true }
     : { valid: false, message: "Return type must be an object." };
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isString = (value: any): TypeCheckResult =>
+const isString = (value: unknown): TypeCheckResult =>
   _.isString(value)
     ? { valid: true }
     : { valid: false, message: "Return type must be a string." };
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-const isCodeGeneration = (value: any): TypeCheckResult => {
+const isCodeGeneration = (value: unknown): TypeCheckResult => {
+  if (typeof value !== 'object') {
+    return {
+      valid: false,
+      message: "CodeGenerations must return an object with 'format' and 'code' fields",
+    }
+  }
+
   if (!("format" in value) || !_.isString(value.format)) {
     return {
       valid: false,
@@ -120,10 +122,39 @@ const isCodeGeneration = (value: any): TypeCheckResult => {
   return { valid: true };
 };
 
+const qualificationStatuses = ["warning", "failure", "success", "unknown"];
+const isQualification = (value: unknown): TypeCheckResult => {
+  if (typeof value !== 'object') {
+    return { valid: false, message: "A qualification must return an object."};
+  }
+
+  if (!("result" in value) || !_.isString(value.result)) {
+    return {
+      valid: false,
+      message: "Qualification result field type must be a string", 
+    };
+  }
+
+  if (!qualificationStatuses.includes(value.result)) {
+    return {
+      valid: false,
+      message: "Qualification result must be one of 'success' | 'warning' | 'failure'",
+    }
+  }
+
+  if (value.result !== 'success' && (!("message" in value) || !_.isString(value.message))) {
+    return {
+      valid: false,
+      message: "The Qualification message field type must be a string, and must be present unless the status is success",
+    };
+  }
+
+  return { valid: true };
+};
+
 const typeChecks: {
   [key in FuncBackendResponseType]?: (
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    value: any
+    value: unknown 
   ) => TypeCheckSuccess | TypeCheckFailure;
 } = {
   [FuncBackendResponseType.Array]: isArray,
@@ -134,6 +165,7 @@ const typeChecks: {
   [FuncBackendResponseType.Map]: isObject, // map funcs return js objects
 
   [FuncBackendResponseType.CodeGeneration]: isCodeGeneration,
+  [FuncBackendResponseType.Qualification]: isQualification,
 };
 
 const nullables: { [key in FuncBackendResponseType]?: boolean } = {
@@ -145,6 +177,7 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Map]: true,
 
   [FuncBackendResponseType.CodeGeneration]: false,
+  [FuncBackendResponseType.Qualification]: false,
 };
 
 export async function executeResolverFunction(
