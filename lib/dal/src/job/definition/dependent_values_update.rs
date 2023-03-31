@@ -269,7 +269,11 @@ impl DependentValuesUpdate {
 
                         ctx = self.commit_and_continue(ctx).await?;
                     }
-                    council_server::Response::OkToCreate => unreachable!(),
+                    // If we receive an OkToCreate here, it's because council is telling us that it's Ok to run
+                    // `AttributeValue::create_dependent_values` after it has already told us to do that, and after
+                    // we have told it that we've finished doing so. This should never be able to happen normally,
+                    // as it breaks the protocol contract we have with council.
+                    council_server::Response::OkToCreate => return Err(JobConsumerError::CouncilProtocol("Told to create values again after we've finished creating values. Multiple instances of council running?".to_string())),
                     council_server::Response::Shutdown => break,
                 },
                 // FIXME: reconnect
