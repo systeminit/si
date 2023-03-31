@@ -217,6 +217,12 @@ pub enum AttributeValueError {
     SchemaMissing,
     #[error("ws event publishing error")]
     WsEvent(#[from] WsEventError),
+    #[error("function result failure: kind={kind}, message={message}, backend={backend}")]
+    FuncBackendResultFailure {
+        kind: String,
+        message: String,
+        backend: String,
+    },
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -1094,7 +1100,7 @@ impl AttributeValue {
         }
 
         let func_id = attribute_prototype.func_id();
-        let (func_binding, mut func_binding_return_value) = FuncBinding::create_and_execute(
+        let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(func_binding_args.clone())?,
             attribute_prototype.func_id(),
@@ -1104,7 +1110,22 @@ impl AttributeValue {
             "func.id" = %func_id,
             ?func_binding_args,
         ))
-        .await?;
+        .await
+        {
+            Ok(function_return_value) => function_return_value,
+            Err(FuncBindingError::FuncBackendResultFailure {
+                kind,
+                message,
+                backend,
+            }) => {
+                return Err(AttributeValueError::FuncBackendResultFailure {
+                    kind,
+                    message,
+                    backend,
+                })
+            }
+            Err(err) => Err(err)?,
+        };
 
         self.set_func_binding_id(ctx, *func_binding.id()).await?;
         self.set_func_binding_return_value_id(ctx, *func_binding_return_value.id())

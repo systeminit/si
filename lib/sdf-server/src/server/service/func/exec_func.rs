@@ -2,9 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue, AttributeValueId,
-    Component, DalContext, Func, FuncBackendKind, FuncId, PropId, StandardModel,
-    ValidationPrototype, Visibility, WsEvent,
+    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue,
+    AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind, FuncId,
+    PropId, StandardModel, ValidationPrototype, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,7 +35,13 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             .collect::<Vec<AttributeValueId>>();
 
         for value in values.iter_mut() {
-            value.update_from_prototype_function(ctx).await?;
+            match value.update_from_prototype_function(ctx).await {
+                Ok(_) => {}
+                Err(AttributeValueError::FuncBackendResultFailure { message, .. }) => {
+                    return Err(FuncError::FuncExecutionFailed(message))
+                }
+                Err(err) => Err(err)?,
+            }
         }
 
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, value_ids))
