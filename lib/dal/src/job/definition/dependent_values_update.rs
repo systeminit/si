@@ -154,6 +154,9 @@ impl DependentValuesUpdate {
         )
     )]
     async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
+        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
+        ctx.update_without_deleted_visibility();
+
         let mut status_updater = StatusUpdater::initialize(&ctx).await;
 
         let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;
