@@ -193,14 +193,14 @@ We reserve the right to modify this Privacy Policy at any time. If we make mater
 
 <Tiles columns="2">
   <div>
-    <u>Our representative in the EEA</u>.  Our EEA representative appointed under the EU GDPR is [insert]. You can contact them:
-    - By email to: tbd.
-    - By postal mail to: tbd.
+    <u>Our representative in the EEA</u>. Pursuant to Article 27 of the General Data Protection Regulation (GDPR), System Initiative, Inc. has appointed European Data Protection Office (EDPO) as its GDPR Representative in the EU. You can contact EDPO regarding matters pertaining to the GDPR: 
+    - By using EDPO’s online request form: https://edpo.com/gdpr-data-request/
+    - By writing to EDPO at Avenue Huart Hamoir 71, 1030 Brussels, Belgium
   </div>
   <div>
-    <u>Our representative in the UK</u>.  Our UK representative appointed under the UK GDPR is [insert]. You can contact them:
-    - By email to: tbd.
-    - By postal mail to: tbd.
+    <u>Our representative in the UK</u>. Pursuant to Article 27 of the UK GDPR, System Initiative, Inc. has appointed EDPO UK Ltd as its UK GDPR representative in the UK. You can contact EDPO UK regarding matters pertaining to the UK GDPR:
+    - By using EDPO’s online request form: https://edpo.com/uk-gdpr-data-request/
+    - By writing to EDPO UK at 8 Northumberland Avenue, London WC2N 5BY, United Kingdom
   </div>
 </Tiles>
 
