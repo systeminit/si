@@ -7,6 +7,14 @@ use telemetry_application::{
 
 mod args;
 
+// Override the default tracing level of `info` to warn.
+//
+// Note: Cyclone servers are spawned as child processes (or managed processes) of a Veritech server
+// instance so in many cases the logging output of a Cyclone server is written to the same output
+// stream (i.e. terminal, console) as the Veritech server's logging output. This higher threshold
+// is an attempt to reduce the amount of "normal" logging that is emited for Cyclone instances.
+const CUSTOM_DEFAULT_TRACING_LEVEL: &str = "warn";
+
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -15,6 +23,7 @@ async fn main() -> Result<()> {
         .service_namespace("si")
         .log_env_var_prefix("SI")
         .app_modules(vec!["cyclone", "cyclone_server"])
+        .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
