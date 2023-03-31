@@ -241,10 +241,19 @@ impl DalContext {
         self.visibility = visibility;
     }
 
+    /// Mutates [`self`](DalContext) with a "deleted" [`Visibility`].
     pub fn update_with_deleted_visibility(&mut self) {
         self.update_visibility(Visibility::new_change_set(
             self.visibility().change_set_pk,
             true,
+        ));
+    }
+
+    /// Mutates [`self`](DalContext) with a "non-deleted" [`Visibility`].
+    pub fn update_without_deleted_visibility(&mut self) {
+        self.update_visibility(Visibility::new_change_set(
+            self.visibility().change_set_pk,
+            false,
         ));
     }
 
