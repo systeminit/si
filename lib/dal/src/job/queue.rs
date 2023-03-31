@@ -34,9 +34,11 @@ impl JobQueue {
 
     pub async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
         let mut lock = self.queue.lock().await;
-        let already_enqueued = lock.iter().any(|j| j.job.identity() == job.identity());
+        let already_enqueued = lock.iter_mut().find(|j| j.job.identity() == job.identity());
 
-        if !already_enqueued {
+        if let Some(enqueued) = already_enqueued {
+            enqueued.wait_for_execution = true;
+        } else {
             lock.push_back(JobQueueElement {
                 job,
                 wait_for_execution: true,
