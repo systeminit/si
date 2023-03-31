@@ -19,30 +19,35 @@
     <TabGroup remember-selected-tab-key="func_details">
       <TabGroupItem label="Properties" slug="properties">
         <template #top>
-          <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-            <VButton2
-              class="--tone-success"
-              icon="save"
-              size="md"
-              loading-text="Executing"
-              label="Execute"
-              :request-status="execFuncReqStatus"
-              success-text="Finished"
-              @click="execFunc"
-            />
+          <Stack>
+            <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+              <VButton2
+                class="--tone-success"
+                icon="save"
+                size="md"
+                loading-text="Executing"
+                label="Execute"
+                :request-status="execFuncReqStatus"
+                success-text="Finished"
+                @click="execFunc"
+              />
 
-            <VButton2
-              class="--tone-neutral"
-              :disabled="!isRevertible"
-              icon="x"
-              size="md"
-              loading-text="Reverting"
-              label="Revert"
-              :request-status="revertFuncReqStatus"
-              success-text="Finished"
-              @click="revertFunc"
-            />
-          </div>
+              <VButton2
+                class="--tone-neutral"
+                :disabled="!isRevertible"
+                icon="x"
+                size="md"
+                loading-text="Reverting"
+                label="Revert"
+                :request-status="revertFuncReqStatus"
+                success-text="Finished"
+                @click="revertFunc"
+              />
+            </div>
+            <div class="p-2">
+              <ErrorMessage v-if="execFuncReqStatus.isError" :request-status="execFuncReqStatus" />
+            </div>
+          </Stack>
         </template>
 
         <SiCollapsible label="Attributes" default-open>
@@ -156,6 +161,8 @@ import {
   TabGroupItem,
   LoadingMessage,
   VormInput,
+  Stack,
+  ErrorMessage,
 } from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";

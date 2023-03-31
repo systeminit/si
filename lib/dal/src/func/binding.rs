@@ -63,6 +63,14 @@ pub enum FuncBindingError {
     StandardModelError(#[from] StandardModelError),
     #[error("func execution tracking error: {0}")]
     FuncExecutionError(#[from] FuncExecutionError),
+    #[error(
+        "function execution result failure: kind={kind}, message={message}, backend={backend}"
+    )]
+    FuncBackendResultFailure {
+        kind: String,
+        message: String,
+        backend: String,
+    },
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -209,15 +217,15 @@ impl FuncBinding {
         context: FuncDispatchContext,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
-        let value = match self.backend_kind() {
+        let execution_result = match self.backend_kind() {
             FuncBackendKind::JsValidation => {
-                FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await?
+                FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await
             }
             FuncBackendKind::JsWorkflow => {
-                FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await?
+                FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await
             }
             FuncBackendKind::JsCommand => {
-                FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await?
+                FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await
             }
             // NOTE: Adding JsAttribute here is a *hack*. We need separate backends for the json transformation
             // NOTE: functions and the JsAttribute functions. Probably neither of them should take a ComponentView
@@ -237,23 +245,34 @@ impl FuncBinding {
                     &func,
                     &serde_json::to_value(args)?,
                 )
-                .await?
+                .await
             }
-            FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await?,
-            FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await?,
-            FuncBackendKind::Identity => {
-                FuncBackendIdentity::create_and_execute(&self.args).await?
-            }
-            FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await?,
-            FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await?,
-            FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await?,
-            FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await?,
-            FuncBackendKind::Unset => (None, None),
+            FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
+            FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
+            FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
+            FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
+            FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
+            FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,
+            FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
+            FuncBackendKind::Unset => Ok((None, None)),
             FuncBackendKind::Validation => {
-                FuncBackendValidation::create_and_execute(&self.args).await?
+                FuncBackendValidation::create_and_execute(&self.args).await
             }
         };
-        Ok(value)
+
+        match execution_result {
+            Ok(value) => Ok(value),
+            Err(FuncBackendError::ResultFailure {
+                kind,
+                message,
+                backend,
+            }) => Err(FuncBindingError::FuncBackendResultFailure {
+                kind,
+                message,
+                backend,
+            }),
+            Err(err) => Err(err)?,
+        }
     }
 
     pub async fn postprocess_execution(
