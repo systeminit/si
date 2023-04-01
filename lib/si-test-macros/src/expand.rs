@@ -299,7 +299,7 @@ pub(crate) trait FnSetupExpander {
 
         let var = Ident::new("nats_subject_prefix", Span::call_site());
         self.code_extend(quote! {
-            let #var = ::dal_test::nats_subject_prefix();
+            let #var = ::dal_test::random_identifier_string();
         });
         self.set_nats_subject_prefix(Some(Arc::new(var)));
 

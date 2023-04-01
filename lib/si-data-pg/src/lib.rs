@@ -281,6 +281,11 @@ impl PgPool {
         Ok(())
     }
 
+    /// Gets the database name for connections in the pool.
+    pub fn db_name(&self) -> &str {
+        &self.metadata.db_name
+    }
+
     /// Retrieve object from pool or wait for one to become available.
     #[instrument(
         name = "pool.get",

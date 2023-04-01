@@ -197,7 +197,7 @@ impl TestContext {
                     Ok(Ok(())) => {
                         debug!("task global_setup was successful");
                         *mutex_guard = ContextBuilderState::created(test_context_builder.clone());
-                        test_context_builder.build().await
+                        test_context_builder.build_for_test().await
                     }
                     // Global setup errored
                     Ok(Err(err)) => {
@@ -216,7 +216,7 @@ impl TestContext {
                     }
                 }
             }
-            ContextBuilderState::Created(builder) => builder.build().await,
+            ContextBuilderState::Created(builder) => builder.build_for_test().await,
             ContextBuilderState::Errored(message) => {
                 error!(error = %message, "global setup failed, aborting test");
                 Err(eyre!("global setup failed: {}", message))
@@ -286,11 +286,23 @@ impl TestContextBuilder {
         })
     }
 
-    /// Builds and returns a new [`TestContext`] with its own connection pooling.
-    async fn build(&self) -> Result<TestContext> {
+    /// Builds and returns a new [`TestContext`] with its own connection pooling for global setup.
+    async fn build_for_global(&self) -> Result<TestContext> {
         let pg_pool = PgPool::new(&self.config.pg_pool)
             .await
-            .wrap_err("failed to create PgPool")?;
+            .wrap_err("failed to create global setup PgPool")?;
+
+        self.build_inner(pg_pool).await
+    }
+
+    /// Builds and returns a new [`TestContext`] with its own connection pooling for each test.
+    async fn build_for_test(&self) -> Result<TestContext> {
+        let pg_pool = self.create_test_specific_db_with_pg_pool().await?;
+
+        self.build_inner(pg_pool).await
+    }
+
+    async fn build_inner(&self, pg_pool: PgPool) -> Result<TestContext> {
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
             .wrap_err("failed to create NatsClient")?;
@@ -306,10 +318,53 @@ impl TestContextBuilder {
             jwt_secret_key: self.jwt_secret_key.clone(),
         })
     }
+
+    async fn create_test_specific_db_with_pg_pool(&self) -> Result<PgPool> {
+        // Connect to the 'postgres' database so we can copy our migrated template test database
+        let mut new_pg_pool_config = self.config.pg_pool.clone();
+        new_pg_pool_config.dbname = "postgres".to_string();
+        let new_pg_pool = PgPool::new(&new_pg_pool_config)
+            .await
+            .wrap_err("failed to create PgPool to db 'postgres'")?;
+        let db_conn = new_pg_pool
+            .get()
+            .await
+            .wrap_err("failed to connect to db 'postgres'")?;
+
+        // Create new database from template
+        let db_name_suffix = random_identifier_string();
+        let dbname = format!("{}_{}", self.config.pg_pool.dbname, db_name_suffix);
+        let query = format!(
+            "CREATE DATABASE {dbname} WITH TEMPLATE {} OWNER {};",
+            self.config.pg_pool.dbname, self.config.pg_pool.user,
+        );
+        let db_exists_check = db_conn
+            .query_opt(
+                "SELECT datname FROM pg_database WHERE datname = $1",
+                &[&dbname],
+            )
+            .await?;
+        if db_exists_check.is_none() {
+            info!(dbname = %dbname, "creating test-specific database");
+            db_conn
+                .execute(&query, &[])
+                .instrument(debug_span!("creating test database from template"))
+                .await
+                .wrap_err("failed to create test specific database")?;
+        } else {
+            info!(dbname = %dbname, "test-specific database already exists");
+        }
+
+        // Return new PG pool that uess the new datatbase
+        new_pg_pool_config.dbname = dbname;
+        PgPool::new(&new_pg_pool_config)
+            .await
+            .wrap_err("failed to create PgPool to db 'postgres'")
+    }
 }
 
 /// Generates a new pseudo-random NATS subject prefix.
-pub fn nats_subject_prefix() -> String {
+pub fn random_identifier_string() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
@@ -378,7 +433,7 @@ pub async fn veritech_server_for_uds_cyclone(
 
 async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("running global test setup");
-    let test_context = test_context_builer.build().await?;
+    let test_context = test_context_builer.build_for_global().await?;
 
     debug!("initializing crypto");
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
@@ -389,7 +444,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         check_runtime_dependencies()?;
     }
 
-    let nats_subject_prefix = nats_subject_prefix();
+    let nats_subject_prefix = random_identifier_string();
 
     // Create a dedicated Council server with a unique subject prefix for each test
     let council_subject_prefix = format!("{nats_subject_prefix}.council");
@@ -429,6 +484,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .test_connection()
         .await
         .wrap_err("failed to connect to database, is it running and available?")?;
+
+    info!("dropping old test-specific databases");
+    drop_old_test_databases(services_ctx.pg_pool())
+        .await
+        .wrap_err("failed to drop old databases")?;
 
     // Ensure the database is totally clean, then run all migrations
     info!("dropping and re-creating the database schema");
@@ -526,4 +586,26 @@ fn assemble_builtin_schema_option() -> BuiltinSchemaOption {
             BuiltinSchemaOption::All
         }
     }
+}
+
+async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
+    let name_prefix = format!("{}_%", pg_pool.db_name());
+    let pg_conn = pg_pool.get().await?;
+
+    let rows = pg_conn
+        .query(
+            "SELECT datname FROM pg_database WHERE datname LIKE $1",
+            &[&name_prefix.as_str()],
+        )
+        .await?;
+
+    for row in rows {
+        let dbname: String = row.try_get("datname")?;
+        debug!(db_name = %dbname, "dropping database");
+        pg_conn
+            .execute(&format!("DROP DATABASE IF EXISTS {dbname}"), &[])
+            .await?;
+    }
+
+    Ok(())
 }
