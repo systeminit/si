@@ -69,6 +69,9 @@ pub struct TelemetryConfig {
     #[builder(default)]
     app_modules: Vec<&'static str>,
 
+    #[builder(setter(into, strip_option), default = "None")]
+    custom_default_tracing_level: Option<String>,
+
     #[allow(dead_code)]
     #[builder(
         setter(into, strip_option),
@@ -225,7 +228,11 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
         }
     }
 
-    TracingLevel::new(Verbosity::default(), Some(config.app_modules.as_ref()))
+    if let Some(ref directives) = config.custom_default_tracing_level {
+        TracingLevel::custom(directives)
+    } else {
+        TracingLevel::new(Verbosity::default(), Some(config.app_modules.as_ref()))
+    }
 }
 
 fn default_span_events_fmt(config: &TelemetryConfig) -> Result<FmtSpan> {

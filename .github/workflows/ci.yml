@@ -113,7 +113,6 @@ jobs:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}
           RUSTC_WRAPPER: /usr/local/bin/sccache
           CARGO_INCREMENTAL: false
-          SI_LOG: info,cyclone_server=warn
   comment-notification:
     if: github.event_name == 'repository_dispatch'
     name: comment-notification
