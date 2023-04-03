@@ -134,8 +134,10 @@ pub enum FuncError {
     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
     #[error("cannot bind func to different prop kinds")]
     FuncDestinationPropKindMismatch,
-    #[error("Function Execution Failed: {0}")]
+    #[error("Function execution failed: {0}")]
     FuncExecutionFailed(String),
+    #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
+    FuncExecutionFailedNoPrototypes,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

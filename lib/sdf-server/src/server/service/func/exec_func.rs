@@ -26,6 +26,10 @@ pub struct ExecFuncResponse {
 
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
+    if prototypes.is_empty() {
+        return Err(FuncError::FuncExecutionFailedNoPrototypes);
+    }
+
     for proto in prototypes {
         let mut values = proto.attribute_values(ctx).await?;
         let value_ids = values
