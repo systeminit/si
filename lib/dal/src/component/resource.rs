@@ -100,11 +100,6 @@ impl Component {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
         }
 
-        // No need to update if the cached value is there
-        if self.resource(ctx).await? == result {
-            return Ok(false);
-        }
-
         let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
             ctx,
             self.id,
