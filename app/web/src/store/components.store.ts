@@ -64,7 +64,7 @@ type RawComponent = {
   deletedInfo?: ActorAndTimestamp;
 };
 
-type FullComponent = RawComponent & {
+export type FullComponent = RawComponent & {
   parentNodeId?: ComponentNodeId;
   parentId?: ComponentId;
   childNodeIds?: ComponentNodeId[];
