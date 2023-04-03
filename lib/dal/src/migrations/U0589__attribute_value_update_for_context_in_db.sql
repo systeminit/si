@@ -970,8 +970,8 @@ BEGIN
         ON avbtap.belongs_to_id = ap.id
             AND avbtap.object_id = given_attribute_value.id;
     IF original_attribute_prototype IS NULL THEN
-	SELECT INTO func_binding_id FROM attribute_value_belongs_to_attribute_prototype as avbtap where avbtap.object_id = given_attribute_value.id;
-	RAISE WARNING '%', func_binding_id;
+        SELECT INTO func_binding_id FROM attribute_value_belongs_to_attribute_prototype as avbtap where avbtap.object_id = given_attribute_value.id;
+        RAISE WARNING '%', func_binding_id;
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', given_attribute_value.id,
                                                                                                     this_tenancy,
                                                                                                     this_visibility;
@@ -1437,21 +1437,11 @@ BEGIN
         );
 
         FOR object_field_prop_id, object_field_prop_name IN
-            SELECT DISTINCT ON (id) id, name
-            FROM props
-            INNER JOIN (
-                SELECT DISTINCT ON (object_id) object_id AS child_prop_id
-                FROM prop_belongs_to_prop
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
-                      AND belongs_to_id = parent_prop.id
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
-            ) AS pbtp ON pbtp.child_prop_id = props.id
-            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
+            SELECT DISTINCT ON (props.id) props.id, props.name
+            FROM props_v1(this_tenancy, this_visibility) as props
+            INNER JOIN prop_belongs_to_prop_v1(this_tenancy, this_visibility) as pbtp
+                ON pbtp.belongs_to_id = parent_prop.id
+                   AND pbtp.object_id = props.id
         LOOP
             field_value := jsonb_extract_path(unprocessed_value, object_field_prop_name);
             IF field_value IS NULL THEN
@@ -1463,7 +1453,7 @@ BEGIN
 
             field_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', object_field_prop_id);
             attribute_value := jsonb_populate_record(null::attribute_values,
-		                                     attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
+                                                     attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
                                                                                                              this_visibility,
                                                                                                              this_parent_attribute_value_id,
                                                                                                              NULL,
@@ -1490,6 +1480,8 @@ BEGIN
                                                                         NULL,
                                                                         this_parent_attribute_value_id,
                                                                         attribute_value.id);
+            ELSE
+                RAISE 'attribute_value_populate_nested_values_v1: Found children attribute value that should have been deleted: %', attribute_value;
             END IF;
 
             PERFORM attribute_value_update_for_context_without_child_proxies_v1(this_tenancy,
@@ -1588,7 +1580,13 @@ BEGIN
                 'attribute_value_belongs_to_attribute_prototype',
                 this_tenancy,
                 this_visibility,
-		found_proxy.id
+                found_proxy.id
+            );
+            PERFORM unset_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_value',
+                this_tenancy,
+                this_visibility,
+                tmp_attribute_value_id
             );
             PERFORM delete_by_id_v1('attribute_values',
                                     this_tenancy,
@@ -1661,6 +1659,13 @@ BEGIN
 
         PERFORM unset_belongs_to_v1(
             'attribute_value_belongs_to_attribute_prototype',
+            this_tenancy,
+            this_visibility,
+            tmp_attribute_value_id
+        );
+
+        PERFORM unset_belongs_to_v1(
+            'attribute_value_belongs_to_attribute_value',
             this_tenancy,
             this_visibility,
             tmp_attribute_value_id

@@ -118,6 +118,7 @@ impl JobConsumer for RefreshJob {
     }
 
     async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
+        assert!(!self.single_transaction);
         let ctx = ctx_builder
             .build(self.access_builder().build(self.visibility()))
             .await?;

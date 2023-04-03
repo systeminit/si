@@ -257,6 +257,13 @@ impl DalContext {
         ));
     }
 
+    /// Clones a new context from this one without deleted visibility.
+    pub fn clone_without_deleted_visibility(&self) -> Self {
+        let mut ctx = self.clone();
+        ctx.update_without_deleted_visibility();
+        ctx
+    }
+
     /// Clones a new context from this one with a new [`Visibility`].
     pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
         let mut new = self.clone();

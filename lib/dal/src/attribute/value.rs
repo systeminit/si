@@ -758,6 +758,9 @@ impl AttributeValue {
         create_child_proxies: bool,
         propagate_dependent_values: bool,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
+        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
+        let ctx = &ctx.clone_without_deleted_visibility();
+
         let row = ctx.pg_txn().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
