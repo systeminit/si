@@ -1,5 +1,6 @@
 <template>
   <div
+    v-if="component"
     :class="
       clsx(
         'rounded-md p-xs border-l-4 border relative',
@@ -53,7 +54,11 @@ import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
 import { useTheme, Stack, Icon } from "@si/vue-lib/design-system";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import {
+  ComponentId,
+  FullComponent,
+  useComponentsStore,
+} from "@/store/components.store";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -63,7 +68,8 @@ const { theme } = useTheme();
 
 const componentsStore = useComponentsStore();
 const component = computed(
-  () => componentsStore.componentsById[props.componentId],
+  (): FullComponent | undefined =>
+    componentsStore.componentsById[props.componentId],
 );
 
 const primaryColor = tinycolor(component.value?.color ?? "000000");

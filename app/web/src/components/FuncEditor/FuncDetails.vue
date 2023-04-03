@@ -45,7 +45,10 @@
               />
             </div>
             <div class="p-2">
-              <ErrorMessage v-if="execFuncReqStatus.isError" :request-status="execFuncReqStatus" />
+              <ErrorMessage
+                v-if="execFuncReqStatus.isError"
+                :request-status="execFuncReqStatus"
+              />
             </div>
           </Stack>
         </template>
@@ -166,7 +169,7 @@ import {
 } from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore, FuncWithDetails } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
