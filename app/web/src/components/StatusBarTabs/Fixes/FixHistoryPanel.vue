@@ -75,7 +75,7 @@
           >
             <StatusIndicatorIcon
               type="resource"
-              :status="fix.resource.status"
+              :status="fix.resource?.status ?? 'unknown'"
             />
             <div class="font-bold pl-xs line-clamp-2">
               {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
@@ -83,7 +83,10 @@
           </div>
         </div>
       </div>
-      <div v-if="selectedFixInfo" class="bg-shade-100 grow p-4">
+      <div
+        v-if="selectedFixInfo && selectedFixInfo.resource"
+        class="bg-shade-100 grow p-4"
+      >
         <CodeViewer
           :code="
             selectedFixInfo.resource.data

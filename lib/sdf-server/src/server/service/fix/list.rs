@@ -48,7 +48,7 @@ pub async fn list(
             batch_timed_out = true;
             Some(FixCompletionStatus::Failure)
         } else {
-            None
+            Some(FixCompletionStatus::Unstarted)
         };
 
         let mut fix_views = Vec::new();

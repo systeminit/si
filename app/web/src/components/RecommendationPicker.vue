@@ -73,7 +73,11 @@
               <span class="pl-1">{{ destructionRecommendations.length }}</span>
             </div>
             <Icon
-              v-if="confirmationsInFlight || fixesStore.populatingFixes"
+              v-if="
+                confirmationsInFlight ||
+                fixesStore.populatingFixes ||
+                fixesStore.runningFixBatch
+              "
               name="loader"
               size="md"
               class="text-action-500 dark:text-action-100"
@@ -149,6 +153,7 @@ import {
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useFixesStore } from "@/store/fixes.store";
+import { useStatusStore } from "@/store/status.store";
 import RecommendationSprite from "@/components/RecommendationSprite.vue";
 
 const selectAll = (checked: boolean) => {
@@ -172,6 +177,7 @@ const recommendations = computed(() =>
   fixesStore.confirmations.flatMap((c) => c.recommendations),
 );
 
+const statusStore = useStatusStore();
 const fixesStore = useFixesStore();
 const creationRecommendations = computed(() =>
   recommendations.value.filter((r) => r.actionKind === "create"),
@@ -212,10 +218,9 @@ const confirmationsInFlight = computed(() => {
 const disableApply = computed(
   () =>
     selectedRecommendations.value.length < 1 ||
+    statusStore.globalStatus.isUpdating ||
     fixesStore.populatingFixes ||
-    (fixesStore.runningFixBatch !== undefined &&
-      fixesStore.completedFixesOnRunningBatch.length <
-        fixesStore.fixesOnRunningBatch.length),
+    fixesStore.runningFixBatch !== undefined,
 );
 
 const currentTime = ref(new Date());

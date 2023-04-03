@@ -25,7 +25,7 @@ const CONFIG = {
   fix: {
     success: { iconName: "check2", tone: "success" },
     failure: { iconName: "alert-triangle", tone: "destructive" },
-    unstarted: { iconName: "help-circle", tone: "neutral" },
+    unstarted: { iconName: "loader", tone: "neutral" },
     running: { iconName: "loader", tone: "action" },
   },
   resource: {

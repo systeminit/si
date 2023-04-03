@@ -1,17 +1,20 @@
 <template>
   <ProgressBarOverlay
+    v-if="fixesStore.runningFixBatch"
     :title="fixState.summary"
     :detail="fixState.highlightedSummary"
     :done-count="fixState.executed"
     :total-count="fixState.total"
     :bar-label="fixState.mode === 'syncing' ? 'Synced' : 'Applied'"
   />
+  <GlobalStatusOverlay v-else />
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useFixesStore } from "@/store/fixes.store";
 import ProgressBarOverlay from "@/components/ProgressBarOverlay.vue";
+import GlobalStatusOverlay from "@/components/GlobalStatusOverlay.vue";
 
 const fixesStore = useFixesStore();
 const loadConfirmationsReqStatus =
@@ -54,7 +57,7 @@ const fixState = computed(() => {
     let summary = "Determining recommendations for updated model...";
     let highlightedSummary = "";
     if (rate === 1) {
-      summary = "Model is up to date";
+      summary = "Recommendations are up to date.";
       const { length } = fixesStore.unstartedRecommendations;
       if (length !== 0) {
         highlightedSummary = `${length} recommendation${
