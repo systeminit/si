@@ -1,7 +1,13 @@
 //! This module contains "scenario" tests and the tools needed to write them. Scenario tests are
 //! "sdf" tests intended to cover end-to-end scenarios.
 
-// Scenario tests below...
+// TODO(nick): find a better system than having this test dependent on dev routes.
+// This test not running due to a potential environment change in the future will be a problem.
+// Tests reliant on "dev" routes:
+#[cfg(debug_assertions)]
+mod fix_flow_deletion;
+
+// Tests not reliant on "dev" routes:
 mod model_and_fix_flow_aws_key_pair;
 mod model_and_fix_flow_whiskers;
 mod model_flow_fedora_coreos_ignition;
@@ -11,9 +17,16 @@ use axum::Router;
 use dal::component::confirmation::view::ConfirmationView;
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
-    AttributeValueId, ComponentId, ComponentView, ComponentViewProperties, DalContext, FixBatchId,
-    NodeId, Prop, PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
+    AttributeValueId, ComponentId, ComponentView, ComponentViewProperties, DalContext, Diagram,
+    FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket, StandardModel,
+    Visibility,
 };
+use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
+use sdf_server::service::dev::{AuthorSingleSchemaRequest, AuthorSingleSchemaResponse};
+use sdf_server::service::diagram::delete_component::{
+    DeleteComponentRequest, DeleteComponentResponse,
+};
+use sdf_server::service::diagram::get_diagram::GetDiagramRequest;
 use sdf_server::service::{
     change_set::{
         apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse},
@@ -43,6 +56,7 @@ use sdf_server::service::{
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
+use telemetry::prelude::warn;
 
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 
@@ -81,31 +95,46 @@ type PropertyValues = GetPropertyEditorValuesResponse;
 struct ScenarioHarness {
     app: Router,
     auth_token: String,
-    builtins: HashMap<&'static str, SchemaId>,
+    schemas: HashMap<&'static str, SchemaId>,
 }
 
 impl ScenarioHarness {
-    /// Create a new [`harness`](Self) by caching relevant metadata, including a list of builtin
-    /// [`Schemas`](dal::Schema) by name.
+    /// Create a new [`harness`](Self) by caching relevant metadata, including a list of
+    /// [`Schemas`](dal::Schema) by name ("builtins" or in-line created).
     pub async fn new(
         ctx: &DalContext,
         app: Router,
         auth_token: String,
-        builtin_schema_names: &[&'static str],
+        schema_names: &[&'static str],
     ) -> Self {
-        let mut builtins: HashMap<&'static str, SchemaId> = HashMap::new();
-        for builtin_schema_name in builtin_schema_names {
-            let schema = Schema::find_by_attr(ctx, "name", &builtin_schema_name.to_string())
+        let mut schemas: HashMap<&'static str, SchemaId> = HashMap::new();
+        for schema_name in schema_names {
+            let schema = Schema::find_by_attr(ctx, "name", &schema_name.to_string())
                 .await
                 .expect("could not find schema by name")
                 .pop()
                 .expect("schema not found");
-            builtins.insert(builtin_schema_name, *schema.id());
+            schemas.insert(schema_name, *schema.id());
         }
         Self {
             app,
             auth_token,
-            builtins,
+            schemas,
+        }
+    }
+
+    /// Add [`Schemas`](dal::Schema) to the [`harness`](Self) that were not added in [`Self::new`].
+    pub async fn add_schemas(&mut self, ctx: &DalContext, schema_names: &[&'static str]) {
+        for schema_name in schema_names {
+            let schema = Schema::find_by_attr(ctx, "name", &schema_name.to_string())
+                .await
+                .expect("could not find schema by name")
+                .pop()
+                .expect("schema not found");
+            if self.schemas.get(schema_name).is_some() {
+                warn!("overriding existing schema in harness map: {schema_name}");
+            }
+            self.schemas.insert(schema_name, *schema.id());
         }
     }
 
@@ -296,6 +325,15 @@ impl ScenarioHarness {
         response
     }
 
+    /// Get the latest [`Diagram`] for the workspace.
+    async fn get_diagram(&self, ctx: &DalContext) -> Diagram {
+        let request = GetDiagramRequest {
+            visibility: *ctx.visibility(),
+        };
+        let response: Diagram = self.query_get("/api/diagram/get_diagram", &request).await;
+        response
+    }
+
     /// Create a "connection" between two [`Nodes`](dal::Node) via a matching
     /// [`Socket`](dal::Socket).
     pub async fn create_connection(
@@ -345,7 +383,7 @@ impl ScenarioHarness {
         frame_node_id: Option<NodeId>,
     ) -> ComponentBag {
         let schema_id = *self
-            .builtins
+            .schemas
             .get(schema_name)
             .expect("could not find schema by name");
         let request = CreateNodeRequest {
@@ -358,6 +396,35 @@ impl ScenarioHarness {
         let create_node_response: CreateNodeResponse =
             self.query_post("/api/diagram/create_node", &request).await;
         create_node_response.into()
+    }
+
+    pub async fn delete_component(&self, ctx: &DalContext, component_id: ComponentId) {
+        let request = DeleteComponentRequest {
+            component_id,
+            visibility: *ctx.visibility(),
+        };
+        let response: DeleteComponentResponse = self
+            .query_post("/api/diagram/delete_component", &request)
+            .await;
+        assert!(response.success)
+    }
+
+    pub async fn author_single_schema_with_default_variant(
+        &self,
+        ctx: &DalContext,
+        schema_name: impl AsRef<str>,
+    ) -> (SchemaId, SchemaVariantId) {
+        let request = AuthorSingleSchemaRequest {
+            schema_name: schema_name.as_ref().into(),
+            visibility: *ctx.visibility(),
+        };
+        let response: AuthorSingleSchemaResponse = self
+            .query_post(
+                "/api/dev/author_single_schema_with_default_variant",
+                &request,
+            )
+            .await;
+        (response.schema_id, response.schema_variant_id)
     }
 
     /// Create the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
@@ -387,6 +454,15 @@ impl ScenarioHarness {
             .await;
         ctx.update_visibility(Visibility::new_head(false));
         assert!(ctx.visibility().is_head());
+    }
+
+    pub async fn resource_refresh(&self, ctx: &DalContext, component_id: ComponentId) {
+        let request = RefreshRequest {
+            component_id: Some(component_id),
+            visibility: *ctx.visibility(),
+        };
+        let response: RefreshResponse = self.query_post("/api/component/refresh", &request).await;
+        assert!(response.success);
     }
 
     pub async fn list_confirmations(&self, ctx: &mut DalContext) -> Vec<ConfirmationView> {

@@ -81,6 +81,9 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
             status,         // actual
         );
     }
+
+    // TODO(nick): handle cases where the sdf func returns the unit type. Perhaps the body will
+    // be of length zero? Unsure and lot of potential foot guns.
     let body_json: serde_json::Value = match serde_json::from_slice(&body) {
         Ok(body_json) => body_json,
         Err(e) => {
@@ -90,7 +93,6 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
             );
         }
     };
-
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }
 

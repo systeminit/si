@@ -277,6 +277,10 @@ impl DiagramComponentView {
     pub fn size(&self) -> &Option<Size2D> {
         &self.size
     }
+
+    pub fn resource(&self) -> &ResourceView {
+        &self.resource
+    }
 }
 
 // TODO(theo,victor): this should probably move and be used more generally in a few places?

@@ -51,16 +51,16 @@ pub struct ActionPrototypeContext {
     pub schema_variant_id: SchemaVariantId,
 }
 
-// Describes how an action affects the world
-#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
+/// Describes how an [`Action`](ActionPrototype) affects the world.
+#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ActionKind {
-    // Create a new resource
+    /// The [`action`](ActionPrototype) creates a new "resource".
     Create,
-    // Internal only action or action with multiple effects
+    /// The [`action`](ActionPrototype) is "internal only" or has multiple effects.
     Other,
-    // Destroy a resource
+    /// The [`action`](ActionPrototype) destroys an existing "resource".
     Destroy,
 }
 

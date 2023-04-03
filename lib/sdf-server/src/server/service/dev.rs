@@ -1,7 +1,8 @@
-use crate::server::state::AppState;
-use crate::service::dev::create_builtin_func::create_builtin_func;
-use crate::service::dev::save_builtin_func::save_builtin_func;
-use crate::service::func;
+mod author_single_schema_with_default_variant;
+mod create_builtin_func;
+mod get_current_git_sha;
+mod save_builtin_func;
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -10,9 +11,17 @@ use axum::Router;
 use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
-mod create_builtin_func;
-mod get_current_git_sha;
-mod save_builtin_func;
+pub use author_single_schema_with_default_variant::CREATE_CONFIRMATION_NAME;
+pub use author_single_schema_with_default_variant::DELETE_CONFIRMATION_NAME;
+pub use author_single_schema_with_default_variant::{
+    AuthorSingleSchemaRequest, AuthorSingleSchemaResponse,
+};
+
+use crate::server::state::AppState;
+use crate::service::dev::author_single_schema_with_default_variant::author_single_schema_with_default_variant;
+use crate::service::dev::create_builtin_func::create_builtin_func;
+use crate::service::dev::save_builtin_func::save_builtin_func;
+use crate::service::func;
 
 #[derive(Debug, Error)]
 #[allow(clippy::large_enum_variant)]
@@ -65,4 +74,8 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/save_func", post(save_builtin_func))
         .route("/create_func", post(create_builtin_func))
+        .route(
+            "/author_single_schema_with_default_variant",
+            post(author_single_schema_with_default_variant),
+        )
 }
