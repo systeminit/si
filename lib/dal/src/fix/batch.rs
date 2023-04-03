@@ -103,7 +103,7 @@ impl FixBatch {
                         // If we see failures, we should still continue to see if there's an error.
                         batch_completion_status = FixCompletionStatus::Failure
                     }
-                    FixCompletionStatus::Error => {
+                    FixCompletionStatus::Error | FixCompletionStatus::Unstarted => {
                         // Only break on an error since errors take precedence over failures.
                         batch_completion_status = FixCompletionStatus::Error;
                         break;

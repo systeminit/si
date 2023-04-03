@@ -53,6 +53,8 @@ pub enum FixCompletionStatus {
     /// The [`Fix`] or all [`Fixes`](Fix) in the [`FixBatch`](crate::FixBatch) were executed and
     /// successful.
     Success,
+    /// The ['Fix'] is still running or has not yet started
+    Unstarted,
 }
 
 impl TryFrom<WorkflowRunnerStatus> for FixCompletionStatus {
@@ -349,19 +351,19 @@ impl Fix {
             .flatten();
 
         let resource = if let Some(resource) = maybe_resource {
-            resource
+            Some(resource)
         } else if batch_timed_out {
-            CommandRunResult {
+            Some(CommandRunResult {
                 status: ResourceStatus::Error,
                 value: None,
                 message: Some("Execution timed-out".to_owned()),
                 // TODO: add proper logs here
                 logs: vec![],
                 last_synced: None,
-            }
+            })
         } else {
             // If a fix hasn't finished we don't show it in the front-end
-            return Ok(None);
+            None
         };
 
         // Gather component-related information, even if the component has been deleted.
@@ -370,17 +372,20 @@ impl Fix {
 
         Ok(Some(FixHistoryView {
             id: self.id,
-            status: self
-                .completion_status()
-                .copied()
-                .unwrap_or(FixCompletionStatus::Failure),
+            status: if resource.is_none() {
+                FixCompletionStatus::Unstarted
+            } else {
+                self.completion_status()
+                    .copied()
+                    .unwrap_or(FixCompletionStatus::Failure)
+            },
             action: self.action().to_owned(),
             schema_name,
             attribute_value_id: *self.attribute_value_id(),
             component_name,
             component_id: self.component_id,
             provider: category,
-            resource: ResourceView::new(resource),
+            resource: resource.map(ResourceView::new),
             started_at: self.started_at().map(|s| s.to_string()),
             finished_at: self.finished_at().map(|s| s.to_string()),
         }))
@@ -431,7 +436,7 @@ pub struct FixHistoryView {
     provider: Option<String>,
     started_at: Option<String>,
     finished_at: Option<String>,
-    resource: ResourceView,
+    resource: Option<ResourceView>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

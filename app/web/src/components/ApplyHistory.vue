@@ -99,10 +99,7 @@
                 :default-open="false"
               >
                 <template #label>
-                  <StatusIndicatorIcon
-                    type="resource"
-                    :status="fix.resource.status"
-                  />
+                  <StatusIndicatorIcon type="fix" :status="fix.status" />
                   <div class="flex flex-col">
                     <div class="font-bold pl-xs">
                       {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
@@ -111,8 +108,9 @@
                 </template>
                 <template #default>
                   <div class="p-2 dark:text-neutral-50 text-neutral-900">
+                    <div v-if="!fix.resource">Fix is pending.</div>
                     <CodeViewer
-                      v-if="fix.resource.data"
+                      v-else-if="fix.resource.data"
                       :code="JSON.stringify(fix.resource.data, null, 2)"
                       class="dark:text-neutral-50 text-neutral-900"
                     >
@@ -197,7 +195,7 @@ import FixDetails from "./FixDetails.vue";
 
 const fixesStore = useFixesStore();
 
-const fixBatches = computed(() => _.reverse(fixesStore.allFinishedFixBatches));
+const fixBatches = computed(() => _.reverse(fixesStore.fixBatches));
 
 const formatTitle = (title: string) => {
   return title
