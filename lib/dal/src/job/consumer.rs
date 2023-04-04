@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -88,12 +85,6 @@ impl From<JobConsumerError> for std::io::Error {
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NextJobInfo {
-    pub job: JobInfo,
-    pub wait_for_execution: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
     pub id: String,
     pub kind: String,
@@ -104,7 +95,6 @@ pub struct JobInfo {
     pub args: Vec<Value>,
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
-    pub subsequent_jobs: VecDeque<NextJobInfo>,
 }
 
 impl JobInfo {

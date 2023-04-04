@@ -2,11 +2,13 @@ use async_trait::async_trait;
 use dyn_clone::DynClone;
 use thiserror::Error;
 
-use super::producer::{JobProducer, JobProducerError};
-use crate::{job::producer::BlockingJobResult, DalContext};
+use crate::{
+    job::producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
+    DalContext,
+};
 
-pub mod nats_processor;
-pub mod sync_processor;
+mod nats_processor;
+pub use nats_processor::NatsProcessor;
 
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
@@ -16,6 +18,8 @@ pub enum JobQueueProcessorError {
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
+    #[error("Error processing blocking job: {0}")]
+    BlockingJob(#[from] BlockingJobError),
 }
 
 pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
@@ -23,13 +27,13 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
     async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
-    async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
-    async fn block_on_job(
+    async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult;
+    async fn block_on_jobs(
         &self,
-        job: Box<dyn JobProducer + Send + Sync>,
-        ctx: &DalContext,
+        jobs: Vec<Box<dyn JobProducer + Send + Sync>>,
     ) -> BlockingJobResult;
     async fn process_queue(&self) -> JobQueueProcessorResult<()>;
+    async fn blocking_process_queue(&self) -> JobQueueProcessorResult<()>;
 }
 
 dyn_clone::clone_trait_object!(JobQueueProcessor);

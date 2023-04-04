@@ -2,9 +2,9 @@ use std::{io, path::Path, sync::Arc};
 
 use dal::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
+        consumer::{JobConsumer, JobConsumerError, JobInfo},
         definition::{FixesJob, RefreshJob},
-        producer::{BlockingJobError, JobProducer},
+        producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
     JobFailureError, JobInvocationId, JobQueueProcessor, NatsProcessor, ServicesContext,
@@ -511,31 +511,9 @@ async fn execute_job(
 
     info!("Processing job");
 
-    let (access_builder, visibility) = (job.access_builder(), job.visibility());
     if let Err(err) = job.run_job(ctx_builder.clone()).await {
         // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
         record_job_failure(ctx_builder.clone(), job, err).await?;
-    }
-
-    let mut ctx = ctx_builder.build(access_builder.build(visibility)).await?;
-
-    for next in job_info.subsequent_jobs {
-        ctx.update_visibility(next.job.visibility());
-        ctx.update_access_builder(next.job.access_builder());
-
-        let boxed = Box::new(next.job) as Box<dyn JobProducer + Send + Sync>;
-        if next.wait_for_execution {
-            ctx_builder
-                .job_processor()
-                .enqueue_blocking_job(boxed, &ctx)
-                .await;
-        } else {
-            ctx_builder.job_processor().enqueue_job(boxed, &ctx).await;
-        }
-    }
-
-    if let Err(err) = ctx.commit().await {
-        error!("Unable to push jobs to nats: {err}");
     }
 
     info!("Finished processing job");

@@ -134,6 +134,12 @@ impl DalContext {
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections. Blocks until all queued jobs have reported as finishing.
+    pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        self.txns.blocking_commit_into_conns().await
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
     /// the context parts which can be used to build a new context.
     pub async fn commit_into_parts(
         self,
@@ -152,6 +158,13 @@ impl DalContext {
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(self) -> Result<(), TransactionsError> {
         let _ = self.commit_into_conns().await?;
+        Ok(())
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and
+    /// blocks until all queued jobs have reported as finishing.
+    pub async fn blocking_commit(self) -> Result<(), TransactionsError> {
+        let _ = self.blocking_commit_into_conns().await?;
         Ok(())
     }
 
@@ -307,19 +320,12 @@ impl DalContext {
         self.txns().job_processor.enqueue_job(job, self).await
     }
 
-    pub async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        self.txns()
-            .job_processor
-            .enqueue_blocking_job(job, self)
-            .await
-    }
-
     /// Similar to `enqueue_job`, except that instead of waiting to flush the job to
     /// the processing system on `commit`, the job is immediately flushed, and the
     /// processor is expected to not return until the job has finished. Returns the
     /// result of executing the job.
     pub async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
-        self.txns().job_processor.block_on_job(job, self).await
+        self.txns().job_processor.block_on_job(job).await
     }
 
     /// Gets the dal context's txns.
@@ -689,6 +695,17 @@ impl Transactions {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue().await?;
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+
+        Ok(conns)
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections. Blocking until all queued jobs have reported as finishing.
+    pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        let pg_conn = self.pg_txn.commit_into_conn().await?;
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
+        self.job_processor.blocking_process_queue().await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)

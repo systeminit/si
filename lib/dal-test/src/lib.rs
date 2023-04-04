@@ -10,9 +10,9 @@ use std::{
 
 use dal::builtins::BuiltinSchemaOption;
 #[cfg(debug_assertions)]
-use dal::check_runtime_dependencies;
 use dal::{
-    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
+    check_runtime_dependencies,
+    job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, JwtSecretKey, ServicesContext,
 };
 use lazy_static::lazy_static;
@@ -306,8 +306,10 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let job_processor =
-            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let job_processor = Box::new(NatsProcessor::new(
+            nats_conn.clone(),
+            todo!("Need to send in an mpsc for aliveness cheching"),
+        )) as Box<dyn JobQueueProcessor + Send + Sync>;
 
         Ok(TestContext {
             config: self.config.clone(),

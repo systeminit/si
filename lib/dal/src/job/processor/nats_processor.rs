@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 use si_data_nats::NatsClient;
-use std::{collections::VecDeque, convert::TryInto};
+use std::convert::TryInto;
 use telemetry::prelude::*;
-use tokio::sync::mpsc;
+use tokio::{sync::mpsc, task::JoinSet};
 
 use crate::{
     job::{
-        consumer::{JobInfo, NextJobInfo},
+        consumer::JobInfo,
         producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
         queue::JobQueue,
     },
@@ -41,22 +41,7 @@ impl NatsProcessor {
 
     async fn push_all_jobs(&self) -> JobQueueProcessorResult<()> {
         while let Some(element) = self.queue.fetch_job().await {
-            let mut job_info: JobInfo = element.job.try_into()?;
-
-            if element.wait_for_execution {
-                job_info.subsequent_jobs = self
-                    .queue
-                    .empty()
-                    .await
-                    .into_iter()
-                    .map(|el| {
-                        Ok(NextJobInfo {
-                            job: el.job.try_into()?,
-                            wait_for_execution: el.wait_for_execution,
-                        })
-                    })
-                    .collect::<Result<VecDeque<_>, JobProducerError>>()?;
-            }
+            let job_info: JobInfo = element.try_into()?;
 
             if let Err(err) = self
                 .client
@@ -77,19 +62,7 @@ impl JobQueueProcessor for NatsProcessor {
         self.queue.enqueue_job(job).await
     }
 
-    async fn enqueue_blocking_job(
-        &self,
-        job: Box<dyn JobProducer + Send + Sync>,
-        _ctx: &DalContext,
-    ) {
-        self.queue.enqueue_blocking_job(job).await
-    }
-
-    async fn block_on_job(
-        &self,
-        job: Box<dyn JobProducer + Send + Sync>,
-        _ctx: &DalContext,
-    ) -> BlockingJobResult {
+    async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
         let job_info: JobInfo = job
             .try_into()
             .map_err(|e: JobProducerError| BlockingJobError::JobProducer(e.to_string()))?;
@@ -128,6 +101,30 @@ impl JobQueueProcessor for NatsProcessor {
         }
     }
 
+    async fn block_on_jobs(
+        &self,
+        jobs: Vec<Box<dyn JobProducer + Send + Sync>>,
+    ) -> BlockingJobResult {
+        let mut dispatched_jobs = JoinSet::new();
+
+        // Fan out, dispatching all queued jobs to pinga over nats.
+        for job in jobs {
+            let job_processor = self.clone();
+            dispatched_jobs.spawn(async move {
+                let _ = job_processor.block_on_job(job).await;
+            });
+        }
+
+        // Wait for all queued jobs to finish (regardless of success), before exiting.
+        loop {
+            if dispatched_jobs.join_next().await.is_none() {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {
         let processor = self.clone();
         tokio::spawn(async move {
@@ -135,6 +132,12 @@ impl JobQueueProcessor for NatsProcessor {
                 error!("Unable to push jobs to nats: {err}");
             }
         });
+
+        Ok(())
+    }
+
+    async fn blocking_process_queue(&self) -> JobQueueProcessorResult<()> {
+        self.block_on_jobs(self.queue.drain().await).await?;
 
         Ok(())
     }

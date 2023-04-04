@@ -1,9 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, VecDeque},
-    convert::TryFrom,
-};
+use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -72,7 +69,6 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
             custom: JobConsumerCustomPayload {
                 extra: job_producer_meta.custom,
             },
-            subsequent_jobs: VecDeque::new(),
         })
     }
 }
