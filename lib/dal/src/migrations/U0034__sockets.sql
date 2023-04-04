@@ -12,7 +12,8 @@ CREATE TABLE sockets
     edge_kind                   text                     NOT NULL,
     arity                       text                     NOT NULL,
     diagram_kind                text                     NOT NULL,
-    required                    bool                     NOT NULL DEFAULT false
+    required                    bool                     NOT NULL DEFAULT false,
+    ui_hidden                   bool                     NOT NULL DEFAULT false
 );
 SELECT standard_model_table_constraints_v1('sockets');
 SELECT many_to_many_table_create_v1('socket_many_to_many_schema_variants', 'sockets', 'schema_variants');

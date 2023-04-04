@@ -109,6 +109,7 @@ pub struct Socket {
     diagram_kind: DiagramKind,
     arity: SocketArity,
     required: bool,
+    ui_hidden: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -175,6 +176,7 @@ impl Socket {
     standard_model_accessor!(arity, Enum(SocketArity), SocketResult);
     standard_model_accessor!(diagram_kind, Enum(DiagramKind), SocketResult);
     standard_model_accessor!(required, bool, SocketResult);
+    standard_model_accessor!(ui_hidden, bool, SocketResult);
 
     standard_model_many_to_many!(
         lookup_fn: types,

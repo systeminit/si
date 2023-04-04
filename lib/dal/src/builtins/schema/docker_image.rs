@@ -62,17 +62,22 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (_docker_hub_credential_explicit_internal_provider, _input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Docker Hub Credential",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                false,
-            )
+        let (
+            _docker_hub_credential_explicit_internal_provider,
+            mut docker_hub_credential_input_socket,
+        ) = InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema_variant.id(),
+            "Docker Hub Credential",
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            false,
+        )
+        .await?;
+        docker_hub_credential_input_socket
+            .set_ui_hidden(ctx, true)
             .await?;
 
         let (docker_image_external_provider, _output_socket) = ExternalProvider::new_with_socket(
