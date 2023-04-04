@@ -10,6 +10,7 @@
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
           <img
+            referrerpolicy="no-referrer"
             v-if="authStore.user?.picture_url"
             class="h-8 w-8 rounded-full bg-white border-black border-2"
             :src="authStore.user?.picture_url"
