@@ -1,16 +1,18 @@
 use std::time::Duration;
 
 use reqwest::{self, StatusCode};
+use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{
-    api::{PosthogApi, PosthogApiEvent},
+    api::{PosthogApiEvent, PosthogMessage},
     error::{PosthogError, PosthogResult},
+    PosthogConfig,
 };
 
 #[derive(Debug)]
 pub struct PosthogSender {
-    rx: UnboundedReceiver<PosthogApi>,
+    rx: UnboundedReceiver<PosthogMessage>,
     api_endpoint: String,
     api_key: String,
     reqwest: reqwest::Client,
@@ -18,40 +20,42 @@ pub struct PosthogSender {
 }
 
 impl PosthogSender {
-    pub fn new(
-        rx: UnboundedReceiver<PosthogApi>,
-        api_endpoint: String,
-        api_key: String,
-        timeout: Duration,
+    pub(crate) fn new(
+        rx: UnboundedReceiver<PosthogMessage>,
+        config: &PosthogConfig,
     ) -> PosthogResult<PosthogSender> {
-        let client = reqwest::Client::builder().timeout(timeout).build()?;
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_millis(config.request_timeout_ms()))
+            .build()?;
 
         Ok(PosthogSender {
             rx,
-            api_endpoint,
-            api_key,
+            api_endpoint: config.api_endpoint().to_string(),
+            api_key: config.api_key().to_string(),
             reqwest: client,
-            enabled: true,
+            enabled: config.enabled(),
         })
     }
 
     pub async fn run(mut self) {
-        tracing::info!("PostHog Sender running.");
+        info!("PostHog Sender running.");
+        if !self.enabled {
+            debug!("posthog tracking is disabled");
+        }
+
         while let Some(msg) = self.rx.recv().await {
+            trace!(message = ?msg, "received message");
             if self.enabled {
-                tracing::debug!("sending message to posthog: {:?}", &msg);
-                let result = match msg {
-                    PosthogApi::Event(e) => self.send_event(e).await,
-                    PosthogApi::Disable => {
-                        tracing::debug!("disabling posthog tracking");
-                        self.enabled = false;
-                        Ok(())
+                match msg {
+                    PosthogMessage::Event(event) => {
+                        debug!(event = ?event, "sending event to posthog");
+                        if let Err(err) = self.send_event(event).await {
+                            error!(error = ?err, "error sending event to posthog");
+                        }
                     }
-                };
-                match result {
-                    Ok(_) => {}
-                    Err(e) => {
-                        tracing::error!("error sending to posthog: {}", e.to_string());
+                    PosthogMessage::Disable => {
+                        debug!("disabling posthog tracking");
+                        self.enabled = false;
                     }
                 }
             }
@@ -62,8 +66,9 @@ impl PosthogSender {
         let mut event_json = serde_json::to_value(event)?;
         event_json
             .as_object_mut()
-            .unwrap()
+            .expect("event was explicitly serialized from rust type as is therefore an object")
             .insert("api_key".to_string(), serde_json::json!(self.api_key));
+
         let response = self
             .reqwest
             .post(format!(

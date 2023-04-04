@@ -14,7 +14,7 @@ use dal::{
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_posthog_rs::PosthogClient;
+use si_posthog_rs::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -62,7 +62,7 @@ pub enum ServerError {
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
     #[error(transparent)]
-    Posthog(#[from] si_posthog_rs::error::PosthogError),
+    Posthog(#[from] si_posthog_rs::PosthogError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -86,21 +86,25 @@ impl Server<(), ()> {
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
         posthog_client: PosthogClient,
-        pkgs_path: &Path,
+        pkgs_path: PathBuf,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                let services_context = ServicesContext::new(
                     pg_pool,
                     nats,
                     job_processor,
                     veritech,
-                    encryption_key,
+                    Arc::new(encryption_key),
+                    council_subject_prefix,
+                    Some(pkgs_path),
+                );
+
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                    services_context,
                     jwt_secret_key,
                     config.signup_secret().clone(),
-                    council_subject_prefix,
                     posthog_client,
-                    Some(pkgs_path),
                 )?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
@@ -134,21 +138,25 @@ impl Server<(), ()> {
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
         posthog_client: PosthogClient,
-        pkgs_path: &Path,
+        pkgs_path: PathBuf,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                let services_context = ServicesContext::new(
                     pg_pool,
                     nats,
                     job_processor,
                     veritech,
-                    encryption_key,
+                    Arc::new(encryption_key),
+                    council_subject_prefix,
+                    Some(pkgs_path),
+                );
+
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+                    services_context,
                     jwt_secret_key,
                     config.signup_secret().clone(),
-                    council_subject_prefix,
                     posthog_client,
-                    Some(pkgs_path),
                 )?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
@@ -176,22 +184,11 @@ impl Server<(), ()> {
         Ok(dal::init()?)
     }
 
-    pub async fn start_posthog(
-        posthog_api_endpoint: impl Into<String>,
-        posthog_api_key: impl Into<String>,
-        enable: bool,
-    ) -> Result<PosthogClient> {
-        let (posthog_client, posthog_sender) = si_posthog_rs::new(
-            posthog_api_endpoint,
-            posthog_api_key,
-            std::time::Duration::from_millis(800),
-        )?;
+    pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
+        let (posthog_client, posthog_sender) = si_posthog_rs::from_config(config)?;
 
-        tokio::spawn(async move { posthog_sender.run().await });
+        drop(tokio::spawn(posthog_sender.run()));
 
-        if !enable {
-            posthog_client.disable()?;
-        }
         Ok(posthog_client)
     }
 
@@ -346,31 +343,14 @@ where
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn build_service(
-    pg_pool: PgPool,
-    nats_conn: NatsClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: VeritechClient,
-    encryption_key: EncryptionKey,
+    services_context: ServicesContext,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
-    council_subject_prefix: String,
     posthog_client: PosthogClient,
-    pkgs_path: Option<&Path>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
-
-    let services_context = ServicesContext::new(
-        pg_pool,
-        nats_conn,
-        job_processor,
-        veritech,
-        Arc::new(encryption_key),
-        council_subject_prefix,
-        pkgs_path.map(|path| path.to_path_buf()),
-    );
 
     let state = AppState::new(
         services_context,

@@ -1,10 +1,15 @@
+use derive_builder::UninitializedFieldError;
 use reqwest::StatusCode;
 use thiserror::Error;
 
-use crate::api::PosthogApi;
+use crate::api::PosthogMessage;
 
 #[derive(Error, Debug)]
 pub enum PosthogError {
+    #[error("{0} must be initialized")]
+    ConfigUninitializedField(&'static str),
+    #[error("{0}")]
+    ConfigValidationError(String),
     #[error("http request error from reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("properties must be a json object")]
@@ -14,7 +19,18 @@ pub enum PosthogError {
     #[error("posthog api error: HTTP CODE {0}, BODY : {1}")]
     PosthogApi(StatusCode, String),
     #[error("send error; did the api sender get die?: {0}")]
-    SendError(#[from] tokio::sync::mpsc::error::SendError<PosthogApi>),
+    SendError(#[from] tokio::sync::mpsc::error::SendError<PosthogMessage>),
 }
 
+impl From<UninitializedFieldError> for PosthogError {
+    fn from(value: UninitializedFieldError) -> Self {
+        Self::ConfigUninitializedField(value.field_name())
+    }
+}
+
+impl From<String> for PosthogError {
+    fn from(value: String) -> Self {
+        Self::ConfigValidationError(value)
+    }
+}
 pub type PosthogResult<T> = Result<T, PosthogError>;

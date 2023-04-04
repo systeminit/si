@@ -29,7 +29,7 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
-pub use si_test_macros::dal_test as test;
+pub use si_test_macros::{dal_test as test, sdf_test};
 pub use telemetry;
 pub use tracing_subscriber;
 
@@ -79,6 +79,12 @@ pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
+
+/// An authentication token, used when making SDF API requests
+pub struct AuthToken(pub String);
+
+/// A referrence to an authentication token, used when making SDF API requests
+pub struct AuthTokenRef<'a>(pub &'a str);
 
 #[derive(Clone, Debug)]
 pub struct Config {

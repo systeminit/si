@@ -1,37 +1,25 @@
+use axum::Router;
 use dal::{
     EncryptedSecret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion, StandardModel,
-    Visibility,
+    Visibility, WorkspaceSignup,
 };
-use dal_test::{test, test_harness::encrypt_message};
+use dal_test::{sdf_test, test_harness::encrypt_message, AuthTokenRef, DalContextHead};
 use hyper::Method;
 use sdf_server::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
 
-use crate::{service_tests::api_request_auth_json_body, test_setup};
+use crate::service_tests::api_request_auth_json_body;
 
-#[test]
-async fn create_secret() {
-    test_setup!(
-        _ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        _veritech,
-        _encr_key,
-        app,
-        nw,
-        auth_token,
-        dal_ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-
+#[sdf_test]
+async fn create_secret(
+    DalContextHead(ctx): DalContextHead,
+    app: Router,
+    AuthTokenRef(auth_token): AuthTokenRef<'_>,
+    nw: WorkspaceSignup,
+) {
     let visibility = Visibility::new_head(false);
 
     let message = serde_json::json!({"artist":"Billy Talent"});
-    let crypted = encrypt_message(&dal_ctx, nw.key_pair.pk(), &message).await;
+    let crypted = encrypt_message(&ctx, nw.key_pair.pk(), &message).await;
 
     let request = CreateSecretRequest {
         name: "reckless-paradise".to_string(),
@@ -48,7 +36,7 @@ async fn create_secret() {
         app,
         Method::POST,
         "/api/secret/create_secret",
-        &auth_token,
+        auth_token,
         &request,
     )
     .await;
@@ -56,11 +44,11 @@ async fn create_secret() {
     assert_eq!(response.secret.object_type(), &SecretObjectType::Credential);
     assert_eq!(response.secret.kind(), &SecretKind::DockerHub);
 
-    let decrypted_secret = EncryptedSecret::get_by_id(&dal_ctx, response.secret.id())
+    let decrypted_secret = EncryptedSecret::get_by_id(&ctx, response.secret.id())
         .await
         .expect("failed to fetch encrypted secret")
         .expect("failed to find encrypted secret in tenancy and/or visibility")
-        .decrypt(&dal_ctx)
+        .decrypt(&ctx)
         .await
         .expect("failed to decrypt secret");
 

@@ -139,12 +139,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    let posthog_client = Server::start_posthog(
-        config.posthog_api_endpoint(),
-        config.posthog_api_key(),
-        true,
-    )
-    .await?;
+    let posthog_client = Server::start_posthog(config.posthog()).await?;
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
@@ -158,7 +153,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_secret_key,
                 council_subject_prefix.clone(),
                 posthog_client,
-                &pkgs_path,
+                pkgs_path,
             )?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
@@ -197,7 +192,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_secret_key,
                 council_subject_prefix.clone(),
                 posthog_client,
-                &pkgs_path,
+                pkgs_path,
             )
             .await?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
