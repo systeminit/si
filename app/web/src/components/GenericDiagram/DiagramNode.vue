@@ -24,11 +24,7 @@
       }"
     />
 
-    <v-group
-      :config="{
-        ...(isDeleted && { opacity: 0.5 }),
-      }"
-    >
+    <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
       <!-- box background - also used by layout manager to figure out nodes location and size -->
       <v-rect
         :config="{
