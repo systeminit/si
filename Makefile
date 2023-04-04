@@ -243,7 +243,7 @@ test//lib/council-server//RTESTDEPS: test//lib/dal//TEST
 test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/dal//RTESTDEPS: test//lib/sdf-server
 
-test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf-server//TEST
+test//lib/dal-test//RTESTDEPS: test//lib/dal test//lib/sdf-server
 
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
