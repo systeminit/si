@@ -1,22 +1,23 @@
-pub mod api;
-pub mod client;
-pub mod error;
-pub mod sender;
-
-use std::time::Duration;
-
-pub use client::PosthogClient;
-pub use error::PosthogResult;
-pub use sender::PosthogSender;
 use tokio::sync::mpsc;
 
-pub fn new(
-    api_endpoint: impl Into<String>,
-    api_key: impl Into<String>,
-    timeout: Duration,
-) -> PosthogResult<(PosthogClient, PosthogSender)> {
+mod api;
+mod client;
+mod config;
+mod error;
+mod sender;
+
+pub use client::PosthogClient;
+pub use config::{PosthogConfig, PosthogConfigBuilder};
+pub use error::{PosthogError, PosthogResult};
+pub use sender::PosthogSender;
+
+pub fn new() -> PosthogConfigBuilder {
+    PosthogConfigBuilder::default()
+}
+
+pub fn from_config(config: &PosthogConfig) -> PosthogResult<(PosthogClient, PosthogSender)> {
     let (tx, rx) = mpsc::unbounded_channel();
     let client = PosthogClient::new(tx);
-    let sender = PosthogSender::new(rx, api_endpoint.into(), api_key.into(), timeout)?;
+    let sender = PosthogSender::new(rx, config)?;
     Ok((client, sender))
 }

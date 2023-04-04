@@ -1,17 +1,17 @@
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    api::{PosthogApi, PosthogApiEvent},
+    api::{PosthogApiEvent, PosthogMessage},
     error::PosthogResult,
 };
 
 #[derive(Debug, Clone)]
 pub struct PosthogClient {
-    tx: UnboundedSender<PosthogApi>,
+    tx: UnboundedSender<PosthogMessage>,
 }
 
 impl PosthogClient {
-    pub fn new(tx: UnboundedSender<PosthogApi>) -> PosthogClient {
+    pub fn new(tx: UnboundedSender<PosthogMessage>) -> PosthogClient {
         PosthogClient { tx }
     }
 
@@ -22,12 +22,12 @@ impl PosthogClient {
         properties: impl Into<serde_json::Value>,
     ) -> PosthogResult<()> {
         let event = PosthogApiEvent::new(event_name.into(), distinct_id.into(), properties.into())?;
-        self.tx.send(PosthogApi::Event(event))?;
+        self.tx.send(PosthogMessage::Event(event))?;
         Ok(())
     }
 
     pub fn disable(&self) -> PosthogResult<()> {
-        self.tx.send(PosthogApi::Disable)?;
+        self.tx.send(PosthogMessage::Disable)?;
         Ok(())
     }
 }

@@ -14,7 +14,7 @@ use dal::{
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_posthog_rs::PosthogClient;
+use si_posthog_rs::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -62,7 +62,7 @@ pub enum ServerError {
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
     #[error(transparent)]
-    Posthog(#[from] si_posthog_rs::error::PosthogError),
+    Posthog(#[from] si_posthog_rs::PosthogError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -176,22 +176,11 @@ impl Server<(), ()> {
         Ok(dal::init()?)
     }
 
-    pub async fn start_posthog(
-        posthog_api_endpoint: impl Into<String>,
-        posthog_api_key: impl Into<String>,
-        enable: bool,
-    ) -> Result<PosthogClient> {
-        let (posthog_client, posthog_sender) = si_posthog_rs::new(
-            posthog_api_endpoint,
-            posthog_api_key,
-            std::time::Duration::from_millis(800),
-        )?;
+    pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
+        let (posthog_client, posthog_sender) = si_posthog_rs::new(config)?;
 
-        tokio::spawn(async move { posthog_sender.run().await });
+        drop(tokio::spawn(posthog_sender.run()));
 
-        if !enable {
-            posthog_client.disable()?;
-        }
         Ok(posthog_client)
     }
 

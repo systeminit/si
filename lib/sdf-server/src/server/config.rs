@@ -7,6 +7,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
+use si_posthog_rs::PosthogConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
 use si_std::SensitiveString;
 use thiserror::Error;
@@ -43,6 +44,9 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
+    #[builder(default = "PosthogConfig::default()")]
+    posthog: PosthogConfig,
+
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
@@ -50,8 +54,6 @@ pub struct Config {
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
-    posthog_api_endpoint: String,
-    posthog_api_key: String,
 }
 
 impl StandardConfig for Config {
@@ -101,20 +103,16 @@ impl Config {
         &self.signup_secret
     }
 
-    /// Gets a reference to the config's signup secret.
+    /// Gets a reference to the config's pkg path.
     #[must_use]
     pub fn pkgs_path(&self) -> &Path {
         self.pkgs_path.as_path()
     }
 
+    /// Gets a reference to the config's posthog config.
     #[must_use]
-    pub fn posthog_api_endpoint(&self) -> &str {
-        &self.posthog_api_endpoint
-    }
-
-    #[must_use]
-    pub fn posthog_api_key(&self) -> &str {
-        &self.posthog_api_key
+    pub fn posthog(&self) -> &PosthogConfig {
+        &self.posthog
     }
 }
 
@@ -137,8 +135,7 @@ pub struct ConfigFile {
     cyclone_encryption_key_path: String,
     signup_secret: SensitiveString,
     pkgs_path: String,
-    posthog_api_endpoint: String,
-    posthog_api_key: String,
+    posthog: PosthogConfig,
 }
 
 impl Default for ConfigFile {
@@ -183,8 +180,7 @@ impl Default for ConfigFile {
             cyclone_encryption_key_path,
             signup_secret: DEFAULT_SIGNUP_SECRET.into(),
             pkgs_path,
-            posthog_api_endpoint: "https://e.systeminit.com".to_string(),
-            posthog_api_key: "phc_SoQak5PP054RdTumd69bOz7JhM0ekkxxTXEQsbn3Zg9".to_string(),
+            posthog: Default::default(),
         }
     }
 }
@@ -205,8 +201,7 @@ impl TryFrom<ConfigFile> for Config {
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
-        config.posthog_api_endpoint(value.posthog_api_endpoint);
-        config.posthog_api_key(value.posthog_api_key);
+        config.posthog(value.posthog);
         config.build().map_err(Into::into)
     }
 }

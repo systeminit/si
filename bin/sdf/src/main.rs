@@ -139,12 +139,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    let posthog_client = Server::start_posthog(
-        config.posthog_api_endpoint(),
-        config.posthog_api_key(),
-        true,
-    )
-    .await?;
+    let posthog_client = Server::start_posthog(config.posthog()).await?;
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {

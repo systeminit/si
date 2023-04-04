@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::error::{PosthogError, PosthogResult};
 
 #[derive(Debug, Serialize)]
-pub enum PosthogApi {
+pub enum PosthogMessage {
     Event(PosthogApiEvent),
     Disable,
 }

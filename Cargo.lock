@@ -3685,12 +3685,13 @@ dependencies = [
 name = "si-posthog-rs"
 version = "0.1.0"
 dependencies = [
+ "derive_builder",
  "reqwest",
  "serde",
  "serde_json",
+ "telemetry",
  "thiserror",
  "tokio",
- "tracing",
 ]
 
 [[package]]
