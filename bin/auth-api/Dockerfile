@@ -1,4 +1,5 @@
-ARG NODE_VERSION=18.15.0
+ARG NODE_VERSION=18.16.0
+ARG PNPM_VERSION=8.1.1
 ARG PACKAGE_PATH=@si/auth-api
 
 FROM node:$NODE_VERSION-slim AS base
@@ -20,7 +21,7 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=base /app/out/json/ ./
 COPY --from=base /app/out/pnpm-lock.yaml ./app/out/pnpm-workspace.yaml ./
-RUN npm i -g pnpm@7
+RUN npm i -g pnpm@$PNPM_VERSION
 
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store\
   # ↑ By caching the content-addressable store we stop downloading the same packages again and again
@@ -88,7 +89,7 @@ RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy 
 RUN rm -rf pruned/src
 
 FROM node:$NODE_VERSION-alpine as runner
-RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 npm i -g pnpm@7
+RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 npm i -g pnpm@$PNPM_VERSION
 
 WORKDIR /app
 

@@ -5,5 +5,8 @@
   "exports": {
     "./tsconfig.browser.json": "./tsconfig.browser.json",
     "./tsconfig.node.json": "./tsconfig.node.json"
+  },
+  "volta": {
+    "extends": "../../package.json"
   }
 }

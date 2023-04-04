@@ -1,6 +1,7 @@
 ARG BUILDER_IMAGE=cache
-ARG NODE_VERSION=16.16.0
+ARG NODE_VERSION=18.16.0
 ARG NGINX_VERSION=1.21.4
+ARG PNPM_VERSION=8.2.0
 
 ###########################################################################
 # Cache Stage
@@ -8,7 +9,7 @@ ARG NGINX_VERSION=1.21.4
 FROM node:$NODE_VERSION as cache
 ARG NODE_VERSION
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@$PNPM_VERSION
 
 WORKDIR /usr/src
 COPY . .

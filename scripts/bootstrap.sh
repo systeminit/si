@@ -274,12 +274,11 @@ function install-awscli-linux-amd64 {
 
 function install-pnpm-posix {
     echo "Install pnpm"
-    curl -fsSL https://get.pnpm.io/install.sh | sh -
-    if [[ -f ~/.volta/bin/pnpm ]]; then
-      echo "";
-      echo "We have detected volta's pnpm, which does not work correctly.";
-      echo "Please remove with \`rm ~/.volta/bin/pnpm\`";
-      exit 1;
+    if [ $(command -v volta) ]; then
+        volta install node # may not be there on first run and required for pnpm
+        volta install pnpm
+    else
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
     fi
 }
 

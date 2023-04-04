@@ -2,7 +2,8 @@ ARG BUILDER_IMAGE=cache
 ARG RUST_VERSION=1.57.0
 
 ARG BUILDER_LANG_JS_IMAGE=cache_lang_js
-ARG NODE_VERSION=18.15.0
+ARG NODE_VERSION=18.16.0
+ARG PNPM_VERSION=8.2.0
 
 ###########################################################################
 # Cache Stage
@@ -61,7 +62,7 @@ RUN set -eux; \
 FROM node:$NODE_VERSION as cache_lang_js
 ARG NODE_VERSION
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@$PNPM_VERSION
 
 WORKDIR /usr/src
 COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./

@@ -68,5 +68,8 @@
     "unplugin-icons": "^0.14.14",
     "vite": "^4.1.4",
     "vite-svg-loader": "^3.4.0"
+  },
+  "volta": {
+    "extends": "../../package.json"
   }
 }

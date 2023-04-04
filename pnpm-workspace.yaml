@@ -1,6 +1,5 @@
 packages:
   # frontend
-  # TODO will split out ui-lib and other utils
   - 'app/*'
 
   # backend
