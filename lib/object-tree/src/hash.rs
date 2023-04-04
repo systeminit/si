@@ -8,9 +8,12 @@
 //!
 //! [BLAKE3]: https://github.com/BLAKE3-team/BLAKE3
 
-use std::{fmt, str::FromStr};
+use std::{default::Default, fmt, str::FromStr};
 
-use serde::Serialize;
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Serialize,
+};
 use thiserror::Error;
 
 /// A cryptographic hash value, computed over an input of bytes.
@@ -39,6 +42,12 @@ impl Hash {
     }
 }
 
+impl Default for Hash {
+    fn default() -> Self {
+        Hash::new("".as_bytes())
+    }
+}
+
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
@@ -54,6 +63,32 @@ impl Serialize for Hash {
     }
 }
 
+struct HashVisitor;
+
+impl<'de> Visitor<'de> for HashVisitor {
+    type Value = Hash;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a blake3 hash string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Hash::from_str(v).map_err(|e| E::custom(e.to_string()))
+    }
+}
+
+impl<'de> Deserialize<'de> for Hash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(HashVisitor)
+    }
+}
+
 /// An error when parsing a String representation of a [`struct@Hash`].
 #[derive(Debug, Error)]
 #[error("failed to parse hash hex string")]
@@ -64,5 +99,24 @@ impl FromStr for Hash {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(blake3::Hash::from_str(s)?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::de::{self, Deserializer, IntoDeserializer};
+
+    #[test]
+    fn test_deserialize() {
+        let hash = Hash::new(b"white ferrari");
+        let hash_string = hash.to_string();
+        let deserializer: de::value::StrDeserializer<de::value::Error> =
+            hash_string.as_str().into_deserializer();
+        let hash_deserialized: Hash = deserializer
+            .deserialize_any(HashVisitor)
+            .expect("able to deserialize");
+
+        assert_eq!(hash, hash_deserialized);
     }
 }

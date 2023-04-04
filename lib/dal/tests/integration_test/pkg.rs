@@ -77,6 +77,34 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("build func spec");
 
+    let func_spec_2 = FuncSpec::builder()
+        .name("si:truthy")
+        .display_name("truth")
+        .description("it returns true")
+        .handler("truth")
+        .code_base64(&code_base64)
+        .backend_kind(FuncSpecBackendKind::JsAttribute)
+        .response_type(FuncSpecBackendResponseType::Boolean)
+        .hidden(false)
+        .build()
+        .expect("build func spec");
+
+    let func_spec_3 = FuncSpec::builder()
+        .name("si:truthy")
+        .display_name("truth")
+        .description("it returns true, but this time with a different description")
+        .handler("truth")
+        .code_base64(&code_base64)
+        .backend_kind(FuncSpecBackendKind::JsAttribute)
+        .response_type(FuncSpecBackendResponseType::Boolean)
+        .hidden(false)
+        .build()
+        .expect("build func spec");
+
+    // Ensure unique ids are stable and change with properties changing
+    assert_eq!(func_spec.unique_id, func_spec_2.unique_id);
+    assert_ne!(func_spec.unique_id, func_spec_3.unique_id);
+
     let spec_a = PkgSpec::builder()
         .name("The White Visitation")
         .version("0.1")

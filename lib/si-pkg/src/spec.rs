@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use derive_builder::{Builder, UninitializedFieldError};
+use object_tree::Hash;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -110,6 +111,8 @@ pub struct FuncSpec {
     pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into))]
     pub hidden: bool,
+    #[builder(field(type = "Hash", build = "self.build_func_unique_id()"))]
+    pub unique_id: Hash,
 
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
@@ -130,6 +133,48 @@ impl FuncSpecBuilder {
     {
         let converted: Url = value.try_into()?;
         Ok(self.link(converted))
+    }
+
+    fn build_func_unique_id(&self) -> Hash {
+        // Not happy about all these clones and unwraps...
+        let mut bytes = vec![];
+        bytes.extend(self.name.clone().unwrap_or("".to_string()).as_bytes());
+        bytes.extend(
+            self.display_name
+                .clone()
+                .unwrap_or(Some("".to_string()))
+                .unwrap_or("".to_string())
+                .as_bytes(),
+        );
+        bytes.extend(
+            self.description
+                .clone()
+                .unwrap_or(Some("".to_string()))
+                .unwrap_or("".to_string())
+                .as_bytes(),
+        );
+        bytes.extend(self.handler.clone().unwrap_or("".to_string()).as_bytes());
+        bytes.extend(
+            self.code_base64
+                .clone()
+                .unwrap_or("".to_string())
+                .as_bytes(),
+        );
+        bytes.extend(
+            self.backend_kind
+                .unwrap_or(FuncSpecBackendKind::Json)
+                .to_string()
+                .as_bytes(),
+        );
+        bytes.extend(
+            self.response_type
+                .unwrap_or(FuncSpecBackendResponseType::Json)
+                .to_string()
+                .as_bytes(),
+        );
+        bytes.extend(&[self.hidden.unwrap_or(false).into()]);
+
+        Hash::new(&bytes)
     }
 }
 
