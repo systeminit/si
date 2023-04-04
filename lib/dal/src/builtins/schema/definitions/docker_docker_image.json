@@ -16,11 +16,6 @@
       "children": []
     }
   ],
-  "inputSockets": [
-    {
-      "name": "Docker Hub Credential"
-    }
-  ],
   "outputSockets": [
     {
       "name": "Container Image"

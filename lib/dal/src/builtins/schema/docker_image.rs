@@ -112,7 +112,7 @@ impl MigrationDriver {
         let (qualification_func_id, qualification_func_argument_id) = self
             .find_func_and_single_argument_by_names(
                 ctx,
-                "si:qualificationDockerImageNameInspect",
+                "si:qualificationDockerImageExists",
                 "domain",
             )
             .await?;
