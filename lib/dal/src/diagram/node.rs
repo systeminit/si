@@ -74,8 +74,8 @@ impl SocketView {
             .sockets(ctx)
             .await?
             .into_iter()
-            .map(|socket| {
-                Self {
+            .filter_map(|socket| {
+                (!socket.ui_hidden()).then(|| Self {
                     id: socket.id().to_string(),
                     label: socket.name().to_owned(),
                     ty: socket.name().to_owned(),
@@ -93,7 +93,7 @@ impl SocketView {
                         SocketEdgeKind::ConfigurationOutput => NodeSide::Right,
                         _ => NodeSide::Left,
                     },
-                }
+                })
             })
             .collect())
     }
