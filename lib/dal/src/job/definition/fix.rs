@@ -271,7 +271,5 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
         .await?
         .publish_on_commit(ctx)
         .await?;
-
-    Component::run_all_confirmations(ctx).await?;
     Ok(())
 }
