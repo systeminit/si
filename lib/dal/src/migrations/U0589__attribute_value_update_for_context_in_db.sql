@@ -1586,7 +1586,7 @@ BEGIN
                 'attribute_value_belongs_to_attribute_value',
                 this_tenancy,
                 this_visibility,
-                tmp_attribute_value_id
+                found_proxy.id 
             );
             PERFORM delete_by_id_v1('attribute_values',
                                     this_tenancy,
