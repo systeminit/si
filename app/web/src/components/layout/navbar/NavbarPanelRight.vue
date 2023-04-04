@@ -13,6 +13,7 @@
             v-if="authStore.user?.picture_url"
             class="h-8 w-8 rounded-full bg-white border-black border-2"
             :src="authStore.user?.picture_url"
+            referrerpolicy="no-referrer"
           />
           <Icon v-else name="user-circle" />
           <SiArrow :nudge="open || hovered" class="ml-1" />

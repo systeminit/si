@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: notify-slack
-        uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+        uses: voxmedia/github-action-slack-notify-build@v1.6.0
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
         with:
@@ -40,7 +40,7 @@ jobs:
           echo "::group::Promoting image"
           make promote//${{ inputs.component_name }}
           echo "::endgroup::"
-      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+      - uses: voxmedia/github-action-slack-notify-build@v1.6.0
         if: success()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
@@ -49,7 +49,7 @@ jobs:
           channel: github-notifications
           status: succeeded
           color: "#8bc34a"
-      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+      - uses: voxmedia/github-action-slack-notify-build@v1.6.0
         if: failure()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
