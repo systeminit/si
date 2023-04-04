@@ -38,7 +38,7 @@ thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
 tokio-tungstenite = "0.18"
 tower = { version = "0.4.10" }
-tower-http = { version = "0.4", features = ["trace"] }
+tower-http = { version = "0.4", features = ["cors", "trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [build-dependencies]

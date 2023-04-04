@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
+use tower_http::cors::CorsLayer;
 
 use super::{server::ServerError, state::AppState};
 
@@ -16,7 +17,11 @@ use super::{server::ServerError, state::AppState};
 pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
-        .route("/api", get(system_status_route))
+        // root health route is currently pinged by auth portal to check if backend is up and running so we need permissive CORS headers
+        .nest(
+            "/api/",
+            Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
+        )
         .nest(
             "/api/change_set",
             crate::server::service::change_set::routes(),
