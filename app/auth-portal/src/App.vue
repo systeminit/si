@@ -156,7 +156,7 @@
             >Legal</RouterLink
           >
           <span class="opacity-50">|</span>
-          <div class="text-center">&copy; System Initiative Inc</div>
+          <div class="text-center">&copy; System Initiative, Inc.</div>
         </footer>
       </div>
     </template>
