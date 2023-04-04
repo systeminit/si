@@ -1,0 +1,35 @@
+name: Deploy Auth API
+"on":
+  workflow_dispatch: { }
+
+jobs:
+  deploy:
+    name: Build and push container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_ECS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          # Build a docker container and
+          # push it to ECR so that it can
+          # be deployed to ECS.
+          docker buildx build --platform=linux/amd64 --output type=docker -f bin/auth-api/Dockerfile . -t si/si-auth-api
+          docker tag si/si-auth-api:latest ${{ secrets.AWS_ECR_REPOSITORY }}/si/si-auth-api:latest
+          docker push ${{ secrets.AWS_ECR_REPOSITORY }}/si/si-auth-api:latest
+      - name: Trigger ECS Deploy
+        run: |
+          aws ecs update-service --region ${{ secrets.AWS_ECS_REGION }} --cluster ${{ secrets.AWS_ECS_AUTH_API_CLUSTER }} --service ${{ secrets.AWS_ECS_AUTH_API_SERVICE }} --force-new-deployment
