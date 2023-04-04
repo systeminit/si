@@ -33,7 +33,6 @@
               "
               @click="scrollToDoc(doc.slug)"
             >
-              <!-- <Icon name="check-circle" /> -->
               <a
                 :class="
                   clsx(
@@ -46,7 +45,6 @@
               >
                 {{ doc.title }}
               </a>
-              <!-- <Icon name="download" size="sm" /> -->
             </div>
           </div>
         </div>
@@ -60,7 +58,6 @@
             :data-doc-slug="doc.slug"
           >
             <RichText class="text-sm">
-              <h2>{{ doc.title }}</h2>
               <Component :is="doc.component" />
             </RichText>
             <div class="mt-md">

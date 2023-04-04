@@ -1,5 +1,6 @@
 ---
 title: Running System Initiative as a developer
+hideWorkspaceLink: true
 ---
 
 ## Set up your dev environment

@@ -34,8 +34,6 @@
             "
           ></div>
         </div>
-        <!-- <Icon name="loader" size="2xl" /> -->
-        <!-- <div>checking if you are logged in...</div> -->
       </div>
     </template>
     <template v-else>
@@ -53,8 +51,14 @@
 
           <template v-if="userIsLoggedIn">
             <nav class="flex gap-md font-bold items-center">
-              <template v-if="!(authStore.needsProfileUpdate || authStore.user?.needsTosUpdate)">
-                <!-- <RouterLink :to="{ name: 'profile' }">Profile</RouterLink> -->
+              <template
+                v-if="
+                  !(
+                    authStore.needsProfileUpdate ||
+                    authStore.user?.needsTosUpdate
+                  )
+                "
+              >
                 <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
                   >Tutorial</RouterLink
                 >
@@ -82,23 +86,6 @@
               <span class="opacity-50">|</span>
             </nav>
 
-            <!-- <a
-            href="#"
-            class="ml-auto flex items-center gap-sm children:pointer-events-none"
-            @click.prevent="profileMenuRef?.open"
-          >
-            <div>Hi {{ authStore.bestUserLabel }}!</div>
-            <div class="hover:opacity-90 cursor-pointer flex">
-              <img
-                v-if="user?.pictureUrl"
-                :src="user.pictureUrl"
-                class="w-[30px] h-[30px] block rounded-full"
-                referrerpolicy="no-referrer"
-              />
-              <Icon v-else name="user-circle" size="lg" />
-            </div>
-          </a> -->
-
             <VButton2
               class="flex items-center gap-sm children:pointer-events-none"
               variant="transparent"
@@ -117,14 +104,6 @@
                 <Icon v-else name="user-circle" />
               </template>
             </VButton2>
-
-            <!-- <VButton2
-        tone="neutral"
-        icon="x"
-        variant="ghost"
-        :href="`${API_URL}/auth/logout`"
-        >Log out!</VButton2
-      > -->
           </template>
         </header>
         <DropdownMenu ref="profileMenuRef" force-align-right>
@@ -171,7 +150,9 @@
             >Help</a
           >
           <span class="opacity-50">|</span>
-          <RouterLink class="hover:underline hover:dark:text-action-300 hover:text-action-700" :to="{ name: 'legal' }"
+          <RouterLink
+            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
+            :to="{ name: 'legal' }"
             >Legal</RouterLink
           >
           <span class="opacity-50">|</span>
@@ -191,7 +172,6 @@ import {
   VButton2,
   DropdownMenu,
   DropdownMenuItem,
-RichText,
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo.svg?component";
 import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";

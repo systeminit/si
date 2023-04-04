@@ -2,6 +2,8 @@
 title: Cookie Notice
 ---
 
+# Cookie Notice 
+
 _Effective as of March 31, 2023._
 
 This Cookie Notice explains how System Initiative, Inc. ("**System Initiative**", "**we**", "**us**" or "**our**") uses cookies and similar technologies in connection with our website – [https://www.systeminit.com/](https://www.systeminit.com/) – and any other website that we own or control and which posts or links to this Cookie Notice (collectively, the "**Sites**").

@@ -2,6 +2,8 @@
 title: Privacy Policy
 ---
 
+# Privacy Policy
+
 _Effective as of March 31, 2023._
 
 This Privacy Policy describes how System Initiative, Inc. ("**System Initiative**," "**we**", “**us**” or "**our**") handles personal information that we collect through our digital properties or services that link to this Privacy Policy, including our website, as well as through social media, our marketing activities, our live events and other activities described in this Privacy Policy (collectively, the “**Service**”).

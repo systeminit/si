@@ -1,5 +1,6 @@
 ---
 title: Introduction
+hideWorkspaceLink: true
 ---
 
 ## Welcome to System Initiative!
