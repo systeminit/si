@@ -7,9 +7,9 @@
     }
   ],
   "response_type": "Qualification",
-  "display_name": "Inspect docker image name",
+  "display_name": "Docker image exists",
   "description": "Verifies that the docker image exists",
   "link": "https://docker.com",
-  "code_file": "qualificationDockerImageNameInspect.js",
-  "code_entrypoint": "qualificationDockerImageNameInspect"
+  "code_file": "qualificationDockerImageExists.js",
+  "code_entrypoint": "qualificationDockerImageExists"
 }
