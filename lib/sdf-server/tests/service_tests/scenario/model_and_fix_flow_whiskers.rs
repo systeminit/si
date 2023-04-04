@@ -1,13 +1,15 @@
-use dal::component::confirmation::view::ConfirmationStatus;
-use dal::qualification::QualificationSubCheckStatus;
-use dal::{Component, DalContext, FixBatchId, FixCompletionStatus};
-use dal_test::test;
-use pretty_assertions_sorted::assert_eq;
-use sdf_server::service::fix::run::FixRunRequest;
 use std::collections::HashMap;
 
+use axum::Router;
+use dal::{
+    component::confirmation::view::ConfirmationStatus, qualification::QualificationSubCheckStatus,
+    Component, FixBatchId, FixCompletionStatus,
+};
+use dal_test::{sdf_test, AuthToken, DalContextHead};
+use pretty_assertions_sorted::assert_eq;
+use sdf_server::service::fix::run::FixRunRequest;
+
 use crate::service_tests::scenario::ScenarioHarness;
-use crate::test_setup;
 
 /// This test runs through the entire model flow and fix flow lifecycle with a non-trivial set
 /// of [`Components`](dal::Component).
@@ -16,32 +18,16 @@ use crate::test_setup;
 /// ```shell
 /// SI_TEST_BUILTIN_SCHEMAS=aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
 /// ```
-#[test]
+#[sdf_test]
 #[ignore]
-async fn model_and_fix_flow_whiskers() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nw,
-        auth_token,
-        ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut ctx;
-
+async fn model_and_fix_flow_whiskers(
+    DalContextHead(mut ctx): DalContextHead,
+    app: Router,
+    AuthToken(auth_token): AuthToken,
+) {
     // Setup the harness to start.
     let mut harness = ScenarioHarness::new(
-        ctx,
+        &ctx,
         app,
         auth_token,
         &[
@@ -59,50 +45,50 @@ async fn model_and_fix_flow_whiskers() {
 
     // Enter a new change set. We will not go through the routes for this.
     harness
-        .create_change_set_and_update_ctx(ctx, "bruce springsteen")
+        .create_change_set_and_update_ctx(&mut ctx, "bruce springsteen")
         .await;
 
     // Create all AWS components.
-    let region = harness.create_node(ctx, "Region", None).await;
-    let ami = harness.create_node(ctx, "AMI", Some(region.node_id)).await;
+    let region = harness.create_node(&ctx, "Region", None).await;
+    let ami = harness.create_node(&ctx, "AMI", Some(region.node_id)).await;
     let key_pair = harness
-        .create_node(ctx, "Key Pair", Some(region.node_id))
+        .create_node(&ctx, "Key Pair", Some(region.node_id))
         .await;
     let ec2 = harness
-        .create_node(ctx, "EC2 Instance", Some(region.node_id))
+        .create_node(&ctx, "EC2 Instance", Some(region.node_id))
         .await;
     let security_group = harness
-        .create_node(ctx, "Security Group", Some(region.node_id))
+        .create_node(&ctx, "Security Group", Some(region.node_id))
         .await;
     let ingress = harness
-        .create_node(ctx, "Ingress", Some(region.node_id))
+        .create_node(&ctx, "Ingress", Some(region.node_id))
         .await;
 
     // Create all other components.
-    let docker = harness.create_node(ctx, "Docker Image", None).await;
-    let butane = harness.create_node(ctx, "Butane", None).await;
+    let docker = harness.create_node(&ctx, "Docker Image", None).await;
+    let butane = harness.create_node(&ctx, "Butane", None).await;
 
     // Connect Docker and Butane to the relevant AWS components.
     harness
-        .create_connection(ctx, docker.node_id, butane.node_id, "Container Image")
+        .create_connection(&ctx, docker.node_id, butane.node_id, "Container Image")
         .await;
     harness
-        .create_connection(ctx, docker.node_id, ingress.node_id, "Exposed Ports")
+        .create_connection(&ctx, docker.node_id, ingress.node_id, "Exposed Ports")
         .await;
     harness
-        .create_connection(ctx, butane.node_id, ec2.node_id, "User Data")
+        .create_connection(&ctx, butane.node_id, ec2.node_id, "User Data")
         .await;
 
     // Connect AMI, Key Pair and Security Group to the relevant AWS components.
     harness
-        .create_connection(ctx, ami.node_id, ec2.node_id, "Image ID")
+        .create_connection(&ctx, ami.node_id, ec2.node_id, "Image ID")
         .await;
     harness
-        .create_connection(ctx, key_pair.node_id, ec2.node_id, "Key Name")
+        .create_connection(&ctx, key_pair.node_id, ec2.node_id, "Key Name")
         .await;
     harness
         .create_connection(
-            ctx,
+            &ctx,
             security_group.node_id,
             ingress.node_id,
             "Security Group ID",
@@ -110,7 +96,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .create_connection(
-            ctx,
+            &ctx,
             security_group.node_id,
             ec2.node_id,
             "Security Group ID",
@@ -120,7 +106,7 @@ async fn model_and_fix_flow_whiskers() {
     // Update AMI, Key Pair and Security Group to start.
     harness
         .update_value(
-            ctx,
+            &ctx,
             ami.component_id,
             &["si", "name"],
             Some(serde_json::json!["Fedora CoreOS"]),
@@ -128,7 +114,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             ami.component_id,
             &["domain", "ImageId"],
             Some(serde_json::json!["ami-0bde60638be9bb870"]),
@@ -136,7 +122,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             key_pair.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-key"]),
@@ -144,7 +130,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             key_pair.component_id,
             &["domain", "KeyType"],
             Some(serde_json::json!["rsa"]),
@@ -152,7 +138,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             security_group.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-sg"]),
@@ -160,7 +146,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             security_group.component_id,
             &["domain", "Description"],
             Some(serde_json::json!["poop canoe"]),
@@ -170,7 +156,7 @@ async fn model_and_fix_flow_whiskers() {
     // Now, look at Ingress and EC2 Instance.
     harness
         .update_value(
-            ctx,
+            &ctx,
             ingress.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-ingress"]),
@@ -178,7 +164,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             ec2.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-server"]),
@@ -186,7 +172,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             ec2.component_id,
             &["domain", "InstanceType"],
             Some(serde_json::json!["t3.micro"]),
@@ -196,18 +182,18 @@ async fn model_and_fix_flow_whiskers() {
     // Update Docker Image and Butane.
     harness
         .update_value(
-            ctx,
+            &ctx,
             docker.component_id,
             &["si", "name"],
             Some(serde_json::json!["docker.io/systeminit/whiskers"]),
         )
         .await;
     harness
-        .insert_value(ctx, docker.component_id, &["domain", "ExposedPorts"], None)
+        .insert_value(&ctx, docker.component_id, &["domain", "ExposedPorts"], None)
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             docker.component_id,
             &["domain", "ExposedPorts", "0"],
             Some(serde_json::json!["80/tcp"]),
@@ -215,7 +201,7 @@ async fn model_and_fix_flow_whiskers() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             butane.component_id,
             &["si", "name"],
             Some(serde_json::json!["Butane"]),
@@ -225,7 +211,7 @@ async fn model_and_fix_flow_whiskers() {
     // Finally, update Region.
     harness
         .update_value(
-            ctx,
+            &ctx,
             region.component_id,
             &["domain", "region"],
             Some(serde_json::json!["us-east-2"]),
@@ -257,7 +243,7 @@ async fn model_and_fix_flow_whiskers() {
                 },
             },
         }], // expected
-        ami.view(ctx).await.to_value(), // actual
+        ami.view(&ctx).await.to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -288,7 +274,7 @@ async fn model_and_fix_flow_whiskers() {
                 },
             },
         }], // expected
-        key_pair.view(ctx).await.drop_confirmation().to_value(), // actual
+        key_pair.view(&ctx).await.drop_confirmation().to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -320,7 +306,7 @@ async fn model_and_fix_flow_whiskers() {
             },
         }], // expected
         security_group
-            .view(ctx)
+            .view(&ctx)
             .await
             .drop_confirmation()
             .to_value(), // actual
@@ -362,7 +348,7 @@ async fn model_and_fix_flow_whiskers() {
                 },
             },
         }], // expected
-        ingress.view(ctx).await.drop_confirmation().to_value(), // actual
+        ingress.view(&ctx).await.drop_confirmation().to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -395,7 +381,7 @@ async fn model_and_fix_flow_whiskers() {
                 },
             },
         }], // expected
-        ec2.view(ctx).await.drop_confirmation().to_value(), // actual
+        ec2.view(&ctx).await.drop_confirmation().to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -408,7 +394,7 @@ async fn model_and_fix_flow_whiskers() {
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(ctx).await.to_value(), // actual
+        region.view(&ctx).await.to_value(), // actual
     );
 
     // Finally, check Docker Image and Butane.
@@ -426,13 +412,13 @@ async fn model_and_fix_flow_whiskers() {
                 ],
             },
         }], // expected
-        docker.view(ctx).await.drop_qualification().to_value(), // actual
+        docker.view(&ctx).await.drop_qualification().to_value(), // actual
     );
 
     // Evaluate Docker Image qualification(s) separately as they may contain a timestamp. Technically,
     // we should be doing this via an sdf route. However, this test focuses on the model and fix
     // flow and we only want to know that the qualification(s) passed.
-    for qualification in Component::list_qualifications(ctx, docker.component_id)
+    for qualification in Component::list_qualifications(&ctx, docker.component_id)
         .await
         .expect("could not list qualifications")
     {
@@ -475,16 +461,16 @@ async fn model_and_fix_flow_whiskers() {
                 },
             },
         }], // expected
-        butane.view(ctx).await.to_value(), // actual
+        butane.view(&ctx).await.to_value(), // actual
     );
 
     // Apply the change set and get rolling!
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
     // Prepare fixes for key pair, ingress and security group.
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     let mut requests = Vec::new();
     assert_eq!(
         4,                   // expected
@@ -514,10 +500,10 @@ async fn model_and_fix_flow_whiskers() {
     );
 
     // Run fixes from the requests.
-    let first_fix_batch_id = harness.run_fixes(ctx, requests).await;
+    let first_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(
@@ -530,7 +516,7 @@ async fn model_and_fix_flow_whiskers() {
     );
 
     // Now, run the fix for EC2 .
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     let mut requests = Vec::new();
     assert_eq!(
         4,                   // expected
@@ -564,10 +550,10 @@ async fn model_and_fix_flow_whiskers() {
     );
 
     // Run the EC2 fix.
-    let second_fix_batch_id = harness.run_fixes(ctx, requests).await;
+    let second_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
 
     // Check that they succeeded.
-    let fix_batch_history_views = harness.list_fixes(ctx).await;
+    let fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     assert_eq!(
         2,                             // expected
         fix_batch_history_views.len(), // actual
@@ -596,7 +582,7 @@ async fn model_and_fix_flow_whiskers() {
     );
 
     // Check that all confirmations are passing.
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         4,                   // expected
         confirmations.len(), // actual

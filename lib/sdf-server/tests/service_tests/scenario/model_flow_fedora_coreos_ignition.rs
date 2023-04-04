@@ -1,49 +1,32 @@
+use axum::Router;
 use dal::qualification::QualificationSubCheckStatus;
-use dal::{Component, DalContext};
-use dal_test::test;
+use dal::Component;
+use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
 
 use crate::service_tests::scenario::ScenarioHarness;
-use crate::test_setup;
 
 /// This test runs through the model flow for ensuring
 /// [Ignition](https://coreos.github.io/ignition/) data is populated correctly to the "user data"
 /// field for an [AWS EC2 Instance](https://www.amazonaws.cn/en/ec2). This scenario test includes
 /// testing an array of values being propagated and transformed between
-/// [`Components`](dal::Component) as well as a "code generation" result being propagated to another
-/// [`Component`](dal::Component).
+/// [`Components`](dal::Component) as well as a "code generation" result being propagated to
+/// another [`Component`](dal::Component).
 ///
 /// It is recommended to run this test with the following environment variable:
 /// ```shell
 /// SI_TEST_BUILTIN_SCHEMAS=docker image,coreos butane,aws region,aws ec2
 /// ```
-#[test]
+#[sdf_test]
 #[ignore]
-async fn model_flow_fedora_coreos_ignition() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nw,
-        auth_token,
-        ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut ctx;
-
+async fn model_flow_fedora_coreos_ignition(
+    DalContextHead(mut ctx): DalContextHead,
+    app: Router,
+    AuthToken(auth_token): AuthToken,
+) {
     // Setup the harness to start.
     let mut harness = ScenarioHarness::new(
-        ctx,
+        &ctx,
         app,
         auth_token,
         &["Region", "EC2 Instance", "Docker Image", "Butane"],
@@ -51,28 +34,28 @@ async fn model_flow_fedora_coreos_ignition() {
     .await;
 
     // Enter a new change set. We will not go through the routes for this.
-    harness.create_change_set_and_update_ctx(ctx, "").await;
+    harness.create_change_set_and_update_ctx(&mut ctx, "").await;
 
     // Create all components.
-    let region = harness.create_node(ctx, "Region", None).await;
+    let region = harness.create_node(&ctx, "Region", None).await;
     let ec2 = harness
-        .create_node(ctx, "EC2 Instance", Some(region.node_id))
+        .create_node(&ctx, "EC2 Instance", Some(region.node_id))
         .await;
-    let docker = harness.create_node(ctx, "Docker Image", None).await;
-    let butane = harness.create_node(ctx, "Butane", None).await;
+    let docker = harness.create_node(&ctx, "Docker Image", None).await;
+    let butane = harness.create_node(&ctx, "Butane", None).await;
 
     // Make all connections.
     harness
-        .create_connection(ctx, docker.node_id, butane.node_id, "Container Image")
+        .create_connection(&ctx, docker.node_id, butane.node_id, "Container Image")
         .await;
     harness
-        .create_connection(ctx, butane.node_id, ec2.node_id, "User Data")
+        .create_connection(&ctx, butane.node_id, ec2.node_id, "User Data")
         .await;
 
     // Update all components, as needed.
     harness
         .update_value(
-            ctx,
+            &ctx,
             ec2.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-server"]),
@@ -80,29 +63,29 @@ async fn model_flow_fedora_coreos_ignition() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             docker.component_id,
             &["si", "name"],
             Some(serde_json::json!["docker.io/systeminit/whiskers"]),
         )
         .await;
     harness
-        .insert_value(ctx, docker.component_id, &["domain", "ExposedPorts"], None)
+        .insert_value(&ctx, docker.component_id, &["domain", "ExposedPorts"], None)
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             docker.component_id,
             &["domain", "ExposedPorts", "0"],
             Some(serde_json::json!["80/tcp"]),
         )
         .await;
     harness
-        .insert_value(ctx, docker.component_id, &["domain", "ExposedPorts"], None)
+        .insert_value(&ctx, docker.component_id, &["domain", "ExposedPorts"], None)
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             docker.component_id,
             &["domain", "ExposedPorts", "1"],
             Some(serde_json::json!["443/tcp"]),
@@ -110,7 +93,7 @@ async fn model_flow_fedora_coreos_ignition() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             butane.component_id,
             &["si", "name"],
             Some(serde_json::json!["Butane"]),
@@ -118,7 +101,7 @@ async fn model_flow_fedora_coreos_ignition() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             region.component_id,
             &["domain", "region"],
             Some(serde_json::json!["us-east-2"]),
@@ -142,7 +125,7 @@ async fn model_flow_fedora_coreos_ignition() {
                 "awsResourceType": "instance",
             },
         }], // expected
-        ec2.view(ctx)
+        ec2.view(&ctx)
             .await
             .drop_confirmation()
             .drop_code()
@@ -182,7 +165,7 @@ async fn model_flow_fedora_coreos_ignition() {
                 },
             },
         }], // expected
-        butane.view(ctx).await.to_value(), // actual
+        butane.view(&ctx).await.to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -195,7 +178,7 @@ async fn model_flow_fedora_coreos_ignition() {
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(ctx).await.to_value(), // actual
+        region.view(&ctx).await.to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -212,13 +195,13 @@ async fn model_flow_fedora_coreos_ignition() {
                 ],
             },
         }], // expected
-        docker.view(ctx).await.drop_qualification().to_value(), // actual
+        docker.view(&ctx).await.drop_qualification().to_value(), // actual
     );
 
     // Evaluate Docker Image qualification(s) separately as they may contain a timestamp.
     // Technically, we should be doing this via an sdf route. However, this test focuses on the
     // model flow and we only want to know that the qualification(s) passed.
-    for qualification in Component::list_qualifications(ctx, docker.component_id)
+    for qualification in Component::list_qualifications(&ctx, docker.component_id)
         .await
         .expect("could not list qualifications")
     {

@@ -153,7 +153,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_secret_key,
                 council_subject_prefix.clone(),
                 posthog_client,
-                &pkgs_path,
+                pkgs_path,
             )?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
@@ -192,7 +192,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_secret_key,
                 council_subject_prefix.clone(),
                 posthog_client,
-                &pkgs_path,
+                pkgs_path,
             )
             .await?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();

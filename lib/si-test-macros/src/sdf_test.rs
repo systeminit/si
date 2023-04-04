@@ -1,4 +1,4 @@
-//! Expansion implementation of the `dal_test` attribute macro.
+//! Expansion implementation of the `sdf_test` attribute macro.
 //!
 //! This implementation is a combination of a configurable threaded Tokio runtime (formerly
 //! provided via the `tokio::test` macro from the `tokio` crate), support for optional
@@ -12,7 +12,8 @@
 
 use std::sync::Arc;
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote;
 use syn::{parse_quote, punctuated::Punctuated, token::Comma, Expr, FnArg, ItemFn, Type};
 
 use crate::{
@@ -26,8 +27,8 @@ pub(crate) fn expand(item: ItemFn, args: Args) -> TokenStream {
     expand_test(item, args, fn_setup)
 }
 
-fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
-    let mut expander = DalTestFnSetupExpander::new();
+fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
+    let mut expander = SdfTestFnSetupExpander::new();
 
     for param in params {
         match param {
@@ -49,6 +50,16 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                         // references and/or mutability, however the surrounding type is passed as
                         // an owned type.
                         match ty_str {
+                            "AuthToken" => {
+                                let var = expander.setup_auth_token();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
+                            "AuthTokenRef" => {
+                                let var = expander.setup_auth_token_ref();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             "Connections" => {
                                 let var = expander.setup_owned_connections();
                                 let var = var.as_ref();
@@ -76,6 +87,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                             }
                             "DalContextHeadMutRef" => {
                                 let var = expander.setup_dal_context_head_mut_ref();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
+                            "Router" => {
+                                let var = expander.setup_router();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -183,18 +199,18 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
     expander.finish()
 }
 
-struct DalTestFnSetup {
+struct SdfTestFnSetup {
     code: TokenStream,
     fn_args: Punctuated<Expr, Comma>,
 }
 
-impl FnSetup for DalTestFnSetup {
+impl FnSetup for SdfTestFnSetup {
     fn into_parts(self) -> (TokenStream, Punctuated<Expr, Comma>) {
         (self.code, self.fn_args)
     }
 }
 
-struct DalTestFnSetupExpander {
+struct SdfTestFnSetupExpander {
     code: TokenStream,
     args: Punctuated<Expr, Comma>,
 
@@ -218,9 +234,14 @@ struct DalTestFnSetupExpander {
     dal_context_head: Option<Arc<Ident>>,
     dal_context_head_ref: Option<Arc<Ident>>,
     dal_context_head_mut_ref: Option<Arc<Ident>>,
+    signup_secret: Option<Arc<Ident>>,
+    posthog_client: Option<Arc<Ident>>,
+    router: Option<Arc<Ident>>,
+    auth_token: Option<Arc<Ident>>,
+    auth_token_ref: Option<Arc<Ident>>,
 }
 
-impl DalTestFnSetupExpander {
+impl SdfTestFnSetupExpander {
     fn new() -> Self {
         Self {
             code: TokenStream::new(),
@@ -245,6 +266,11 @@ impl DalTestFnSetupExpander {
             dal_context_head: None,
             dal_context_head_ref: None,
             dal_context_head_mut_ref: None,
+            signup_secret: None,
+            posthog_client: None,
+            router: None,
+            auth_token: None,
+            auth_token_ref: None,
         }
     }
 
@@ -252,15 +278,120 @@ impl DalTestFnSetupExpander {
         !self.args.is_empty()
     }
 
-    fn finish(self) -> DalTestFnSetup {
-        DalTestFnSetup {
+    fn setup_signup_secret(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.signup_secret {
+            return ident.clone();
+        }
+
+        let var = Ident::new("signup_secret", Span::call_site());
+        self.code_extend(quote! {
+            let #var: ::si_std::SensitiveString = "sign-me-up".into();
+        });
+        self.signup_secret = Some(Arc::new(var));
+
+        self.signup_secret.as_ref().unwrap().clone()
+    }
+
+    fn setup_posthog_client(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.posthog_client {
+            return ident.clone();
+        }
+
+        let var = Ident::new("posthog_client", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+                let (client, sender) = ::si_posthog_rs::new()
+                    .api_endpoint("http://localhost:9999")
+                    .api_key("not-a-key")
+                    .enabled(false)
+                    .build()
+                    .wrap_err("failed to create posthost client and sender")?;
+                drop(::tokio::spawn(sender.run()));
+                client
+            };
+        });
+        self.posthog_client = Some(Arc::new(var));
+
+        self.posthog_client.as_ref().unwrap().clone()
+    }
+
+    fn setup_router(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.router {
+            return ident.clone();
+        }
+
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+        let nats_subject_prefix = self.setup_nats_subject_prefix();
+        let nats_subject_prefix = nats_subject_prefix.as_ref();
+        let jwt_secret_key = self.setup_jwt_secret_key();
+        let jwt_secret_key = jwt_secret_key.as_ref();
+        let signup_secret = self.setup_signup_secret();
+        let signup_secret = signup_secret.as_ref();
+        let posthog_client = self.setup_posthog_client();
+        let posthog_client = posthog_client.as_ref();
+
+        let var = Ident::new("router", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+                let s_ctx = #test_context.create_services_context(&#nats_subject_prefix).await;
+                let (service, _, _) = ::sdf_server::build_service(
+                    s_ctx,
+                    #jwt_secret_key.clone(),
+                    #signup_secret.clone(),
+                    #posthog_client,
+                ).wrap_err("failed to build sdf router")?;
+                service
+            };
+        });
+        self.router = Some(Arc::new(var));
+
+        self.router.as_ref().unwrap().clone()
+    }
+
+    fn setup_auth_token(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.auth_token {
+            return ident.clone();
+        }
+
+        let workspace_signup = self.setup_workspace_signup();
+        let auth_token = workspace_signup.1.as_ref();
+
+        let var = Ident::new("auth_token_owned", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::AuthToken(#auth_token.clone());
+        });
+        self.auth_token = Some(Arc::new(var));
+
+        self.auth_token.as_ref().unwrap().clone()
+    }
+
+    fn setup_auth_token_ref(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.auth_token_ref {
+            return ident.clone();
+        }
+
+        let workspace_signup = self.setup_workspace_signup();
+        let auth_token = workspace_signup.1.as_ref();
+
+        let var = Ident::new("auth_token_ref", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::AuthTokenRef(&#auth_token);
+        });
+        self.auth_token_ref = Some(Arc::new(var));
+
+        self.auth_token_ref.as_ref().unwrap().clone()
+    }
+
+    fn finish(self) -> SdfTestFnSetup {
+        SdfTestFnSetup {
             code: self.code,
             fn_args: self.args,
         }
     }
 }
 
-impl FnSetupExpander for DalTestFnSetupExpander {
+impl FnSetupExpander for SdfTestFnSetupExpander {
     fn code_extend<I: IntoIterator<Item = proc_macro2::TokenTree>>(&mut self, stream: I) {
         self.code.extend(stream)
     }

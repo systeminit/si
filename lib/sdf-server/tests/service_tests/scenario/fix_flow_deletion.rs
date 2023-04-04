@@ -1,83 +1,75 @@
-use dal::action_prototype::ActionKind;
-use dal::component::confirmation::view::{ConfirmationStatus, ConfirmationView, Recommendation};
-use dal::{AttributeValueId, ComponentId, DalContext, FixCompletionStatus};
-use dal_test::test;
-use pretty_assertions_sorted::assert_eq;
-use sdf_server::service::dev::CREATE_CONFIRMATION_NAME;
-use sdf_server::service::dev::DELETE_CONFIRMATION_NAME;
-use sdf_server::service::fix::run::FixRunRequest;
 use std::collections::{HashMap, HashSet};
 
+use axum::Router;
+use dal::{
+    action_prototype::ActionKind,
+    component::confirmation::view::{ConfirmationStatus, ConfirmationView, Recommendation},
+    AttributeValueId, ComponentId, FixCompletionStatus,
+};
+use dal_test::{sdf_test, AuthToken, DalContextHead};
+use pretty_assertions_sorted::assert_eq;
+use sdf_server::service::{
+    dev::{CREATE_CONFIRMATION_NAME, DELETE_CONFIRMATION_NAME},
+    fix::run::FixRunRequest,
+};
+
 use crate::service_tests::scenario::ScenarioHarness;
-use crate::test_setup;
 
 /// Recommendation: run this test with the following environment variable...
 /// ```shell
 /// SI_TEST_BUILTIN_SCHEMAS=none
 /// ```
-#[test]
+#[sdf_test]
 #[ignore]
-async fn fix_flow_deletion() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nw,
-        auth_token,
-        octx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut octx;
-
+async fn fix_flow_deletion(
+    DalContextHead(mut ctx): DalContextHead,
+    app: Router,
+    AuthToken(auth_token): AuthToken,
+) {
     // Setup the harness to start.
-    let mut harness = ScenarioHarness::new(ctx, app, auth_token, &[]).await;
+    let mut harness = ScenarioHarness::new(&ctx, app, auth_token, &[]).await;
 
     // Author a schema using the appropriate route. We'll add it to our harness' cache afterwards.
     // We'll do this all in a changeset and then apply it.
     assert!(ctx.visibility().is_head());
-    harness.create_change_set_and_update_ctx(ctx, "poop1").await;
+    harness
+        .create_change_set_and_update_ctx(&mut ctx, "poop1")
+        .await;
     let schema_name = "lock//in";
     harness
-        .author_single_schema_with_default_variant(ctx, schema_name)
+        .author_single_schema_with_default_variant(&ctx, schema_name)
         .await;
-    harness.add_schemas(ctx, &[schema_name]).await;
+    harness.add_schemas(&ctx, &[schema_name]).await;
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
     // In a new changeset, create nodes and connections. Apply the changeset when finished.
-    harness.create_change_set_and_update_ctx(ctx, "poop2").await;
-    let boaster = harness.create_node(ctx, schema_name, None).await;
-    let derke = harness.create_node(ctx, schema_name, None).await;
-    let alfajer = harness.create_node(ctx, schema_name, None).await;
-    let leo = harness.create_node(ctx, schema_name, None).await;
-    let chronicle = harness.create_node(ctx, schema_name, None).await;
     harness
-        .create_connection(ctx, alfajer.node_id, boaster.node_id, "universal")
+        .create_change_set_and_update_ctx(&mut ctx, "poop2")
+        .await;
+    let boaster = harness.create_node(&ctx, schema_name, None).await;
+    let derke = harness.create_node(&ctx, schema_name, None).await;
+    let alfajer = harness.create_node(&ctx, schema_name, None).await;
+    let leo = harness.create_node(&ctx, schema_name, None).await;
+    let chronicle = harness.create_node(&ctx, schema_name, None).await;
+    harness
+        .create_connection(&ctx, alfajer.node_id, boaster.node_id, "universal")
         .await;
     harness
-        .create_connection(ctx, boaster.node_id, leo.node_id, "universal")
+        .create_connection(&ctx, boaster.node_id, leo.node_id, "universal")
         .await;
     harness
-        .create_connection(ctx, alfajer.node_id, chronicle.node_id, "universal")
+        .create_connection(&ctx, alfajer.node_id, chronicle.node_id, "universal")
         .await;
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
     // On HEAD, check the confirmations and recommendations to see that they match what we expect.
     // We also want to ensure that the recommendations are topologically sorted with stable
     // ordering (i.e. use a "Vec" with non-arbitrary ordering for the assertion(s)).
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         10,                  // expected
         confirmations.len()  // actual
@@ -162,10 +154,10 @@ async fn fix_flow_deletion() {
         5,                  // expected
         fix_requests.len()  // actual
     );
-    let create_fix_batch_id = harness.run_fixes(ctx, fix_requests).await;
+    let create_fix_batch_id = harness.run_fixes(&mut ctx, fix_requests).await;
 
     // Check that the fix batch succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     let create_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(
@@ -178,7 +170,7 @@ async fn fix_flow_deletion() {
     );
 
     // Check confirmations again on HEAD. We should have no recommendations this time.
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         10,                  // expected
         confirmations.len()  // actual
@@ -201,11 +193,13 @@ async fn fix_flow_deletion() {
     );
 
     // Go back to model, immediately merge and come back. We should still see no recommendations.
-    harness.create_change_set_and_update_ctx(ctx, "poop3").await;
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .create_change_set_and_update_ctx(&mut ctx, "poop3")
         .await;
-    let confirmations = harness.list_confirmations(ctx).await;
+    harness
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
+        .await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         10,                  // expected
         confirmations.len()  // actual
@@ -228,7 +222,7 @@ async fn fix_flow_deletion() {
     );
 
     // Ensure the resource exists after creation.
-    let diagram = harness.get_diagram(ctx).await;
+    let diagram = harness.get_diagram(&ctx).await;
     for component in diagram.components() {
         let maybe_data_raw = component.resource().data.clone().expect("data is empty");
         let data = serde_json::to_string(&maybe_data_raw).expect("could not deserialize data");
@@ -241,14 +235,14 @@ async fn fix_flow_deletion() {
     // Refresh the resources. The order at which we refresh should have no
     // effect on the order of the confirmations and recommendations that come back.
     assert!(ctx.visibility().is_head());
-    harness.resource_refresh(ctx, boaster.component_id).await;
-    harness.resource_refresh(ctx, derke.component_id).await;
-    harness.resource_refresh(ctx, leo.component_id).await;
-    harness.resource_refresh(ctx, alfajer.component_id).await;
-    harness.resource_refresh(ctx, chronicle.component_id).await;
+    harness.resource_refresh(&ctx, boaster.component_id).await;
+    harness.resource_refresh(&ctx, derke.component_id).await;
+    harness.resource_refresh(&ctx, leo.component_id).await;
+    harness.resource_refresh(&ctx, alfajer.component_id).await;
+    harness.resource_refresh(&ctx, chronicle.component_id).await;
 
     // Ensure the resource continues to exist after refresh.
-    let diagram = harness.get_diagram(ctx).await;
+    let diagram = harness.get_diagram(&ctx).await;
     for component in diagram.components() {
         let maybe_data_raw = component.resource().data.clone().expect("data is empty");
         let data = serde_json::to_string(&maybe_data_raw).expect("could not deserialize data");
@@ -260,19 +254,21 @@ async fn fix_flow_deletion() {
 
     // Now, delete all the components and come back. The order at which we delete should have no
     // effect on the order of the confirmations and recommendations that come back.
-    harness.create_change_set_and_update_ctx(ctx, "poop4").await;
-    harness.delete_component(ctx, leo.component_id).await;
-    harness.delete_component(ctx, boaster.component_id).await;
-    harness.delete_component(ctx, chronicle.component_id).await;
-    harness.delete_component(ctx, derke.component_id).await;
-    harness.delete_component(ctx, alfajer.component_id).await;
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .create_change_set_and_update_ctx(&mut ctx, "poop4")
+        .await;
+    harness.delete_component(&ctx, leo.component_id).await;
+    harness.delete_component(&ctx, boaster.component_id).await;
+    harness.delete_component(&ctx, chronicle.component_id).await;
+    harness.delete_component(&ctx, derke.component_id).await;
+    harness.delete_component(&ctx, alfajer.component_id).await;
+    harness
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
     // Once the change set is applied, check the confirmations. We should now have destroy
     // recommendations.
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         10,                  // expected
         confirmations.len()  // actual
@@ -357,10 +353,10 @@ async fn fix_flow_deletion() {
         5,                  // expected
         fix_requests.len()  // actual
     );
-    let destroy_fix_batch_id = harness.run_fixes(ctx, fix_requests).await;
+    let destroy_fix_batch_id = harness.run_fixes(&mut ctx, fix_requests).await;
 
     // Check that the fix batch succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     assert_eq!(
         2,                             // expected
         fix_batch_history_views.len()  // actual
@@ -400,15 +396,17 @@ async fn fix_flow_deletion() {
     );
 
     // Check confirmations on HEAD.
-    let confirmations = harness.list_confirmations(ctx).await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert!(confirmations.is_empty());
 
     // Go back to model, immediately merge and come back!
-    harness.create_change_set_and_update_ctx(ctx, "poop5").await;
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .create_change_set_and_update_ctx(&mut ctx, "poop5")
         .await;
-    let confirmations = harness.list_confirmations(ctx).await;
+    harness
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
+        .await;
+    let confirmations = harness.list_confirmations(&mut ctx).await;
     assert!(confirmations.is_empty());
 
     // TODO(nick): mix in creation and deletion recommendations as well as scenarios where not

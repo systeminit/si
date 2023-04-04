@@ -1,10 +1,10 @@
-use dal::{DalContext, FixCompletionStatus};
-use dal_test::test;
+use axum::Router;
+use dal::FixCompletionStatus;
+use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
 use sdf_server::service::fix::run::FixRunRequest;
 
 use crate::service_tests::scenario::ScenarioHarness;
-use crate::test_setup;
 
 /// This test runs through the entire model flow and fix flow lifecycle for solely an AWS Key Pair.
 ///
@@ -12,45 +12,31 @@ use crate::test_setup;
 /// ```shell
 /// SI_TEST_BUILTIN_SCHEMAS=aws region,aws keypair
 /// ```
-#[test]
+#[sdf_test]
 #[ignore]
-async fn model_and_fix_flow_aws_key_pair() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nw,
-        auth_token,
-        ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut ctx;
-
+async fn model_and_fix_flow_aws_key_pair(
+    DalContextHead(mut ctx): DalContextHead,
+    app: Router,
+    AuthToken(auth_token): AuthToken,
+) {
     // Setup the harness to start.
-    let mut harness = ScenarioHarness::new(ctx, app, auth_token, &["Region", "Key Pair"]).await;
+    let mut harness = ScenarioHarness::new(&ctx, app, auth_token, &["Region", "Key Pair"]).await;
 
     // Enter a new change set. We will not go through the routes for this.
-    harness.create_change_set_and_update_ctx(ctx, "swans").await;
+    harness
+        .create_change_set_and_update_ctx(&mut ctx, "swans")
+        .await;
 
     // Create all AWS components.
-    let region = harness.create_node(ctx, "Region", None).await;
+    let region = harness.create_node(&ctx, "Region", None).await;
     let key_pair = harness
-        .create_node(ctx, "Key Pair", Some(region.node_id))
+        .create_node(&ctx, "Key Pair", Some(region.node_id))
         .await;
 
     // Update property editor values.
     harness
         .update_value(
-            ctx,
+            &ctx,
             key_pair.component_id,
             &["si", "name"],
             Some(serde_json::json!["toddhoward-key"]),
@@ -58,7 +44,7 @@ async fn model_and_fix_flow_aws_key_pair() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             key_pair.component_id,
             &["domain", "KeyType"],
             Some(serde_json::json!["rsa"]),
@@ -66,7 +52,7 @@ async fn model_and_fix_flow_aws_key_pair() {
         .await;
     harness
         .update_value(
-            ctx,
+            &ctx,
             region.component_id,
             &["domain", "region"],
             Some(serde_json::json!["us-east-2"]),
@@ -103,7 +89,7 @@ async fn model_and_fix_flow_aws_key_pair() {
                 },
             },
         }], // expected
-        key_pair.view(ctx).await.drop_confirmation().to_value(), // actual
+        key_pair.view(&ctx).await.drop_confirmation().to_value(), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -116,16 +102,16 @@ async fn model_and_fix_flow_aws_key_pair() {
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(ctx).await.to_value(), // actual
+        region.view(&ctx).await.to_value(), // actual
     );
 
     // Apply the change set and get rolling!
     harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
     // Check the confirmations and ensure they look as we expect.
-    let mut confirmations = harness.list_confirmations(ctx).await;
+    let mut confirmations = harness.list_confirmations(&mut ctx).await;
     let mut confirmation = confirmations.pop().expect("no confirmations found");
     assert!(confirmations.is_empty());
     let recommendation = confirmation
@@ -137,7 +123,7 @@ async fn model_and_fix_flow_aws_key_pair() {
     // Run the fix for the confirmation.
     let fix_batch_id = harness
         .run_fixes(
-            ctx,
+            &mut ctx,
             vec![FixRunRequest {
                 attribute_value_id: recommendation.confirmation_attribute_value_id,
                 component_id: recommendation.component_id,
@@ -147,7 +133,7 @@ async fn model_and_fix_flow_aws_key_pair() {
         .await;
 
     // Check that the fix succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(

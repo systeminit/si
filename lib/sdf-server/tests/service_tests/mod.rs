@@ -1,8 +1,9 @@
-use axum::body::Body;
-use axum::http::{Method, Request, StatusCode};
-use axum::{http, Router};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use axum::{
+    body::Body,
+    http::{self, Method, Request, StatusCode},
+    Router,
+};
+use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceExt;
 
 mod change_set;
@@ -123,117 +124,4 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
         assert_eq!(status, StatusCode::OK);
     }
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
-}
-
-#[macro_export]
-macro_rules! test_setup {
-    (
-        $ctx:ident,
-        $jwt_secret_key:ident,
-        $pg:ident,
-        $pgconn:ident,
-        $pgtxn:ident,
-        $nats_conn:ident,
-        $nats:ident,
-        $veritech:ident,
-        $encr_key:ident,
-        $app:ident,
-        $nw:ident,
-        $auth_token:ident,
-        $dal_ctx:ident,
-        $job_processor:ident,
-        $council_subject_prefix:ident $(,)?
-    ,
-    ) => {
-        ::dal_test::test_harness::one_time_setup()
-            .await
-            .expect("one time setup failed");
-        let $ctx = ::dal_test::test_harness::TestContext::init().await;
-        let (
-            $pg,
-            $nats_conn,
-            $job_processor,
-            $veritech,
-            $encr_key,
-            $jwt_secret_key,
-            $council_subject_prefix,
-        ) = $ctx.entries();
-        let $nats = $nats_conn.transaction();
-        let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
-        let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
-        let (posthog_client, posthog_sender) = si_posthog_rs::new()
-            .api_endpoint("http://localhost:9999")
-            .api_key("poop")
-            .enabled(false)
-            .build()
-            .expect("cannot create posthog client and sender");
-        tokio::spawn(posthog_sender.run());
-
-        let ($app, _, _) = sdf_server::build_service(
-            $pg.clone(),
-            $nats_conn.clone(),
-            $job_processor.clone(),
-            $veritech.clone(),
-            $encr_key.clone(),
-            $jwt_secret_key.clone(),
-            "myunusedsignupsecret".into(),
-            $council_subject_prefix.to_owned(),
-            posthog_client,
-            None,
-        )
-        .expect("cannot build new server");
-        let $app: ::axum::Router = $app.into();
-
-        let ($nw, $auth_token) = {
-            let services_context = ::dal::ServicesContext::new(
-                $pg.clone(),
-                $nats_conn.clone(),
-                $job_processor.clone(),
-                $veritech.clone(),
-                std::sync::Arc::new($encr_key.clone()),
-                $council_subject_prefix.to_owned(),
-                None,
-            );
-            let builder = services_context.into_builder();
-            let mut ctx = builder
-                .build(::dal::RequestContext::default())
-                .await
-                .expect("cannot start transactions");
-
-            let ($nw, $auth_token) =
-                ::dal_test::test_harness::workspace_signup(&mut ctx, &$jwt_secret_key).await;
-
-            ctx.commit().await.expect("cannot finish setup");
-
-            ($nw, $auth_token)
-        };
-
-        let services_context = dal::ServicesContext::new(
-            $pg.clone(),
-            $nats_conn.clone(),
-            $job_processor.clone(),
-            $veritech.clone(),
-            std::sync::Arc::new($encr_key.clone()),
-            $council_subject_prefix.to_owned(),
-            None,
-        );
-        let builder = services_context.into_builder();
-
-        // This macro expands into funcitons that might not need to mutate,
-        // triggering a lint warning
-        #[allow(unused_mut)]
-        let mut $dal_ctx = {
-            let mut ctx = builder
-                .build_default()
-                .await
-                .expect("cannot start transactions");
-
-            let visibility = ::dal::Visibility::new_head(false);
-
-            ctx.update_tenancy(::dal::Tenancy::new(*$nw.workspace.pk()));
-            ctx.update_visibility(visibility);
-            ctx.update_history_actor(::dal::HistoryActor::SystemInit);
-            ctx
-        };
-    };
 }
