@@ -5,6 +5,7 @@ use dal::func::backend::js_command::CommandRunResult;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::schema::variant::leaves::LeafKind;
 use dal::{
+    component::confirmation::view::ConfirmationStatus,
     generate_name,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     ActionPrototype, ActionPrototypeContext, ChangeSet, ChangeSetStatus, Component, ComponentView,
@@ -550,6 +551,7 @@ async fn list_confirmations(mut octx: DalContext) {
         .expect("could not list confirmations");
     let view = views.pop().expect("views are empty");
     assert!(views.is_empty());
+    assert_eq!(view.status, ConfirmationStatus::Success);
     assert!(view.recommendations.is_empty());
 
     // Observe that the confirmation worked after "creation".

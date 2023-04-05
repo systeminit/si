@@ -239,7 +239,9 @@ impl Diagram {
                         // and not marked as deleted in head, then it's also a valid child
                         // *Remember*: a node won't exist in the changeset until a change is
                         // made to a node!!
-                        if child_node.visibility().is_head() {
+                        if child_node.visibility().is_head()
+                            && child_node.visibility().deleted_at.is_none()
+                        {
                             child_node_ids.push(edge.tail_node_id());
                             continue;
                         }
