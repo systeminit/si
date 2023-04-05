@@ -32,7 +32,8 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -50,7 +51,8 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Update the "/root/si/name" value for "bloodscythe", observe that it worked, and observe
@@ -79,7 +81,8 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     assert_eq!(
@@ -98,7 +101,8 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Now, the "/root/si/name" value for "soulrender", observe that it worked, and observe
@@ -127,7 +131,8 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -145,6 +150,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }

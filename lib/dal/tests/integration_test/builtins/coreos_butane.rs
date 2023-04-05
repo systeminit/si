@@ -133,7 +133,8 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // FIXME(nick): there is a race here where the "generateAwsEc2JSON" function needs to run

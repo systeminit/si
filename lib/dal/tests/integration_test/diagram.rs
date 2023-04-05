@@ -44,7 +44,10 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
                 "image": "13700KF",
             },
         }], // expected
-        component_view_properties.drop_qualification().to_value() // actual
+        component_view_properties
+            .drop_qualification()
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     node.set_geometry(ctx, "0", "0", Some("500"), Some("500"))
@@ -68,7 +71,10 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
                 "image": "13700KF",
             },
         }], // expected
-        component_view_properties.drop_qualification().to_value() // actual
+        component_view_properties
+            .drop_qualification()
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }
 

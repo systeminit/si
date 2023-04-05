@@ -121,7 +121,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -139,7 +140,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -186,7 +188,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -211,7 +214,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Connect the fedora docker image to the spongebob deployment.
@@ -251,7 +255,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -269,7 +274,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -329,7 +335,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -354,7 +361,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // After the first update, let's connect alpine to the spongebob deployment.
@@ -432,7 +440,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -450,7 +459,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -521,7 +531,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -559,6 +570,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }

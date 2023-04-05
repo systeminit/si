@@ -538,7 +538,8 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // expected
+            .to_value()
+            .expect("could not convert to value") // expected
     );
 
     // Ensure that we see exactly one expected validation status with exactly one expected

@@ -68,7 +68,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Find the providers we need for connection.
@@ -149,7 +150,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Perform update!
@@ -220,6 +222,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }

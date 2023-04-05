@@ -439,6 +439,12 @@ pub struct FixHistoryView {
     resource: Option<ResourceView>,
 }
 
+impl FixHistoryView {
+    pub fn status(&self) -> FixCompletionStatus {
+        self.status
+    }
+}
+
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FixReturn {

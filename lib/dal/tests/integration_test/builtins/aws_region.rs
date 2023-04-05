@@ -39,7 +39,8 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // expected
+            .to_value()
+            .expect("could not convert to value") // expected
     );
 
     let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
@@ -93,7 +94,8 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // expected
+            .to_value()
+            .expect("could not convert to value") // expected
     );
 
     // TODO(nick): now, ensure we have the right value! Huzzah.
@@ -162,7 +164,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -193,7 +196,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Find the providers we need for connection.
@@ -243,7 +247,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -274,7 +279,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Perform update!
@@ -303,7 +309,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -335,7 +342,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }
 
@@ -398,7 +406,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -429,7 +438,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Find the providers we need for connection.
@@ -479,7 +489,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -510,7 +521,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Perform update!
@@ -539,7 +551,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -571,6 +584,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }
