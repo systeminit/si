@@ -64,7 +64,7 @@ const emit = defineEmits<{
   (e: "change", v: Option[]): void;
 }>();
 
-const noneVariant = { label: "select schema variant", value: nilId() };
+const noneVariant = { label: `select ${props.thingLabel}`, value: nilId() };
 const optionsState = ref<Option>(noneVariant);
 
 const addIsDisabled = computed(() => optionsState.value.value === nilId());
