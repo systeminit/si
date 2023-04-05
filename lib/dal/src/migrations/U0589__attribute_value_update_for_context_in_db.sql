@@ -1480,8 +1480,6 @@ BEGIN
                                                                         NULL,
                                                                         this_parent_attribute_value_id,
                                                                         attribute_value.id);
-            ELSE
-                RAISE 'attribute_value_populate_nested_values_v1: Found children attribute value that should have been deleted: %', attribute_value;
             END IF;
 
             PERFORM attribute_value_update_for_context_without_child_proxies_v1(this_tenancy,
