@@ -62,7 +62,7 @@ pub async fn auth_connect(
     Json(request): Json<AuthConnectRequest>,
 ) -> SessionResult<Json<AuthConnectResponse>> {
     // TODO: pull value from env vars / dotenv files
-    let auth_api_url = match option_env!("LOCAL_ENV_STACK") {
+    let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
         Some(_) => "http://localhost:9001",
         None => "https://auth-api.systeminit.com",
     };
