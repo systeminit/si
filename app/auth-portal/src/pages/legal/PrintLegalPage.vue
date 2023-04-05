@@ -1,7 +1,6 @@
 <template>
   <div v-if="docsLoaded" class="p-lg bg-white text-black">
     <RichText>
-      <h1>{{ docs[urlDocSlug].title }}</h1>
       <Component :is="docs[urlDocSlug].component" />
     </RichText>
   </div>

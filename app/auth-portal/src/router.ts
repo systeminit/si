@@ -17,16 +17,19 @@ export const routerOptions: RouterOptions = {
     { path: "/login", name: "login", component: LoginPage },
     { path: "/logout", name: "logout", component: LogoutPage },
     {
-      path: "/legal",
+      // public legal page, optionally can jump to specific doc
+      path: "/legal/:docSlug?",
       name: "legal",
       component: LegalAgreementPage,
     },
     {
+      // same legal page, but with "accept" checkbox/button
       path: "/review-legal",
       name: "review-legal",
       component: LegalAgreementPage,
     },
     {
+      // special page showing single specific doc in format ready to print
       path: "/print-legal/:docVersion/:docSlug",
       name: "print-legal",
       component: PrintLegalPage,

@@ -209,10 +209,20 @@ const observer = new IntersectionObserver(
   },
   { threshold: [0] },
 );
+watch(activeDocSlug, () => {
+  /* eslint-disable @typescript-eslint/no-floating-promises */
+  router.replace({ ...route, params: { docSlug: activeDocSlug.value } });
+});
 
 watch(docsLoaded, () => {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  /* eslint-disable @typescript-eslint/no-floating-promises */
   nextTick(activateObserver);
+  // after initial load, we jump to the right doc if the URL included it
+  if (route.params.docSlug) {
+    setTimeout(() => {
+      scrollToDoc(route.params.docSlug as string);
+    }, 250);
+  }
 });
 
 function activateObserver() {
