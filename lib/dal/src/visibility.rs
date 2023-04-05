@@ -46,10 +46,15 @@ impl Visibility {
         Visibility::new(ChangeSetPk::NONE, deleted_at)
     }
 
-    /// Converts this [`Visibility`] to a new head [`Visibility`].
     pub fn to_deleted(&self) -> Self {
         let mut other = *self;
         other.deleted_at = Some(Utc::now());
+        other
+    }
+
+    pub fn to_non_deleted(&self) -> Self {
+        let mut other = *self;
+        other.deleted_at = None;
         other
     }
 
