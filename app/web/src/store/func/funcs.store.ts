@@ -35,6 +35,12 @@ export type FuncWithDetails = FuncSummary & {
   associations?: FuncAssociations;
 };
 
+export interface SaveFuncResponse {
+  isRevertible: boolean;
+  associations?: FuncAssociations;
+  success: boolean;
+}
+
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
@@ -153,7 +159,7 @@ export const useFuncStore = () => {
         });
       },
       async UPDATE_FUNC(func: FuncWithDetails) {
-        return new ApiRequest<FuncWithDetails>({
+        return new ApiRequest<SaveFuncResponse>({
           method: "post",
           url: "func/save_func",
           params: {
@@ -179,11 +185,17 @@ export const useFuncStore = () => {
           },
         });
       },
-      async EXEC_FUNC(funcId: FuncId) {
-        return new ApiRequest<{ success: true }>({
+      async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
+        const func = this.funcById(funcId);
+
+        return new ApiRequest<SaveFuncResponse>({
           method: "post",
-          url: "func/exec_func",
-          params: { id: funcId, ...visibility },
+          url: "func/save_and_exec",
+          params: { ...func, ...visibility },
+          onSuccess: (response) => {
+            this.funcDetailsById[funcId].associations = response.associations;
+            this.funcDetailsById[funcId].isRevertible = response.isRevertible;
+          },
         });
       },
 

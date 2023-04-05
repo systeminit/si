@@ -26,11 +26,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod create_func;
-pub mod exec_func;
 pub mod get_func;
 pub mod list_funcs;
 pub mod list_input_sources;
 pub mod revert_func;
+pub mod save_and_exec;
 pub mod save_func;
 
 #[derive(Error, Debug)]
@@ -440,7 +440,7 @@ pub fn routes() -> Router<AppState> {
         .route("/get_func", get(get_func::get_func))
         .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
-        .route("/exec_func", post(exec_func::exec_func))
+        .route("/save_and_exec", post(save_and_exec::save_and_exec))
         .route("/revert_func", post(revert_func::revert_func))
         .route(
             "/list_input_sources",

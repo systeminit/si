@@ -1,28 +1,16 @@
-use super::{FuncError, FuncResult};
+use super::{
+    save_func::{do_save_func, SaveFuncRequest, SaveFuncResponse},
+    FuncError, FuncResult,
+};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
     job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue,
-    AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind, FuncId,
-    PropId, StandardModel, ValidationPrototype, Visibility, WsEvent,
+    AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind, PropId,
+    StandardModel, ValidationPrototype, WsEvent,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExecFuncRequest {
-    pub id: FuncId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExecFuncResponse {
-    pub success: bool,
-}
 
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
@@ -73,16 +61,14 @@ async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     Ok(())
 }
 
-pub async fn exec_func(
+pub async fn save_and_exec(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<ExecFuncRequest>,
-) -> FuncResult<Json<ExecFuncResponse>> {
+    Json(request): Json<SaveFuncRequest>,
+) -> FuncResult<Json<SaveFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let func = Func::get_by_id(&ctx, &request.id)
-        .await?
-        .ok_or(FuncError::FuncNotFound)?;
+    let (save_func_response, func) = do_save_func(&ctx, request).await?;
 
     match func.backend_kind() {
         FuncBackendKind::JsAttribute => {
@@ -101,5 +87,5 @@ pub async fn exec_func(
 
     ctx.commit().await?;
 
-    Ok(Json(ExecFuncResponse { success: true }))
+    Ok(Json(save_func_response))
 }

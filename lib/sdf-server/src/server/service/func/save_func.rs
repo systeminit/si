@@ -484,14 +484,11 @@ async fn save_validation_func_prototypes(
     Ok(())
 }
 
-pub async fn save_func<'a>(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<SaveFuncRequest>,
-) -> FuncResult<Json<SaveFuncResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    let mut func = Func::get_by_id(&ctx, &request.id)
+pub async fn do_save_func(
+    ctx: &DalContext,
+    request: SaveFuncRequest,
+) -> FuncResult<(SaveFuncResponse, Func)> {
+    let mut func = Func::get_by_id(ctx, &request.id)
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
@@ -500,16 +497,16 @@ pub async fn save_func<'a>(
         return Err(FuncError::NotWritable);
     }
 
-    func.set_display_name(&ctx, Some(request.name)).await?;
-    func.set_description(&ctx, request.description).await?;
-    func.set_handler(&ctx, request.handler).await?;
-    func.set_code_plaintext(&ctx, request.code.as_deref())
+    func.set_display_name(ctx, Some(request.name)).await?;
+    func.set_description(ctx, request.description).await?;
+    func.set_handler(ctx, request.handler).await?;
+    func.set_code_plaintext(ctx, request.code.as_deref())
         .await?;
 
     match func.backend_kind() {
         FuncBackendKind::JsValidation => {
             if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
-                save_validation_func_prototypes(&ctx, &func, prototypes).await?;
+                save_validation_func_prototypes(ctx, &func, prototypes).await?;
             }
         }
         FuncBackendKind::JsAttribute => match func.backend_response_type() {
@@ -520,7 +517,7 @@ pub async fn save_func<'a>(
                 }) = request.associations
                 {
                     save_leaf_prototypes(
-                        &ctx,
+                        ctx,
                         &func,
                         schema_variant_ids,
                         component_ids,
@@ -536,7 +533,7 @@ pub async fn save_func<'a>(
                 }) = request.associations
                 {
                     save_leaf_prototypes(
-                        &ctx,
+                        ctx,
                         &func,
                         schema_variant_ids,
                         component_ids,
@@ -552,7 +549,7 @@ pub async fn save_func<'a>(
                 }) = request.associations
                 {
                     save_leaf_prototypes(
-                        &ctx,
+                        ctx,
                         &func,
                         schema_variant_ids,
                         component_ids,
@@ -568,26 +565,26 @@ pub async fn save_func<'a>(
                 }) = request.associations
                 {
                     let prop_kind = save_attr_func_prototypes(
-                        &ctx,
+                        ctx,
                         &func,
                         prototypes,
                         RemovedPrototypeOp::Reset,
                         None,
                     )
                     .await?;
-                    save_attr_func_arguments(&ctx, &func, arguments).await?;
+                    save_attr_func_arguments(ctx, &func, arguments).await?;
 
                     match prop_kind {
                         Some(prop_kind) => {
                             func.set_backend_response_type(
-                                &ctx,
+                                ctx,
                                 Into::<FuncBackendResponseType>::into(prop_kind),
                             )
                             .await?
                         }
                         // If we're removing all associations there won't be a prop kind
                         None => {
-                            func.set_backend_response_type(&ctx, FuncBackendResponseType::Unset)
+                            func.set_backend_response_type(ctx, FuncBackendResponseType::Unset)
                                 .await?
                         }
                     };
@@ -597,8 +594,27 @@ pub async fn save_func<'a>(
         _ => {}
     }
 
-    let is_revertible = super::is_func_revertible(&ctx, &func).await?;
-    let associations = super::get_func_view(&ctx, &func).await?.associations;
+    let is_revertible = super::is_func_revertible(ctx, &func).await?;
+    let associations = super::get_func_view(ctx, &func).await?.associations;
+
+    Ok((
+        SaveFuncResponse {
+            associations,
+            success: true,
+            is_revertible,
+        },
+        func,
+    ))
+}
+
+pub async fn save_func<'a>(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Json(request): Json<SaveFuncRequest>,
+) -> FuncResult<Json<SaveFuncResponse>> {
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let (save_response, _) = do_save_func(&ctx, request).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?
@@ -606,9 +622,5 @@ pub async fn save_func<'a>(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(SaveFuncResponse {
-        associations,
-        success: true,
-        is_revertible,
-    }))
+    Ok(Json(save_response))
 }
