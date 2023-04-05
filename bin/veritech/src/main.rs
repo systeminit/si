@@ -27,9 +27,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
-    //    if args.disable_opentelemetry {
-    telemetry.disable_opentelemetry().await?;
-    //    }
+
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
     let config = Config::try_from(args)?;
 
     start_tracing_level_signal_handler_task(&telemetry)?;
