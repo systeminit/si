@@ -57,6 +57,23 @@ impl Default for NatsConfig {
     }
 }
 
+// Ensure that we only grab the current span if we're at debug level or lower, otherwise use none.
+//
+// When recording a parent span for long running tasks such as a transaction we want the direct
+// span parent. However, `Span::current()` returns a suitable parent span, according to the tracing
+// `Subscriber`, meaning that instead of capturing the transaction starting span, we might capture
+// a calling function up the stack that is at the info level or higher. In other words, then
+// "transaction span" might be an ancestor span unless we're really careful.
+macro_rules! current_span_for_debug {
+    () => {
+        if span_enabled!(target: "si_data_nats", Level::DEBUG) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    }
+}
+
 pub type NatsClient = Client;
 
 #[derive(Clone, Debug)]
@@ -84,7 +101,11 @@ impl Client {
         )
     )]
     pub fn transaction(&self) -> NatsTxn {
-        NatsTxn::new(self.clone(), self.metadata.clone(), Span::current())
+        NatsTxn::new(
+            self.clone(),
+            self.metadata.clone(),
+            current_span_for_debug!(),
+        )
     }
 
     /// Establish a `Connection` with a NATS server.
@@ -207,7 +228,12 @@ impl Client {
             .map_err(|err| span.record_err(Error::Async(err)))?
             .map_err(|err| span.record_err(Error::Nats(err)))?;
 
-        Ok(Subscription::new(sub, subject, self.metadata.clone(), span))
+        Ok(Subscription::new(
+            sub,
+            subject,
+            self.metadata.clone(),
+            current_span_for_debug!(),
+        ))
     }
 
     /// Create a queue subscription for the given NATS connection.
@@ -259,7 +285,12 @@ impl Client {
             .map_err(|err| span.record_err(Error::Async(err)))?
             .map_err(|err| span.record_err(Error::Nats(err)))?;
 
-        Ok(Subscription::new(sub, subject, self.metadata.clone(), span))
+        Ok(Subscription::new(
+            sub,
+            subject,
+            self.metadata.clone(),
+            current_span_for_debug!(),
+        ))
     }
 
     /// Publish a message on the given subject.
@@ -525,7 +556,7 @@ impl Client {
             sub,
             subject,
             self.metadata.clone(),
-            sub_span,
+            current_span_for_debug!(),
         ))
     }
 
