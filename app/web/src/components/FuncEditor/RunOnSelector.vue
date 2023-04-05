@@ -4,7 +4,7 @@
       <SelectMenu
         v-model="optionsState"
         class="w-4/5"
-        :none-selected-label="`select ${props.thingLabel}...`"
+        :none-selected-label="`select ${thingLabel}...`"
         :options="options"
         :disabled="disabled"
       />
@@ -19,9 +19,9 @@
       />
     </div>
     <div>
-      <h2 class="pb-2 text-sm">Selected {{ props.thingLabel }}</h2>
-      <p v-if="props.modelValue.length === 0" class="pl-4 text-sm">
-        None selected. Select {{ props.thingLabel }} above...
+      <h2 class="pb-2 text-sm">Selected {{ thingLabel }}</h2>
+      <p v-if="modelValue.length === 0" class="pl-4 text-sm">
+        None selected. Select {{ thingLabel }} above...
       </p>
       <ul v-else class="list-disc list-inside flex flex-col">
         <li

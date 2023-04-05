@@ -11,7 +11,7 @@
       v-model="selectedComponents"
       thing-label="components"
       :options="componentOptions"
-      :disabled="props.disabled"
+      :disabled="disabled"
       @change="updateAssociations"
     />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -21,14 +21,14 @@
       v-model="selectedVariants"
       thing-label="schema variants"
       :options="schemaVariantOptions"
-      :disabled="props.disabled"
+      :disabled="disabled"
       @change="updateAssociations"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { ref, watch, toRef } from "vue";
 import { storeToRefs } from "pinia";
 import { Option } from "@/components/SelectMenu.vue";
 import { CodeGenerationAssociations } from "@/store/func/types";
@@ -44,11 +44,13 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
+const modelValue = toRef(props, "modelValue");
+
 const selectedVariants = ref<Option[]>(
-  toOptionValues(schemaVariantOptions.value, props.modelValue.schemaVariantIds),
+  toOptionValues(schemaVariantOptions.value, modelValue.value.schemaVariantIds),
 );
 const selectedComponents = ref<Option[]>(
-  toOptionValues(componentOptions.value, props.modelValue.componentIds),
+  toOptionValues(componentOptions.value, modelValue.value.componentIds),
 );
 
 const emit = defineEmits<{
@@ -57,16 +59,10 @@ const emit = defineEmits<{
 }>();
 
 watch(
-  () => props.modelValue,
-  (mv) => {
-    selectedVariants.value = toOptionValues(
-      schemaVariantOptions.value,
-      mv.schemaVariantIds,
-    );
-    selectedComponents.value = toOptionValues(
-      componentOptions.value,
-      mv.componentIds,
-    );
+  [modelValue, schemaVariantOptions, componentOptions],
+  ([mv, svOpts, componentOpts]) => {
+    selectedVariants.value = toOptionValues(svOpts, mv.schemaVariantIds);
+    selectedComponents.value = toOptionValues(componentOpts, mv.componentIds);
   },
   { immediate: true },
 );
