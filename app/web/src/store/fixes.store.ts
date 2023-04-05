@@ -308,13 +308,11 @@ export const useFixesStore = () => {
                         logs: [],
                       },
                       startedAt: `${new Date()}`,
-                      finishedAt: `${new Date()}`,
                     };
                   });
                 }),
                 author: authStore.user?.email ?? "...",
                 startedAt: `${new Date()}`,
-                finishedAt: `${new Date()}`,
               });
             },
           });
