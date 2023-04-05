@@ -156,20 +156,6 @@ If you would like to skip pulling potentially newers Docker images before runnin
 make prepare SI_SKIP_PULL=true
 ```
 
-> #### Running Postgres on macOS `aarch64` (i.e. `arm64` or "Apple Silicon")
->
-> As of October 2022, Docker Desktop runs Linux `x86_64` (i.e. `amd64`) images in a `qemu`, Linux `x86_64` VM.
-> When using the official Postgres `x86_64` Docker images, you may notice significant performance
-> degradation compared to users of Linux `amd64` machines, in particular.
->
-> To avoid the issue, run the preparation target with the following variable set:
->
-> ```bash
-> make LOCAL_PG=true prepare
-> ```
->
-> This will run a local instance of Postgres that will be performant for your hardware.
-
 This will ensure that our database is running, and our NATS server is running.
 
 Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.

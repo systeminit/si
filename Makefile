@@ -32,7 +32,7 @@ CI_FROM_REF := main
 CI_TO_REF := HEAD
 FORCE := false
 SHELL := /bin/bash
-LOCAL_PG := false
+LOCAL_PG := $(shell test $$(uname -m) = "arm64" && test $$(uname) = "Darwin" && echo true)
 
 .DEFAULT_GOAL := help
 
