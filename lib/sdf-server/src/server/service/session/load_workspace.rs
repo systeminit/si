@@ -1,25 +1,37 @@
 use super::{SessionError, SessionResult};
-use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct GetDefaultsResponse {
+pub struct LoadWorkspaceResponse {
     pub workspace: Workspace,
 }
 
-pub async fn get_defaults(
+pub async fn load_workspace(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Authorization(claim): Authorization,
-) -> SessionResult<Json<GetDefaultsResponse>> {
+) -> SessionResult<Json<LoadWorkspaceResponse>> {
     let ctx = builder.build(request_ctx.build_head()).await?;
 
     let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk)
         .await?
         .ok_or(SessionError::InvalidWorkspace(claim.workspace_pk))?;
 
-    Ok(Json(GetDefaultsResponse { workspace }))
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "workspace_loaded",
+        serde_json::json!({}),
+    );
+
+    Ok(Json(LoadWorkspaceResponse { workspace }))
 }

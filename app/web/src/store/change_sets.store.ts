@@ -4,7 +4,6 @@ import { watch } from "vue";
 
 import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
-import { posthog } from "@/utils/posthog";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
@@ -84,7 +83,6 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
-              posthog.capture("wa-change_set_created", { name });
             },
           });
         },

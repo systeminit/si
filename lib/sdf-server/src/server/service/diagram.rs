@@ -55,10 +55,14 @@ pub enum DiagramError {
     Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("socket not found")]
+    SocketNotFound,
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("edge not found")]
+    EdgeNotFound,
     #[error("node not found: {0}")]
     NodeNotFound(NodeId),
     #[error("schema variant not found")]

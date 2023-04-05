@@ -1,16 +1,18 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, Component, Connection, DalContext, Edge,
-    EdgeError, ExternalProvider, InternalProvider, InternalProviderId, PropId, StandardModel,
+    EdgeError, ExternalProvider, InternalProvider, InternalProviderId, Node, PropId, StandardModel,
     Visibility, WsEvent,
 };
 use dal::{ComponentType, Socket};
 use serde::{Deserialize, Serialize};
 
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 use super::{DiagramError, DiagramResult};
 
@@ -34,6 +36,8 @@ pub struct CreateFrameConnectionResponse {
 pub async fn connect_component_to_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateFrameConnectionRequest>,
 ) -> DiagramResult<Json<CreateFrameConnectionResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -63,6 +67,47 @@ pub async fn connect_component_to_frame(
     .await?;
 
     connect_component_sockets_to_frame(&ctx, request.parent_node_id, request.child_node_id).await?;
+
+    let child_comp = Node::get_by_id(&ctx, &request.child_node_id)
+        .await?
+        .ok_or(DiagramError::NodeNotFound(request.child_node_id))?
+        .component(&ctx)
+        .await?
+        .ok_or(DiagramError::ComponentNotFound)?;
+
+    let child_schema = child_comp
+        .schema(&ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    let parent_comp = Node::get_by_id(&ctx, &request.parent_node_id)
+        .await?
+        .ok_or(DiagramError::NodeNotFound(request.parent_node_id))?
+        .component(&ctx)
+        .await?
+        .ok_or(DiagramError::ComponentNotFound)?;
+
+    let parent_schema = parent_comp
+        .schema(&ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "component_connected_to_frame",
+        serde_json::json!({
+                    "parent_component_id": parent_comp.id(),
+                    "parent_component_schema_name": parent_schema.name(),
+                    "parent_socket_id": to_socket.id(),
+                    "parent_socket_name": to_socket.name(),
+                    "child_component_id": child_comp.id(),
+                    "child_component_schema_name": child_schema.name(),
+                    "child_socket_id": from_socket.id(),
+                    "child_socket_name": from_socket.name(),
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?

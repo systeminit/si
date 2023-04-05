@@ -1,3 +1,4 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 
 use dal::{
@@ -6,7 +7,8 @@ use dal::{
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -25,6 +27,8 @@ pub struct RefreshResponse {
 pub async fn refresh(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<RefreshRequest>,
 ) -> ComponentResult<Json<RefreshResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -52,6 +56,16 @@ pub async fn refresh(
             .map(|c| *c.id())
             .collect()
     };
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "refresh_resources",
+        serde_json::json!({
+            "component_ids": &component_ids,
+        }),
+    );
 
     ctx.enqueue_job(RefreshJob::new(&ctx, component_ids)).await;
 

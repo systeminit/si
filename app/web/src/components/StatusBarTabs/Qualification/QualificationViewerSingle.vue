@@ -84,14 +84,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, toRef } from "vue";
+import { computed, ref, toRef, watch } from "vue";
 import * as _ from "lodash-es";
 import { Modal } from "@si/vue-lib/design-system";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
+import { trackEvent } from "@/utils/tracking";
 
 const props = defineProps<{
   qualification: Qualification;
+  componentId: string;
 }>();
 
 const qualification = toRef(props, "qualification");
@@ -108,6 +110,20 @@ const qualificationStatus = computed(() => {
   if (_.isNil(props.qualification.result)) return "running";
   return props.qualification.result.status;
 });
+
+// Let's create an event if the qualification status changes
+// this means we can understand when a qualification has changed
+watch(
+  qualificationStatus,
+  () => {
+    trackEvent("qualification_status", {
+      qualification_name: qualification.value.title,
+      qualification_status: qualification.value.result?.status,
+      qualification_runs_on_component: props.componentId,
+    });
+  },
+  { immediate: true },
+);
 
 const detailsModalRef = ref<InstanceType<typeof Modal>>();
 

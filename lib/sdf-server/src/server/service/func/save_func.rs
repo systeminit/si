@@ -1,3 +1,4 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::func::argument::FuncArgumentKind;
 use dal::schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind};
@@ -9,7 +10,8 @@ use super::{
     AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
     FuncError, FuncResult,
 };
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use dal::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     validation::prototype::context::ValidationPrototypeContext, AttributeContext,
@@ -610,11 +612,52 @@ pub async fn do_save_func(
 pub async fn save_func<'a>(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SaveFuncRequest>,
 ) -> FuncResult<Json<SaveFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    let request_id = request.id;
+    let request_associations = request.associations.clone();
     let (save_response, _) = do_save_func(&ctx, request).await?;
+
+    let func = Func::get_by_id(&ctx, &request_id)
+        .await?
+        .ok_or(FuncError::FuncNotFound)?;
+
+    // //let (comp_associations, schema_associations) =
+    let (component_ids, schema_variant_ids) = match request_associations {
+        Some(FuncAssociations::Qualification {
+            component_ids,
+            schema_variant_ids,
+        })
+        | Some(FuncAssociations::CodeGeneration {
+            component_ids,
+            schema_variant_ids,
+        })
+        | Some(FuncAssociations::Confirmation {
+            component_ids,
+            schema_variant_ids,
+        }) => (component_ids, schema_variant_ids),
+        _ => (vec![], vec![]),
+    };
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "save_func",
+        serde_json::json!({
+                    "func_id": func.id(),
+                    "func_handler": func.handler().map(|h| h.to_owned()),
+                    "func_name": func.name(),
+                    "func_variant": *func.backend_response_type(),
+                    "func_is_builtin": func.builtin(),
+                    "func_associated_with_schema_variant_ids": schema_variant_ids,
+                    "func_associated_with_component_ids": component_ids,
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?

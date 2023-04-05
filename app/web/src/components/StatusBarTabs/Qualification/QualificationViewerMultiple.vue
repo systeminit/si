@@ -10,7 +10,10 @@
         :key="index"
         class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-4 px-2"
       >
-        <QualificationViewerSingle :qualification="qualification" />
+        <QualificationViewerSingle
+          :qualification="qualification"
+          :component-id="props.componentId"
+        />
       </div>
     </div>
   </div>
