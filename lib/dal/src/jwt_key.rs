@@ -1,4 +1,4 @@
-use std::{fs::File, io::prelude::*, path::Path, pin::Pin};
+use std::{fs::File, io::prelude::*, path::Path, pin::Pin, sync::Arc};
 
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::{
@@ -131,48 +131,35 @@ impl JwtSecretKey {
     }
 }
 
-#[instrument(skip_all)]
-pub async fn get_jwt_validation_key() -> JwtKeyResult<RS256PublicKey> {
-    // let jwt_id = jwt_id.as_ref();
-    // let pk = JwtPk::from_str(jwt_id)?;
+#[derive(Clone, Debug)]
+pub struct JwtPublicSigningKey {
+    inner: Arc<RS256PublicKey>,
+}
 
-    // let row = ctx
-    //     .txns()
-    //     .pg()
-    //     .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
-    //     .await?;
-    // let key: String = row.try_get("public_key")?;
+impl JwtPublicSigningKey {
+    #[instrument(level = "debug", skip_all)]
+    pub async fn from_key_string(public_key_string: impl Into<String>) -> JwtKeyResult<Self> {
+        let public_key_string = public_key_string.into();
 
-    // TODO: this is the dev public key, we'll need to toggle to the prod public key
-    // and we want to load this in a much smarter way...
-    let key = "-----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA26alH+FYeuFfrLedINll
-EOCxMwDE8Y/cp3dMgoCBxB6pE1wn7uPkUispjjcsYFGKsmJ6pmrirQ6k65A3teeg
-QqBCVDoWkco6GFvdp9lhySFXoZ9SEo0DQWvqe/o+YzHRToq+KTrEFoY+SWJYGiJS
-yuwrm09YelG5QRA3E6ajGbbRNzd1XpvvSm0gI0OHUL8v6ZnFZeWVIDKqne/BXy/C
-NYTZEGKZr5hroxBqqpze3CqhCAAN9rfTtQxvKNOzd0lgy4Cu8X+RBKm+unKgDPhY
-SqA6wKcu4T5asMd4NdZ1r5g1onhQNm5ouxtKq35Mlh+hbRgw9/QMYEYMKggDYCvn
-AorwPyCXjGtgCBT0KVsaZBTBRf5uZzWV6D5mjcMHjJoFpC41VOceio3/NCGTqu1M
-j+TdmI+toprQqAU/OG0eXlDS7HNxyqKhbwDnBnI8gedQ0rhHHkyK0wnX+4H04c43
-5UyHxdbqJbcdSbssUDqYmGk0vcN6u72/YrQwT0GfVYBCBGQn+cpN8P3nT+k533nb
-w6zMZwg3ztrMZO1cV/xpiDUTxxV5iWN/HoiSSZ1PCK9Byc/NnLIeqL8vO2RHa0J/
-OZk+wfML7+4H53lowRr0zAmkMn2u1Wxda9oGSUezsIvyIDWnOruM/DtIOEQnkIEg
-08nljy29cVMh5/26Oga3qysCAwEAAQ==
------END PUBLIC KEY-----";
+        let inner = tokio::task::spawn_blocking(move || {
+            RS256PublicKey::from_pem(&public_key_string)
+                .map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
+        })
+        .instrument(trace_span!(
+            "from_pem",
+            code.namespace = "jwt_simple::algorithms::RS256PublicKey"
+        ))
+        .await??;
 
-    tokio::task::spawn_blocking(move || {
-        RS256PublicKey::from_pem(key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
-    })
-    .instrument(trace_span!(
-        "from_pem",
-        code.namespace = "jwt_simple::algorithms::RS256PublicKey"
-    ))
-    .await?
+        Ok(Self {
+            inner: Arc::new(inner),
+        })
+    }
 }
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token(
-    _ctx: &DalContext,
+    public_key: JwtPublicSigningKey,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<UserClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -182,9 +169,9 @@ pub async fn validate_bearer_token(
         return Err(JwtKeyError::BearerToken);
     };
 
-    let public_key = get_jwt_validation_key().await?;
     let claims = tokio::task::spawn_blocking(move || {
         public_key
+            .inner
             .verify_token::<UserClaim>(&token, None)
             .map_err(|err| JwtKeyError::Verify(format!("{err}")))
     })
@@ -198,20 +185,27 @@ pub async fn validate_bearer_token(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token_api_client(
-    _ctx: &DalContext,
+    public_key: JwtPublicSigningKey,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
     let bearer_token = bearer_token.as_ref();
     let token = if let Some(token) = bearer_token.strip_prefix("Bearer ") {
-        token
+        token.to_string()
     } else {
         return Err(JwtKeyError::BearerToken);
     };
 
-    let public_key = get_jwt_validation_key().await?;
-    let claims = public_key
-        .verify_token::<ApiClaim>(token, None)
-        .map_err(|err| JwtKeyError::Verify(format!("{err}")))?;
+    let claims = tokio::task::spawn_blocking(move || {
+        public_key
+            .inner
+            .verify_token::<ApiClaim>(&token, None)
+            .map_err(|err| JwtKeyError::Verify(format!("{err}")))
+    })
+    .instrument(trace_span!(
+        "verfy_token",
+        code.namespace = "jwt_simple::algorithms::RSAPublicKeyLike"
+    ))
+    .await??;
     Ok(claims)
 }
 

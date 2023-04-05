@@ -13,7 +13,7 @@ use dal::builtins::BuiltinSchemaOption;
 use dal::check_runtime_dependencies;
 use dal::{
     job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
-    DalContext, JwtSecretKey, ServicesContext,
+    DalContext, JwtPublicSigningKey, JwtSecretKey, ServicesContext,
 };
 use lazy_static::lazy_static;
 use si_data_nats::{NatsClient, NatsConfig};
@@ -366,6 +366,16 @@ impl TestContextBuilder {
 /// Generates a new pseudo-random NATS subject prefix.
 pub fn random_identifier_string() -> String {
     Uuid::new_v4().as_simple().to_string()
+}
+
+// Returns a JWT public signing key, used to verify claims
+pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
+    let key = JwtPublicSigningKey::from_key_string(include_str!(
+        "../../sdf-server/src/dev.jwt_signing_public_key.pem"
+    ))
+    .await?;
+
+    Ok(key)
 }
 
 /// Configures and builds a [`council_server::Server`] suitable for running alongside DAL object-related

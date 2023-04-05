@@ -88,6 +88,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let jwt_secret_key = Server::load_jwt_secret_key(config.jwt_secret_key_path()).await?;
     let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+    let jwt_public_signing_key = Server::load_jwt_public_signing_key().await?;
 
     let nats = Server::connect_to_nats(config.nats()).await?;
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
@@ -151,6 +152,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                jwt_public_signing_key,
                 council_subject_prefix.clone(),
                 posthog_client,
                 pkgs_path,
@@ -190,6 +192,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                jwt_public_signing_key,
                 council_subject_prefix.clone(),
                 posthog_client,
                 pkgs_path,

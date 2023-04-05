@@ -1,6 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 use axum::extract::FromRef;
+use dal::JwtPublicSigningKey;
 use si_std::SensitiveString;
 use tokio::sync::{broadcast, mpsc};
 
@@ -11,6 +12,7 @@ pub struct AppState {
     services_context: ServicesContext,
     signup_secret: SignupSecret,
     jwt_secret_key: JwtSecretKey,
+    jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
 
@@ -25,6 +27,7 @@ impl AppState {
         services_context: impl Into<ServicesContext>,
         signup_secret: impl Into<SignupSecret>,
         jwt_secret_key: impl Into<JwtSecretKey>,
+        jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
         posthog_client: impl Into<PosthogClient>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
@@ -33,6 +36,7 @@ impl AppState {
             services_context: services_context.into(),
             signup_secret: signup_secret.into(),
             jwt_secret_key: jwt_secret_key.into(),
+            jwt_public_signing_key: jwt_public_signing_key.into(),
             posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
@@ -45,6 +49,10 @@ impl AppState {
 
     pub fn posthog_client(&self) -> &PosthogClient {
         &self.posthog_client
+    }
+
+    pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
+        &self.jwt_public_signing_key
     }
 }
 

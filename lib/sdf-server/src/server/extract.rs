@@ -93,6 +93,7 @@ impl FromRequestParts<AppState> for Authorization {
             .build(RequestContext::default())
             .await
             .map_err(internal_error)?;
+        let jwt_public_signing_key = state.jwt_public_signing_key().clone();
 
         let headers = &parts.headers;
         let authorization_header_value = headers
@@ -101,7 +102,7 @@ impl FromRequestParts<AppState> for Authorization {
         let authorization = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let claim = UserClaim::from_bearer_token(&ctx, authorization)
+        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
@@ -129,13 +130,14 @@ impl FromRequestParts<AppState> for WsAuthorization {
             .build(RequestContext::default())
             .await
             .map_err(internal_error)?;
+        let jwt_public_signing_key = state.jwt_public_signing_key().clone();
 
         let query: Query<HashMap<String, String>> = Query::from_request_parts(parts, state)
             .await
             .map_err(|_| unauthorized_error())?;
         let authorization = query.get("token").ok_or_else(unauthorized_error)?;
 
-        let claim = UserClaim::from_bearer_token(&ctx, authorization)
+        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));

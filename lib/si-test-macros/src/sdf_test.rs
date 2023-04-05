@@ -234,6 +234,7 @@ struct SdfTestFnSetupExpander {
     dal_context_head: Option<Arc<Ident>>,
     dal_context_head_ref: Option<Arc<Ident>>,
     dal_context_head_mut_ref: Option<Arc<Ident>>,
+    jwt_public_signing_key: Option<Arc<Ident>>,
     signup_secret: Option<Arc<Ident>>,
     posthog_client: Option<Arc<Ident>>,
     router: Option<Arc<Ident>>,
@@ -266,6 +267,7 @@ impl SdfTestFnSetupExpander {
             dal_context_head: None,
             dal_context_head_ref: None,
             dal_context_head_mut_ref: None,
+            jwt_public_signing_key: None,
             signup_secret: None,
             posthog_client: None,
             router: None,
@@ -276,6 +278,20 @@ impl SdfTestFnSetupExpander {
 
     fn has_args(&self) -> bool {
         !self.args.is_empty()
+    }
+
+    fn setup_jwt_public_signing_key(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.jwt_public_signing_key {
+            return ident.clone();
+        }
+
+        let var = Ident::new("jwt_public_signing_key", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::jwt_public_signing_key().await?;
+        });
+        self.jwt_public_signing_key = Some(Arc::new(var));
+
+        self.jwt_public_signing_key.as_ref().unwrap().clone()
     }
 
     fn setup_signup_secret(&mut self) -> Arc<Ident> {
@@ -326,6 +342,8 @@ impl SdfTestFnSetupExpander {
         let nats_subject_prefix = nats_subject_prefix.as_ref();
         let jwt_secret_key = self.setup_jwt_secret_key();
         let jwt_secret_key = jwt_secret_key.as_ref();
+        let jwt_public_signing_key = self.setup_jwt_public_signing_key();
+        let jwt_public_signing_key = jwt_public_signing_key.as_ref();
         let signup_secret = self.setup_signup_secret();
         let signup_secret = signup_secret.as_ref();
         let posthog_client = self.setup_posthog_client();
@@ -338,6 +356,7 @@ impl SdfTestFnSetupExpander {
                 let (service, _, _) = ::sdf_server::build_service(
                     s_ctx,
                     #jwt_secret_key.clone(),
+                    #jwt_public_signing_key.clone(),
                     #signup_secret.clone(),
                     #posthog_client,
                 ).wrap_err("failed to build sdf router")?;
