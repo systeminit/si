@@ -7,7 +7,7 @@ const __dirname = getThisDirname(import.meta.url);
 // config setup inspired by vite and other similar tools
 // will replace with more feature complete config system later if we need
 
-const mode = process.env.NODE_ENV || 'development';
+const mode = (process.env.NODE_ENV || 'development').toLowerCase();
 const envFiles = [
   // actual ENV vars override everything,
   // then the following files in order of precedence
@@ -21,3 +21,4 @@ envFiles.forEach((filename) => {
     path: path.resolve(`${__dirname}/../${filename}`),
   });
 });
+

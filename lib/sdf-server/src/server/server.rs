@@ -221,8 +221,8 @@ impl Server<(), ()> {
     pub async fn load_jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
         // FIXME(fnichol): further extract decision into args & config, even if driven via env var
         let public_key_string = match option_env!("LOCAL_ENV_STACK") {
-            Some(_) => include_str!("../dev.jwt_signing_public_key.pem"),
-            None => include_str!("../prod.jwt_signing_public_key.pem"),
+            Some(_) => include_str!("../../../../config/keys/dev.jwt_signing_public_key.pem"),
+            None => include_str!("../../../../config/keys/prod.jwt_signing_public_key.pem"),
         };
         let public_key = JwtPublicSigningKey::from_key_string(public_key_string).await?;
 
