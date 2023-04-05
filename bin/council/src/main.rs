@@ -53,17 +53,9 @@ async fn run(
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    // TODO(fnichol): we have a mutex poisoning panic that happens, but is avoided if opentelemetry
-    // is not running when the migrations are. For the moment we'll disable otel until after the
-    // migrations, which means we miss out on some good migration telemetry in honeycomb, but the
-    // service boots??
-    //
-    // See: https://app.shortcut.com/systeminit/story/1934/sdf-mutex-poison-panic-on-launch-with-opentelemetry-exporter
-    let _disable_opentelemetry = args.disable_opentelemetry;
-    telemetry.disable_opentelemetry().await?;
-    // if args.disable_opentelemetry {
-    //     telemetry.disable_opentelemetry().await?;
-    // }
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
 
     let config = council_server::server::Config::try_from(args)?;
     let server = council_server::Server::new_with_config(config).await?;

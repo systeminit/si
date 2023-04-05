@@ -402,7 +402,6 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
 #[instrument(
     name = "execute_job_task",
     skip_all,
-    level = "info",
     fields(
         job.id = request.payload.id,
         job.instance = metadata.job_instance,

@@ -51,19 +51,11 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    Server::init()?;
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
 
-    // TODO(fnichol): we have a mutex poisoning panic that happens, but is avoided if opentelemetry
-    // is not running when the migrations are. For the moment we'll disable otel until after the
-    // migrations, which means we miss out on some good migration telemetry in honeycomb, but the
-    // service boots??
-    //
-    // See: https://app.shortcut.com/systeminit/story/1934/sdf-mutex-poison-panic-on-launch-with-opentelemetry-exporter
-    let _disable_opentelemetry = args.disable_opentelemetry;
-    telemetry.disable_opentelemetry().await?;
-    // if args.disable_opentelemetry {
-    //     telemetry.disable_opentelemetry().await?;
-    // }
+    Server::init()?;
 
     if let Some(path) = args.generate_jwt_secret_key {
         info!("Generating JWT secret at: {}", path.display());
@@ -132,11 +124,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     } else {
         trace!("migration mode is skip, not running migrations");
     }
-
-    // TODO(fnichol): re-enable, which we shouldn't need in the long run
-    //if !disable_opentelemetry {
-    //    telemetry.enable_opentelemetry().await?;
-    //}
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 

@@ -36,9 +36,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
-    //    if args.disable_opentelemetry {
-    telemetry.disable_opentelemetry().await?;
-    //    }
+
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
 
     let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
 

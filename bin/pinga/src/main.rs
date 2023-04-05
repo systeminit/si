@@ -42,9 +42,9 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    //    if args.disable_opentelemetry {
-    telemetry.disable_opentelemetry().await?;
-    //    }
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
 
     let config = Config::try_from(args)?;
 
