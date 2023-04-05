@@ -99,8 +99,8 @@
       padding-top: 0.5em;
     }
   }
-  > img,
-  p > img {
+  > img:not([width]),
+  p > img:not([width]) {
     width: 100%;
     max-width: 700px;
     margin: 0 auto;
