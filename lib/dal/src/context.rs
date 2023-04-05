@@ -155,10 +155,6 @@ impl DalContext {
         Ok(())
     }
 
-    pub fn services_context(&self) -> ServicesContext {
-        self.services_context.clone()
-    }
-
     /// Rolls all inner transactions back, discarding all changes made within them, and returns
     /// underlying connections.
     ///

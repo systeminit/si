@@ -66,7 +66,7 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
     Func, FuncBinding, FuncError, HistoryEventError, IndexMap, InternalProvider,
     InternalProviderId, Prop, PropError, PropId, PropKind, StandardModel, StandardModelError,
-    Tenancy, Timestamp, TransactionsError, Visibility, WsEventError,
+    StatusUpdaterError, Tenancy, Timestamp, TransactionsError, Visibility, WsEventError,
 };
 
 pub mod view;
@@ -209,6 +209,8 @@ pub enum AttributeValueError {
     MissingComponentInReadContext(AttributeReadContext),
     #[error("component not found by id: {0}")]
     ComponentNotFoundById(ComponentId),
+    #[error(transparent)]
+    StatusUpdater(#[from] Box<StatusUpdaterError>),
     #[error("schema variant missing in context")]
     SchemaVariantMissing,
     #[error("schema missing in context")]
