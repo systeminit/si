@@ -13,6 +13,17 @@ import { executeValidation } from "./validation";
 const debug = Debug("langJs");
 const STDIN_FD = 0;
 
+function onError(
+  errorFn: (...args: unknown[]) => void, 
+  err: Error,
+  executionId: string,
+) {
+    debug(err);
+    errorFn("StackTrace", err.stack);
+    console.log(JSON.stringify(failureExecution(err, executionId)));
+    process.exit(1);
+}
+
 async function main() {
   let kind;
 
@@ -33,9 +44,9 @@ async function main() {
     })
     .parse(process.argv);
 
-  let executionId;
+  let executionId: string;
   // We don't have the executionId yet, so this field will be empty
-  let error = makeConsole("").error;
+  let errorFn = makeConsole("").error;
 
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
@@ -47,7 +58,12 @@ async function main() {
       throw Error("Request must have executionId field");
     }
     // Now we have the executionId, so update our console.error() impl
-    error = makeConsole(executionId).error;
+    errorFn = makeConsole(executionId).error;
+
+    // Async errors inside of VM2 have to be caught here, they escape the try/catch wrapping the vm.run call 
+    process.on("uncaughtException", (err) => {
+      onError(errorFn, err, executionId);
+    });
 
     switch (kind) {
       case FunctionKind.ResolverFunction:
@@ -66,10 +82,7 @@ async function main() {
         throw Error(`Unknown Kind variant: ${kind}`);
     }
   } catch (err) {
-    debug(err);
-    error("StackTrace", err.stack);
-    console.log(JSON.stringify(failureExecution(err, executionId)));
-    process.exit(1);
+    onError(errorFn, err, executionId);
   }
 }
 
