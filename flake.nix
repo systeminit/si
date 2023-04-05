@@ -15,10 +15,22 @@
       overlays = [
         # Makes a `rust-bin` attribute available in Nixpkgs
         (import rust-overlay)
+
         # Provides a `rustToolchain` attribute for Nixpkgs that we can use to 
         # create a Rust environment
         (self: super: {
           rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
+        })
+
+        # Override attributes from nixpkgs so that we can get a newer pnpm package
+        (self: super: {
+          si-overlay.pnpm = super.nodePackages.pnpm.override(oldAttrs: rec {
+            version = "8.1.1";
+            src = super.fetchurl {
+              url = "https://registry.npmjs.org/pnpm/-/pnpm-8.1.1.tgz";
+              sha512 = "XLzcc4O8YrqfQ1+qjPtHGDFcdUeno2Zk+kuuSc9CagIiY8y4uhnqQ2B7jW8tgwQDNmehewGZuqrAoskgCkbTnw==";
+            };
+          });
         })
       ];
 
@@ -37,6 +49,7 @@
           # The Nix packages provided in the environment
           buildInputs = (with pkgs; [
             rustToolchain
+            si-overlay.pnpm
 
             automake
             awscli
@@ -54,15 +67,14 @@
             protobuf
             skopeo
             jq
-            nodejs-16_x
-            nodePackages.pnpm
+            nodejs-18_x
+
             nodePackages.typescript
             nodePackages.typescript-language-server
-
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [
-	    libiconv
-	    pkgs.darwin.apple_sdk.frameworks.Security
-	  ]);
+            libiconv
+            pkgs.darwin.apple_sdk.frameworks.Security
+          ]);
         };
       });
     };
