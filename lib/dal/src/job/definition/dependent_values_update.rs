@@ -45,7 +45,8 @@ pub struct DependentValuesUpdate {
 impl DependentValuesUpdate {
     pub fn new(ctx: &DalContext, attribute_values: Vec<AttributeValueId>) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
-        let visibility = *ctx.visibility();
+        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to force non deleted visibility in the future.
+        let visibility = ctx.visibility().to_non_deleted();
 
         Box::new(Self {
             attribute_values,
@@ -173,9 +174,6 @@ impl DependentValuesUpdate {
         )
     )]
     async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
-        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
-        ctx.update_without_deleted_visibility();
-
         let ctx_builder = ctx.services_context().into_builder();
         let mut status_updater = StatusUpdater::initialize(&ctx).await;
 
