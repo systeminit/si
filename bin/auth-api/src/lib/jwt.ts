@@ -6,8 +6,8 @@ instructions to generate JWT signing key
 - `cat jwtRS256.key.pub`
 */
 
-import JWT from "jsonwebtoken";
 import fs from "fs";
+import JWT from "jsonwebtoken";
 
 // load private and public key from either env var or paths set in config
 // keys in the repo are also used by SDF to verify jwt is signed correctly and in tests to create/sign jwts
@@ -24,8 +24,10 @@ if (!_JWT_PUBLIC_KEY && process.env.JWT_PUBLIC_KEY_PATH) {
 if (!_JWT_PRIVATE_KEY) throw new Error('Missing JWT signing private key');
 if (!_JWT_PUBLIC_KEY) throw new Error('Missing JWT signing public key');
 
-export const JWT_PUBLIC_KEY = _JWT_PUBLIC_KEY;
+_JWT_PRIVATE_KEY = _JWT_PRIVATE_KEY.replace(/\\n/g, '\n');
+_JWT_PUBLIC_KEY = _JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
 
+export const JWT_PUBLIC_KEY = _JWT_PUBLIC_KEY;
 
 export function createJWT(
   payload: Record<string, any>,

@@ -20,8 +20,9 @@ pub use tracing;
 pub mod prelude {
     pub use super::{FormattedSpanKind, SpanExt, SpanKind};
     pub use tracing::{
-        self, debug, debug_span, error, event, field::Empty, info, info_span, instrument, span,
-        trace, trace_span, warn, Instrument, Level, Span,
+        self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
+        info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
+        Span,
     };
 }
 

@@ -21,4 +21,3 @@ envFiles.forEach((filename) => {
     path: path.resolve(`${__dirname}/../${filename}`),
   });
 });
-

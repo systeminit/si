@@ -31,7 +31,7 @@ While working on the auth stack, we still need to run it locally and configure t
     VITE_AUTH_API_URL=http://localhost:9001
     VITE_AUTH_PORTAL_URL=http://localhost:9000
   ```
-- point sdf to the auth api (TODO: figure out best way to pull from env)
+- run the backend but using the local auth stack by setting env var `LOCAL_AUTH_STACK=1` (ex: `LOCAL_AUTH_STACK=1 pnpm run dev:backend`)
 - run the db migrations (`pnpm run db:reset`) locally after booting your local database 
 - run the auth api `pnmp run dev` in this directory or `pnpm dev:auth-api` at the root
 - run the auth portal `pnmp run dev` in `app/auth-portal` or `pnpm dev:auth-portal` at the root

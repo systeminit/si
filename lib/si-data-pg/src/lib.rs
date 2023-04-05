@@ -363,6 +363,23 @@ impl PgPool {
     }
 }
 
+// Ensure that we only grab the current span if we're at debug level or lower, otherwise use none.
+//
+// When recording a parent span for long running tasks such as a transaction we want the direct
+// span parent. However, `Span::current()` returns a suitable parent span, according to the tracing
+// `Subscriber`, meaning that instead of capturing the transaction starting span, we might capture
+// a calling function up the stack that is at the info level or higher. In other words, then
+// "transaction span" might be an ancestor span unless we're really careful.
+macro_rules! current_span_for_debug {
+    () => {
+        if span_enabled!(target: "si_data_pg", Level::DEBUG) {
+            Span::current()
+        } else {
+            Span::none()
+        }
+    }
+}
+
 /// An instrumented wrapper for `deadpool::managed::Object<deadpool_postgres::Manager>`
 pub struct InstrumentedClient {
     inner: Object<Manager>,
@@ -444,7 +461,7 @@ impl InstrumentedClient {
         Ok(InstrumentedTransaction::new(
             self.inner.transaction().await?,
             self.metadata.clone(),
-            Span::current(),
+            current_span_for_debug!(),
         ))
     }
 
@@ -1211,6 +1228,7 @@ impl<'a> InstrumentedTransaction<'a> {
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
+        // info!(tx_span = ?self.tx_span, statement = &statement, "query");
         Span::current().follows_from(&self.tx_span);
         let r = self
             .inner
@@ -1814,7 +1832,7 @@ impl<'a> InstrumentedTransaction<'a> {
                 .instrument(self.tx_span.clone())
                 .await?,
             self.metadata.clone(),
-            Span::current(),
+            current_span_for_debug!(),
         ))
     }
 
@@ -1845,7 +1863,7 @@ impl<'a> InstrumentedTransaction<'a> {
                 .instrument(self.tx_span.clone())
                 .await?,
             self.metadata.clone(),
-            Span::current(),
+            current_span_for_debug!(),
         ))
     }
 
@@ -1991,7 +2009,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
         Ok(InstrumentedTransaction::new(
             self.inner.start().await?,
             self.metadata,
-            Span::current(),
+            current_span_for_debug!(),
         ))
     }
 }
