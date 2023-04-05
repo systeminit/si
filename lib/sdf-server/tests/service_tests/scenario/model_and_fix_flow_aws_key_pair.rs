@@ -89,7 +89,12 @@ async fn model_and_fix_flow_aws_key_pair(
                 },
             },
         }], // expected
-        key_pair.view(&ctx).await.drop_confirmation().to_value(), // actual
+        key_pair
+            .view(&ctx)
+            .await
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -102,7 +107,11 @@ async fn model_and_fix_flow_aws_key_pair(
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(&ctx).await.to_value(), // actual
+        region
+            .view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Apply the change set and get rolling!

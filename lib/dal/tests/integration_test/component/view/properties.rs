@@ -114,7 +114,10 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             },
             "domain": {}
         }], // expected
-        component_view_properties.drop_code().to_value() // actual
+        component_view_properties
+            .drop_code()
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Update the poop field, which will cause the code generation entry to be updated.
@@ -183,6 +186,9 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
                 "poop": "canoe"
             }
         }], // expected
-        component_view_properties.drop_code().to_value() // actual
+        component_view_properties
+            .drop_code()
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }

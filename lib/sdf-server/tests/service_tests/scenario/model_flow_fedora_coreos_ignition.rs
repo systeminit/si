@@ -130,7 +130,8 @@ async fn model_flow_fedora_coreos_ignition(
             .drop_confirmation()
             .drop_code()
             .drop_qualification()
-            .to_value(), // actual
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -165,7 +166,11 @@ async fn model_flow_fedora_coreos_ignition(
                 },
             },
         }], // expected
-        butane.view(&ctx).await.to_value(), // actual
+        butane
+            .view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -178,7 +183,11 @@ async fn model_flow_fedora_coreos_ignition(
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(&ctx).await.to_value(), // actual
+        region
+            .view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -195,7 +204,12 @@ async fn model_flow_fedora_coreos_ignition(
                 ],
             },
         }], // expected
-        docker.view(&ctx).await.drop_qualification().to_value(), // actual
+        docker
+            .view(&ctx)
+            .await
+            .drop_qualification()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Evaluate Docker Image qualification(s) separately as they may contain a timestamp.

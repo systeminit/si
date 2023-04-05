@@ -438,7 +438,7 @@ pub struct Recommendation {
     pub status: RecommendationStatus,
     /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the
     /// [recommendation](Self).
-    pub is_runnable: RecommendationIsRunnable,
+    is_runnable: RecommendationIsRunnable,
     /// Gives the [`history view`](crate::fix::FixHistoryView) of the last [`Fix`](crate::Fix) ran.
     /// This will be empty if the [`Recommendation`] had never had a corresponding
     /// [`Fix`](crate::Fix) ran before.
@@ -465,7 +465,7 @@ pub enum RecommendationStatus {
 /// [`ActionPrototype`](crate::ActionPrototype).
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum RecommendationIsRunnable {
+enum RecommendationIsRunnable {
     /// The [`Recommendation`] is ready to be ran.
     Yes,
     /// The [`Recommendation`] is not ready to be ran.

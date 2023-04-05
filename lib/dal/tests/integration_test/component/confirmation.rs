@@ -1,5 +1,5 @@
 use dal::action_prototype::ActionKind;
-use dal::component::confirmation::view::{RecommendationIsRunnable, RecommendationStatus};
+use dal::component::confirmation::view::RecommendationStatus;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::backend::js_command::CommandRunResult;
 use dal::job::definition::{FixItem, FixesJob};
@@ -8,8 +8,9 @@ use dal::{
     generate_name,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     ActionPrototype, ActionPrototypeContext, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    DalContext, Fix, FixBatch, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariant,
-    StandardModel, Visibility, WorkflowPrototype, WorkflowPrototypeContext,
+    ComponentViewProperties, DalContext, Fix, FixBatch, FixCompletionStatus, Func, FuncBackendKind,
+    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 use dal_test::test;
 use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
@@ -496,10 +497,6 @@ async fn list_confirmations(mut octx: DalContext) {
         None,                    // expected
         recommendation.last_fix  // actual
     );
-    assert_eq!(
-        RecommendationIsRunnable::Yes, // expected
-        recommendation.is_runnable     // actual
-    );
 
     // Observe that the confirmation "failed" (i.e. did not fail execution, but returned
     // with an unsuccessful result).
@@ -556,19 +553,9 @@ async fn list_confirmations(mut octx: DalContext) {
     assert!(view.recommendations.is_empty());
 
     // Observe that the confirmation worked after "creation".
-    let mut component_view = ComponentView::new(ctx, *component.id())
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not generate component view");
-
-    // Remove the `last_synced` element if present as it is a timestamp which makes it hard to
-    // diff against
-    component_view
-        .properties
-        .get_mut("resource")
-        .expect("failed to get resource under properties")
-        .as_object_mut()
-        .expect("failed to treat resource as json object")
-        .remove("last_synced");
 
     assert_eq!(
         serde_json::json![{
@@ -590,7 +577,11 @@ async fn list_confirmations(mut octx: DalContext) {
                 }
             }
         }], // expected
-        component_view.properties // actual
+        ComponentViewProperties::try_from(component_view)
+            .expect("could not create component view properties")
+            .drop_resource_last_synced()
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // "Delete" the resource. This is similar to deleting the resource in the "real world" and
@@ -632,8 +623,11 @@ async fn list_confirmations(mut octx: DalContext) {
         recommendation.status          // actual
     );
     assert_eq!(
-        RecommendationIsRunnable::Yes, // expected
-        recommendation.is_runnable     // actual
+        FixCompletionStatus::Success, // expected
+        recommendation
+            .last_fix
+            .expect("last fix not found")
+            .status()  // actual
     );
 
     // Observe that the confirmation worked after "deletion". The component should be re-creatable.

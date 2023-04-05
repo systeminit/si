@@ -10,12 +10,10 @@ use veritech_client::OutputStream;
 
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution,
-    workflow_runner::workflow_runner_state::WorkflowRunnerState, Connections, DalContext,
+    func::binding::FuncBindingId, func::execution::FuncExecution, Connections, DalContext,
     DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
-    FuncBindingReturnValue, PgPoolError, RequestContext, ResourceView, ServicesContext,
-    StandardModel, StandardModelError, TransactionsError, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
+    StandardModelError, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 #[derive(Error, Debug)]
@@ -512,15 +510,6 @@ pub struct CommandOutput {
     output: String,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct CommandReturn {
-    run_id: usize,
-    resources: Vec<ResourceView>,
-    runner_state: WorkflowRunnerState,
-    output: Vec<String>,
-}
-
 impl WsEvent {
     pub async fn command_output(
         ctx: &DalContext,
@@ -530,25 +519,6 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::CommandOutput(CommandOutput { run_id, output }),
-        )
-        .await
-    }
-
-    pub async fn command_return(
-        ctx: &DalContext,
-        run_id: usize,
-        resources: Vec<ResourceView>,
-        runner_state: WorkflowRunnerState,
-        output: Vec<String>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::CommandReturn(CommandReturn {
-                run_id,
-                resources,
-                runner_state,
-                output,
-            }),
         )
         .await
     }

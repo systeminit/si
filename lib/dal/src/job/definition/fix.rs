@@ -203,7 +203,7 @@ impl JobConsumer for FixesJob {
         )
         .await?;
 
-        // Always retriggers confirmations, and propagates resource if it changed.
+        // Always re-trigger confirmations, and propagate a resource if it changed.
         ctx.enqueue_blocking_job(DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]))
             .await;
 

@@ -197,7 +197,7 @@ impl ResourceView {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceRefreshId {
+pub struct ResourceRefreshedPayload {
     component_id: ComponentId,
 }
 
@@ -208,7 +208,7 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ResourceRefreshed(ResourceRefreshId { component_id }),
+            WsPayload::ResourceRefreshed(ResourceRefreshedPayload { component_id }),
         )
         .await
     }

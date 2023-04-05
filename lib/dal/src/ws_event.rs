@@ -6,11 +6,11 @@ use thiserror::Error;
 use crate::component::confirmation::ConfirmationsUpdatedPayload;
 use crate::component::ComponentCreatedPayload;
 use crate::{
-    component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
+    component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
     fix::{batch::FixBatchReturn, FixReturn},
     qualification::QualificationCheckPayload,
     status::StatusMessage,
-    workflow::{CommandOutput, CommandReturn},
+    workflow::CommandOutput,
     AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
@@ -43,12 +43,11 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     ComponentCreated(ComponentCreatedPayload),
     SchemaCreated(SchemaPk),
-    ResourceRefreshed(ResourceRefreshId),
+    ResourceRefreshed(ResourceRefreshedPayload),
     ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     CheckedQualifications(QualificationCheckPayload),
     CommandOutput(CommandOutput),
     CodeGenerated(CodeGeneratedPayload),
-    CommandReturn(CommandReturn),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     StatusUpdate(StatusMessage),

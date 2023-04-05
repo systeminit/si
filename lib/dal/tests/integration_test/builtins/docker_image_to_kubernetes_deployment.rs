@@ -37,7 +37,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -62,7 +63,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Find the providers we need for connection.
@@ -112,7 +114,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -137,7 +140,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Perform update!
@@ -166,7 +170,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     assert_eq!(
@@ -205,7 +210,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     let mut cs = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)

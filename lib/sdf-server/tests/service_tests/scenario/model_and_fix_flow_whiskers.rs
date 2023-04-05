@@ -243,7 +243,10 @@ async fn model_and_fix_flow_whiskers(
                 },
             },
         }], // expected
-        ami.view(&ctx).await.to_value(), // actual
+        ami.view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -274,7 +277,12 @@ async fn model_and_fix_flow_whiskers(
                 },
             },
         }], // expected
-        key_pair.view(&ctx).await.drop_confirmation().to_value(), // actual
+        key_pair
+            .view(&ctx)
+            .await
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -309,7 +317,8 @@ async fn model_and_fix_flow_whiskers(
             .view(&ctx)
             .await
             .drop_confirmation()
-            .to_value(), // actual
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Check Ingress, EC2 Instance and Region.
@@ -348,7 +357,12 @@ async fn model_and_fix_flow_whiskers(
                 },
             },
         }], // expected
-        ingress.view(&ctx).await.drop_confirmation().to_value(), // actual
+        ingress
+            .view(&ctx)
+            .await
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -381,7 +395,11 @@ async fn model_and_fix_flow_whiskers(
                 },
             },
         }], // expected
-        ec2.view(&ctx).await.drop_confirmation().to_value(), // actual
+        ec2.view(&ctx)
+            .await
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -394,7 +412,11 @@ async fn model_and_fix_flow_whiskers(
                 "region": "us-east-2",
             },
         }], // expected
-        region.view(&ctx).await.to_value(), // actual
+        region
+            .view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Finally, check Docker Image and Butane.
@@ -412,7 +434,12 @@ async fn model_and_fix_flow_whiskers(
                 ],
             },
         }], // expected
-        docker.view(&ctx).await.drop_qualification().to_value(), // actual
+        docker
+            .view(&ctx)
+            .await
+            .drop_qualification()
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Evaluate Docker Image qualification(s) separately as they may contain a timestamp. Technically,
@@ -461,7 +488,11 @@ async fn model_and_fix_flow_whiskers(
                 },
             },
         }], // expected
-        butane.view(&ctx).await.to_value(), // actual
+        butane
+            .view(&ctx)
+            .await
+            .to_value()
+            .expect("could not convert to value"), // actual
     );
 
     // Apply the change set and get rolling!

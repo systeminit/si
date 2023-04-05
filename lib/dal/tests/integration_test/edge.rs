@@ -184,7 +184,8 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // delete the edge
@@ -220,7 +221,8 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // restore the edge
@@ -257,7 +259,8 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }
 
@@ -391,7 +394,8 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // delete the nginx connection
@@ -431,7 +435,8 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // delete the nginx connection
@@ -463,6 +468,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }

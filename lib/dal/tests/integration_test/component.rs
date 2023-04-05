@@ -615,7 +615,8 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     // Apply changeset
@@ -663,7 +664,8 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 
     Component::restore_and_propagate(ctx, nginx_container.component_id)
@@ -703,6 +705,7 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .to_value() // actual
+            .to_value()
+            .expect("could not convert to value") // actual
     );
 }
