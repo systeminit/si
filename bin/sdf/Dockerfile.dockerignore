@@ -11,6 +11,7 @@
 !Cargo.*
 !rust-toolchain
 !rustfmt.toml
+!config
 
 # All workspace member directories from `Cargo.toml`
 !bin/council

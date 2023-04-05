@@ -29,7 +29,7 @@ pub fn generate_fake_name() -> String {
 }
 
 pub fn create_jwt(claim: UserClaim) -> String {
-    let key = include_str!("../../sdf-server/src/dev.jwt_signing_private_key.pem");
+    let key = include_str!("../../../config/keys/dev.jwt_signing_private_key.pem");
     let key_pair = RS256KeyPair::from_pem(key).expect("unable to extract private key");
     let claim = Claims::with_custom_claims(claim, Duration::from_days(1))
         .with_audience("https://app.systeminit.com")

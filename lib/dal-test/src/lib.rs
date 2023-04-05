@@ -371,7 +371,7 @@ pub fn random_identifier_string() -> String {
 // Returns a JWT public signing key, used to verify claims
 pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
     let key = JwtPublicSigningKey::from_key_string(include_str!(
-        "../../sdf-server/src/dev.jwt_signing_public_key.pem"
+        "../../../config/keys/dev.jwt_signing_public_key.pem"
     ))
     .await?;
 

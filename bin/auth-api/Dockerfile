@@ -20,7 +20,7 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=base /app/out/json/ ./
 COPY --from=base /app/out/pnpm-lock.yaml ./app/out/pnpm-workspace.yaml ./
-RUN npm i -g pnpm
+RUN npm i -g pnpm@7
 
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store\
   # ↑ By caching the content-addressable store we stop downloading the same packages again and again
@@ -88,9 +88,11 @@ RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy 
 RUN rm -rf pruned/src
 
 FROM node:$NODE_VERSION-alpine as runner
-RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 npm i -g pnpm
+RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 npm i -g pnpm@7
 
 WORKDIR /app
+
+COPY ./config ./config
 
 # # ENV NODE_ENV=production
 COPY --from=builder /app/bin/auth-api/pruned .
