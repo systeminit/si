@@ -23,6 +23,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme } from "@si/vue-lib/design-system";
+import { vim } from "@replit/codemirror-vim";
 import { createLintSource } from "@/utils/typescriptLinter";
 
 const props = defineProps<{
@@ -75,6 +76,7 @@ const readOnly = new Compartment();
 const themeCompartment = new Compartment();
 const lintCompartment = new Compartment();
 const styleExtensionCompartment = new Compartment();
+const vimCompartment = new Compartment();
 
 const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
@@ -94,6 +96,14 @@ watch(codeMirrorTheme, () => {
       themeCompartment.reconfigure(codeMirrorTheme.value),
       styleExtensionCompartment.reconfigure(styleExtension.value),
     ],
+  });
+});
+
+// Set this to true to enable vim mode dynamically
+const vimEnabled = ref(false);
+watch(vimEnabled, (useVim) => {
+  view.dispatch({
+    effects: [vimCompartment.reconfigure(useVim ? vim() : [])],
   });
 });
 
@@ -127,6 +137,7 @@ const mountEditor = async () => {
       styleExtensionCompartment.of(styleExtension.value),
       keymap.of([indentWithTab]),
       readOnly.of(EditorState.readOnly.of(disabled.value)),
+      vimCompartment.of(vimEnabled.value ? vim() : []),
       updateListener,
       EditorView.lineWrapping,
     ]),
