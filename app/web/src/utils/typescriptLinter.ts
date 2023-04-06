@@ -16,6 +16,10 @@ const useCache = true;
 let fsMap: Map<string, string>;
 let vfsSystem: System;
 
+const defaultFilename = "index.ts";
+// If the document gets blanked out, typescript still needs something.
+const fallbackCode = "console.log('foo')";
+
 export const createLintSource = async (): Promise<AsyncLintSource> => {
   // we lazy load typescript to help speed things up
   const ts = await import("typescript");
@@ -30,9 +34,7 @@ export const createLintSource = async (): Promise<AsyncLintSource> => {
     vfsSystem = createSystem(fsMap);
   }
 
-  const defaultFilename = "index.ts";
-  // We need something, anything valid in here get the environment going
-  fsMap.set(defaultFilename, "console.log('foo')");
+  fsMap.set(defaultFilename, fallbackCode);
 
   const tsEnv = createVirtualTypeScriptEnvironment(
     vfsSystem,
@@ -43,7 +45,11 @@ export const createLintSource = async (): Promise<AsyncLintSource> => {
   return async (view: EditorView) => {
     const doc = view.state.doc;
     // We could be more efficient by updating only the changed spans
-    tsEnv.updateFile(defaultFilename, doc.toString());
+    const docString = doc.toString();
+    tsEnv.updateFile(
+      defaultFilename,
+      docString.trim().length === 0 ? fallbackCode : docString,
+    );
 
     let diagnostics: Diagnostic[] = [];
     for (const tsDiagnostic of tsEnv.languageService.getSyntacticDiagnostics(
