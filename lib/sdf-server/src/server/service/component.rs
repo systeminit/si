@@ -9,8 +9,8 @@ use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
-    FuncBindingError, InternalProviderError, SchemaError as DalSchemaError, StandardModelError,
-    TransactionsError, WsEventError,
+    FuncBindingError, InternalProviderError, PropId, SchemaError as DalSchemaError,
+    StandardModelError, TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -38,6 +38,8 @@ pub enum ComponentError {
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]
     ComponentNotFound(ComponentId),
+    #[error("prop not found for id: {0}")]
+    PropNotFound(PropId),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("invalid request")]

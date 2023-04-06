@@ -427,7 +427,7 @@ pub struct Recommendation {
     provider: Option<String>,
 
     /// The title of a [recommendation](Self). An example: "Create EC2 Instance".
-    name: String,
+    pub name: String,
     /// Maps to the name of an [`ActionPrototype`](crate::ActionPrototype). An example: "create".
     pub recommended_action: String,
     /// The [`kind`](crate::action_prototype::ActionKind) of

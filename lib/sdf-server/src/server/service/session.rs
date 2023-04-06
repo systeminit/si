@@ -12,7 +12,7 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 pub mod auth_connect;
-pub mod get_defaults;
+pub mod load_workspace;
 pub mod restore_authentication;
 
 #[derive(Debug, Error)]
@@ -69,5 +69,5 @@ pub fn routes() -> Router<AppState> {
             "/restore_authentication",
             get(restore_authentication::restore_authentication),
         )
-        .route("/get_defaults", get(get_defaults::get_defaults))
+        .route("/load_workspace", get(load_workspace::load_workspace))
 }

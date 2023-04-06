@@ -37,7 +37,7 @@ export const useWorkspacesStore = addStoreHooks(
         }>({
           // TODO: probably should fetch list of all workspaces here...
           // something like `/users/USER_PK/workspaces`, `/my/workspaces`, etc
-          url: "/session/get_defaults",
+          url: "/session/load_workspace",
           onSuccess: (response) => {
             // this.workspacesByPk = _.keyBy(response.workspaces, "pk");
             this.workspacesByPk = _.keyBy([response.workspace], "pk");

@@ -73,6 +73,7 @@
           :remember-selected-tab-key="`component_details_${
             isViewMode ? 'view' : 'model'
           }`"
+          tracking-slug="component_details"
         >
           <TabGroupItem label="Attributes" slug="attributes">
             <AttributeViewer

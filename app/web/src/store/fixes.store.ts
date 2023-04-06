@@ -6,6 +6,7 @@ import { ComponentId } from "@/store/components.store";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { AttributeValueId } from "./status.store";
+import { trackEvent } from "../utils/tracking";
 
 function nilId(): string {
   return "00000000000000000000000000";
@@ -54,7 +55,9 @@ export type Recommendation = {
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 // A potential temporary fix: we decide to convert the "string" from the database row into
 
+export type FixId = string;
 export type Fix = {
+  id: FixId;
   status: FixStatus;
   action: string;
   schemaName: string;
@@ -288,14 +291,27 @@ export const useFixesStore = () => {
           },
           {
             eventType: "FixReturn",
-            callback: (_update) => {
+            callback: (update) => {
+              trackEvent("fix_return", {
+                fix_action: update.action,
+                fix_status: update.status,
+                fix_id: update.id,
+                fix_batch_id: update.batchId,
+              });
+
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },
           },
           {
             eventType: "FixBatchReturn",
-            callback: (_update) => {
+            callback: (update) => {
+              this.runningFixBatch = undefined;
+              trackEvent("fix_batch_return", {
+                batch_status: update.status,
+                batch_id: update.id,
+              });
+
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },

@@ -6,8 +6,8 @@ use dal::edge::EdgeKind;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    generate_name, Component, ComponentId, Connection, Schema, SchemaId, Socket, StandardModel,
-    Visibility, WsEvent,
+    generate_name, Component, ComponentId, Connection, Node, Schema, SchemaId, Socket,
+    StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -84,6 +84,47 @@ pub async fn create_node(
         .await?;
 
         connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
+
+        let child_comp = Node::get_by_id(&ctx, node.id())
+            .await?
+            .ok_or(DiagramError::NodeNotFound(*node.id()))?
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let child_schema = child_comp
+            .schema(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
+
+        let parent_comp = Node::get_by_id(&ctx, &frame_id)
+            .await?
+            .ok_or(DiagramError::NodeNotFound(frame_id))?
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let parent_schema = parent_comp
+            .schema(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "component_connected_to_frame",
+            serde_json::json!({
+                        "parent_component_id": parent_comp.id(),
+                        "parent_component_schema_name": parent_schema.name(),
+                        "parent_socket_id": frame_socket.id(),
+                        "parent_socket_name": frame_socket.name(),
+                        "child_component_id": child_comp.id(),
+                        "child_component_schema_name": child_schema.name(),
+                        "child_socket_id": component_socket.id(),
+                        "child_socket_name": component_socket.name(),
+            }),
+        );
     }
 
     WsEvent::component_created(&ctx)

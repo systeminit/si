@@ -1,6 +1,8 @@
 use super::{FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::func::FuncError;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{
     generate_name, AttributeValueId, ComponentId, DalContext, Func, FuncBackendKind,
@@ -127,6 +129,8 @@ async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncRe
 pub async fn create_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateFuncRequest>,
 ) -> FuncResult<Json<CreateFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -144,6 +148,21 @@ pub async fn create_func(
         }
     };
 
+    let func_variant = (&func).try_into()?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "created_func",
+        serde_json::json!({
+                    "func_id": func.id().to_owned(),
+                    "func_handler": func.handler().map(|h| h.to_owned()),
+                    "func_name": func.name().to_owned(),
+                    "func_variant": func_variant,
+        }),
+    );
+
     WsEvent::change_set_written(&ctx)
         .await?
         .publish_on_commit(&ctx)
@@ -153,7 +172,7 @@ pub async fn create_func(
     Ok(Json(CreateFuncResponse {
         id: func.id().to_owned(),
         handler: func.handler().map(|h| h.to_owned()),
-        variant: (&func).try_into()?,
+        variant: func_variant,
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
     }))

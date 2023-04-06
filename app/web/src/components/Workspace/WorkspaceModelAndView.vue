@@ -4,11 +4,18 @@
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!isViewMode" />
       <div class="grow relative">
-        <TabGroup start-selected-tab-slug="asset-palette">
-          <TabGroupItem v-if="!isViewMode" label="Asset Palette">
+        <TabGroup
+          start-selected-tab-slug="asset_palette"
+          tracking-slug="diagram_outline"
+        >
+          <TabGroupItem
+            v-if="!isViewMode"
+            label="Asset Palette"
+            slug="asset_palette"
+          >
             <AssetPalette />
           </TabGroupItem>
-          <TabGroupItem label="Diagram Outline">
+          <TabGroupItem label="Diagram Outline" slug="diagram_outline">
             <ComponentOutline @right-click-item="onOutlineRightClick" />
           </TabGroupItem>
         </TabGroup>

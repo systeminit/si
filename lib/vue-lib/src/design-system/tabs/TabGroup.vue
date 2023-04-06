@@ -164,6 +164,7 @@ import {
 import { Icon, DropdownMenu, DropdownMenuItem } from "..";
 import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
+import posthog from "posthog-js";
 
 const unmounting = ref(false);
 const showOverflowDropdown = ref(false);
@@ -180,6 +181,7 @@ const props = defineProps({
     type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md">,
     default: "xs",
   },
+  trackingSlug: String,
 });
 
 const emit = defineEmits<{
@@ -222,6 +224,10 @@ function selectTab(slug?: string) {
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
   emit("update:selectedTab", selectedTabSlug.value);
+
+  if (props.trackingSlug) {
+    posthog.capture("wa-tab_selected", {groupSlug: props.trackingSlug, tabSlug: selectedTabSlug.value});
+  }
 
   if (selectedTabSlug.value) {
     if (tabKey.value) {

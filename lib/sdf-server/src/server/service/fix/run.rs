@@ -1,8 +1,10 @@
+use axum::extract::OriginalUri;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use super::{FixError, FixResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
     AttributeValueId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel, User,
@@ -34,6 +36,8 @@ pub struct FixesRunResponse {
 pub async fn run(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<FixesRunRequest>,
 ) -> FixResult<Json<FixesRunResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -63,6 +67,18 @@ pub async fn run(
             action: fix_run_request.action_name,
         });
     }
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "apply_fix",
+        serde_json::json!({
+            "fix_batch_id": batch.id(),
+            "number_of_fixes_in_batch": fixes.len(),
+            "fixes_applied": fixes,
+        }),
+    );
 
     ctx.enqueue_job(FixesJob::new(&ctx, fixes, *batch.id()))
         .await;
