@@ -54,7 +54,7 @@
             protobuf
             skopeo
             jq
-            nodejs-16_x
+            nodejs-18_x
             nodePackages.pnpm
             nodePackages.typescript
             nodePackages.typescript-language-server
