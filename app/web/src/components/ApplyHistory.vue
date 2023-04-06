@@ -108,7 +108,7 @@
                 </template>
                 <template #default>
                   <div class="p-2 dark:text-neutral-50 text-neutral-900">
-                    <div v-if="!fix.resource">Fix is pending.</div>
+                    <div v-if="!fix.resource"></div>
                     <CodeViewer
                       v-else-if="fix.resource.data"
                       :code="JSON.stringify(fix.resource.data, null, 2)"

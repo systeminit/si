@@ -267,53 +267,8 @@ export const useFixesStore = () => {
             },
             url: "/fix/run",
             onSuccess: (response) => {
-              this.confirmations = this.confirmations.map((c) => {
-                for (const r of c.recommendations) {
-                  if (
-                    recommendations.find(
-                      (rec) =>
-                        rec.confirmationAttributeValueId ===
-                          r.confirmationAttributeValueId &&
-                        rec.recommendedAction === r.recommendedAction,
-                    )
-                  ) {
-                    r.status = "running";
-                    r.isRunnable = "running";
-                  }
-                }
-                return c;
-              });
-
-              this.runningFixBatch = response.id;
-              this.fixBatches = this.fixBatches.filter(
-                (b) => b.id !== response.id,
-              );
-              this.fixBatches.push({
-                id: response.id,
-                status: "running",
-                fixes: this.confirmations.flatMap((c) => {
-                  return c.recommendations.map((r) => {
-                    return {
-                      id: c.attributeValueId,
-                      attributeValueId: c.attributeValueId,
-                      status: "running" as FixStatus,
-                      action: r.recommendedAction,
-                      schemaName: c.schemaName,
-                      componentName: c.componentName,
-                      componentId: c.componentId,
-                      resource: {
-                        status: ResourceHealth.Ok as ResourceHealth,
-                        data: null,
-                        message: null,
-                        logs: [],
-                      },
-                      startedAt: `${new Date()}`,
-                    };
-                  });
-                }),
-                author: authStore.user?.email ?? "...",
-                startedAt: `${new Date()}`,
-              });
+              this.LOAD_CONFIRMATIONS();
+              this.LOAD_FIX_BATCHES();
             },
           });
         },
