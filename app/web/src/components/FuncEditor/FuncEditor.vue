@@ -8,7 +8,11 @@
         >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
       >
     </div>
-    <template v-else-if="loadFuncDetailsReq.isSuccess && editingFunc">
+    <template
+      v-else-if="
+        loadFuncDetailsReq.isSuccess && typeof editingFunc === 'string'
+      "
+    >
       <CodeEditor v-model="editingFunc" typescript @change="updateFuncCode" />
     </template>
     <ErrorMessage
