@@ -3,96 +3,93 @@
   <div>
     <!-- <div class="legal-markdown" v-html="authStore.tosDetails?.html" /> -->
 
-    <template v-if="!docsLoaded"> Loading... </template>
-    <template v-else>
-      <RichText class="mb-xl">
-        <template v-if="viewOnlyMode">
-          <h1>Our Legal docs...</h1>
-          <p>Here's some legal mumbo jumbo...</p>
-          <p>Last updated 2023-03-30</p>
-        </template>
-        <template v-else>
-          <p>
-            In order to use System Initiative, we need you to review and agree
-            to our terms:
-          </p>
-        </template>
-      </RichText>
+    <RichText class="mb-xl">
+      <template v-if="viewOnlyMode">
+        <h1>System Initiative Legal Docs</h1>
+        <p><i>Last updated 2023-03-30</i></p>
+      </template>
+      <template v-else>
+        <h1>Review our legal docs:</h1>
+        <p>
+          In order to use System Initiative, we need you to review and agree to
+          our terms:
+        </p>
+      </template>
+    </RichText>
 
-      <div class="flex gap-lg">
-        <div class="flex-none w-[220px]">
-          <div class="sticky top-md flex flex-col gap-md">
-            <div
-              v-for="doc in docs"
-              :key="doc.fileName"
+    <div class="flex gap-lg">
+      <div class="flex-none w-[220px]">
+        <div class="sticky top-md flex flex-col gap-md">
+          <div
+            v-for="doc in LEGAL_DOCS_CONTENT"
+            :key="doc.fileName"
+            :class="
+              clsx(
+                'cursor-pointer flex items-center gap-xs',
+                doc.slug === activeDocSlug && '',
+              )
+            "
+            @click="scrollToDoc(doc.slug)"
+          >
+            <a
               :class="
                 clsx(
-                  'cursor-pointer flex items-center gap-xs',
-                  doc.slug === activeDocSlug && '',
+                  'underline-link w-auto',
+                  doc.slug === activeDocSlug && '--active',
                 )
               "
-              @click="scrollToDoc(doc.slug)"
+              href="#"
+              @click.prevent
             >
-              <a
-                :class="
-                  clsx(
-                    'underline-link w-auto',
-                    doc.slug === activeDocSlug && '--active',
-                  )
-                "
-                href="#"
-                @click.prevent
-              >
-                {{ doc.title }}
-              </a>
-            </div>
+              {{ doc.title }}
+            </a>
           </div>
-        </div>
-        <div
-          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
-        >
-          <div
-            v-for="doc in docs"
-            :key="doc.fileName"
-            class="mb-xl"
-            :data-doc-slug="doc.slug"
-          >
-            <RichText class="text-sm">
-              <Component :is="doc.component" />
-            </RichText>
-            <div class="mt-md">
-              <VButton2
-                icon="download"
-                variant="soft"
-                tone="shade"
-                size="sm"
-                :link-to="{
-                  name: 'print-legal',
-                  params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
-                }"
-                target="_blank"
-                >Print / Download
-              </VButton2>
-            </div>
-          </div>
-
-          <Stack v-if="!viewOnlyMode">
-            <VormInput v-model="userAgreed" type="checkbox"
-              >I have read and agree to the terms above</VormInput
-            >
-            <VButton2
-              variant="solid"
-              icon="arrow--right"
-              :disabled="disableContinueButton"
-              :request-status="agreeTosReqStatus"
-              @click="agreeButtonHandler"
-            >
-              Agree & Continue
-            </VButton2>
-          </Stack>
         </div>
       </div>
-    </template>
+      <div
+        class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+      >
+        <div
+          v-for="doc in LEGAL_DOCS_CONTENT"
+          :key="doc.fileName"
+          class="mb-xl"
+          :data-doc-slug="doc.slug"
+        >
+          <RichText class="text-sm">
+            <Component :is="doc.component" />
+          </RichText>
+          <div class="mt-md">
+            <VButton2
+              icon="download"
+              variant="soft"
+              tone="shade"
+              size="sm"
+              :link-to="{
+                name: 'print-legal',
+                params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
+              }"
+              target="_blank"
+              >Print / Download
+            </VButton2>
+          </div>
+        </div>
+
+        <Stack v-if="!viewOnlyMode">
+          <VormInput v-model="userAgreed" type="checkbox"
+            >I have read and agree to the terms above</VormInput
+          >
+          <VButton2
+            variant="solid"
+            icon="arrow--right"
+            :disabled="disableContinueButton"
+            :request-status="agreeTosReqStatus"
+            @click="agreeButtonHandler"
+          >
+            Agree & Continue
+          </VButton2>
+        </Stack>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -100,10 +97,7 @@
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
-  ComponentOptions,
   computed,
-  nextTick,
-  onBeforeMount,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -115,10 +109,10 @@ import {
   Stack,
   VButton2,
   VormInput,
-  Tiles,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useAuthStore } from "@/store/auth.store";
+import { LEGAL_DOCS_CONTENT } from "./load-docs";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -130,34 +124,6 @@ const viewOnlyMode = route.name === "legal";
 const agreeTosReqStatus = authStore.getRequestStatus("AGREE_TOS");
 
 const CURRENT_VERSION = "2023-03-30";
-
-const docsLoaded = ref(false);
-const docs = {} as Record<
-  string,
-  {
-    title: string;
-    slug: string;
-    fileName: string;
-    component: ComponentOptions;
-  }
->;
-onBeforeMount(async () => {
-  const docImports = import.meta.glob(`@/content/legal/2023-03-30/*.md`);
-  for (const fileName in docImports) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const importedDoc = (await docImports[fileName]()) as any;
-    const slug = fileName.replace(/.md$/, "").replace(/.*\/\d+-/, "");
-    docs[slug] = {
-      title: importedDoc.attributes.title,
-      slug,
-      fileName,
-      component: importedDoc.VueComponentWith({
-        Tiles,
-      }),
-    };
-  }
-  docsLoaded.value = true;
-});
 
 const userAgreed = ref(false);
 
@@ -214,26 +180,16 @@ watch(activeDocSlug, () => {
   router.replace({ ...route, params: { docSlug: activeDocSlug.value } });
 });
 
-watch(docsLoaded, () => {
-  /* eslint-disable @typescript-eslint/no-floating-promises */
-  nextTick(activateObserver);
-  // after initial load, we jump to the right doc if the URL included it
-  if (route.params.docSlug) {
-    setTimeout(() => {
-      scrollToDoc(route.params.docSlug as string);
-    }, 250);
-  }
-});
-
-function activateObserver() {
+onMounted(() => {
   const sectionEls = document.querySelectorAll("[data-doc-slug]");
   sectionEls.forEach((el) => {
     observer.observe(el);
   });
-}
 
-onMounted(() => {
-  // window.addEventListener("scroll", scrollHandler);
+  // if url refers to a specific doc, we'll scroll to it right away
+  if (route.params.docSlug) {
+    scrollToDoc(route.params.docSlug as string);
+  }
 });
 onBeforeUnmount(() => {
   observer.disconnect();

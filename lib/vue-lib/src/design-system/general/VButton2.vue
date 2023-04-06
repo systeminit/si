@@ -47,7 +47,11 @@ import { RouterLink } from "vue-router";
 import * as _ from "lodash-es";
 
 import { ApiRequestStatus } from "../../pinia";
-import { Icon, IconNames, Tones, useTheme } from "..";
+
+import Icon from "../icons/Icon.vue";
+import { IconNames } from "../icons/icon_set";
+import { Tones } from "../utils/color_utils";
+import { useTheme } from "../utils/theme_tools";
 
 const SHOW_SUCCESS_DELAY = 2000;
 

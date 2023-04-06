@@ -6,10 +6,15 @@ import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
 import IconsPlugin from "unplugin-icons/vite";
 import svgLoaderPlugin from "vite-svg-loader";
+import { visualizer as VisualizerPlugin } from "rollup-plugin-visualizer";
 // import MarkdownPlugin from "vite-plugin-md";
-import MarkdownPlugin, { Mode as MdPluginMode } from "vite-plugin-markdown";
+import {
+  plugin as MarkdownPlugin,
+  Mode as MdPluginMode,
+} from "vite-plugin-markdown";
 import packageJson from "./package.json";
-import postcss from "./postcss.config.cjs";
+// eslint-disable-next-line import/extensions
+import postcss from "./postcss.config.js";
 
 const lessVars = readFileSync(
   "./node_modules/@si/vue-lib/src/tailwind/less_vars.less",
@@ -29,19 +34,23 @@ export default defineConfig({
     svgLoaderPlugin(),
     IconsPlugin({ compiler: "raw" }),
 
-    ...(process.env.NODE_ENV !== "production"
-      ? [
-          checkerPlugin({
-            vueTsc: true,
-            eslint: {
-              lintCommand: packageJson.scripts.lint,
-              // I _think_ we only want to pop up an error on the screen for proper errors
-              // otherwise we can get a lot of unused var errors when you comment something out temporarily
-              dev: { logLevel: ["error"] },
-            },
-          }),
-        ]
-      : []),
+    process.env.NODE_ENV !== "production" &&
+      checkerPlugin({
+        vueTsc: true,
+        eslint: {
+          lintCommand: packageJson.scripts.lint,
+          // I _think_ we only want to pop up an error on the screen for proper errors
+          // otherwise we can get a lot of unused var errors when you comment something out temporarily
+          dev: { logLevel: ["error"] },
+        },
+      }),
+
+    !!process.env.RUN_BUILD_ANALYZER &&
+      VisualizerPlugin({
+        open: true,
+        filename: "dist/stats.html",
+        brotliSize: true,
+      }),
   ],
   css: {
     postcss,

@@ -137,7 +137,7 @@ If you are aware of any confusing use or misuse of the Marks in any way, we woul
 
 ### Where to get further information
 
-If you have any questions about this Policy, would like to speak with us about the use of our Marks in ways not described in the Policy, or see any abuse of our Marks, please <<insert contact information.>>
+If you have any questions about this Policy, would like to speak with us about the use of our Marks in ways not described in the Policy, or see any abuse of our Marks, please **TODO: insert contact information.**
 
 ### General considerations about trademarks and their use
 

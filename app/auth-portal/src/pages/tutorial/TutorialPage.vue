@@ -1,8 +1,11 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
-  <div v-if="docsLoaded">
+  <div>
     <Confetti :active="activeStepSlug === 'next_steps'" start-top />
-    <template v-if="!onboardingStore.stepsCompleted.github_access">
+
+    <template
+      v-if="!onboardingStore.stepsCompleted.github_access && !PREVIEW_MODE"
+    >
       <RichText>
         <h3>We're getting you access</h3>
         <p>
@@ -22,7 +25,7 @@
         <div class="flex-none w-[250px]">
           <div class="sticky top-md flex flex-col gap-sm">
             <div
-              v-for="step in tutorialSteps"
+              v-for="step in TUTORIAL_STEPS"
               :key="step.slug"
               :class="clsx('cursor-pointer flex items-center gap-xs leading-5')"
               @click="activeStepSlug = step.slug"
@@ -67,7 +70,7 @@
               leave-to-class="opacity-0"
             >
               <WorkspaceLinkWidget
-                v-if="!tutorialSteps[activeStepSlug].hideWorkspaceLink"
+                v-if="!TUTORIAL_STEPS[activeStepSlug].hideWorkspaceLink"
                 compact
                 class="mt-xs"
               />
@@ -75,12 +78,12 @@
           </div>
         </div>
         <div
-          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg relative overflow-x-hidden"
         >
           <RichText>
             <Component
-              :is="tutorialSteps[activeStepSlug].component"
-              v-if="tutorialSteps[activeStepSlug]"
+              :is="TUTORIAL_STEPS[activeStepSlug].component"
+              v-if="TUTORIAL_STEPS[activeStepSlug]"
             />
           </RichText>
           <VButton2
@@ -117,9 +120,12 @@ import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 
+// enable working on tutorial without being logged in
+const PREVIEW_MODE = !!import.meta.env.VITE_PREVIEW_TUTORIAL;
+
 const onboardingStore = useOnboardingStore();
 
-const tutorialSteps = {} as Record<
+const TUTORIAL_STEPS = {} as Record<
   string,
   {
     title: string;
@@ -131,36 +137,33 @@ const tutorialSteps = {} as Record<
     component: ComponentOptions;
   }
 >;
-
-const docsLoaded = ref(false);
-onBeforeMount(async () => {
-  const docImports = import.meta.glob(`@/content/tutorial/*.md`);
-  for (const fileName in docImports) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const importedDoc = (await docImports[fileName]()) as any;
-    const slug = fileName.replace(/.*\/\d\d-/, "").replace(".md", "");
-    tutorialSteps[slug] = {
-      slug,
-      ...importedDoc.attributes,
-      fileName,
-      component: importedDoc.VueComponentWith({
-        Icon,
-        Inline,
-        "workspace-link-widget": WorkspaceLinkWidget,
-        "router-link": RouterLink,
-      }),
-    };
-  }
-  docsLoaded.value = true;
+const docImports = import.meta.glob(`@/content/tutorial/*.md`, {
+  eager: true,
 });
+for (const fileName in docImports) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const importedDoc = docImports[fileName] as any;
+  const slug = fileName.replace(/.md$/, "").replace(/.*\/\d+-/, "");
+  TUTORIAL_STEPS[slug] = {
+    slug,
+    ...importedDoc.attributes,
+    fileName,
+    component: importedDoc.VueComponentWith({
+      Icon,
+      Inline,
+      "workspace-link-widget": WorkspaceLinkWidget,
+      "router-link": RouterLink,
+    }),
+  };
+}
 
 const activeStepSlug = ref("intro");
 function stepContinueHandler() {
   const currentStepIndex = _.indexOf(
-    _.keys(tutorialSteps),
+    _.keys(TUTORIAL_STEPS),
     activeStepSlug.value,
   );
-  const nextStepSlug = _.keys(tutorialSteps)[currentStepIndex + 1];
+  const nextStepSlug = _.keys(TUTORIAL_STEPS)[currentStepIndex + 1];
   activeStepSlug.value = nextStepSlug;
 }
 

@@ -246,7 +246,15 @@ watch([checkAuthReq, route], () => {
 
   // if user is not logged in, kick back to login screen
   if (!userIsLoggedIn.value || !user.value) {
-    if (!["login", "404", "legal"].includes(currentRouteName)) {
+    if (
+      ![
+        "login",
+        "404",
+        "legal",
+        // allow viewing tutorial without login if VITE_PREVIEW_TUTORIAL set in env
+        ...(import.meta.env.VITE_PREVIEW_TUTORIAL ? ["tutorial"] : []),
+      ].includes(currentRouteName)
+    ) {
       return router.push({ name: "login" });
     }
     return;

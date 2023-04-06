@@ -24,11 +24,13 @@ importers:
       '@vueuse/head': ^1.0.26
       axios: ^0.27.2
       clsx: ^1.2.1
+      highlight.js: ^11.7.0
       less: ^4.1.3
       lodash-es: ^4.17.21
       netlify-cli: ^13.2.2
       pinia: ^2.0.32
       posthog-js: ^1.51.4
+      rollup-plugin-visualizer: ^5.9.0
       typescript: ^4.9.5
       unplugin-icons: ^0.14.14
       vite: ^4.1.4
@@ -44,6 +46,7 @@ importers:
       '@vueuse/head': 1.0.26_vue@3.2.45
       axios: 0.27.2
       clsx: 1.2.1
+      highlight.js: 11.7.0
       less: 4.1.3
       lodash-es: 4.17.21
       pinia: 2.0.32_2hxmazfbcwwtly5fgw7ckvmlau
@@ -59,6 +62,7 @@ importers:
       '@types/node': 18.15.5
       '@vitejs/plugin-vue': 4.0.0_vite@4.1.4+vue@3.2.45
       netlify-cli: 13.2.2_@types+node@18.15.5
+      rollup-plugin-visualizer: 5.9.0
       typescript: 4.9.5
       unplugin-icons: 0.14.14
       vite: 4.1.4_v57xivhexqggy552d4l7tn74xu
@@ -697,10 +701,12 @@ importers:
       '@tailwindcss/line-clamp': ^0.4.2
       '@types/lodash': ^4.14.191
       '@types/lodash-es': ^4.17.6
+      '@vueuse/head': ^1.1.23
       autoprefixer: ^10.4.8
       axios: ^0.27.2
       clsx: ^1.2.1
       date-fns: ^2.29.2
+      highlight.js: ^11.7.0
       is-promise: ^4.0.0
       javascript-time-ago: ^2.5.7
       local-storage-fallback: ^4.1.2
@@ -724,9 +730,11 @@ importers:
       '@tailwindcss/forms': 0.5.3_tailwindcss@3.2.2
       '@tailwindcss/line-clamp': 0.4.2_tailwindcss@3.2.2
       '@types/lodash-es': 4.17.6
+      '@vueuse/head': 1.1.23_vue@3.2.45
       axios: 0.27.2
       clsx: 1.2.1
       date-fns: 2.29.3
+      highlight.js: 11.7.0
       is-promise: 4.0.0
       javascript-time-ago: 2.5.9
       local-storage-fallback: 4.1.2
@@ -3831,6 +3839,13 @@ packages:
       '@unhead/shared': 1.1.15
     dev: false
 
+  /@unhead/dom/1.1.25:
+    resolution: {integrity: sha512-kJ5jhJFNQCyNENSw+mtmzgulA0kqUuXS3SRPl1umpofc8PH8tblSzXwqStxTj9r6E4wxJbEuygT/aHFJVioizw==}
+    dependencies:
+      '@unhead/schema': 1.1.25
+      '@unhead/shared': 1.1.25
+    dev: false
+
   /@unhead/schema/1.0.22:
     resolution: { integrity: sha512-Pg+F4UmYhI3Vz1Jio3bjCxEjuhvqlYrybwphsK2XacIDHYGQmcvBtMiB/5Y8Diuy1lGfHFloWaNjMuvAdh5gNA== }
     dependencies:
@@ -3842,6 +3857,13 @@ packages:
     resolution: { integrity: sha512-331yP1JrJfvaa2TvfiVGLlgwl9bVgFVJ0pMy1hPBM/0+J09d6SKy4khZb2j0WtgVofY6FnThmKWDNCngCzRZhg== }
     dependencies:
       hookable: 5.4.2
+      zhead: 2.0.4
+    dev: false
+
+  /@unhead/schema/1.1.25:
+    resolution: {integrity: sha512-ygmaxWgGTAq9CcB6zGY4+0HlGdQt/oMq+CM18tTnvOBY0Og/uPGt7roW8eH717GpTPibKRTpagSYzZYdL0tWeg==}
+    dependencies:
+      hookable: 5.5.3
       zhead: 2.0.4
     dev: false
 
@@ -3857,6 +3879,12 @@ packages:
       '@unhead/schema': 1.1.15
     dev: false
 
+  /@unhead/shared/1.1.25:
+    resolution: {integrity: sha512-KptKbk4py1MFYHYwDJ/0kPOs+95dYMrWIT1fCV9lGcVAwu20wIHh+WX18s+iEWhc66xkGRxgC/xsl4wJJFPE+w==}
+    dependencies:
+      '@unhead/schema': 1.1.25
+    dev: false
+
   /@unhead/ssr/1.0.22:
     resolution: { integrity: sha512-0r9b+QFUAABHqewlqwW+mfNTR4qtWsBe3KCCzhqrNEXFxMBAXqqAtnKRiDJ3YwVZZHJ3YULLu7GlmfivIBM5zA== }
     dependencies:
@@ -3869,6 +3897,13 @@ packages:
     dependencies:
       '@unhead/schema': 1.1.15
       '@unhead/shared': 1.1.15
+    dev: false
+
+  /@unhead/ssr/1.1.25:
+    resolution: {integrity: sha512-2S3tiajy6n3D1WY2pVkRLr74WGaHD08w0+nFaQGNy0LszPlkWUuAmYYqDCXdh03ijEl+Tjwqjn+E9w1e3QakuQ==}
+    dependencies:
+      '@unhead/schema': 1.1.25
+      '@unhead/shared': 1.1.25
     dev: false
 
   /@unhead/vue/1.0.22_vue@3.2.45:
@@ -3892,6 +3927,18 @@ packages:
       '@unhead/shared': 1.1.15
       hookable: 5.4.2
       unhead: 1.1.15
+      vue: 3.2.45
+    dev: false
+
+  /@unhead/vue/1.1.25_vue@3.2.45:
+    resolution: {integrity: sha512-ujincFHftg2N2i3G/gVkMyJ7CFzVyZ8SMb5cJCWZEnDBQGjgy3uvWT6EaM0d2jnaeXiYbB+iyY0O1o/H+XlpKQ==}
+    peerDependencies:
+      vue: '>=2.7 || >=3'
+    dependencies:
+      '@unhead/schema': 1.1.25
+      '@unhead/shared': 1.1.25
+      hookable: 5.5.3
+      unhead: 1.1.25
       vue: 3.2.45
     dev: false
 
@@ -3944,7 +3991,7 @@ packages:
       vite: ^4.0.0
       vue: ^3.2.25
     dependencies:
-      vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
+      vite: 4.1.4_v57xivhexqggy552d4l7tn74xu
       vue: 3.2.45
     dev: true
 
@@ -4176,6 +4223,18 @@ packages:
       '@unhead/schema': 1.1.15
       '@unhead/ssr': 1.1.15
       '@unhead/vue': 1.1.15_vue@3.2.45
+      vue: 3.2.45
+    dev: false
+
+  /@vueuse/head/1.1.23_vue@3.2.45:
+    resolution: {integrity: sha512-bJiiQXrICvCI740jR2CLK+FhXyvMx2dIfyeF3FdOsYJn6OtexdBI2wchyuKNYmiAQ8cibAHxmDUytAFqIdIRJg==}
+    peerDependencies:
+      vue: '>=2.7 || >=3'
+    dependencies:
+      '@unhead/dom': 1.1.25
+      '@unhead/schema': 1.1.25
+      '@unhead/ssr': 1.1.25
+      '@unhead/vue': 1.1.25_vue@3.2.45
       vue: 3.2.45
     dev: false
 
@@ -7978,6 +8037,7 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+    dev: false
 
   /follow-redirects/1.15.2_debug@4.3.4:
     resolution: { integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA== }
@@ -7989,7 +8049,6 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4
-    dev: false
 
   /fontfaceobserver/2.3.0:
     resolution: { integrity: sha512-6FPvD/IVyT4ZlNe7Wcn5Fb/4ChigpucKYSvD6a+0iMoLn2inpo711eyIcKjmDtE5XNcgAkSH9uN/nfAeZzHEfg== }
@@ -8653,8 +8712,17 @@ packages:
     engines: { node: '>=8' }
     dev: false
 
+  /highlight.js/11.7.0:
+    resolution: {integrity: sha512-1rRqesRFhMO/PRF+G86evnyJkCgaZFOI+Z6kdj15TA18funfoqJXvgPCLSf0SWq3SRfg1j3HlDs8o4s3EGq1oQ==}
+    engines: {node: '>=12.0.0'}
+    dev: false
+
   /hookable/5.4.2:
     resolution: { integrity: sha512-6rOvaUiNKy9lET1X0ECnyZ5O5kSV0PJbtA5yZUgdEF7fGJEVwSLSislltyt7nFwVVALYHQJtfGeAR2Y0A0uJkg== }
+    dev: false
+
+  /hookable/5.5.3:
+    resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
     dev: false
 
   /hosted-git-info/2.8.9:
@@ -8802,7 +8870,7 @@ packages:
     engines: { node: '>=8.0.0' }
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.15.2
+      follow-redirects: 1.15.2_debug@4.3.4
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -13156,6 +13224,22 @@ packages:
       glob: 7.2.3
     dev: true
 
+  /rollup-plugin-visualizer/5.9.0:
+    resolution: {integrity: sha512-bbDOv47+Bw4C/cgs0czZqfm8L82xOZssk4ayZjG40y9zbXclNk7YikrZTDao6p7+HDiGxrN0b65SgZiVm9k1Cg==}
+    engines: {node: '>=14'}
+    hasBin: true
+    peerDependencies:
+      rollup: 2.x || 3.x
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      open: 8.4.0
+      picomatch: 2.3.1
+      source-map: 0.7.4
+      yargs: 17.7.1
+    dev: true
+
   /rollup/3.17.2:
     resolution: { integrity: sha512-qMNZdlQPCkWodrAZ3qnJtvCAl4vpQ8q77uEujVCCbC/6CLB7Lcmvjq7HyiOSnf4fxTT9XgsE36oLHJBH49xjqA== }
     engines: { node: '>=14.18.0', npm: '>=8.0.0' }
@@ -14626,6 +14710,15 @@ packages:
       hookable: 5.4.2
     dev: false
 
+  /unhead/1.1.25:
+    resolution: {integrity: sha512-KtTBgtQjxICoOjA4dyxJfj5fYoYJeYFUt/J8ulaTzbvTsXM9K+ztYjI65nf2CPYYXRCRz/iEt8trqcsGlsB5TQ==}
+    dependencies:
+      '@unhead/dom': 1.1.25
+      '@unhead/schema': 1.1.25
+      '@unhead/shared': 1.1.25
+      hookable: 5.5.3
+    dev: false
+
   /union-value/1.0.1:
     resolution: { integrity: sha512-tJfXmxMeWYnczCVs7XAEvIV7ieppALdyepWMkHkwciRpZraG/xwT+s2JN8+pr1+8jCRf80FFzvr+MpQeeoF4Xg== }
     engines: { node: '>=0.10.0' }
@@ -14936,7 +15029,7 @@ packages:
       strip-ansi: 6.0.1
       tiny-invariant: 1.3.1
       typescript: 4.9.5
-      vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
+      vite: 4.1.4_v57xivhexqggy552d4l7tn74xu
       vscode-languageclient: 7.0.0
       vscode-languageserver: 7.0.0
       vscode-languageserver-textdocument: 1.0.7
