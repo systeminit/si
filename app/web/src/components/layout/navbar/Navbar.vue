@@ -58,8 +58,6 @@ import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
 import NavbarButton from "./NavbarButton.vue";
 
-const isDevMode = import.meta.env.DEV;
-
 const workspacesStore = useWorkspacesStore();
 const workspaces = computed(() => workspacesStore.allWorkspaces);
 const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);

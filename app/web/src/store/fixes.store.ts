@@ -3,9 +3,8 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
-import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
+import { Resource } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useAuthStore } from "./auth.store";
 import { AttributeValueId } from "./status.store";
 
 function nilId(): string {
@@ -247,14 +246,15 @@ export const useFixesStore = () => {
             params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.fixBatches = response;
+              this.runningFixBatch = response.find(
+                (batch) => !["success", "failure"].includes(batch.status ?? ""),
+              )?.id;
             },
           });
         },
         async EXECUTE_FIXES_FROM_RECOMMENDATIONS(
           recommendations: Array<Recommendation>,
         ) {
-          const authStore = useAuthStore();
-
           return new ApiRequest({
             method: "post",
             params: {
@@ -267,7 +267,6 @@ export const useFixesStore = () => {
             },
             url: "/fix/run",
             onSuccess: (response) => {
-              this.runningFixBatch = response.id;
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },
@@ -289,15 +288,14 @@ export const useFixesStore = () => {
           },
           {
             eventType: "FixReturn",
-            callback: (update) => {
+            callback: (_update) => {
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },
           },
           {
             eventType: "FixBatchReturn",
-            callback: (update) => {
-              this.runningFixBatch = undefined;
+            callback: (_update) => {
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },

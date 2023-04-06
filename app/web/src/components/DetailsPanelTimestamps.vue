@@ -50,7 +50,7 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import { formatters } from "@si/vue-lib";
-import { Icon, VButton2 } from "@si/vue-lib/design-system";
+import { Icon } from "@si/vue-lib/design-system";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/store/components.store";
 
