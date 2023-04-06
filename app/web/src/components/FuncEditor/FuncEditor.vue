@@ -15,7 +15,12 @@
         loadFuncDetailsReq.isSuccess && typeof editingFunc === 'string'
       "
     >
-      <CodeEditor v-model="editingFunc" typescript @change="updateFuncCode" />
+      <CodeEditor
+        v-model="editingFunc"
+        typescript
+        @change="updateFuncCode"
+        @vim-mode-write="execFunc"
+      />
     </template>
     <ErrorMessage
       v-else-if="loadFuncDetailsReq.isError"
@@ -68,5 +73,9 @@ watch(
 
 const updateFuncCode = (code: string) => {
   funcStore.updateFuncCode(props.funcId, code);
+};
+
+const execFunc = () => {
+  funcStore.SAVE_AND_EXEC_FUNC(props.funcId);
 };
 </script>
