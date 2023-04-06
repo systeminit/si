@@ -1,8 +1,6 @@
 <template>
-  <div
-    class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x p-2"
-  >
-    <div class="absolute right-[14px] top-[14px]">
+  <div class="w-full h-full">
+    <div class="absolute right-xs top-xs">
       <VButton2
         size="xs"
         :tone="vimEnabled ? 'success' : 'neutral'"
@@ -10,12 +8,7 @@
         @click="vimEnabled = !vimEnabled"
       />
     </div>
-    <div
-      ref="editorMount"
-      class="border border-neutral-300 dark:border-neutral-600"
-      @keyup.stop
-      @keydown.stop
-    />
+    <div ref="editorMount" class="h-full" @keyup.stop @keydown.stop />
   </div>
 </template>
 
@@ -94,6 +87,7 @@ const codeMirrorTheme = computed(() =>
 const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
   return EditorView.theme({
+    "&": { height: "100%" },
     ".cm-scroller": { overflow: "auto" },
     ".cm-vim-panel, .cm-vim-panel input": {
       padding: "0px 10px",

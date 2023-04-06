@@ -12,7 +12,7 @@
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
-    <div class="left-2 right-2 top-2 bottom-0 absolute">
+    <div class="left-2 right-2 top-2 bottom-2 absolute">
       <FuncEditorTabs />
     </div>
   </div>
