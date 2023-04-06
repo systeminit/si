@@ -95,6 +95,7 @@ import DockerLogo from "~icons/mdi/docker";
 import KubernetesLogo from "~icons/carbon/kubernetes";
 import DiscordLogo from "~icons/carbon/logo-discord";
 import GithubLogo from "~icons/carbon/logo-github";
+import VimLogo from "~icons/raphael/vim";
 
 // carbon
 import Hashtag from "~icons/carbon/hashtag";
@@ -200,6 +201,7 @@ export const LOGO_ICONS = Object.freeze({
   // others - not used in providers currently
   "logo-discord": DiscordLogo,
   "logo-github": GithubLogo,
+  "logo-vim": VimLogo,
 });
 
 /*

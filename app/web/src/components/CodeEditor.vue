@@ -2,6 +2,14 @@
   <div
     class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x p-2"
   >
+    <div class="absolute right-[14px] top-[14px]">
+      <VButton2
+        size="xs"
+        :tone="vimEnabled ? 'success' : 'neutral'"
+        icon="logo-vim"
+        @click="vimEnabled = !vimEnabled"
+      />
+    </div>
     <div
       ref="editorMount"
       class="border border-neutral-300 dark:border-neutral-600"
@@ -22,8 +30,9 @@ import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
-import { useTheme } from "@si/vue-lib/design-system";
+import { useTheme, VButton2 } from "@si/vue-lib/design-system";
 import { vim } from "@replit/codemirror-vim";
+import storage from "local-storage-fallback";
 import { createLintSource } from "@/utils/typescriptLinter";
 
 const props = defineProps<{
@@ -86,6 +95,11 @@ const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
   return EditorView.theme({
     ".cm-scroller": { overflow: "auto" },
+    ".cm-vim-panel, .cm-vim-panel input": {
+      padding: "0px 10px",
+      fontSize: "14px",
+      minHeight: "0em",
+    },
     ".cm-focused .cm-selectionBackground .cm-activeLine, .cm-selectionBackground, .cm-content .cm-activeLine ::selection":
       { backgroundColor: `${activeLineHighlight} !important` },
   });
@@ -99,11 +113,17 @@ watch(codeMirrorTheme, () => {
   });
 });
 
-// Set this to true to enable vim mode dynamically
-const vimEnabled = ref(false);
+// Enable/disable vim mode dynamically
+// TODO(nick,zack): put this into a library (maybe?)
+const VIM_MODE_STORAGE_KEY = "SI:VIM_MODE";
+const vimEnabledDefault = (): boolean => {
+  return storage.getItem(VIM_MODE_STORAGE_KEY) === "true";
+};
+const vimEnabled = ref(vimEnabledDefault());
 watch(vimEnabled, (useVim) => {
+  storage.setItem(VIM_MODE_STORAGE_KEY, useVim ? "true" : "false");
   view.dispatch({
-    effects: [vimCompartment.reconfigure(useVim ? vim() : [])],
+    effects: [vimCompartment.reconfigure(useVim ? vim({ status: true }) : [])],
   });
 });
 
@@ -137,7 +157,7 @@ const mountEditor = async () => {
       styleExtensionCompartment.of(styleExtension.value),
       keymap.of([indentWithTab]),
       readOnly.of(EditorState.readOnly.of(disabled.value)),
-      vimCompartment.of(vimEnabled.value ? vim() : []),
+      vimCompartment.of(vimEnabled.value ? vim({ status: true }) : []),
       updateListener,
       EditorView.lineWrapping,
     ]),
