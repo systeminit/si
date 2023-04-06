@@ -75,11 +75,13 @@ importers:
       '@codemirror/language': ^6.3.1
       '@codemirror/legacy-modes': ^6.3.1
       '@codemirror/lint': ^6.1.0
+      '@codemirror/search': ^6.3.0
       '@codemirror/state': ^6.1.4
       '@codemirror/view': ^6.7.1
       '@headlessui/vue': ^1.7.10
       '@iconify/json': ^2.1.142
       '@lezer/highlight': ^1.1.3
+      '@replit/codemirror-vim': ^6.0.11
       '@si/eslint-config': workspace:*
       '@si/ts-lib': workspace:*
       '@si/tsconfig': workspace:*
@@ -137,10 +139,12 @@ importers:
       '@codemirror/language': 6.3.1
       '@codemirror/legacy-modes': 6.3.1
       '@codemirror/lint': 6.1.0
+      '@codemirror/search': 6.3.0
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.7.1
       '@headlessui/vue': 1.7.12_vue@3.2.45
       '@lezer/highlight': 1.1.3
+      '@replit/codemirror-vim': 6.0.11_hsvg734whvvz624t3gtdlhjqey
       '@si/ts-lib': link:../../lib/ts-lib
       '@si/vue-lib': link:../../lib/vue-lib
       '@types/async': 3.2.16
@@ -1233,8 +1237,8 @@ packages:
       crelt: 1.0.5
     dev: false
 
-  /@codemirror/search/6.2.2:
-    resolution: {integrity: sha512-2pWY599zXk+lSoJ2iv9EuTO4gB7lhgBPLPwFb/zTbimFH4NmZSaKzJSV51okjABZ7/Rj0DYy5klWbIgaJh2LoQ==}
+  /@codemirror/search/6.3.0:
+    resolution: {integrity: sha512-rBhZxzT34CarfhgCZGhaLBScABDN3iqJxixzNuINp9lrb3lzm0nTpR77G1VrxGO3HOGK7j62jcJftQM7eCOIuw==}
     dependencies:
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.7.1
@@ -2848,6 +2852,22 @@ packages:
     requiresBuild: true
     dev: false
 
+  /@replit/codemirror-vim/6.0.11_hsvg734whvvz624t3gtdlhjqey:
+    resolution: {integrity: sha512-b3umG+3DR9LfNjrPBk1849Cp8WHgFbYFhlFvGg62br03NdVquVKxaQonK7xA8WGurzQeQOpBW+hhr7mzZxWksA==}
+    peerDependencies:
+      '@codemirror/commands': ^6.0.0
+      '@codemirror/language': ^6.1.0
+      '@codemirror/search': ^6.2.0
+      '@codemirror/state': ^6.0.1
+      '@codemirror/view': ^6.0.3
+    dependencies:
+      '@codemirror/commands': 6.1.2
+      '@codemirror/language': 6.3.1
+      '@codemirror/search': 6.3.0
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.7.1
+    dev: false
+
   /@rollup/pluginutils/4.2.1:
     resolution: {integrity: sha512-iKnFXr7NkdZAIHiIWE+BX5ULi/ucVFYWD6TbAV+rZctiRTY2PL6tsIKhoIOaoskiWAkgu+VsbXgUVDNLHf+InQ==}
     engines: {node: '>= 8.0.0'}
@@ -3922,7 +3942,7 @@ packages:
       vite: ^4.0.0
       vue: ^3.2.25
     dependencies:
-      vite: 4.1.4_v57xivhexqggy552d4l7tn74xu
+      vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
       vue: 3.2.45
     dev: true
 
@@ -5514,7 +5534,7 @@ packages:
       '@codemirror/commands': 6.1.2
       '@codemirror/language': 6.3.1
       '@codemirror/lint': 6.1.0
-      '@codemirror/search': 6.2.2
+      '@codemirror/search': 6.3.0
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.7.1
     dev: false
@@ -14914,7 +14934,7 @@ packages:
       strip-ansi: 6.0.1
       tiny-invariant: 1.3.1
       typescript: 4.9.5
-      vite: 4.1.4_v57xivhexqggy552d4l7tn74xu
+      vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
       vscode-languageclient: 7.0.0
       vscode-languageserver: 7.0.0
       vscode-languageserver-textdocument: 1.0.7
