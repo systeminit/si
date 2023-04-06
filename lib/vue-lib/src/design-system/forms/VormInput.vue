@@ -490,18 +490,19 @@ function onChange(event: Event) {
   }
 }
 function onKeyboardEvent(event: KeyboardEvent) {
-  const keyCode = event.which;
+  const key = event.key;
+  if (key === "Enter") {
+    onBlur();
+  }
+
   if (NUMERIC_TYPES.includes(props.type)) {
     // prevent typing more than one "."
-    if (
-      keyCode === 190 &&
-      (props.modelValue as any)?.toString().includes(".")
-    ) {
+    if (key === "." && (props.modelValue as any)?.toString().includes(".")) {
       event.preventDefault();
     }
 
     // prevent typing e/E/+ since they can be valid numbers in default html tag
-    if ([69, 91, 187].includes(keyCode)) {
+    if (["e", "E", "+"].includes(key)) {
       event.preventDefault();
     }
   }
