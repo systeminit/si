@@ -267,6 +267,7 @@ export const useFixesStore = () => {
             },
             url: "/fix/run",
             onSuccess: (response) => {
+              this.runningFixBatch = response.id;
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },
@@ -289,54 +290,16 @@ export const useFixesStore = () => {
           {
             eventType: "FixReturn",
             callback: (update) => {
-              const batch = this.fixBatches.find(
-                (b) => b.id === update.batchId,
-              );
-              if (!batch) {
-                this.LOAD_CONFIRMATIONS();
-                this.LOAD_FIX_BATCHES();
-                return;
-              }
-              const fix = batch.fixes.find(
-                (f) =>
-                  f.attributeValueId === update.attributeValueId &&
-                  f.action === update.action,
-              );
-              if (!fix) {
-                this.LOAD_CONFIRMATIONS();
-                this.LOAD_FIX_BATCHES();
-                return;
-              }
-              this.confirmations = this.confirmations.map((c) => {
-                for (const recommendation of c.recommendations) {
-                  if (
-                    c.attributeValueId === fix.attributeValueId &&
-                    recommendation.recommendedAction === fix.action
-                  ) {
-                    recommendation.status = update.status;
-                  }
-                }
-                return c;
-              });
-              if (update.status !== fix.status) {
-                fix.status = update.status;
-                fix.action = update.action;
-              }
+              this.LOAD_CONFIRMATIONS();
+              this.LOAD_FIX_BATCHES();
             },
           },
           {
             eventType: "FixBatchReturn",
             callback: (update) => {
               this.runningFixBatch = undefined;
-              const batch = this.fixBatches.find((b) => b.id === update.id);
-              if (!batch) {
-                this.LOAD_CONFIRMATIONS();
-                this.LOAD_FIX_BATCHES();
-                return;
-              }
-              if (batch.status !== update.status) {
-                batch.status = update.status;
-              }
+              this.LOAD_CONFIRMATIONS();
+              this.LOAD_FIX_BATCHES();
             },
           },
         ]);
