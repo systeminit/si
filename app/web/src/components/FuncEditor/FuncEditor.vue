@@ -1,5 +1,7 @@
 <template>
-  <div>
+  <div
+    class="h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
+  >
     <div
       v-if="loadFuncDetailsReq.isPending && !editingFunc"
       class="w-full flex flex-col items-center gap-4 p-xl"
