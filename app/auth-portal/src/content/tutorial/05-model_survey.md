@@ -2,4 +2,4 @@
 title: "Survey: Modeling"
 ---
 
-survey about modeling
+Lorem ipsem survey money

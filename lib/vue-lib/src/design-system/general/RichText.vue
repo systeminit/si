@@ -11,6 +11,7 @@ import { useHead } from "@vueuse/head";
 
 import hljs from "highlight.js/lib/core";
 import hljsJsLang from "highlight.js/lib/languages/javascript";
+import hljsShellLang from "highlight.js/lib/languages/shell";
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore
@@ -21,6 +22,7 @@ import { useTheme } from "../utils/theme_tools";
 
 hljs.registerLanguage("javascript", hljsJsLang);
 hljs.registerAliases("js", { languageName: "javascript" });
+hljs.registerLanguage("shell", hljsShellLang);
 
 const hasCodeBlocks = ref(false);
 
@@ -38,6 +40,7 @@ function highlightCode() {
     codeEl.classList.forEach((c) => {
       if (c.startsWith("language-")) {
         language = c.replace("language-", "");
+        return;
       }
     });
     if (!language) {
