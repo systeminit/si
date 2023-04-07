@@ -146,7 +146,7 @@ $ make run//bin/veritech
 
 You will see output similar to the following:
 
-![Veritech Terminal](tutorial-img/image36.png)
+![Veritech Terminal](tutorial-img/02-dev_setup/veritech_terminal.png)
 
 When you do, open another terminal, change to the si directory, and run:
 
@@ -156,7 +156,7 @@ $ make run//bin/council
 
 You will see output similar to the following:
 
-![Council Terminal](tutorial-img/image85.png)
+![Council Terminal](tutorial-img/02-dev_setup/council_terminal.png)
 
 Then open another terminal, change to the si directory, and run:
 
@@ -166,7 +166,7 @@ $ make run//bin/pinga
 
 You will see output similar to the following:
 
-![Pinga Terminal](tutorial-img/image95.png)
+![Pinga Terminal](tutorial-img/02-dev_setup/pinga_terminal.png)
 
 Then open another terminal, change to the si directory, and run:
 
@@ -177,7 +177,7 @@ $ make run//bin/sdf
 This process will run database migrations and populate System Initiative with some default assets (we will talk about
 assets later in this tutorial!). You will see output similar to the following when it is ready:
 
-![SDF Terminal](tutorial-img/image84.png)
+![SDF Terminal](tutorial-img/02-dev_setup/sdf_terminal.png)
 
 You will see the terminal windows for `veritech`, `pinga`, and `council` logging output. Wait for these windows to stop
 logging: System Initiative processes the updates applied by `sdf` in the initialization process. Once they have stopped
@@ -191,7 +191,7 @@ $ make run//app/web
 
 When it finishes, you should see the following in the terminal:
 
-![Web Terminal](tutorial-img/image32.png)
+![Web Terminal](tutorial-img/02-dev_setup/web_terminal.png)
 
 You should now have 5 terminal windows open, running:
 

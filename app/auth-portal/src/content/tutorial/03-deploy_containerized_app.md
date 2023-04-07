@@ -12,7 +12,7 @@ necessary resources.
 At this point, you should have this tutorial open in one browser window and your System Initiative dev workspace open in
 another. Your System Initiative workspace will look like this:
 
-![Initial System Initiative Screen](tutorial-img/image81.png)
+![Initial System Initiative Screen](tutorial-img/03-deploy_containerized_app/initial_system_initiative_screen.png)
 
 All work in System Initiative takes place in a workspace - think of it like an 'instance' of System Initiative. In the
 future, you will be able to create workspaces that run locally, in a datacenter, in your cloud provider, or fully
@@ -39,7 +39,7 @@ that auto-rebases on main - where main is the version that you believe best refl
 
 If you've been following along, your System Initiative workspace is prompting you to create a new Change Set:
 
-![Create a Chagne Set](tutorial-img/image49.png)
+![Create a Chagne Set](tutorial-img/03-deploy_containerized_app/create_a_chagne_set.png)
 
 You are in development mode, so we automatically suggest a Change Set name for you. Click the '+ Create change set'
 button to create your new 'Demo 1' Change Set.
@@ -48,9 +48,9 @@ button to create your new 'Demo 1' Change Set.
 
 With your Change Set created, System Initiative should now look like this:
 
-![Empty System Initiative Workspace](tutorial-img/image33.png)
+![Empty System Initiative Workspace](tutorial-img/03-deploy_containerized_app/empty_system_initiative_workspace.png)
 
-The primary navigation bar at the top has the <img src="tutorial-img/image15.png" width=73 /> Model icon selected, indicating that you want to work on your
+The primary navigation bar at the top has the <img src="tutorial-img/03-deploy_containerized_app/model_icon.png" alt="model icon" width=73 /> Model icon selected, indicating that you want to work on your
 infrastructure model. The left side of the screen contains the Asset Palette - a collection of various Assets we can use
 to build our model. In the center of the screen is a canvas where you will design your model, with a progress bar on
 top. To the right is a details panel that will show you the selected asset's attributes, source code, and resources. At
@@ -64,12 +64,12 @@ asset in the Asset Palette (you may need to scroll down), then click again to pl
 You will see the progress bar update, indicating that System Initiative is updating the model of your infrastructure.
 When it finishes, click on the asset you placed on the canvas, and your workspace will look something like this:
 
-![Workspace with Docker Image](tutorial-img/image62.png)
+![Workspace with Docker Image](tutorial-img/03-deploy_containerized_app/workspace_with_docker_image.png)
 
 Let's take a minute to orient you to all the information we're showing you. The first thing to look at is the Docker
 Image asset on the canvas:
 
-![Docker image component](tutorial-img/image61.png)
+![Docker image component](tutorial-img/03-deploy_containerized_app/docker_image_component.png)
 
 The asset has an icon indicating its family (in this case, the docker logo). Then a randomly generated name: in our
 case, si-6865. Below that is the 'type' of this asset - a Docker Image. To the right is the green 'plus' icon - this is
@@ -82,18 +82,18 @@ for use'). They are like built-in, real-time tests for your model. Every time we
 will recheck all the qualifications for that asset. The red X means your Docker Image is not qualified. To find out why,
 use the Qualifications tab on the status bar:
 
-![Qualifications tab on the status bar](tutorial-img/image59.png)
+![Qualifications tab on the status bar](tutorial-img/03-deploy_containerized_app/qualifications_tab_on_the_status_bar.png)
 
 Click the Qualifications tab to expand the status bar:
 
-![Qualifications expanded](tutorial-img/image28.png)
+![Qualifications expanded](tutorial-img/03-deploy_containerized_app/qualifications_expanded.png)
 
 You can see that your Docker Image is not qualified because your registry has no docker image named 'si-6865'. To fix
 it, we need to configure the attributes of our Docker Image to point at a valid docker image.
 
 To do that, we will use the details panel on the right side of the screen. Yours should look something like this:
 
-<img src="tutorial-img/image19.png" width="508"  alt="Docker image details panel" />
+<img src="tutorial-img/03-deploy_containerized_app/docker_image_details_panel.png" width="508"  alt="Docker image details panel" />
 
 The attributes tab shows the currently selected asset at the top and its current state within the Change Set (in our
 case, added). Below that is a short history of the last change made to this asset. Beneath that are tabs you can toggle
@@ -109,7 +109,7 @@ data you enter into the attributes panel. You'll see the progress bar update, an
 icon will turn green, both on the canvas and in the qualifications status bar. Once everything is green, collapse the
 status bar by clicking the down arrow on the right-hand side of the bar.
 
-![Whiskers docker image workspace](tutorial-img/image69.png)
+![Whiskers docker image workspace](tutorial-img/03-deploy_containerized_app/whiskers_docker_image_workspace.png)
 
 Notice that, in addition to setting the `si/name` attribute, this also sets `domain/image` to the same value. In System
 Initiative, assets can infer configuration - either from their attributes or from relationships they have with other
@@ -118,17 +118,17 @@ assets. It's a powerful way to easily generate a correct configuration.
 Our Docker Image exposes a web server running on port 80. Let's add that to our Docker Image's attributes now. Click on
 the `+ Add to array` button in the `domain/ExposedPorts[0]` attribute:
 
-<img src="tutorial-img/image92.png" alt="Add to array" width="507" />
+<img src="tutorial-img/03-deploy_containerized_app/add_to_array.png" alt="Add to array" width="507" />
 
 The progress bar will update, and you will see a new entry for the ExposedPort:
 
-<img src="tutorial-img/image60.png" alt="Added ExposedPort" width="490" />
+<img src="tutorial-img/03-deploy_containerized_app/added_exposedport.png" alt="Added ExposedPort" width="490" />
 
 Put the value `80/tcp` in this field, and hit the `enter` key to save. The `80/tcp` syntax comes directly from Docker
 itself - like the image name, System Initiative maps the upstream behavior 1:1 - this allows you to easily transfer your
 existing knowledge about a given technology into System Initiative. Your attributes panel should now look like this:
 
-![Whiskers docker attribute panel](tutorial-img/image55.png)
+![Whiskers docker attribute panel](tutorial-img/03-deploy_containerized_app/whiskers_docker_attribute_panel.png)
 
 We want you to deploy your Docker Image on a [Fedora CoreOS](https://getfedora.org/en/coreos) system, in part because it
 has an excellent method for generating configuration for cloud instances
@@ -141,14 +141,14 @@ Notice that your new Butane asset has a socket on the left side - this is an `In
 Then connect the `Container Image` output socket of our Docker Image to the matching `Container Image` input socket on
 your new Butane asset by clicking on the output socket and dragging the line to the input socket.
 
-![Connected sockets](tutorial-img/image25.png)
+![Connected sockets](tutorial-img/03-deploy_containerized_app/connected_sockets.png)
 
 When the progress bar has finished, click the Butane asset to load its details. You can see at a glance that it is
 already qualified (the circular green checkmark), indicating that System Initiative believes this is a valid
 configuration. Scroll down to the `domain/systemd/units/[0](unit)` attribute (you might need to expand the size of the
 text area to read it well). It should look something like this:
 
-![Butane details](tutorial-img/image87.png)
+![Butane details](tutorial-img/03-deploy_containerized_app/butane_details.png)
 
 System Initiative used the relationship between the Docker Image and the Butane instance to automatically infer that you
 wanted to create a [systemd unit file](https://www.freedesktop.org/software/systemd/man/systemd.unit.html), and wrote it
@@ -158,13 +158,13 @@ Butane processes its configuration into a json format known as [Ignition]( https
 System Initiative automatically generates the Ignition data for you based on the provided Butane configuration. Select
 the `Code` tab in the details panel to see it.
 
-![Code View](tutorial-img/image14.png)
+![Code View](tutorial-img/03-deploy_containerized_app/code_view.png)
 
 It's time to start modeling the deployment of our CoreOS instance to AWS. First, you'll need to pick a Region for our
 deployment. Select the `AWS Region` asset from the Asset Palette, and drop it on the canvas to the right of our Butane
 configuration.
 
-![Workspace with region](tutorial-img/image29.png)
+![Workspace with region](tutorial-img/03-deploy_containerized_app/workspace_with_region.png)
 
 Notice that this asset looks different from the previous two! They were `components`, while AWS Region is a `frame`.
 Frames are a way to organize components on the diagram while configuring their contents, or aggregate components of the
@@ -177,19 +177,19 @@ Region, click the Attributes tab on the details panel, and then set the `domain/
 the progress bar finishes, you will see that our qualification for this region turns from a red X to a green check -
 you're good to go. System Initiative has also helpfully inferred the `si/name` of the Region for you!
 
-![Set the region](tutorial-img/image17.png)
+![Set the region](tutorial-img/03-deploy_containerized_app/set_the_region.png)
 
 The application runs on an EC2 Instance, so let's start there. Select the `AWS EC2 Instance` asset from the Asset
 Palette, and click inside the Region on the canvas. You can then drag the EC2 Instance into the upper right corner of
 the Region frame by clicking and dragging on it. You can see that the Region input socket on the EC2 Instance is already
 filled - from the Region frame itself. Things should look like this:
 
-![Ec2 Instance in Region Frame](tutorial-img/image91.png)
+![Ec2 Instance in Region Frame](tutorial-img/03-deploy_containerized_app/ec2_instance_in_region_frame.png)
 
 Let's work backward, connecting all the things our EC2 Instance needs in order to function. Your Butane configuration
 has a matching `User Data` output socket to your new EC2 Instance's `User Data` input socket. Let's connect them now:
 
-![Connected Inside a Region](tutorial-img/image56.png)
+![Connected Inside a Region](tutorial-img/03-deploy_containerized_app/connected_inside_a_region.png)
 
 With the EC2 Instance selected, you can check that the user data has been populated by looking at the `domain/UserData`
 field in the attributes panel or the generated JSON code in the Code panel.
@@ -206,7 +206,7 @@ Notice that the Ingress component takes an input socket named `Exposed Ports` - 
 an output socket with that name. Connect the Docker Image to the Ingress rule as well! Then select the Ingress rule, and
 switch to the Code view in the details panel.
 
-![Connect a Security Group and Ingress Rule](tutorial-img/image6.png)
+![Connect a Security Group and Ingress Rule](tutorial-img/03-deploy_containerized_app/connect_a_security_group_and_ingress_rule.png)
 
 Check out how System Initiative has written the `IpPermissions` automatically. You now have a single configuration
 attribute, the ExposedPorts of our Docker Image, automatically configuring the Operating System, EC2 User Data, and our
@@ -220,7 +220,7 @@ panel, and change ExposedPort back to 80/tcp.
 Your Ingress rule has a Warning on its configuration. Open the Qualification panel in the status bar, select the Ingress
 rule on the canvas, and you can see why:
 
-![Warning on Ingress](tutorial-img/image80.png)
+![Warning on Ingress](tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
 
 The configuration for this Ingress rule isn't technically valid (yet!) - for it to work, you need to set the Security
 Group ID. You don't have one of those yet because everything done on the model screen happens in a Change Set and
@@ -233,17 +233,17 @@ output socket on the AMI to the EC2 Instances Image ID input socket. Then, with 
 tab in the details panel and populate `domain/ImageId`
 with `ami-0ed17ac79c5602c98` ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).
 
-![AMI joins the party](tutorial-img/image48.png)
+![AMI joins the party](tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
 
 There is one more open input socket, the Key Name. AWS EC2 uses SSH Key Pairs to authenticate to the instances you boot.
 Add a Key Pair asset to your region, and connect it to your EC2 Instance.
 
-![Key Pair joins the party](tutorial-img/image44.png)
+![Key Pair joins the party](tutorial-img/03-deploy_containerized_app/key_pair_joins_the_party.png)
 
 You are down to a single qualification error on your model. Select the EC2 Instance, and you can see that the issue is
 that we have not yet configured the `/domain/InstanceType` attribute.
 
-![Needs an Instance Type](tutorial-img/image98.png)
+![Needs an Instance Type](tutorial-img/03-deploy_containerized_app/needs_an_instance_type.png)
 
 Go to the `domain/ImageId` attribute in the details panel, and set it to `t3.micro`. You should see the 'All Fields Are
 Valid' qualification turn green and the remaining warnings are related to the Key Pair and Security Group not existing
@@ -258,10 +258,10 @@ expected warnings). Let's ship it.
 To make this model the current model you want to see in the world, click the `Merge` button in the upper-left corner,
 right above the Asset Palette.
 
-![Merge button](tutorial-img/image58.png)
+![Merge button](tutorial-img/03-deploy_containerized_app/merge_button.png)
 
 You will see a screen wipe, followed by a fun celebratory confetti cannon, and then you will redirect to the `Apply`
-<img src="tutorial-img/image5.png" width=75 alt="Apply Icon"/> interface.
+<img src="tutorial-img/03-deploy_containerized_app/apply_icon.png" width=75 alt="Apply Icon"/> interface.
 
 ### Creating your resources in AWS
 
@@ -269,7 +269,7 @@ The apply screen is where we take your current model and compare it to the confi
 progress bar starts updating, and the assets on the diagram will have a spinner that indicates System Initiative is
 evaluating them against AWS. When the progress bar and spinners are complete, the screen will look like this:
 
-![Apply Screen](tutorial-img/image51.png)
+![Apply Screen](tutorial-img/03-deploy_containerized_app/apply_screen.png)
 
 You might notice that the interface has changed. The left panel is now showing you a list of recommended actions to take
 to keep your model in sync with AWS. The center canvas is essentially the same but now shows a 'frozen' version of your
@@ -280,19 +280,19 @@ Confirmations.
 Looking at the diagram, some of our assets now have an extra warning icon to the right of the qualification status -
 this shows their Confirmation status.
 
-![Ec2 Apply Closeup](tutorial-img/image18.png)
+![Ec2 Apply Closeup](tutorial-img/03-deploy_containerized_app/ec2_apply_closeup.png)
 
 A Confirmation is a check that takes the model you have configured and compares it to what is known about the resources
 you have. Unlike a Qualification, Confirmations also can recommend **actions** for you to take in order to bring reality
 in line with your model. If you select your EC2 Instance on the Canvas, and open the Confirmations panel in the status
 bar, you will see two confirmations:
 
-![Confirmations Status](tutorial-img/image41.png)
+![Confirmations Status](tutorial-img/03-deploy_containerized_app/confirmations_status.png)
 
 The failing confirmation is checking to see if the EC2 Instance exists - and since it does not, it recommends the
 'Create EC2 Instance' action. You can see that in the Recommendations section in the left panel:
 
-![Recommendations close up](tutorial-img/image90.png)
+![Recommendations close up](tutorial-img/03-deploy_containerized_app/recommendations_close_up.png)
 
 Each of the four AWS assets you used do not exist, and will therefore have a similar recommended action - to create
 them. To do that, click the box next to 'Select All', and hit the 'Apply' button.
@@ -300,7 +300,7 @@ them. To do that, click the box next to 'Select All', and hit the 'Apply' button
 The progress bar will update with the list of applying actions, and the recommendations will flow from the
 recommendations list to the 'Apply History' panel on the right.
 
-![Applied fixes to workspace](tutorial-img/image86.png)
+![Applied fixes to workspace](tutorial-img/03-deploy_containerized_app/applied_fixes_to_workspace.png)
 
 You can see that all the recommended fixes succeeded and that they were applied by you. The confirmations that were red
 have now turned green - your model now matches the resources we expected in AWS. Go ahead and close that sub-panel now
@@ -309,7 +309,7 @@ by clicking on the down arrow on the bar.
 You can inspect the data about your created resources by clicking on the chevrons in the Apply History. For example,
 look at the resource properties that were received as a result of creating your new EC2 Instance:
 
-![Inspect Pending EC2 Instance in fix output](tutorial-img/image1.png)
+![Inspect Pending EC2 Instance in fix output](tutorial-img/03-deploy_containerized_app/inspect_pending_ec2_instance_in_fix_output.png)
 
 Of particular interest is the fact that your EC2 Instance has a 'State' of 'pending' - that means that it hasn't yet
 finished being created in AWS. In order to see if you successfully started your application, you will need to `Refresh`
@@ -318,10 +318,10 @@ the resources data to get the Public IP Address.
 ### Checking out our new website
 
 System Initiative keeps track of both the theoretical model you want to see and your real-world resources. When you want
-to explore how things are right now, you do that from the Analyze page. Click the Eyeball <img src="tutorial-img/image3.png" width="60" alt="Eyeball" /> in the top navigation to move
+to explore how things are right now, you do that from the Analyze page. Click the Eyeball <img src="tutorial-img/03-deploy_containerized_app/eyeball.png" width="60" alt="Eyeball" /> in the top navigation to move
 from the Apply screen to the Analyze screen.
 
-![Analyze screen workspace view](tutorial-img/image24.png)
+![Analyze screen workspace view](tutorial-img/03-deploy_containerized_app/analyze_screen_workspace_view.png)
 
 On the left, you have the `Diagram Outline` view, which has a list of all the assets in your workspace, and a recap of
 their current status. The center is now a read-only view of the canvas. The right hand panel is a read-only version of
@@ -331,21 +331,21 @@ screen.
 To check and see if cat lovers can adopt some cats, you'll need the public IP address of your EC2 Instance. Select your
 EC2 Instance from the Diagram Outline on the left, and you should see the following:
 
-![Analyze screen Ec2 Instance Selected](tutorial-img/image2.png)
+![Analyze screen Ec2 Instance Selected](tutorial-img/03-deploy_containerized_app/analyze_screen_ec2_instance_selected.png)
 
-Click the Refresh <img src="tutorial-img/image45.png" width="124" alt="refresh button" /> button in the details panel. You will see it spin and the resource information below update. Depending on how
+Click the Refresh <img src="tutorial-img/03-deploy_containerized_app/refresh_button.png" width="124" alt="refresh button" /> button in the details panel. You will see it spin and the resource information below update. Depending on how
 long AWS takes to provision your EC2 Instance, you may need to hit this button multiple times. Eventually, you will see
 the State switch to running:
 
-![Running state on Ec2 Instance](tutorial-img/image16.png)
+![Running state on Ec2 Instance](tutorial-img/03-deploy_containerized_app/running_state_on_ec2_instance.png)
 
 Once this has happened, you can find the `PublicIpAddress` in the JSON output:
 
-![Finding the public IP Address](tutorial-img/image37.png)
+![Finding the public IP Address](tutorial-img/03-deploy_containerized_app/finding_the_public_ip_address.png)
 
 Open a new tab in your web browser, and navigate to it over http (no SSL for these kitties!). You should see the new
 website for Whiskers R We!
 
-![Whiskers R We](tutorial-img/image7.png)
+![Whiskers R We](tutorial-img/03-deploy_containerized_app/whiskers_r_we.png)
 
 Congratulations! Cat's everywhere thank you.
