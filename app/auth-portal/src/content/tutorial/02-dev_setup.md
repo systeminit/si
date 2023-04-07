@@ -30,13 +30,13 @@ personal machine, this will likely be the case already.
 The [System Initiative software is hosted on GitHub](https://github.com/systeminit/si). Open a terminal window, decide
 what directory you want to put the source code in, and check the source code out with:
 
-```
+```shell
 $ git clone https://github.com/systeminit/si.git
 ```
 
 Once git has finished checking out your code, the rest of these steps take place within the directory you just checked out.
 
-```
+```shell
 $ cd si
 ```
 
@@ -60,19 +60,19 @@ with `softwareupdate --install-rosetta`).
 First, you must ensure you have the `rust` and `node` toolchains installed and available in your `PATH`. We recommend
 you install rust via [rustup](https://rustup.rs/):
 
-```
+```shell
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 For Node, we recommend managing your toolchain with [volta](https://volta.sh/):
 
-```
+```shell
 curl https://get.volta.sh | bash
 ```
 
 You can now install all the necessary software from within the si directory with:
 
-```
+```shell
 $ ./scripts/bootstrap.sh
 ```
 
@@ -100,14 +100,14 @@ Along with any necessary compiler and development toolchains.
 System Initiative will interact with AWS through the AWS CLI and inspect containers via Docker Hub. To configure your
 AWS credentials:
 
-```
+```shell
 $ aws configure
 ```
 
 Docker Hub authentication is not strictly needed, as we will only be pulling public docker images - but to avoid being
 rate limited, you should authenticate:
 
-```
+```shell
 $ docker login
 ```
 
@@ -125,13 +125,13 @@ services you may have_.
 
 To start these containers (and delete any data you have in your database as well), please run:
 
-```
+```shell
 $ make prepare
 ```
 
 When the command finishes, you should see:
 
-```
+```shell
 Trying PG...ready
 ```
 
@@ -140,7 +140,7 @@ each in a new terminal window.
 
 Start a new terminal, change to the si directory, and run:
 
-```
+```shell
 $ make run//bin/veritech
 ```
 
@@ -150,7 +150,7 @@ You will see output similar to the following:
 
 When you do, open another terminal, change to the si directory, and run:
 
-```
+```shell
 $ make run//bin/council
 ```
 
@@ -160,7 +160,7 @@ You will see output similar to the following:
 
 Then open another terminal, change to the si directory, and run:
 
-```
+```shell
 $ make run//bin/pinga
 ```
 
@@ -170,7 +170,7 @@ You will see output similar to the following:
 
 Then open another terminal, change to the si directory, and run:
 
-```
+```shell
 $ make run//bin/sdf
 ```
 
@@ -185,7 +185,7 @@ logging output, you can start our final service - the web interface.
 
 Open another terminal, change to the si directory, and run:
 
-```
+```shell
 $ make run//app/web
 ```
 
