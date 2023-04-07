@@ -48,7 +48,7 @@ Customer acknowledges and agrees that the Software is intended for use in a busi
 
 **2.5. Third Party Open Source Software.**  Notwithstanding anything to the contrary set forth herein, the Software may include third party open source software.  To the extent required by the applicable third party open source licensor, such third party open source will be governed by the applicable open source licenses and terms as linked to or provided [here]. 
 
-<spn class="text-destructive-500">TODO ^ fix link</span>
+<span class="text-destructive-500">TODO ^ fix link</span>
 
 
 **2.6. Support and Maintenance.**  Each Order will identify if it includes Support and Maintenance, and if so, which Support and Maintenance Policy is applicable to the Order (“**Support Policy**”).  During the License Term for each Order that includes Support and Maintenance, System Initiative will use commercially reasonable efforts to provide Support and Maintenance for the Software in accordance with the applicable Support Policy.  As used herein, “**Support and Maintenance**” means System Initiative’s support and maintenance services for the Software, as further described in the applicable Support Policy.  Support and Maintenance for Software includes access to New Releases, if and when made generally commercially available to System Initiative’s other users of the Software that have purchased the same Support and Maintenance package.

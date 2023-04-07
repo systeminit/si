@@ -32,10 +32,27 @@ hate about the product
 ![Image 1](/tutorial-img/img1.png)
 
 
-
-
-
 I'm baby williamsburg tote bag fingerstache jianbing art party coloring book, yuccie hoodie artisan organic shoreditch air plant gluten-free iceland plaid. Glossier meditation woke disrupt, cupping forage blue bottle viral distillery. Occupy woke aesthetic, hell of roof party gastropub knausgaard banjo affogato church-key street art skateboard. Semiotics live-edge pitchfork vibecession man bun, chillwave gentrify blackbird spyplane farm-to-table hell of marfa.
+
+```js
+async function qualificationDockerImageExists(component) {
+  if (!component.domain?.image || component.domain?.image.startsWith("si-")) {
+    return {
+      result: "failure",
+      message: "no image available - set the domain/image attribute to something not auto-generated."
+    }
+  }
+  const child = await siExec.waitUntilEnd("skopeo", ["inspect", "--override-os", "linux", "--override-arch", "amd64", `docker://${component.domain.image}`]);
+  return {
+    result: child.exitCode === 0 ? "success" : "failure",
+    message: child.exitCode === 0 ? child.stdout : child.stderr,
+  };
+}
+```
+
+
+and some `executeFn(foo, bar, "asdf", 1)` here too for fun.
+
 
 Kombucha jawn shoreditch listicle wayfarers hell of vaporware, godard meh sriracha jianbing cred williamsburg. Aesthetic iPhone hammock, mukbang venmo neutra praxis +1 90's occupy pop-up fam raclette deep v. Seitan tilde PBR&B, hammock DIY art party vibecession adaptogen authentic pork belly vegan freegan polaroid offal. Succulents vinyl unicorn fit readymade bitters marfa vice salvia. Whatever paleo marxism shabby chic food truck pug, viral taiyaki.
 

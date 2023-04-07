@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 /* eslint-disable */
-import { pullAt } from "lodash-es";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const canvasRef = ref<HTMLCanvasElement>();

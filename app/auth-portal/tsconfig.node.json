@@ -2,6 +2,7 @@
   "extends": "@si/tsconfig/tsconfig.node.json",
   "include": [
     "vite.config.ts",
+    "postcss.config.js",
     ".eslintrc.cjs",
     "**/*.cjs"
   ]
