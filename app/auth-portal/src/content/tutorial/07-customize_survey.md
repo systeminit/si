@@ -2,4 +2,4 @@
 title: "Survey: Customization"
 ---
 
-take a survey about customizing
+Now take a survey about customization

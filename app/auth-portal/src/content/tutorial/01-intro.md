@@ -5,59 +5,62 @@ hideWorkspaceLink: true
 
 ## Welcome to System Initiative!
 
-We're so excited to have you as part of this invite-only preview of what we've been up to for the last while. The whole thing will be open sourced and we'll have a wider public release soon, but blah blah blah...
+We’re so excited to share what we’ve been building with you and for you to help us shape
+the second wave of DevOps.
+
+This invite-only preview release allows you to experience System Initiative and for us to shake out any issues you might
+encounter. It’s intended for you **as a developer** and **expert** in our space - it’s ready to play with and hack
+around on but not yet ready for serious production use.
+
+We ask that you:
+
+1. Run through this tutorial to the end
+2. Fill out a couple of surveys as you go
+3. Talk about your experience or get help in the private Team 1 discord channels
+4. Explore the source code, and contribute if you’re so moved
+5. Participate in a short interview about your experience
+
+In return, you will receive:
+
+1. Our everlasting gratitude
+2. The ability to directly influence our direction and the product
+3. A sense of personal accomplishment
+4. A particularly sweet bundle of amazing swag
+
+A few things to get out of the way, then we’ll get on with the show.
 
 ### FrieNDA
-This is an invite-only preview release,
-intended to let you experience System Initiative and for us to shake out
-the (probably many) issues you might have. We ask that you not speak
-publicly about your use (positively or negatively), share screenshots,
-etc. There are private channels we will invite you to in Discord where you
-will be able to discuss System Initiative with us, and with other
-participants in the preview. We're not asking you to sign an NDA - but we
-are relying on your good-will and judgement as a friend of System Initiative, Inc.
+
+We ask that you not speak publicly about your experience (positively or negatively). You will have access to private
+channels on the System Initiative Discord, where you can discuss anything you like with us (and the other participants
+in the preview). We’re not asking you to sign an NDA - but we trust your good-will and sound judgment as a friend of
+System Initiative, Inc.
+
+If you must talk to someone about your experience - we understand. Please do it privately, and make sure they understand
+it’s a secret.
 
 **Things you should do:**
-- <Icon name="check-circle"></Icon>Talk with us privately on discord
-- <Icon name="check-circle"></Icon>Tell us what you love and 
-hate about the product
-- <Icon name="check-circle"></Icon>Send a pull-request to change something
 
-**Things you should NOT do:**
-- <Icon name="x-circle"></Icon>Post screenshots of the product on twitter
-- <Icon name="x-circle"></Icon>Tell folks in public places what you love / hate
+* Talk with folks on the private Team 1 Discord channels
+* Tell us what you love about the product
+* Tell us your thoughts on how we could improve
+* If you speak privately about your experience outside our Discord, make sure you tell folks that it’s a secret
 
+**Things you should not do:**
 
+* Talk with folks on the non-Team 1 Discord channels
+* Post screenshots on social media or anywhere else
+* Talk to the media
+* Talk publicly about your experience with System Initiative, positively or negatively. Feel free to say, "I just experienced something super cool, can’t wait to talk about it" - but don’t say what_ you experienced. ;)
 
-![Image 1](/tutorial-img/img1.png)
+### What you’re going to do
 
+You’re going to:
 
-I'm baby williamsburg tote bag fingerstache jianbing art party coloring book, yuccie hoodie artisan organic shoreditch air plant gluten-free iceland plaid. Glossier meditation woke disrupt, cupping forage blue bottle viral distillery. Occupy woke aesthetic, hell of roof party gastropub knausgaard banjo affogato church-key street art skateboard. Semiotics live-edge pitchfork vibecession man bun, chillwave gentrify blackbird spyplane farm-to-table hell of marfa.
+1. Run a development instance of System Initiative
+2. Deploy a containerized web application to an AWS EC2 instance
+3. Clean up the resources you created in AWS
+4. Customize System Initiative by writing JavaScript code
 
-```js
-async function qualificationDockerImageExists(component) {
-  if (!component.domain?.image || component.domain?.image.startsWith("si-")) {
-    return {
-      result: "failure",
-      message: "no image available - set the domain/image attribute to something not auto-generated."
-    }
-  }
-  const child = await siExec.waitUntilEnd("skopeo", ["inspect", "--override-os", "linux", "--override-arch", "amd64", `docker://${component.domain.image}`]);
-  return {
-    result: child.exitCode === 0 ? "success" : "failure",
-    message: child.exitCode === 0 ? child.stdout : child.stderr,
-  };
-}
-```
-
-
-and some `executeFn(foo, bar, "asdf", 1)` here too for fun.
-
-
-Kombucha jawn shoreditch listicle wayfarers hell of vaporware, godard meh sriracha jianbing cred williamsburg. Aesthetic iPhone hammock, mukbang venmo neutra praxis +1 90's occupy pop-up fam raclette deep v. Seitan tilde PBR&B, hammock DIY art party vibecession adaptogen authentic pork belly vegan freegan polaroid offal. Succulents vinyl unicorn fit readymade bitters marfa vice salvia. Whatever paleo marxism shabby chic food truck pug, viral taiyaki.
-
-Paleo blog pitchfork grailed, lo-fi fam irony mixtape 90's cold-pressed polaroid. Gastropub raclette chillwave celiac, hexagon migas everyday carry live-edge pickled hammock. Jean shorts green juice yes plz, semiotics irony franzen taiyaki. Sartorial flannel cardigan, 90's cliche locavore squid vaporware schlitz deep v vexillologist paleo hoodie. Live-edge salvia portland ugh, activated charcoal mlkshk food truck poutine.
-
-Offal trust fund gluten-free DSA, kitsch beard four loko typewriter. Seitan messenger bag hella, mukbang cupping yuccie retro. Scenester occupy poutine, food truck irony 3 wolf moon jianbing. Tonx wolf leggings roof party selvage. Hoodie banjo glossier, pabst swag JOMO bicycle rights sartorial tumeric leggings bushwick cardigan readymade. Keytar williamsburg coloring book, YOLO woke cold-pressed succulents leggings skateboard etsy. Fanny pack letterpress hella live-edge, enamel pin same banh mi gentrify +1 retro shaman pickled ramps.
-
-Mukbang hammock thundercats selfies succulents. Synth pop-up twee aesthetic gluten-free. Art party ugh butcher intelligentsia dreamcatcher. Praxis ennui cloud bread vape forage offal, austin shoreditch retro swag mlkshk flexitarian echo park skateboard.
+As you progress through the tutorial, we will automatically update the index on the left to let you know you’re ready to
+move on to the next step. Let’s go!
