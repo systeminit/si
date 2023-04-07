@@ -74,7 +74,7 @@ Customer acknowledges and agrees that the Software is intended for use in a busi
 **3.6. Overdue Amounts.**  System Initiative may charge Customer interest on overdue fees at the rate of 1.5% per month (or the highest rate permitted by applicable law, if less) on the amount overdue. 
 
 
-## 4. TERM AND TERMINATION**
+## 4. TERM AND TERMINATION
 
 
 
