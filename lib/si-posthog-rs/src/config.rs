@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{from_config, PosthogClient, PosthogError, PosthogResult, PosthogSender};
 
 const DEFAULT_API_ENDPOINT: &str = "https://e.systeminit.com";
-const DEFAULT_API_KEY: &str = "phc_SoQak5PP054RdTumd69bOz7JhM0ekkxxTXEQsbn3Zg9";
+const DEFAULT_API_KEY: &str = "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK";
 const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 800;
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
