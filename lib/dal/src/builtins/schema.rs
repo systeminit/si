@@ -78,118 +78,103 @@ pub async fn migrate(
         }
     };
 
-    let ctx_driver = ctx.clone_with_new_transactions().await?;
     // Once we know what to migrate, create the driver.
-    let driver = MigrationDriver::new(&ctx_driver).await?;
-    ctx_driver.commit().await?;
+    let driver = MigrationDriver::new(ctx).await?;
+    ctx.blocking_commit().await?;
 
     // Perform migrations.
     if migrate_all || specific_builtin_schemas.contains("docker image") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_docker_image(&ctx, "Docker", NODE_COLOR_DOCKER)
+            .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_docker_hub_credential(&ctx, "Docker", NODE_COLOR_DOCKER)
+            .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_kubernetes_deployment(&ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_kubernetes_namespace(&ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("coreos butane") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_coreos_butane(&ctx, "CoreOS", NODE_COLOR_COREOS)
+            .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("aws ami") {
-        let ctx = ctx.clone_with_new_transactions().await?;
-        driver.migrate_aws_ami(&ctx, "AWS", NODE_COLOR_AWS).await?;
-        ctx.commit().await?;
+        driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all
         || specific_builtin_schemas.contains("aws ec2")
         || specific_builtin_schemas.contains("aws ec2 instance")
     {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_ec2_instance(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("aws region") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_region(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("aws eip") {
-        let ctx = ctx.clone_with_new_transactions().await?;
-        driver.migrate_aws_eip(&ctx, "AWS", NODE_COLOR_AWS).await?;
-        ctx.commit().await?;
+        driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all
         || specific_builtin_schemas.contains("aws key pair")
         || specific_builtin_schemas.contains("aws keypair")
     {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_keypair(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("aws ingress") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_ingress(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all || specific_builtin_schemas.contains("aws egress") {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_egress(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all
         || specific_builtin_schemas.contains("aws security group")
         || specific_builtin_schemas.contains("aws securitygroup")
     {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_aws_security_group(&ctx, "AWS", NODE_COLOR_AWS)
+            .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     if migrate_all
         || specific_builtin_schemas.contains("systeminit generic frame")
         || specific_builtin_schemas.contains("si generic frame")
         || specific_builtin_schemas.contains("generic frame")
     {
-        let ctx = ctx.clone_with_new_transactions().await?;
         driver
-            .migrate_systeminit_generic_frame(&ctx, "Frames", NODE_COLOR_FRAMES)
+            .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
             .await?;
-        ctx.commit().await?;
+        ctx.blocking_commit().await?;
     }
     Ok(())
 }

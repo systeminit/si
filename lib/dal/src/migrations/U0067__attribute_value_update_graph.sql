@@ -120,9 +120,11 @@ BEGIN
                     WHERE exact_attribute_context_v1(tmp_attribute_context, av)
                       AND attribute_context_internal_provider_id = internal_provider_id;
                     IF NOT FOUND THEN
-                        RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
+                        RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%), Tenancy(%), Visibility(%)',
                             internal_provider_id,
-                            tmp_attribute_context;
+                            tmp_attribute_context,
+                            this_tenancy,
+                            this_visibility;
                         CONTINUE;
                     END IF;
 

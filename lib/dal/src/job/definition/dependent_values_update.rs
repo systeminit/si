@@ -1,9 +1,9 @@
-use std::{collections::HashMap, collections::HashSet, convert::TryFrom, sync::Arc};
+use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use tokio::{sync::Mutex, task::JoinSet};
+use tokio::task::JoinSet;
 
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
@@ -13,7 +13,7 @@ use crate::{
     },
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, DalContextBuilder, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,58 +35,23 @@ pub struct DependentValuesUpdate {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
-    single_transaction: bool,
-    /// Only touched during tests
-    #[serde(skip_serializing)]
-    #[serde(default)]
-    sync_ctx: Arc<Mutex<Option<DalContext>>>,
 }
 
 impl DependentValuesUpdate {
-    pub fn new(ctx: &DalContext, attribute_values: Vec<AttributeValueId>) -> Box<Self> {
-        let access_builder = AccessBuilder::from(ctx.clone());
+    pub fn new(
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        attribute_values: Vec<AttributeValueId>,
+    ) -> Box<Self> {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to force non deleted visibility in the future.
-        let visibility = ctx.visibility().to_non_deleted();
+        let visibility = visibility.to_non_deleted();
 
         Box::new(Self {
             attribute_values,
             access_builder,
             visibility,
             job: None,
-            single_transaction: false,
-            sync_ctx: Default::default(),
         })
-    }
-
-    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
-        if self.single_transaction {
-            Ok(ctx)
-        } else {
-            Ok(ctx.commit_and_continue().await?)
-        }
-    }
-
-    async fn commit(&self, ctx: DalContext) -> JobConsumerResult<()> {
-        if !self.single_transaction {
-            ctx.commit().await?;
-        }
-        Ok(())
-    }
-
-    async fn create_ctx(&self, ctx_builder: &DalContextBuilder) -> JobConsumerResult<DalContext> {
-        let ctx = if self.single_transaction {
-            self.sync_ctx
-                .lock()
-                .await
-                .clone()
-                .expect("Must store the ctx in the job before creating a new context in single transaction mode")
-        } else {
-            ctx_builder
-                .clone()
-                .build(self.access_builder().build(self.visibility()))
-                .await?
-        };
-        Ok(ctx)
     }
 
     fn job_id(&self) -> Option<String> {
@@ -105,7 +70,7 @@ impl JobProducer for DependentValuesUpdate {
         let mut custom = HashMap::new();
         custom.insert(
             "access_builder".to_string(),
-            serde_json::to_value(self.access_builder.clone())?,
+            serde_json::to_value(self.access_builder)?,
         );
         custom.insert(
             "visibility".to_string(),
@@ -130,7 +95,7 @@ impl JobConsumerMetadata for DependentValuesUpdate {
     }
 
     fn access_builder(&self) -> AccessBuilder {
-        self.access_builder.clone()
+        self.access_builder
     }
 
     fn visibility(&self) -> Visibility {
@@ -140,70 +105,78 @@ impl JobConsumerMetadata for DependentValuesUpdate {
 
 #[async_trait]
 impl JobConsumer for DependentValuesUpdate {
-    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
-    /// The sync processor needs everything to run within a single transaction, so we check for it
-    fn set_sync(&mut self) {
-        self.single_transaction = true;
-        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
-        self.job = Some(boxed.try_into().unwrap());
-    }
-
-    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        assert!(self.single_transaction);
-        *self.sync_ctx.lock().await = Some(ctx.clone());
-        self.run_owned(ctx.clone()).await?;
-        *self.sync_ctx.lock().await = None;
-        Ok(())
-    }
-
-    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
-        assert!(!self.single_transaction);
-        let ctx = self.create_ctx(&ctx_builder).await?;
-        self.run_owned(ctx).await
-    }
-}
-
-impl DependentValuesUpdate {
     #[instrument(
-        name = "dependent_values_update.run_owned",
+        name = "dependent_values_update.run",
         skip_all,
         level = "info",
         fields(
             attribute_values = ?self.attribute_values,
-            single_transaction = ?self.single_transaction,
         )
     )]
-    async fn run_owned(&self, mut ctx: DalContext) -> JobConsumerResult<()> {
-        let ctx_builder = ctx.services_context().into_builder();
-        let mut status_updater = StatusUpdater::initialize(&ctx).await;
-
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+        let council_subject =
+            if let Some(subject_prefix) = ctx.nats_conn().metadata().subject_prefix() {
+                format!("{subject_prefix}.council")
+            } else {
+                "council".to_string()
+            };
         let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;
         let mut council = council_server::Client::new(
             ctx.nats_conn().clone(),
-            ctx.council_subject_prefix(),
+            &council_subject,
             jid,
             self.visibility().change_set_pk.into(),
         )
         .await?;
         let pub_council = council.clone_into_pub();
 
+        match self.inner_run(ctx, &mut council, pub_council).await {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                council.bye().await?;
+                Err(e)
+            }
+        }
+    }
+}
+
+impl DependentValuesUpdate {
+    async fn inner_run(
+        &self,
+        ctx: &mut DalContext,
+        council: &mut council_server::Client,
+        pub_council: council_server::PubClient,
+    ) -> JobConsumerResult<()> {
+        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
+        ctx.update_without_deleted_visibility();
+
+        let ctx_builder = ctx.services_context().into_builder();
+        let mut status_updater = StatusUpdater::initialize(ctx).await;
+
         debug!(job_id = ?self.job_id(), "Waiting to create AttributeValues");
         if let council_server::client::State::Shutdown = council.wait_to_create_values().await? {
             return Ok(());
         }
 
-        debug!(job_id = ?self.job_id(), "Creating AttributeValues");
-        AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
-        debug!(job_id = ?self.job_id(), "Create AttributeValues SQL finished");
+        AttributeValue::create_dependent_values(ctx, &self.attribute_values)
+            .instrument(debug_span!("Creating dependent attribute values", job_id = ?self.job_id()))
+            .await?;
 
-        ctx = self.commit_and_continue(ctx).await?;
+        // Creating dependent values creates records in the database that need to be viewed by
+        // other connections/txns so we commit
+        ctx.commit().await?;
+
         debug!(job_id = ?self.job_id(), "Transaction committed");
 
         council.finished_creating_values().await?;
         debug!(job_id = ?self.job_id(), "Finished creating values");
 
         let mut dependency_graph =
-            AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
+            AttributeValue::dependent_value_graph(ctx, &self.attribute_values).await?;
+
+        // The dependent_value_graph is read-only, so we can safely rollback the inner txns, to
+        // make sure we don't hold open txns unnecessarily
+        ctx.rollback().await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
@@ -246,9 +219,11 @@ impl DependentValuesUpdate {
 
         let mut enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
         enqueued.extend(dependency_graph.values().flatten().copied());
-        status_updater.values_queued(&ctx, enqueued).await;
+        status_updater.values_queued(ctx, enqueued).await;
 
-        self.commit(ctx).await?;
+        // Status updater reads from the database and uses its own connection from the pg_pool to
+        // do writes
+        ctx.rollback().await?;
 
         let mut update_tasks = JoinSet::new();
 
@@ -261,13 +236,12 @@ impl DependentValuesUpdate {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
 
-                            let ctx = self.create_ctx(&ctx_builder).await?;
+                            status_updater.values_running(ctx, vec![id]).await;
+                            // Status updater reads from the database and uses its own connection
+                            // from the pg_pool to do writes
+                            ctx.rollback().await?;
 
-                            status_updater.values_running(&ctx, vec![id]).await;
-
-                            self.commit(ctx).await?;
-
-                            let task_ctx = self.create_ctx(&ctx_builder).await?;
+                            let task_ctx = ctx_builder.build(self.access_builder().build(self.visibility())).await?;
 
                             let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
                                 .await?
@@ -275,7 +249,6 @@ impl DependentValuesUpdate {
                                     AttributeValueError::NotFound(id, self.visibility())
                                 })?;
                             update_tasks.spawn(update_value(
-                                self.clone(),
                                 task_ctx,
                                 attribute_value,
                                 pub_council.clone(),
@@ -288,13 +261,12 @@ impl DependentValuesUpdate {
                         let id = AttributeValueId::from(node_id);
                         dependency_graph.remove(&id);
 
-                        let ctx = self.create_ctx(&ctx_builder).await?;
-
                         // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_running(&ctx, vec![id]).await;
-                        status_updater.values_completed(&ctx, vec![id]).await;
-
-                        self.commit(ctx).await?;
+                        status_updater.values_running(ctx, vec![id]).await;
+                        status_updater.values_completed(ctx, vec![id]).await;
+                        // Status updater reads from the database and uses its own connection from
+                        // the pg_pool to do writes
+                        ctx.rollback().await?;
                     }
                     // If we receive an OkToCreate here, it's because council is telling us that it's Ok to run
                     // `AttributeValue::create_dependent_values` after it has already told us to do that, and after
@@ -307,14 +279,13 @@ impl DependentValuesUpdate {
                 None => break, // Happens if subscription has been unsubscribed or if connection is closed
             }
 
-            let ctx = self.create_ctx(&ctx_builder).await?;
-
-            WsEvent::change_set_written(&ctx)
+            WsEvent::change_set_written(ctx)
                 .await?
-                .publish_on_commit(&ctx)
+                .publish_on_commit(ctx)
                 .await?;
 
-            self.commit(ctx).await?;
+            // Publish the WsEvent now!
+            ctx.commit().await?;
 
             // If we get `None` back from the `JoinSet` that means that there are no
             // further tasks in the `JoinSet` for us to wait on. This should only happen
@@ -351,13 +322,11 @@ impl DependentValuesUpdate {
             }
         }
 
-        let ctx = self.create_ctx(&ctx_builder).await?;
+        status_updater.finish(ctx).await;
 
-        status_updater.finish(&ctx).await;
-
-        WsEvent::change_set_written(&ctx)
+        WsEvent::change_set_written(ctx)
             .await?
-            .publish_on_commit(&ctx)
+            .publish_on_commit(ctx)
             .await?;
 
         let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
@@ -371,8 +340,6 @@ impl DependentValuesUpdate {
         {
             error!("could not publish status receiver request: {:?}", e);
         }
-
-        self.commit(ctx).await?;
 
         council.bye().await?;
 
@@ -391,7 +358,6 @@ impl DependentValuesUpdate {
     )
 )]
 async fn update_value(
-    job: DependentValuesUpdate,
     ctx: DalContext,
     mut attribute_value: AttributeValue,
     council: council_server::PubClient,
@@ -409,7 +375,8 @@ async fn update_value(
         .publish_on_commit(&ctx)
         .await?;
 
-    job.commit(ctx).await?;
+    // Commit the updated attr value & publish the WsEvent
+    ctx.commit().await?;
 
     council.processed_value(attribute_value.id().into()).await?;
 
@@ -436,8 +403,6 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             access_builder,
             visibility,
             job: Some(job),
-            single_transaction: false,
-            sync_ctx: Default::default(),
         })
     }
 }

@@ -81,7 +81,7 @@ pub async fn run(
     );
 
     ctx.enqueue_job(FixesJob::new(&ctx, fixes, *batch.id()))
-        .await;
+        .await?;
 
     ctx.commit().await?;
 

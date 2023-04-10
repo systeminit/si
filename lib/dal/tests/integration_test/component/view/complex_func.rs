@@ -52,6 +52,10 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .await
         .expect("cannot finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Collect the internal providers.
     let ragnarok_provider = InternalProvider::find_for_prop(ctx, *ragnarok_prop.id())
         .await
@@ -175,15 +179,25 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .expect("could not update from prototype function");
 
     ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx,
+        ctx.access_builder(),
+        *ctx.visibility(),
         vec![*attribute_value_for_prototype.id()],
     ))
-    .await;
+    .await
+    .expect("failed to enqueue job");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Now that everything is set up, create the component.
     let (component, _) = Component::new(ctx, "god-of-war", *schema_variant.id())
         .await
         .expect("unable to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Confirm the component view renders what we expect
     let component_view = ComponentView::new(ctx, *component.id())
@@ -309,6 +323,10 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Create a func for the first object.
     let mut prefix_func = Func::new(
@@ -552,6 +570,10 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     .await
     .expect("could not update for context");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure the view and external provider attribute value looks as we want with one item.
     let component_view = ComponentView::new(ctx, component_id)
         .await
@@ -635,6 +657,10 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     )
     .await
     .expect("could not update for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure the view looks as we want with two items.
     let component_view = ComponentView::new(ctx, component_id)

@@ -50,6 +50,8 @@
             postgresql_14
             kubeval
             libtool
+            lld
+	    openssl
             gnumake
             protobuf
             skopeo

@@ -172,6 +172,10 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");
@@ -181,6 +185,10 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
     let (component, _) = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
     assert_eq!(new_change_set.pk, ctx.visibility().change_set_pk);
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
@@ -190,6 +198,11 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         .apply(ctx)
         .await
         .expect("cannot apply change set");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
     ctx.update_visibility(Visibility::new_head(false));
 
@@ -230,6 +243,10 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         )
         .await
         .expect("could not set resource");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe that the confirmation worked after "creation".
     let component_view = ComponentView::new(ctx, *component.id())
@@ -273,6 +290,10 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         )
         .await
         .expect("could not set resource");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe that the confirmation worked after "deletion".
     let component_view = ComponentView::new(ctx, *component.id())
@@ -455,6 +476,10 @@ async fn list_confirmations(mut octx: DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");
@@ -474,6 +499,11 @@ async fn list_confirmations(mut octx: DalContext) {
         .apply(ctx)
         .await
         .expect("cannot apply change set");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
     ctx.update_visibility(Visibility::new_head(false));
 
@@ -542,7 +572,12 @@ async fn list_confirmations(mut octx: DalContext) {
         action: recommendation.recommended_action,
     }];
     ctx.enqueue_job(FixesJob::new(ctx, fixes, *batch.id()))
-        .await;
+        .await
+        .expect("failed to enqueue job");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure that our confirmations views look as intended. We should have exactly zero
     // recommendations!
@@ -602,6 +637,10 @@ async fn list_confirmations(mut octx: DalContext) {
         )
         .await
         .expect("could not set resource");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // List confirmations.
     let mut views = Component::list_confirmations(ctx)

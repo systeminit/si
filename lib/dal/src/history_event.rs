@@ -1,4 +1,4 @@
-use crate::Tenancy;
+use crate::{Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display as StrumDisplay;
 use thiserror::Error;
@@ -17,6 +17,8 @@ pub enum HistoryEventError {
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
@@ -71,7 +73,7 @@ impl HistoryEvent {
         let label = label.as_ref();
         let message = message.as_ref();
         let actor = serde_json::to_value(ctx.history_actor())?;
-        let txns = ctx.txns();
+        let txns = ctx.txns().await?;
         let row = txns
             .pg()
             .query_one(

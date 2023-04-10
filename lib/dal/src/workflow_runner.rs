@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
+use crate::TransactionsError;
 use crate::{
     func::backend::js_command::CommandRunResult,
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
@@ -40,6 +41,8 @@ pub enum WorkflowRunnerError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     WorkflowResolver(#[from] WorkflowResolverError),
     #[error(transparent)]
@@ -156,7 +159,7 @@ impl WorkflowRunner {
         context: WorkflowRunnerContext,
         resources: &[CommandRunResult],
     ) -> WorkflowRunnerResult<Self> {
-        let row = ctx.txns().pg().query_one(
+        let row = ctx.txns().await?.pg().query_one(
             "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
                 ctx.tenancy(),
@@ -395,6 +398,7 @@ impl WorkflowRunner {
     ) -> WorkflowRunnerResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_FOR_PROTOTYPE,

@@ -15,14 +15,12 @@ use graph::{ChangeSetGraph, ValueCreationQueue};
 #[derive(Debug, Clone)]
 pub struct Server {
     nats: NatsClient,
-    subject_prefix: String,
 }
 
 impl Server {
     pub async fn new_with_config(config: config::Config) -> Result<Self> {
         Ok(Self {
             nats: NatsClient::new(config.nats()).await?,
-            subject_prefix: config.subject_prefix().unwrap_or("council").to_owned(),
         })
     }
 
@@ -31,12 +29,14 @@ impl Server {
         subscription_started_tx: watch::Sender<()>,
         mut shutdown_request_rx: watch::Receiver<()>,
     ) -> Result<()> {
+        let channel_suffix = "council.*";
+        let subscription_channel = if let Some(prefix) = self.nats.metadata().subject_prefix() {
+            format!("{}.{}", prefix, channel_suffix)
+        } else {
+            channel_suffix.to_string()
+        };
         let mut subscription = loop {
-            match self
-                .nats
-                .subscribe(format!("{}.*", self.subject_prefix))
-                .await
-            {
+            match self.nats.subscribe(subscription_channel.clone()).await {
                 Ok(sub) => break sub,
                 Err(err) => {
                     error!("Unable to subscribe to the council request channel on nats: {err}");

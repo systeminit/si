@@ -1,16 +1,18 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{mem, path::PathBuf, sync::Arc};
 
+use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
-        producer::JobProducer,
+        producer::{BlockingJobError, BlockingJobResult, JobProducer},
     },
     HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
@@ -31,8 +33,6 @@ pub struct ServicesContext {
     veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
-    /// The prefix for channels names when communicating with Council
-    council_subject_prefix: String,
     /// The path where available packages can be found
     pkgs_path: Option<PathBuf>,
 }
@@ -45,7 +45,6 @@ impl ServicesContext {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: Arc<EncryptionKey>,
-        council_subject_prefix: String,
         pkgs_path: Option<PathBuf>,
     ) -> Self {
         Self {
@@ -54,7 +53,6 @@ impl ServicesContext {
             job_processor,
             veritech,
             encryption_key,
-            council_subject_prefix,
             pkgs_path,
         }
     }
@@ -86,8 +84,8 @@ impl ServicesContext {
     }
 
     /// Gets a reference to the encryption key.
-    pub fn encryption_key(&self) -> &EncryptionKey {
-        &self.encryption_key
+    pub fn encryption_key(&self) -> Arc<EncryptionKey> {
+        self.encryption_key.clone()
     }
 
     /// Builds and returns a new [`Connections`].
@@ -99,13 +97,99 @@ impl ServicesContext {
     }
 }
 
+#[derive(Debug)]
+enum ConnectionState {
+    Invalid,
+    Connections(Connections),
+    Transactions(Transactions),
+}
+
+impl ConnectionState {
+    fn new_from_conns(conns: Connections) -> Self {
+        Self::Connections(conns)
+    }
+
+    fn new_from_txns(txns: Transactions) -> Self {
+        Self::Transactions(txns)
+    }
+
+    fn take(&mut self) -> Self {
+        mem::replace(self, Self::Invalid)
+    }
+
+    fn is_conns(&self) -> bool {
+        matches!(self, Self::Connections(_))
+    }
+
+    fn txns(&mut self) -> &mut Transactions {
+        match self {
+            Self::Transactions(txns) => txns,
+            _ => {
+                // The caller of this method has already ensured that we can only be in the
+                // Transactions state (remember, this type is internal to DalContext)
+                panic!("caller must ensure state is txns--this is an internal bug");
+            }
+        }
+    }
+
+    async fn start_txns(self) -> Result<Self, TransactionsError> {
+        match self {
+            Self::Invalid => Err(TransactionsError::TxnStart("invalid")),
+            Self::Connections(conns) => Ok(Self::Transactions(conns.start_txns().await?)),
+            Self::Transactions(_) => Err(TransactionsError::TxnStart("transactions")),
+        }
+    }
+
+    async fn commit(self) -> Result<Self, TransactionsError> {
+        match self {
+            Self::Connections(_) => {
+                trace!("no active transactions present when commit was called, taking no action");
+                Ok(self)
+            }
+            Self::Transactions(txns) => {
+                let conns = txns.commit_into_conns().await?;
+                Ok(Self::Connections(conns))
+            }
+            Self::Invalid => Err(TransactionsError::TxnCommit),
+        }
+    }
+
+    async fn blocking_commit(self) -> Result<Self, TransactionsError> {
+        match self {
+            Self::Connections(_) => {
+                trace!("no active transactions present when commit was called, taking no action");
+                Ok(self)
+            }
+            Self::Transactions(txns) => {
+                let conns = txns.blocking_commit_into_conns().await?;
+                Ok(Self::Connections(conns))
+            }
+            Self::Invalid => Err(TransactionsError::TxnCommit),
+        }
+    }
+
+    async fn rollback(self) -> Result<Self, TransactionsError> {
+        match self {
+            Self::Connections(_) => {
+                trace!("no active transactions present when rollback was called, taking no action");
+                Ok(self)
+            }
+            Self::Transactions(txns) => {
+                let conns = txns.rollback_into_conns().await?;
+                Ok(Self::Connections(conns))
+            }
+            Self::Invalid => Err(TransactionsError::TxnRollback),
+        }
+    }
+}
+
 /// A context type which holds references to underlying services, transactions, and context for DAL objects.
 #[derive(Clone, Debug)]
 pub struct DalContext {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
     services_context: ServicesContext,
     /// A reference to a set of atomically related transactions.
-    txns: Transactions,
+    conns_state: Arc<Mutex<ConnectionState>>,
     /// A suitable tenancy for the consuming DAL objects.
     tenancy: Tenancy,
     /// A suitable [`Visibility`] scope for the consuming DAL objects.
@@ -121,37 +205,12 @@ impl DalContext {
         DalContextBuilder { services_context }
     }
 
-    /// Consumes context, commiting transactions, returning new context with new transaction
-    pub async fn commit_and_continue(self) -> Result<Self, TransactionsError> {
-        let (builder, conns, request_ctx) = self.commit_into_parts().await?;
-        builder.build_with_conns(request_ctx, conns).await
-    }
-
-    /// Consumes all inner transactions, committing all changes made within them, and returns
-    /// underlying connections.
-    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
-        self.txns.commit_into_conns().await
-    }
-
-    /// Consumes all inner transactions, committing all changes made within them, and returns
-    /// the context parts which can be used to build a new context.
-    pub async fn commit_into_parts(
-        self,
-    ) -> Result<(DalContextBuilder, Connections, RequestContext), TransactionsError> {
-        let conns = self.txns.commit_into_conns().await?;
-        let builder = self.services_context.into_builder();
-        let request_ctx = RequestContext {
-            tenancy: self.tenancy,
-            visibility: self.visibility,
-            history_actor: self.history_actor,
-        };
-
-        Ok((builder, conns, request_ctx))
-    }
-
     /// Consumes all inner transactions and committing all changes made within them.
-    pub async fn commit(self) -> Result<(), TransactionsError> {
-        let _ = self.commit_into_conns().await?;
+    pub async fn commit(&self) -> Result<(), TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
+
+        *guard = guard.take().commit().await?;
+
         Ok(())
     }
 
@@ -159,40 +218,33 @@ impl DalContext {
         self.services_context.clone()
     }
 
-    /// Rolls all inner transactions back, discarding all changes made within them, and returns
-    /// underlying connections.
-    ///
-    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
-    /// encountered to the caller.
-    pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
-        self.txns.rollback_into_conns().await
+    pub fn request_context(&self) -> RequestContext {
+        RequestContext {
+            tenancy: *self.tenancy(),
+            visibility: *self.visibility(),
+            history_actor: *self.history_actor(),
+        }
     }
 
-    /// Rolls all inner transactions back, discarding all changes made within them, and returns the
-    /// context parts which can be used to build a new context.
-    ///
-    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
-    /// encountered to the caller.
-    pub async fn rollback_into_parts(
-        self,
-    ) -> Result<(DalContextBuilder, Connections, RequestContext), TransactionsError> {
-        let conns = self.txns.rollback_into_conns().await?;
-        let builder = self.services_context.into_builder();
-        let request_ctx = RequestContext {
-            tenancy: self.tenancy,
-            visibility: self.visibility,
-            history_actor: self.history_actor,
-        };
+    /// Consumes all inner transactions, committing all changes made within them, and
+    /// blocks until all queued jobs have reported as finishing.
+    pub async fn blocking_commit(&self) -> Result<(), TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
 
-        Ok((builder, conns, request_ctx))
+        *guard = guard.take().blocking_commit().await?;
+
+        Ok(())
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them.
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
     /// encountered to the caller.
-    pub async fn rollback(self) -> Result<(), TransactionsError> {
-        let _ = self.rollback_into_conns().await?;
+    pub async fn rollback(&self) -> Result<(), TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
+
+        *guard = guard.take().rollback().await?;
+
         Ok(())
     }
 
@@ -203,16 +255,11 @@ impl DalContext {
         self.history_actor = request_ctx.history_actor;
     }
 
-    /// Clones a new context from this one with the same metadata, but in different transactions
-    pub async fn clone_with_new_transactions(&self) -> Result<Self, TransactionsError> {
-        let mut other = self.clone();
-        other.txns = self
-            .services_context
-            .connections()
-            .await?
-            .start_txns()
-            .await?;
-        Ok(other)
+    /// Clones a new context from this one with the same metadata, but with different connections
+    pub async fn clone_with_new_connections(&self) -> Result<Self, TransactionsError> {
+        Self::builder(self.services_context())
+            .build(self.request_context())
+            .await
     }
 
     /// Clones a new context from this one with all new values from a  [`RequestContext`].
@@ -240,9 +287,34 @@ impl DalContext {
         self.history_actor = access_builder.history_actor;
     }
 
+    /// Runs a block of code with a custom [`Visibility`] DalContext using the same transactions
+    pub async fn run_with_visibility<F, Fut, R>(&self, visibility: Visibility, fun: F) -> R
+    where
+        F: FnOnce(DalContext) -> Fut,
+        Fut: Future<Output = R>,
+    {
+        let mut ctx = self.clone();
+        ctx.update_visibility(visibility);
+
+        fun(ctx).await
+    }
+
     /// Updates this context with a new [`Visibility`].
     pub fn update_visibility(&mut self, visibility: Visibility) {
         self.visibility = visibility;
+    }
+
+    /// Runs a block of code with "deleted" [`Visibility`] DalContext using the same transactions
+    pub async fn run_with_deleted_visibility<F, Fut, R>(&self, fun: F) -> R
+    where
+        F: FnOnce(DalContext) -> Fut,
+        Fut: Future<Output = R>,
+    {
+        self.run_with_visibility(
+            Visibility::new_change_set(self.visibility().change_set_pk, true),
+            fun,
+        )
+        .await
     }
 
     /// Mutates [`self`](DalContext) with a "deleted" [`Visibility`].
@@ -307,20 +379,47 @@ impl DalContext {
         new
     }
 
-    pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        self.txns().job_processor.enqueue_job(job, self).await
+    pub async fn enqueue_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .job_processor
+            .enqueue_job(job, self)
+            .await;
+        Ok(())
     }
 
-    pub async fn enqueue_blocking_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
+    /// Similar to `enqueue_job`, except that instead of waiting to flush the job to
+    /// the processing system on `commit`, the job is immediately flushed, and the
+    /// processor is expected to not return until the job has finished. Returns the
+    /// result of executing the job.
+    pub async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
         self.txns()
+            .await
+            .map_err(|err| BlockingJobError::Transactions(err.to_string()))?
             .job_processor
-            .enqueue_blocking_job(job, self)
+            .block_on_job(job)
             .await
     }
 
     /// Gets the dal context's txns.
-    pub fn txns(&self) -> &Transactions {
-        &self.txns
+    pub async fn txns(&self) -> Result<MappedMutexGuard<'_, Transactions>, TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
+
+        let conns_state = guard.take();
+
+        if conns_state.is_conns() {
+            // If we are Connections, then we need to start Transactions
+            *guard = conns_state.start_txns().await?;
+        } else {
+            // Otherwise, we return the state back to the guard--it's Transactions under normal
+            // circumstances, and Invalid if something went wrong with a previous Transactions
+            *guard = conns_state;
+        }
+
+        Ok(MutexGuard::map(guard, |cs| cs.txns()))
     }
 
     pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
@@ -332,19 +431,9 @@ impl DalContext {
         &self.services_context.pg_pool
     }
 
-    /// Gets the dal context's pg txn.
-    pub fn pg_txn(&self) -> &PgTxn {
-        &self.txns.pg_txn
-    }
-
     /// Gets a reference to the DAL context's NATS connection.
     pub fn nats_conn(&self) -> &NatsClient {
         &self.services_context.nats_conn
-    }
-
-    /// Gets the dal context's nats txn.
-    pub fn nats_txn(&self) -> &NatsTxn {
-        &self.txns.nats_txn
     }
 
     /// Gets a reference to the DAL context's Veritech client.
@@ -372,11 +461,6 @@ impl DalContext {
         &self.history_actor
     }
 
-    /// Gets a reference to the council's communication channel subject prefix
-    pub fn council_subject_prefix(&self) -> &str {
-        &self.services_context.council_subject_prefix
-    }
-
     /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(
@@ -385,7 +469,7 @@ impl DalContext {
     ) -> Result<bool, TransactionsError> {
         let is_in_our_tenancy = self
             .tenancy()
-            .check(self.pg_txn(), object.tenancy())
+            .check(self.txns().await?.pg(), object.tenancy())
             .await?;
 
         Ok(is_in_our_tenancy)
@@ -396,16 +480,15 @@ impl DalContext {
     #[instrument(skip_all)]
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
         self.txns()
+            .await?
             .pg()
             .execute("SELECT import_builtins_v1($1)", &[self.tenancy()])
             .await?;
         Ok(())
     }
-}
 
-impl From<DalContext> for Transactions {
-    fn from(value: DalContext) -> Self {
-        value.txns
+    pub fn access_builder(&self) -> AccessBuilder {
+        AccessBuilder::new(self.tenancy, self.history_actor)
     }
 }
 
@@ -454,7 +537,7 @@ impl Default for RequestContext {
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AccessBuilder {
     /// A suitable tenancy for the consuming DAL objects.
     tenancy: Tenancy,
@@ -511,11 +594,9 @@ impl DalContextBuilder {
         request_context: RequestContext,
         conns: Connections,
     ) -> Result<DalContext, TransactionsError> {
-        let txns = conns.start_txns().await?;
-
         Ok(DalContext {
             services_context: self.services_context.clone(),
-            txns,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
@@ -537,7 +618,7 @@ impl DalContextBuilder {
     ) -> DalContext {
         DalContext {
             services_context: self.services_context.clone(),
-            txns,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_txns(txns))),
             tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
@@ -581,6 +662,11 @@ impl DalContextBuilder {
     pub async fn pkgs_path(&self) -> Option<&PathBuf> {
         self.services_context.pkgs_path.as_ref()
     }
+
+    /// Gets a reference to the [`ServicesContext`].
+    pub fn services_context(&self) -> &ServicesContext {
+        &self.services_context
+    }
 }
 
 #[derive(Debug, Error)]
@@ -597,6 +683,12 @@ pub enum TransactionsError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
+    #[error("cannot commit transactions on invalid connections state")]
+    TxnCommit,
+    #[error("cannot rollback transactions on invalid connections state")]
+    TxnRollback,
+    #[error("cannot start transactions without connections; state={0}")]
+    TxnStart(&'static str),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -685,6 +777,17 @@ impl Transactions {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue().await?;
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+
+        Ok(conns)
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections. Blocking until all queued jobs have reported as finishing.
+    pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        let pg_conn = self.pg_txn.commit_into_conn().await?;
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
+        self.job_processor.blocking_process_queue().await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)

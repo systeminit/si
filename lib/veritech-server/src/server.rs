@@ -126,8 +126,8 @@ impl Server {
     }
 
     /// Gets a shutdown handle that can trigger the server's graceful shutdown process.
-    pub fn shutdown_handle(&self) -> ShutdownHandle {
-        ShutdownHandle {
+    pub fn shutdown_handle(&self) -> VeritechShutdownHandle {
+        VeritechShutdownHandle {
             shutdown_tx: self.shutdown_tx.clone(),
         }
     }
@@ -169,11 +169,11 @@ impl Server {
     }
 }
 
-pub struct ShutdownHandle {
+pub struct VeritechShutdownHandle {
     shutdown_tx: mpsc::Sender<ShutdownSource>,
 }
 
-impl ShutdownHandle {
+impl VeritechShutdownHandle {
     pub async fn shutdown(self) {
         if let Err(err) = self.shutdown_tx.send(ShutdownSource::Handle).await {
             warn!(error = ?err, "shutdown tx returned error, receiver is likely already closed");

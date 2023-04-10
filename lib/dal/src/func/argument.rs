@@ -1,7 +1,7 @@
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
     AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
-    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,8 @@ pub enum FuncArgumentError {
     StandardModelError(#[from] StandardModelError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
@@ -110,6 +112,7 @@ impl FuncArgument {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_argument_create_v1($1, $2, $3, $4, $5, $6)",
@@ -141,6 +144,7 @@ impl FuncArgument {
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(LIST_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
             .await?;
@@ -158,6 +162,7 @@ impl FuncArgument {
     ) -> FuncArgumentResult<Vec<(Self, Option<AttributePrototypeArgument>)>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS,
@@ -199,6 +204,7 @@ impl FuncArgument {
         Ok(
             match ctx
                 .txns()
+                .await?
                 .pg()
                 .query_opt(
                     FIND_BY_NAME_FOR_FUNC,

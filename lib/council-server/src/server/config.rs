@@ -17,9 +17,6 @@ pub type Result<T, E = ConfigError> = std::result::Result<T, E>;
 pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
-
-    #[builder(setter(into, strip_option), default)]
-    subject_prefix: Option<String>,
 }
 
 impl StandardConfig for Config {
@@ -54,6 +51,6 @@ impl Config {
 
     /// Gets a reference to the config's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
-        self.subject_prefix.as_deref()
+        self.nats.subject_prefix.as_deref()
     }
 }

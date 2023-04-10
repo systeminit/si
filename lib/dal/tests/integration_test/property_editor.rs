@@ -105,6 +105,10 @@ async fn property_editor_value(ctx: &DalContext) {
         .await
         .expect("could not create component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let property_editor_values = PropertyEditorValues::for_component(ctx, *component.id())
         .await
         .expect("cannot create property editor values from context");

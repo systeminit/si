@@ -1,4 +1,4 @@
-use crate::DalContext;
+use crate::{DalContext, TransactionsError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
@@ -12,6 +12,8 @@ use serde_aux::field_attributes::deserialize_number_from_string;
 pub enum VisibilityError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type VisibilityResult<T> = Result<T, VisibilityError>;
@@ -97,6 +99,7 @@ impl Visibility {
     ) -> VisibilityResult<bool> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT is_visible_v1($1, $2, $3) AS result",

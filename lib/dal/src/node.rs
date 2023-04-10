@@ -14,7 +14,7 @@ use crate::{
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use crate::{DalContext, Edge, SchemaError};
+use crate::{DalContext, Edge, SchemaError, TransactionsError};
 
 const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");
@@ -39,6 +39,8 @@ pub enum NodeError {
     SchemaMissingDefaultVariant,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("component is None")]
     ComponentIsNone,
     #[error("could not find node with ID: {0}")]
@@ -106,6 +108,7 @@ impl Node {
     pub async fn new(ctx: &DalContext, kind: &NodeKind) -> NodeResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM node_create_v1($1, $2, $3)",
@@ -140,6 +143,7 @@ impl Node {
     pub async fn list_live(ctx: &DalContext, kind: NodeKind) -> NodeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_LIVE,
@@ -158,6 +162,7 @@ impl Node {
     pub async fn list_for_kind(ctx: &DalContext, kind: NodeKind) -> NodeResult<HashSet<NodeId>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_KIND,

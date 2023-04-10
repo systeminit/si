@@ -58,6 +58,7 @@ impl FixBatch {
         let author = author.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM fix_batch_create_v1($1, $2, $3)",

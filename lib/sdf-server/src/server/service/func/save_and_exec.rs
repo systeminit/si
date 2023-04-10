@@ -36,8 +36,12 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             }
         }
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, value_ids))
-            .await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            value_ids,
+        ))
+        .await?;
     }
 
     Ok(())

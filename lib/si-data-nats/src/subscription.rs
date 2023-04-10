@@ -70,7 +70,7 @@ impl Subscription {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let sub = nc.subscribe("foo").await?;
     /// sub.unsubscribe().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -111,7 +111,7 @@ impl Subscription {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let sub = nc.subscribe("foo").await?;
     /// sub.close().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -160,7 +160,7 @@ impl Subscription {
     /// # use std::thread;
     /// # use std::time::Duration;
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io").await?;
+    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let mut sub = nc.subscribe("test.drain").await?;
     ///
     /// nc.publish("test.drain", "message").await?;

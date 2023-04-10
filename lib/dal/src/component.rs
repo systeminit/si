@@ -299,6 +299,7 @@ impl Component {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM component_create_v1($1, $2, $3, $4)",
@@ -430,6 +431,7 @@ impl Component {
     ) -> ComponentResult<Vec<Socket>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_SOCKETS_FOR_SOCKET_EDGE_KIND,
@@ -449,6 +451,7 @@ impl Component {
     pub async fn find_for_node(ctx: &DalContext, node_id: NodeId) -> ComponentResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(FIND_FOR_NODE, &[ctx.tenancy(), ctx.visibility(), &node_id])
             .await?;
@@ -475,6 +478,7 @@ impl Component {
         let si_child_prop_name = si_prop_child.prop_name();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE,
@@ -493,7 +497,9 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn is_in_tenancy(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_opt(
                 "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_workspace_pk) LIMIT 1",
                 &[
@@ -511,7 +517,9 @@ impl Component {
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Vec<Component>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
                 &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
@@ -625,7 +633,9 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_name(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<String> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_one(FIND_NAME, &[ctx.tenancy(), ctx.visibility(), &component_id])
             .await?;
         let component_name: Value = row.try_get("component_name")?;
@@ -649,7 +659,9 @@ impl Component {
         root_prop_child: RootPropChild,
     ) -> ComponentResult<AttributeValue> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_one(
                 ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT,
                 &[
@@ -695,7 +707,9 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<Vec<Socket>> {
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE,
                 &[
@@ -716,7 +730,9 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariantId> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_one(
                 "select belongs_to_id as schema_variant_id from
                     component_belongs_to_schema_variant_v1($1, $2)
@@ -736,7 +752,9 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<SchemaId> {
         let row = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query_one(
                 "select belongs_to_id as schema_id from
                     component_belongs_to_schema_v1($1, $2)
@@ -1033,6 +1051,7 @@ impl Component {
         let has_resource = self.resource(ctx).await?.value.is_some();
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4, $5)",
@@ -1053,7 +1072,12 @@ impl Component {
 
         let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            ids,
+        ))
+        .await?;
 
         Ok(())
     }
@@ -1110,6 +1134,7 @@ impl Component {
 
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 "SELECT * FROM component_restore_and_propagate_v1($1, $2, $3)",
@@ -1124,7 +1149,12 @@ impl Component {
 
         let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            ids,
+        ))
+        .await?;
 
         Ok(Component::get_by_id(ctx, &component_id).await?)
     }

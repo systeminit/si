@@ -40,7 +40,7 @@ pub async fn prototype_list_for_func<T: DeserializeOwned>(
     table_name: &str,
     func_id: FuncId,
 ) -> PrototypeListForFuncResult<Vec<T>> {
-    let txns = ctx.txns();
+    let txns = ctx.txns().await?;
     let rows = txns
         .pg()
         .query(

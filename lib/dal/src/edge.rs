@@ -22,6 +22,7 @@ use crate::{
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
     ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId, NodeError,
+    TransactionsError,
 };
 
 const LIST_PARENTS_FOR_COMPONENT: &str =
@@ -54,6 +55,8 @@ pub enum EdgeError {
     StandardModel(#[from] StandardModelError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func error: {0}")]
@@ -185,6 +188,7 @@ impl Edge {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
@@ -231,6 +235,7 @@ impl Edge {
         if let Some(equivalent_edge) = {
             let row = ctx
                 .txns()
+                .await?
                 .pg()
                 .query_opt(
                     FIND_DELETED_EQUIVALENT,
@@ -317,6 +322,7 @@ impl Edge {
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_PARENTS_FOR_COMPONENT,
@@ -336,6 +342,7 @@ impl Edge {
     ) -> EdgeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_COMPONENT,
@@ -349,6 +356,7 @@ impl Edge {
     pub async fn list_for_kind(ctx: &DalContext, kind: EdgeKind) -> EdgeResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_KIND,
@@ -426,6 +434,7 @@ impl Edge {
         };
         let _rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
@@ -446,8 +455,12 @@ impl Edge {
 
         attr_value.update_from_prototype_function(ctx).await?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
-            .await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![*attr_value.id()],
+        ))
+        .await?;
 
         Ok(())
     }
@@ -576,8 +589,12 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributeValueNotFound)?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
-            .await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![*attr_value.id()],
+        ))
+        .await?;
 
         debug!("searching for original edge: {edge_id}");
 

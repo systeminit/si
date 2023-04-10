@@ -100,10 +100,11 @@ pub async fn create_connection(
         ))?;
 
     ctx.enqueue_job(DependentValuesUpdate::new(
-        &ctx,
+        ctx.access_builder(),
+        *ctx.visibility(),
         vec![*attribute_value.id()],
     ))
-    .await;
+    .await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

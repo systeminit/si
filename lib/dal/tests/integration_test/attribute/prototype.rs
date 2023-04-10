@@ -362,10 +362,19 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "toddhoward", *schema.id())
             .await
             .expect("cannot create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
@@ -425,6 +434,10 @@ async fn remove_component_specific(ctx: &DalContext) {
             .expect("could not update value");
         }
 
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+
         // Now that the prototype's value(s) have been updated with our component-specific context,
         // we can perform removal.
         let updated_prototypes = AttributePrototype::list_for_context(ctx, context)
@@ -465,6 +478,10 @@ async fn remove_component_specific(ctx: &DalContext) {
             assert!(AttributePrototype::remove(ctx, updated_prototype.id())
                 .await
                 .is_ok());
+
+            ctx.blocking_commit()
+                .await
+                .expect("could not commit & run jobs");
 
             // Confirm the prototype, its nested values and their corresponding prototypes have
             // been deleted.

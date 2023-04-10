@@ -2,6 +2,7 @@
 
 use std::io;
 use std::sync::Arc;
+use std::time::Duration;
 
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -10,6 +11,8 @@ use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time;
+use tokio::time::Instant;
 use veritech_client::{Client, EncryptionKey};
 
 use crate::builtins::BuiltinSchemaOption;
@@ -121,9 +124,7 @@ pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
 pub use job::consumer::JobInvocationId;
 pub use job::definition::DependentValuesUpdate;
-pub use job::processor::{
-    nats_processor::NatsProcessor, sync_processor::SyncProcessor, JobQueueProcessor,
-};
+pub use job::processor::{JobQueueProcessor, NatsProcessor};
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::{create_jwt_key_if_missing, JwtPublicSigningKey, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
@@ -282,7 +283,6 @@ pub async fn migrate_all(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: Client,
     encryption_key: &EncryptionKey,
-    council_subject_prefix: String,
 ) -> ModelResult<()> {
     migrate(pg).await?;
     migrate_builtins(
@@ -291,10 +291,40 @@ pub async fn migrate_all(
         job_processor,
         veritech,
         encryption_key,
-        council_subject_prefix,
         BuiltinSchemaOption::All,
     )
     .await?;
+    Ok(())
+}
+
+#[instrument(skip_all)]
+pub async fn migrate_all_with_progress(
+    pg: &PgPool,
+    nats: &NatsClient,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    veritech: Client,
+    encryption_key: &EncryptionKey,
+) -> ModelResult<()> {
+    let mut interval = time::interval(Duration::from_secs(5));
+    let instant = Instant::now();
+    let migrate_all = migrate_all(pg, nats, job_processor, veritech, encryption_key);
+    tokio::pin!(migrate_all);
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
+            }
+            result = &mut migrate_all  => match result {
+                Ok(_) => {
+                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
+                    break;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -310,7 +340,6 @@ pub async fn migrate_builtins(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
-    council_subject_prefix: String,
     builtin_schema_option: BuiltinSchemaOption,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
@@ -319,7 +348,6 @@ pub async fn migrate_builtins(
         job_processor,
         veritech,
         Arc::new(*encryption_key),
-        council_subject_prefix,
         None, // XXX: inject packages path here
     );
     let dal_context = services_context.into_builder();
@@ -327,9 +355,12 @@ pub async fn migrate_builtins(
 
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+    ctx.blocking_commit().await?;
 
     builtins::migrate(&ctx, builtin_schema_option).await?;
-    ctx.commit().await?;
+
+    ctx.blocking_commit().await?;
+
     Ok(())
 }
 

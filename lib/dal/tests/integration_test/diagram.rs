@@ -27,6 +27,10 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .await
         .expect("could not create component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not get component view");

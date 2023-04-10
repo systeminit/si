@@ -1,4 +1,4 @@
-use crate::{Tenancy, UserError, UserPk};
+use crate::{Tenancy, TransactionsError, UserError, UserPk};
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::{de::DeserializeOwned, Serialize};
@@ -27,6 +27,8 @@ pub enum StandardModelError {
     User(#[from] UserError),
     #[error("user not found: {0}")]
     UserNotFound(UserPk),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;
@@ -57,6 +59,7 @@ pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 ) -> StandardModelResult<OBJECT> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one("SELECT object FROM get_by_pk_v1($1, $2)", &[&table, &pk])
         .await?;
@@ -73,6 +76,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 ) -> StandardModelResult<Option<OBJECT>> {
     let row_option = ctx
         .txns()
+        .await?
         .pg()
         .query_opt(
             "SELECT * FROM get_by_id_v1($1, $2, $3, $4)",
@@ -92,8 +96,9 @@ pub async fn find_by_attr<V: Send + Sync + ToString + Debug, OBJECT: Deserialize
     attr_name: &str,
     value: &V,
 ) -> StandardModelResult<Vec<OBJECT>> {
-    let txns = ctx.txns();
-    let rows = txns
+    let rows = ctx
+        .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM find_by_attr_v1($1, $2, $3, $4, $5)",
@@ -115,8 +120,9 @@ pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
     table: &str,
     attr_name: &str,
 ) -> StandardModelResult<Vec<OBJECT>> {
-    let txns = ctx.txns();
-    let rows = txns
+    let rows = ctx
+        .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM find_by_attr_null_v1($1, $2, $3, $4)",
@@ -133,8 +139,9 @@ pub async fn find_by_attr_in<V: Send + Sync + ToString + Debug, OBJECT: Deserial
     attr_name: &str,
     value: &[&V],
 ) -> StandardModelResult<Vec<OBJECT>> {
-    let txns = ctx.txns();
-    let rows = txns
+    let rows = ctx
+        .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM find_by_attr_in_v1($1, $2, $3, $4, $5)",
@@ -157,8 +164,9 @@ pub async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug, OBJECT: Dese
     attr_name: &str,
     value: &[&V],
 ) -> StandardModelResult<Vec<OBJECT>> {
-    let txns = ctx.txns();
-    let rows = txns
+    let rows = ctx
+        .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM find_by_attr_not_in_v1($1, $2, $3, $4, $5)",
@@ -196,6 +204,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 ) -> StandardModelResult<Option<OBJECT>> {
     let row_option = ctx
         .txns()
+        .await?
         .pg()
         .query_opt(
             "SELECT * FROM belongs_to_v1($1, $2, $3, $4, $5)",
@@ -219,6 +228,7 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
     belongs_to_id: &BelongsToId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT set_belongs_to_v1($1, $2, $3, $4, $5)",
@@ -241,6 +251,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
     object_id: &ObjectId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT unset_belongs_to_v1($1, $2, $3, $4)",
@@ -257,6 +268,7 @@ pub async fn hard_unset_belongs_to_in_change_set<ObjectId: Send + Sync + ToSql>(
     object_id: &ObjectId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT hard_unset_belongs_to_in_change_set_v1($1, $2, $3, $4)",
@@ -273,6 +285,7 @@ pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
     belongs_to_id: &BelongsToId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT unset_all_belongs_to_v1($1, $2, $3, $4)",
@@ -289,6 +302,7 @@ pub async fn hard_unset_all_belongs_to_in_change_set<BelongsToId: Send + Sync + 
     belongs_to_id: &BelongsToId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT hard_unset_all_belongs_to_in_change_set_v1($1, $2, $3, $4)",
@@ -307,6 +321,7 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 ) -> StandardModelResult<Vec<OBJECT>> {
     let rows = ctx
         .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM has_many_v1($1, $2, $3, $4, $5)",
@@ -338,6 +353,7 @@ pub async fn many_to_many<
 ) -> StandardModelResult<Vec<Object>> {
     let rows = ctx
         .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM many_to_many_v1($1, $2, $3, $4, $5, $6, $7)",
@@ -363,6 +379,7 @@ pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send +
     right_object_id: &RightId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT associate_many_to_many_v1($1, $2, $3, $4, $5)",
@@ -389,6 +406,7 @@ pub async fn disassociate_many_to_many<
     right_object_id: &RightId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT disassociate_many_to_many_v1($1, $2, $3, $4, $5)",
@@ -411,6 +429,7 @@ pub async fn disassociate_all_many_to_many<LeftId: Send + Sync + ToSql>(
     left_object_id: &LeftId,
 ) -> StandardModelResult<()> {
     ctx.txns()
+        .await?
         .pg()
         .query_one(
             "SELECT disassociate_all_many_to_many_v1($1, $2, $3, $4)",
@@ -469,6 +488,7 @@ where
 
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(
             &query,
@@ -493,6 +513,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
 ) -> StandardModelResult<Vec<OBJECT>> {
     let rows = ctx
         .txns()
+        .await?
         .pg()
         .query(
             "SELECT * FROM list_models_v1($1, $2, $3)",
@@ -510,6 +531,7 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
 ) -> StandardModelResult<DateTime<Utc>> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(
             "SELECT delete_by_id_v1($1, $2, $3, $4) AS deleted_at",
@@ -528,6 +550,7 @@ pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
 ) -> StandardModelResult<DateTime<Utc>> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(
             "SELECT updated_at FROM delete_by_pk_v1($1, $2, $3)",
@@ -546,6 +569,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
 ) -> StandardModelResult<DateTime<Utc>> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(
             "SELECT updated_at FROM undelete_by_pk_v1($1, $2, $3)",
@@ -564,6 +588,7 @@ pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: De
 ) -> StandardModelResult<OBJECT> {
     let row = ctx
         .txns()
+        .await?
         .pg()
         .query_one(
             "SELECT object FROM hard_delete_by_pk_v1($1, $2)",

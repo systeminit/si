@@ -1,4 +1,4 @@
-use crate::DalContext;
+use crate::{DalContext, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -30,6 +30,8 @@ pub enum WorkflowResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("workflow not resolved yet")]
     NotResolved(WorkflowResolverId),
     #[error("func binding not found {0}")]
@@ -132,6 +134,7 @@ impl WorkflowResolver {
     ) -> WorkflowResolverResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM workflow_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -178,6 +181,7 @@ impl WorkflowResolver {
     ) -> WorkflowResolverResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 FIND_FOR_PROTOTYPE,

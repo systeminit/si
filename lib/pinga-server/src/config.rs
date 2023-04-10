@@ -34,14 +34,12 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(setter(into, strip_option), default)]
-    subject_prefix: Option<String>,
-
     cyclone_encryption_key_path: CanonicalFile,
 
     #[builder(default = "CONCURRENCY_DEFAULT")]
     concurrency: usize,
 
+    #[builder(default = "random_instance_id()")]
     instance_id: String,
 }
 
@@ -64,7 +62,7 @@ impl Config {
 
     /// Gets a reference to the config's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
-        self.subject_prefix.as_deref()
+        self.nats.subject_prefix.as_deref()
     }
 
     /// Gets a reference to the config's cyclone public key path.

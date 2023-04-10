@@ -96,6 +96,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Once setup is complete, create a component and update the target field to an "invalid" value.
     let (component, _) = Component::new(ctx, "hundo_gecs", *schema_variant.id())
         .await
@@ -144,6 +148,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
     .await
     .expect("could not update attribute value");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let prefix_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
@@ -171,6 +179,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
     )
     .await
     .expect("could not update attribute value");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -245,6 +257,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
     )
     .await
     .expect("could not update attribute value");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -331,6 +347,10 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .await
         .expect("could not finalize");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) = Component::new(ctx, "Danoth", *schema_variant.id())
         .await
         .expect("could not create component");
@@ -371,6 +391,10 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     )
     .await
     .expect("update attr value");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let properties = ComponentView::new(ctx, *component.id())
         .await
@@ -457,6 +481,10 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let properties = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view")
@@ -520,6 +548,10 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             Some(serde_json::json!["us-east-1"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{

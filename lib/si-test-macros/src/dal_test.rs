@@ -49,11 +49,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                         // references and/or mutability, however the surrounding type is passed as
                         // an owned type.
                         match ty_str {
-                            "Connections" => {
-                                let var = expander.setup_owned_connections();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "DalContext" => {
                                 let var = expander.setup_dal_context_default();
                                 let var = var.as_ref();
@@ -79,12 +74,17 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "PingaShutdownHandle" => {
+                                let var = expander.setup_pinga_shutdown_handle();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "ShutdownHandle" => {
+                            "VeritechShutdownHandle" => {
                                 let var = expander.setup_veritech_shutdown_handle();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
@@ -176,10 +176,10 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
         // the future, but for now (as before), every test starts with its own veritech server with
         // a randomized subject prefix
         expander.setup_start_veritech_server();
+        expander.setup_start_pinga_server();
         expander.setup_start_council_server();
     }
 
-    expander.drop_transactions_clone_if_created();
     expander.finish()
 }
 
@@ -203,14 +203,14 @@ struct DalTestFnSetupExpander {
     nats_subject_prefix: Option<Arc<Ident>>,
     council_server: Option<Arc<Ident>>,
     start_council_server: Option<()>,
+    pinga_server: Option<Arc<Ident>>,
+    pinga_shutdown_handle: Option<Arc<Ident>>,
+    start_pinga_server: Option<()>,
     veritech_server: Option<Arc<Ident>>,
     veritech_shutdown_handle: Option<Arc<Ident>>,
     start_veritech_server: Option<()>,
     services_context: Option<Arc<Ident>>,
     dal_context_builder: Option<Arc<Ident>>,
-    connections: Option<Arc<Ident>>,
-    owned_connections: Option<Arc<Ident>>,
-    transactions: Option<Arc<Ident>>,
     workspace_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     workspace_pk: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
@@ -230,14 +230,14 @@ impl DalTestFnSetupExpander {
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
+            pinga_server: None,
+            pinga_shutdown_handle: None,
+            start_pinga_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
             start_veritech_server: None,
             services_context: None,
             dal_context_builder: None,
-            connections: None,
-            owned_connections: None,
-            transactions: None,
             workspace_signup: None,
             workspace_pk: None,
             dal_context_default: None,
@@ -309,6 +309,30 @@ impl FnSetupExpander for DalTestFnSetupExpander {
         self.start_council_server = value;
     }
 
+    fn pinga_server(&self) -> Option<&Arc<Ident>> {
+        self.pinga_server.as_ref()
+    }
+
+    fn set_pinga_server(&mut self, value: Option<Arc<Ident>>) {
+        self.pinga_server = value;
+    }
+
+    fn pinga_shutdown_handle(&self) -> Option<&Arc<Ident>> {
+        self.pinga_shutdown_handle.as_ref()
+    }
+
+    fn set_pinga_shutdown_handle(&mut self, value: Option<Arc<Ident>>) {
+        self.pinga_shutdown_handle = value;
+    }
+
+    fn start_pinga_server(&self) -> Option<()> {
+        self.start_pinga_server
+    }
+
+    fn set_start_pinga_server(&mut self, value: Option<()>) {
+        self.start_pinga_server = value;
+    }
+
     fn veritech_server(&self) -> Option<&Arc<Ident>> {
         self.veritech_server.as_ref()
     }
@@ -347,30 +371,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_dal_context_builder(&mut self, value: Option<Arc<Ident>>) {
         self.dal_context_builder = value;
-    }
-
-    fn connections(&self) -> Option<&Arc<Ident>> {
-        self.connections.as_ref()
-    }
-
-    fn set_connections(&mut self, value: Option<Arc<Ident>>) {
-        self.connections = value;
-    }
-
-    fn owned_connections(&self) -> Option<&Arc<Ident>> {
-        self.owned_connections.as_ref()
-    }
-
-    fn set_owned_connections(&mut self, value: Option<Arc<Ident>>) {
-        self.owned_connections = value;
-    }
-
-    fn transactions(&self) -> Option<&Arc<Ident>> {
-        self.transactions.as_ref()
-    }
-
-    fn set_transactions(&mut self, value: Option<Arc<Ident>>) {
-        self.transactions = value;
     }
 
     fn workspace_signup(&self) -> Option<&(Arc<Ident>, Arc<Ident>)> {

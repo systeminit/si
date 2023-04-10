@@ -39,6 +39,10 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
         .create_component(ctx, "Regal Ancestor Spirit", Builtin::AwsEc2)
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // First, connect the two components together.
     let ec2_user_data_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
@@ -99,6 +103,10 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
             element_attribute_value_id,
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure everything looks as expected.
     assert_eq!(
@@ -196,6 +204,10 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
         .create_component(ctx, "nginx", Builtin::DockerImage)
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Collect the providers needed to perform the two connections from each docker image to butane.
     let alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
@@ -242,6 +254,10 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     .await
     .expect("could not connect providers for components");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Set values required for butane.
     alpine_payload
         .update_attribute_value_for_prop_name(
@@ -267,6 +283,11 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     nginx_payload
         .update_attribute_value_for_prop_name(ctx, "/root/domain/image", Some(nginx_image_value))
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let nginx_port80_value = serde_json::to_value("80/tcp").expect("could not convert to value");
     nginx_payload
         .insert_array_primitive_element(
@@ -286,11 +307,15 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Check the ignition qualification.
     let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
     assert_eq!(
+        EXPECTED_DOCKER_TO_BUTANE_IGNITION, // expected
         &ignition,                          // actual
-        EXPECTED_DOCKER_TO_BUTANE_IGNITION  // expected
     );
 }
 

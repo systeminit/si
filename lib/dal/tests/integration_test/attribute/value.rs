@@ -26,6 +26,10 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
             .await
@@ -36,6 +40,10 @@ async fn update_for_context_simple(ctx: &DalContext) {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![
@@ -93,6 +101,10 @@ async fn update_for_context_simple(ctx: &DalContext) {
     .await
     .expect("cannot set value for context");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![
             {
@@ -122,6 +134,10 @@ async fn update_for_context_simple(ctx: &DalContext) {
     )
     .await
     .expect("cannot update value for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![
@@ -161,10 +177,18 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
             .await
             .expect("Unable to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -206,6 +230,10 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         AttributeValue::insert_for_context(ctx, update_context, *array_value.id(), None, None)
             .await
             .expect("cannot insert new array element");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -254,10 +282,18 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
             .await
             .expect("Unable to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -337,6 +373,10 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
@@ -389,6 +429,10 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
@@ -436,6 +480,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
             .await
@@ -446,6 +494,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -486,6 +538,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
     )
     .await
     .expect("cannot insert new array element");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![{
@@ -532,6 +588,10 @@ async fn list_payload(ctx: &DalContext) {
     let (component, _node) = Component::new(ctx, &name, *schema_variant_id)
         .await
         .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("commit & wait for jobs failed");
 
     let payloads = AttributeValue::list_payload_for_read_context(
         ctx,

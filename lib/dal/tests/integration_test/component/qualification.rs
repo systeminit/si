@@ -36,11 +36,12 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     .await
     .expect("could not create func");
     let qualification_func_id = *qualification_func.id();
-    let code = "function isQualified(input) {
+    let code = r##"function isQualified(input) {
         return {
-            result: (input.domain?.poop ?? false) ? 'success' : 'failure'
+            result: (input.domain?.poop ?? false) ? 'success' : 'failure',
+            message: "must be present when result is not 'success'",
         };
-    }";
+    }"##;
     qualification_func
         .set_code_plaintext(ctx, Some(code))
         .await
@@ -80,6 +81,10 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let (component, _) = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
@@ -113,6 +118,10 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     .await
     .expect("could not perform update for context");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Observe that the qualification worked.
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -131,6 +140,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
                 "qualification": {
                     "test:qualification": {
                         "result": "success",
+                        "message": "must be present when result is not 'success'",
                     },
                 }
         }], // expected

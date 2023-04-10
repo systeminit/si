@@ -43,7 +43,9 @@ impl PropertyEditorSchema {
             HashMap::new();
 
         let rows = ctx
-            .pg_txn()
+            .txns()
+            .await?
+            .pg()
             .query(
                 PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT,
                 &[ctx.tenancy(), ctx.visibility(), &schema_variant.id()],

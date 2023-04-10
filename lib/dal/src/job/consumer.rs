@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -15,10 +12,10 @@ use ulid::Ulid;
 
 use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
-    status::StatusUpdaterError, workflow_runner::WorkflowRunnerError, AccessBuilder,
-    ActionPrototypeError, AttributeValueError, ComponentError, ComponentId, DalContext,
-    DalContextBuilder, FixBatchId, FixResolverError, StandardModelError, TransactionsError,
-    Visibility, WsEventError,
+    job::producer::BlockingJobError, status::StatusUpdaterError,
+    workflow_runner::WorkflowRunnerError, AccessBuilder, ActionPrototypeError, AttributeValueError,
+    ComponentError, ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError,
+    StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -75,6 +72,10 @@ pub enum JobConsumerError {
     StatusUpdaterError(#[from] StatusUpdaterError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
+    #[error("nats is unavailable")]
+    NatsUnavailable,
+    #[error("Error blocking on job: {0}")]
+    BlockingJob(#[from] BlockingJobError),
 }
 
 impl From<JobConsumerError> for std::io::Error {
@@ -84,12 +85,6 @@ impl From<JobConsumerError> for std::io::Error {
 }
 
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NextJobInfo {
-    pub job: JobInfo,
-    pub wait_for_execution: bool,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobInfo {
@@ -102,7 +97,6 @@ pub struct JobInfo {
     pub args: Vec<Value>,
     pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
-    pub subsequent_jobs: VecDeque<NextJobInfo>,
 }
 
 impl JobInfo {
@@ -180,23 +174,19 @@ pub trait JobConsumerMetadata: std::fmt::Debug + Sync {
 #[async_trait]
 // Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
 pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
-    /// Horrible hack, exists to support sync processor, they need that all jobs run within the provided DalContext, without commiting any transactions, or writing to unrelated transactions
-    /// And since it's sync the data sharing issue that appears in dependent values update running in parallel in pinga, sharing data, synchronized by council, stops existing
-    fn set_sync(&mut self) {}
-
     /// Intended to be defined by implementations of this trait.
-    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()>;
+    async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()>;
 
     /// Called on the trait object to set up the data necessary to run the job,
     /// and in-turn calls the `run` method. Can be overridden by an implementation
     /// of the trait if you need more control over how the `DalContext` is managed
     /// during the lifetime of the job.
     async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
-        let ctx = ctx_builder
+        let mut ctx = ctx_builder
             .build(self.access_builder().build(self.visibility()))
             .await?;
 
-        self.run(&ctx).await?;
+        self.run(&mut ctx).await?;
 
         ctx.commit().await?;
 

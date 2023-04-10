@@ -1,5 +1,4 @@
 disallowed-methods = [
-    { path = "dal_test::helpers::commit_and_continue", reason = "should not be left in tests as this could infect other tests" },
     { path = "dal::job::definition::dependent_values_update::dependency_graph_to_dot", reason = "graphviz functions should only be used for local debugging" },
     { path = "env::var", reason = "dal should not directly access environment variables (barring ones from CARGO)" },
     { path = "env::vars", reason = "dal should not directly access environment variables (barring ones from CARGO)" },

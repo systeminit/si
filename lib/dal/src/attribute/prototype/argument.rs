@@ -11,7 +11,7 @@ use crate::{
     func::argument::FuncArgumentId, impl_standard_model, pk,
     provider::internal::InternalProviderId, standard_model, standard_model_accessor,
     AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
@@ -32,6 +32,8 @@ pub enum AttributePrototypeArgumentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 
     #[error("cannot update set field to become unset: {0}")]
     CannotFlipSetFieldToUnset(&'static str),
@@ -112,6 +114,7 @@ impl AttributePrototypeArgument {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -153,6 +156,7 @@ impl AttributePrototypeArgument {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -194,6 +198,7 @@ impl AttributePrototypeArgument {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -235,6 +240,7 @@ impl AttributePrototypeArgument {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -393,6 +399,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE,
@@ -409,6 +416,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_FUNC_ARGUMENT_ID,
@@ -427,6 +435,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_PROVIDERS_AND_COMPONENTS,

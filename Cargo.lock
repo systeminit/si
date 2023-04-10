@@ -912,6 +912,7 @@ dependencies = [
  "jwt-simple",
  "lazy_static",
  "names",
+ "pinga-server",
  "serde",
  "serde_json",
  "si-data-nats",

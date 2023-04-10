@@ -29,7 +29,7 @@ use crate::{
     SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError,
     Visibility, WsEventError,
 };
-use crate::{AttributeReadContext, AttributeValue, RootPropChild};
+use crate::{AttributeReadContext, AttributeValue, RootPropChild, TransactionsError};
 use crate::{FuncBackendResponseType, FuncId};
 
 use self::leaves::LeafKind;
@@ -78,6 +78,8 @@ pub enum SchemaVariantError {
     NotFound(SchemaVariantId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     ExternalProvider(#[from] ExternalProviderError),
     #[error(transparent)]
@@ -191,6 +193,7 @@ impl SchemaVariant {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM schema_variant_create_v1($1, $2, $3)",
@@ -487,6 +490,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_ROOT_SI_CHILD_PROPS,
@@ -502,6 +506,7 @@ impl SchemaVariant {
     pub async fn all_props(&self, ctx: &DalContext) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(ALL_PROPS, &[ctx.tenancy(), ctx.visibility(), self.id()])
             .await?;
@@ -519,6 +524,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Vec<Func>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 ALL_FUNCS,
@@ -539,6 +545,7 @@ impl SchemaVariant {
         let (leaf_map_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 FIND_LEAF_ITEM_PROP,
@@ -563,6 +570,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<InternalProvider> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER,

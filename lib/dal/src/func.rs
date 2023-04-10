@@ -11,7 +11,7 @@ use crate::func::argument::FuncArgumentError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     DalContext, FuncBinding, FuncDescriptionContents, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -44,6 +44,8 @@ pub enum FuncError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(String),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 
     #[error("could not find func by id: {0}")]
     NotFound(FuncId),
@@ -125,6 +127,7 @@ impl Func {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_create_v1($1, $2, $3, $4, $5)",
@@ -175,6 +178,7 @@ impl Func {
     pub async fn for_binding(ctx: &DalContext, func_binding: &FuncBinding) -> FuncResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT row_to_json(funcs.*) AS object

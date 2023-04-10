@@ -120,7 +120,7 @@ impl WsEvent {
     /// transaction is committed, the [`event`](Self) will be published for external use.
     pub async fn publish_on_commit(&self, ctx: &DalContext) -> WsEventResult<()> {
         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
-        ctx.nats_txn().publish(subject, &self).await?;
+        ctx.txns().await?.nats().publish(subject, &self).await?;
         Ok(())
     }
 }

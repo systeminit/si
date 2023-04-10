@@ -48,6 +48,7 @@ impl SchemaUiMenu {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3, $4)",
@@ -89,6 +90,7 @@ impl SchemaUiMenu {
     ) -> SchemaResult<Option<Self>> {
         let maybe_row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_SCHEMA,

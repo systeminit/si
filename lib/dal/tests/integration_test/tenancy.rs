@@ -9,7 +9,7 @@ async fn check_workspace_pk_identical(ctx: &mut DalContext, jwt_secret_key: &Jwt
     let tenancy = Tenancy::new(*nw.workspace.pk());
 
     let check = tenancy
-        .check(ctx.pg_txn(), &tenancy)
+        .check(ctx.txns().await.expect("failed to get txns").pg(), &tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(check);
@@ -24,13 +24,16 @@ async fn check_workspace_pk_mismatched(ctx: &mut DalContext, jwt_secret_key: &Jw
     let other_tenancy = Tenancy::new(WorkspacePk::NONE);
 
     let check = tenancy
-        .check(ctx.pg_txn(), &other_tenancy)
+        .check(
+            ctx.txns().await.expect("failed to get txns").pg(),
+            &other_tenancy,
+        )
         .await
         .expect("cannot check tenancy");
     assert!(!check);
 
     let check = other_tenancy
-        .check(ctx.pg_txn(), &tenancy)
+        .check(ctx.txns().await.expect("failed to get txns").pg(), &tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(!check);

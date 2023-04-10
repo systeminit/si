@@ -10,10 +10,10 @@ use veritech_client::OutputStream;
 
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, Connections, DalContext,
-    DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
-    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
-    StandardModelError, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, DalContextBuilder,
+    Func, FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, PgPoolError,
+    RequestContext, ServicesContext, StandardModel, StandardModelError, TransactionsError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 #[derive(Error, Debug)]
@@ -241,7 +241,6 @@ impl WorkflowTree {
                 ctx.job_processor(),
                 ctx.veritech().clone(),
                 Arc::new(*ctx.encryption_key()),
-                ctx.council_subject_prefix().to_owned(),
                 None,
             );
             let ctx_builder = services_context.clone().into_builder();
@@ -250,44 +249,14 @@ impl WorkflowTree {
                 visibility: *ctx.visibility(),
                 history_actor: *ctx.history_actor(),
             };
-            let conns = services_context.connections().await?;
 
-            handlers.spawn(async move {
-                async fn process_output(
-                    ctx_builder: DalContextBuilder,
-                    request_context: RequestContext,
-                    mut conns: Connections,
-                    func_binding_id: FuncBindingId,
-                    mut rx: mpsc::Receiver<OutputStream>,
-                    run_id: usize,
-                ) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
-                    let mut output = Vec::new();
-                    while let Some(stream) = rx.recv().await {
-                        let ctx = ctx_builder
-                            .build_with_conns(request_context.clone(), conns)
-                            .await?;
-
-                        let text = stream.message.clone();
-                        output.push(stream);
-
-                        WsEvent::command_output(&ctx, run_id, text)
-                            .await?
-                            .publish_on_commit(&ctx)
-                            .await?;
-                        conns = ctx.commit_into_conns().await?;
-                    }
-                    Ok((func_binding_id, output))
-                }
-                process_output(
-                    ctx_builder,
-                    request_context,
-                    conns,
-                    func_binding_id,
-                    rx,
-                    run_id,
-                )
-                .await
-            });
+            handlers.spawn(process_output(
+                ctx_builder,
+                request_context,
+                func_binding_id,
+                rx,
+                run_id,
+            ));
         }
         let mut map = self.clone().execute(map).await?;
 
@@ -540,4 +509,28 @@ fn join_task<T>(res: Result<T, tokio::task::JoinError>) -> T {
             }
         }
     }
+}
+
+async fn process_output(
+    ctx_builder: DalContextBuilder,
+    request_context: RequestContext,
+    func_binding_id: FuncBindingId,
+    mut rx: mpsc::Receiver<OutputStream>,
+    run_id: usize,
+) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
+    let ctx = ctx_builder.build(request_context).await?;
+
+    let mut output = Vec::new();
+    while let Some(stream) = rx.recv().await {
+        let text = stream.message.clone();
+        output.push(stream);
+
+        WsEvent::command_output(&ctx, run_id, text)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+        ctx.commit().await?;
+    }
+
+    Ok((func_binding_id, output))
 }

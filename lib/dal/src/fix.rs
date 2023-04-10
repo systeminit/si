@@ -20,7 +20,7 @@ use crate::{
     StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
     WorkflowRunnerId, WorkflowRunnerStatus, WsEvent, WsPayload,
 };
-use crate::{FixBatch, WorkflowRunner, WsEventResult};
+use crate::{FixBatch, TransactionsError, WorkflowRunner, WsEventResult};
 
 pub mod batch;
 pub mod resolver;
@@ -93,6 +93,8 @@ pub enum FixError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
@@ -188,6 +190,7 @@ impl Fix {
     ) -> FixResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM fix_create_v1($1, $2, $3, $4, $5)",

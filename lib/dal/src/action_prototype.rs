@@ -11,7 +11,7 @@ use telemetry::prelude::*;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
     HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeId,
+    Timestamp, TransactionsError, Visibility, WorkflowPrototype, WorkflowPrototypeId,
 };
 
 const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
@@ -22,6 +22,8 @@ pub enum ActionPrototypeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
@@ -196,6 +198,7 @@ impl ActionPrototype {
     ) -> ActionPrototypeResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -223,6 +226,7 @@ impl ActionPrototype {
     ) -> ActionPrototypeResult<Option<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_BY_NAME,

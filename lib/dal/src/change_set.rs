@@ -11,7 +11,7 @@ use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
     pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    TransactionsError, Visibility,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -34,6 +34,8 @@ pub enum ChangeSetError {
     LabelList(#[from] LabelListError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
@@ -74,6 +76,7 @@ impl ChangeSet {
         let note = note.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM change_set_create_v1($1, $2, $3, $4)",
@@ -101,6 +104,7 @@ impl ChangeSet {
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT timestamp_updated_at FROM change_set_apply_v1($1, $2, $3)",
@@ -136,6 +140,7 @@ impl ChangeSet {
     pub async fn list_open(ctx: &DalContext) -> ChangeSetResult<LabelList<ChangeSetPk>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(CHANGE_SET_OPEN_LIST, &[ctx.tenancy()])
             .await?;
@@ -150,6 +155,7 @@ impl ChangeSet {
     ) -> ChangeSetResult<Option<ChangeSet>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(CHANGE_SET_GET_BY_PK, &[ctx.tenancy(), &pk])
             .await?;

@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{
     pk, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, Timestamp,
-    Workspace, WorkspaceError, WorkspacePk,
+    TransactionsError, Workspace, WorkspaceError, WorkspacePk,
 };
 
 mod key_pair_box_public_key_serde;
@@ -33,6 +33,8 @@ pub enum KeyPairError {
     NoCurrentKeyPair,
     #[error("Invalid workspace: {0}")]
     InvalidWorkspace(WorkspacePk),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;
@@ -64,6 +66,7 @@ impl KeyPair {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM key_pair_create_v1($1, $2, $3, $4)",
@@ -96,6 +99,7 @@ impl KeyPair {
     pub async fn get_by_pk(ctx: &DalContext, pk: KeyPairPk) -> KeyPairResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(KEY_PAIR_GET_BY_PK, &[&pk])
             .await?;
@@ -106,6 +110,7 @@ impl KeyPair {
     pub async fn get_current(ctx: &DalContext) -> KeyPairResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(PUBLIC_KEY_GET_CURRENT, &[&ctx.tenancy().workspace_pk()])
             .await?;
@@ -160,6 +165,7 @@ impl PublicKey {
     pub async fn get_current(ctx: &DalContext) -> KeyPairResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(PUBLIC_KEY_GET_CURRENT, &[&ctx.tenancy().workspace_pk()])
             .await?;

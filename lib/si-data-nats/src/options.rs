@@ -21,7 +21,7 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::with_token("t0k3n!")
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -37,7 +37,7 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::with_user_pass("derek", "s3cr3t!")
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -56,7 +56,7 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::with_credentials("path/to/my.creds")
-    ///     .connect("connect.ngs.global")
+    ///     .connect("connect.ngs.global", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -91,7 +91,7 @@ impl Options {
     ///
     /// let nc = Options::with_static_credentials(creds)
     ///     .expect("failed to parse static creds")
-    ///     .connect("connect.ngs.global")
+    ///     .connect("connect.ngs.global", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -113,7 +113,7 @@ impl Options {
     ///
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::with_jwt(load_jwt, move |nonce| kp.sign(nonce).unwrap())
-    ///     .connect("localhost")
+    ///     .connect("localhost", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -136,7 +136,7 @@ impl Options {
     ///
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::with_nkey(nkey, move |nonce| kp.sign(nonce).unwrap())
-    ///     .connect("localhost")
+    ///     .connect("localhost", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -155,7 +155,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .client_cert("client-cert.pem", "client-key.pem")
-    ///     .connect("nats://localhost:4443")
+    ///     .connect("nats://localhost:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -186,7 +186,7 @@ impl Options {
     ///     );
     /// let nc = Options::new()
     ///     .tls_client_config(tls_client_config)
-    ///     .connect("nats://localhost:4443")
+    ///     .connect("nats://localhost:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -203,7 +203,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .with_name("My App")
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -220,7 +220,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .no_echo()
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -241,7 +241,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .max_reconnects(3)
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -260,7 +260,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .reconnect_buffer_size(64 * 1024)
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -280,7 +280,7 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -292,12 +292,16 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .connect("nats://demo.nats.io:4222,tls://demo.nats.io:4443")
+    ///     .connect("nats://demo.nats.io:4222,tls://demo.nats.io:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
-    pub async fn connect(self, nats_url: impl Into<String>) -> Result<Client> {
-        Client::connect_with_options(nats_url, self).await
+    pub async fn connect(
+        self,
+        nats_url: impl Into<String>,
+        subject_prefix: Option<String>,
+    ) -> Result<Client> {
+        Client::connect_with_options(nats_url, subject_prefix, self).await
     }
 
     /// Set a callback to be executed when connectivity to a server has been lost.
@@ -308,7 +312,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .disconnect_callback(|| println!("connection has been lost"))
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -327,7 +331,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .reconnect_callback(|| println!("connection has been reestablished"))
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -351,7 +355,7 @@ impl Options {
     // # use si_data_nats::Options; tokio_test::block_on(async {
     // let nc = Options::new()
     //     .jetstream_api_prefix("some_exported_prefix".to_string())
-    //     .connect("demo.nats.io")
+    //     .connect("demo.nats.io", None)
     //     .await?;
     // nc.drain().await?;
     // # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -370,7 +374,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .close_callback(|| println!("connection has been closed"))
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// nc.drain().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -399,7 +403,7 @@ impl Options {
     ///     .reconnect_delay_callback(|c| {
     ///         Duration::from_millis(std::cmp::min((c * 100) as u64, 8000))
     ///     })
-    ///     .connect("demo.nats.io")
+    ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -421,7 +425,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .tls_required(true)
-    ///     .connect("tls://demo.nats.io:4443")
+    ///     .connect("tls://demo.nats.io:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -440,7 +444,7 @@ impl Options {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
     ///     .add_root_certificate("my-certs.pem")
-    ///     .connect("tls://demo.nats.io:4443")
+    ///     .connect("tls://demo.nats.io:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```

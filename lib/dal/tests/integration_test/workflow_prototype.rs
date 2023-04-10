@@ -144,8 +144,7 @@ async fn run(ctx: DalContext) {
         .expect("unable to extract tree");
 
     // Needed as workflow run create new transactions
-    let ctx = ctx
-        .commit_and_continue()
+    ctx.blocking_commit()
         .await
         .expect("unable to commit transaction");
 

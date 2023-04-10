@@ -1,4 +1,4 @@
-use crate::Tenancy;
+use crate::{Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -30,6 +30,8 @@ pub enum FuncExecutionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type FuncExecutionResult<T> = Result<T, FuncExecutionError>;
@@ -96,6 +98,7 @@ impl FuncExecution {
     ) -> FuncExecutionResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_execution_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
@@ -114,7 +117,11 @@ impl FuncExecution {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // This needs to be some kind of 'immediate mode' publish.
-        ctx.txns().nats().publish("funcExecution", &json).await?;
+        ctx.txns()
+            .await?
+            .nats()
+            .publish("funcExecution", &json)
+            .await?;
         let object: FuncExecution = serde_json::from_value(json)?;
         Ok(object)
     }
@@ -130,6 +137,7 @@ impl FuncExecution {
     ) -> FuncExecutionResult<()> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_state_v1($1, $2)",
@@ -138,7 +146,11 @@ impl FuncExecution {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // This needs to be some kind of 'immediate mode' publish.
-        ctx.txns().nats().publish("funcExecution", &json).await?;
+        ctx.txns()
+            .await?
+            .nats()
+            .publish("funcExecution", &json)
+            .await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
         Ok(())
@@ -176,6 +188,7 @@ impl FuncExecution {
         let output_stream_json = serde_json::to_value(&output_stream)?;
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_output_stream_v1($1, $2)",
@@ -183,7 +196,11 @@ impl FuncExecution {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        ctx.txns().nats().publish("funcExecution", &json).await?;
+        ctx.txns()
+            .await?
+            .nats()
+            .publish("funcExecution", &json)
+            .await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
         Ok(())
@@ -197,6 +214,7 @@ impl FuncExecution {
     ) -> FuncExecutionResult<()> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_return_value_v1($1, $2, $3, $4)",
@@ -209,7 +227,11 @@ impl FuncExecution {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        ctx.txns().nats().publish("funcExecution", &json).await?;
+        ctx.txns()
+            .await?
+            .nats()
+            .publish("funcExecution", &json)
+            .await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
 
@@ -224,6 +246,7 @@ impl FuncExecution {
     pub async fn get_by_pk(ctx: &DalContext, pk: &FuncExecutionPk) -> FuncExecutionResult<Self> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM get_by_pk_v1($1, $2)",

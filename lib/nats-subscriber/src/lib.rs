@@ -136,19 +136,13 @@ where
                 }
 
                 let (data, reply) = nats_msg.into_parts();
+                let reply_mailbox = reply;
 
-                let reply_mailbox = match this.check_for_reply_mailbox {
-                    true => match reply {
-                        // We have a reply mailbox, good
-                        Some(reply) => Some(reply),
-                        // No reply mailbox provided
-                        None => {
-                            return Poll::Ready(Some(Err(SubscriberError::NoReplyMailbox(data))));
-                        }
-                    },
-                    // If we do not have to check the reply mailbox, use "None"
-                    false => None,
-                };
+                // Always provide the reply_mailbox if there is one, but only make it an error if
+                // we were told to explicitly check for one.
+                if *this.check_for_reply_mailbox && reply_mailbox.is_none() {
+                    return Poll::Ready(Some(Err(SubscriberError::NoReplyMailbox(data))));
+                }
 
                 let payload: T = match serde_json::from_slice(&data) {
                     // Deserializing from JSON into a formal request type was successful

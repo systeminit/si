@@ -20,6 +20,10 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
@@ -97,6 +101,10 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
     .await
     .expect("could not connect providers");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
@@ -152,6 +160,10 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
             Some(serde_json::json!["ironsides"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe that it worked.
     assert_eq!(
@@ -219,4 +231,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
         .expect("unable to find changeset")
         .expect("no changeset found");
     cs.apply(ctx).await.expect("unable to apply changeset");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 }

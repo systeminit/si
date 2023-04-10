@@ -8,11 +8,11 @@ use std::{
     sync::{Arc, Once},
 };
 
-use dal::builtins::BuiltinSchemaOption;
 #[cfg(debug_assertions)]
 use dal::check_runtime_dependencies;
 use dal::{
-    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
+    builtins::BuiltinSchemaOption,
+    job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, JwtPublicSigningKey, JwtSecretKey, ServicesContext,
 };
 use lazy_static::lazy_static;
@@ -224,12 +224,9 @@ impl TestContext {
         }
     }
 
-    /// Creates a new [`ServicesContext`] using the given NATS subject prefix.
-    pub async fn create_services_context(&self, nats_subject_prefix: &str) -> ServicesContext {
-        let veritech = veritech_client::Client::with_subject_prefix(
-            self.nats_conn.clone(),
-            format!("{nats_subject_prefix}.veritech"),
-        );
+    /// Creates a new [`ServicesContext`].
+    pub async fn create_services_context(&self) -> ServicesContext {
+        let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
         ServicesContext::new(
             self.pg_pool.clone(),
@@ -237,7 +234,6 @@ impl TestContext {
             self.job_processor.clone(),
             veritech,
             self.encryption_key.clone(),
-            format!("{nats_subject_prefix}.council"),
             None,
         )
     }
@@ -303,14 +299,22 @@ impl TestContextBuilder {
     }
 
     async fn build_inner(&self, pg_pool: PgPool) -> Result<TestContext> {
-        let nats_conn = NatsClient::new(&self.config.nats)
+        // Need to make a new NatsConfig so that we can add the test-specific subject prefix
+        // without leaking it to other tests.
+        let mut nats_config = self.config.nats.clone();
+        let nats_subject_prefix = random_identifier_string();
+        nats_config.subject_prefix = Some(nats_subject_prefix.clone());
+        let mut config = self.config.clone();
+        config.nats.subject_prefix = Some(nats_subject_prefix);
+
+        let nats_conn = NatsClient::new(&nats_config)
             .await
             .wrap_err("failed to create NatsClient")?;
-        let job_processor =
-            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
+            as Box<dyn JobQueueProcessor + Send + Sync>;
 
         Ok(TestContext {
-            config: self.config.clone(),
+            config,
             pg_pool,
             nats_conn,
             job_processor,
@@ -386,23 +390,44 @@ pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
 
 /// Configures and builds a [`council_server::Server`] suitable for running alongside DAL object-related
 /// tests.
-pub async fn council_server(
-    nats_config: NatsConfig,
-    subject_prefix: String,
-) -> Result<council_server::Server> {
+pub async fn council_server(nats_config: NatsConfig) -> Result<council_server::Server> {
     let config = council_server::server::Config::builder()
         .nats(nats_config)
-        .subject_prefix(subject_prefix)
         .build()?;
     let server = council_server::Server::new_with_config(config).await?;
     Ok(server)
 }
 
-/// Configures and builds a [`veritech_server::Server`] suitable for running alongside DAL object-related
-/// tests.
+/// Configures and builds a [`pinga_server::Server`] suitable for running alongside DAL
+/// object-related tests.
+pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::Server> {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let config = pinga_server::Config::builder()
+        .cyclone_encryption_key_path(
+            dir.join("../../lib/cyclone-server/src/dev.encryption.key")
+                .try_into()
+                .wrap_err("failed to canonicalize pinga encryption key path")?,
+        )
+        .build()
+        .wrap_err("failed to build Pinga server config")?;
+    let server = pinga_server::Server::from_services(
+        config.instance_id(),
+        config.concurrency(),
+        services_context.encryption_key(),
+        services_context.nats_conn().clone(),
+        services_context.pg_pool().clone(),
+        services_context.veritech().clone(),
+        services_context.job_processor(),
+    )
+    .wrap_err("failed to create Pinga server")?;
+
+    Ok(server)
+}
+
+/// Configures and builds a [`veritech_server::Server`] suitable for running alongside DAL
+/// object-related tests.
 pub async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
-    nats_subject_prefix: String,
 ) -> Result<veritech_server::Server> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cyclone_spec = veritech_server::CycloneSpec::LocalUds(
@@ -436,7 +461,6 @@ pub async fn veritech_server_for_uds_cyclone(
     );
     let config = veritech_server::Config::builder()
         .nats(nats_config)
-        .subject_prefix(nats_subject_prefix)
         .cyclone_spec(cyclone_spec)
         .build()
         .wrap_err("failed to build spec")?;
@@ -460,15 +484,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         check_runtime_dependencies()?;
     }
 
-    let nats_subject_prefix = random_identifier_string();
+    // Create a `ServicesContext`
+    let services_ctx = test_context.create_services_context().await;
 
     // Create a dedicated Council server with a unique subject prefix for each test
-    let council_subject_prefix = format!("{nats_subject_prefix}.council");
-    let council_server = council_server(
-        test_context.config.nats.clone(),
-        council_subject_prefix.clone(),
-    )
-    .await?;
+    let council_server = council_server(test_context.config.nats.clone()).await?;
     let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
     let (subscription_started_tx, mut subscription_started_rx) = tokio::sync::watch::channel(());
     tokio::spawn(async move {
@@ -479,20 +499,17 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     });
     subscription_started_rx.changed().await?;
 
+    // Start up a Pinga server as a task exclusively to allow the migrations to run
+    info!("starting Pinga server for initial migrations");
+    let pinga_server = pinga_server(&services_ctx)?;
+    let pinga_server_handle = pinga_server.shutdown_handle();
+    tokio::spawn(pinga_server.run());
+
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
-    let veritech_server = veritech_server_for_uds_cyclone(
-        test_context.config.nats.clone(),
-        format!("{nats_subject_prefix}.veritech"),
-    )
-    .await?;
+    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
     tokio::spawn(veritech_server.run());
-
-    // Create a `ServicesContext`
-    let services_ctx = test_context
-        .create_services_context(&nats_subject_prefix)
-        .await;
 
     info!("testing database connection");
     services_ctx
@@ -554,12 +571,16 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.nats_conn(),
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
-        services_ctx.encryption_key(),
-        format!("{nats_subject_prefix}.council"),
+        &services_ctx.encryption_key(),
         builtin_schema_option,
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
+
+    // Shutdown the Pinga server (each test gets their own server instance with an exclusively
+    // unique subject prefix)
+    info!("shutting down initial migrations Pinga server");
+    pinga_server_handle.shutdown().await;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)

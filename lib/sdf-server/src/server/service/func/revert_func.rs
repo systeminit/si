@@ -25,9 +25,7 @@ pub async fn revert_func(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RevertFuncRequest>,
 ) -> FuncResult<Json<RevertFuncResponse>> {
-    let ctx = builder
-        .build(request_ctx.clone().build(request.visibility))
-        .await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?

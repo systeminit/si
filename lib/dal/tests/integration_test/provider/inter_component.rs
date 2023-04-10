@@ -18,6 +18,10 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     let esp_payload = setup_esp(ctx).await;
     let swings_payload = setup_swings(ctx).await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure setup went as expected.
     assert_eq!(
         serde_json::json![{
@@ -94,6 +98,10 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             Some(serde_json::json!["one"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Ensure that they look as we expect.
     assert_eq!(
@@ -195,6 +203,10 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not create attribute prototype argument");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure that both components look as we expect when not "connected". The creation of both the
     // "esp" external provider and the "swings" implicit internal provider should not affect intra
     // component identity update working.
@@ -237,6 +249,10 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .await
     .expect("could not connect providers");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Ensure that both components continue to look as we expect.
     assert_eq!(
         serde_json::json![{
@@ -274,6 +290,10 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             Some(serde_json::json!["two"]),
         )
         .await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // Observe that inter component identity updating work.
     assert_eq!(
@@ -333,6 +353,10 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let mut prop_map = HashMap::new();
     prop_map.insert("/root/domain/object/source", *source_prop.id());
     prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
@@ -341,6 +365,10 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         Component::new_for_default_variant_from_schema(ctx, "esp", *schema.id())
             .await
             .expect("unable to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // The base attribute read context can also be used for generating component views.
     let component_payload = ComponentPayload {
@@ -374,6 +402,10 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         )
         .await;
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     // Return the payload.
     component_payload
 }
@@ -403,6 +435,10 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
         .await
         .expect("cannot finalize SchemVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let mut prop_map = HashMap::new();
     prop_map.insert("/root/domain/destination", *destination_prop.id());
 
@@ -410,6 +446,10 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
         Component::new_for_default_variant_from_schema(ctx, "swings", *schema.id())
             .await
             .expect("unable to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -471,6 +511,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize source SchemaVariant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let (source_external_provider, _socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -542,6 +586,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot finalize destination SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let destination_object_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
@@ -590,6 +638,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("Unable to create source component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let source_attribute_read_context = AttributeReadContext {
         prop_id: None,
         component_id: Some(*source_component.id()),
@@ -620,6 +672,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     )
     .await
     .expect("Unable to create destination component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![
@@ -700,6 +756,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     )
     .await
     .expect("cannot update source foo_string");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         serde_json::json![
@@ -787,6 +847,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("cannot update source bar_string");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     assert_eq!(
         serde_json::json![
             {
@@ -851,6 +915,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("find attribute value for foo_string internal provider")
     .expect("attribute value for foo_string internal provider should exist");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(
         Some(serde_json::json!["deep update"]),

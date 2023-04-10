@@ -41,6 +41,10 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     (
         schema,
         schema_variant,
@@ -97,6 +101,10 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     (
         schema,
         schema_variant,
@@ -140,6 +148,10 @@ pub async fn create_schema_with_string_props(
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     (schema, schema_variant, bohemian_prop, killer_prop, root)
 }
 
@@ -168,6 +180,10 @@ pub async fn create_schema_with_array_of_string_props(
         .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     (schema, schema_variant, sammy_prop, album_string_prop, root)
 }
@@ -222,6 +238,10 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot finalize SchemaVariant");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     (
         schema,
         schema_variant,
@@ -259,6 +279,10 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     (schema, schema_variant, album_prop, album_item_prop, root)
 }
@@ -319,6 +343,10 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     (
         schema,
@@ -393,6 +421,10 @@ async fn only_string_props(ctx: &DalContext) {
     )
     .await
     .expect("could not update bohemian prop value");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -495,6 +527,10 @@ async fn one_object_prop(ctx: &DalContext) {
     )
     .await
     .expect("could not update killer AttributeValue");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -647,6 +683,10 @@ async fn nested_object_prop(ctx: &DalContext) {
     .await
     .expect("could not update dust AttributeValue");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
@@ -740,6 +780,10 @@ async fn simple_array_of_strings(ctx: &DalContext) {
     )
     .await
     .expect("could not insert album AttributeValue");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -981,6 +1025,10 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     .await
     .expect("could not insert can't drive 55 into voa songs array");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
@@ -1023,6 +1071,10 @@ async fn simple_map(ctx: &DalContext) {
         .await
         .expect("Unable to create component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
 
@@ -1056,6 +1108,10 @@ async fn simple_map(ctx: &DalContext) {
     .await
     .expect("could not update album AttributeValue");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let album_item_context = base_attribute_context
         .clone()
         .set_prop_id(*album_item_prop.id())
@@ -1071,6 +1127,10 @@ async fn simple_map(ctx: &DalContext) {
     .await
     .expect("could not insert album item");
 
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
     let _ = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
@@ -1080,6 +1140,10 @@ async fn simple_map(ctx: &DalContext) {
     )
     .await
     .expect("could not insert album item");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -1248,6 +1312,10 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     )
     .await
     .expect("could not insert surrender into standing hampton song map");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await

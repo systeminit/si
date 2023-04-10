@@ -10,7 +10,7 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
     FuncId, HistoryEventError, InternalProviderId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    Timestamp, TransactionsError, Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
@@ -44,6 +44,8 @@ pub enum ExternalProviderError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 
     #[error("unexpected: attribute prototype field is empty")]
     EmptyAttributePrototype,
@@ -116,6 +118,7 @@ impl ExternalProvider {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM external_provider_create_v1($1, $2, $3, $4, $5, $6)",
@@ -200,6 +203,7 @@ impl ExternalProvider {
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
@@ -217,6 +221,7 @@ impl ExternalProvider {
     ) -> ExternalProviderResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_SOCKET,
@@ -237,6 +242,7 @@ impl ExternalProvider {
         let name = name.as_ref();
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_SCHEMA_VARIANT_AND_NAME,
@@ -255,6 +261,7 @@ impl ExternalProvider {
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID,
@@ -279,6 +286,7 @@ impl ExternalProvider {
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
+            .await?
             .pg()
             .query(
                 LIST_FROM_INTERNAL_PROVIDER_USE,

@@ -112,6 +112,7 @@ impl FuncDescription {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_description_create_v1($1, $2, $3, $4, $5, $6)",
@@ -155,6 +156,7 @@ impl FuncDescription {
     ) -> FuncResult<Option<Self>> {
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_opt(
                 FIND_FOR_FUNC_AND_SCHEMA_VARIANT,

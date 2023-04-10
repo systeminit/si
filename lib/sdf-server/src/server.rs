@@ -2,7 +2,7 @@ pub use config::{
     Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, JwtSecretKey, StandardConfig,
     StandardConfigFile,
 };
-pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor, SyncProcessor};
+pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor};
 pub use routes::{routes, AppError};
 pub use server::{build_service, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};

@@ -7,23 +7,26 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{OutputStream, ResolverFunctionComponent};
 
-use crate::func::backend::{
-    array::FuncBackendArray,
-    boolean::FuncBackendBoolean,
-    identity::FuncBackendIdentity,
-    integer::FuncBackendInteger,
-    js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_command::FuncBackendJsCommand,
-    js_validation::FuncBackendJsValidation,
-    js_workflow::FuncBackendJsWorkflow,
-    map::FuncBackendMap,
-    object::FuncBackendObject,
-    string::FuncBackendString,
-    validation::FuncBackendValidation,
-    FuncBackend, FuncDispatch, FuncDispatchContext,
-};
 use crate::func::execution::FuncExecutionPk;
 use crate::FuncError;
+use crate::{
+    func::backend::{
+        array::FuncBackendArray,
+        boolean::FuncBackendBoolean,
+        identity::FuncBackendIdentity,
+        integer::FuncBackendInteger,
+        js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
+        js_command::FuncBackendJsCommand,
+        js_validation::FuncBackendJsValidation,
+        js_workflow::FuncBackendJsWorkflow,
+        map::FuncBackendMap,
+        object::FuncBackendObject,
+        string::FuncBackendString,
+        validation::FuncBackendValidation,
+        FuncBackend, FuncDispatch, FuncDispatchContext,
+    },
+    TransactionsError,
+};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Func, FuncBackendError, FuncBackendKind, HistoryEventError, StandardModel, StandardModelError,
@@ -57,6 +60,8 @@ pub enum FuncBindingError {
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
@@ -119,6 +124,7 @@ impl FuncBinding {
 
         let row = ctx
             .txns()
+            .await?
             .pg()
             .query_one(
                 "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5, $6)",
