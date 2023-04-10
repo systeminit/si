@@ -6,6 +6,8 @@ import LogoutPage from "./pages/LogoutPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import DashboardPage from "./pages/DashboardPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
+import {nextTick} from "vue";
+import posthog from "posthog-js";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -57,5 +59,11 @@ export function initRouterGuards(router: Router) {
     if (!to.name || !_.isString(to.name)) return;
     if (["login", "logout", "404"].includes(to.name)) return;
     // TODO: might want to do something here...?
+  });
+
+  router.afterEach((to) => {
+    nextTick(() => {
+      posthog.capture("$pageview", {$current_url: to.fullPath});
+    }).catch((e) => console.log("Failed to caputre posthog pageview", e));
   });
 }
