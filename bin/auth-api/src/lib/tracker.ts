@@ -27,7 +27,7 @@ function identifyUser(user: User) {
 function trackEvent(user: User, eventName: string, properties?: any) {
   posthog.capture({
     distinctId: user.id,
-    event: eventName,
+    event: `aa-${eventName}`,
     properties,
   });
 }

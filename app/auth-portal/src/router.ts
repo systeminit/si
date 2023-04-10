@@ -64,6 +64,6 @@ export function initRouterGuards(router: Router) {
   router.afterEach((to) => {
     nextTick(() => {
       posthog.capture("$pageview", {$current_url: to.fullPath});
-    }).catch((e) => console.log("Failed to caputre posthog pageview", e));
+    }).catch((e) => console.log("Failed to capture posthog pageview", e));
   });
 }
