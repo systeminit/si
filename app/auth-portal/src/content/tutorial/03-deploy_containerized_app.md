@@ -245,7 +245,7 @@ that we have not yet configured the `/domain/InstanceType` attribute.
 
 ![Needs an Instance Type](tutorial-img/03-deploy_containerized_app/needs_an_instance_type.png)
 
-Go to the `domain/ImageId` attribute in the details panel, and set it to `t3.micro`. You should see the 'All Fields Are
+Go to the `domain/InstanceType` attribute in the details panel, and set it to `t3.micro`. You should see the 'All Fields Are
 Valid' qualification turn green and the remaining warnings are related to the Key Pair and Security Group not existing
 yet (which is fine - it will soon enough!) Close the status bar, and let's get this show on the road.
 

@@ -53,6 +53,9 @@ export const useAuthStore = defineStore("auth", {
         onSuccess: (response) => {
           this.user = response.user;
           posthog.identify(this.user.id);
+          if (this.user.email) {
+            posthog.alias(this.user.id, this.user.email);
+          }
         },
         onFail(e) {
           /* eslint-disable-next-line no-console */
