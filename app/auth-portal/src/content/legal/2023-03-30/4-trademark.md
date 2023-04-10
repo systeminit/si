@@ -75,11 +75,11 @@ When you redistribute an unmodified copy of our software, you are not changing t
 
 You may use the Marks to truthfully describe the relationship between your software and ours. Our Mark should be used after a verb or preposition that describes the relationship between your software and ours. So you may say, for example, "Terry’s plugin for the System Initiative software" but may not say "Terry's System Initiative software." Some other examples that may work for you are:
 
-[Your software] works with System Initiative software
-[Your software] uses System Initiative software
-[Your software] is compatible with System Initiative software
-[Your software] is for use with System Initiative software
-[Your software] for System Initiative software
+* [Your software] works with System Initiative software
+* [Your software] uses System Initiative software
+* [Your software] is compatible with System Initiative software
+* [Your software] is for use with System Initiative software
+* [Your software] for System Initiative software
 
 ## Uses for which we are granting a license
 
