@@ -25,10 +25,7 @@
     </div>
 
     <div v-else class="w-full h-full flex flex-col bg-shade-100">
-      <template v-if="diffReqStatus.isPending"
-        >Loading component code...</template
-      >
-      <template v-else-if="diffReqStatus.isError">
+      <template v-if="diffReqStatus.isError">
         <ErrorMessage :request-status="diffReqStatus" />
       </template>
       <template v-else-if="diffReqStatus.isSuccess && selectedComponentDiff">
