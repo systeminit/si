@@ -43,8 +43,7 @@ useHead(
     },
     link: [{ rel: "icon", href: SiLogoUrl }],
     // set up title template and a default
-    titleTemplate: "%s | System Init",
-    title: "DevOps without papercuts",
+    titleTemplate: "SI | Workspace",
   })),
 );
 

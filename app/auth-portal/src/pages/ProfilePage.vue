@@ -2,10 +2,10 @@
 <template>
   <div>
     <template v-if="loadUserReqStatus.isPending">
-      <Icon name="loader" size="xl" />
+      <Icon name="loader" size="xl"/>
     </template>
     <template v-else-if="loadUserReqStatus.isError">
-      <ErrorMessage :request-status="loadUserReqStatus" />
+      <ErrorMessage :request-status="loadUserReqStatus"/>
     </template>
     <template v-else-if="draftUser">
       <div class="flex gap-xl">
@@ -39,33 +39,35 @@
         <form class="grow my-md p-md">
           <Stack spacing="lg">
             <Stack>
-              <ErrorMessage :request-status="updateUserReqStatus" />
+              <ErrorMessage :request-status="updateUserReqStatus"/>
               <VormInput label="Profile Image" type="container">
                 <div
-                  v-if="draftUser.pictureUrl"
-                  class="flex flex-row items-center gap-sm"
+                    v-if="draftUser.pictureUrl"
+                    class="flex flex-row items-center gap-sm"
                 >
                   <img
-                    :src="draftUser.pictureUrl"
-                    class="rounded-full w-xl h-xl"
+                      :src="draftUser.pictureUrl"
+                      class="rounded-full w-xl h-xl"
                   />
                   <VButton2
-                    tone="destructive"
-                    size="xs"
-                    variant="ghost"
-                    @click="clearPicture"
-                    >Clear Picture</VButton2
+                      tone="destructive"
+                      size="xs"
+                      variant="ghost"
+                      @click="clearPicture"
+                  >Clear Picture
+                  </VButton2
                   >
                 </div>
                 <div v-else class="h-xl items-center flex flex-row gap-sm">
                   <div class="italic text-sm">No image set.</div>
                   <VButton2
-                    v-if="storeUser?.pictureUrl"
-                    tone="action"
-                    size="xs"
-                    variant="ghost"
-                    @click="restorePicture"
-                    >Restore Picture</VButton2
+                      v-if="storeUser?.pictureUrl"
+                      tone="action"
+                      size="xs"
+                      variant="ghost"
+                      @click="restorePicture"
+                  >Restore Picture
+                  </VButton2
                   >
                 </div>
 
@@ -76,61 +78,61 @@
               </VormInput>
               <Tiles columns="2" spacing="sm" columns-mobile="1">
                 <VormInput
-                  v-model="draftUser.firstName"
-                  label="First Name"
-                  autocomplete="given-name"
-                  placeholder="Your first name"
+                    v-model="draftUser.firstName"
+                    label="First Name"
+                    autocomplete="given-name"
+                    placeholder="Your first name"
                 />
                 <VormInput
-                  v-model="draftUser.lastName"
-                  label="Last Name"
-                  autocomplete="last-name"
-                  placeholder="Your last name"
+                    v-model="draftUser.lastName"
+                    label="Last Name"
+                    autocomplete="last-name"
+                    placeholder="Your last name"
                 />
               </Tiles>
               <VormInput
-                v-model="draftUser.nickname"
-                label="Nickname"
-                autocomplete="username"
-                required
-                placeholder="This name will be shown in the application"
+                  v-model="draftUser.nickname"
+                  label="Nickname"
+                  autocomplete="username"
+                  required
+                  placeholder="This name will be shown in the application"
               />
               <VormInput
-                v-model="draftUser.email"
-                label="Email"
-                type="email"
-                autocomplete="email"
-                required
-                placeholder="ex: yourname@somewhere.com"
+                  v-model="draftUser.email"
+                  label="Email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  placeholder="ex: yourname@somewhere.com"
               />
               <VormInput
-                v-model="draftUser.githubUsername"
-                label="Github Username"
-                name="github_username"
-                placeholder="ex: devopsdude42"
-                required
-                :regex="GITHUB_USERNAME_REGEX"
-                regex-message="Invalid github username"
+                  v-model="draftUser.githubUsername"
+                  label="Github Username"
+                  name="github_username"
+                  placeholder="ex: devopsdude42"
+                  required
+                  :regex="GITHUB_USERNAME_REGEX"
+                  regex-message="Invalid github username"
               />
               <VormInput
-                v-model="draftUser.discordUsername"
-                label="Discord Username"
-                name="discord_username"
-                placeholder="ex: eggscellent#1234"
-                required
-                :regex="DISCORD_TAG_REGEX"
-                regex-message="Invalid discord tag"
+                  v-model="draftUser.discordUsername"
+                  label="Discord Username"
+                  name="discord_username"
+                  placeholder="ex: eggscellent#1234"
+                  required
+                  :regex="DISCORD_TAG_REGEX"
+                  regex-message="Invalid discord tag"
               />
 
               <VButton2
-                icon-right="chevron--right"
-                :disabled="validationState.isError"
-                :request-status="updateUserReqStatus"
-                loading-text="Saving your profile..."
-                success-text="Updated your profile!"
-                tone="action"
-                variant="solid"
-                @click="saveHandler"
+                  icon-right="chevron--right"
+                  :disabled="validationState.isError"
+                  :request-status="updateUserReqStatus"
+                  loading-text="Saving your profile..."
+                  success-text="Updated your profile!"
+                  tone="action"
+                  variant="solid"
+                  @click="saveHandler"
               >
                 Save
               </VButton2>
@@ -146,8 +148,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import * as _ from "lodash-es";
-import { useRouter } from "vue-router";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import {useRouter} from "vue-router";
+import {computed, onBeforeMount, ref, watch} from "vue";
 import {
   ErrorMessage,
   Icon,
@@ -158,13 +160,14 @@ import {
   VormInput,
   RichText,
 } from "@si/vue-lib/design-system";
-import { useAuthStore, User } from "@/store/auth.store";
+import {useAuthStore, User} from "@/store/auth.store";
+import {useHead} from "@vueuse/head";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
-  /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#\d{4})/;
+    /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#\d{4})/;
 
-const { validationState, validationMethods } = useValidatedInputGroup();
+const {validationState, validationMethods} = useValidatedInputGroup();
 const authStore = useAuthStore();
 const router = useRouter();
 
@@ -175,11 +178,15 @@ const updateUserReqStatus = authStore.getRequestStatus("UPDATE_USER");
 const storeUser = computed(() => authStore.user);
 const draftUser = ref<User>();
 
+useHead({title: "Profile"});
+
 const isOnboarding = ref(authStore.needsProfileUpdate);
+
 function resetDraftUser() {
   draftUser.value = _.cloneDeep(storeUser.value!);
 }
-watch(storeUser, resetDraftUser, { immediate: true });
+
+watch(storeUser, resetDraftUser, {immediate: true});
 
 onBeforeMount(() => {
   // normally when landing on this page, we should probably make sure we have the latest profile info
@@ -201,7 +208,7 @@ async function saveHandler() {
   const updateReq = await authStore.UPDATE_USER(draftUser.value!);
   if (updateReq.result.success && goToNextStepOnSave) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    router.push({ name: "login-success" });
+    router.push({name: "login-success"});
   }
 }
 

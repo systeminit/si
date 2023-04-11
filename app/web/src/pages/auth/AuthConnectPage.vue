@@ -30,7 +30,6 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useHead } from "@vueuse/head";
 
 import { Card, ErrorMessage, Stack, RichText } from "@si/vue-lib/design-system";
 import AppLayout from "@/components/layout/AppLayout.vue";
@@ -44,8 +43,6 @@ const route = useRoute();
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 const LOGIN_URL = `${AUTH_PORTAL_URL}/login`;
-
-useHead({ title: "Authenticating..." });
 
 const authStore = useAuthStore();
 const authReqStatus = authStore.getRequestStatus("AUTH_CONNECT");
