@@ -24,7 +24,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme, VButton2 } from "@si/vue-lib/design-system";
-import { vim } from "@replit/codemirror-vim";
+import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import { createLintSource } from "@/utils/typescriptLinter";
 
@@ -38,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "update:modelValue", v: string): void;
   (e: "change", v: string): void;
+  (e: "vimModeWrite"): void;
 }>();
 
 const editorMount = ref();
@@ -84,6 +85,8 @@ const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
   appTheme.value === "dark" ? gruvboxDark : basicLight,
 );
+
+// Vim style: https://github.com/replit/codemirror-vim/blob/d7d9ec2ab438571f500dfd21b37da733fdba47fe/src/index.ts#L25-L42
 const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
   return EditorView.theme({
@@ -107,8 +110,7 @@ watch(codeMirrorTheme, () => {
   });
 });
 
-// Enable/disable vim mode dynamically
-// TODO(nick,zack): put this into a library (maybe?)
+// TODO(nick,zack): put the vim mode logic into a library (maybe?)
 const VIM_MODE_STORAGE_KEY = "SI:VIM_MODE";
 const vimEnabledDefault = (): boolean => {
   return storage.getItem(VIM_MODE_STORAGE_KEY) === "true";
@@ -155,6 +157,11 @@ const mountEditor = async () => {
       updateListener,
       EditorView.lineWrapping,
     ]),
+  });
+
+  // Emit when the user writes (i.e. ":w") in vim mode.
+  Vim.defineEx("write", "w", () => {
+    emit("vimModeWrite");
   });
 
   view = new EditorView({
