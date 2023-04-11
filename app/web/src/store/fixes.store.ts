@@ -12,14 +12,20 @@ function nilId(): string {
   return "00000000000000000000000000";
 }
 
-export type FixStatus = "success" | "failure" | "running" | "unstarted";
-export type RecommendationStatus =
+export type FixStatus =
   | "success"
   | "failure"
   | "running"
+  | "error"
   | "unstarted";
-export type RecommendationIsRunnable = "yes" | "no" | "running";
 export type ActionKind = "create" | "other" | "destroy";
+
+// TODO(nick,paulo,paul,wendy): get rid of never started.
+export type ConfirmationStatus =
+  | "success"
+  | "failure"
+  | "running"
+  | "neverStarted";
 
 export type Confirmation = {
   attributeValueId: AttributeValueId;
@@ -46,13 +52,9 @@ export type Recommendation = {
   recommendedAction: string;
   provider: string;
   actionKind: ActionKind;
-  status: RecommendationStatus; // TODO(Wendy) - this should be replaced with a reference to the lastFixRun
-  lastFix?: Fix; // TODO(nick,wendy): delete status if we don't need it
-  isRunnable: RecommendationIsRunnable;
+  hasRunningFix: boolean;
+  lastFix?: Fix;
 };
-
-// TODO(nick): use real user data and real timestamps. This is dependent on the backend.
-// A potential temporary fix: we decide to convert the "string" from the database row into
 
 export type FixId = string;
 export type Fix = {
@@ -88,12 +90,6 @@ export interface ConfirmationStats {
   total: number;
 }
 
-// TODO(nick,paulo,paul,wendy): get rid of never started.
-export type ConfirmationStatus =
-  | "success"
-  | "failure"
-  | "running"
-  | "neverStarted";
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
@@ -145,7 +141,6 @@ export const useFixesStore = () => {
               );
             }
           }
-
           return obj;
         },
         confirmationStats(): ConfirmationStats {
@@ -220,9 +215,9 @@ export const useFixesStore = () => {
           if (!this.runningFixBatch) return [];
           return this.fixesOnBatch(this.runningFixBatch);
         },
-        unstartedRecommendations(): Recommendation[] {
+        newRecommendations(): Recommendation[] {
           return this.recommendations.filter(
-            (recommendation) => recommendation.status === "unstarted",
+            (recommendation) => recommendation.lastFix === undefined,
           );
         },
       },

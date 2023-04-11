@@ -1,5 +1,4 @@
 use dal::action_prototype::ActionKind;
-use dal::component::confirmation::view::RecommendationStatus;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::backend::js_command::CommandRunResult;
 use dal::job::definition::{FixItem, FixesJob};
@@ -524,6 +523,10 @@ async fn list_confirmations(mut octx: DalContext) {
         &recommendation.recommended_action  // actual
     );
     assert_eq!(
+        false,                          // expected
+        recommendation.has_running_fix  // actual
+    );
+    assert_eq!(
         None,                    // expected
         recommendation.last_fix  // actual
     );
@@ -658,8 +661,8 @@ async fn list_confirmations(mut octx: DalContext) {
         &recommendation.recommended_action  // actual
     );
     assert_eq!(
-        RecommendationStatus::Success, // expected
-        recommendation.status          // actual
+        false,                          // expected
+        recommendation.has_running_fix  // actual
     );
     assert_eq!(
         FixCompletionStatus::Success, // expected
