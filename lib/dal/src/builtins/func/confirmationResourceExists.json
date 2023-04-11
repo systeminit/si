@@ -10,6 +10,6 @@
   "display_name": "si:confirmationResourceExists",
   "description": null,
   "link": null,
-  "code_file": "confirmationResourceExists.js",
+  "code_file": "confirmationResourceExists.ts",
   "code_entrypoint": "exists"
 }

@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsKeyPairDeleteWorkflow.js",
+  "code_file": "awsKeyPairDeleteWorkflow.ts",
   "code_entrypoint": "deleteResource"
 }

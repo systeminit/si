@@ -14,6 +14,6 @@
   "display_name": "Run kubeval on YAML",
   "description": "Runs kubeval on the generated",
   "link": null,
-  "code_file": "qualificationKubevalYaml.js",
+  "code_file": "qualificationKubevalYaml.ts",
   "code_entrypoint": "qualificationKubevalYaml"
 }

@@ -49,7 +49,7 @@ impl FunctionMetadata {
         let extension = match f.backend_kind() {
             FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
-            | FuncBackendKind::JsCommand => Some("js"),
+            | FuncBackendKind::JsCommand => Some("ts"),
 
             _ => None,
         };

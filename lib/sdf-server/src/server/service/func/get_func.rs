@@ -21,6 +21,7 @@ pub struct GetFuncResponse {
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,
+    pub types: String,
     pub is_builtin: bool,
     pub is_revertible: bool,
     pub associations: Option<FuncAssociations>,

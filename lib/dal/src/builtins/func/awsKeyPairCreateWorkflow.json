@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsKeyPairCreateWorkflow.js",
+  "code_file": "awsKeyPairCreateWorkflow.ts",
   "code_entrypoint": "create"
 }

@@ -40,6 +40,7 @@ pub struct SaveFuncResponse {
     pub associations: Option<FuncAssociations>,
     pub success: bool,
     pub is_revertible: bool,
+    pub types: String,
 }
 
 async fn save_attr_func_proto_arguments(
@@ -597,13 +598,16 @@ pub async fn do_save_func(
     }
 
     let is_revertible = super::is_func_revertible(ctx, &func).await?;
-    let associations = super::get_func_view(ctx, &func).await?.associations;
+    let view = super::get_func_view(ctx, &func).await?;
+    let associations = view.associations;
+    let types = view.types;
 
     Ok((
         SaveFuncResponse {
             associations,
             success: true,
             is_revertible,
+            types,
         },
         func,
     ))

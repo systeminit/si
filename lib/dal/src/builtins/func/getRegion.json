@@ -11,6 +11,6 @@
   "display_name": "si:getRegion",
   "description": null,
   "link": null,
-  "code_file": "getRegion.js",
+  "code_file": "getRegion.ts",
   "code_entrypoint": "getRegion"
 }

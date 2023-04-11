@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsIngressCreateWorkflow.js",
+  "code_file": "awsIngressCreateWorkflow.ts",
   "code_entrypoint": "create"
 }

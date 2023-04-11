@@ -6,6 +6,6 @@
   "display_name": "si:awsEipRefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEipRefreshCommand.js",
+  "code_file": "awsEipRefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsKeyPairJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsKeyPairJSON.js",
+  "code_file": "generateAwsKeyPairJSON.ts",
   "code_entrypoint": "generateAwsKeyPairJSON"
 }

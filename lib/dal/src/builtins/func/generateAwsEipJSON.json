@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsEipJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsEipJSON.js",
+  "code_file": "generateAwsEipJSON.ts",
   "code_entrypoint": "generateAwsEipJSON"
 }

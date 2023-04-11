@@ -6,6 +6,6 @@
   "display_name": "si:awsSecurityGroupRefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "awsSecurityGroupRefreshCommand.js",
+  "code_file": "awsSecurityGroupRefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

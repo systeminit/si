@@ -6,6 +6,6 @@
   "display_name": "si:awsSecurityGroupDeleteCommand",
   "description": null,
   "link": null,
-  "code_file": "awsSecurityGroupDeleteCommand.js",
+  "code_file": "awsSecurityGroupDeleteCommand.ts",
   "code_entrypoint": "deleteResource"
 }

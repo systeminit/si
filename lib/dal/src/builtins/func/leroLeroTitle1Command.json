@@ -6,6 +6,6 @@
   "hidden": true,
   "description": null,
   "link": null,
-  "code_file": "leroLeroTitle1Command.js",
+  "code_file": "leroLeroTitle1Command.ts",
   "code_entrypoint": "title"
 }

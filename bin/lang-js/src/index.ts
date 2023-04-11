@@ -44,9 +44,9 @@ async function main() {
     })
     .parse(process.argv);
 
-  let executionId: string;
+  let executionId = "<unset>";
   // We don't have the executionId yet, so this field will be empty
-  let errorFn = makeConsole("").error;
+  let errorFn = makeConsole(executionId).error;
 
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
@@ -65,6 +65,10 @@ async function main() {
       onError(errorFn, err, executionId);
     });
 
+    if (!kind) {
+      throw Error(`Unknown Kind variant: ${kind}`);
+    }
+
     switch (kind) {
       case FunctionKind.ResolverFunction:
         await executeResolverFunction(request);
@@ -82,7 +86,7 @@ async function main() {
         throw Error(`Unknown Kind variant: ${kind}`);
     }
   } catch (err) {
-    onError(errorFn, err, executionId);
+    onError(errorFn, err as Error, executionId);
   }
 }
 

@@ -1,7 +1,7 @@
 import Debug from "debug";
 import _ from "lodash";
 import { VM } from "vm2";
-import { base64Decode } from "./base64";
+import { base64ToJs } from "./base64";
 import {
   failureExecution,
   FunctionKind,
@@ -98,7 +98,7 @@ const isString = (value: unknown): TypeCheckResult =>
     : { valid: false, message: "Return type must be a string." };
 
 const isCodeGeneration = (value: unknown): TypeCheckResult => {
-  if (typeof value !== 'object') {
+  if (typeof value !== 'object' || !value) {
     return {
       valid: false,
       message: "CodeGenerations must return an object with 'format' and 'code' fields",
@@ -124,7 +124,7 @@ const isCodeGeneration = (value: unknown): TypeCheckResult => {
 
 const qualificationStatuses = ["warning", "failure", "success", "unknown"];
 const isQualification = (value: unknown): TypeCheckResult => {
-  if (typeof value !== 'object') {
+  if (typeof value !== 'object' || !value) {
     return { valid: false, message: "A qualification must return an object."};
   }
 
@@ -183,8 +183,7 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
 export async function executeResolverFunction(
   request: ResolverFunctionRequest
 ): Promise<void> {
-  let code = base64Decode(request.codeBase64);
-  debug({ code });
+  let code = base64ToJs(request.codeBase64);
 
   code = wrapCode(code, request.handler);
   debug({ code });
@@ -217,7 +216,7 @@ async function execute(
       );
     });
   } catch (err) {
-    return failureExecution(err, executionId);
+    return failureExecution(err as Error, executionId);
   }
 
   if (

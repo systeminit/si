@@ -6,6 +6,6 @@
   "display_name": "si:awsIngressCreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsIngressCreateCommand.js",
+  "code_file": "awsIngressCreateCommand.ts",
   "code_entrypoint": "create"
 }

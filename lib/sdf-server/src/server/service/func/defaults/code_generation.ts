@@ -1,6 +1,6 @@
-function generateCode(component) {
-    return {
-        format: "json",
-        code: JSON.stringify(component),
-    };
+async function generateCode(component: Input): Promise<Output> {
+  return {
+    format: "json",
+    code: JSON.stringify(component),
+  };
 }

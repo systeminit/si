@@ -1,15 +1,27 @@
-import { DiagnosticMessageChain, System } from "typescript";
 import {
   createSystem,
   createDefaultMapFromCDN,
   createVirtualTypeScriptEnvironment,
 } from "@typescript/vfs";
+import { Extension } from "@codemirror/state";
+import { completeFromList, autocompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { Diagnostic } from "@codemirror/lint";
+import type { CompletionContext } from "@codemirror/autocomplete";
+import type {
+  DiagnosticMessageChain,
+  System,
+  CompilerOptions,
+} from "typescript";
 
 export type AsyncLintSource = (
   view: EditorView,
 ) => Promise<readonly Diagnostic[]>;
+
+export interface TypescriptSource {
+  lintSource: AsyncLintSource;
+  autocomplete: Extension;
+}
 
 const tsVersion = "4.7.4";
 const useCache = true;
@@ -20,13 +32,22 @@ const defaultFilename = "index.ts";
 // If the document gets blanked out, typescript still needs something.
 const fallbackCode = "console.log('foo')";
 
-export const createLintSource = async (): Promise<AsyncLintSource> => {
+export const createTypescriptSource = async (
+  types: string,
+): Promise<TypescriptSource> => {
   // we lazy load typescript to help speed things up
   const ts = await import("typescript");
 
+  // TODO: do we provide all DOM types? its used for console and possibly fetch, but it may define types that don't exist in lang-js
+  const compilerOptions: CompilerOptions = {
+    target: ts.ScriptTarget.ES2020,
+    noUncheckedIndexedAccess: true,
+    lib: ["ES2020", "DOM"],
+  };
+
   if (!fsMap && !vfsSystem) {
     fsMap = await createDefaultMapFromCDN(
-      { target: ts.ScriptTarget.ES2015 },
+      compilerOptions,
       tsVersion,
       useCache,
       ts,
@@ -35,14 +56,36 @@ export const createLintSource = async (): Promise<AsyncLintSource> => {
   }
 
   fsMap.set(defaultFilename, fallbackCode);
+  fsMap.set("func.d.ts", types);
 
   const tsEnv = createVirtualTypeScriptEnvironment(
     vfsSystem,
-    [defaultFilename],
+    [defaultFilename, "func.d.ts"],
     ts,
+    compilerOptions,
   );
 
-  return async (view: EditorView) => {
+  const autocomplete = autocompletion({
+    icons: true,
+    override: [
+      (ctx: CompletionContext) => {
+        const completions = tsEnv.languageService.getCompletionsAtPosition(
+          defaultFilename,
+          ctx.pos,
+          {},
+        );
+
+        return completeFromList(
+          completions?.entries.map((c) => ({
+            type: c.kind,
+            label: c.name,
+          })) ?? [],
+        )(ctx);
+      },
+    ],
+  });
+
+  const lintSource = async (view: EditorView) => {
     const doc = view.state.doc;
     // We could be more efficient by updating only the changed spans
     const docString = doc.toString();
@@ -50,6 +93,9 @@ export const createLintSource = async (): Promise<AsyncLintSource> => {
       defaultFilename,
       docString.trim().length === 0 ? fallbackCode : docString,
     );
+
+    // TODO: use getQuickInfoAtPosition to display the types definitions on hover
+    // https://github.com/microsoft/TypeScript/blob/0f724c04308e20d93d397e82b11f82ad6f810c44/src/services/types.ts#L433
 
     let diagnostics: Diagnostic[] = [];
     for (const tsDiagnostic of tsEnv.languageService.getSyntacticDiagnostics(
@@ -61,9 +107,30 @@ export const createLintSource = async (): Promise<AsyncLintSource> => {
         diagnosticsForMessage(from, to, tsDiagnostic.messageText),
       );
     }
+    for (const tsDiagnostic of tsEnv.languageService.getSemanticDiagnostics(
+      defaultFilename,
+    )) {
+      // Note(paulo): I'm not sure if this is the correct way of doing this
+      const from = tsDiagnostic.start ?? 0;
+      const to = from + (tsDiagnostic.length ?? 0);
+      diagnostics = diagnostics.concat(
+        diagnosticsForMessage(from, to, tsDiagnostic.messageText),
+      );
+    }
+    for (const tsDiagnostic of tsEnv.languageService.getSuggestionDiagnostics(
+      defaultFilename,
+    )) {
+      const from = tsDiagnostic.start;
+      const to = from + tsDiagnostic.length;
+      diagnostics = diagnostics.concat(
+        diagnosticsForMessage(from, to, tsDiagnostic.messageText),
+      );
+    }
 
     return diagnostics;
   };
+
+  return { lintSource, autocomplete };
 };
 
 function diagnosticsForMessage(

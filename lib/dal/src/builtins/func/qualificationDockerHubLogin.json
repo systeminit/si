@@ -10,6 +10,6 @@
   "display_name": "Docker Hub login",
   "description": "Ensures docker hub login credentials work",
   "link": "https://hub.docker.com",
-  "code_file": "qualificationDockerHubLogin.js",
+  "code_file": "qualificationDockerHubLogin.ts",
   "code_entrypoint": "qualificationDockerHubLogin"
 }

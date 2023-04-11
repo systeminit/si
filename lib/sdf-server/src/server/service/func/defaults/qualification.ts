@@ -1,6 +1,6 @@
-async function qualification(component) {
-    return {
-        result: 'success',
-        message: 'Component qualified'
-    };
+async function qualification(component: Input): Promise<Output> {
+  return {
+    result: 'success',
+    message: 'Component qualified'
+  };
 }

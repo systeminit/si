@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "dockerImageRefreshWorkflow.js",
+  "code_file": "dockerImageRefreshWorkflow.ts",
   "code_entrypoint": "refresh"
 }

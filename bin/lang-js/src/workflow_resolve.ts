@@ -1,5 +1,5 @@
 import Debug from "debug";
-import { base64Decode } from "./base64";
+import { base64ToJs } from "./base64";
 import { NodeVM } from "vm2";
 import _ from "lodash";
 import {
@@ -34,8 +34,7 @@ export type WorkflowResolveResultFailure = ResultFailure;
 export async function executeWorkflowResolve(
   request: WorkflowResolveRequest
 ): Promise<void> {
-  let code = base64Decode(request.codeBase64);
-  debug({ code });
+  let code = base64ToJs(request.codeBase64);
 
   code = wrapCode(code, request.handler);
   debug({ code });
@@ -120,15 +119,15 @@ async function execute(
     };
     return result;
   } catch (err) {
-    return failureExecution(err, executionId);
+    return failureExecution(err as Error, executionId);
   }
 }
 
 function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(args, callback) {
+  const wrapped = `module.exports = function(arg, callback) {
     ${code}
-    const arguments = Array.isArray(args) ? args : [args];
-    const returnValue = ${handle}(...arguments, callback);
+    arg = Array.isArray(arg) ? arg : [arg];
+    const returnValue = ${handle}(...arg, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
         .catch((err) => {

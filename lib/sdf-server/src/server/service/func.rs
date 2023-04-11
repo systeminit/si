@@ -18,11 +18,12 @@ use dal::{
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeValueError, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, PrototypeListForFuncError, SchemaVariantId, StandardModel,
+    Prop, PropError, PropId, PropKind, PrototypeListForFuncError, SchemaVariantId, StandardModel,
     StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationPrototypeId, WsEventError,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 pub mod create_func;
@@ -341,67 +342,78 @@ async fn attribute_prototypes_into_schema_variants_and_components(
 }
 
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
-    let associations = match func.backend_kind() {
-        FuncBackendKind::JsAttribute => match func.backend_response_type() {
-            FuncBackendResponseType::CodeGeneration => {
-                let (schema_variant_ids, component_ids) =
-                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-                        .await?;
+    let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
 
-                Some(FuncAssociations::CodeGeneration {
-                    schema_variant_ids,
-                    component_ids,
-                })
-            }
-            FuncBackendResponseType::Confirmation => {
-                let (schema_variant_ids, component_ids) =
-                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-                        .await?;
+    let (associations, input_type) = match func.backend_kind() {
+        FuncBackendKind::JsAttribute => {
+            let input_type = compile_argument_types(&arguments);
 
-                Some(FuncAssociations::Confirmation {
-                    schema_variant_ids,
-                    component_ids,
-                })
-            }
-            FuncBackendResponseType::Qualification => {
-                let (schema_variant_ids, component_ids) =
-                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-                        .await?;
+            let associations = match func.backend_response_type() {
+                FuncBackendResponseType::CodeGeneration => {
+                    let (schema_variant_ids, component_ids) =
+                        attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                            .await?;
 
-                Some(FuncAssociations::Qualification {
-                    schema_variant_ids,
-                    component_ids,
-                })
-            }
-            _ => {
-                let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
-
-                let mut prototype_views = vec![];
-                for proto in &protos {
-                    prototype_views.push(
-                        prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
-                    );
+                    Some(FuncAssociations::CodeGeneration {
+                        schema_variant_ids,
+                        component_ids,
+                    })
                 }
+                FuncBackendResponseType::Confirmation => {
+                    let (schema_variant_ids, component_ids) =
+                        attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                            .await?;
 
-                Some(FuncAssociations::Attribute {
-                    prototypes: prototype_views,
-                    arguments: FuncArgument::list_for_func(ctx, *func.id())
-                        .await?
-                        .iter()
-                        .map(|arg| FuncArgumentView {
-                            id: *arg.id(),
-                            name: arg.name().to_owned(),
-                            kind: arg.kind().to_owned(),
-                            element_kind: arg.element_kind().cloned(),
-                        })
-                        .collect(),
-                })
-            }
-        },
+                    Some(FuncAssociations::Confirmation {
+                        schema_variant_ids,
+                        component_ids,
+                    })
+                }
+                FuncBackendResponseType::Qualification => {
+                    let (schema_variant_ids, component_ids) =
+                        attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                            .await?;
+
+                    Some(FuncAssociations::Qualification {
+                        schema_variant_ids,
+                        component_ids,
+                    })
+                }
+                _ => {
+                    let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
+
+                    let mut prototypes = Vec::with_capacity(protos.len());
+                    for proto in &protos {
+                        prototypes.push(
+                            prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
+                        );
+                    }
+
+                    Some(FuncAssociations::Attribute {
+                        prototypes,
+                        arguments: arguments
+                            .iter()
+                            .map(|arg| FuncArgumentView {
+                                id: *arg.id(),
+                                name: arg.name().to_owned(),
+                                kind: arg.kind().to_owned(),
+                                element_kind: arg.element_kind().cloned(),
+                            })
+                            .collect(),
+                    })
+                }
+            };
+            (associations, input_type)
+        }
+        FuncBackendKind::JsCommand => {
+            let input_type = compile_command_types();
+            (None, input_type)
+        }
         FuncBackendKind::JsValidation => {
             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
+            let input_type = compile_validation_types(ctx, &protos).await?;
 
-            Some(FuncAssociations::Validation {
+            let associations = Some(FuncAssociations::Validation {
                 prototypes: protos
                     .iter()
                     .map(|proto| ValidationPrototypeView {
@@ -410,13 +422,20 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                         prop_id: proto.context().prop_id(),
                     })
                     .collect(),
-            })
+            });
+            (associations, input_type)
         }
 
-        _ => None,
+        _ => (None, String::new()),
     };
 
     let is_revertible = is_func_revertible(ctx, func).await?;
+    let types = [
+        compile_return_types(*func.backend_response_type()),
+        &input_type,
+        langjs_types(),
+    ]
+    .join("\n");
 
     Ok(GetFuncResponse {
         id: func.id().to_owned(),
@@ -431,7 +450,136 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         is_builtin: func.builtin(),
         is_revertible,
         associations,
+        types,
     })
+}
+
+// TODO FIXME(paulo): cleanup code repetition
+
+fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
+    // TODO: avoid any, follow prop graph and build actual type
+    // TODO: Could be generated automatically from some rust types, but which?
+    match ty {
+        FuncBackendResponseType::Boolean => "type Output = boolean | null;",
+        FuncBackendResponseType::String => "type Output = string | null;",
+        FuncBackendResponseType::Integer => "type Output = number | null;",
+        FuncBackendResponseType::Qualification => "interface Output {
+  result: 'success' | 'warning' | 'failure';
+  message?: string;
+}",
+        FuncBackendResponseType::Confirmation => "interface Output {
+  success: boolean;
+  recommendedActions: string[];
+}",
+        FuncBackendResponseType::CodeGeneration => "interface Output {
+  format: string;
+  code: string;
+}",
+        FuncBackendResponseType::Validation => "interface Output {
+  valid: boolean;
+  message: string;
+}",
+        // Actual Workflow Kinds are 'conditional' | 'exceptional' | 'parallel'
+        // But we don't actually properly use/support/test the other ones
+        // There i
+        FuncBackendResponseType::Workflow => "interface Output {
+  name: string;
+  kind: 'conditional';
+  steps: Array<{ workflow: string; args: unknown | null; } | { command: string; args: unknown | null; }>;
+}",
+        FuncBackendResponseType::Command => "interface Output {
+    status: 'ok' | 'warning' | 'error';
+    value?: unknown;
+    message?: string;
+}",
+        FuncBackendResponseType::Json => "type Output = any;",
+        // Note: there is no ts function returning those
+        FuncBackendResponseType::Identity => "interface Output extends Input {}",
+        FuncBackendResponseType::Array => "type Output = any[];",
+        FuncBackendResponseType::Map => "type Output = any;",
+        FuncBackendResponseType::Object => "type Output = any;",
+        FuncBackendResponseType::Unset => "type Output = undefined | null;",
+    }
+}
+
+async fn compile_validation_types(
+    ctx: &DalContext,
+    prototypes: &[ValidationPrototype],
+) -> FuncResult<String> {
+    let mut input_fields = Vec::new();
+    // TODO: avoid any, follow prop graph and build actual type
+    for prototype in prototypes {
+        let prop = Prop::get_by_id(ctx, &prototype.context().prop_id())
+            .await?
+            .ok_or(PropError::NotFound(
+                prototype.context().prop_id(),
+                *ctx.visibility(),
+            ))?;
+        let ty = match prop.kind() {
+            PropKind::Boolean => "boolean",
+            PropKind::Integer => "number",
+            PropKind::String => "string",
+            PropKind::Array => "any[]",
+            PropKind::Object => "any",
+            PropKind::Map => "any",
+        };
+        input_fields.push(ty);
+    }
+    if input_fields.is_empty() {
+        Ok("type Input = never;".to_owned())
+    } else {
+        let variants = input_fields.join(" | ");
+        let types = format!("type Input = {variants};");
+        Ok(types)
+    }
+}
+
+fn compile_argument_types(arguments: &[FuncArgument]) -> String {
+    let mut input_fields = HashMap::new();
+    // TODO: avoid any, follow prop graph and build actual type
+    for argument in arguments {
+        let ty = match argument.kind() {
+            FuncArgumentKind::Boolean => "boolean",
+            FuncArgumentKind::Integer => "number",
+            FuncArgumentKind::String => "string",
+            FuncArgumentKind::Array => "any[]",
+            FuncArgumentKind::Object => "any",
+            FuncArgumentKind::Map => "any",
+            FuncArgumentKind::Any => "any",
+        };
+        input_fields.insert(argument.name().to_owned(), ty);
+    }
+    let mut types = "interface Input {\n".to_owned();
+    for (name, ty) in &input_fields {
+        types.push_str(&format!("  {name}: {ty} | null;\n"));
+    }
+    types.push('}');
+    types
+}
+
+// TODO FIXME(paulo): arguments for command functions are provided through a js function, so we can't predict this, we should fix it so the types are predictable
+// Right now all workflow functions are builtins and the user can't create new workflow functions, so we can trust that they all are providing the same argument
+//
+// TODO: build properties types from prop tree
+// Note: ComponentKind::Credential is unused and the implementation is broken, so let's ignore it for now
+fn compile_command_types() -> String {
+    "interface Input {
+    kind: 'standard';
+    properties: any;
+}"
+    .to_owned()
+}
+
+// TODO: stop duplicating definition
+// TODO: use execa types instead of any
+// TODO: add os, fs and path types (possibly fetch but I think it comes with DOM)
+fn langjs_types() -> &'static str {
+    "declare namespace YAML {
+    function stringify(obj: unknown): string;
+}
+    declare namespace siExec {
+    async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
+}"
 }
 
 pub fn routes() -> Router<AppState> {

@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsSecurityGroupCreateWorkflow.js",
+  "code_file": "awsSecurityGroupCreateWorkflow.ts",
   "code_entrypoint": "create"
 }

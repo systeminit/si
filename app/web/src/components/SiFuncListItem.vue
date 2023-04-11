@@ -28,8 +28,8 @@ import { PropType } from "vue";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
-import SiChip from "./SiChip.vue";
 import { trackEvent } from "@/utils/tracking";
+import SiChip from "./SiChip.vue";
 
 const props = defineProps({
   color: { type: String },
@@ -44,5 +44,5 @@ const trackFunctionSelected = () => {
     func_id: props.func.id,
     func_name: props.func.name,
   });
-}
+};
 </script>

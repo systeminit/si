@@ -31,16 +31,7 @@ export const makeExec = (executionId: string) => {
     return child;
   }
 
-  async function stream(
-    //ws: WebSocket,
-    _execaFile: string,
-    _execaArgs?: readonly string[],
-    _execaOptions?: Options<string>
-  ): Promise<SiExecResult> {
-    throw new Error("unimplemented");
-  }
-
-  return { stream, waitUntilEnd };
+  return { waitUntilEnd };
 };
 
 //export async function siExecStream(

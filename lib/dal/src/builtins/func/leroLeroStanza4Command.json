@@ -6,6 +6,6 @@
   "hidden": true,
   "description": null,
   "link": null,
-  "code_file": "leroLeroStanza4Command.js",
+  "code_file": "leroLeroStanza4Command.ts",
   "code_entrypoint": "fourthStanza"
 }

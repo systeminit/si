@@ -6,6 +6,6 @@
   "display_name": "si:awsIngressDeleteCommand",
   "description": null,
   "link": null,
-  "code_file": "awsIngressDeleteCommand.js",
+  "code_file": "awsIngressDeleteCommand.ts",
   "code_entrypoint": "deleteResource"
 }

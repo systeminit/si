@@ -15,6 +15,6 @@
   "display_name": "Ec2 can run",
   "description": null,
   "link": null,
-  "code_file": "qualificationEc2CanRun.js",
+  "code_file": "qualificationEc2CanRun.ts",
   "code_entrypoint": "qualification"
 }

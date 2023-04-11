@@ -26,13 +26,13 @@ import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme, VButton2 } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
-import { createLintSource } from "@/utils/typescriptLinter";
+import { createTypescriptSource } from "@/utils/typescriptLinter";
 
 const props = defineProps<{
   modelValue: string;
   disabled?: boolean;
   json?: boolean;
-  typescript?: boolean;
+  typescript?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -47,7 +47,7 @@ let view: EditorView;
 const modelValue = toRef(props, "modelValue", "");
 const disabled = toRef(props, "disabled", false);
 const useJson = toRef(props, "json", false);
-const useTypescript = toRef(props, "typescript", false);
+const useTypescript = toRef(props, "typescript", null);
 const currentCode = ref<string>(modelValue.value ?? "");
 
 watch(
@@ -135,8 +135,11 @@ const mountEditor = async () => {
   const extensions = [basicSetup];
 
   if (useTypescript.value) {
-    const lintSource = createLintSource();
-    extensions.push(lintCompartment.of(linter(await lintSource)));
+    const { lintSource, autocomplete } = await createTypescriptSource(
+      useTypescript.value,
+    );
+    extensions.push(autocomplete);
+    extensions.push(lintCompartment.of(linter(lintSource)));
     extensions.push(lintGutter());
     extensions.push(language.of(javascript()));
   }

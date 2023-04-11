@@ -32,12 +32,14 @@ export type FuncSummary = {
 };
 export type FuncWithDetails = FuncSummary & {
   code: string;
+  types: string;
   isRevertible: boolean;
   associations?: FuncAssociations;
 };
 
 export interface SaveFuncResponse {
   isRevertible: boolean;
+  types: string;
   associations?: FuncAssociations;
   success: boolean;
 }
@@ -172,6 +174,10 @@ export const useFuncStore = () => {
             this.funcDetailsById[func.id] = func;
             this.funcDetailsById[func.id].associations = response.associations;
             this.funcDetailsById[func.id].isRevertible = response.isRevertible;
+            // Forces a reload if the types have changed (reloads typescript compiler)
+            if (response.types !== func.types) {
+              this.FETCH_FUNC_DETAILS(func.id);
+            }
           },
         });
       },

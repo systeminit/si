@@ -6,6 +6,6 @@
   "display_name": "si:awsSecurityGroupCreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsSecurityGroupCreateCommand.js",
+  "code_file": "awsSecurityGroupCreateCommand.ts",
   "code_entrypoint": "create"
 }

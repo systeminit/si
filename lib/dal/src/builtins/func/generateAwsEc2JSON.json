@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsEc2JSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsEc2JSON.js",
+  "code_file": "generateAwsEc2JSON.ts",
   "code_entrypoint": "generateAwsEc2JSON"
 }

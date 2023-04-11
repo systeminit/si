@@ -1,7 +1,7 @@
 {
   "kind": "Json",
   "response_type": "Array",
-  "code_file": "dockerPortsToAwsIngressPorts.js",
+  "code_file": "dockerPortsToAwsIngressPorts.ts",
   "code_entrypoint": "dockerPortsToAwsIngressPorts",
   "arguments": [{
     "name": "ExposedPorts",

@@ -1,7 +1,7 @@
 {
   "kind": "JsValidation",
   "response_type": "Validation",
-  "code_file": "awsSecurityGroupValidateDescription.js",
+  "code_file": "awsSecurityGroupValidateDescription.ts",
   "code_entrypoint": "validate",
   "display_name": "Validate AWS Security Group Description"
 }

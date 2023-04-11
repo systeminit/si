@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES5",
+    "target": "ESNext",
     "module": "CommonJS",
+    "strict": true,
     "declaration": true,
     "declarationDir": "./dist",
     "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "outDir": "dist",
     "esModuleInterop": true,
-    "lib": ["ESNext", "DOM"]
+    "skipLibCheck": true,
+    "lib": ["ESNext"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

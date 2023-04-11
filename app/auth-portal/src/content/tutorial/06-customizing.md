@@ -79,7 +79,7 @@ is configured to run on all Docker Image assets.
 The qualification function looks like this:
 
 ```js
-async function qualificationDockerImageExists (component) {
+async function qualificationDockerImageExists (component: Input): Promise<Output> {
   if (!component.domain?.image) {
     return {
       result: "failure",
@@ -116,7 +116,7 @@ Try updating this function with a slightly more helpful error message when the n
 si-XXXX). The new function body should be:
 
 ```js
-async function qualificationDockerImageExists (component) {
+async function qualificationDockerImageExists (component: Input): Promise<Output> {
   if (!component.domain?.image || component.domain?.image.startsWith("si-")) {
     return {
       result: "failure",
@@ -233,7 +233,7 @@ Now try changing your qualification functions return value to report a failure r
 happens. Put the following code into the editor:
 
 ```js
-async function qualification (component) {
+async function qualification (component: Input): Promise<Output> {
   return {
     result: 'failure',
     message: 'Component qualified'
@@ -249,7 +249,7 @@ When authoring JavaScript functions, it's often convenient to use `console.log()
 console.log message to the first line of our function:
 
 ```js
-async function qualification (component) {
+async function qualification (component: Input): Promise<Output> {
   console.log("Hello from a custom qualification");
   return {
     result: 'failure',
@@ -276,7 +276,7 @@ The first step in writing our Qualification is to fetch that file and deserializ
 like this:
 
 ```js
-async function qualification (component) {
+async function qualification (component: Input): Promise<Output> {
   const response = await fetch('https://builds.coreos.fedoraproject.org/streams/stable.json');
   const coreos = await response.json();
   const validArm64ImagesByRegion = coreos.architectures?.aarch64?.images?.aws?.regions;
@@ -316,7 +316,7 @@ To write the rest of the code, you'll need to map out the various result states.
 Update the code in the editor with the following function, which translates the above into JavaScript:
 
 ```js
-async function qualification (component) {
+async function qualification (component: Input): Promise<Output> {
   const response = await fetch('https://builds.coreos.fedoraproject.org/streams/stable.json');
   const coreos = await response.json();
   const validArm64ImagesByRegion = coreos.architectures?.aarch64?.images?.aws?.regions;

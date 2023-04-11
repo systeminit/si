@@ -15,6 +15,6 @@
   "display_name": "Can create egress",
   "description": null,
   "link": null,
-  "code_file": "qualificationEgressCanCreate.js",
+  "code_file": "qualificationEgressCanCreate.ts",
   "code_entrypoint": "qualification"
 }
