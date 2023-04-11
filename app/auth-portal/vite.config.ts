@@ -29,7 +29,7 @@ export default defineConfig({
   },
   plugins: [
     vue({}),
-    MarkdownPlugin({ mode: [MdPluginMode.VUE] }),
+    MarkdownPlugin({ mode: [MdPluginMode.VUE] }), // TODO(Wendy) - we may want to replace this with a custom Markdown system to meet our needs
 
     svgLoaderPlugin(),
     IconsPlugin({ compiler: "raw" }),

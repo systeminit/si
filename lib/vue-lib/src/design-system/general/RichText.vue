@@ -28,6 +28,12 @@ const hasCodeBlocks = ref(false);
 
 const containerRef = ref<HTMLDivElement>();
 
+function adjustments() {
+  highlightCode();
+  adjustLinks();
+  adjustImages();
+}
+
 // fairly naive way of doing this... we look for code blocks and replace the code with the highlighted html version
 function highlightCode() {
   if (!containerRef.value) return;
@@ -54,6 +60,25 @@ function highlightCode() {
   });
 }
 
+function adjustLinks() {
+  if (!containerRef.value) return;
+  const linkEls = containerRef.value.querySelectorAll("a");
+  linkEls.forEach((linkEl) => {
+    linkEl.setAttribute('target', '_blank');
+  });
+}
+
+function adjustImages() {
+  if (!containerRef.value) return;
+  const imgEls = containerRef.value.querySelectorAll("img");
+  imgEls.forEach((imgEl) => {
+    imgEl.classList.add("cursor-pointer");
+    imgEl.addEventListener("click", () => {
+      window.open(imgEl.src, '_blank');
+    })
+  });
+}
+
 // dynamically add theme in a way we can toggle it
 const { theme } = useTheme();
 useHead(() => ({
@@ -67,8 +92,8 @@ useHead(() => ({
   }),
 }));
 
-onMounted(highlightCode);
-onUpdated(highlightCode);
+onMounted(adjustments);
+onUpdated(adjustments);
 </script>
 
 <style lang="less">
@@ -168,7 +193,6 @@ onUpdated(highlightCode);
   }
   > img:not([width]),
   p > img:not([width]) {
-    width: 100%;
     max-width: 700px;
     margin: 0 auto;
   }

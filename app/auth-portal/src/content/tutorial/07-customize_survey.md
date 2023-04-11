@@ -13,6 +13,6 @@ Make sure you use __the same email you signed up with__ in the form.
         height="1600" 
         frameborder="0"
         marginheight="0"
-        marginwidth="0">Loading customization survey...</iframe>
+        marginwidth="0" style="margin: 0 auto;">Loading customization survey...</iframe>
 
 Make sure you submit the form in the embed. Once we've received your response, you can continue to the next step!

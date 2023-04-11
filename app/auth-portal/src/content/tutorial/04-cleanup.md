@@ -8,7 +8,9 @@ While you’re probably very pleased about Whiskers R We coming online, it does 
 can reduce your feline financial load by having System Initiative clean up for you.
 
 Start by returning to the Model screen, by clicking the
-Model <img src="tutorial-img/04-cleanup/model_icon.png" width="56" alt="Model Icon" /> icon in the top navigation bar. You will be
+Model icon -
+![Model Icon](tutorial-img/04-cleanup/model_icon.png)
+in the top navigation bar. You will be
 prompted to create a new Change Set (since you merged the previous one!). Accept the default name by clicking on Create
 Change Set. Your screen will look like this:
 
