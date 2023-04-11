@@ -43,7 +43,8 @@ useHead(
     },
     link: [{ rel: "icon", href: SiLogoUrl }],
     // set up title template and a default
-    titleTemplate: "SI | Workspace",
+    titleTemplate: "SI | %s",
+    title: "Workspace",
   })),
 );
 
