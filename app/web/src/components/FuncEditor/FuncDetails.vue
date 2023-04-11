@@ -229,7 +229,10 @@ const revertFunc = async () => {
   resetEditingFunc();
 };
 
-const execFuncReqStatus = funcStore.getRequestStatus("SAVE_AND_EXEC_FUNC");
+const execFuncReqStatus = funcStore.getRequestStatus(
+  "SAVE_AND_EXEC_FUNC",
+  funcId,
+);
 const execFunc = () => {
   if (!funcId) return;
   funcStore.SAVE_AND_EXEC_FUNC(funcId);

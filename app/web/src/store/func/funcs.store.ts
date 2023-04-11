@@ -7,6 +7,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncVariant } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
+import { trackEvent } from "@/utils/tracking";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -18,7 +19,6 @@ import {
   CreateFuncAttributeOptions,
 } from "./types";
 import { useRouterStore } from "../router.store";
-import {trackEvent} from "@/utils/tracking";
 
 export type FuncId = string;
 
@@ -194,6 +194,7 @@ export const useFuncStore = () => {
         return new ApiRequest<SaveFuncResponse>({
           method: "post",
           url: "func/save_and_exec",
+          keyRequestStatusBy: funcId,
           params: { ...func, ...visibility },
           onSuccess: (response) => {
             this.funcDetailsById[funcId].associations = response.associations;
