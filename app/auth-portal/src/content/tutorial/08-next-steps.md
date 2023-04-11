@@ -6,47 +6,44 @@ title: Next Steps
 
 ### What's next for the product?
 
-It's still early days, but here are some of the things we'll be working on:
+Here are some of the things we'll be working on:
 
 * Making it easy to add new functionality and share it
-* Adding more coverage for assets, in particular AWS services
-* Discovery and bidirectional updates (building a model from your resources, and updating models from resources)
+* Adding more coverage for assets, in particular, AWS services
+* Discovery and bidirectional updates (building a model from your resources and updating models from resources)
 * Production deployments
-* A "Bring your own cloud" SaaS offering
+* A "Bring Your Own Cloud" SaaS offering
 
 We would love to hear your thoughts and suggestions.
 
 ### How long will this be private?
 
-We're working hard towards summer for a fully public open source release.
+We're working hard towards a public open source release this summer.
 
-### Talk nerdy to us
+### Talk to us
 
-You have _no idea_ how good it feels to have people we can talk to about System Initiative. You would make our day if
+You have _no idea_ how good it feels to have people we can talk to about System Initiative! You would make our day if
 you asked us questions about how things work, where we're heading, DevOps, philosophy, etc.
 
 [Lets talk on Discord](https://discord.com/channels/955539345538957342/1080953018788364288).
 
 ### Collaborate
 
-You now have the same working developer environments that we use every day. If the mood strikes and you want to hack, we
-would be honored to facilitate. Let us know what you're interested in, and we can give you some pointers.
+You now have the same working developer environments that we use every day. We would be honored (and happy to facilitate) if you want to hack on System Initiative. Let us know what you're interested in, and we can give you some pointers.
 
 ### Use System Initiative for real
 
-You're someone who likes to try things early, and willing to deal with the rough edges - we are too. If you've got a
+You're someone who likes to try things early and is willing to deal with the rough edges - we are too. If you've got a
 project that you think is a good fit for using System Initiative, let us know. We'd love to understand more about it,
 and what you'll need to see in the product to be successful. 
 
 ### Schedule an interview
 
-We will be following up with you to schedule some time for a quick half an hour interview. If you can spare the time, we
-would love to chat with you on Zoom.
+We’d love to schedule a half hour Zoom interview with you. [Please schedule time with Adam Jacob (CEO) and Mark Dennard (Director of UX) via our Calendly](https://calendly.com/d/2gm-dhd-xvq/si-team-1-post-trial-feedback).
 
 ### Get your reward
 
-We want to send you some limited edition System Initiative gear as a thank you for being part of our 1st Team. Fill
-out the form below and we will send it your way!
+We want to send you some limited edition System Initiative gear as a thank you for being part of Team 1. Fill out the form below and we will send it your way!
 
 **Make sure you use the same email you signed up with!**
 
@@ -55,8 +52,7 @@ out the form below and we will send it your way!
         height="1200"
         frameborder="0" 
         marginheight="0" 
-        marginwidth="0"
-        style="margin: 0 auto;">
+        marginwidth="0">
   Loading sweet swag form...
 </iframe>
 
