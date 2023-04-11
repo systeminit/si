@@ -9,17 +9,17 @@
     </RichText>
 
     <template v-if="loadWorkspacesReqStatus.isPending">
-      <Icon name="loader" />
+      <Icon name="loader"/>
     </template>
     <template v-else-if="loadWorkspacesReqStatus.isError">
-      <ErrorMessage :request-status="loadWorkspacesReqStatus" />
+      <ErrorMessage :request-status="loadWorkspacesReqStatus"/>
     </template>
     <template v-else-if="loadWorkspacesReqStatus.isSuccess">
       <Stack class="mt-lg">
         <WorkspaceLinkWidget
-          v-for="workspace in workspaces"
-          :key="workspace.id"
-          :workspace-id="workspace.id"
+            v-for="workspace in workspaces"
+            :key="workspace.id"
+            :workspace-id="workspace.id"
         />
       </Stack>
     </template>
@@ -27,19 +27,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import { Icon, RichText, Stack, ErrorMessage } from "@si/vue-lib/design-system";
-import { useAuthStore } from "@/store/auth.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import {computed, watch} from "vue";
+import {Icon, RichText, Stack, ErrorMessage} from "@si/vue-lib/design-system";
+import {useAuthStore} from "@/store/auth.store";
+import {useWorkspacesStore} from "@/store/workspaces.store";
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
+import {useHead} from "@vueuse/head";
 
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
 
 const workspaces = computed(() => workspacesStore.workspaces);
 
+useHead({title: "Dashboard"});
+
 const loadWorkspacesReqStatus =
-  workspacesStore.getRequestStatus("LOAD_WORKSPACES");
+    workspacesStore.getRequestStatus("LOAD_WORKSPACES");
 
 function reloadWorkspaces() {
   if (import.meta.env.SSR) return;
@@ -49,5 +52,5 @@ function reloadWorkspaces() {
   workspacesStore.LOAD_WORKSPACES();
 }
 
-watch(() => authStore.userIsLoggedIn, reloadWorkspaces, { immediate: true });
+watch(() => authStore.userIsLoggedIn, reloadWorkspaces, {immediate: true});
 </script>

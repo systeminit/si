@@ -21,25 +21,25 @@
       <div class="flex-none w-[220px]">
         <div class="sticky top-md flex flex-col gap-md">
           <div
-            v-for="doc in LEGAL_DOCS_CONTENT"
-            :key="doc.fileName"
-            :class="
+              v-for="doc in LEGAL_DOCS_CONTENT"
+              :key="doc.fileName"
+              :class="
               clsx(
                 'cursor-pointer flex items-center gap-xs',
                 doc.slug === activeDocSlug && '',
               )
             "
-            @click="scrollToDoc(doc.slug)"
+              @click="scrollToDoc(doc.slug)"
           >
             <a
-              :class="
+                :class="
                 clsx(
                   'underline-link w-auto',
                   doc.slug === activeDocSlug && '--active',
                 )
               "
-              href="#"
-              @click.prevent
+                href="#"
+                @click.prevent
             >
               {{ doc.title }}
             </a>
@@ -47,43 +47,44 @@
         </div>
       </div>
       <div
-        class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
+          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg"
       >
         <div
-          v-for="doc in LEGAL_DOCS_CONTENT"
-          :key="doc.fileName"
-          class="mb-xl"
-          :data-doc-slug="doc.slug"
+            v-for="doc in LEGAL_DOCS_CONTENT"
+            :key="doc.fileName"
+            class="mb-xl"
+            :data-doc-slug="doc.slug"
         >
           <RichText class="text-sm">
-            <Component :is="doc.component" />
+            <Component :is="doc.component"/>
           </RichText>
           <div class="mt-md">
             <VButton2
-              icon="download"
-              variant="soft"
-              tone="shade"
-              size="sm"
-              :link-to="{
+                icon="download"
+                variant="soft"
+                tone="shade"
+                size="sm"
+                :link-to="{
                 name: 'print-legal',
                 params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
               }"
-              target="_blank"
-              >Print / Download
+                target="_blank"
+            >Print / Download
             </VButton2>
           </div>
         </div>
 
         <Stack v-if="!viewOnlyMode">
           <VormInput v-model="userAgreed" type="checkbox"
-            >I have read and agree to the terms above</VormInput
+          >I have read and agree to the terms above
+          </VormInput
           >
           <VButton2
-            variant="solid"
-            icon="arrow--right"
-            :disabled="disableContinueButton"
-            :request-status="agreeTosReqStatus"
-            @click="agreeButtonHandler"
+              variant="solid"
+              icon="arrow--right"
+              :disabled="disableContinueButton"
+              :request-status="agreeTosReqStatus"
+              @click="agreeButtonHandler"
           >
             Agree & Continue
           </VButton2>
@@ -95,7 +96,7 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { useRoute, useRouter } from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import {
   computed,
   onBeforeUnmount,
@@ -111,8 +112,9 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useAuthStore } from "@/store/auth.store";
-import { LEGAL_DOCS_CONTENT } from "./load-docs";
+import {useAuthStore} from "@/store/auth.store";
+import {LEGAL_DOCS_CONTENT} from "./load-docs";
+import {useHead} from "@vueuse/head";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -127,6 +129,8 @@ const CURRENT_VERSION = "2023-03-30";
 
 const userAgreed = ref(false);
 
+useHead({title: "Legal"});
+
 const disableContinueButton = computed(() => {
   if (!userAgreed.value) return true;
   if (agreeTosReqStatus.value.isPending) return true;
@@ -137,7 +141,7 @@ async function loadTosDetails() {
   if (import.meta.env.SSR) return;
   if (viewOnlyMode) return;
   if (authStore.user?.needsTosUpdate === false) {
-    return router.push({ name: "login-success" });
+    return router.push({name: "login-success"});
   }
 }
 
@@ -148,36 +152,36 @@ watch(() => authStore.user?.needsTosUpdate, loadTosDetails, {
 async function agreeButtonHandler() {
   const agreeReq = await authStore.AGREE_TOS(CURRENT_VERSION);
   if (agreeReq.result.success) {
-    await router.push({ name: "login-success" });
+    await router.push({name: "login-success"});
   }
 }
 
 function scrollToDoc(slug: string) {
   const el = document.querySelector(`[data-doc-slug="${slug}"]`);
-  el?.scrollIntoView({ behavior: "smooth" });
+  el?.scrollIntoView({behavior: "smooth"});
 }
 
 // track all intersecting secitons, and current one should be the last in the list
 const intersectingDocs = reactive<Record<string, boolean>>({});
 const activeDocSlug = ref("tos");
 const observer = new IntersectionObserver(
-  (entries) => {
-    const entry = entries[0];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const slug = entry.target.getAttribute("data-doc-slug")!;
-    if (entry.isIntersecting) {
-      intersectingDocs[slug] = true;
-    } else {
-      intersectingDocs[slug] = false;
-    }
+    (entries) => {
+      const entry = entries[0];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const slug = entry.target.getAttribute("data-doc-slug")!;
+      if (entry.isIntersecting) {
+        intersectingDocs[slug] = true;
+      } else {
+        intersectingDocs[slug] = false;
+      }
 
-    activeDocSlug.value = _.last(_.keys(_.pickBy(intersectingDocs))) || "tos";
-  },
-  { threshold: [0] },
+      activeDocSlug.value = _.last(_.keys(_.pickBy(intersectingDocs))) || "tos";
+    },
+    {threshold: [0]},
 );
 watch(activeDocSlug, () => {
   /* eslint-disable @typescript-eslint/no-floating-promises */
-  router.replace({ ...route, params: { docSlug: activeDocSlug.value } });
+  router.replace({...route, params: {docSlug: activeDocSlug.value}});
 });
 
 onMounted(() => {

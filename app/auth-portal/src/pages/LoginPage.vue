@@ -11,11 +11,14 @@ import {onBeforeMount} from "vue";
 import {useRouter} from "vue-router";
 import {RichText, VButton2} from "@si/vue-lib/design-system";
 import {useAuthStore} from "@/store/auth.store";
+import {useHead} from "@vueuse/head";
 
 const API_URL = import.meta.env.VITE_AUTH_API_URL;
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+useHead({title: "Login"});
 
 onBeforeMount(async () => {
   if (authStore.userIsLoggedIn) {
