@@ -1,3 +1,6 @@
+//! This module contains operations related to working with the "/root/confirmation" subtree
+//! in relation to [`Components`](Component).
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -5,7 +8,7 @@ use telemetry::prelude::*;
 
 use crate::action_prototype::ActionKind;
 use crate::attribute::value::AttributeValue;
-use crate::component::confirmation::view::{ConfirmationView, PrimaryActionKind};
+use crate::component::confirmation::view::{ConfirmationView, RecommendationView};
 use crate::component::{
     ComponentResult, LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES,
 };
@@ -82,17 +85,18 @@ impl Component {
     }
 
     // TODO(nick): big query potential here.
-    pub async fn list_confirmations(ctx: &DalContext) -> ComponentResult<Vec<ConfirmationView>> {
+    pub async fn list_confirmations(
+        ctx: &DalContext,
+    ) -> ComponentResult<(Vec<ConfirmationView>, Vec<RecommendationView>)> {
         let sorted_node_ids =
             Node::list_topologically_sorted_configuration_nodes_with_stable_ordering(ctx, false)
                 .await?;
 
-        // Go through all sorted nodes, assemble confirmations and order them by primary action
-        // kind.
-        let mut delete_results = Vec::new();
-        let mut create_results = Vec::new();
-        let mut other_results = Vec::new();
-        let mut no_recommendation_results = Vec::new();
+        // Prepare to sort confirmations and recommendations.
+        let mut destroy_recommendations = Vec::new();
+        let mut create_recommendations = Vec::new();
+        let mut other_recommendations = Vec::new();
+        let mut confirmations = Vec::new();
 
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
         for sorted_node_id in sorted_node_ids {
@@ -107,42 +111,51 @@ impl Component {
             if component.visibility.deleted_at.is_some() && !component.needs_destroy() {
                 continue;
             }
-            if let Some((component_specific_confirmations, primary_action_kind)) =
-                Self::list_confirmations_for_component(ctx, *component.id()).await?
-            {
-                match primary_action_kind {
-                    PrimaryActionKind::HasRecommendations(action_kind) => match action_kind {
-                        ActionKind::Create => {
-                            create_results.extend(component_specific_confirmations)
-                        }
-                        ActionKind::Other => other_results.extend(component_specific_confirmations),
-                        ActionKind::Destroy => {
-                            delete_results.extend(component_specific_confirmations)
-                        }
-                    },
-                    PrimaryActionKind::NoRecommendations => {
-                        no_recommendation_results.extend(component_specific_confirmations)
+
+            let (confirmations_component_specific, recommendations_component_specific) =
+                Self::list_confirmations_for_component(ctx, *component.id()).await?;
+
+            for recommendation_component_specific in recommendations_component_specific {
+                match recommendation_component_specific.action_kind {
+                    ActionKind::Create => {
+                        create_recommendations.push(recommendation_component_specific)
+                    }
+                    ActionKind::Other => {
+                        other_recommendations.push(recommendation_component_specific)
+                    }
+                    ActionKind::Destroy => {
+                        destroy_recommendations.push(recommendation_component_specific)
                     }
                 }
             }
+
+            if !confirmations_component_specific.is_empty() {
+                confirmations.extend(confirmations_component_specific);
+            }
         }
 
-        // We need to invert the order of the delete results before we create the final results.
-        // The final results are in the following order: destroy, create, other and "no
-        // recommendations" based on a topological sort of the nodes.
-        let mut results = Vec::new();
-        delete_results.reverse();
-        results.extend(delete_results);
-        results.extend(create_results);
-        results.extend(other_results);
-        results.extend(no_recommendation_results);
-        Ok(results)
+        // We need to invert the order of the delete recommendations before we create the final
+        // recommendations list. The final recommendations are in the following order: destroy,
+        // create, and other based on a topological sort of the nodes.
+        let mut recommendations = Vec::new();
+        destroy_recommendations.reverse();
+        recommendations.extend(destroy_recommendations);
+        recommendations.extend(create_recommendations);
+        recommendations.extend(other_recommendations);
+
+        // Finally, sort the confirmations to ensure that they are in stable order. We'll use the
+        // component id and title.
+        confirmations.sort_by_key(|v| (v.component_id, v.title.clone()));
+
+        Ok((confirmations, recommendations))
     }
 
+    /// List [`ConfirmationViews`](ConfirmationView) and [`RecommendationViews`](RecommendationView)
+    /// for a given [`ComponentId`](Component).
     async fn list_confirmations_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Option<(Vec<ConfirmationView>, PrimaryActionKind)>> {
+    ) -> ComponentResult<(Vec<ConfirmationView>, Vec<RecommendationView>)> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
         let schema_id = Self::schema_id(ctx, component_id).await?;
         let schema_name = Schema::get_by_id(ctx, &schema_id)
@@ -170,7 +183,7 @@ impl Component {
             Some(all_confirmations_raw) => {
                 let deserialized_value: HashMap<String, ConfirmationEntry> =
                     serde_json::from_value(all_confirmations_raw)?;
-                let view = ConfirmationView::assemble_for_component(
+                let (confirmations, recommendations) = ConfirmationView::assemble_for_component(
                     ctx,
                     component_id,
                     &deserialized_value,
@@ -182,9 +195,9 @@ impl Component {
                 )
                 .await
                 .map_err(|e| ComponentError::ConfirmationView(e.to_string()))?;
-                Ok(Some(view))
+                Ok((confirmations, recommendations))
             }
-            None => Ok(None),
+            None => Ok((vec![], vec![])),
         }
     }
 

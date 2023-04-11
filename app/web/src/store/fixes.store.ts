@@ -36,7 +36,6 @@ export type Confirmation = {
   output?: string[];
   status: ConfirmationStatus;
   provider?: string;
-  recommendations: Recommendation[];
 };
 
 export type Recommendation = {
@@ -103,6 +102,7 @@ export const useFixesStore = () => {
     defineStore(`w${workspacePk || "NONE"}/fixes`, {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
+        recommendations: [] as Array<Recommendation>,
         fixBatches: [] as Array<FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
@@ -221,10 +221,8 @@ export const useFixesStore = () => {
           return this.fixesOnBatch(this.runningFixBatch);
         },
         unstartedRecommendations(): Recommendation[] {
-          return this.confirmations.flatMap((c) =>
-            c.recommendations.filter(
-              (recommendation) => recommendation.status === "unstarted",
-            ),
+          return this.recommendations.filter(
+            (recommendation) => recommendation.status === "unstarted",
           );
         },
       },
@@ -232,14 +230,19 @@ export const useFixesStore = () => {
         async LOAD_CONFIRMATIONS() {
           this.populatingFixes = true;
 
-          return new ApiRequest<Array<Confirmation>>({
+          return new ApiRequest<{
+            confirmations: Array<Confirmation>;
+            recommendations: Array<Recommendation>;
+          }>({
             url: "/fix/confirmations",
             params: { visibility_change_set_pk: nilId() },
-            onSuccess: (response) => {
-              this.confirmations = response;
+            onSuccess: ({ confirmations, recommendations }) => {
+              this.confirmations = confirmations;
+              this.recommendations = recommendations;
+
               this.populatingFixes =
-                response.some((c) => c.status === "neverStarted") ||
-                response.some((c) => c.status === "running");
+                confirmations.some((c) => c.status === "neverStarted") ||
+                confirmations.some((c) => c.status === "running");
             },
           });
         },

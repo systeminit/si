@@ -164,12 +164,9 @@ impl StatusReceiver {
 
         let code_generation_attribute_values: HashSet<AttributeValueId> =
             Component::all_code_generation_attribute_values(&ctx).await?;
-        let confirmation_attribute_values: HashSet<AttributeValueId> = HashSet::from_iter(
-            Component::list_confirmations(&ctx)
-                .await?
-                .into_iter()
-                .map(|cv| cv.attribute_value_id),
-        );
+        let (confirmation_views, _) = Component::list_confirmations(&ctx).await?;
+        let confirmation_attribute_values: HashSet<AttributeValueId> =
+            HashSet::from_iter(confirmation_views.iter().map(|cv| cv.attribute_value_id));
 
         // Flatten the dependency graph into a single vec.
         let mut flattened_dependent_graph: Vec<&AttributeValueId> =
