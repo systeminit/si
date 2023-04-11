@@ -41,8 +41,9 @@ workspace and Change Set:
 
 ### The Customize interface
 
-In one of the windows, click the Customize <img src="tutorial-img/06-customizing/customize.png" alt="Customize" width="63" />  button in
-the main navigation. You should now have one browser window open to the `Model` as above and one open to `Customize`
+In one of the windows, click the Customize button -
+![Customize](tutorial-img/06-customizing/customize.png)
+in the main navigation. You should now have one browser window open to the `Model` as above and one open to `Customize`
 that looks like this:
 
 ![Customize screen](tutorial-img/06-customizing/customize_screen.png)
@@ -136,8 +137,9 @@ async function qualificationDockerImageExists (component) {
 You updated line 2 to read that it should return if the image is not set or if it starts with `si-`. You also updated
 line 5 to have a better error message.
 
-Click the Execute <img src="tutorial-img/06-customizing/execute_button.png" alt="Execute Button" width="124" /> button to run your function,
-and make sure there are no errors. You should see the button spin and let you know that it finished without errors. If
+Click the Execute button -
+![Execute Button](tutorial-img/06-customizing/execute_button.png)
+to run your function, and make sure there are no errors. You should see the button spin and let you know that it finished without errors. If
 you have a syntax error, you will see it in the editor and also see an error message immediately beneath the Execute
 button:
 

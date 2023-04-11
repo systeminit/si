@@ -39,7 +39,7 @@ that auto-rebases on main - where main is the version that you believe best refl
 
 If you've been following along, your System Initiative workspace is prompting you to create a new Change Set:
 
-![Create a Chagne Set](tutorial-img/03-deploy_containerized_app/create_a_chagne_set.png)
+![Create a Change Set](tutorial-img/03-deploy_containerized_app/create_a_change_set.png)
 
 You are in development mode, so we automatically suggest a Change Set name for you. Click the '+ Create change set'
 button to create your new 'Demo 1' Change Set.
@@ -50,7 +50,9 @@ With your Change Set created, System Initiative should now look like this:
 
 ![Empty System Initiative Workspace](tutorial-img/03-deploy_containerized_app/empty_system_initiative_workspace.png)
 
-The primary navigation bar at the top has the <img src="tutorial-img/03-deploy_containerized_app/model_icon.png" alt="model icon" width=73 /> Model icon selected, indicating that you want to work on your
+The primary navigation bar at the top has the Model icon selected -
+![model icon](tutorial-img/03-deploy_containerized_app/model_icon.png)
+indicating that you want to work on your 
 infrastructure model. The left side of the screen contains the Asset Palette - a collection of various Assets we can use
 to build our model. In the center of the screen is a canvas where you will design your model, with a progress bar on
 top. To the right is a details panel that will show you the selected asset's attributes, source code, and resources. At
@@ -93,7 +95,7 @@ it, we need to configure the attributes of our Docker Image to point at a valid 
 
 To do that, we will use the details panel on the right side of the screen. Yours should look something like this:
 
-<img src="tutorial-img/03-deploy_containerized_app/docker_image_details_panel.png" width="508"  alt="Docker image details panel" />
+![Docker image details panel](tutorial-img/03-deploy_containerized_app/docker_image_details_panel.png)
 
 The attributes tab shows the currently selected asset at the top and its current state within the Change Set (in our
 case, added). Below that is a short history of the last change made to this asset. Beneath that are tabs you can toggle
@@ -118,11 +120,11 @@ assets. It's a powerful way to easily generate a correct configuration.
 Our Docker Image exposes a web server running on port 80. Let's add that to our Docker Image's attributes now. Click on
 the `+ Add to array` button in the `domain/ExposedPorts[0]` attribute:
 
-<img src="tutorial-img/03-deploy_containerized_app/add_to_array.png" alt="Add to array" width="507" />
+![Add to array](tutorial-img/03-deploy_containerized_app/add_to_array.png)
 
 The progress bar will update, and you will see a new entry for the ExposedPort:
 
-<img src="tutorial-img/03-deploy_containerized_app/added_exposedport.png" alt="Added ExposedPort" width="490" />
+![Added ExposedPort](tutorial-img/03-deploy_containerized_app/added_exposedport.png)
 
 Put the value `80/tcp` in this field, and hit the `enter` key to save. The `80/tcp` syntax comes directly from Docker
 itself - like the image name, System Initiative maps the upstream behavior 1:1 - this allows you to easily transfer your
@@ -260,8 +262,9 @@ right above the Asset Palette.
 
 ![Merge button](tutorial-img/03-deploy_containerized_app/merge_button.png)
 
-You will see a screen wipe, followed by a fun celebratory confetti cannon, and then you will redirect to the `Apply`
-<img src="tutorial-img/03-deploy_containerized_app/apply_icon.png" width=75 alt="Apply Icon"/> interface.
+You will see a screen wipe, followed by a fun celebratory confetti cannon, and then you will redirect to the `Apply` interface -
+
+![Apply Icon](tutorial-img/03-deploy_containerized_app/apply_icon.png)
 
 ### Creating your resources in AWS
 
@@ -318,7 +321,9 @@ the resources data to get the Public IP Address.
 ### Checking out our new website
 
 System Initiative keeps track of both the theoretical model you want to see and your real-world resources. When you want
-to explore how things are right now, you do that from the Analyze page. Click the Eyeball <img src="tutorial-img/03-deploy_containerized_app/eyeball.png" width="60" alt="Eyeball" /> in the top navigation to move
+to explore how things are right now, you do that from the Analyze page. Click the Eyeball -
+![Eyeball Icon](tutorial-img/03-deploy_containerized_app/eyeball.png)
+in the top navigation to move
 from the Apply screen to the Analyze screen.
 
 ![Analyze screen workspace view](tutorial-img/03-deploy_containerized_app/analyze_screen_workspace_view.png)
@@ -333,7 +338,9 @@ EC2 Instance from the Diagram Outline on the left, and you should see the follow
 
 ![Analyze screen Ec2 Instance Selected](tutorial-img/03-deploy_containerized_app/analyze_screen_ec2_instance_selected.png)
 
-Click the Refresh <img src="tutorial-img/03-deploy_containerized_app/refresh_button.png" width="124" alt="refresh button" /> button in the details panel. You will see it spin and the resource information below update. Depending on how
+Click the Refresh button -
+![refresh button](tutorial-img/03-deploy_containerized_app/refresh_button.png)
+in the details panel. You will see it spin and the resource information below update. Depending on how
 long AWS takes to provision your EC2 Instance, you may need to hit this button multiple times. Eventually, you will see
 the State switch to running:
 

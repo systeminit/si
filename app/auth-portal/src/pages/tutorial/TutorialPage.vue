@@ -25,10 +25,10 @@
         <div class="flex-none w-[250px]">
           <div class="sticky top-md flex flex-col gap-sm">
             <div
-                v-for="step in TUTORIAL_STEPS"
-                :key="step.slug"
-                :class="clsx('cursor-pointer flex items-center gap-xs leading-5')"
-                @click="activeStepSlug = step.slug"
+              v-for="step in TUTORIAL_STEPS"
+              :key="step.slug"
+              :class="clsx('cursor-pointer flex items-center gap-xs leading-5')"
+              @click="stepSelectHandler(step.slug)"
             >
               <Icon
                   :name="
@@ -169,6 +169,12 @@ function stepContinueHandler() {
   );
   const nextStepSlug = _.keys(TUTORIAL_STEPS)[currentStepIndex + 1];
   activeStepSlug.value = nextStepSlug;
+  window.scrollTo(0, 0);
+}
+
+function stepSelectHandler(slug: string) {
+  activeStepSlug.value = slug;
+  window.scrollTo(0, 0);
 }
 
 const workspacesStore = useWorkspacesStore();
