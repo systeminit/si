@@ -31,7 +31,7 @@ CI := false
 CI_FROM_REF := main
 CI_TO_REF := HEAD
 FORCE := false
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
 LOCAL_PG := $(shell test $$(uname -m) = "arm64" && test $$(uname) = "Darwin" && echo true || echo false)
 
 .DEFAULT_GOAL := help
