@@ -41,10 +41,7 @@ workspace and Change Set:
 
 ### The Customize interface
 
-In one of the windows, click the Customize button -
-![Customize](tutorial-img/06-customizing/customize.png)
-in the main navigation. You should now have one browser window open to the `Model` as above and one open to `Customize`
-that looks like this:
+In one of the windows, click the Customize button <img src="tutorial-img/06-customizing/customize.png" alt="customize button" class="inline" /> in the main navigation. You should now have one browser window open to the `Model` as above and one open to `Customize` that looks like this:
 
 ![Customize screen](tutorial-img/06-customizing/customize_screen.png)
 
@@ -137,8 +134,7 @@ async function qualificationDockerImageExists (component) {
 You updated line 2 to read that it should return if the image is not set or if it starts with `si-`. You also updated
 line 5 to have a better error message.
 
-Click the Execute button -
-![Execute Button](tutorial-img/06-customizing/execute_button.png)
+Click the Execute button <img src="tutorial-img/06-customizing/execute_button.png" alt="execute button" class="inline">
 to run your function, and make sure there are no errors. You should see the button spin and let you know that it finished without errors. If
 you have a syntax error, you will see it in the editor and also see an error message immediately beneath the Execute
 button:
@@ -409,7 +405,7 @@ And see that in our final case, all the qualifications for this image are passin
 
 Nice work! You've added a new Qualification to System Initiative that reflects the specific policy you needed.
 
-### How the hell does this thing work?
+### How does this thing work?
 
 You ask excellent questions! Everything in System Initiative is a result of a JavaScript function execution. When you
 define a new asset, you are defining the attributes it has, and setting functions for each value. As you have just seen,
@@ -419,11 +415,11 @@ that are reactive to both the attributes and the resource for a given asset.
 
 System Initiative stitches this web of functions together into a reactive hyper-graph - allowing you to map any number
 of inputs to a function in the graph and then re-process the function if any of its inputs change. If you're familiar
-with how systems like [React](https://react.dev/) or [Vue](https://vuejs.org/) work, it's conceptually very similar.
+with how systems like [React](https://react.dev/) or [Vue](https://vuejs.org/) work, System Initiative is conceptually very similar.
 
 We call it a hyper-graph because of Change Sets. Any individual asset or function can be in multiple states at any time.
 When you create a new Change Set, think of it as creating a new place for a function to bind. If you haven't specified a
-binding for that particular Change Set, we fall back to whatever function is bound to HEAD.
+binding for that particular Change Set, System Initiative falls back to whatever function is bound to HEAD.
 
 Everything in System Initiative is open and hackable - from the functions executed on the hyper-graph to the source code
 itself. We will add lots of functionality in the future, like integrated sharing, new asset creation, and discovery
