@@ -478,18 +478,17 @@ async fn list_confirmations(mut octx: DalContext) {
     ctx.update_visibility(Visibility::new_head(false));
 
     // List confirmations.
-    let mut views = Component::list_confirmations(ctx)
+    let (confirmations, mut recommendations) = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");
-    let mut view = views.pop().expect("views are empty");
-    assert!(views.is_empty());
-    let recommendation = view
-        .recommendations
-        .pop()
-        .expect("recommendations are empty");
+    assert_eq!(
+        1,                   // expected
+        confirmations.len()  // actual
+    );
+    let recommendation = recommendations.pop().expect("recommendations are empty");
 
     // Check that there is only one recommendation and that it looks as expected.
-    assert!(view.recommendations.is_empty());
+    assert!(recommendations.is_empty());
     assert_eq!(
         "create",                           // expected
         &recommendation.recommended_action  // actual
@@ -546,13 +545,13 @@ async fn list_confirmations(mut octx: DalContext) {
 
     // Ensure that our confirmations views look as intended. We should have exactly zero
     // recommendations!
-    let mut views = Component::list_confirmations(ctx)
+    let (mut confirmations, recommendations) = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");
-    let view = views.pop().expect("views are empty");
-    assert!(views.is_empty());
-    assert_eq!(view.status, ConfirmationStatus::Success);
-    assert!(view.recommendations.is_empty());
+    let confirmation = confirmations.pop().expect("views are empty");
+    assert!(confirmations.is_empty());
+    assert_eq!(confirmation.status, ConfirmationStatus::Success);
+    assert!(recommendations.is_empty());
 
     // Observe that the confirmation worked after "creation".
     let component_view = ComponentView::new(ctx, *component.id())
@@ -604,18 +603,17 @@ async fn list_confirmations(mut octx: DalContext) {
         .expect("could not set resource");
 
     // List confirmations.
-    let mut views = Component::list_confirmations(ctx)
+    let (confirmations, mut recommendations) = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");
-    let mut view = views.pop().expect("views are empty");
-    assert!(views.is_empty());
-    let recommendation = view
-        .recommendations
-        .pop()
-        .expect("recommendations are empty");
+    assert_eq!(
+        1,                   // expected
+        confirmations.len()  // actual
+    );
+    let recommendation = recommendations.pop().expect("recommendations are empty");
 
     // Check that there is only one recommendation and that it looks as expected.
-    assert!(view.recommendations.is_empty());
+    assert!(recommendations.is_empty());
     assert_eq!(
         "create",                           // expected
         &recommendation.recommended_action  // actual

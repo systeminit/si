@@ -1,7 +1,8 @@
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::component::confirmation::view::ConfirmationView as DalConfirmationView;
-use dal::{Component, ComponentId, Visibility};
+use dal::component::confirmation::view::RecommendationView as DalRecommendationView;
+use dal::{Component, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::FixResult;
@@ -15,7 +16,12 @@ pub struct ConfirmationsRequest {
     pub visibility: Visibility,
 }
 
-pub type ConfirmationsResponse = Vec<DalConfirmationView>;
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmationsResponse {
+    pub confirmations: Vec<DalConfirmationView>,
+    pub recommendations: Vec<DalRecommendationView>,
+}
 
 pub async fn confirmations(
     HandlerContext(builder): HandlerContext,
@@ -25,18 +31,7 @@ pub async fn confirmations(
     Query(request): Query<ConfirmationsRequest>,
 ) -> FixResult<Json<ConfirmationsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-    let confirmation_views = Component::list_confirmations(&ctx).await?;
-
-    let recommendations = confirmation_views
-        .iter()
-        .flat_map(|confirmation| {
-            confirmation
-                .recommendations
-                .iter()
-                .map(|rec| (rec.name.clone(), rec.component_id))
-                .collect::<Vec<(String, ComponentId)>>()
-        })
-        .collect::<Vec<(String, ComponentId)>>();
+    let (confirmation_views, recommendation_views) = Component::list_confirmations(&ctx).await?;
 
     track(
         &posthog_client,
@@ -44,10 +39,13 @@ pub async fn confirmations(
         &original_uri,
         "list_confirmations",
         serde_json::json!({
-            "number_of_suggested_recommendations": recommendations.len(),
-            "recommendations_list": recommendations
+            "number_of_suggested_recommendations": recommendation_views.len(),
+            "recommendations_list": recommendation_views
         }),
     );
 
-    Ok(Json(confirmation_views))
+    Ok(Json(ConfirmationsResponse {
+        confirmations: confirmation_views,
+        recommendations: recommendation_views,
+    }))
 }

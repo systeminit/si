@@ -34,30 +34,6 @@ pub enum ConfirmationViewError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("StandardModelError: {0}")]
     StandardModel(#[from] StandardModelError),
-
-    #[error("found conflicting recommendations for component: {0}")]
-    FoundConflictingRecommendationsForComponent(ComponentId),
-    #[error("found conflicting recommendations in confirmation view: {0:?}")]
-    FoundConflictingRecommendationsInConfirmationView(Box<ConfirmationView>),
-    #[error("could not find primary action kind for confirmation views: {0:?}")]
-    CouldNotFindPrimaryActionKindForConfirmationViews(Vec<ConfirmationView>),
-    #[error("could not find primary action kind for recommendations: {0:?}")]
-    CouldNotFindPrimaryActionKindForRecommendations(Vec<Recommendation>),
-}
-
-/// Tracks the primary [`ActionKind`](ActionKind) if the [`ConfirmationView`] or
-/// [`Vec<ConfirmationView>`] has at least one [`Recommendation`]. Otherwise, it tracks that there
-/// is _no_ [`Recommendation`](Recommendation).
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum PrimaryActionKind {
-    /// Indicates that the [`ConfirmationView`] or group of [`ConfirmationViews`](ConfirmationView)
-    /// has at least one [`Recommendation`] and what the primary [`ActionKind`] is for it/them.
-    HasRecommendations(ActionKind),
-    /// Indicates that the [`ConfirmationView`] or group of [`ConfirmationViews`](ConfirmationView)
-    /// does not have any [`Recommendations`](Recommendation), which means there cannot be
-    /// a primary [`ActionKind`].
-    NoRecommendations,
 }
 
 /// A [`ConfirmationView`] is the view of a conceptual "confirmation" corresponding to a child
@@ -96,17 +72,16 @@ pub struct ConfirmationView {
     output: Option<Vec<String>>,
     /// The overall status of the "confirmation".
     pub status: ConfirmationStatus,
-    /// A list of [`Recommendations`](Recommendation) that can be used to run [`Fixes`](crate::Fix).
-    pub recommendations: Vec<Recommendation>,
 }
 
 impl ConfirmationView {
-    /// Assembles [`ConfirmationViews`](ConfirmationView) based on the current status of the
-    /// "/root/confirmation" [`Prop`](crate::Prop) tree for a given [`Component`](crate::Component).
+    /// Assembles [`ConfirmationViews`](ConfirmationView) and
+    /// [`RecommendationViews`](RecommendationView) based on the current status of the
+    /// "/root/confirmation" [`Prop`](crate::Prop) tree for a given [`Component`](Component).
     ///
     /// # Errors
     ///
-    /// Returns [`ConfirmationViewError`] if the [`views`](ConfirmationView) could not be assembled.
+    /// Returns [`ConfirmationViewError`] if the either of the "views" could not be assembled.
     #[allow(clippy::too_many_arguments)]
     pub async fn assemble_for_component(
         ctx: &DalContext,
@@ -117,82 +92,36 @@ impl ConfirmationView {
         schema_variant_id: SchemaVariantId,
         running_fixes: &[Fix],
         schema_name: String,
-    ) -> Result<(Vec<Self>, PrimaryActionKind), ConfirmationViewError> {
-        let mut results = Vec::new();
-        let mut primary_action_kind_tracker: Option<PrimaryActionKind> = None;
+    ) -> Result<(Vec<Self>, Vec<RecommendationView>), ConfirmationViewError> {
+        let mut confirmations = Vec::new();
+        let mut recommendations = Vec::new();
 
         for (confirmation_name, entry) in all_confirmations {
-            let (view, individual_primary_action_kind) = Self::assemble_individual_for_component(
-                ctx,
-                component_id,
-                confirmation_name.clone(),
-                entry,
-                cache,
-                schema_id,
-                schema_variant_id,
-                running_fixes,
-                schema_name.clone(),
-            )
-            .await?;
+            let (confirmation, recommendations_for_confirmation) =
+                Self::assemble_individual_for_component(
+                    ctx,
+                    component_id,
+                    confirmation_name.clone(),
+                    entry,
+                    cache,
+                    schema_id,
+                    schema_variant_id,
+                    running_fixes,
+                    schema_name.clone(),
+                )
+                .await?;
 
-            // Ensure that the action kind is the same for all confirmation views only if there is
-            // at least one recommendation. If the tracker is unset, we will set it.
-            match primary_action_kind_tracker {
-                Some(initialized_primary_action_kind_tracker) => {
-                    match (
-                        initialized_primary_action_kind_tracker,
-                        individual_primary_action_kind,
-                    ) {
-                        (
-                            PrimaryActionKind::HasRecommendations(all_action_kind),
-                            PrimaryActionKind::HasRecommendations(individual_action_kind),
-                        ) => {
-                            // Only check if we have action kind mismatch if there is at least one
-                            // recommendation.
-                            if all_action_kind != individual_action_kind {
-                                return Err(
-                                    ConfirmationViewError::FoundConflictingRecommendationsInConfirmationView(Box::new(view)),
-                                );
-                            }
-                        }
-                        (
-                            PrimaryActionKind::NoRecommendations,
-                            PrimaryActionKind::HasRecommendations(_),
-                        ) => {
-                            // If our tracker was originally set to "NoRecommendations", then we
-                            // will need to override it with the first "ActionKind" found.
-                            primary_action_kind_tracker = Some(individual_primary_action_kind)
-                        }
-                        _ => {}
-                    }
-                }
-                None => {
-                    // Initialize the tracker with the first primary action kind seen.
-                    primary_action_kind_tracker = Some(individual_primary_action_kind)
-                }
-            }
-
-            results.push(view);
+            confirmations.push(confirmation);
+            recommendations.extend(recommendations_for_confirmation);
         }
 
-        let all_primary_action_kind = match primary_action_kind_tracker {
-            Some(kind) => kind,
-            None if all_confirmations.is_empty() => PrimaryActionKind::NoRecommendations,
-            None => {
-                return Err(
-                    ConfirmationViewError::CouldNotFindPrimaryActionKindForConfirmationViews(
-                        results.clone(),
-                    ),
-                );
-            }
-        };
-
-        Ok((results, all_primary_action_kind))
+        Ok((confirmations, recommendations))
     }
 
-    /// This _private_ method assembles an individual [`ConfirmationView`] based on an individual
-    /// [`ConfirmationEntry`] for a given [`Component`](crate::Component). It should only be called
-    /// by [`Self::assemble_for_component`].
+    /// This _private_ method assembles an individual [`ConfirmationView`] with
+    /// [`RecommendationViews`](RecommendationView) based on an individual [`ConfirmationEntry`] for
+    /// a given [`Component`](crate::Component). It should only be called by
+    /// [`Self::assemble_for_component`].
     #[allow(clippy::too_many_arguments)]
     async fn assemble_individual_for_component(
         ctx: &DalContext,
@@ -204,7 +133,7 @@ impl ConfirmationView {
         schema_variant_id: SchemaVariantId,
         running_fixes: &[Fix],
         schema_name: String,
-    ) -> Result<(Self, PrimaryActionKind), ConfirmationViewError> {
+    ) -> Result<(Self, Vec<RecommendationView>), ConfirmationViewError> {
         let (found_func_binding_return_value_id, found_attribute_value_id, found_func_id) =
             cache.get(&confirmation_name).ok_or_else(|| {
                 ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
@@ -264,11 +193,8 @@ impl ConfirmationView {
             FixResolver::find_for_confirmation_attribute_value(ctx, *found_attribute_value_id)
                 .await?;
 
-        // Gather all the action prototypes from the recommended actions raw strings. We'll also
-        // keep track of the primary action kind, which will be "None" if there are no
-        // recommendations.
+        // Gather all the action prototypes from the recommended actions raw strings.
         let mut recommendations = Vec::new();
-        let mut maybe_primary_action_kind: Option<ActionKind> = None;
 
         for action in &entry.recommended_actions {
             let action_prototype =
@@ -328,21 +254,7 @@ impl ConfirmationView {
             let workflow_prototype = action_prototype.workflow_prototype(ctx).await?;
             let recommendation_action_kind = action_prototype.kind().to_owned();
 
-            // Ensure that the action kind is the same for all recommendations. If it is unset, we
-            // will set it.
-            if let Some(kind) = maybe_primary_action_kind {
-                if kind != recommendation_action_kind {
-                    return Err(
-                        ConfirmationViewError::FoundConflictingRecommendationsForComponent(
-                            component_id,
-                        ),
-                    );
-                }
-            } else {
-                maybe_primary_action_kind = Some(recommendation_action_kind);
-            }
-
-            recommendations.push(Recommendation {
+            recommendations.push(RecommendationView {
                 confirmation_attribute_value_id: *found_attribute_value_id,
                 component_id,
                 component_name: Component::find_name(ctx, component_id).await?,
@@ -355,19 +267,6 @@ impl ConfirmationView {
                 is_runnable: recommendation_is_runnable,
             });
         }
-
-        // Find the primary action kind.
-        let primary_action_kind = match maybe_primary_action_kind {
-            Some(kind) => PrimaryActionKind::HasRecommendations(kind),
-            None if recommendations.is_empty() => PrimaryActionKind::NoRecommendations,
-            None => {
-                return Err(
-                    ConfirmationViewError::CouldNotFindPrimaryActionKindForRecommendations(
-                        recommendations.clone(),
-                    ),
-                );
-            }
-        };
 
         // Assemble the view.
         let view = ConfirmationView {
@@ -383,12 +282,11 @@ impl ConfirmationView {
             component_name: Component::find_name(ctx, component_id).await?,
             description,
             output: Some(output.clone()).filter(|o| !o.is_empty()),
-            recommendations,
             status: confirmation_status,
             provider: maybe_provider,
         };
 
-        Ok((view, primary_action_kind))
+        Ok((view, recommendations))
     }
 }
 
@@ -403,16 +301,11 @@ pub enum ConfirmationStatus {
     NeverStarted,
 }
 
-// TODO(nick,paulo,paul,wendy): yes, the fields for the "Recommendation" struct are technically
-// already on the confirmation itself and we could just map the recommendations back to the
-// confirmations in the frontend, but we want shit to work again before optimizing. Fix the fix
-// flow!
-
-/// A [`Recommendation`] is assembled the result of a "confirmation" and enables users to run
+/// A [`RecommendationView`] is assembled the result of a "confirmation" and enables users to run
 /// [`Fix(es)`](crate::Fix) for a given [`Component`](crate::Component).
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Recommendation {
+pub struct RecommendationView {
     /// The child [`AttributeValue`](crate::AttributeValue) of a [`Component`]'s
     /// "/root/confirmation" map.
     ///
@@ -440,37 +333,37 @@ pub struct Recommendation {
     /// [recommendation](Self).
     is_runnable: RecommendationIsRunnable,
     /// Gives the [`history view`](crate::fix::FixHistoryView) of the last [`Fix`](crate::Fix) ran.
-    /// This will be empty if the [`Recommendation`] had never had a corresponding
+    /// This will be empty if the [`RecommendationView`] had never had a corresponding
     /// [`Fix`](crate::Fix) ran before.
     pub last_fix: Option<FixHistoryView>,
 }
 
-/// Tracks the last known status of a [`Recommendation`] (corresponds to the
+/// Tracks the last known status of a [`RecommendationView`] (corresponds to the
 /// [`FixResolver`](crate::FixResolver)).
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum RecommendationStatus {
-    /// The last execution of the [`Recommendation`] succeeded.
+    /// The last execution of the [`RecommendationView`] succeeded.
     Success,
-    /// The last execution of the [`Recommendation`] failed.
+    /// The last execution of the [`RecommendationView`] failed.
     Failure,
-    /// The last execution of the [`Recommendation`] is still running.
+    /// The last execution of the [`RecommendationView`] is still running.
     Running,
-    /// The [`Recommendation`] has never been ran.
+    /// The [`RecommendationView`] has never been ran.
     Unstarted,
 }
 
-/// Tracks the ability to run a [`Recommendation`] (corresponds to the state of "/root/resource"
+/// Tracks the ability to run a [`RecommendationView`] (corresponds to the state of "/root/resource"
 /// and the [`ActionKind`](crate::action_prototype::ActionKind) on the corresponding
 /// [`ActionPrototype`](crate::ActionPrototype).
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 enum RecommendationIsRunnable {
-    /// The [`Recommendation`] is ready to be ran.
+    /// The [`RecommendationView`] is ready to be ran.
     Yes,
-    /// The [`Recommendation`] is not ready to be ran.
+    /// The [`RecommendationView`] is not ready to be ran.
     No,
-    /// There is a [`Fix`](crate::Fix) in-flight that prevents the [`Recommendation`] from being
+    /// There is a [`Fix`](crate::Fix) in-flight that prevents the [`RecommendationView`] from being
     /// able to be ran.
     Running,
 }

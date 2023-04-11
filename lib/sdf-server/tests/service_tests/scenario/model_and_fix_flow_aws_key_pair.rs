@@ -120,14 +120,13 @@ async fn model_and_fix_flow_aws_key_pair(
         .await;
 
     // Check the confirmations and ensure they look as we expect.
-    let mut confirmations = harness.list_confirmations(&mut ctx).await;
-    let mut confirmation = confirmations.pop().expect("no confirmations found");
-    assert!(confirmations.is_empty());
-    let recommendation = confirmation
-        .recommendations
-        .pop()
-        .expect("no recommendations found");
-    assert!(confirmation.recommendations.is_empty());
+    let (confirmations, mut recommendations) = harness.list_confirmations(&mut ctx).await;
+    assert_eq!(
+        1,                   // expected
+        confirmations.len()  // actual
+    );
+    let recommendation = recommendations.pop().expect("no recommendations found");
+    assert!(recommendations.is_empty());
 
     // Run the fix for the confirmation.
     let fix_batch_id = harness

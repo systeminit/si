@@ -14,7 +14,7 @@ mod model_flow_fedora_coreos_ignition;
 
 use axum::http::Method;
 use axum::Router;
-use dal::component::confirmation::view::ConfirmationView;
+use dal::component::confirmation::view::{ConfirmationView, RecommendationView};
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
     AttributeValueId, ComponentId, ComponentView, ComponentViewProperties, DalContext, Diagram,
@@ -465,13 +465,16 @@ impl ScenarioHarness {
         assert!(response.success);
     }
 
-    pub async fn list_confirmations(&self, ctx: &mut DalContext) -> Vec<ConfirmationView> {
+    pub async fn list_confirmations(
+        &self,
+        ctx: &mut DalContext,
+    ) -> (Vec<ConfirmationView>, Vec<RecommendationView>) {
         let request = ConfirmationsRequest {
             visibility: *ctx.visibility(),
         };
         let response: ConfirmationsResponse =
             self.query_get("/api/fix/confirmations", &request).await;
-        response
+        (response.confirmations, response.recommendations)
     }
 
     pub async fn run_fixes(&self, ctx: &mut DalContext, fixes: Vec<FixRunRequest>) -> FixBatchId {

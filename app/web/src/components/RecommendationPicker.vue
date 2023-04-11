@@ -173,9 +173,7 @@ const allSelected = computed(() => {
   return false;
 });
 
-const recommendations = computed(() =>
-  fixesStore.confirmations.flatMap((c) => c.recommendations),
-);
+const recommendations = computed(() => fixesStore.recommendations);
 
 const statusStore = useStatusStore();
 const fixesStore = useFixesStore();

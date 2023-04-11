@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::Router;
 use dal::{
@@ -501,12 +501,13 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // Prepare fixes for key pair, ingress and security group.
-    let confirmations = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
     let mut requests = Vec::new();
     assert_eq!(
         4,                   // expected
         confirmations.len(), // actual
     );
+    let mut targets = HashSet::new();
     for confirmation in confirmations {
         // Ensure that all confirmations are failing.
         assert_eq!(
@@ -514,10 +515,15 @@ async fn model_and_fix_flow_whiskers(
             confirmation.status,         // actual
         );
 
+        // Only gather non EC2 targets.
         if confirmation.title != "EC2 Instance Exists?" {
-            let mut recommendations = confirmation.recommendations.clone();
-            let recommendation = recommendations.pop().expect("no recommendations found");
-            assert!(recommendations.is_empty());
+            targets.insert(confirmation.attribute_value_id);
+        }
+    }
+
+    // Select the recommendations we want.
+    for recommendation in recommendations {
+        if targets.contains(&recommendation.confirmation_attribute_value_id) {
             requests.push(FixRunRequest {
                 attribute_value_id: recommendation.confirmation_attribute_value_id,
                 component_id: recommendation.component_id,
@@ -547,7 +553,7 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Now, run the fix for EC2 .
-    let confirmations = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, mut recommendations) = harness.list_confirmations(&mut ctx).await;
     let mut requests = Vec::new();
     assert_eq!(
         4,                   // expected
@@ -559,14 +565,6 @@ async fn model_and_fix_flow_whiskers(
                 ConfirmationStatus::Failure, // expected
                 confirmation.status,         // actual
             );
-            let mut recommendations = confirmation.recommendations.clone();
-            let recommendation = recommendations.pop().expect("no recommendations found");
-            assert!(recommendations.is_empty());
-            requests.push(FixRunRequest {
-                attribute_value_id: recommendation.confirmation_attribute_value_id,
-                component_id: recommendation.component_id,
-                action_name: recommendation.recommended_action,
-            })
         } else {
             // Ensure that previous confirmations succeeded.
             assert_eq!(
@@ -575,6 +573,16 @@ async fn model_and_fix_flow_whiskers(
             );
         }
     }
+
+    // Create the EC2 instance.
+    let recommendation = recommendations.pop().expect("no recommendations found");
+    assert!(recommendations.is_empty());
+    requests.push(FixRunRequest {
+        attribute_value_id: recommendation.confirmation_attribute_value_id,
+        component_id: recommendation.component_id,
+        action_name: recommendation.recommended_action,
+    });
+
     assert_eq!(
         1,              // expected
         requests.len(), // actual
@@ -613,7 +621,7 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Check that all confirmations are passing.
-    let confirmations = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
     assert_eq!(
         4,                   // expected
         confirmations.len(), // actual
@@ -624,4 +632,5 @@ async fn model_and_fix_flow_whiskers(
             confirmation.status,         // actual
         );
     }
+    assert!(recommendations.is_empty())
 }
