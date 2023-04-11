@@ -18,6 +18,7 @@ import {
   CreateFuncAttributeOptions,
 } from "./types";
 import { useRouterStore } from "../router.store";
+import {trackEvent} from "@/utils/tracking";
 
 export type FuncId = string;
 
@@ -187,6 +188,8 @@ export const useFuncStore = () => {
       },
       async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
         const func = this.funcById(funcId);
+
+        trackEvent("func_save_and_exec", { id: func.id, name: func.name });
 
         return new ApiRequest<SaveFuncResponse>({
           method: "post",

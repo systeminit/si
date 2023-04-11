@@ -10,6 +10,7 @@
       name: 'workspace-lab-functions',
       params: { ...route.params, funcId: func.id },
     }"
+    @click="trackFunctionSelected()"
   >
     <div class="w-full truncate">
       {{ func.name }}
@@ -28,8 +29,9 @@ import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import SiChip from "./SiChip.vue";
+import { trackEvent } from "@/utils/tracking";
 
-defineProps({
+const props = defineProps({
   color: { type: String },
   func: { type: Object as PropType<FuncSummary>, required: true },
 });
@@ -37,4 +39,10 @@ defineProps({
 const route = useRoute();
 const funcStore = useFuncStore();
 const { selectedFuncId } = storeToRefs(funcStore);
+const trackFunctionSelected = () => {
+  trackEvent("function_selected_for_edit", {
+    func_id: props.func.id,
+    func_name: props.func.name,
+  });
+}
 </script>

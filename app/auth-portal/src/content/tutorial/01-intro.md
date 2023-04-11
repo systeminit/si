@@ -14,18 +14,18 @@ around on but not yet ready for serious production use.
 
 We ask that you:
 
-1. Run through this tutorial to the end
-2. Fill out a couple of surveys as you go
-3. Talk about your experience or get help in the private Team 1 discord channels
-4. Explore the source code, and contribute if you’re so moved
-5. Participate in a short interview about your experience
+  * Run through this tutorial to the end
+  * Fill out a couple of surveys as you go
+  * Talk about your experience or get help in the private Team 1 discord channels
+  * Explore the source code, and contribute if you’re so moved
+  * Participate in a short interview about your experience
 
 In return, you will receive:
 
-1. Our everlasting gratitude
-2. The ability to directly influence our direction and the product
-3. A sense of personal accomplishment
-4. A particularly sweet bundle of amazing swag
+  * Our everlasting gratitude
+  * The ability to directly influence our direction and the product
+  * A sense of personal accomplishment
+  * A particularly sweet bundle of amazing swag
 
 A few things to get out of the way, then we’ll get on with the show.
 

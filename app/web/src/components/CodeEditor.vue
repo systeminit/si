@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full">
+  <div class="w-full h-full ph-no-capture">
     <div class="absolute right-xs top-xs">
       <VButton2
         size="xs"
