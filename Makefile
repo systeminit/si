@@ -45,6 +45,7 @@ COMPONENTS = \
 	bin/council \
 	bin/sdf \
 	bin/veritech \
+	bin/si-discord-bot \
 	lib/council-server \
 	lib/bytes-lines-codec \
 	lib/config-file \
