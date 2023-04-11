@@ -80,7 +80,7 @@ You can decide not to accept cookies or other technologies. If you do not accept
 
 <span style="text-decoration:underline;">Cookie Preference Centre.</span>
 
-You can change the cookie settings when you visit our Sites via our Cookie Banner that is displayed to you when you first visit our Sites, or at any time by visiting the [Cookie Preference Centre](https://www.systeminit.com/legal/cookie). Our Cookie Banner and Cookie Preference Center allow you to accept, refuse or manage the setting of all or some cookies:
+You can change the cookie settings when you visit our Sites via our Cookie Banner that is displayed to you when you first visit our Sites, or at any time by visiting the Cookie Preference Centre at https://www.systeminit.com and clicking "Cookie Policy" in the footer. Our Cookie Banner and Cookie Preference Centre allow you to accept, refuse or manage the setting of all or some cookies:
 
 
 

@@ -171,34 +171,39 @@ These rules hold true for all trademarks, not just ours, so you should follow th
 
 Use of trademarks in text
 
-Always distinguish trademarks from surrounding text with at least initial capital letters or in all capital letters.
-Unacceptable: system initiative
-Acceptable: System Initiative, SYSTEM INITIATIVE
+  * Always distinguish trademarks from surrounding text with at least initial capital letters or in all capital letters.
+  * Unacceptable: system initiative
+  * Acceptable: System Initiative, SYSTEM INITIATIVE
 
 Always use trademarks in their exact form with the correct spelling, neither abbreviated, hyphenated, or combined with any other word or words.
-Unacceptable: SystemInitiative, Sys Int
-Acceptable: System Initiative
+
+  * Unacceptable: SystemInitiative, Sys Int
+  * Acceptable: System Initiative
 
 Don't pluralize a trademark.
-Unacceptable: I have seventeen System Initiatives running in my lab.
-Acceptable: I have seventeen System Initiative installations running in my lab.
 
-Always use a trademark as an adjective modifying a noun.* You can see the nouns we prefer under "Our trademarks." <#Our_trademarks>
-Unacceptable: This is a System Initiative. Anyone can install it.
-Acceptable: This is a System Initiative instance. Anyone can install it.
+  * Unacceptable: I have seventeen System Initiatives running in my lab.
+  * Acceptable: I have seventeen System Initiative installations running in my lab.
+
+Always use a trademark as an adjective modifying a noun.* You can see the nouns we prefer under "Our trademarks." 
+
+  * Unacceptable: This is a System Initiative. Anyone can install it.
+  * Acceptable: This is a System Initiative instance. Anyone can install it.
 
 Don't use a trademark as a verb. Trademarks are products or services, never actions.
-Unacceptable: I System Initiated my computer today!
-Acceptable: I installed System Initiative software on my computer today!
+
+  * Unacceptable: I System Initiated my computer today!
+  * Acceptable: I installed System Initiative software on my computer today!
 
 Don't use a trademark as a possessive. Instead, the following noun should be used in possessive form or the sentence reworded so there is no possessive.
-Unacceptable: System Initiative's desktop interface is very clean.
-Acceptable: The System Initiative desktop's interface is very clean.
+
+  * Unacceptable: System Initiative's desktop interface is very clean.
+  * Acceptable: The System Initiative desktop's interface is very clean.
 
 Don't translate a trademark into another language.
-Unacceptable: Quiero instalar el software Iniciativa del Sistema en mi
-sistema.
-Acceptable: Quiero instalar System Initiative software en mi sistema.
+
+  * Unacceptable: Quiero instalar el software Iniciativa del Sistema en mi sistema.
+  * Acceptable: Quiero instalar System Initiative software en mi sistema.
 
 
 These guidelines are based on the Model Trademark Guidelines, available
