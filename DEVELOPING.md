@@ -45,7 +45,8 @@ the bootstrapper and the table above.
 
 ### Nix Flake
 
-If you prefer to avoid mutating your local environment, we have a `nix` [flake](./flake.nix) available.
+If you prefer to avoid mutating your local environment, we have a `nix` [flake](./flake.nix) available, with [flake
+support enabled](https://nixos.wiki/wiki/Flakes).
 
 To get started, ensure you have `nix` and `docker` installed.
 For the former, you can use [Zero to Nix's installation guide](https://zero-to-nix.com/start/install) if you are unsure
@@ -67,6 +68,26 @@ nix develop --command <command>
 nix develop --command make prepare down
 nix develop --command make build//bin/veritech
 ```
+
+#### Direnv
+
+[Direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv) can automatically set up
+your shell so you don't need to enter a subshell with `nix develop`, or prefix all commands with
+`nix develop --command`. There are also plugins to integrate direnv with common editors.
+
+Example `.envrc`:
+
+```text
+use flake . --impure
+```
+
+Editor plugin support:
+
+- CLion: [Direnv integration](https://plugins.jetbrains.com/plugin/15285-direnv-integration),
+  [Better Direnv](https://plugins.jetbrains.com/plugin/19275-better-direnv)
+- Emacs: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
+- (Neo)Vim: [direnv.vim](https://github.com/direnv/direnv.vim)
+- Visual Studio Code: [direnv](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
 ### Notes on aarch64 (arm64)
 
