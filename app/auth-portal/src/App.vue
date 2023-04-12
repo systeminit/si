@@ -3,30 +3,30 @@
     <template v-if="BROWSER_IS_MOBILE">
       <div class="fixed inset-0 flex items-center justify-center p-md">
         <div
-            class="text-2xl text-center dark:text-neutral-300 text-neutral-700 font-bold"
+          class="text-2xl text-center dark:text-neutral-300 text-neutral-700 font-bold"
         >
           You are accessing this page from a mobile device.
-          <br/><br/>System Initiative can only be used on a desktop computer.
+          <br /><br />System Initiative can only be used on a desktop computer.
         </div>
       </div>
     </template>
     <template v-else-if="route.name === 'print-legal'">
-      <RouterView/>
+      <RouterView />
     </template>
     <template v-else-if="!checkAuthReq.isRequested || checkAuthReq.isPending">
       <div
-          class="fixed inset-0 flex flex-col items-center justify-center p-md gap-sm"
+        class="fixed inset-0 flex flex-col items-center justify-center p-md gap-sm"
       >
-        <SiLogo class="w-[60px] h-[60px] animate-pulse"/>
+        <SiLogo class="w-[60px] h-[60px] animate-pulse" />
         <div
-            :class="
+          :class="
             clsx(
               'w-[140px] h-[2px] bg-neutral-300 dark:bg-neutral-800 relative',
             )
           "
         >
           <div
-              :class="
+            :class="
               clsx(
                 'h-[2px] bg-action-500 transition-all duration-500',
                 runAuthProgressBar ? 'w-[90%]' : 'w-[5%]',
@@ -40,19 +40,19 @@
       <div class="flex flex-col min-h-screen">
         <header class="flex p-md items-center">
           <RouterLink
-              id="header-logo"
-              :to="{ name: 'home' }"
-              class="mr-md shrink-0 relative"
+            id="header-logo"
+            :to="{ name: 'home' }"
+            class="mr-md shrink-0 relative"
           >
             <div id="header-logo-inner">
-              <SiLogo class="w-[40px] h-[40px]"/>
+              <SiLogo class="w-[40px] h-[40px]" />
             </div>
           </RouterLink>
 
           <template v-if="userIsLoggedIn">
             <nav class="flex gap-md font-bold items-center">
               <template
-                  v-if="
+                v-if="
                   !(
                     authStore.needsProfileUpdate ||
                     authStore.user?.needsTosUpdate
@@ -60,106 +60,101 @@
                 "
               >
                 <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
-                >Tutorial
-                </RouterLink
-                >
+                  >Tutorial
+                </RouterLink>
                 <RouterLink :to="{ name: 'dashboard' }" class="underline-link"
-                >Dashboard
-                </RouterLink
-                >
+                  >Dashboard
+                </RouterLink>
               </template>
             </nav>
 
             <nav class="flex gap-sm mr-xs items-center ml-auto">
               <a
-                  href="https://github.com/systeminit/si"
-                  target="_blank"
-                  class="hover:dark:text-action-300 hover:text-action-700"
+                href="https://github.com/systeminit/si"
+                target="_blank"
+                class="hover:dark:text-action-300 hover:text-action-700"
               >
-                <Icon name="logo-github"/>
+                <Icon name="logo-github" />
               </a>
               <a
-                  href="https://discord.gg/system-init"
-                  target="_blank"
-                  class="hover:dark:text-action-300 hover:text-action-700"
+                href="https://discord.gg/system-init"
+                target="_blank"
+                class="hover:dark:text-action-300 hover:text-action-700"
               >
-                <Icon name="logo-discord"/>
+                <Icon name="logo-discord" />
               </a>
               <span class="opacity-50">|</span>
             </nav>
 
             <VButton2
-                class="flex items-center gap-sm children:pointer-events-none"
-                variant="transparent"
-                tone="shade"
-                @mousedown.prevent
-                @click.prevent="profileMenuRef?.open"
+              class="flex items-center gap-sm children:pointer-events-none"
+              variant="transparent"
+              tone="shade"
+              @mousedown.prevent
+              @click.prevent="profileMenuRef?.open"
             >
               <div class="mr-xs">Hi {{ authStore.bestUserLabel }}!</div>
               <template #iconRight>
                 <img
-                    v-if="user?.pictureUrl"
-                    :src="user?.pictureUrl"
-                    class="w-[32px] h-[32px] block rounded-full"
-                    referrerpolicy="no-referrer"
+                  v-if="user?.pictureUrl"
+                  :src="user?.pictureUrl"
+                  class="w-[32px] h-[32px] block rounded-full"
+                  referrerpolicy="no-referrer"
                 />
-                <Icon v-else name="user-circle"/>
+                <Icon v-else name="user-circle" />
               </template>
             </VButton2>
           </template>
         </header>
         <DropdownMenu ref="profileMenuRef" force-align-right>
           <DropdownMenuItem
-              v-if="route.name !== 'review-legal'"
-              icon="user-circle"
-              link-to-named-route="profile"
-          >Profile
-          </DropdownMenuItem
-          >
+            v-if="route.name !== 'review-legal'"
+            icon="user-circle"
+            link-to-named-route="profile"
+            >Profile
+          </DropdownMenuItem>
           <DropdownMenuItem icon="logout" link-to-named-route="logout"
-          >Log out
-          </DropdownMenuItem
-          >
+            >Log out
+          </DropdownMenuItem>
         </DropdownMenu>
 
         <!-- dark/light mode toggle, floating in bottom left -->
         <div class="fixed left-0 bottom-0 p-sm">
           <VButton2
-              :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
-              tone="shade"
-              variant="transparent"
-              rounded
-              size="md"
-              @click="toggleTheme"
+            :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
+            tone="shade"
+            variant="transparent"
+            rounded
+            size="md"
+            @click="toggleTheme"
           />
         </div>
 
         <div class="">
           <div class="m-auto max-w-[1200px]">
             <div
-                class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
+              class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >
-              <RouterView/>
+              <RouterView />
             </div>
           </div>
         </div>
 
         <footer
-            class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-800 dark:text-neutral-200"
+          class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-800 dark:text-neutral-200"
         >
           <a
-              class="hover:underline hover:dark:text-action-300 hover:text-action-700"
-              href="mailto:help@systeminit.com"
-              target="_blank"
-          >Help</a
+            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
+            href="mailto:help@systeminit.com"
+            target="_blank"
+            >Help</a
           >
           <span class="opacity-50">|</span>
           <RouterLink
-              class="hover:underline hover:dark:text-action-300 hover:text-action-700"
-              :to="{ name: 'legal' }"
-          >Legal
-          </RouterLink
-          >
+            class="hover:underline hover:dark:text-action-300 hover:text-action-700"
+            :to="{ name: 'legal' }"
+            >Legal
+          </RouterLink>
           <span class="opacity-50">|</span>
           <div class="text-center">&copy; System Initiative, Inc.</div>
         </footer>
@@ -169,7 +164,7 @@
 </template>
 
 <script setup lang="ts">
-import {tw} from "@si/vue-lib";
+import { tw } from "@si/vue-lib";
 import {
   Icon,
   useThemeContainer,
@@ -180,15 +175,15 @@ import {
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo.svg?component";
 import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";
-import {computed, onBeforeMount, onMounted, ref, watch} from "vue";
-import {useHead} from "@vueuse/head";
-import {RouterView, useRoute, useRouter} from "vue-router";
+import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
+import { useHead } from "@vueuse/head";
+import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import {useAuthStore} from "./store/auth.store";
-import {BROWSER_IS_MOBILE} from "./lib/browser";
+import { useAuthStore } from "./store/auth.store";
+import { BROWSER_IS_MOBILE } from "./lib/browser";
 
 // provides the root theme value to all children, and returns that root theme to use below
-const {theme: rootTheme} = useThemeContainer();
+const { theme: rootTheme } = useThemeContainer();
 
 useHead({
   bodyAttrs: {
@@ -200,7 +195,7 @@ useHead({
     style: () => `color-scheme: ${rootTheme.value};`,
     class: () => rootTheme.value,
   },
-  link: [{rel: "icon", href: SiLogoNoBorderUrl}],
+  link: [{ rel: "icon", href: SiLogoNoBorderUrl }],
 
   // set up title template and a default
   titleTemplate: "SI | %s",
@@ -251,15 +246,15 @@ watch([checkAuthReq, route], () => {
   // if user is not logged in, kick back to login screen
   if (!userIsLoggedIn.value || !user.value) {
     if (
-        ![
-          "login",
-          "404",
-          "legal",
-          // allow viewing tutorial without login if VITE_PREVIEW_TUTORIAL set in env
-          ...(import.meta.env.VITE_PREVIEW_TUTORIAL ? ["tutorial"] : []),
-        ].includes(currentRouteName)
+      ![
+        "login",
+        "404",
+        "legal",
+        // allow viewing tutorial without login if VITE_PREVIEW_TUTORIAL set in env
+        ...(import.meta.env.VITE_PREVIEW_TUTORIAL ? ["tutorial"] : []),
+      ].includes(currentRouteName)
     ) {
-      return router.push({name: "login"});
+      return router.push({ name: "login" });
     }
     return;
   }
@@ -268,7 +263,7 @@ watch([checkAuthReq, route], () => {
   if (user.value.needsTosUpdate) {
     if (currentRouteName !== "review-legal") {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      router.push({name: "review-legal"});
+      router.push({ name: "review-legal" });
     }
     return;
   }
@@ -276,7 +271,7 @@ watch([checkAuthReq, route], () => {
   if (authStore.needsProfileUpdate) {
     if (currentRouteName !== "profile" && currentRouteName !== "legal") {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      return router.push({name: "profile"});
+      return router.push({ name: "profile" });
     }
     return;
   }

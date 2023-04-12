@@ -66,6 +66,8 @@ the `Run Workflow` button and then choose the branch from which to deploy.
 
 This will build and push the image and queue a deployment to ECS.
 
+NOTE - db migrations are not yet automatic, and are being triggered manually before deploying a new version. (This is very infrequent so far...)
+
 If new environment variables are needed to be passed to the auth-api, then a new task definition needs to be created in
 AWS ECS. When that task definition is created, the task definition can be associated with the service and a deployment
 can be created as normal.

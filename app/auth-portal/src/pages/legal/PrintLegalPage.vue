@@ -21,7 +21,7 @@ const urlDocSlug = route.params.docSlug as string;
 onMounted(triggerPrint);
 
 function triggerPrint() {
-  document.title = `system-initiative-${urlDocSlug}-${urlDocVersion}`
+  document.title = `system-initiative-${urlDocSlug}-${urlDocVersion}`;
   window.print();
   window.onfocus = () => {
     window.close();

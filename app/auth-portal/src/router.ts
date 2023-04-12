@@ -1,13 +1,13 @@
 import * as _ from "lodash-es";
 import { RouterOptions } from "vite-ssg";
 import { Router } from "vue-router";
+import { nextTick } from "vue";
+import posthog from "posthog-js";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import DashboardPage from "./pages/DashboardPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
-import {nextTick} from "vue";
-import posthog from "posthog-js";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -35,7 +35,7 @@ export const routerOptions: RouterOptions = {
     },
     { path: "/profile", name: "profile", component: ProfilePage },
     {
-      path: "/tutorial",
+      path: "/tutorial/:stepSlug?",
       name: "tutorial",
       component: () => import("./pages/tutorial/TutorialPage.vue"),
     },
@@ -63,7 +63,8 @@ export function initRouterGuards(router: Router) {
 
   router.afterEach((to) => {
     nextTick(() => {
-      posthog.capture("$pageview", {$current_url: to.fullPath});
+      posthog.capture("$pageview", { $current_url: to.fullPath });
+      // eslint-disable-next-line no-console
     }).catch((e) => console.log("Failed to capture posthog pageview", e));
   });
 }

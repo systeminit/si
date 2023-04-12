@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { ApiRequest } from "@si/vue-lib/pinia";
 import { posthog } from "posthog-js";
+import { ISODateString } from "./shared-types";
 
 export type UserId = string;
 
@@ -20,6 +21,9 @@ export type User = {
   needsTosUpdate?: boolean;
   githubUsername?: string;
   discordUsername?: string;
+  onboardingDetails?: {
+    vroStepsCompletedAt?: Record<string, ISODateString>;
+  };
 };
 
 export const useAuthStore = defineStore("auth", {

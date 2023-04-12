@@ -63,6 +63,21 @@ router.patch("/users/:userId", async (ctx) => {
   ctx.body = { user };
 });
 
+router.post("/users/:userId/complete-tutorial-step", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    step: z.string(),
+  }));
+
+  // using _.set fills in missing wrapper objects if necessary...
+  _.set(user, ['onboardingDetails', 'vroStepsCompletedAt', reqBody.step], new Date());
+
+  await saveUser(user);
+
+  ctx.body = { user };
+});
+
 router.get("/tos-details", async (ctx) => {
   if (!ctx.state.authUser) {
     throw new ApiError('Unauthorized', 'You are not logged in');

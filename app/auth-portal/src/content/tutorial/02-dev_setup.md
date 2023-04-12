@@ -3,19 +3,6 @@ title: Running a development instance of System Initiative
 hideWorkspaceLink: true
 ---
 
-## Set up your dev environment
-
-Pull down the repo. Do some stuff...
-
-We have created a default workspace for you. Once you've pulled down the repo and booted up your system, you'll need to log into it from this website.
-
-When your whole stack is online, click below to log in!
-
-
-
-
-In the future, you can also access it from your <router-link to="/dashboard">dashboard</router-link>
-
 ## Run a development instance of System Initiative
 
 First things first - let’s set you up with a System Initiative development environment. You will need to check the
@@ -146,7 +133,7 @@ $ make run//bin/veritech
 
 You will see output similar to the following:
 
-![Veritech Terminal](tutorial-img/02-dev_setup/veritech_terminal.png)
+![Veritech Terminal](/tutorial-img/02-dev_setup/veritech_terminal.png)
 
 When you do, open another terminal, change to the si directory, and run:
 
@@ -156,7 +143,7 @@ $ make run//bin/council
 
 You will see output similar to the following:
 
-![Council Terminal](tutorial-img/02-dev_setup/council_terminal.png)
+![Council Terminal](/tutorial-img/02-dev_setup/council_terminal.png)
 
 Then open another terminal, change to the si directory, and run:
 
@@ -166,7 +153,7 @@ $ make run//bin/pinga
 
 You will see output similar to the following:
 
-![Pinga Terminal](tutorial-img/02-dev_setup/pinga_terminal.png)
+![Pinga Terminal](/tutorial-img/02-dev_setup/pinga_terminal.png)
 
 Then open another terminal, change to the si directory, and run:
 
@@ -177,7 +164,7 @@ $ make run//bin/sdf
 This process will run database migrations and populate System Initiative with some default assets (we will talk about
 assets later in this tutorial!). You will see output similar to the following when it is ready:
 
-![SDF Terminal](tutorial-img/02-dev_setup/sdf_terminal.png)
+![SDF Terminal](/tutorial-img/02-dev_setup/sdf_terminal.png)
 
 You will see the terminal windows for `veritech`, `pinga`, and `council` logging output. Wait for these windows to stop
 logging: System Initiative processes the updates applied by `sdf` in the initialization process. Once they have stopped
@@ -191,7 +178,7 @@ $ make run//app/web
 
 When it finishes, you should see the following in the terminal:
 
-![Web Terminal](tutorial-img/02-dev_setup/web_terminal.png)
+![Web Terminal](/tutorial-img/02-dev_setup/web_terminal.png)
 
 You should now have 5 terminal windows open, running:
 

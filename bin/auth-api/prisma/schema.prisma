@@ -35,6 +35,9 @@ model User {
   /// user's github username
   githubUsername  String? @map("github_username")
 
+  /// data about where user is in onboarding
+  onboardingDetails Json? @map("onboarding_details")
+
   /// array of workspaces the user created
   CreatedWorkspaces Workspace[]
   TosAgreement      TosAgreement[]

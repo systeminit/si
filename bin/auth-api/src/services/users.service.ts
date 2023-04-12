@@ -71,7 +71,7 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     _.assign(existingUser, userData);
     await prisma.user.update({
       where: { id: existingUser.id },
-      data: _.omit(existingUser, 'id', 'auth0Id', 'auth0Details'),
+      data: _.omit(existingUser, 'id', 'auth0Id', 'auth0Details', 'onboardingDetails'),
     });
 
     tracker.identifyUser(existingUser);
@@ -103,14 +103,19 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
 export async function saveUser(user: UserWithTosStatus) {
   await prisma.user.update({
     where: { id: user.id },
-    data: _.omit(
-      user,
-      'id',
-      'auth0Id',
-      'auth0Details',
-      'needsTosUpdate',
-      'agreedTosVersion',
-    ),
+    data: {
+      ..._.omit(
+        user,
+        'id',
+        'auth0Id',
+        'auth0Details',
+        'needsTosUpdate',
+        'agreedTosVersion',
+        'onboardingDetails',
+      ),
+      // this is dumb... prisma is annoying
+      onboardingDetails: user.onboardingDetails as Prisma.JsonObject || undefined,
+    },
   });
   tracker.identifyUser(user);
   return user;

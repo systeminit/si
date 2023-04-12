@@ -22,7 +22,7 @@
   "dependencies": {
     "@koa/cors": "^4.0.0",
     "@koa/router": "^12.0.0",
-    "@prisma/client": "^4.11.0",
+    "@prisma/client": "^4.12.0",
     "@types/ioredis": "^5.0.0",
     "auth0": "^3.2.0",
     "axios": "^0.27.2",
@@ -43,7 +43,7 @@
     "parse-redis-url-simple": "^1.0.2",
     "posthog-node": "^2.6.0",
     "pretty-error": "^4.0.0",
-    "prisma": "^4.11.0",
+    "prisma": "^4.12.0",
     "request-ip": "^3.3.0",
     "require-directory": "^2.1.1",
     "ulidx": "^0.5.0",
