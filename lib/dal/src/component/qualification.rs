@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValue;
@@ -64,6 +65,8 @@ impl Component {
                 .ok_or(AttributeValueError::NotFoundForReadContext(
                     prop_qualification_map_attribute_read_context,
                 ))?;
+
+        let mut entries = HashMap::new();
         for entry_attribute_value in prop_qualification_map_attribute_value
             .child_attribute_values(ctx)
             .await?
@@ -98,9 +101,23 @@ impl Component {
                         entry_attribute_value_id,
                     ))?;
 
+            // We're going to get values at both contexts (component and schema variant), but we
+            // should prefer component level ones
+            if entries.contains_key(key) && entry_attribute_value.context.is_component_unset() {
+                continue;
+            }
+
+            entries.insert(
+                key.to_string(),
+                (entry, entry_prototype_func_id, func_binding_return_value_id),
+            );
+        }
+
+        for (key, (entry, entry_prototype_func_id, func_binding_return_value_id)) in entries.drain()
+        {
             if let Some(qual_view) = QualificationView::new(
                 ctx,
-                key,
+                &key,
                 entry,
                 entry_prototype_func_id,
                 func_binding_return_value_id,

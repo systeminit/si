@@ -6,8 +6,9 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
     job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue,
-    AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind, PropId,
-    StandardModel, ValidationPrototype, WsEvent,
+    AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, Prop, PropId, RootPropChild, StandardModel, ValidationPrototype,
+    WsEvent,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -20,7 +21,8 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
 
     for proto in prototypes {
         let mut values = proto.attribute_values(ctx).await?;
-        let value_ids = values
+
+        let mut value_ids = values
             .iter()
             .cloned()
             .map(|av| *av.id())
@@ -30,9 +32,74 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             match value.update_from_prototype_function(ctx).await {
                 Ok(_) => {}
                 Err(AttributeValueError::FuncBackendResultFailure { message, .. }) => {
-                    return Err(FuncError::FuncExecutionFailed(message))
+                    return Err(FuncError::FuncExecutionFailed(message));
                 }
                 Err(err) => Err(err)?,
+            };
+
+            // We need to make this generic to handle *any* value type so that it creates the
+            // child proxies for any value that needs them, but I'm rigging this up just for
+            // qualifications right now.
+            if proto.context.is_component_unset()
+                && !proto.context.is_prop_unset()
+                && matches!(
+                    func.backend_response_type(),
+                    FuncBackendResponseType::Qualification
+                )
+            {
+                let parent_attribute_value = match value.parent_attribute_value(ctx).await? {
+                    Some(pav) => pav,
+                    None => {
+                        continue;
+                    }
+                };
+
+                // There should be an easier way to get the schema variant for a prop
+                let root_prop =
+                    match Prop::find_root_prop_for_prop(ctx, proto.context.prop_id()).await? {
+                        Some(prop) => prop,
+                        None => {
+                            return Err(FuncError::MissingRootPropForProp(proto.context.prop_id()));
+                        }
+                    };
+
+                let schema_variant = match root_prop.schema_variants(ctx).await?.pop() {
+                    Some(sv) => sv,
+                    None => return Err(FuncError::PropMissingSchemaVariant(*root_prop.id())),
+                };
+
+                for component in
+                    Component::list_for_schema_variant(ctx, *schema_variant.id()).await?
+                {
+                    let qualification_attribute_value =
+                        Component::root_prop_child_attribute_value_for_component(
+                            ctx,
+                            *component.id(),
+                            RootPropChild::Qualification,
+                        )
+                        .await?;
+
+                    let new_child_proxy_ids = qualification_attribute_value
+                        .populate_child_proxies_for_value(
+                            ctx,
+                            *parent_attribute_value.id(),
+                            qualification_attribute_value.context,
+                        )
+                        .await?;
+
+                    if let Some(new_child_proxy_ids) = new_child_proxy_ids {
+                        for new_child_proxy_av_id in new_child_proxy_ids {
+                            if let Some(mut proxy_av) =
+                                AttributeValue::get_by_id(ctx, &new_child_proxy_av_id).await?
+                            {
+                                if proxy_av.key() == value.key() {
+                                    proxy_av.update_from_prototype_function(ctx).await?;
+                                    value_ids.push(new_child_proxy_av_id);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

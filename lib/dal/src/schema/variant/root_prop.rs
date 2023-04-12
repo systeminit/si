@@ -1,6 +1,7 @@
 //! This module contains (and is oriented around) the [`RootProp`]. This object is not persisted
 //! to the database.
 
+use strum_macros::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
 use crate::edit_field::widget::WidgetKind;
@@ -17,6 +18,7 @@ pub mod component_type;
 
 /// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of
 /// [`RootProp`](RootProp). Not all children will be of the same [`PropKind`](crate::PropKind).
+#[derive(AsRefStr, EnumIter, EnumString, EnumDisplay)]
 pub enum RootPropChild {
     /// Corresponds to the "/root/si" subtree.
     Si,

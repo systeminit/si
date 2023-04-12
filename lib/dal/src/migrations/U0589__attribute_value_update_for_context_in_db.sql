@@ -820,12 +820,14 @@ AS $$
                 attribute_context_component_id DESC
 $$;
 
-CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_tenancy                     jsonb,
-                                                                               this_visibility                  jsonb,
-                                                                               this_original_attribute_value_id ident,
-                                                                               this_previous_attribute_context  jsonb,
-                                                                               this_attribute_value_id          ident) RETURNS void
-AS
+CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(
+    this_tenancy                     jsonb,
+    this_visibility                  jsonb,
+    this_original_attribute_value_id ident,
+    this_previous_attribute_context  jsonb,
+    this_attribute_value_id          ident,
+    OUT new_proxy_value_ids          ident[]
+) AS
 $$
 DECLARE
     child_attribute_value_prototype attribute_prototypes%ROWTYPE;
@@ -870,6 +872,8 @@ BEGIN
                                                                             original_child_value.func_binding_return_value_id,
                                                                             write_attribute_context,
                                                                             original_child_value.key));
+
+            new_proxy_value_ids := array_append(new_proxy_value_ids, new_child_value.id);
             SELECT ap.*
             INTO STRICT child_attribute_value_prototype
             FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
@@ -900,11 +904,12 @@ BEGIN
 
             -- Now that we've created a proxy `AttributeValue`, we need to create proxies for all of the
             -- original value's children.
-            PERFORM attribute_value_populate_child_proxies_for_value_v1(this_tenancy,
-                                                                        this_visibility,
-                                                                        original_child_value.id,
-                                                                        write_attribute_context,
-                                                                        new_child_value.id);
+            new_proxy_value_ids := array_cat(new_proxy_value_ids,
+                                             attribute_value_populate_child_proxies_for_value_v1(this_tenancy,
+                                                                                                 this_visibility,
+                                                                                                 original_child_value.id,
+                                                                                                 write_attribute_context,
+                                                                                                 new_child_value.id));
         END IF;
     END LOOP;
 END;

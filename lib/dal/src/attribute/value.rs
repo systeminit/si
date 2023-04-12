@@ -1221,6 +1221,38 @@ impl AttributeValue {
 
         Ok(())
     }
+
+    pub async fn populate_child_proxies_for_value(
+        &self,
+        ctx: &DalContext,
+        less_specific_attribute_value_id: AttributeValueId,
+        more_specific_context: AttributeContext,
+    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
+        let row = ctx.txns().await?.pg().query_one(
+            "SELECT new_proxy_value_ids FROM attribute_value_populate_child_proxies_for_value_v1($1, $2, $3, $4, $5)",
+            &[
+                ctx.tenancy(),
+                ctx.visibility(),
+                &less_specific_attribute_value_id,
+                &more_specific_context,
+                self.id(),
+            ]
+        ).await?;
+
+        // Are we part of a map or array? Be sure to update the index map
+        if self.key.is_some() {
+            ctx.txns()
+                .await?
+                .pg()
+                .query_opt(
+                    "SELECT * FROM attribute_value_update_parent_index_map_v1($1, $2, $3)",
+                    &[ctx.tenancy(), ctx.visibility(), self.id()],
+                )
+                .await?;
+        }
+
+        Ok(row.try_get("new_proxy_value_ids")?)
+    }
 }
 
 #[derive(Debug)]
