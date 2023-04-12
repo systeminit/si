@@ -22,6 +22,7 @@
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import FuncListPanel from "@/components/FuncEditor/FuncListPanel.vue";
 import FuncEditorTabs from "@/components/FuncEditor/FuncEditorTabs.vue";

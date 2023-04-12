@@ -3,6 +3,8 @@
     ref="tabGroupRef"
     closeable
     first-tab-margin-left="none"
+    remember-selected-tab-key="func-editor"
+    :start-selected-tab-slug="funcStore.urlSelectedFuncId"
     @close-tab="closeFunc"
     @update:selected-tab="onTabChange"
   >
@@ -14,23 +16,33 @@
           show-loader-without-message
         />
         <template v-else-if="loadFuncsReqStatus.isSuccess">
-          <template v-if="funcId"
-            >Function "{{ funcId }}" does not exist!</template
-          >
-          <template v-else>Select a function to edit it.</template>
+          Select a function to edit it.
         </template>
       </div>
     </template>
 
     <TabGroupItem
-      v-for="openFuncId in openFuncIds"
+      v-for="openFuncId in funcStore.openFuncIds"
       :key="openFuncId"
       :slug="openFuncId"
     >
-      <template #label>{{
-        funcStore.funcsById[openFuncId]?.name ?? openFuncId
-      }}</template>
-      <FuncEditor :func-id="openFuncId" />
+      <template #label>
+        {{ funcStore.funcsById[openFuncId]?.name || "error" }}
+      </template>
+
+      <FuncEditor
+        v-if="funcStore.funcsById[openFuncId]"
+        :func-id="openFuncId"
+      />
+      <template v-else>
+        <div
+          class="p-sm border border-t-0 border-neutral-300 dark:border-neutral-600"
+        >
+          <ErrorMessage
+            >Function "{{ openFuncId }}" does not exist</ErrorMessage
+          >
+        </div>
+      </template>
     </TabGroupItem>
   </TabGroup>
 </template>
@@ -39,17 +51,14 @@
 import * as _ from "lodash-es";
 import { watch, ref, nextTick } from "vue";
 import {
+  ErrorMessage,
   RequestStatusMessage,
   TabGroup,
   TabGroupItem,
 } from "@si/vue-lib/design-system";
 import FuncEditor from "@/components/FuncEditor/FuncEditor.vue";
-import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-
-const props = defineProps({
-  funcId: { type: String },
-});
 
 const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
@@ -57,35 +66,26 @@ const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
 
-const openFuncIds = ref<FuncId[]>([]);
-
 const closeFunc = (funcId: string) => {
-  openFuncIds.value = _.without(openFuncIds.value, funcId);
+  funcStore.setOpenFuncId(funcId, false);
 };
 
+// when the tab component emits a new selected tab event, we update the URL to match if it doesn't already
 const onTabChange = (tabSlug: string | undefined) => {
   // tabSlugs are just func ids here
-  routeToFunc(tabSlug);
+  if (funcStore.urlSelectedFuncId !== tabSlug) {
+    routeToFunc(tabSlug);
+  }
 };
 
-// this is responsible for watching the selected func (which is based on the URL)
-// and adding it to the open list when it changes - and then selecting that tab
+// when the url changes, the tab gets automatically added to the open list in the store
+// but we need to tell the tab component to select it once it is rendered
 watch(
-  () => funcStore.selectedFuncId,
-  (newFuncId) => {
-    if (typeof newFuncId === "undefined") {
-      return;
-    }
-
-    if (!openFuncIds.value.includes(newFuncId)) {
-      openFuncIds.value.push(newFuncId);
-    }
-
-    // TODO: maybe we can make TabGroup deal with this instead?
+  () => funcStore.urlSelectedFuncId,
+  () => {
     nextTick(() => {
-      tabGroupRef.value?.selectTab(newFuncId);
+      tabGroupRef.value?.selectTab(funcStore.urlSelectedFuncId);
     });
   },
-  { immediate: true },
 );
 </script>

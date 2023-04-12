@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { watch } from "vue";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
+import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncVariant } from "@/api/sdf/dal/func";
 
@@ -44,6 +45,8 @@ export interface SaveFuncResponse {
   success: boolean;
 }
 
+const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
+
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
@@ -59,6 +62,7 @@ export const useFuncStore = () => {
       inputSourceSockets: [] as InputSourceSocket[],
       inputSourceProps: [] as InputSourceProp[],
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
+      openFuncIds: [] as FuncId[],
     }),
     getters: {
       urlSelectedFuncId: () => {
@@ -145,6 +149,7 @@ export const useFuncStore = () => {
           },
           onSuccess: (response) => {
             this.funcsById = _.keyBy(response.funcs, (f) => f.id);
+            this.recoverOpenFuncIds();
           },
         });
       },
@@ -234,6 +239,35 @@ export const useFuncStore = () => {
         });
       },
 
+      async recoverOpenFuncIds() {
+        // fetch the list of open funcs from localstorage
+        const localStorageFuncIds = (
+          storage.getItem(LOCAL_STORAGE_FUNC_IDS_KEY) ?? ""
+        ).split(",") as FuncId[];
+        // Filter out cached ids that don't correspond to funcs anymore
+        this.openFuncIds = _.intersection(
+          localStorageFuncIds,
+          _.keys(this.funcsById),
+        );
+
+        // if we have a url selected function, make sure it exists in the list of open funcs
+        if (this.urlSelectedFuncId) {
+          this.setOpenFuncId(this.urlSelectedFuncId, true, true);
+        }
+      },
+
+      setOpenFuncId(id: FuncId, isOpen: boolean, unshift?: boolean) {
+        if (isOpen) {
+          if (!this.openFuncIds.includes(id)) {
+            this.openFuncIds[unshift ? "unshift" : "push"](id);
+          }
+        } else {
+          this.openFuncIds = _.without(this.openFuncIds, id);
+        }
+
+        storage.setItem(LOCAL_STORAGE_FUNC_IDS_KEY, this.openFuncIds.join(","));
+      },
+
       updateFuncMetadata(func: FuncWithDetails) {
         const currentCode = this.funcById(func.id)?.code ?? "";
         this.funcDetailsById[func.id] = {
@@ -280,6 +314,9 @@ export const useFuncStore = () => {
           ) {
             this.FETCH_FUNC_DETAILS(this.selectedFuncId);
           }
+
+          // add the func to the list of open ones
+          this.setOpenFuncId(this.selectedFuncId, true);
         }
       });
 

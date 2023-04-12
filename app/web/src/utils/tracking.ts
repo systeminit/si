@@ -3,6 +3,7 @@ import { posthog } from "./posthog";
 
 export function trackEvent(
   eventName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   properties?: Record<string, any>,
 ) {
   const changeSetStore = useChangeSetsStore();
