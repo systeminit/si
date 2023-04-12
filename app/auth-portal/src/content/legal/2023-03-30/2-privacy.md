@@ -88,7 +88,7 @@ We may use your personal information for the following purposes or as otherwise 
 
 **Marketing.** We, our service providers and our third-party partners may collect and use your personal information for marketing purposes:
 
-- **Direct marketing**. We may send you direct marketing communications. You may opt-out of our marketing communications as described in the [Opt-out of marketing](#bookmark=id.tyjcwt) section below.
+- **Direct marketing**. We may send you direct marketing communications. You may opt-out of our marketing communications as described in the _Opt-out of marketing_ section below.
 
 **To manage our recruiting and process employment applications.** We may use personal information, such as information submitted to us in a job application, to facilitate our recruitment activities and process employment applications, such as by evaluating a job candidate for an employment activity, and monitoring recruitment statistics.
 
@@ -128,7 +128,7 @@ We may share your personal information with the following parties and as otherwi
 **Professional advisors.** Professional advisors, such as lawyers, auditors, bankers, and insurers, where necessary in the course of the professional services that they render to us.
 
 
-**Authorities and others.** Law enforcement, government authorities, and private parties, as we believe in good faith to be necessary or appropriate for the [compliance and protection purposes](#bookmark=id.30j0zll) described above.
+**Authorities and others.** Law enforcement, government authorities, and private parties, as we believe in good faith to be necessary or appropriate for the _compliance and protection purposes_ described above.
 
 
 **Business transferees.** Acquirers and other relevant participants in business transactions (or negotiations of or due diligence for such transactions) involving a corporate divestiture, merger, consolidation, acquisition, reorganization, sale or other disposition of all or any portion of the business or assets of, or equity interests in, System Initiative or our affiliates (including, in connection with a bankruptcy or similar proceedings).
@@ -140,7 +140,7 @@ In this section, we describe the rights and choices available to all users. User
 
 **Access or update your information.** If you have registered for an account with us through the Service, you may review and update certain account information by logging into the account.
 
-**Opt-out of marketing communications.** You may opt-out of marketing-related emails by following the opt-out or unsubscribe instructions at the bottom of the email, or by [contacting us](#bookmark=id.4d34og8). Please note that if you choose to opt-out of marketing-related emails, you may continue to receive service-related and other non-marketing emails.
+**Opt-out of marketing communications.** You may opt-out of marketing-related emails by following the opt-out or unsubscribe instructions at the bottom of the email, or by [contacting us](mailto:info@systeminit.com). Please note that if you choose to opt-out of marketing-related emails, you may continue to receive service-related and other non-marketing emails.
 
 **Cookies.** Most browsers let you remove or reject cookies. To do this, follow the instructions in your browser settings. Many browsers accept cookies by default until you change your settings. Please note that if you set your browser to disable cookies, the Service may not work properly. For more information about cookies, including how to see what cookies have been set on your browser and how to manage and delete them, visit [http://www.allaboutcookies.org](http://www.allaboutcookies.org/).
 
@@ -168,7 +168,7 @@ We are headquartered in the United States and may use service providers that ope
 
 ## Children
 
-The Service is not intended for use by anyone under 18 years of age. If you are a parent or guardian of a child from whom you believe we have collected personal information in a manner prohibited by law, please [contact us](#bookmark=id.4d34og8). If we learn that we have collected personal information through the Service from a child without the consent of the child’s parent or guardian as required by law, we will comply with applicable legal requirements to delete the information.
+The Service is not intended for use by anyone under 18 years of age. If you are a parent or guardian of a child from whom you believe we have collected personal information in a manner prohibited by law, please [contact us](info@systeminit.com). If we learn that we have collected personal information through the Service from a child without the consent of the child’s parent or guardian as required by law, we will comply with applicable legal requirements to delete the information.
 
 ## Changes to this Privacy Policy
 
@@ -196,13 +196,13 @@ We reserve the right to modify this Privacy Policy at any time. If we make mater
 <Tiles columns="2">
   <div>
     <u>Our representative in the EEA</u>. Pursuant to Article 27 of the General Data Protection Regulation (GDPR), System Initiative, Inc. has appointed European Data Protection Office (EDPO) as its GDPR Representative in the EU. You can contact EDPO regarding matters pertaining to the GDPR: 
-    - By using EDPO’s online request form: https://edpo.com/gdpr-data-request/
-    - By writing to EDPO at Avenue Huart Hamoir 71, 1030 Brussels, Belgium
+    <p>- By using EDPO’s online request form: <a href="https://edpo.com/gdpr-data-request/">https://edpo.com/gdpr-data-request/</a></p>
+    <p>- By writing to EDPO at Avenue Huart Hamoir 71, 1030 Brussels, Belgium</p>
   </div>
   <div>
     <u>Our representative in the UK</u>. Pursuant to Article 27 of the UK GDPR, System Initiative, Inc. has appointed EDPO UK Ltd as its UK GDPR representative in the UK. You can contact EDPO UK regarding matters pertaining to the UK GDPR:
-    - By using EDPO’s online request form: https://edpo.com/uk-gdpr-data-request/
-    - By writing to EDPO UK at 8 Northumberland Avenue, London WC2N 5BY, United Kingdom
+      <p>- By using EDPO’s online request form: <a href="https://edpo.com/uk-gdpr-data-request/">https://edpo.com/gdpr-data-request</a></p>
+      <p>- By writing to EDPO UK at 8 Northumberland Avenue, London WC2N 5BY, United Kingdom</p>
   </div>
 </Tiles>
 
