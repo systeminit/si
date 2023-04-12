@@ -26,6 +26,7 @@ use crate::{
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
+const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
 const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
     include_str!("queries/prop/find_root_for_schema_variant.sql");
 
@@ -294,6 +295,23 @@ impl Prop {
             )
             .await?;
         Ok(object_option_from_row_option(row)?)
+    }
+
+    pub async fn find_root_prop_for_prop(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                FIND_ROOT_PROP_FOR_PROP,
+                &[ctx.tenancy(), ctx.visibility(), &prop_id],
+            )
+            .await?;
+
+        Ok(standard_model::object_option_from_row_option::<Self>(row)?)
     }
 
     /// Returns the given [`Prop`] and all ancestor [`Props`](crate::Prop) back to the root.

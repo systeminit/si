@@ -140,7 +140,7 @@ async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
     prototypes: Vec<AttributePrototypeView>,
-    remoted_protoype_op: RemovedPrototypeOp,
+    removed_protoype_op: RemovedPrototypeOp,
     key: Option<String>,
 ) -> FuncResult<Option<PropKind>> {
     let mut id_set = HashSet::new();
@@ -230,7 +230,7 @@ async fn save_attr_func_prototypes(
     // TODO: should use a custom query to fetch for *not in* id_set only
     for proto in AttributePrototype::find_for_func(ctx, func.id()).await? {
         if !id_set.contains(proto.id()) {
-            match remoted_protoype_op {
+            match removed_protoype_op {
                 RemovedPrototypeOp::Reset => {
                     reset_prototype_and_value_to_builtin_function(ctx, &proto, proto.context)
                         .await?
