@@ -68,11 +68,11 @@ const _now = Date.now || (() => new Date().getTime());
 
 const speed = 50;
 const duration = 1.0 / speed;
-const confettiRibbonCount = 11;
+const confettiRibbonCount = 10;
 const ribbonPaperCount = 30;
 const ribbonPaperDist = 8.0;
 const ribbonPaperThick = 8.0;
-const confettiPaperCount = 125;
+const confettiPaperCount = 100;
 const DEG_TO_RAD = PI / 180;
 const RAD_TO_DEG = 180 / PI;
 const colors = [
@@ -231,16 +231,21 @@ class ConfettiPaper {
     }
   }
   Update(_dt:number) {
+    if (this.pos.y > canvasHeight.value) {
+      if (!props.noLoop) this.Reset();
+      return;
+    }
+    
     this.time += _dt;
     this.rotation += this.rotationSpeed * _dt;
     this.cosA = cos(DEG_TO_RAD * this.rotation);
     this.pos.x += cos(this.time * this.oscillationSpeed) * this.xSpeed * _dt;
     this.pos.y += this.ySpeed * _dt;
-    if (!props.noLoop && this.pos.y > canvasHeight.value) {
-      this.pos.x = random() * canvasWidth.value;
-      this.pos.y = 0;
-    }
-  };
+  }
+  Reset() {
+    this.pos.x = random() * canvasWidth.value;
+    this.pos.y = 0;
+  }
   Draw(_g: CanvasRenderingContext2D) {
     if (this.cosA > 0) {
       _g.fillStyle = this.frontColor;
@@ -264,54 +269,61 @@ class ConfettiPaper {
 }
 
 class ConfettiRibbon {
-
-public particles: EulerMass[];
-public frontColor: string;
-public backColor: string;
-public xOff: number;
-public yOff: number;
-public position: Vector2;
-public prevPosition: Vector2;
-public velocityInherit: number;
-public time: number;
-public oscillationSpeed: number;
-public oscillationDistance: number;
-public ySpeed: number;
+  public particles: EulerMass[];
+  public frontColor: string;
+  public backColor: string;
+  public xOff: number;
+  public yOff: number;
+  public position: Vector2;
+  public prevPosition: Vector2;
+  public velocityInherit: number;
+  public time: number;
+  public oscillationSpeed: number;
+  public oscillationDistance: number;
+  public ySpeed: number;
 
   constructor(
-  _x: number,
-  _y: number,
-  public particleCount: number,
-  public particleDist: number,
-  _thickness: number,
-  _angle: number,
-  public particleMass: number,
-  public particleDrag: number,
-) {
-  
-  this.particles = [];
-  const ci = round(random() * (colors.length - 1));
-  this.frontColor = colors[ci][0];
-  this.backColor = colors[ci][1];
-  this.xOff = cos(DEG_TO_RAD * _angle) * _thickness;
-  this.yOff = sin(DEG_TO_RAD * _angle) * _thickness;
-  this.position = new Vector2(_x, _y);
-  this.prevPosition = new Vector2(_x, _y);
-  this.velocityInherit = random() * 2 + 4;
-  this.time = random() * 100;
-  this.oscillationSpeed = random() * 2 + 2;
-  this.oscillationDistance = random() * 40 + 40;
-  this.ySpeed = random() * 40 + 80;
-  for (let i = 0; i < this.particleCount; i++) {
-    this.particles[i] = new EulerMass(
-      _x,
-      _y - i * this.particleDist,
-      this.particleMass,
-      this.particleDrag,
-    );
+    _x: number,
+    _y: number,
+    public particleCount: number,
+    public particleDist: number,
+    _thickness: number,
+    _angle: number,
+    public particleMass: number,
+    public particleDrag: number,
+  ) {
+    
+    this.particles = [];
+    const ci = round(random() * (colors.length - 1));
+    this.frontColor = colors[ci][0];
+    this.backColor = colors[ci][1];
+    this.xOff = cos(DEG_TO_RAD * _angle) * _thickness;
+    this.yOff = sin(DEG_TO_RAD * _angle) * _thickness;
+    this.position = new Vector2(_x, _y);
+    this.prevPosition = new Vector2(_x, _y);
+    this.velocityInherit = random() * 2 + 4;
+    this.time = random() * 100;
+    this.oscillationSpeed = random() * 2 + 2;
+    this.oscillationDistance = random() * 40 + 40;
+    this.ySpeed = random() * 40 + 80;
+    for (let i = 0; i < this.particleCount; i++) {
+      this.particles[i] = new EulerMass(
+        _x,
+        _y - i * this.particleDist,
+        this.particleMass,
+        this.particleDrag,
+      );
+    }
   }
-}
   Update(_dt: number) {
+    if (
+      this.position.y >
+      canvasHeight.value + this.particleDist * this.particleCount
+    ) {
+      if (!props.noLoop) this.Reset();
+      return;
+    }
+
     let i = 0;
     this.time += _dt * this.oscillationSpeed;
     this.position.y += this.ySpeed * _dt;
@@ -343,13 +355,6 @@ public ySpeed: number;
       rp2.Mul(this.particleDist);
       rp2.Add(this.particles[i - 1].position);
       this.particles[i].position = rp2;
-    }
-    if (
-      !props.noLoop &&
-      this.position.y >
-      canvasHeight.value + this.particleDist * this.particleCount
-    ) {
-      this.Reset();
     }
   };
   Reset() {
@@ -516,8 +521,8 @@ function reset() {
   let i = 0;
   for (i = 0; i < confettiRibbonCount; i++) {    
     confettiRibbons[i] = new ConfettiRibbon(
-      random() * canvasWidth.value,
-      -random() * canvasHeight.value,
+      random() * canvasElWidth.value,
+      -random() * canvasElHeight.value,
       ribbonPaperCount,
       ribbonPaperDist,
       ribbonPaperThick,
@@ -528,10 +533,10 @@ function reset() {
   }
   for (i = 0; i < confettiPaperCount; i++) {
     confettiPapers[i] = new ConfettiPaper(
-      random() * canvasWidth.value,
+      random() * canvasElWidth.value,
       props.startTop ?
-        -random() * canvasHeight.value / 2
-        : random() * canvasHeight.value,
+        -random() * canvasElHeight.value
+        : random() * canvasElHeight.value,
     );
   }
   play();

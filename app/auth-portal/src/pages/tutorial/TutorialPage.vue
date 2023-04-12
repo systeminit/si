@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <Confetti :active="activeStepSlug === 'next_steps'" start-top />
+    <Confetti :active="activeStepSlug === 'next_steps'" start-top no-loop />
 
     <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
       <RichText>
