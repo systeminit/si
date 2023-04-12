@@ -162,6 +162,7 @@ import {
 } from "@si/vue-lib/design-system";
 import {useAuthStore, User} from "@/store/auth.store";
 import {useHead} from "@vueuse/head";
+import { tracker } from "@/lib/posthog";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
@@ -207,6 +208,13 @@ async function saveHandler() {
   const goToNextStepOnSave = isOnboarding.value;
   const updateReq = await authStore.UPDATE_USER(draftUser.value!);
   if (updateReq.result.success && goToNextStepOnSave) {
+    tracker.trackEvent("initial_profile_set", {
+      email: draftUser.value?.email,
+      githubUsername: draftUser.value?.githubUsername,
+      discordUsername: draftUser.value?.discordUsername,
+      firstName: draftUser.value?.firstName,
+      lastName: draftUser.value?.lastName,
+    });
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     router.push({name: "login-success"});
   }
