@@ -3,9 +3,7 @@
   <div>
     <Confetti :active="activeStepSlug === 'next_steps'" start-top />
 
-    <template
-      v-if="!onboardingStore.stepsCompleted.github_access && !PREVIEW_MODE"
-    >
+    <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
       <RichText>
         <h3>We're getting you access</h3>
         <p>
@@ -27,7 +25,12 @@
             <div
               v-for="step in TUTORIAL_STEPS"
               :key="step.slug"
-              :class="clsx('cursor-pointer flex items-center gap-xs leading-5')"
+              :class="
+                clsx(
+                  'cursor-pointer flex items-center gap-xs leading-5',
+                  !stepsEnabled[step.slug] && 'pointer-events-none opacity-50',
+                )
+              "
               @click="stepSelectHandler(step.slug)"
             >
               <Icon
@@ -70,7 +73,10 @@
               leave-to-class="opacity-0"
             >
               <WorkspaceLinkWidget
-                v-if="!TUTORIAL_STEPS[activeStepSlug].hideWorkspaceLink"
+                v-if="
+                  TUTORIAL_STEPS[activeStepSlug] &&
+                  !TUTORIAL_STEPS[activeStepSlug].hideWorkspaceLink
+                "
                 compact
                 class="mt-xs"
               />
@@ -91,7 +97,6 @@
             icon-right="arrow--right"
             variant="solid"
             tone="action"
-            :disabled="!_.get(onboardingStore.stepsCompleted, activeStepSlug)"
             @click="stepContinueHandler"
           >
             Continue
@@ -105,7 +110,8 @@
 <script setup lang="ts">
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import { ComponentOptions, onBeforeMount, ref } from "vue";
+
+import { ComponentOptions, computed, onBeforeMount, ref, watch } from "vue";
 import {
   Icon,
   IconNames,
@@ -113,13 +119,15 @@ import {
   RichText,
   VButton2,
 } from "@si/vue-lib/design-system";
-import { RouterLink } from "vue-router";
+
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 import Confetti from "@/components/Confetti.vue";
 
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import TutorialSurvey from "./TutorialSurvey.vue";
 
 // enable working on tutorial without being logged in
 const PREVIEW_MODE = !!import.meta.env.VITE_PREVIEW_TUTORIAL;
@@ -154,31 +162,86 @@ for (const fileName in docImports) {
     component: importedDoc.VueComponentWith({
       Icon,
       Inline,
-      "workspace-link-widget": WorkspaceLinkWidget,
-      "router-link": RouterLink,
+      WorkspaceLinkWidget,
+      RouterLink,
+      TutorialSurvey,
     }),
   };
 }
 
-const activeStepSlug = ref("intro");
+const stepsEnabled = computed(() => {
+  // steps are enabled up to the first non-completed step
+  let enabled = true;
+  return _.mapValues(TUTORIAL_STEPS, (_step, stepName) => {
+    if (!enabled) return false;
+    else if (onboardingStore.stepsCompleted[stepName]) return true;
+    else {
+      enabled = false;
+      return true;
+    }
+  });
+});
+const lastEnabledStepSlug = computed(() =>
+  _.last(_.keys(_.pickBy(stepsEnabled.value))),
+);
 
-function stepContinueHandler() {
+const activeStepSlug = ref("");
+async function stepContinueHandler() {
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  onboardingStore.COMPLETE_TUTORIAL_STEP(activeStepSlug.value);
+
   const currentStepIndex = _.indexOf(
     _.keys(TUTORIAL_STEPS),
     activeStepSlug.value,
   );
   const nextStepSlug = _.keys(TUTORIAL_STEPS)[currentStepIndex + 1];
-  activeStepSlug.value = nextStepSlug;
-  window.scrollTo(0, 0);
+
+  // continue button on next steps goes to dashboard
+  if (!nextStepSlug) {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    router.push({ name: "dashboard" });
+  } else {
+    activeStepSlug.value = nextStepSlug;
+  }
 }
 
 function stepSelectHandler(slug: string) {
   activeStepSlug.value = slug;
 }
 
+// we are preemptively loading workspaces for the workspace login widget
 const workspacesStore = useWorkspacesStore();
 onBeforeMount(() => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   workspacesStore.LOAD_WORKSPACES();
 });
+
+const router = useRouter();
+const route = useRoute();
+watch(activeStepSlug, () => {
+  const kebabStepSlug = activeStepSlug.value.replace(/_/g, "-");
+  // if going from /tutorial to /tutorial/intro, we use replace, otherwise push
+
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  router[route.params.stepSlug ? "push" : "replace"]({
+    ...router.currentRoute,
+    params: { stepSlug: kebabStepSlug },
+  });
+  window.scrollTo(0, 0);
+});
+
+watch(
+  route,
+  () => {
+    const kebabStepSlug = (route.params.stepSlug as string) || "";
+    const snakeStepSlug = kebabStepSlug.replace(/-/g, "_");
+    if (!snakeStepSlug || !TUTORIAL_STEPS[snakeStepSlug]) {
+      // default to last enabled step that is not completed
+      activeStepSlug.value = lastEnabledStepSlug.value || "intro";
+    } else {
+      activeStepSlug.value = snakeStepSlug;
+    }
+  },
+  { immediate: true },
+);
 </script>

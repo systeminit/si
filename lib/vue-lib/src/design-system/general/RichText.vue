@@ -64,7 +64,7 @@ function adjustLinks() {
   if (!containerRef.value) return;
   const linkEls = containerRef.value.querySelectorAll("a");
   linkEls.forEach((linkEl) => {
-    linkEl.setAttribute('target', '_blank');
+    linkEl.setAttribute("target", "_blank");
   });
 }
 
@@ -74,8 +74,8 @@ function adjustImages() {
   imgEls.forEach((imgEl) => {
     imgEl.classList.add("cursor-pointer");
     imgEl.addEventListener("click", () => {
-      window.open(imgEl.src, '_blank');
-    })
+      window.open(imgEl.src, "_blank");
+    });
   });
 }
 
@@ -220,6 +220,11 @@ onUpdated(adjustments);
   code {
     font-size: 13px;
     line-height: 1.3em;
+
+    // make `$` character in shell code blocks non-selectable
+    .hljs-meta.prompt_ {
+      user-select: none;
+    }
   }
 }
 </style>

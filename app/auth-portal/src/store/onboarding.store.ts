@@ -1,6 +1,6 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
-import { addStoreHooks } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { watch } from "vue";
 import Axios from "axios";
 import { posthog } from "posthog-js";
@@ -16,23 +16,18 @@ export const useOnboardingStore = () => {
         const authStore = useAuthStore();
 
         return {
-          stepsCompleted: {
-            // pre-tutorial / other
-            frienda: false,
-            // temporarily let users through automatically if email is @systeminit
-            // will be removed when feature flags are all set up
-            github_access: authStore.user?.email?.endsWith("@systeminit.com"),
-            // tutoral steps ------------
-            intro: true, // we just always consider the intro step complete
-            dev_setup: false,
-            model: false,
-            apply: false,
-            cleanup: false,
-            model_survey: false,
-            customize: false,
-            customize_survey: false,
-            next_steps: false,
-          },
+          // temporarily let users through automatically if email is @systeminit
+          // will be removed when feature flags are all set up
+          githubAccessGranted:
+            authStore.user?.email?.endsWith("@systeminit.com") &&
+            authStore.user.emailVerified,
+
+          // in the backend we save an object of { [stepSlug]: [timestampCompletedAt] }
+          // here we just remap to a boolean
+          stepsCompleted: _.mapValues(
+            authStore.user?.onboardingDetails?.vroStepsCompletedAt,
+            (timestamp, _stepName) => !!timestamp,
+          ),
 
           devBackendOnline: false,
           devFrontendOnline: false,
@@ -44,29 +39,32 @@ export const useOnboardingStore = () => {
       },
       actions: {
         handleNewFeatureFlags() {
-          _.each(
-            {
-              frienda: "vro-frienda_accepted",
-              github_access: "vro-github_access_granted",
-              // tutorial steps (NOTE - intro doesn't have a flag as it starts complete)
-              dev_setup: "vro-dev_setup_completed",
-              model: "vro-model_completed",
-              apply: "vro-apply_completed",
-              cleanup: "vro-cleanup_completed",
-              model_survey: "vro-model_survey_completed",
-              customize: "vro-customize_completed",
-              customize_survey: "vro-customize_survey_completed",
-              // next_steps has no step to complete... so we mark it complete when everything else is done
-              next_steps: "vro-customize_survey_completed",
-            } as Record<keyof typeof this.stepsCompleted, string>,
-            (featureToggleName, stepSlug) => {
-              if (posthog.isFeatureEnabled(featureToggleName)) {
-                this.stepsCompleted[
-                  stepSlug as keyof typeof this.stepsCompleted
-                ] = true;
-              }
-            },
-          );
+          // check if github access gate has been lifted
+          // it is a feature flag but should tell us they have been added to the repo
+          if (posthog.isFeatureEnabled("vro-github_access_granted")) {
+            this.githubAccessGranted = true;
+          }
+          // _.each(
+          //   {
+          //     // tutorial steps (NOTE - intro doesn't have a flag as it starts complete)
+          //     dev_setup: "vro-dev_setup_completed",
+          //     model: "vro-model_completed",
+          //     apply: "vro-apply_completed",
+          //     cleanup: "vro-cleanup_completed",
+          //     model_survey: "vro-model_survey_completed",
+          //     customize: "vro-customize_completed",
+          //     customize_survey: "vro-customize_survey_completed",
+          //     // next_steps has no step to complete... so we mark it complete when everything else is done
+          //     next_steps: "vro-customize_survey_completed",
+          //   } as Record<keyof typeof this.stepsCompleted, string>,
+          //   (featureToggleName, stepSlug) => {
+          //     if (posthog.isFeatureEnabled(featureToggleName)) {
+          //       this.stepsCompleted[
+          //         stepSlug as keyof typeof this.stepsCompleted
+          //       ] = true;
+          //     }
+          //   },
+          // );
         },
 
         async checkDevEnvOnline() {
@@ -95,12 +93,25 @@ export const useOnboardingStore = () => {
             // will toggle posthog.isFeatureEnabled("vro_dev-setup-completed") &&
           }
         },
+        async COMPLETE_TUTORIAL_STEP(step: string) {
+          const authStore = useAuthStore();
+          if (!authStore.user) throw new Error("Must be logged in");
+          const userId = authStore.user?.id;
 
-        acknowledgeFrienda() {
-          // track acceptance locally
-          this.stepsCompleted.frienda = true;
-          // fire off tracking event which will toggle the feature flag
-          tracker.trackEvent("frienda_accepted");
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          const stepAlreadyCompleted = (this.stepsCompleted as any)[step];
+          if (!stepAlreadyCompleted) {
+            tracker.trackEvent("vro_tutorial_step_completed", { step });
+            (this.stepsCompleted as any)[step] = true;
+          }
+
+          return new ApiRequest({
+            method: "post",
+            url: `/users/${userId}/complete-tutorial-step`,
+            params: { step },
+            // we dont care about the response since we track it being completed locally
+            // and only care about what the api returns when we refresh
+          });
         },
       },
       onActivated() {

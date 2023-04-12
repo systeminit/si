@@ -47,14 +47,7 @@ We want to send you some limited edition System Initiative gear as a thank you f
 
 **Make sure you use the same email you signed up with!**
 
-<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSc2NL5DNv2LafinQgezynD2TS63qaDhNOlwlTMQMVkfN9bR0w/viewform?embedded=true"
-        width="640" 
-        height="1200"
-        frameborder="0" 
-        marginheight="0" 
-        marginwidth="0">
-  Loading sweet swag form...
-</iframe>
+<tutorial-survey survey-id="1FAIpQLSc2NL5DNv2LafinQgezynD2TS63qaDhNOlwlTMQMVkfN9bR0w" :height="1200" loading-text="Loading sweet swag form..." />
 
 Don't forget to click that submit button! :)
 

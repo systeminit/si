@@ -18,11 +18,11 @@ Since you are changing how System Initiative works and updating your model, you 
 don't have any existing Change Sets, you will be prompted to create one automatically. If you have existing Change Sets,
 click the Change Set selector and select `- Create new Change Set -` from the drop-down.
 
-![Change set drop down](tutorial-img/06-customizing/change_set_drop_down.png)
+![Change set drop down](/tutorial-img/06-customizing/change_set_drop_down.png)
 
 You will see the Create Change Set dialog. Give your Change Set a name, and click the Create Change Set button:
 
-![Create change set dialog](tutorial-img/06-customizing/create_change_set_dialog.png)
+![Create change set dialog](/tutorial-img/06-customizing/create_change_set_dialog.png)
 
 ### Using Real-Time Multiplayer capabilities to your advantage
 
@@ -32,18 +32,18 @@ customizing System Initiative to see the impact of your customizations on your m
 
 To get started, click the 'Copy Link' button in the main navigation:
 
-![Copy Link](tutorial-img/06-customizing/copy_link.png)
+![Copy Link](/tutorial-img/06-customizing/copy_link.png)
 
 Open a new browser window, and paste the url into the url bar. The result should be two windows open to the same
 workspace and Change Set:
 
-![Two windows](tutorial-img/06-customizing/two_windows.png)
+![Two windows](/tutorial-img/06-customizing/two_windows.png)
 
 ### The Customize interface
 
 In one of the windows, click the Customize button <img src="tutorial-img/06-customizing/customize.png" alt="customize button" class="inline" /> in the main navigation. You should now have one browser window open to the `Model` as above and one open to `Customize` that looks like this:
 
-![Customize screen](tutorial-img/06-customizing/customize_screen.png)
+![Customize screen](/tutorial-img/06-customizing/customize_screen.png)
 
 We will refer to the window open to the `Model` screen as the 'Model Window', and the window open to the `Customize`
 screen as the 'Customize Window' for the rest of this tutorial.
@@ -60,11 +60,11 @@ selected function tab in the editor.
 Click the `search functions` box and type 'docker'. You will see the list of functions narrow to those that match the
 search criteria:
 
-![Search interface](tutorial-img/06-customizing/search_interface.png)
+![Search interface](/tutorial-img/06-customizing/search_interface.png)
 
 Click 'Docker image exists' from the Qualifications list, and the function will be loaded into the editor:
 
-![Docker image exists](tutorial-img/06-customizing/docker_image_exists.png)
+![Docker image exists](/tutorial-img/06-customizing/docker_image_exists.png)
 
 You now have the 'Docker image exists' function loaded in the editor in the central panel and its properties listed in
 the right side panel. At the top of the Properties tab in the right side panel, there are two buttons, Execute and
@@ -139,7 +139,7 @@ to run your function, and make sure there are no errors. You should see the butt
 you have a syntax error, you will see it in the editor and also see an error message immediately beneath the Execute
 button:
 
-![Execute error output](tutorial-img/06-customizing/execute_error_output.png)
+![Execute error output](/tutorial-img/06-customizing/execute_error_output.png)
 
 You can then fix the error and click the Execute button to try again.
 
@@ -148,23 +148,23 @@ You can then fix the error and click the Execute button to try again.
 In the Model Window, add a Docker Image asset to the canvas, select it, then open the Qualifications tab in the status
 bar near the bottom of the screen.
 
-![Model window for qualification](tutorial-img/06-customizing/model_window_for_qualification.png)
+![Model window for qualification](/tutorial-img/06-customizing/model_window_for_qualification.png)
 
 You will see in the Qualifications detail that our Docker Image Exists Qualification has already been changed, and our
 new output is displayed:
 
-![Edited qualification](tutorial-img/06-customizing/edited_qualification.png)
+![Edited qualification](/tutorial-img/06-customizing/edited_qualification.png)
 
 In the Customization Window, open the Qualifications tab in the status bar, and select the asset you just created. The
 Customization window should look like this:
 
-![Customization with qualifications](tutorial-img/06-customizing/customization_with_qualifications.png)
+![Customization with qualifications](/tutorial-img/06-customizing/customization_with_qualifications.png)
 
 To ensure you get the correct output without an auto-generated name, set the `si/name` attribute of your Docker Image in
 the Attributes tab of the details panel on the right to "mysql" in your Model Window. You will see the progress bar
 update, and the Qualification will pass:
 
-![Set the name](tutorial-img/06-customizing/set_the_name.png)
+![Set the name](/tutorial-img/06-customizing/set_the_name.png)
 
 Notice that the Customization Window has also updated its Qualification status! Any changes made to the model will
 automatically update for every user logged in to that workspace and viewing the same Change Set. This is the multiplayer
@@ -180,54 +180,54 @@ Initiative, you can write a custom Qualification to do it __in real time__.
 
 In your Customization Window, close the tab for the 'Docker image exists' function by clicking the `X` on the tab:
 
-![Close the tab](tutorial-img/06-customizing/close_the_tab.png)
+![Close the tab](/tutorial-img/06-customizing/close_the_tab.png)
 
 And remove your search filter from the search functions box:
 
-![Remove the filter](tutorial-img/06-customizing/remove_the_filter.png)
+![Remove the filter](/tutorial-img/06-customizing/remove_the_filter.png)
 
 Click the `+ Function` button, and select 'Qualification'.
 
-![Add qualification drop down](tutorial-img/06-customizing/add_qualification_drop_down.png)
+![Add qualification drop down](/tutorial-img/06-customizing/add_qualification_drop_down.png)
 
 Your Customization Window should now look like this:
 
-![Customization window ready to rock](tutorial-img/06-customizing/customization_window_ready_to_rock.png)
+![Customization window ready to rock](/tutorial-img/06-customizing/customization_window_ready_to_rock.png)
 
 In the Properties tab in the right side details panel, set the Name of your Qualification to "Only Use Latest Fedora
 CoreOS Stable AMIs".
 
-![Properties tab](tutorial-img/06-customizing/properties_tab.png)
+![Properties tab](/tutorial-img/06-customizing/properties_tab.png)
 
 Add a Description of "Ensures the AMI is using the latest stable Fedora CoreOS image in its region."
 
-![Description filled in](tutorial-img/06-customizing/description_filled_in.png)
+![Description filled in](/tutorial-img/06-customizing/description_filled_in.png)
 
 Your new Qualification should run on all assets of type AMI in this Workspace. To enable that, click the 'select assets
 of type' dropdown beneath the 'Run on Assets of Type' header. It may be helpful to scroll the panel all the way to the
 bottom before clicking the dropdown.
 
-![Run on assets of type](tutorial-img/06-customizing/run_on_assets_of_type.png)
+![Run on assets of type](/tutorial-img/06-customizing/run_on_assets_of_type.png)
 
 Select 'AMI' and press the `+ Add` button. You should see:
 
-![Click add](tutorial-img/06-customizing/click_add.png)
+![Click add](/tutorial-img/06-customizing/click_add.png)
 
 Click the Execute button in the Properties tab to attach your new functionality to all the AWS AMI assets.
 
 In your Model Window, click the AWS AMI asset in the Asset Palette, and click again to place it on the canvas. Select
 the newly created AMI, and you will see in the Qualifications detail that your new Qualification is present:
 
-![Model window with AMI](tutorial-img/06-customizing/model_window_with_ami.png)
+![Model window with AMI](/tutorial-img/06-customizing/model_window_with_ami.png)
 
 Back in the Customization Window, select your newly created AMI from the Components Menu in the Qualifications tab in
 the status bar - that will allow you to see the impact of your new functionality in real-time.
 
-![Customization window qualification](tutorial-img/06-customizing/customization_window_qualification.png)
+![Customization window qualification](/tutorial-img/06-customizing/customization_window_qualification.png)
 
 Your Customization Screen should now look like the following:
 
-![Ready to customize](tutorial-img/06-customizing/ready_to_customize.png)
+![Ready to customize](/tutorial-img/06-customizing/ready_to_customize.png)
 
 Now try changing your qualification functions return value to report a failure rather than a success and see what
 happens. Put the following code into the editor:
@@ -243,7 +243,7 @@ async function qualification (component) {
 
 Press the Execute button to see the Qualification status change, in both the Customize and Model Windows.
 
-![Qualification status failed on purpose](tutorial-img/06-customizing/qualification_status_failed_on_purpose.png)
+![Qualification status failed on purpose](/tutorial-img/06-customizing/qualification_status_failed_on_purpose.png)
 
 When authoring JavaScript functions, it's often convenient to use `console.log()` to print debug output. Add a
 console.log message to the first line of our function:
@@ -261,7 +261,7 @@ async function qualification (component) {
 Press the Execute button, and when it has finished spinning, click the 'View Details' link at the bottom of our custom
 qualification. You will then see a modal dialog with the function's raw output in yellow:
 
-![Console log example](tutorial-img/06-customizing/console_log_example.png)
+![Console log example](/tutorial-img/06-customizing/console_log_example.png)
 
 Close the modal window to return to the Function Editor.
 
@@ -297,7 +297,7 @@ response body has been received, and then deserializes from JSON into a JavaScri
 The next four lines extract a map of all the current stable AMIs, indexed by region, and log the output. Press the
 Execute button, then View Details, and you should see output similar to this:
 
-![Ugly debug output](tutorial-img/06-customizing/ugly_debug_output.png)
+![Ugly debug output](/tutorial-img/06-customizing/ugly_debug_output.png)
 
 Ugly, but functional! You can dismiss the modal by pressing 'Escape'.
 
@@ -365,43 +365,43 @@ async function qualification (component) {
 
 Press the Execute button, and let's start checking each result state. Your screen should look like this:
 
-![Execute first state](tutorial-img/06-customizing/execute_first_state.png)
+![Execute first state](/tutorial-img/06-customizing/execute_first_state.png)
 
 You are currently in a state where you have neither a region nor an ImageId set - therefore, your new qualification
 warns you that it cannot qualify this asset.
 
 Switch to the Model Window, and set the 'domain/ImageId' value to 'ami-000'.
 
-![Set the ImageId](tutorial-img/06-customizing/set_the_imageid.png)
+![Set the ImageId](/tutorial-img/06-customizing/set_the_imageid.png)
 
 Press the 'enter' key, and you will see the qualification update:
 
-![Name state](tutorial-img/06-customizing/name_state.png)
+![Name state](/tutorial-img/06-customizing/name_state.png)
 
 Now you can test the case where you have an invalid ImageID, but a valid Region. Set the `domain/region` attribute to
 'us-east-2' and press 'enter'.
 
-![Invalid ImageId but Valid Region](tutorial-img/06-customizing/invalid_imageid_but_valid_region.png)
+![Invalid ImageId but Valid Region](/tutorial-img/06-customizing/invalid_imageid_but_valid_region.png)
 
 The resulting qualification:
 
-![Invalid ImageId but Valid Region Qualification](tutorial-img/06-customizing/invalid_imageid_but_valid_region_qualification.png)
+![Invalid ImageId but Valid Region Qualification](/tutorial-img/06-customizing/invalid_imageid_but_valid_region_qualification.png)
 
 To test the case where the ImageId is not set, but the region is, you can hit the X button next to the ImageId:
 
-![Unset image id](tutorial-img/06-customizing/unset_image_id.png)
+![Unset image id](/tutorial-img/06-customizing/unset_image_id.png)
 
 Which updates your Qualification yet again:
 
-![Valid region no image id](tutorial-img/06-customizing/valid_region_no_image_id.png)
+![Valid region no image id](/tutorial-img/06-customizing/valid_region_no_image_id.png)
 
 Copy and paste one of the provided ImageIds from the qualifications output into the `domain/ImageId` field:
 
-![Copy and pase the image id](tutorial-img/06-customizing/copy_and_pase_the_image_id.png)
+![Copy and pase the image id](/tutorial-img/06-customizing/copy_and_pase_the_image_id.png)
 
 And see that in our final case, all the qualifications for this image are passing:
 
-![Qualifications passing workspace](tutorial-img/06-customizing/qualifications_passing_workspace.png)
+![Qualifications passing workspace](/tutorial-img/06-customizing/qualifications_passing_workspace.png)
 
 Nice work! You've added a new Qualification to System Initiative that reflects the specific policy you needed.
 

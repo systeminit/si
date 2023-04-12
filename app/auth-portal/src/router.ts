@@ -35,7 +35,7 @@ export const routerOptions: RouterOptions = {
     },
     { path: "/profile", name: "profile", component: ProfilePage },
     {
-      path: "/tutorial",
+      path: "/tutorial/:stepSlug?",
       name: "tutorial",
       component: () => import("./pages/tutorial/TutorialPage.vue"),
     },

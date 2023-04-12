@@ -9,7 +9,9 @@
         'p-sm flex items-center gap-sm rounded-md',
         'bg-action-600 text-white',
 
-        'cursor-pointer hover:bg-action-500',
+        onboardingStore.devInstanceOnline &&
+          'cursor-pointer hover:bg-action-500',
+        !onboardingStore.devInstanceOnline && 'cursor-not-allowed',
       )
     "
     @click="onClick"
