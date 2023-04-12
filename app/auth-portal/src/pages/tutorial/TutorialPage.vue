@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <Confetti :active="activeStepSlug === 'next_steps'" start-top />
+    <Confetti :active="activeStepSlug === 'next_steps'" start-top no-loop />
 
     <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
       <RichText>
@@ -14,7 +14,8 @@
           can email us at
           <a href="mailto:preview@systeminit.com" target="_blank"
             >preview@systeminit.com</a
-          >, or hit us up on <a href="https://discord.com/asdf">discord</a>.
+          >, or hit us up on
+          <a href="https://discord.gg/system-init">discord</a>.
         </p>
       </RichText>
     </template>

@@ -41,7 +41,7 @@ export const useOnboardingStore = () => {
         handleNewFeatureFlags() {
           // check if github access gate has been lifted
           // it is a feature flag but should tell us they have been added to the repo
-          if (posthog.isFeatureEnabled("vro-github_access_granted")) {
+          if (posthog.isFeatureEnabled("vro-team1")) {
             this.githubAccessGranted = true;
           }
           // _.each(
