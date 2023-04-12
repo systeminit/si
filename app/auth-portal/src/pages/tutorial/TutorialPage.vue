@@ -14,7 +14,8 @@
           can email us at
           <a href="mailto:preview@systeminit.com" target="_blank"
             >preview@systeminit.com</a
-          >, or hit us up on <a href="https://discord.com/asdf">discord</a>.
+          >, or hit us up on
+          <a href="https://discord.gg/system-init">discord</a>.
         </p>
       </RichText>
     </template>
