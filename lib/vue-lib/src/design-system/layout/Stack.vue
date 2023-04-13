@@ -37,7 +37,7 @@ const Stack = (
   const wrappedChildren = [] as VNode[];
   const children = getSlotChildren(context.slots.default);
   for (let i = 0; i < children.length; i++) {
-    wrappedChildren.push(children[i]);
+    wrappedChildren.push(children[i]!);
     if (props.dividers && i < children.length - 1) {
       wrappedChildren.push(h(Divider));
     }

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="fromComponent && toComponent">
     <ComponentCard :component-id="fromComponent.id" />
     <div class="_connection-label text-xs italic">
       <!-- currently output and input socket always have the same label/name -->
@@ -25,20 +25,26 @@ const componentsStore = useComponentsStore();
 
 const edge = computed(() => componentsStore.edgesById[props.edgeId]);
 
-const fromComponent = computed(
-  () => componentsStore.componentsByNodeId[edge.value.fromNodeId],
+const fromComponent = computed(() =>
+  edge.value?.fromNodeId
+    ? componentsStore.componentsByNodeId[edge.value.fromNodeId]
+    : undefined,
 );
-const fromSchema = computed(
-  () => componentsStore.schemaVariantsById[fromComponent.value.schemaVariantId],
+const fromSchema = computed(() =>
+  fromComponent.value?.schemaVariantId
+    ? componentsStore.schemaVariantsById[fromComponent.value.schemaVariantId]
+    : undefined,
 );
 const fromSocket = computed(() =>
   _.find(
-    fromSchema.value.outputSockets,
+    fromSchema.value?.outputSockets ?? [],
     (s) => s.id === edge.value?.fromSocketId,
   ),
 );
-const toComponent = computed(
-  () => componentsStore.componentsByNodeId[edge.value?.toNodeId],
+const toComponent = computed(() =>
+  edge.value?.toNodeId
+    ? componentsStore.componentsByNodeId[edge.value.toNodeId]
+    : undefined,
 );
 // const toSchema = computed(
 //   () => componentsStore.schemaVariantsById[toComponent.value.schemaVariantId],

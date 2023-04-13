@@ -217,13 +217,13 @@ const diagramEdges = computed(() => {
     edge.isInvisible = false;
 
     const toNodeParentId =
-      componentsStore.componentsByNodeId[edge.toNodeId].parentNodeId;
+      componentsStore.componentsByNodeId[edge.toNodeId]?.parentNodeId;
 
     if (toNodeParentId) {
       const toNodeParentComp =
         componentsStore.componentsByNodeId[toNodeParentId];
 
-      if (toNodeParentComp.nodeType === "aggregationFrame") {
+      if (toNodeParentComp?.nodeType === "aggregationFrame") {
         if (edge.fromNodeId === toNodeParentComp.nodeId) {
           edge.isInvisible ||= true;
         }
@@ -231,12 +231,12 @@ const diagramEdges = computed(() => {
     }
 
     const fromNodeParentId =
-      componentsStore.componentsByNodeId[edge.fromNodeId].parentNodeId;
+      componentsStore.componentsByNodeId[edge.fromNodeId]?.parentNodeId;
 
     if (fromNodeParentId) {
       const fromParentComp =
         componentsStore.componentsByNodeId[fromNodeParentId];
-      if (fromParentComp.nodeType === "aggregationFrame") {
+      if (fromParentComp?.nodeType === "aggregationFrame") {
         if (edge.toNodeId === fromParentComp.nodeId) {
           edge.isInvisible ||= true;
         }
@@ -477,12 +477,12 @@ async function triggerRestoreSelection() {
     const parentIds = _.compact(
       _.map(
         selectedComponentIds.value,
-        (id) => componentsStore.componentsById[id].parentId,
+        (id) => componentsStore.componentsById[id]?.parentId,
       ),
     );
 
     const hasDeletedParent = parentIds.find(
-      (id) => !_.isNil(componentsStore.componentsById[id].deletedInfo),
+      (id) => !_.isNil(componentsStore.componentsById[id]?.deletedInfo),
     );
 
     if (hasDeletedParent) {
@@ -501,10 +501,12 @@ async function triggerRestoreSelection() {
 function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
   if (!componentId) return;
   const component = componentsStore.componentsById[componentId];
-  if (component.isGroup) {
-    return DiagramGroupData.generateUniqueKey(component.nodeId);
+  if (component) {
+    if (component.isGroup) {
+      return DiagramGroupData.generateUniqueKey(component.nodeId);
+    }
+    return DiagramNodeData.generateUniqueKey(component.nodeId);
   }
-  return DiagramNodeData.generateUniqueKey(component.nodeId);
 }
 
 function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
@@ -569,10 +571,10 @@ watch(
 function onGroupElements({ group, elements }: GroupEvent) {
   if (group.def.nodeType === "aggregationFrame") {
     const groupSchemaId =
-      componentsStore.componentsByNodeId[group.def.id].schemaVariantId;
+      componentsStore.componentsByNodeId[group.def.id]?.schemaVariantId;
     elements = _.filter(elements, (e) => {
       const elementSchemaId =
-        componentsStore.componentsByNodeId[e.def.id].schemaVariantId;
+        componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
 
       return elementSchemaId === groupSchemaId;
     });
@@ -593,7 +595,7 @@ function onOutlineRightClick(e: MouseEvent) {
 }
 
 const typeDisplayName = (action = "delete") => {
-  if (selectedComponentId.value) {
+  if (selectedComponentId.value && selectedComponent.value) {
     if (selectedComponent.value.nodeType === "component") return "Component";
     else return "Frame";
   } else if (selectedComponentIds.value.length) {
@@ -617,7 +619,7 @@ const rightClickMenuItems = computed(() => {
   if (!isViewMode.value) {
     if (selectedEdgeId.value) {
       // single selected edge
-      if (selectedEdge.value.changeStatus === "deleted") {
+      if (selectedEdge.value?.changeStatus === "deleted") {
         items.push({
           label: "Restore edge",
           icon: "trash-restore",
@@ -630,7 +632,7 @@ const rightClickMenuItems = computed(() => {
           onSelect: triggerDeleteSelection,
         });
       }
-    } else if (selectedComponentId.value) {
+    } else if (selectedComponentId.value && selectedComponent.value) {
       // single selected component
       if (selectedComponent.value.changeStatus === "deleted") {
         items.push({
@@ -673,7 +675,7 @@ const rightClickMenuItems = computed(() => {
       }
     }
   }
-  if (selectedComponentId.value && selectedComponent.value.resource.data) {
+  if (selectedComponent.value?.resource.data) {
     items.push({
       label: "Refresh resource",
       icon: "refresh",
@@ -684,6 +686,8 @@ const rightClickMenuItems = computed(() => {
 });
 
 const refreshResourceForSelectedComponent = () => {
-  componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+  if (selectedComponent.value?.id) {
+    componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+  }
 };
 </script>

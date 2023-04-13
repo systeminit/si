@@ -779,8 +779,12 @@ const currentSelectionKeys = computed({
     _rawSelectionKeys.value = sortedDeduped;
   },
 });
-const currentSelectionElements = computed(() =>
-  _.map(currentSelectionKeys.value, (key) => allElementsByKey.value[key]),
+const currentSelectionElements = computed(
+  () =>
+    _.map(
+      currentSelectionKeys.value,
+      (key) => allElementsByKey.value?.[key],
+    ).filter((element) => !!element) as DiagramElementData[],
 );
 
 function setSelectionByKey(
@@ -922,7 +926,7 @@ const currentSelectionMovableElements = computed(
   () =>
     _.filter(
       currentSelectionElements.value,
-      (el) => "position" in el.def,
+      (el) => el && "position" in el.def,
     ) as unknown as (DiagramNodeData | DiagramGroupData)[],
 );
 const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
@@ -930,7 +934,7 @@ const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
 );
 
 const draggedElementsPositionsPreDrag = ref<
-  Record<DiagramElementUniqueKey, Vector2d>
+  Record<DiagramElementUniqueKey, Vector2d | undefined>
 >({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
@@ -997,12 +1001,15 @@ function endDragElements() {
       }
     }
 
-    // move the element itself
-    emit("move-element", {
-      element: el,
-      position: movedElementPositions[el.uniqueKey],
-      isFinal: true,
-    });
+    const movedElementPosition = movedElementPositions[el.uniqueKey];
+    if (movedElementPosition) {
+      // move the element itself
+      emit("move-element", {
+        element: el,
+        position: movedElementPosition,
+        isFinal: true,
+      });
+    }
 
     // move child elements inside of a group
     if (el instanceof DiagramGroupData) {
@@ -1014,7 +1021,9 @@ function endDragElements() {
       _.each(childEls, (childEl) => {
         emit("move-element", {
           element: childEl,
-          position: movedElementPositions[childEl.uniqueKey],
+          // Again, not sure how we should handle a possible missing element
+          // position
+          position: movedElementPositions[childEl.uniqueKey] ?? { x: 0, y: 0 },
           isFinal: true,
         });
       });
@@ -1051,7 +1060,7 @@ function onDragElementsMove() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
-      draggedElementsPositionsPreDrag.value?.[el.uniqueKey],
+      draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
       delta,
     );
 
@@ -1135,7 +1144,7 @@ function onDragElementsMove() {
         if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
 
         const newChildPosition = vectorAdd(
-          draggedElementsPositionsPreDrag.value[childEl.uniqueKey],
+          draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
           delta,
         );
         // track the position locally, so we don't need to rely on parent to store the temporary position
@@ -1380,6 +1389,9 @@ function endResizeElement() {
   if (!resizeElement.value) return;
   const size = resizedElementSizes[resizeElement.value.uniqueKey];
   const position = movedElementPositions[resizeElement.value.uniqueKey];
+  if (!size || !position) {
+    return;
+  }
 
   emit("resize-element", {
     element: resizeElement.value,
@@ -1424,6 +1436,10 @@ function onResizeMove() {
   const presentSize = resizedElementSizesPreResize[resizeTargetKey];
   const presentPosition =
     draggedElementsPositionsPreDrag.value[resizeTargetKey];
+
+  if (!presentSize || !presentPosition) {
+    return;
+  }
 
   const rightBound = presentPosition.x + presentSize.width / 2;
 
@@ -1674,13 +1690,15 @@ function onDrawEdgeMove() {
   // look through the possible target sockets, and find distances to the pointer
   const socketPointerDistances = _.map(
     drawEdgePossibleTargetSocketKeys.value,
-    (socketKey) => ({
-      socketKey,
-      pointerDistance: vectorDistance(
-        gridPointerPos.value!,
-        socketsLocationInfo[socketKey]?.center,
-      ),
-    }),
+    (socketKey) => {
+      const socketLocation = socketsLocationInfo[socketKey];
+      // Not sure what this should do if we can't find a location
+      const center = socketLocation?.center ?? { x: 0, y: 0 };
+      return {
+        socketKey,
+        pointerDistance: vectorDistance(gridPointerPos.value!, center),
+      };
+    },
   );
   const nearest = _.minBy(socketPointerDistances, (d) => d.pointerDistance);
   // give a little buffer so the pointer will magnet to nearby sockets
@@ -1760,6 +1778,9 @@ function triggerInsertElement() {
 function deleteSelected() {
   if (!currentSelectionElements.value?.length) return;
   const selected = currentSelectionElements.value;
+  if (!selected) {
+    return;
+  }
 
   // previously we were deleting edges connected to nodes from here
   // but we may want to handle this purely from the backend?
@@ -1770,7 +1791,7 @@ function deleteSelected() {
   // });
   // // have to dedupe in case we are deleting both nodes connected to an edge
   // const uniqueEdgesToDelete = _.uniq(additionalEdgesToDelete);
-  emit("delete-elements", { elements: selected });
+  emit("delete-elements", { elements: selected as DiagramElementData[] });
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
@@ -1852,13 +1873,13 @@ const connectedEdgesByElementKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(edgesByKey.value, (edge) => {
     lookup[edge.fromNodeKey] ||= [];
-    lookup[edge.fromNodeKey].push(edge);
+    lookup[edge.fromNodeKey]!.push(edge);
     lookup[edge.toNodeKey] ||= [];
-    lookup[edge.toNodeKey].push(edge);
+    lookup[edge.toNodeKey]!.push(edge);
     lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey].push(edge);
+    lookup[edge.fromSocketKey]!.push(edge);
     lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey].push(edge);
+    lookup[edge.toSocketKey]!.push(edge);
   });
   return lookup;
 });

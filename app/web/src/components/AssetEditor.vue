@@ -82,7 +82,10 @@ watch(
 );
 
 const onChange = () => {
-  if (selectedAsset.value.definition === editingAsset.value) {
+  if (
+    !selectedAsset.value ||
+    selectedAsset.value.definition === editingAsset.value
+  ) {
     return;
   }
   selectedAsset.value.definition = editingAsset.value;

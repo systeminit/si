@@ -41,9 +41,14 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
 function autoSelectWorkspace() {
   if (workspaces.value.length !== 1) return;
 
+  const workspacePk = workspaces.value[0]?.pk;
+  if (!workspacePk) {
+    return;
+  }
+
   router.push({
     name: "workspace-single",
-    params: { workspacePk: workspaces.value[0].pk },
+    params: { workspacePk },
   });
 }
 

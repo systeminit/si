@@ -27,6 +27,7 @@ export type DiagramElementTypes = "node" | "socket" | "edge";
 export type DiagramElementUniqueKey = string;
 
 export abstract class DiagramElementData {
+  abstract get def(): DiagramNodeDef | DiagramSocketDef | DiagramEdgeDef;
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
 
@@ -103,7 +104,7 @@ export class DiagramEdgeData extends DiagramElementData {
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
     const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
-    if (comp.isGroup) {
+    if (comp?.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
     }
     return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
@@ -111,7 +112,7 @@ export class DiagramEdgeData extends DiagramElementData {
 
   get toNodeKey() {
     const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
-    if (comp.isGroup) {
+    if (comp?.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
     }
     return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
@@ -119,7 +120,7 @@ export class DiagramEdgeData extends DiagramElementData {
 
   get fromSocketKey() {
     const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
-    if (comp.isGroup) {
+    if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
         this.def.fromSocketId,
@@ -133,7 +134,7 @@ export class DiagramEdgeData extends DiagramElementData {
 
   get toSocketKey() {
     const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
-    if (comp.isGroup) {
+    if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.toNodeId),
         this.def.toSocketId,

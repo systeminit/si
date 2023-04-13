@@ -44,7 +44,9 @@ const selectedPackageListItem = computed(
 
 const installPackage = async () => {
   disableInstallButton.value = true;
-  await packageStore.INSTALL_PACKAGE(selectedPackageListItem.value);
+  if (selectedPackageListItem.value) {
+    await packageStore.INSTALL_PACKAGE(selectedPackageListItem.value);
+  }
   disableInstallButton.value = false;
 };
 </script>

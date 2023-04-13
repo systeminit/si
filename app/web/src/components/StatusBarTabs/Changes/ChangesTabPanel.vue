@@ -10,7 +10,7 @@
       <template #icon="{ component }">
         <StatusIndicatorIcon
           type="change"
-          :status="componentsById[component.id].changeStatus"
+          :status="componentsById[component.id]?.changeStatus"
         />
       </template>
     </StatusBarTabPanelComponentList>
@@ -59,8 +59,8 @@
               <CodeViewer
                 font-size="13px"
                 class="text-neutral-50 mx-2"
-                :code="selectedComponentDiff.diffs[0].code"
-                :code-language="selectedComponentDiff.diffs[0].language"
+                :code="selectedComponentDiff.diffs[0]?.code"
+                :code-language="selectedComponentDiff.diffs[0]?.language"
               >
                 <template #title>
                   <span class="text-lg">Diff</span>

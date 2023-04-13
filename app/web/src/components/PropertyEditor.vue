@@ -7,7 +7,7 @@
     >
       <PropertyWidget
         v-if="schemasByPropId[pv.propId]"
-        :schema-prop="schemasByPropId[pv.propId]"
+        :schema-prop="schemasByPropId[pv.propId]!"
         :prop-value="pv"
         :path="paths[pv.id]"
         :collapsed-paths="collapsed"
@@ -213,7 +213,9 @@ const determineOrder = (
 ): PropertyEditorValue[] => {
   for (const childValueId of childValueIds) {
     const child = values.value.values[childValueId];
-    order.push(child);
+    if (child) {
+      order.push(child);
+    }
     const childValuesList = values.value.childValues[childValueId];
     if (childValuesList) {
       determineOrder(order, childValuesList);

@@ -108,16 +108,16 @@
       </div>
 
       <!-- Here we actually render the tab content of the current tab -->
-      <template v-if="selectedTabSlug && tabs[selectedTabSlug]">
+      <template v-if="selectedTab">
         <!-- extra slots to make it easy to have non-scrolling content above/below scrolling area -->
-        <div v-if="tabs[selectedTabSlug].slots.top">
-          <component :is="tabs[selectedTabSlug].slots.top" />
+        <div v-if="selectedTab.slots.top">
+          <component :is="selectedTab.slots.top" />
         </div>
         <div class="overflow-auto flex-grow relative">
-          <component :is="tabs[selectedTabSlug].slots.default" />
+          <component :is="selectedTab.slots.default" />
         </div>
-        <div v-if="tabs[selectedTabSlug].slots.bottom">
-          <component :is="tabs[selectedTabSlug].slots.bottom" />
+        <div v-if="selectedTab.slots.bottom">
+          <component :is="selectedTab.slots.bottom" />
         </div>
       </template>
     </template>
@@ -195,9 +195,12 @@ const isNoTabs = computed(() => !_.keys(tabs).length);
 const tabs = reactive({} as Record<string, TabGroupItemDefinition>);
 const orderedTabSlugs = ref<string[]>([]);
 const orderedTabs = computed(() =>
-  _.map(orderedTabSlugs.value, (slug) => tabs[slug]),
+  _.map(orderedTabSlugs.value, (slug) => tabs[slug]).filter((tab) => !!tab) as
+  TabGroupItemDefinition[],
 );
 const selectedTabSlug = ref<string>();
+const selectedTab = computed(() => selectedTabSlug.value ?
+tabs[selectedTabSlug.value] : undefined)
 
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;

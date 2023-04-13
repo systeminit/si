@@ -1,5 +1,6 @@
 <template>
   <RouterLink
+    v-if="packageInfo"
     class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
     :class="
       isSelected
@@ -34,6 +35,6 @@ const packageInfo = computed(
   () => packageStore.packageListByName[props.packageId],
 );
 const isSelected = computed(
-  () => packageInfo.value.name === packageStore.urlSelectedPackageSlug,
+  () => packageInfo.value?.name === packageStore.urlSelectedPackageSlug,
 );
 </script>

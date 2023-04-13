@@ -1,6 +1,7 @@
 {
   "extends": "@si/tsconfig/tsconfig.browser.json",
   "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
     "paths": {
       "@/*": [

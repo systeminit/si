@@ -180,7 +180,7 @@ const sortOptions: SortOption[] = [
   { value: "r", title: "Newest" },
   { value: "o", title: "Oldest" },
 ];
-const selectedSort = ref<SortOption>(sortOptions[0]);
+const selectedSort = ref<SortOption | undefined>(sortOptions[0]);
 const selectedFixBatchId = ref<string | null>(null);
 const selectedFix = ref<SelectedFix | null>(null);
 const selectFixBatch = (id: string) => {
@@ -204,7 +204,7 @@ const fixBatchesWithFixes = computed(() =>
   })),
 );
 const fixListDisplay = computed(() => {
-  if (selectedSort.value.value === "r") {
+  if (selectedSort.value?.value === "r") {
     return [...fixBatchesWithFixes.value].reverse();
   } else return fixBatchesWithFixes.value;
 });
@@ -228,7 +228,7 @@ const selectedFixInfo = computed(() => {
 const formatTitle = (title: string) => {
   return title
     .split(" ")
-    .map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase())
+    .map((t) => `${t[0]?.toUpperCase()}${t.slice(1).toLowerCase()}`)
     .join(" ");
 };
 </script>
