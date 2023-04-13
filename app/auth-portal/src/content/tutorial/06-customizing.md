@@ -321,7 +321,7 @@ async function qualification (component: Input): Promise<Output> {
   const coreos = await response.json();
   const validArm64ImagesByRegion = coreos.architectures?.aarch64?.images?.aws?.regions;
   const validX8664ImagesByRegion = coreos.architectures?.x86_64?.images?.aws?.regions;
-  let result = {
+  let result: Output = {
     result: 'failure',
     message: 'Failed to qualify AMI; bad data.'
   };
