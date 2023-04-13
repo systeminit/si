@@ -4,7 +4,7 @@ export const useRouteToFunc = () => {
   const route = useRoute();
   const router = useRouter();
   return (funcId?: string) => {
-    router.push({
+    router.replace({
       name: "workspace-lab-functions",
       params: {
         ...route.params,

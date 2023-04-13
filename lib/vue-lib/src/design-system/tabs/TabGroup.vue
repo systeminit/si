@@ -160,11 +160,12 @@ import {
   watch,
   onUpdated,
   onBeforeUnmount,
+  nextTick,
 } from "vue";
+import posthog from "posthog-js";
 import { Icon, DropdownMenu, DropdownMenuItem } from "..";
 import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
-import posthog from "posthog-js";
 
 const unmounting = ref(false);
 const showOverflowDropdown = ref(false);
@@ -203,35 +204,67 @@ function registerTab(slug: string, component: TabGroupItemDefinition) {
   orderedTabSlugs.value = [...orderedTabSlugs.value, slug];
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
+  // if this is the first tab we are registering, we'll autoselect on the next tick
+  if (_.keys(tabs).length === 1) {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    nextTick(() => {
+      autoSelectTab(true);
+    });
+  }
 }
 function unregisterTab(slug: string) {
   if (unmounting.value) return;
-  delete tabs[slug];
   orderedTabSlugs.value = _.without(orderedTabSlugs.value, slug);
+  delete tabs[slug];
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
-  autoSelectTab();
+  if (isNoTabs.value) {
+    emit("update:selectedTab", undefined);
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    nextTick(() => {
+      autoSelectTab();
+    });
+  }
 }
 
 function refreshSettingsFromTabs() {
   // currently there are no settings here - any child settings to set on the parent would go here
 }
 
+const lastSelectedTabIndex = ref(0);
 function selectTab(slug?: string) {
-  if (selectedTabSlug.value === slug || unmounting.value) return;
+  if (unmounting.value) return;
+  if (selectedTabSlug.value === slug) return;
+
+  // if selecting no tab, autoselect
+  if (!slug) {
+    autoSelectTab();
+    return;
+  }
 
   // select the tab
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
-  emit("update:selectedTab", selectedTabSlug.value);
+
+  lastSelectedTabIndex.value = _.indexOf(
+    orderedTabSlugs.value,
+    selectedTabSlug.value,
+  );
 
   if (props.trackingSlug) {
-    posthog.capture("wa-tab_selected", {groupSlug: props.trackingSlug, tabSlug: selectedTabSlug.value});
+    posthog.capture("wa-tab_selected", {
+      groupSlug: props.trackingSlug,
+      tabSlug: selectedTabSlug.value,
+    });
   }
 
   if (selectedTabSlug.value) {
-    if (tabKey.value) {
-      window.localStorage.setItem(tabKey.value, selectedTabSlug.value);
+    if (rememberLastTabStorageKey.value) {
+      window.localStorage.setItem(
+        rememberLastTabStorageKey.value,
+        selectedTabSlug.value,
+      );
     }
     // adjust the tab position if it is offscreen
     const tabEl = tabRefs.value[selectedTabSlug.value];
@@ -250,9 +283,12 @@ function selectTab(slug?: string) {
       }
     }
   }
+
+  // emit new selected tab to parent in case it needs it, for example to sync the URL
+  emit("update:selectedTab", selectedTabSlug.value);
 }
 
-const tabKey = computed(() => {
+const rememberLastTabStorageKey = computed(() => {
   if (props.rememberSelectedTabKey) {
     return `tab_group_${props.rememberSelectedTabKey}`;
   } else {
@@ -260,35 +296,36 @@ const tabKey = computed(() => {
   }
 });
 
-function autoSelectTab() {
-  if (tabKey.value) {
-    const slug = window.localStorage.getItem(tabKey.value);
-    if (slug && tabs[slug]) {
-      selectTab(slug);
-      return;
-    } else if (props.startSelectedTabSlug) {
-      window.localStorage.setItem(tabKey.value, props.startSelectedTabSlug);
-      selectTab(props.startSelectedTabSlug);
-      return;
-    }
-  }
+function autoSelectTab(isInitialSelection = false) {
   if (isNoTabs.value) {
     // can't select anything if there are no tabs
-    selectTab();
+    // selectTab();
     return;
-  } else if (selectedTabSlug.value && tabs[selectedTabSlug.value]) {
+  }
+  if (selectedTabSlug.value && tabs[selectedTabSlug.value]) {
     // currently selected tab is all good
     return;
-  } else if (props.startSelectedTabSlug && tabs[props.startSelectedTabSlug]) {
+  } else if (
+    isInitialSelection &&
+    props.startSelectedTabSlug &&
+    tabs[props.startSelectedTabSlug]
+  ) {
     // select the starting tab if it exists
     // TODO: probably only want to do this in some cases (like initial load)
     selectTab(props.startSelectedTabSlug);
-  } else {
-    selectTab(_.keys(tabs)[0]);
+    return;
+  } else if (isInitialSelection && rememberLastTabStorageKey.value) {
+    const slug = window.localStorage.getItem(rememberLastTabStorageKey.value);
+    if (slug && tabs[slug]) {
+      selectTab(slug);
+      return;
+    }
   }
+  // fallback to just autoselecting the tab next the last one selected
+  let newIndex = (lastSelectedTabIndex.value || 0) - 1;
+  if (newIndex < 0) newIndex = 0;
+  selectTab(orderedTabSlugs.value[newIndex]);
 }
-
-onMounted(autoSelectTab);
 
 function fixOverflowDropdown() {
   const tabListEl = tabContainerRef.value;
