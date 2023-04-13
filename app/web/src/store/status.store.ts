@@ -116,7 +116,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             );
             if (!valueId) return "idle";
             const timestamps =
-              state.rawStatusesByValueId[valueId].statusTimestampsByUpdatePk;
+              state.rawStatusesByValueId[valueId]?.statusTimestampsByUpdatePk;
             if (!timestamps) return "idle";
             if (_.some(timestamps, (ts) => !ts.completedAt && !ts.runningAt)) {
               return "queued";
@@ -231,15 +231,19 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
             let statusMessage = "Updating component";
             if (latestChangedValueId) {
-              statusMessage = {
-                codeGen: "Running code gen",
-                attribute: "Updating attributes",
-                qualification: "Running qualifications",
-                inputSocket: "Updating input socket values",
-                outputSocket: "Updating output socket values",
-                confirmation: "Running confirmations",
-                internal: "Updating internal wiring",
-              }[this.rawStatusesByValueId[latestChangedValueId].valueKind.kind];
+              const valueKind =
+                this.rawStatusesByValueId[latestChangedValueId]?.valueKind.kind;
+              if (valueKind) {
+                statusMessage = {
+                  codeGen: "Running code gen",
+                  attribute: "Updating attributes",
+                  qualification: "Running qualifications",
+                  inputSocket: "Updating input socket values",
+                  outputSocket: "Updating output socket values",
+                  confirmation: "Running confirmations",
+                  internal: "Updating internal wiring",
+                }[valueKind];
+              }
             }
 
             if (!isUpdating) statusMessage = "Component updated";
@@ -253,7 +257,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               statusMessage,
               lastUpdateAt: latestChangedTimestamp,
               ...(latestUpdatePk !== null && {
-                lastUpdateBy: this.updateMetadataByPk[latestUpdatePk].actor,
+                lastUpdateBy: this.updateMetadataByPk[latestUpdatePk]?.actor,
               }),
             };
           });
@@ -376,7 +380,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                       completedDependentValueIds,
                     } = singleUpdate.data;
 
-                    this.rawStatusesByValueId[valueId] ||= {
+                    const rawStatus = this.rawStatusesByValueId[valueId] ?? {
                       valueId,
                       valueKind: valueMetadata.valueKind,
                       componentId: valueMetadata.componentId,
@@ -393,9 +397,9 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                         completedAt: now,
                       }),
                     };
-                    this.rawStatusesByValueId[
-                      valueId
-                    ].statusTimestampsByUpdatePk[singleUpdate.pk] = timestamps;
+                    rawStatus.statusTimestampsByUpdatePk[singleUpdate.pk] =
+                      timestamps;
+                    this.rawStatusesByValueId[valueId] = rawStatus;
                   },
                 );
               });
@@ -429,6 +433,10 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           {
             eventType: "StatusUpdate",
             callback: (update, _metadata) => {
+              if (!update?.pk) {
+                return;
+              }
+
               // fill in update metadata if this the first time we're seeing this specific update
               if (!this.updateMetadataByPk[update.pk]) {
                 this.updateMetadataByPk[update.pk] = { actor: update.actor };
@@ -447,36 +455,46 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
               const now = new Date();
               update.values.forEach(({ componentId, valueId, valueKind }) => {
-                this.rawStatusesByValueId[valueId] ||= {
+                const valueStatusData = this.rawStatusesByValueId[valueId] ?? {
                   valueId,
                   valueKind,
                   componentId,
-                  statusTimestampsByUpdatePk: {},
+                  statusTimestampsByUpdatePk: {
+                    [update.pk]: {
+                      queuedAt: now,
+                    },
+                  },
                 };
-                const valueStatusData = this.rawStatusesByValueId[valueId];
 
-                // If we don't have a timestamp for an earlier step, we set it to the same one as the current step
-                // If the status is queued, clear other statuses
-                if (
-                  update.status === "queued" ||
-                  !valueStatusData.statusTimestampsByUpdatePk[update.pk]
-                ) {
-                  valueStatusData.statusTimestampsByUpdatePk[update.pk] = {
-                    queuedAt: now,
-                  };
+                const statusUpdate = valueStatusData.statusTimestampsByUpdatePk[
+                  update.pk
+                ] ?? {
+                  queuedAt: now,
+                };
+
+                switch (update.status) {
+                  case "completed":
+                    statusUpdate.completedAt = now;
+                    statusUpdate.runningAt ||= now;
+                    break;
+                  case "running":
+                    statusUpdate.runningAt = now;
+                    break;
+                  case "queued":
+                  default:
+                    statusUpdate.runningAt = undefined;
+                    statusUpdate.completedAt = undefined;
+                    statusUpdate.runningAt = now;
+                    break;
                 }
-                if (update.status === "completed") {
-                  valueStatusData.statusTimestampsByUpdatePk[
-                    update.pk
-                  ].completedAt = now;
-                  valueStatusData.statusTimestampsByUpdatePk[
-                    update.pk
-                  ].runningAt ||= now;
-                } else if (update.status === "running") {
-                  valueStatusData.statusTimestampsByUpdatePk[
-                    update.pk
-                  ].runningAt = now;
-                }
+
+                this.rawStatusesByValueId[valueId] = {
+                  ...valueStatusData,
+                  statusTimestampsByUpdatePk: {
+                    ...valueStatusData.statusTimestampsByUpdatePk,
+                    [update.pk]: statusUpdate,
+                  },
+                };
               });
               // if we are receiving the queued event, we'll clear our locally stored loading state we set when the attribute was updated
               if (update.status === "queued" && this.calculatingUpdateSize) {

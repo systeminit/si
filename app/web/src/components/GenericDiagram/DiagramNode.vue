@@ -323,9 +323,9 @@ const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
     lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey].push(edge);
+    lookup[edge.fromSocketKey]!.push(edge);
     lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey].push(edge);
+    lookup[edge.toSocketKey]!.push(edge);
   });
   return lookup;
 });

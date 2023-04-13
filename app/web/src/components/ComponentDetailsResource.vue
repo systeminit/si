@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="selectedComponent">
     <CodeViewer
       v-if="selectedComponent.resource.data !== null"
       :code="

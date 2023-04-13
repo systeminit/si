@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div v-if="selectedComponent" class="flex flex-col h-full">
     <!-- <div class="p-xs border-b dark:border-neutral-600">
       <Inline align-y="center">
         <Icon size="md" name="plug" class="shrink-0 mr-2xs" />
@@ -182,6 +182,8 @@ const refreshing = computed(() => {
 });
 
 const onClickRefreshButton = () => {
-  componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+  if (selectedComponent.value) {
+    componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
+  }
 };
 </script>

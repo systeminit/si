@@ -112,7 +112,7 @@ const selectedPackageListItem = computed(
 watch(
   () => packageStore.urlSelectedPackageSlug,
   (selectedPackageName) => {
-    if (selectedPackageName) {
+    if (selectedPackageName && selectedPackageListItem.value) {
       packageStore.GET_PACKAGE(selectedPackageListItem.value);
     }
   },

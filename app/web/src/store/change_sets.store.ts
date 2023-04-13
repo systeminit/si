@@ -110,7 +110,7 @@ export function useChangeSetsStore() {
           // returning `false` means we cannot auto select
           if (!this.openChangeSets.length) return false; // no open change sets
           if (this.openChangeSets.length === 1)
-            return this.openChangeSets[0].pk; // only 1 change set - will auto select it
+            return this.openChangeSets[0]?.pk; // only 1 change set - will auto select it
           // TODO: add logic to for auto-selecting when multiple change sets open
           // - select one created by you
           // - track last selected in localstorage and select that one...
@@ -159,7 +159,11 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApplied",
             callback: (id) => {
-              this.changeSetsById[id].status = ChangeSetStatus.Applied;
+              const changeSet = this.changeSetsById[id];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.Applied;
+                this.changeSetsById[id] = changeSet;
+              }
             },
           },
           {

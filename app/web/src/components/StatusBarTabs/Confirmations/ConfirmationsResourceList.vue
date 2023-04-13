@@ -24,7 +24,7 @@
         @click="onSelectResource(componentId)"
       >
         <span class="shrink min-w-0 truncate mr-3">
-          {{ componentsStore.componentsById[componentId].displayName }}
+          {{ componentsStore.componentsById[componentId]?.displayName }}
         </span>
         <StatusIndicatorIcon
           type="confirmation"

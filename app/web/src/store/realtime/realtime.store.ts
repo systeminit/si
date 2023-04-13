@@ -139,11 +139,13 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   function destroySingleSubscription(id: SubscriptionId) {
     const sub = subscriptions[id];
-    topicSubscriptionCounter[sub.topic]--;
-    if (topicSubscriptionCounter[sub.topic] === 0) {
-      // TODO: send topic unsubscribe message to server
+    if (sub) {
+      topicSubscriptionCounter[sub.topic]--;
+      if (topicSubscriptionCounter[sub.topic] === 0) {
+        // TODO: send topic unsubscribe message to server
+      }
+      delete subscriptions[sub.id];
     }
-    delete subscriptions[sub.id];
   }
 
   // TODO: add optional arg to unsubscribe to specific event types, topics, or by subscription id

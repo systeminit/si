@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div v-if="selectedEdge" class="flex flex-col h-full">
     <div class="p-xs border-b dark:border-neutral-600">
       <Inline align-y="center">
         <Icon size="md" name="plug" class="shrink-0 mr-2xs" />

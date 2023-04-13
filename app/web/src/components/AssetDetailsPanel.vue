@@ -129,24 +129,32 @@ const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
 
 const updateAsset = () => {
-  assetStore.SAVE_ASSET(assetStore.selectedAsset);
+  if (assetStore.selectedAsset) {
+    assetStore.SAVE_ASSET(assetStore.selectedAsset);
+  }
 };
 
-const disabled = computed(() => assetStore.selectedAsset.variantExists);
+const disabled = computed(
+  () => assetStore.selectedAsset?.variantExists ?? false,
+);
 
 defineProps<{
   assetId?: string;
 }>();
 
 const executeAsset = async () => {
-  await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
-  executeAssetModalRef.value.open();
+  if (assetStore.selectedAsset?.id) {
+    await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
+    executeAssetModalRef.value.open();
+  }
 };
 
 const cloneAsset = async () => {
-  const result = await assetStore.CLONE_ASSET(assetStore.selectedAsset.id);
-  if (result.result.success) {
-    assetStore.SELECT_ASSET(result.result.data.id);
+  if (assetStore.selectedAsset?.id) {
+    const result = await assetStore.CLONE_ASSET(assetStore.selectedAsset.id);
+    if (result.result.success) {
+      assetStore.SELECT_ASSET(result.result.data.id);
+    }
   }
 };
 </script>

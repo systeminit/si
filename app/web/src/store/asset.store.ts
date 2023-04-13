@@ -60,7 +60,7 @@ export const useAssetStore = () => {
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
-        selectedAsset(): Asset {
+        selectedAsset(): Asset | undefined {
           return this.assetsById[this.selectedAssetId || 0];
         },
       },

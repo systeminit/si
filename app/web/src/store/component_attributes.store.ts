@@ -135,19 +135,21 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
 
               for (const propKey in response.props) {
                 const prop = response.props[propKey];
-                const isHidden =
-                  prop.name === "type" &&
-                  this.selectedComponent.schemaName === "Generic Frame";
-                const isReadonly =
-                  prop.name === "type" &&
-                  this.selectedComponent.childNodeIds !== undefined &&
-                  this.selectedComponent.childNodeIds.length > 0;
+                if (prop) {
+                  const isHidden =
+                    prop.name === "type" &&
+                    this.selectedComponent.schemaName === "Generic Frame";
+                  const isReadonly =
+                    prop.name === "type" &&
+                    this.selectedComponent.childNodeIds !== undefined &&
+                    this.selectedComponent.childNodeIds.length > 0;
 
-                props[propKey] = {
-                  ...prop,
-                  isHidden,
-                  isReadonly,
-                };
+                  props[propKey] = {
+                    ...prop,
+                    isHidden,
+                    isReadonly,
+                  };
+                }
               }
 
               this.schema = { ...response, props };

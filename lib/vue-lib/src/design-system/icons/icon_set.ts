@@ -226,16 +226,17 @@ export type IconNames =
   | IconNameAliases
   | SpinnableIconNames;
 
-export function getIconByName(name: string) {
+export function getIconByName(name: string): string | undefined {
   /* eslint-disable @typescript-eslint/no-explicit-any */
 
   const nameWithoutModifiers = name.split("--")[0];
-
-  const icon =
-    (SPINNABLE_ICONS as any)[nameWithoutModifiers] ||
-    (ICONS as any)[nameWithoutModifiers] ||
-    (LOGO_ICONS as any)[nameWithoutModifiers] ||
-    (ICONS as any)[(ICON_NAME_ALIASES as any)[nameWithoutModifiers]] ||
-    ICONS["help-circle"];
-  return icon as string;
+  if (nameWithoutModifiers) {
+    const icon =
+      (SPINNABLE_ICONS as any)?.[nameWithoutModifiers] ||
+      (ICONS as any)?.[nameWithoutModifiers] ||
+      (LOGO_ICONS as any)?.[nameWithoutModifiers] ||
+      (ICONS as any)[(ICON_NAME_ALIASES as any)?.[nameWithoutModifiers]] ||
+      ICONS["help-circle"];
+    return icon;
+  }
 }

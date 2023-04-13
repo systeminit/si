@@ -129,9 +129,9 @@ const selectedLabel = computed<string>(() => {
       case 0:
         return props.noneSelectedLabel ?? "select an option...";
       case 1:
-        return selectedOptions.value[0].label;
+        return selectedOptions.value[0]?.label ?? "label missing";
       default:
-        return `${selectedOptions.value[0].label} (+${
+        return `${selectedOptions.value[0]?.label} (+${
           selectedOptions.value.length - 1
         })`;
     }

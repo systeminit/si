@@ -89,7 +89,7 @@ export const usePackageStore = () => {
         packageList: (state) => _.values(state.packageListByName),
         packagesBySlug: (state) =>
           _.keyBy(_.values(state.packageListByName), (p) => p.name),
-        selectedPackageListItem(): PackageListItem {
+        selectedPackageListItem(): PackageListItem | undefined {
           return this.packagesBySlug[this.urlSelectedPackageSlug ?? ""];
         },
         selectedPackage(): Package | undefined {
@@ -121,8 +121,16 @@ export const usePackageStore = () => {
             url: "/pkg/install_pkg",
             params: { name: pkg.name, ...visibility },
             onSuccess: (_response) => {
-              this.packagesByName[pkg.name].installed = true;
-              this.packageListByName[pkg.name].installed = true;
+              const pkgItem = this.packagesByName[pkg.name];
+              if (pkgItem) {
+                pkgItem.installed = true;
+                this.packagesByName[pkg.name] = pkgItem;
+              }
+              const pkgListItem = this.packageListByName[pkg.name];
+              if (pkgListItem) {
+                pkgListItem.installed = true;
+                this.packageListByName[pkg.name] = pkgListItem;
+              }
             },
           });
         },

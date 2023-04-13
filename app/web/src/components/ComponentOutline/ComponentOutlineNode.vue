@@ -1,5 +1,9 @@
 <template>
-  <div class="component-outline-node" :data-component-id="componentId">
+  <div
+    v-if="component"
+    class="component-outline-node"
+    :data-component-id="componentId"
+  >
     <!-- component info -->
     <div
       :class="
@@ -79,7 +83,7 @@
               icon="refresh"
               size="xs"
               variant="ghost"
-              @click="componentsStore.REFRESH_RESOURCE_INFO(component.id)"
+              @click="componentsStore.REFRESH_RESOURCE_INFO(component!.id)"
             />
           </div>
 
@@ -165,7 +169,7 @@ const isSelected = computed(() =>
 
 const enableGroupToggle = computed(
   () =>
-    component.value.isGroup &&
+    component.value?.isGroup &&
     childComponents.value.length &&
     !filterModeActive.value,
 );
@@ -194,13 +198,13 @@ function onHoverEnd() {
 }
 
 const parentBreadcrumbsText = computed(() => {
-  if (!component.value.parentId) return;
+  if (!component.value?.parentId) return;
 
   const parentIds =
     componentsStore.parentIdPathByComponentId[component.value.id];
   return _.map(
     parentIds,
-    (parentId) => componentsStore.componentsById[parentId].displayName,
+    (parentId) => componentsStore.componentsById[parentId]?.displayName,
   ).join(" > ");
 });
 </script>

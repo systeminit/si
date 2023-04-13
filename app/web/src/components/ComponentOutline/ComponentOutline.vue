@@ -187,7 +187,9 @@ const onKeyDown = (e: KeyboardEvent) => {
       toSelectIndex = 0;
     }
     const toSelect = componentIds[toSelectIndex];
-    componentsStore.setSelectedComponentId(toSelect);
+    if (toSelect) {
+      componentsStore.setSelectedComponentId(toSelect);
+    }
   }
 };
 </script>

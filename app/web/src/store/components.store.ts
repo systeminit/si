@@ -232,7 +232,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           return _.groupBy(this.allComponents, (c) =>
             // remapping to component id... PLEASE LETS KILL NODE ID!
             c.parentNodeId
-              ? this.componentsByNodeId[c.parentNodeId].id
+              ? this.componentsByNodeId[c.parentNodeId]?.id
               : "root",
           );
         },
@@ -245,13 +245,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) => {
             _.each(components, (c) => {
               parentsLookup[c.id] = parentIds;
-              processList(this.componentsByParentId[c.id], [
-                ...parentIds,
-                c.id,
-              ]);
+              const component = this.componentsByParentId[c.id];
+              if (component) {
+                processList(component, [...parentIds, c.id]);
+              }
             });
           };
-          processList(this.componentsByParentId.root, []);
+          if (this.componentsByParentId?.root) {
+            processList(this.componentsByParentId.root, []);
+          }
           return parentsLookup;
         },
 
@@ -264,20 +266,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         deepChildIdsByComponentId(): Record<ComponentId, ComponentId[]> {
           const getDeepChildIds = (id: ComponentId): string[] => {
             const component = this.componentsById[id];
-            if (!component.isGroup) return [];
+            if (!component?.isGroup) return [];
             return [
               ...(component.childIds ? component.childIds : []),
               ..._.flatMap(component.childIds, getDeepChildIds),
             ];
           };
 
-          return _.mapValues(this.componentsById, (component, id) =>
+          return _.mapValues(this.componentsById, (_component, id) =>
             getDeepChildIds(id),
           );
         },
 
         allEdges: (state) => _.values(state.edgesById),
-        selectedComponent(): FullComponent {
+        selectedComponent(): FullComponent | undefined {
           return this.componentsById[this.selectedComponentId || 0];
         },
         selectedComponents(): FullComponent[] {
@@ -285,7 +287,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             _.map(this.selectedComponentIds, (id) => this.componentsById[id]),
           );
         },
-        selectedEdge(): Edge {
+        selectedEdge(): Edge | undefined {
           return this.edgesById[this.selectedEdgeId || 0];
         },
         selectedComponentDiff(): ComponentDiff | undefined {
@@ -322,8 +324,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
               statusIcons: _.compact([
-                qualificationStatusToIconMap[qualificationStatus],
-                confirmationStatusToIconMap[confirmationStatus] || {
+                qualificationStatusToIconMap[qualificationStatus ?? "failure"],
+                confirmationStatusToIconMap[
+                  confirmationStatus ?? "failure"
+                ] ?? {
                   icon: "minus",
                   tone: "neutral",
                 },
@@ -399,7 +403,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const fromNodeId = edge.fromNodeId;
             const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
-            connectedNodes[fromNodeId].push(toNodeId);
+            connectedNodes[fromNodeId]!.push(toNodeId);
           });
 
           const connectedIds: ComponentId[] = [componentId];
@@ -545,8 +549,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             onSuccess: (response) => {
               // change our temporary id to the real one, only if we haven't re-fetched the diagram yet
               if (this.edgesById[tempId]) {
-                this.edgesById[response.connection.id] = this.edgesById[tempId];
-                delete this.edgesById[tempId];
+                const edge = this.edgesById[tempId];
+                if (edge) {
+                  this.edgesById[response.connection.id] = edge;
+                  delete this.edgesById[tempId];
+                }
               }
               // TODO: store component details rather than waiting for re-fetch
             },
@@ -629,25 +636,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              if (this.edgesById[edgeId].changeStatus === "added") {
+              const edge = this.edgesById[edgeId];
+
+              if (edge?.changeStatus === "added") {
                 const originalEdge = this.edgesById[edgeId];
                 delete this.edgesById[edgeId];
                 this.selectedEdgeId = null;
                 return () => {
-                  this.edgesById[edgeId] = originalEdge;
+                  if (originalEdge) {
+                    this.edgesById[edgeId] = originalEdge;
+                  }
                   this.selectedEdgeId = edgeId;
                 };
-              } else {
-                const originalStatus = this.edgesById[edgeId].changeStatus;
-                this.edgesById[edgeId].changeStatus = "deleted";
-                this.edgesById[edgeId].deletedInfo = {
+              } else if (edge) {
+                const originalStatus = edge.changeStatus;
+                edge.changeStatus = "deleted";
+                edge.deletedInfo = {
                   timestamp: new Date().toISOString(),
                   actor: { kind: "user", label: "You" },
                 };
+                this.edgesById[edgeId] = edge;
 
                 return () => {
-                  this.edgesById[edgeId].changeStatus = originalStatus;
-                  delete this.edgesById[edgeId]?.deletedInfo;
+                  this.edgesById[edgeId] = {
+                    ...edge,
+                    changeStatus: originalStatus,
+                    deletedInfo: undefined,
+                  };
                   this.selectedEdgeId = edgeId;
                 };
               }
@@ -669,11 +684,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             optimistic: () => {
               const originalEdge = this.edgesById[edgeId];
-              delete this.edgesById[edgeId]?.deletedInfo;
-              this.edgesById[edgeId].changeStatus = "unmodified";
+              if (originalEdge) {
+                this.edgesById[edgeId] = {
+                  ...originalEdge,
+                  changeStatus: "unmodified",
+                  deletedInfo: undefined,
+                };
+              }
 
               return () => {
-                this.edgesById[edgeId] = originalEdge;
+                if (originalEdge) {
+                  this.edgesById[edgeId] = originalEdge;
+                }
                 this.selectedEdgeId = edgeId;
               };
             },
@@ -693,21 +715,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              const originalStatus =
-                this.rawComponentsById[componentId].changeStatus;
-              this.rawComponentsById[componentId].changeStatus = "deleted";
-              this.rawComponentsById[componentId].deletedInfo = {
-                timestamp: new Date().toISOString(),
-                actor: { kind: "user", label: "You" },
-              };
+              const component = this.rawComponentsById[componentId];
+              const originalStatus = component?.changeStatus;
+              if (component) {
+                this.rawComponentsById[componentId] = {
+                  ...component,
+                  changeStatus: "deleted",
+                  deletedInfo: {
+                    timestamp: new Date().toISOString(),
+                    actor: { kind: "user", label: "You" },
+                  },
+                };
+              }
 
               // TODO: optimistically delete connected edges?
               // not super important...
-
               return () => {
-                this.rawComponentsById[componentId].changeStatus =
-                  originalStatus;
-                delete this.rawComponentsById[componentId].deletedInfo;
+                if (component && originalStatus) {
+                  this.rawComponentsById[componentId] = {
+                    ...component,
+                    changeStatus: originalStatus,
+                    deletedInfo: undefined,
+                  };
+                }
               };
             },
           });

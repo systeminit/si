@@ -176,9 +176,9 @@ export const useFuncStore = () => {
           },
           keyRequestStatusBy: func.id,
           onSuccess: (response) => {
+            func.associations = response.associations;
+            func.isRevertible = response.isRevertible;
             this.funcDetailsById[func.id] = func;
-            this.funcDetailsById[func.id].associations = response.associations;
-            this.funcDetailsById[func.id].isRevertible = response.isRevertible;
             // Forces a reload if the types have changed (reloads typescript compiler)
             if (response.types !== func.types) {
               this.FETCH_FUNC_DETAILS(func.id);
@@ -197,10 +197,13 @@ export const useFuncStore = () => {
           },
         });
       },
+
       async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
         const func = this.funcById(funcId);
 
-        trackEvent("func_save_and_exec", { id: func.id, name: func.name });
+        if (func) {
+          trackEvent("func_save_and_exec", { id: func.id, name: func.name });
+        }
 
         return new ApiRequest<SaveFuncResponse>({
           method: "post",
@@ -208,8 +211,12 @@ export const useFuncStore = () => {
           keyRequestStatusBy: funcId,
           params: { ...func, ...visibility },
           onSuccess: (response) => {
-            this.funcDetailsById[funcId].associations = response.associations;
-            this.funcDetailsById[funcId].isRevertible = response.isRevertible;
+            const func = this.funcDetailsById[funcId];
+            if (func) {
+              func.associations = response.associations;
+              func.isRevertible = response.isRevertible;
+              this.funcDetailsById[funcId] = func;
+            }
           },
         });
       },
@@ -282,8 +289,12 @@ export const useFuncStore = () => {
       },
 
       updateFuncCode(funcId: FuncId, code: string) {
-        this.funcDetailsById[funcId].code = code;
-        this.enqueueFuncSave(funcId);
+        const func = this.funcDetailsById[funcId];
+        if (func) {
+          func.code = code;
+          this.funcDetailsById[funcId] = func;
+          this.enqueueFuncSave(funcId);
+        }
       },
 
       enqueueFuncSave(funcId: FuncId) {
@@ -292,11 +303,17 @@ export const useFuncStore = () => {
         // however this should work for now, and lets the store handle this logic
         if (!this.saveQueue[funcId]) {
           this.saveQueue[funcId] = _.debounce(() => {
-            this.UPDATE_FUNC(this.funcById(funcId));
+            const func = this.funcById(funcId);
+            if (func) {
+              this.UPDATE_FUNC(func);
+            }
           }, 2000);
         }
         // call debounced function which will trigger sending the save to the backend
-        this.saveQueue[funcId]();
+        const saveFunc = this.saveQueue[funcId];
+        if (saveFunc) {
+          saveFunc();
+        }
       },
     },
     onActivated() {

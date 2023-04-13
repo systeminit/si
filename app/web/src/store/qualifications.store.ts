@@ -49,7 +49,7 @@ export const useQualificationsStore = () => {
         },
         qualificationStatusWithRollupsByComponentId(): Record<
           ComponentId,
-          QualificationStatus
+          QualificationStatus | undefined
         > {
           const componentsStore = useComponentsStore();
 
@@ -139,7 +139,7 @@ export const useQualificationsStore = () => {
           // Do not fetch qualifications for a deleted component
           const componentsStore = useComponentsStore();
           const component = componentsStore.componentsById[componentId];
-          if (component.changeStatus === "deleted") return;
+          if (component?.changeStatus === "deleted") return;
 
           return new ApiRequest<Qualification[]>({
             url: "component/list_qualifications",

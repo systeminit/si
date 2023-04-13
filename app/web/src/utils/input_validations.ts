@@ -63,7 +63,7 @@ export const usePropertyEditorValidations = (
         const error = validation.value.errors[x];
         results.push({
           id: `${x}`,
-          message: error.message,
+          message: error?.message ?? "",
           check: () => false,
         });
       }
