@@ -65,6 +65,10 @@ pub enum Request {
         change_set_id: Id,
         node_id: Id,
     },
+    ValueProcessingFailed {
+        change_set_id: Id,
+        node_id: Id,
+    },
     Bye {
         change_set_id: Id,
     },
@@ -76,5 +80,6 @@ pub enum Response {
     OkToCreate,
     OkToProcess { node_ids: Vec<Id> },
     BeenProcessed { node_id: Id },
+    Failed { node_id: Id },
     Shutdown,
 }

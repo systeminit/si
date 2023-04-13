@@ -268,6 +268,18 @@ impl DependentValuesUpdate {
                         // the pg_pool to do writes
                         ctx.rollback().await?;
                     }
+                    council_server::Response::Failed { node_id } => {
+                        debug!(?node_id, job_id = ?self.job_id(), "Node failed on another job");
+                        let id = AttributeValueId::from(node_id);
+                        dependency_graph.remove(&id);
+
+                        // Send a completed status for this value and *remove* it from the hash
+                        status_updater.values_running(ctx, vec![id]).await;
+                        status_updater.values_completed(ctx, vec![id]).await;
+                        // Status updater reads from the database and uses its own connection from
+                        // the pg_pool to do writes
+                        ctx.rollback().await?;
+                    }
                     // If we receive an OkToCreate here, it's because council is telling us that it's Ok to run
                     // `AttributeValue::create_dependent_values` after it has already told us to do that, and after
                     // we have told it that we've finished doing so. This should never be able to happen normally,
@@ -363,7 +375,16 @@ async fn update_value(
     council: council_server::PubClient,
     mut status_updater: StatusUpdater,
 ) -> JobConsumerResult<()> {
-    attribute_value.update_from_prototype_function(&ctx).await?;
+    let update_result = attribute_value.update_from_prototype_function(&ctx).await;
+    // We don't propagate the error up, because we want the rest of the nodes in the graph to make progress
+    // if they are able to.
+    if update_result.is_err() {
+        error!(?update_result, attribute_value_id = %attribute_value.id(), "Error updating AttributeValue");
+        council
+            .failed_processing_value(attribute_value.id().into())
+            .await?;
+        ctx.rollback().await?;
+    }
 
     // Send a completed status for this value and *remove* it from the hash
     status_updater
@@ -378,7 +399,9 @@ async fn update_value(
     // Commit the updated attr value & publish the WsEvent
     ctx.commit().await?;
 
-    council.processed_value(attribute_value.id().into()).await?;
+    if update_result.is_ok() {
+        council.processed_value(attribute_value.id().into()).await?;
+    }
 
     Ok(())
 }

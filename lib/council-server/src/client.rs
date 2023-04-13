@@ -65,6 +65,22 @@ impl PubClient {
         Ok(())
     }
 
+    pub async fn failed_processing_value(&self, node_id: Id) -> Result<()> {
+        let message = serde_json::to_vec(&Request::ValueProcessingFailed {
+            change_set_id: self.change_set_id,
+            node_id,
+        })?;
+        self.nats
+            .publish_with_reply_or_headers(
+                &self.pub_channel,
+                Some(&self.reply_channel),
+                None,
+                message,
+            )
+            .await?;
+        Ok(())
+    }
+
     pub async fn bye(self) -> Result<()> {
         let message = serde_json::to_vec(&Request::Bye {
             change_set_id: self.change_set_id,
