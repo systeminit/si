@@ -214,14 +214,17 @@ function registerTab(slug: string, component: TabGroupItemDefinition) {
 }
 function unregisterTab(slug: string) {
   if (unmounting.value) return;
-  delete tabs[slug];
   orderedTabSlugs.value = _.without(orderedTabSlugs.value, slug);
+  delete tabs[slug];
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
   if (isNoTabs.value) {
     emit("update:selectedTab", undefined);
   } else {
-    autoSelectTab();
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    nextTick(() => {
+      autoSelectTab();
+    });
   }
 }
 
@@ -229,13 +232,25 @@ function refreshSettingsFromTabs() {
   // currently there are no settings here - any child settings to set on the parent would go here
 }
 
+const lastSelectedTabIndex = ref(0);
 function selectTab(slug?: string) {
-  if (selectedTabSlug.value === slug || unmounting.value) return;
+  if (unmounting.value) return;
+  if (selectedTabSlug.value === slug) return;
+
+  // if selecting no tab, autoselect
+  if (!slug) {
+    autoSelectTab();
+    return;
+  }
 
   // select the tab
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
-  emit("update:selectedTab", selectedTabSlug.value);
+
+  lastSelectedTabIndex.value = _.indexOf(
+    orderedTabSlugs.value,
+    selectedTabSlug.value,
+  );
 
   if (props.trackingSlug) {
     posthog.capture("wa-tab_selected", {
@@ -268,6 +283,9 @@ function selectTab(slug?: string) {
       }
     }
   }
+
+  // emit new selected tab to parent in case it needs it, for example to sync the URL
+  emit("update:selectedTab", selectedTabSlug.value);
 }
 
 const rememberLastTabStorageKey = computed(() => {
@@ -295,14 +313,18 @@ function autoSelectTab(isInitialSelection = false) {
     // select the starting tab if it exists
     // TODO: probably only want to do this in some cases (like initial load)
     selectTab(props.startSelectedTabSlug);
+    return;
   } else if (isInitialSelection && rememberLastTabStorageKey.value) {
     const slug = window.localStorage.getItem(rememberLastTabStorageKey.value);
     if (slug && tabs[slug]) {
       selectTab(slug);
+      return;
     }
-  } else {
-    selectTab(_.keys(tabs)[0]);
   }
+  // fallback to just autoselecting the tab next the last one selected
+  let newIndex = (lastSelectedTabIndex.value || 0) - 1;
+  if (newIndex < 0) newIndex = 0;
+  selectTab(orderedTabSlugs.value[newIndex]);
 }
 
 function fixOverflowDropdown() {

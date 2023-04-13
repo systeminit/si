@@ -5,7 +5,7 @@
       <ChangeSetPanel v-if="!isViewMode" />
       <div class="grow relative">
         <TabGroup
-          start-selected-tab-slug="asset_palette"
+          remember-selected-tab-key="diagram_left"
           tracking-slug="diagram_outline"
         >
           <TabGroupItem
