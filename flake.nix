@@ -44,6 +44,7 @@
             nodePackages.typescript-language-server
             openssl
             pgcli
+            pkg-config
             postgresql_14
             protobuf
             rustToolchain
