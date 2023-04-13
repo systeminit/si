@@ -151,6 +151,18 @@ pub struct QualificationView {
     pub qualification_name: String,
 }
 
+impl PartialOrd for QualificationView {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.title.partial_cmp(&other.title)
+    }
+}
+
+impl Ord for QualificationView {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.title.cmp(&other.title)
+    }
+}
+
 impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
