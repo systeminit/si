@@ -1,13 +1,13 @@
 ---
-title: Customizing System Initiative by writing JavaScript Code
+title: Customizing System Initiative by writing TypeScript Code
 ---
 
-## Customizing System Initiative by writing JavaScript Code
+## Customizing System Initiative by writing TypeScript Code
 
 In the previous tutorial, you launched Whiskers R We running on [Fedora CoreOS](https://getfedora.org/en/coreos) EC2
 instance. The generous folks at Whiskers R We want to ensure they are using the current stable version of the AMI for
 their AWS Region any time they launch a new instance in AWS. You will help them do that by writing a custom
-Qualification (using JavaScript) for all the AMIs in their Workspace.
+Qualification (using TypeScript) for all the AMIs in their Workspace.
 
 First, ensure your development environment is running by following the instructions in
 the '[Run a development instance of System Initiative](url)' section. Once you're ready, let's get started!
@@ -79,7 +79,7 @@ is configured to run on all Docker Image assets.
 The qualification function looks like this:
 
 ```js
-async function qualificationDockerImageExists (component: Input): Promise<Output> {
+async function qualificationDockerImageExists(component: Input): Promise<Output> {
   if (!component.domain?.image) {
     return {
       result: "failure",
@@ -94,9 +94,9 @@ async function qualificationDockerImageExists (component: Input): Promise<Output
 }
 ```
 
-Functions in System Initiative are written in [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript). The
+Functions in System Initiative are written in [TypeScript](https://www.typescriptlang.org/). The
 function signature tells you this is
-an [async JavaScript function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function),
+an [async TypeScript function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function),
 meaning it can use the async/await syntax in the function body.
 
 Our function takes a single argument - a `component`, representing the specific asset that the function is being called
@@ -116,7 +116,7 @@ Try updating this function with a slightly more helpful error message when the n
 si-XXXX). The new function body should be:
 
 ```js
-async function qualificationDockerImageExists (component: Input): Promise<Output> {
+async function qualificationDockerImageExists(component: Input): Promise<Output> {
   if (!component.domain?.image || component.domain?.image.startsWith("si-")) {
     return {
       result: "failure",
@@ -233,7 +233,7 @@ Now try changing your qualification functions return value to report a failure r
 happens. Put the following code into the editor:
 
 ```js
-async function qualification (component: Input): Promise<Output> {
+async function qualification(component: Input): Promise<Output> {
   return {
     result: 'failure',
     message: 'Component qualified'
@@ -245,11 +245,11 @@ Press the Execute button to see the Qualification status change, in both the Cus
 
 ![Qualification status failed on purpose](/tutorial-img/06-customizing/qualification_status_failed_on_purpose.png)
 
-When authoring JavaScript functions, it's often convenient to use `console.log()` to print debug output. Add a
+When authoring TypeScript functions, it's often convenient to use `console.log()` to print debug output. Add a
 console.log message to the first line of our function:
 
 ```js
-async function qualification (component: Input): Promise<Output> {
+async function qualification(component: Input): Promise<Output> {
   console.log("Hello from a custom qualification");
   return {
     result: 'failure',
@@ -276,7 +276,7 @@ The first step in writing our Qualification is to fetch that file and deserializ
 like this:
 
 ```js
-async function qualification (component: Input): Promise<Output> {
+async function qualification(component: Input): Promise<Output> {
   const response = await fetch('https://builds.coreos.fedoraproject.org/streams/stable.json');
   const coreos = await response.json();
   const validArm64ImagesByRegion = coreos.architectures?.aarch64?.images?.aws?.regions;
@@ -292,7 +292,7 @@ async function qualification (component: Input): Promise<Output> {
 
 The code starts with a call to the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) - this call
 is asynchronous, and so you'll need to `await` it to get your response. The next line then waits until the entire
-response body has been received, and then deserializes from JSON into a JavaScript Object.
+response body has been received, and then deserializes from JSON into a TypeScript Object.
 
 The next four lines extract a map of all the current stable AMIs, indexed by region, and log the output. Press the
 Execute button, then View Details, and you should see output similar to this:
@@ -313,10 +313,10 @@ To write the rest of the code, you'll need to map out the various result states.
 | N         | Y          | N           | Failure | Incorrect CoreOS Stable AMI. Provide the correct AMIs                    |
 | Y         | Y          | Y           | Success | Using current CoreOS Stable AMI                                          |
 
-Update the code in the editor with the following function, which translates the above into JavaScript:
+Update the code in the editor with the following function, which translates the above into TypeScript:
 
 ```js
-async function qualification (component: Input): Promise<Output> {
+async function qualification(component: Input): Promise<Output> {
   const response = await fetch('https://builds.coreos.fedoraproject.org/streams/stable.json');
   const coreos = await response.json();
   const validArm64ImagesByRegion = coreos.architectures?.aarch64?.images?.aws?.regions;
@@ -407,7 +407,7 @@ Nice work! You've added a new Qualification to System Initiative that reflects t
 
 ### How does this thing work?
 
-You ask excellent questions! Everything in System Initiative is a result of a JavaScript function execution. When you
+You ask excellent questions! Everything in System Initiative is a result of a TypeScript function execution. When you
 define a new asset, you are defining the attributes it has, and setting functions for each value. As you have just seen,
 things like validations and qualifications are just functions. When System Initiative generates code for you - it's just
 a function that's reactive to the asset's attributes. When Confirmations recommend actions, these, too, are functions
@@ -430,7 +430,7 @@ explore what we can build together!
 
 You have successfully customized System Initiative. You learned:
 
-* Everything in System Initiative is a JavaScript function, editable through the customize screen
+* Everything in System Initiative is a TypeScript function, editable through the customize screen
 * System Initiative is real-time and multiplayer
 * You can use Qualifications to write "Policy as Code" that executes in real time
 * Underneath System Initiative is a reactive hyper-graph of functions

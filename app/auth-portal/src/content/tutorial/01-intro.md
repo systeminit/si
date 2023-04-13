@@ -60,7 +60,7 @@ You’re going to:
 1. Run a development instance of System Initiative
 2. Deploy a containerized web application to an AWS EC2 instance
 3. Clean up the resources you created in AWS
-4. Customize System Initiative by writing JavaScript code
+4. Customize System Initiative by writing TypeScript code
 
 As you progress through the tutorial, we will automatically update the index on the left to let you know you’re ready to
 move on to the next step. Let’s go!
