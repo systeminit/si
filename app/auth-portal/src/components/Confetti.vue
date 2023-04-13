@@ -66,13 +66,11 @@ const _now = Date.now || (() => new Date().getTime());
 })(window);
 
 
-const speed = 50;
-const duration = 1.0 / speed;
-const confettiRibbonCount = 10;
+const confettiRibbonCount = 8;
 const ribbonPaperCount = 30;
 const ribbonPaperDist = 8.0;
 const ribbonPaperThick = 8.0;
-const confettiPaperCount = 100;
+const confettiPaperCount = 150;
 const DEG_TO_RAD = PI / 180;
 const RAD_TO_DEG = 180 / PI;
 const colors = [
@@ -207,7 +205,7 @@ class ConfettiPaper {
   public time: number;
   public frontColor: string;
   public backColor: string;
-
+  public finished = false;
 
   constructor(_x:number, _y:number) {
     this.pos = new Vector2(_x, _y);
@@ -218,7 +216,7 @@ class ConfettiPaper {
     this.size = 5.0;
     this.oscillationSpeed = random() * 1.5 + 0.5;
     this.xSpeed = 40.0;
-    this.ySpeed = random() * 60 + 50.0;
+    this.ySpeed = random() * 50 + canvasElHeight.value / 4;
     this.corners = [];
     this.time = random();
     const ci = round(random() * (colors.length - 1));
@@ -231,7 +229,8 @@ class ConfettiPaper {
     }
   }
   Update(_dt:number) {
-    if (this.pos.y > canvasHeight.value) {
+    if (this.pos.y > canvasElHeight.value) {
+      this.finished = true;
       if (!props.noLoop) this.Reset();
       return;
     }
@@ -243,7 +242,8 @@ class ConfettiPaper {
     this.pos.y += this.ySpeed * _dt;
   }
   Reset() {
-    this.pos.x = random() * canvasWidth.value;
+    this.finished = false;
+    this.pos.x = random() * canvasElWidth.value;
     this.pos.y = 0;
   }
   Draw(_g: CanvasRenderingContext2D) {
@@ -281,6 +281,7 @@ class ConfettiRibbon {
   public oscillationSpeed: number;
   public oscillationDistance: number;
   public ySpeed: number;
+  public finished = false;
 
   constructor(
     _x: number,
@@ -303,9 +304,9 @@ class ConfettiRibbon {
     this.prevPosition = new Vector2(_x, _y);
     this.velocityInherit = random() * 2 + 4;
     this.time = random() * 100;
-    this.oscillationSpeed = random() * 2 + 2;
-    this.oscillationDistance = random() * 40 + 40;
-    this.ySpeed = random() * 40 + 80;
+    this.oscillationSpeed = random() * 2 + 8;
+    this.oscillationDistance = random() * 40 + 50;
+    this.ySpeed = random() * 40 + canvasElHeight.value / 4;
     for (let i = 0; i < this.particleCount; i++) {
       this.particles[i] = new EulerMass(
         _x,
@@ -318,8 +319,9 @@ class ConfettiRibbon {
   Update(_dt: number) {
     if (
       this.position.y >
-      canvasHeight.value + this.particleDist * this.particleCount
+      canvasElHeight.value + this.particleDist * this.particleCount
     ) {
+      this.finished = true;
       if (!props.noLoop) this.Reset();
       return;
     }
@@ -358,14 +360,15 @@ class ConfettiRibbon {
     }
   };
   Reset() {
-    this.position.y = -random() * canvasHeight.value;
-    this.position.x = random() * canvasWidth.value;
+    this.finished = false;
+    this.position.y = -random() * canvasElHeight.value;
+    this.position.x = random() * canvasElWidth.value;
     this.prevPosition = new Vector2(this.position.x, this.position.y);
     this.velocityInherit = random() * 2 + 4;
     this.time = random() * 100;
     this.oscillationSpeed = random() * 2.0 + 1.5;
     this.oscillationDistance = random() * 40 + 40;
-    this.ySpeed = random() * 40 + 80;
+    this.ySpeed = random() * 40 + 400;
     const ci = round(random() * (colors.length - 1));
     this.frontColor = colors[ci][0];
     this.backColor = colors[ci][1];
@@ -511,7 +514,6 @@ function windowResizeHandler() {
 let interval: number | null = null;
 let running = false;
 
-
 function reset() {
   if (!canvasRef.value) return;
 
@@ -522,7 +524,7 @@ function reset() {
   for (i = 0; i < confettiRibbonCount; i++) {    
     confettiRibbons[i] = new ConfettiRibbon(
       random() * canvasElWidth.value,
-      -random() * canvasElHeight.value,
+      -random() * canvasElHeight.value * .4,
       ribbonPaperCount,
       ribbonPaperDist,
       ribbonPaperThick,
@@ -535,7 +537,7 @@ function reset() {
     confettiPapers[i] = new ConfettiPaper(
       random() * canvasElWidth.value,
       props.startTop ?
-        -random() * canvasElHeight.value
+        -random() * canvasElHeight.value / 2
         : random() * canvasElHeight.value,
     );
   }
@@ -552,7 +554,19 @@ function stop() {
   cAF(interval!);
   running = false;
 }
+
+
+// const speed = computed(() => canvasHeight.value / 300);
+// const duration = computed(() => 1 / speed.value);
+
+let duration = 10/1000;
+let lastUpdateAt: Date;
 function update() {
+  const now = new Date();
+  if (lastUpdateAt) {
+    duration = (now.getTime() - lastUpdateAt.getTime())/1000;
+  }
+  lastUpdateAt = now
   canvasContext.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
   let i;
   for (i = 0; i < confettiPaperCount; i++) {
@@ -563,7 +577,15 @@ function update() {
     confettiRibbons[i].Update(duration);
     confettiRibbons[i].Draw(canvasContext);
   }
-  interval = rAF(update);
+  if (
+    props.noLoop && 
+    confettiPapers.every((c) => c.finished) && confettiRibbons.every((c) => c.finished)
+  ) {
+    // not looping and all finished...
+    // might want to do some cleanup?
+  } else {
+    interval = rAF(update);
+  }
 }
 
 

@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <Confetti :active="activeStepSlug === 'next_steps'" start-top no-loop />
+    <Confetti :active="runConfetti" start-top no-loop />
 
     <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
       <RichText>
@@ -186,16 +186,26 @@ const lastEnabledStepSlug = computed(() =>
   _.last(_.keys(_.pickBy(stepsEnabled.value))),
 );
 
+const runConfetti = ref(false);
+
 const activeStepSlug = ref("");
 async function stepContinueHandler() {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  onboardingStore.COMPLETE_TUTORIAL_STEP(activeStepSlug.value);
-
   const currentStepIndex = _.indexOf(
     _.keys(TUTORIAL_STEPS),
     activeStepSlug.value,
   );
   const nextStepSlug = _.keys(TUTORIAL_STEPS)[currentStepIndex + 1];
+
+  // only show confetti on first time arriving
+  if (
+    nextStepSlug === "next_steps" &&
+    !onboardingStore.stepsCompleted[activeStepSlug.value]
+  ) {
+    runConfetti.value = true;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  onboardingStore.COMPLETE_TUTORIAL_STEP(activeStepSlug.value);
 
   // continue button on next steps goes to dashboard
   if (!nextStepSlug) {

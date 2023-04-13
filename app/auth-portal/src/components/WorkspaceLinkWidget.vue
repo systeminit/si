@@ -7,14 +7,10 @@
       clsx(
         'group',
         'p-sm flex items-center gap-sm rounded-md',
-        'bg-action-600 text-white',
-
-        onboardingStore.devInstanceOnline &&
-          'cursor-pointer hover:bg-action-500',
-        !onboardingStore.devInstanceOnline && 'cursor-not-allowed',
+        'bg-action-600 hover:bg-action-500 text-white',
+        'cursor-pointer',
       )
     "
-    @click="onClick"
   >
     <Icon v-if="!compact" name="laptop" size="lg" />
     <Stack spacing="xs">
@@ -125,10 +121,4 @@ const workspace = computed(() =>
     ? workspacesStore.workspacesById[props.workspaceId]
     : workspacesStore.defaultWorkspace,
 );
-
-function onClick(e: MouseEvent) {
-  if (!onboardingStore.devInstanceOnline) {
-    e.preventDefault();
-  }
-}
 </script>

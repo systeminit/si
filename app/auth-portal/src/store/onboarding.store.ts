@@ -88,7 +88,6 @@ export const useOnboardingStore = () => {
             this.devFrontendOnline &&
             this.devBackendOnline
           ) {
-            this.stepsCompleted.dev_setup = true;
             tracker.trackEvent("dev_env_online");
             // will toggle posthog.isFeatureEnabled("vro_dev-setup-completed") &&
           }
