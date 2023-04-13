@@ -41,6 +41,7 @@ impl Component {
         let all_fields_valid_qualification_view =
             Self::all_fields_valid_qualification(ctx, component_id).await?;
         let mut results: Vec<QualificationView> = vec![all_fields_valid_qualification_view];
+        let mut qualification_views = vec![];
 
         // Prepare to assemble qualification views and access the "/root/qualification" prop tree.
         // We will use its implicit internal provider id and its corresponding prop id to do so.
@@ -124,9 +125,13 @@ impl Component {
             )
             .await?
             {
-                results.push(qual_view);
+                qualification_views.push(qual_view);
             }
         }
+
+        qualification_views.sort();
+        // We want the "all fields valid" to always be first
+        results.extend(qualification_views);
 
         WsEvent::checked_qualifications(ctx, component_id)
             .await?
