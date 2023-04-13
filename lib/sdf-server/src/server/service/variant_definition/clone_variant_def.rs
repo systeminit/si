@@ -43,7 +43,7 @@ pub async fn create_variant_def(
     let mut name;
     loop {
         name = format!("{} Clone {}", variant_def.name(), generate_unique_id(4));
-        match Schema::schema_for_name(&ctx, &name).await {
+        match Schema::find_by_name(&ctx, &name).await {
             Ok(_) => continue,
             Err(SchemaError::NotFoundByName(_)) | Err(SchemaError::NoDefaultVariant(_)) => break,
             Err(e) => {

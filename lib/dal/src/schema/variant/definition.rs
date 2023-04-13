@@ -442,7 +442,7 @@ impl SchemaVariant {
 
         let schema_name = schema_variant_definition_metadata.name.clone();
 
-        let schema_id = match Schema::schema_for_name(ctx, &schema_name).await {
+        let schema_id = match Schema::find_by_name(ctx, &schema_name).await {
             Ok(schema) => *schema.id(),
             Err(SchemaError::NotFoundByName(_)) => {
                 let schema = Schema::new(ctx, &schema_name, &ComponentKind::Standard)

@@ -15,7 +15,7 @@ use tokio::time;
 use tokio::time::Instant;
 use veritech_client::{Client, EncryptionKey};
 
-use crate::builtins::BuiltinSchemaOption;
+use crate::builtins::SelectedTestBuiltinSchemas;
 
 pub mod action_prototype;
 pub mod actor_view;
@@ -285,15 +285,7 @@ pub async fn migrate_all(
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     migrate(pg).await?;
-    migrate_builtins(
-        pg,
-        nats,
-        job_processor,
-        veritech,
-        encryption_key,
-        BuiltinSchemaOption::All,
-    )
-    .await?;
+    migrate_builtins(pg, nats, job_processor, veritech, encryption_key, None).await?;
     Ok(())
 }
 
@@ -340,7 +332,7 @@ pub async fn migrate_builtins(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
-    builtin_schema_option: BuiltinSchemaOption,
+    selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -357,7 +349,7 @@ pub async fn migrate_builtins(
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
     ctx.blocking_commit().await?;
 
-    builtins::migrate(&ctx, builtin_schema_option).await?;
+    builtins::migrate(&ctx, selected_test_builtin_schemas).await?;
 
     ctx.blocking_commit().await?;
 
