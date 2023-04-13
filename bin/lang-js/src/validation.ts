@@ -1,5 +1,5 @@
 import Debug, { Debugger } from "debug";
-import { base64Decode } from "./base64";
+import { base64ToJs } from "./base64";
 import { NodeVM } from "vm2";
 
 import {
@@ -48,8 +48,7 @@ export async function executor<Req extends RequestWithCode, Result>(
   wrapCode: (code: string, handler: string) => string,
   execute: (vm: NodeVM, code: string, request: Req) => Promise<Result>
 ) {
-  const originalCode = base64Decode(request.codeBase64);
-  debug({ originalCode });
+  const originalCode = base64ToJs(request.codeBase64);
 
   const code = wrapCode(originalCode, request.handler);
   debug({ code });
@@ -84,7 +83,7 @@ async function execute(
     });
     debug({ result: JSON.stringify(result) });
   } catch (err) {
-    return failureExecution(err, executionId);
+    return failureExecution(err as Error, executionId);
   }
 
   const invalidReturnType = "InvalidReturnType";

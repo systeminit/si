@@ -6,6 +6,6 @@
   "display_name": "si:awsKeyPairRefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "awsKeyPairRefreshCommand.js",
+  "code_file": "awsKeyPairRefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

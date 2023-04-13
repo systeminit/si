@@ -6,6 +6,6 @@
   "display_name": "si:awsEc2RefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEc2RefreshCommand.js",
+  "code_file": "awsEc2RefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

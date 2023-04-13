@@ -6,6 +6,6 @@
   "display_name": "si:awsAmiRefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "awsAmiRefreshCommand.js",
+  "code_file": "awsAmiRefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

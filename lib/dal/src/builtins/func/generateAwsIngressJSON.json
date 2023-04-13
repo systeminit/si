@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsIngressJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsIngressJSON.js",
+  "code_file": "generateAwsIngressJSON.ts",
   "code_entrypoint": "generateAwsIngressJSON"
 }

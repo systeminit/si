@@ -10,6 +10,6 @@
   "display_name": "Verify AWS Region has region set",
   "description": "Verify AWS Region has region set",
   "link": "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
-  "code_file": "qualificationAwsRegionHasRegionSet.js",
+  "code_file": "qualificationAwsRegionHasRegionSet.ts",
   "code_entrypoint": "qualificationAwsRegionHasRegionSet"
 }

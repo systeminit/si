@@ -9,6 +9,6 @@
   "response_type": "String",
   "display_name": "si:codeFromCodeGenerationTree",
   "description": "Return the code string field from a code generation tree",
-  "code_file": "codeFromCodeGenerationTree.js",
+  "code_file": "codeFromCodeGenerationTree.ts",
   "code_entrypoint": "codeFromCodeGenerationTree"
 }

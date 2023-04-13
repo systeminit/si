@@ -6,6 +6,6 @@
   "display_name": "si:awsEipCreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEipCreateCommand.js",
+  "code_file": "awsEipCreateCommand.ts",
   "code_entrypoint": "create"
 }

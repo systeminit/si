@@ -6,6 +6,6 @@
   "hidden": true,
   "description": null,
   "link": null,
-  "code_file": "leroLeroQuestionCommand.js",
+  "code_file": "leroLeroQuestionCommand.ts",
   "code_entrypoint": "question"
 }

@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsSecurityGroupJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsSecurityGroupJSON.js",
+  "code_file": "generateAwsSecurityGroupJSON.ts",
   "code_entrypoint": "generateAwsSecurityGroupJSON"
 }

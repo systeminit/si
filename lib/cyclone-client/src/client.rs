@@ -724,7 +724,7 @@ mod tests {
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
-                    v = { a: 'b' };
+                    const v = { a: 'b' };
                     return v;
                 }"#,
             ),
@@ -813,7 +813,7 @@ mod tests {
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
-                    v = { a: 'b' };
+                    const v = { a: 'b' };
                     return v;
                 }"#,
             ),

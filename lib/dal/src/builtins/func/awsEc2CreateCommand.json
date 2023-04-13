@@ -6,6 +6,6 @@
   "display_name": "si:awsEc2CreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEc2CreateCommand.js",
+  "code_file": "awsEc2CreateCommand.ts",
   "code_entrypoint": "create"
 }

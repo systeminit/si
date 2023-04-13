@@ -14,6 +14,6 @@
   "display_name": "Can create Elastic IP",
   "description": null,
   "link": null,
-  "code_file": "qualificationEipCanCreate.js",
+  "code_file": "qualificationEipCanCreate.ts",
   "code_entrypoint": "qualification"
 }

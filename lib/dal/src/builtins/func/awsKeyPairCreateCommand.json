@@ -6,6 +6,6 @@
   "display_name": "si:awsKeyPairCreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsKeyPairCreateCommand.js",
+  "code_file": "awsKeyPairCreateCommand.ts",
   "code_entrypoint": "create"
 }

@@ -6,6 +6,6 @@
   "display_name": "si:awsEgressCreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEgressCreateCommand.js",
+  "code_file": "awsEgressCreateCommand.ts",
   "code_entrypoint": "create"
 }

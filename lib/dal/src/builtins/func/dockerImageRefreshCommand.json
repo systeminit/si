@@ -6,6 +6,6 @@
   "display_name": "si:dockerImageRefreshCommand",
   "description": null,
   "link": null,
-  "code_file": "dockerImageRefreshCommand.js",
+  "code_file": "dockerImageRefreshCommand.ts",
   "code_entrypoint": "refresh"
 }

@@ -28,6 +28,7 @@
     "cypress:open": "cypress open"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.4.2",
     "@codemirror/commands": "^6.1.2",
     "@codemirror/lang-javascript": "^6.1.2",
     "@codemirror/lang-json": "^6.0.1",
@@ -43,7 +44,7 @@
     "@si/ts-lib": "workspace:*",
     "@si/vue-lib": "workspace:*",
     "@types/async": "^3.2.15",
-    "@typescript/vfs": "^1.3.5",
+    "@typescript/vfs": "^1.4.0",
     "@vueuse/head": "^1.1.15",
     "async": "^3.2.4",
     "axios": "^0.27.2",

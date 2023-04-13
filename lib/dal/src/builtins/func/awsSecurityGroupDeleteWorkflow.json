@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsSecurityGroupDeleteWorkflow.js",
+  "code_file": "awsSecurityGroupDeleteWorkflow.ts",
   "code_entrypoint": "deleteResource"
 }

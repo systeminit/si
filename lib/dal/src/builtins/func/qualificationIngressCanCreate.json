@@ -14,6 +14,6 @@
   "display_name": "Can create ingress",
   "description": null,
   "link": null,
-  "code_file": "qualificationIngressCanCreate.js",
+  "code_file": "qualificationIngressCanCreate.ts",
   "code_entrypoint": "qualification"
 }

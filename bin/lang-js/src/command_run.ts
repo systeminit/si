@@ -1,5 +1,5 @@
 import Debug from "debug";
-import { base64Decode } from "./base64";
+import { base64ToJs } from "./base64";
 import { NodeVM } from "vm2";
 import _ from "lodash";
 import {
@@ -32,8 +32,7 @@ export type CommandRunResultFailure = ResultFailure;
 export async function executeCommandRun(
   request: CommandRunRequest
 ): Promise<void> {
-  let code = base64Decode(request.codeBase64);
-  debug({ code });
+  let code = base64ToJs(request.codeBase64);
 
   code = wrapCode(code, request.handler);
   debug({ code });
@@ -134,16 +133,16 @@ async function execute(
     };
     return result;
   } catch (err) {
-    return failureExecution(err, executionId);
+    return failureExecution(err as Error, executionId);
   }
 }
 
 function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(args, callback) {
+  const wrapped = `module.exports = function(arg, callback) {
     ${code}
-    const arguments = Array.isArray(args) ? args : [args];
-    const resource = arguments[0]?.properties?.resource?.value ?? null;
-    const returnValue = ${handle}(...arguments, callback);
+    arg = Array.isArray(arg) ? arg : [arg];
+    const resource = arg[0]?.properties?.resource?.value ?? null;
+    const returnValue = ${handle}(...arg, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
           .catch((err) => callback({

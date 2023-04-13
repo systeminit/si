@@ -1,7 +1,7 @@
 {
   "kind": "Json",
   "response_type": "String",
-  "code_file": "awsSecurityGroupIdFromResource.js",
+  "code_file": "awsSecurityGroupIdFromResource.ts",
   "code_entrypoint": "parse",
   "arguments": [{
     "name": "resource",

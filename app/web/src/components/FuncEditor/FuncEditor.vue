@@ -17,7 +17,7 @@
     >
       <CodeEditor
         v-model="editingFunc"
-        typescript
+        :typescript="selectedFuncDetails?.types"
         @change="updateFuncCode"
         @vim-mode-write="execFunc"
       />

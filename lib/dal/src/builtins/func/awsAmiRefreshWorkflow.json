@@ -1,6 +1,6 @@
 {
   "kind": "JsWorkflow",
   "response_type": "Workflow",
-  "code_file": "awsAmiRefreshWorkflow.js",
+  "code_file": "awsAmiRefreshWorkflow.ts",
   "code_entrypoint": "refresh"
 }

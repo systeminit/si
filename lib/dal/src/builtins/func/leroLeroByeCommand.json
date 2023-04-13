@@ -6,6 +6,6 @@
   "hidden": true,
   "description": null,
   "link": null,
-  "code_file": "leroLeroByeCommand.js",
+  "code_file": "leroLeroByeCommand.ts",
   "code_entrypoint": "bye"
 }

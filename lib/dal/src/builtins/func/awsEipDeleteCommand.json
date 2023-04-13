@@ -6,6 +6,6 @@
   "display_name": "si:awsEipDeleteCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEipDeleteCommand.js",
+  "code_file": "awsEipDeleteCommand.ts",
   "code_entrypoint": "deleteResource"
 }

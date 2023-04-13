@@ -10,6 +10,6 @@
   "display_name": "si:generateAwsAmiJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsAmiJSON.js",
+  "code_file": "generateAwsAmiJSON.ts",
   "code_entrypoint": "generateAwsAmiJSON"
 }

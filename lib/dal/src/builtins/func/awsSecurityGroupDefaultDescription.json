@@ -11,6 +11,6 @@
   "display_name": "si:awsSecurityGroupDefaultDescription",
   "description": null,
   "link": null,
-  "code_file": "awsSecurityGroupDefaultDescription.js",
+  "code_file": "awsSecurityGroupDefaultDescription.ts",
   "code_entrypoint": "setDefaultDescription"
 }

@@ -6,6 +6,6 @@
   "display_name": "si:awsEc2DeleteCommand",
   "description": null,
   "link": null,
-  "code_file": "awsEc2DeleteCommand.js",
+  "code_file": "awsEc2DeleteCommand.ts",
   "code_entrypoint": "deleteResource"
 }

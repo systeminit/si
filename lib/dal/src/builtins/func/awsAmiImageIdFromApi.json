@@ -1,7 +1,7 @@
 {
   "kind": "Json",
   "response_type": "String",
-  "code_file": "awsAmiImageIdFromApi.js",
+  "code_file": "awsAmiImageIdFromApi.ts",
   "code_entrypoint": "extract",
   "arguments": [
     {

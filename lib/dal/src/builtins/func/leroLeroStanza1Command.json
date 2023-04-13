@@ -6,6 +6,6 @@
   "description": null,
   "hidden": true,
   "link": null,
-  "code_file": "leroLeroStanza1Command.js",
+  "code_file": "leroLeroStanza1Command.ts",
   "code_entrypoint": "firstStanza"
 }

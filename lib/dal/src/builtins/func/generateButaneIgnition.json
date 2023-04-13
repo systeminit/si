@@ -10,6 +10,6 @@
   "display_name": "si:generateButaneIgnition",
   "description": "Produce Ignition JSON from a Butane component",
   "link": "https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/",
-  "code_file": "generateButaneIgnition.js",
+  "code_file": "generateButaneIgnition.ts",
   "code_entrypoint": "generateButaneIgnition"
 }

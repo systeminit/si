@@ -1,7 +1,7 @@
 {
   "kind": "Json",
   "response_type": "Array",
-  "code_file": "normalizeToArray.js",
+  "code_file": "normalizeToArray.ts",
   "code_entrypoint": "normalize",
   "arguments": [{
     "name": "value",
