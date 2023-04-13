@@ -51,7 +51,7 @@ With your Change Set created, System Initiative should now look like this:
 ![Empty System Initiative Workspace](/tutorial-img/03-deploy_containerized_app/empty_system_initiative_workspace.png)
 
 The primary navigation bar at the top has the Model icon selected 
-<img src="tutorial-img/03-deploy_containerized_app/model_icon.png" alt="Model Icon" class="inline" />
+<img src="/tutorial-img/03-deploy_containerized_app/model_icon.png" alt="Model Icon" class="inline" />
 indicating that you want to work on your 
 infrastructure model. The left side of the screen contains the Asset Palette - a collection of various Assets we can use
 to build our model. In the center of the screen is a canvas where you will design your model, with a progress bar on
@@ -262,7 +262,7 @@ right above the Asset Palette.
 
 ![Merge button](/tutorial-img/03-deploy_containerized_app/merge_button.png)
 
-You will see a screen wipe, followed by a fun celebratory confetti cannon, and then you will redirect to the `Apply` <img src="tutorial-img/03-deploy_containerized_app/apply_icon.png" alt="apply icon" class="inline" /> interface.
+You will see a screen wipe, followed by a fun celebratory confetti cannon, and then you will redirect to the `Apply` <img src="/tutorial-img/03-deploy_containerized_app/apply_icon.png" alt="apply icon" class="inline" /> interface.
 
 ### Creating your resources in AWS
 
@@ -321,7 +321,7 @@ the resources data to get the Public IP Address.
 System Initiative keeps track of both the theoretical model you want to see and
 your real-world resources. When you want to explore how things are right now,
 you do that from the Analyze page. Click the Eyeball 
-<img src="tutorial-img/03-deploy_containerized_app/eyeball.png" width="60" alt="Eyeball" class="inline" />
+<img src="/tutorial-img/03-deploy_containerized_app/eyeball.png" width="60" alt="Eyeball" class="inline" />
  in the top navigation to move from the Apply screen to the Analyze screen.
 
 ![Analyze screen workspace view](/tutorial-img/03-deploy_containerized_app/analyze_screen_workspace_view.png)
@@ -336,7 +336,7 @@ EC2 Instance from the Diagram Outline on the left, and you should see the follow
 
 ![Analyze screen Ec2 Instance Selected](/tutorial-img/03-deploy_containerized_app/analyze_screen_ec2_instance_selected.png)
 
-Click the Refresh button <img src="tutorial-img/03-deploy_containerized_app/refresh_button.png" alt="refresh button" class="inline"> in the details panel. You will see it spin and the resource information below update. Depending on how
+Click the Refresh button <img src="/tutorial-img/03-deploy_containerized_app/refresh_button.png" alt="refresh button" class="inline"> in the details panel. You will see it spin and the resource information below update. Depending on how
 long AWS takes to provision your EC2 Instance, you may need to hit this button multiple times. Eventually, you will see
 the State switch to running:
 
