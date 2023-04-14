@@ -24,6 +24,8 @@ hljs.registerLanguage("javascript", hljsJsLang);
 hljs.registerAliases("js", { languageName: "javascript" });
 hljs.registerLanguage("shell", hljsShellLang);
 
+const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 20"><g fill="currentColor"><path d="M8 2a1 1 0 0 0 0 2h2a1 1 0 1 0 0-2H8Z"/><path d="M3 5a2 2 0 0 1 2-2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3a2 2 0 0 1 2 2v6h-4.586l1.293-1.293a1 1 0 0 0-1.414-1.414l-3 3a1 1 0 0 0 0 1.414l3 3a1 1 0 0 0 1.414-1.414L10.414 13H15v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm12 6h2a1 1 0 1 1 0 2h-2v-2Z"/></g></svg>`;
+
 const hasCodeBlocks = ref(false);
 
 const containerRef = ref<HTMLDivElement>();
@@ -56,7 +58,24 @@ function highlightCode() {
 
     const highlightedCode = hljs.highlight(code || "", { language });
     codeEl.classList.add("hljs");
+
     codeEl.innerHTML = highlightedCode.value;
+
+    const parent = codeEl.parentElement;
+
+    if(parent && parent.tagName === "PRE") {
+      const pasteButton = document.createElement("div");
+      pasteButton.classList.add("absolute", "top-xs", "right-xs", "text-neutral-500", "dark:hover:text-shade-0", "hover:text-shade-100", "cursor-pointer")
+      pasteButton.innerHTML = copyIcon;
+      pasteButton.addEventListener("click", () => {
+        if(code) {
+          navigator.clipboard.writeText(code);
+        }
+      });
+
+      parent.appendChild(pasteButton);
+      parent.classList.add("relative");
+    }
   });
 }
 
