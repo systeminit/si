@@ -230,6 +230,9 @@ export const useFuncStore = () => {
           method: "post",
           url: "func/create_func",
           params: { ...createFuncRequest, ...visibility },
+          onSuccess: (response) => {
+            this.funcsById[response.id] = response;
+          },
         });
       },
 
