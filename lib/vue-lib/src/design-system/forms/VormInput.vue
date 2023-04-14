@@ -700,6 +700,7 @@ defineExpose({
   color: var(--text-color);
   font: inherit;
   background-color: var(--bg-color);
+  line-height: 2;
 
   &:hover {
     --border-color: @colors-neutral-500;

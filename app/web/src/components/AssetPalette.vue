@@ -51,6 +51,7 @@
               :name="schema.displayName"
               class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer"
               @mousedown.left="onSelect(schema.id)"
+              @click.right.prevent
             />
           </li>
         </SiCollapsible>
