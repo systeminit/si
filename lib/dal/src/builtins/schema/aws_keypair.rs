@@ -1,8 +1,8 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
-use crate::edit_field::widget::WidgetKind;
 use crate::func::description::FuncDescription;
+use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;

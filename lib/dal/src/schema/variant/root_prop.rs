@@ -4,8 +4,8 @@
 use strum_macros::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::property_editor::schema::WidgetKind;
 use crate::validation::Validation;
 use crate::{
     schema::variant::{leaves::LeafKind, SchemaVariantResult},

@@ -3,8 +3,9 @@ use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
 use crate::{
-    component::ComponentKind, edit_field::widget::*, socket::SocketArity, BuiltinsError,
-    BuiltinsResult, DalContext, ExternalProvider, Prop, PropKind, SchemaVariant, StandardModel,
+    component::ComponentKind, property_editor::schema::WidgetKind, socket::SocketArity,
+    BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Prop, PropKind, SchemaVariant,
+    StandardModel,
 };
 
 impl MigrationDriver {

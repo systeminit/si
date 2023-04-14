@@ -10,18 +10,19 @@ use thiserror::Error;
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
-    edit_field::widget::WidgetKind,
     func::{
         binding::{FuncBinding, FuncBindingError},
         binding_return_value::FuncBindingReturnValueError,
     },
     impl_standard_model,
     label_list::ToLabelList,
-    pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, standard_model_many_to_many, AttributeContext,
-    AttributeContextBuilder, AttributeContextBuilderError, AttributePrototypeError,
-    AttributeReadContext, DalContext, Func, FuncId, HistoryEventError, SchemaVariant,
-    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    pk,
+    property_editor::schema::WidgetKind,
+    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    standard_model_many_to_many, AttributeContext, AttributeContextBuilder,
+    AttributeContextBuilderError, AttributePrototypeError, AttributeReadContext, DalContext, Func,
+    FuncId, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 

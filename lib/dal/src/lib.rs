@@ -29,7 +29,6 @@ pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod edge;
-pub mod edit_field;
 pub mod fix;
 pub mod func;
 pub mod history_event;
