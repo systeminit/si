@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { ApiRequest } from "@si/vue-lib/pinia";
+import { promiseDelay } from "@si/ts-lib";
 import { posthog } from "posthog-js";
 import { ISODateString } from "./shared-types";
 
@@ -67,6 +68,16 @@ export const useAuthStore = defineStore("auth", {
           // trigger logout?
         },
       });
+    },
+
+    async logout() {
+      posthog.reset();
+      // see https://github.com/PostHog/posthog-js/issues/205
+      posthog._handle_unload(); // flush the buffer
+      await promiseDelay(500);
+      // auth is on http secure cookie, so API is needed to log out
+      // we redirect rather than using an api req so the api can also redirect us to auth0 logout url
+      window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
     },
 
     async LOAD_USER() {

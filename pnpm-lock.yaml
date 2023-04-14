@@ -16,6 +16,9 @@ importers:
 
   app/auth-portal:
     dependencies:
+      '@si/ts-lib':
+        specifier: workspace:*
+        version: link:../../lib/ts-lib
       '@si/vue-lib':
         specifier: workspace:*
         version: link:../../lib/vue-lib
@@ -56,9 +59,6 @@ importers:
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../../lib/eslint-config
-      '@si/ts-lib':
-        specifier: workspace:*
-        version: link:../../lib/ts-lib
       '@si/tsconfig':
         specifier: workspace:*
         version: link:../../lib/tsconfig
