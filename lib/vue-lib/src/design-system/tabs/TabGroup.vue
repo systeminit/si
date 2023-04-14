@@ -107,19 +107,8 @@
         </DropdownMenu>
       </div>
 
-      <!-- Here we actually render the tab content of the current tab -->
-      <template v-if="selectedTab">
-        <!-- extra slots to make it easy to have non-scrolling content above/below scrolling area -->
-        <div v-if="selectedTab.slots.top">
-          <component :is="selectedTab.slots.top" />
-        </div>
-        <div class="overflow-auto flex-grow relative">
-          <component :is="selectedTab.slots.default" />
-        </div>
-        <div v-if="selectedTab.slots.bottom">
-          <component :is="selectedTab.slots.bottom" />
-        </div>
-      </template>
+      <!-- the tabgroup item uses a teleport to render its default slot content here if active -->
+      <div :id="teleportId" class="overflow-auto flex-grow relative" />
     </template>
   </div>
 </template>
@@ -130,6 +119,7 @@ type TabGroupContext = {
   registerTab(id: string, component: TabGroupItemDefinition): void;
   unregisterTab(id: string): void;
   selectTab(id?: string): void;
+  teleportId: string;
 };
 
 export const TabGroupContextInjectionKey: InjectionKey<TabGroupContext> =
@@ -141,6 +131,8 @@ export function useTabGroupContext() {
     throw new Error("<TabGroupItem> should only be used within a <TabGroup>");
   return ctx;
 }
+
+let tabGroupCounter = 1;
 </script>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
@@ -190,17 +182,22 @@ const emit = defineEmits<{
   (e: "update:selectedTab", slug: string | undefined): void;
 }>();
 
+const teleportId = `tabs-portal-${tabGroupCounter++}`;
+
 const isNoTabs = computed(() => !_.keys(tabs).length);
 
 const tabs = reactive({} as Record<string, TabGroupItemDefinition>);
 const orderedTabSlugs = ref<string[]>([]);
-const orderedTabs = computed(() =>
-  _.map(orderedTabSlugs.value, (slug) => tabs[slug]).filter((tab) => !!tab) as
-  TabGroupItemDefinition[],
+const orderedTabs = computed(
+  () =>
+    _.map(orderedTabSlugs.value, (slug) => tabs[slug]).filter(
+      (tab) => !!tab,
+    ) as TabGroupItemDefinition[],
 );
 const selectedTabSlug = ref<string>();
-const selectedTab = computed(() => selectedTabSlug.value ?
-tabs[selectedTabSlug.value] : undefined)
+const selectedTab = computed(() =>
+  selectedTabSlug.value ? tabs[selectedTabSlug.value] : undefined,
+);
 
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;
@@ -385,6 +382,7 @@ const context = {
   registerTab,
   unregisterTab,
   selectTab,
+  teleportId,
 };
 provide(TabGroupContextInjectionKey, context);
 

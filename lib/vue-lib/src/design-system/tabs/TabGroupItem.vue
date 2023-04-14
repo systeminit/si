@@ -1,19 +1,15 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <!-- actual rendering is done by the TabGroup parent to put things in the right place -->
-  <div v-if="false">
-    <!-- NOTE - default slot content will not work here, due to how the slot render fns are called -->
+  <!-- tab top content, usually filled using label prop, but slot in case something special is needed-->
+  <!-- NOTE - default slot content will not work here, due to how the slot render fn is being called by the parent -->
+  <slot v-if="false" name="label" />
 
-    <!-- tab top content, usually filled using label prop, but slot in case something special is needed-->
-    <slot name="label" />
-
-    <!-- fixed (non-scrolling) content that lives above the main content area -->
-    <slot name="top" />
-
-    <!-- default slot contains tab content in scrollable area -->
-    <slot />
-    <!-- fixed (non-scrolling) content that lives below the main content area -->
-    <slot name="bottom" />
-  </div>
+  <!-- if tab is selected, teleport default slot into the main tab content area -->
+  <template v-if="slug === menuCtx.selectedTabSlug.value">
+    <Teleport :to="`#${menuCtx.teleportId}`">
+      <slot />
+    </Teleport>
+  </template>
 </template>
 
 <script lang="ts" setup>

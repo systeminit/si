@@ -18,116 +18,121 @@
   >
     <TabGroup remember-selected-tab-key="func_details">
       <TabGroupItem label="Properties" slug="properties">
-        <template #top>
-          <Stack>
-            <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-              <VButton2
-                class="--tone-success"
-                icon="save"
-                size="md"
-                loading-text="Executing"
-                label="Execute"
-                :request-status="execFuncReqStatus"
-                success-text="Finished"
-                @click="execFunc"
-              />
+        <ScrollArea>
+          <template #top>
+            <Stack>
+              <div
+                class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
+              >
+                <VButton2
+                  class="--tone-success"
+                  icon="save"
+                  size="md"
+                  loading-text="Executing"
+                  label="Execute"
+                  :request-status="execFuncReqStatus"
+                  success-text="Finished"
+                  @click="execFunc"
+                />
 
-              <VButton2
-                class="--tone-neutral"
-                :disabled="!isRevertible"
-                icon="x"
-                size="md"
-                loading-text="Reverting"
-                label="Revert"
-                :request-status="revertFuncReqStatus"
-                success-text="Finished"
-                @click="revertFunc"
+                <VButton2
+                  class="--tone-neutral"
+                  :disabled="!isRevertible"
+                  icon="x"
+                  size="md"
+                  loading-text="Reverting"
+                  label="Revert"
+                  :request-status="revertFuncReqStatus"
+                  success-text="Finished"
+                  @click="revertFunc"
+                />
+              </div>
+              <div class="p-2">
+                <ErrorMessage
+                  v-if="execFuncReqStatus.isError"
+                  :request-status="execFuncReqStatus"
+                />
+              </div>
+            </Stack>
+          </template>
+
+          <SiCollapsible label="Attributes" default-open>
+            <div class="p-3 flex flex-col gap-2">
+              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+                Give this function a Name, Entrypoint and brief description
+                below.
+              </h1>
+              <VormInput
+                v-model="editingFunc.name"
+                label="Name"
+                required
+                placeholder="Type the name of this function here..."
+                @blur="updateFunc"
+              />
+              <VormInput
+                v-model="editingFunc.handler"
+                label="Entrypoint"
+                required
+                placeholder="The name of the function that will be executed..."
+                @blur="updateFunc"
+              />
+              <VormInput
+                v-model="editingFunc.description"
+                type="textarea"
+                placeholder="Provide a brief description of this function here..."
+                label="Description"
+                @blur="updateFunc"
               />
             </div>
-            <div class="p-2">
-              <ErrorMessage
-                v-if="execFuncReqStatus.isError"
-                :request-status="execFuncReqStatus"
-              />
-            </div>
-          </Stack>
-        </template>
-
-        <SiCollapsible label="Attributes" default-open>
-          <div class="p-3 flex flex-col gap-2">
-            <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-              Give this function a Name, Entrypoint and brief description below.
-            </h1>
-            <VormInput
-              v-model="editingFunc.name"
-              label="Name"
-              required
-              placeholder="Type the name of this function here..."
-              @blur="updateFunc"
-            />
-            <VormInput
-              v-model="editingFunc.handler"
-              label="Entrypoint"
-              required
-              placeholder="The name of the function that will be executed..."
-              @blur="updateFunc"
-            />
-            <VormInput
-              v-model="editingFunc.description"
-              type="textarea"
-              placeholder="Provide a brief description of this function here..."
-              label="Description"
-              @blur="updateFunc"
-            />
-          </div>
-        </SiCollapsible>
-        <QualificationDetails
-          v-if="
-            editingFunc.associations &&
-            editingFunc.associations.type === 'qualification'
-          "
-          v-model="editingFunc.associations"
-          @change="updateFunc"
-        />
-        <CodeGenerationDetails
-          v-if="
-            editingFunc.associations &&
-            editingFunc.associations.type === 'codeGeneration'
-          "
-          v-model="editingFunc.associations"
-          @change="updateFunc"
-        />
-        <ConfirmationDetails
-          v-if="
-            editingFunc.associations &&
-            editingFunc.associations.type === 'confirmation'
-          "
-          v-model="editingFunc.associations"
-          @change="updateFunc"
-        />
-        <ValidationDetails
-          v-if="
-            editingFunc.associations &&
-            editingFunc.associations.type === 'validation'
-          "
-          v-model="editingFunc.associations"
-          @change="updateFunc"
-        />
-
-        <SiCollapsible
-          v-if="editingFunc.variant === FuncVariant.Attribute"
-          label="Arguments"
-          default-open
-        >
-          <FuncArguments
+          </SiCollapsible>
+          <QualificationDetails
             v-if="
               editingFunc.associations &&
-              editingFunc.associations.type === 'attribute'
+              editingFunc.associations.type === 'qualification'
             "
             v-model="editingFunc.associations"
             @change="updateFunc"
           />
-        </SiCollapsible>
+          <CodeGenerationDetails
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'codeGeneration'
+            "
+            v-model="editingFunc.associations"
+            @change="updateFunc"
+          />
+          <ConfirmationDetails
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'confirmation'
+            "
+            v-model="editingFunc.associations"
+            @change="updateFunc"
+          />
+          <ValidationDetails
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'validation'
+            "
+            v-model="editingFunc.associations"
+            @change="updateFunc"
+          />
+
+          <SiCollapsible
+            v-if="editingFunc.variant === FuncVariant.Attribute"
+            label="Arguments"
+            default-open
+          >
+            <FuncArguments
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'attribute'
+              "
+              v-model="editingFunc.associations"
+              @change="updateFunc"
+            />
+          </SiCollapsible>
+        </ScrollArea>
       </TabGroupItem>
 
       <TabGroupItem
@@ -166,6 +171,7 @@ import {
   VormInput,
   Stack,
   ErrorMessage,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
