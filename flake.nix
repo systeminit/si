@@ -44,9 +44,16 @@
             nodePackages.typescript-language-server
             openssl
             pgcli
+            pkg-config
             postgresql_14
             protobuf
-            rustToolchain
+            (rustToolchain.override {
+              # This really should be augmenting the extensions, instead of
+              # completely overriding them, but since we're not setting up
+              # any extensions in our rust-toolchain file, it should be
+              # fine for now.
+              extensions = [ "rust-src" "rust-analyzer" ];
+            })
           ] ++ lib.optionals pkgs.stdenv.isDarwin [
             libiconv
             darwin.apple_sdk.frameworks.Security
