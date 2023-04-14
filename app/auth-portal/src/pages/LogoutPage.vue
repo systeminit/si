@@ -14,8 +14,9 @@ const router = useRouter();
 
 onMounted(async () => {
   if (authStore.userIsLoggedIn) {
-    window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
-    await router.push({ name: "dashboard" });
+    await authStore.logout();
+  } else {
+    await router.push({ name: "login" });
   }
 });
 </script>
