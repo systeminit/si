@@ -237,7 +237,7 @@ impl Subscription {
                                 // and return None, so instead we're at least going to log this
                                 // event in case it causes more trouble. Silent errors are the root
                                 // of many long nights on call :(
-                                info!(
+                                debug!(
                                     error = ?err,
                                     concat!(
                                         "crossbeam select error on next message, returning None. ",
