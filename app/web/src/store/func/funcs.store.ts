@@ -179,8 +179,9 @@ export const useFuncStore = () => {
             func.associations = response.associations;
             func.isRevertible = response.isRevertible;
             this.funcDetailsById[func.id] = func;
+
             // Forces a reload if the types have changed (reloads typescript compiler)
-            if (response.types !== func.types) {
+            if (func.types !== response.types) {
               this.FETCH_FUNC_DETAILS(func.id);
             }
           },
@@ -252,10 +253,13 @@ export const useFuncStore = () => {
           storage.getItem(LOCAL_STORAGE_FUNC_IDS_KEY) ?? ""
         ).split(",") as FuncId[];
         // Filter out cached ids that don't correspond to funcs anymore
-        this.openFuncIds = _.intersection(
+        const newOpenFuncIds = _.intersection(
           localStorageFuncIds,
           _.keys(this.funcsById),
         );
+        if (!_.isEqual(newOpenFuncIds, this.openFuncIds)) {
+          this.openFuncIds = newOpenFuncIds;
+        }
 
         // if we have a url selected function, make sure it exists in the list of open funcs
         if (this.urlSelectedFuncId) {
