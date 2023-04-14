@@ -32,6 +32,7 @@
 
       <FuncEditor
         v-if="funcStore.funcsById[openFuncId]"
+        :key="openFuncId"
         :func-id="openFuncId"
       />
       <template v-else>

@@ -230,6 +230,9 @@ export const useFuncStore = () => {
           method: "post",
           url: "func/create_func",
           params: { ...createFuncRequest, ...visibility },
+          onSuccess: (response) => {
+            this.funcsById[response.id] = response;
+          },
         });
       },
 
@@ -273,7 +276,8 @@ export const useFuncStore = () => {
             this.openFuncIds[unshift ? "unshift" : "push"](id);
           }
         } else {
-          this.openFuncIds = _.without(this.openFuncIds, id);
+          const funcIndex = _.indexOf(this.openFuncIds, id);
+          if (funcIndex >= 0) this.openFuncIds.splice(funcIndex, 1);
         }
 
         storage.setItem(LOCAL_STORAGE_FUNC_IDS_KEY, this.openFuncIds.join(","));
