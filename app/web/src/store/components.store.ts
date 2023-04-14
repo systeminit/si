@@ -325,12 +325,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               typeIcon: component?.icon || "logo-si",
               statusIcons: _.compact([
                 qualificationStatusToIconMap[qualificationStatus ?? "failure"],
-                confirmationStatusToIconMap[
-                  confirmationStatus ?? "failure"
-                ] ?? {
-                  icon: "minus",
-                  tone: "neutral",
-                },
+                confirmationStatus
+                  ? confirmationStatusToIconMap[confirmationStatus]
+                  : {
+                      icon: "minus",
+                      tone: "neutral",
+                    },
               ]),
             };
           });
