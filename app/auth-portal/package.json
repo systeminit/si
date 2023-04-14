@@ -34,7 +34,7 @@
     "@si/ts-lib": "workspace:*",
     "@si/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.7",
-    "@types/node": "^18.15.0",
+    "@types/node": "^18.15.11",
     "@vitejs/plugin-vue": "^4.0.0",
     "netlify-cli": "^13.2.2",
     "rollup-plugin-visualizer": "^5.9.0",
@@ -42,8 +42,11 @@
     "unplugin-icons": "^0.14.14",
     "vite": "^4.1.4",
     "vite-plugin-checker": "^0.5.6",
-    "vite-plugin-markdown": "^2.1.0",
+    "vite-plugin-markdown": "^2.2.0-2",
     "vite-svg-loader": "^3.4.0",
     "vue-tsc": "^1.1.7"
+  },
+  "volta": {
+    "extends": "../../package.json"
   }
 }

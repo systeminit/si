@@ -191,6 +191,20 @@ impl Server {
                     .await
                     .unwrap();
                 }
+                Request::ValueProcessingFailed {
+                    change_set_id,
+                    node_id,
+                } => {
+                    job_failed_processing_a_value(
+                        &self.nats,
+                        &mut complete_graph,
+                        reply_channel,
+                        change_set_id,
+                        node_id,
+                    )
+                    .await
+                    .unwrap();
+                }
             };
         }
 
@@ -286,7 +300,7 @@ pub async fn job_processed_a_value(
     for reply_channel in
         complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
     {
-        info!(%reply_channel, "AttributeValue has been processed by another job");
+        info!(%reply_channel, ?node_id, "AttributeValue has been processed by another job");
         nats.publish(
             reply_channel,
             serde_json::to_vec(&Response::BeenProcessed { node_id }).unwrap(),
@@ -295,6 +309,33 @@ pub async fn job_processed_a_value(
         .unwrap();
     }
     debug!(?complete_graph);
+    Ok(())
+}
+
+#[instrument(level = "info", skip(nats, complete_graph))]
+pub async fn job_failed_processing_a_value(
+    nats: &NatsClient,
+    complete_graph: &mut ChangeSetGraph,
+    reply_channel: String,
+    change_set_id: Id,
+    node_id: Id,
+) -> Result<(), Error> {
+    warn!(%reply_channel, %change_set_id, %node_id, ?complete_graph, "Job failed to process node");
+
+    for (reply_channel, failed_node_id) in
+        complete_graph.remove_node_and_dependents(reply_channel, change_set_id, node_id)?
+    {
+        nats.publish(
+            reply_channel,
+            serde_json::to_vec(&Response::Failed {
+                node_id: failed_node_id,
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+
     Ok(())
 }
 

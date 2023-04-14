@@ -24,16 +24,21 @@
     "rc:clippy": "cargo clippy --no-deps --all-targets -- -D warnings",
     "rc:fmt": "cargo fmt",
     "rc:check": "cargo check",
-    "rc:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps"
+    "rc:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps",
+    "nodev": "node -v"
   },
   "devDependencies": {
     "fast-glob": "^3.2.12",
     "toml": "^3.0.0",
-    "turbo": "^1.8.5"
+    "turbo": "^1.9.1"
+  },
+  "engines": {
+    "node": ">=18 <19",
+    "pnpm": ">=8 <9"
   },
   "volta": {
-    "node": "18.15.0",
-    "pnpm": "7.18.1"
+    "node": "18.16.0",
+    "pnpm": "8.2.0"
   },
-  "packageManager": "pnpm@7.18.1"
+  "packageManager": "pnpm@8.2.0"
 }

@@ -202,4 +202,53 @@ impl ChangeSetGraph {
             }
         }
     }
+
+    /// Return all `wanted_by_reply_channels` for `node_id` and remove the node
+    /// from the graph. Also, remove the sub-graph starting at `node_id`,
+    /// returning all `wanted_by_reply_channels` (with the associated `node_id`)
+    /// for the nodes that are being removed.
+    pub fn remove_node_and_dependents(
+        &mut self,
+        reply_channel: String,
+        change_set_id: Id,
+        node_id: Id,
+    ) -> Result<Vec<(String, Id)>, Error> {
+        let mut failure_notifications = Vec::new();
+        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+
+        let mut node_ids_to_fail = VecDeque::new();
+        node_ids_to_fail.push_back(node_id);
+
+        while let Some(node_id_to_fail) = node_ids_to_fail.pop_front() {
+            if let Some(node_metadata) = change_set_graph_data.remove(&node_id_to_fail) {
+                if node_metadata.processing_reply_channel.is_some()
+                    && node_metadata.processing_reply_channel.as_ref() != Some(&reply_channel)
+                {
+                    return Err(Error::ShouldNotBeProcessingByJob);
+                }
+
+                for notification_reply_channel in &node_metadata.wanted_by_reply_channels {
+                    failure_notifications
+                        .push((notification_reply_channel.clone(), node_id_to_fail));
+                }
+
+                for (dependent_node_id, dependent_node_metadata) in change_set_graph_data.iter() {
+                    if dependent_node_metadata
+                        .depends_on_node_ids
+                        .contains(&node_id_to_fail)
+                    {
+                        node_ids_to_fail.push_back(*dependent_node_id);
+                    }
+                }
+            }
+        }
+
+        // Nothing left in the graph for the change set, we shouldn't keep
+        // an entry for it around.
+        if change_set_graph_data.is_empty() {
+            self.dependency_data.remove(&change_set_id);
+        }
+
+        Ok(failure_notifications)
+    }
 }
