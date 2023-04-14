@@ -47,7 +47,7 @@ let view: EditorView;
 const modelValue = toRef(props, "modelValue", "");
 const disabled = toRef(props, "disabled", false);
 const useJson = toRef(props, "json", false);
-const useTypescript = toRef(props, "typescript", null);
+const typescript = toRef(props, "typescript", null);
 const currentCode = ref<string>(modelValue.value ?? "");
 
 watch(
@@ -78,6 +78,7 @@ const language = new Compartment();
 const readOnly = new Compartment();
 const themeCompartment = new Compartment();
 const lintCompartment = new Compartment();
+const autocompleteCompartment = new Compartment();
 const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
 
@@ -134,11 +135,12 @@ const mountEditor = async () => {
 
   const extensions = [basicSetup];
 
-  if (useTypescript.value) {
+  if (typescript.value) {
     const { lintSource, autocomplete } = await createTypescriptSource(
-      useTypescript.value,
+      typescript.value,
     );
-    extensions.push(autocomplete);
+
+    extensions.push(autocompleteCompartment.of(autocomplete));
     extensions.push(lintCompartment.of(linter(lintSource)));
     extensions.push(lintGutter());
     extensions.push(language.of(javascript()));
