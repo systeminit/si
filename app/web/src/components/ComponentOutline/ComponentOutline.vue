@@ -27,8 +27,8 @@
         <!-- tree mode -->
         <template v-else>
           <template v-if="!rootComponents.length">
-            <div class="p-2 text-neutral-500">
-              Your model is currently empty
+            <div class="px-xs py-lg text-neutral-400 text-center italic">
+              Your model is currently empty.
             </div>
           </template>
           <template v-else>

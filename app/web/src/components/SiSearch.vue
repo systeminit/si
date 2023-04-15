@@ -8,7 +8,14 @@
       <input
         v-model="searchString"
         :placeholder="placeholder"
-        class="w-full px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border text-black dark:text-white bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
+        :class="
+          clsx(
+            'w-full px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm',
+            'border text-black dark:text-white bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600',
+            'placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400',
+            'focus:outline focus:outline-2 focus:outline-action-500 outline-offset-[-1px]',
+          )
+        "
         @keydown="onKeyDown"
       />
     </label>
@@ -22,6 +29,7 @@
 import * as _ from "lodash-es";
 import { ref, watch } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 
 // TODO: we may want to swap this over to vmodel instead, but we'll see
 const searchString = ref("");

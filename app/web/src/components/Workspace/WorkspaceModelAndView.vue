@@ -84,8 +84,13 @@
       <MultiSelectDetailsPanel />
     </template>
     <template v-else>
-      <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
-        Click something on the diagram to select it
+      <div
+        class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
+      >
+        <template v-if="componentsStore.allComponents.length === 0">
+          Your model is currently empty.
+        </template>
+        <template v-else>Click something on the diagram to select it.</template>
       </div>
     </template>
   </SiPanel>
