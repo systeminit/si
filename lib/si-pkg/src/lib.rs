@@ -7,19 +7,21 @@ pub use pkg::{
 };
 pub use spec::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PkgSpecBuilder, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SpecError,
+    PropSpecBuilder, PropSpecKind, QualificationSpec, QualificationSpecBuilder, SchemaSpec,
+    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
 };
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs, path::PathBuf};
+    use std::{env, fs, path::PathBuf, sync::Arc};
 
     use petgraph::dot::Dot;
 
     use crate::spec::PkgSpec;
 
     use super::*;
+
+    use tokio::sync::Mutex;
 
     const PACKAGE_JSON: &str = include_str!("../pkg-complex.json");
 
@@ -33,8 +35,18 @@ mod tests {
         base_path
     }
 
-    #[test]
-    fn create_pkg() {
+    pub async fn prop_visitor(
+        prop: SiPkgProp<'_>,
+        _parent_id: Option<()>,
+        context: &Arc<Mutex<Vec<String>>>,
+    ) -> Result<Option<()>, SiPkgError> {
+        context.lock().await.push(prop.name().to_string());
+
+        Ok(None)
+    }
+
+    #[tokio::test]
+    async fn create_pkg() {
         let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         dbg!(&spec);
 
@@ -43,9 +55,7 @@ mod tests {
         let (graph, _root_idx) = pkg.as_petgraph();
 
         let funcs = pkg.funcs().expect("failed to get funcs");
-        assert_eq!(1, funcs.len());
-        let func = funcs.get(0).expect("failed to get first func");
-        assert_eq!("si:truthy", func.name());
+        assert_eq!(2, funcs.len());
 
         // println!("{}", serde_json::to_string_pretty(&graph).unwrap());
 
@@ -64,6 +74,46 @@ mod tests {
         let read_pkg = SiPkg::load_from_dir(base_path())
             .await
             .expect("failed to load pkg from dir");
-        dbg!(&read_pkg);
+
+        let funcs = read_pkg.funcs().expect("failed to get funcs");
+        assert_eq!(2, funcs.len());
+        let truthy_func = funcs.get(0).expect("failed to get first func");
+        assert_eq!("si:truthy", truthy_func.name());
+        let falsey_func = funcs.get(1).expect("failed to get second func");
+        assert_eq!("si:falsey", falsey_func.name());
+        dbg!(falsey_func.unique_id());
+
+        let variant = read_pkg
+            .schemas()
+            .expect("get schema")
+            .pop()
+            .expect("has schema")
+            .variants()
+            .expect("get variants")
+            .pop()
+            .expect("has a variant");
+
+        let funcs_by_unique_id = read_pkg
+            .funcs_by_unique_id()
+            .expect("cannot get funcs by unique id");
+
+        dbg!(&funcs_by_unique_id);
+
+        let qualifications = variant.qualifications().await.expect("get quals");
+        assert_eq!(2, qualifications.len());
+
+        for qual in qualifications {
+            assert!(funcs_by_unique_id.contains_key(&qual.func_unique_id()));
+        }
+
+        // Ensure we get the props
+        let props: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        variant
+            .visit_prop_tree(prop_visitor, None, &props.clone())
+            .await
+            .expect("able to visit prop tree");
+
+        // k8s deployments are really complex!
+        assert_eq!(123, props.lock().await.len());
     }
 }

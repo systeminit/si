@@ -1,5 +1,6 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
+use object_tree::Hash;
 use si_pkg::{SiPkg, SiPkgError, SiPkgFunc, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
 
 use crate::{
@@ -28,14 +29,17 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
 
     let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
 
+    let mut funcs_by_unique_id = HashMap::new();
     for func_spec in pkg.funcs()? {
-        create_func(ctx, func_spec, *installed_pkg.id()).await?;
+        let unique_id = func_spec.unique_id();
+        let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
+        funcs_by_unique_id.insert(unique_id, func);
     }
 
     // TODO: gather up a record of what wasn't installed and why (the id of the package that
     // already contained the schema or variant)
     for schema_spec in pkg.schemas()? {
-        create_schema(ctx, schema_spec, *installed_pkg.id()).await?;
+        create_schema(ctx, schema_spec, *installed_pkg.id(), &funcs_by_unique_id).await?;
     }
 
     Ok(())
@@ -60,23 +64,27 @@ async fn create_func(
     ctx: &DalContext,
     func_spec: SiPkgFunc<'_>,
     installed_pkg_id: InstalledPkgId,
-) -> PkgResult<()> {
+) -> PkgResult<Func> {
     let hash = func_spec.hash().to_string();
     let existing_func =
         InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::Func, &hash)
             .await?
             .pop();
 
-    let func_id = match existing_func {
+    let func = match existing_func {
         Some(installed_func_record) => match installed_func_record.as_installed_func()? {
-            InstalledPkgAssetTyped::Func { id, .. } => id,
+            InstalledPkgAssetTyped::Func { id, .. } => match Func::get_by_id(ctx, &id).await? {
+                Some(func) => func,
+                None => return Err(PkgError::InstalledFuncMissing(id)),
+            },
             _ => unreachable!(),
         },
         None => {
+            let name = format!("foo-{}", func_spec.name());
             // How to handle name conflicts?
             let mut func = Func::new(
                 ctx,
-                func_spec.name(),
+                &name,
                 func_spec.backend_kind().into(),
                 func_spec.response_type().into(),
             )
@@ -91,23 +99,24 @@ async fn create_func(
             func.set_link(ctx, func_spec.link().map(|l| l.to_string()))
                 .await?;
 
-            *func.id()
+            func
         }
     };
 
     InstalledPkgAsset::new(
         ctx,
-        InstalledPkgAssetTyped::new_for_func(func_id, installed_pkg_id, hash),
+        InstalledPkgAssetTyped::new_for_func(*func.id(), installed_pkg_id, hash),
     )
     .await?;
 
-    Ok(())
+    Ok(func)
 }
 
 async fn create_schema(
     ctx: &DalContext,
     schema_spec: SiPkgSchema<'_>,
     installed_pkg_id: InstalledPkgId,
+    func_map: &HashMap<Hash, Func>,
 ) -> PkgResult<()> {
     let hash = schema_spec.hash().to_string();
     let existing_schema =
@@ -148,23 +157,33 @@ async fn create_schema(
     .await?;
 
     for variant_spec in schema_spec.variants()? {
-        create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id).await?;
+        create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map).await?;
     }
 
     Ok(())
 }
+
+/* - we'll need this in the prop visitor to create attribute funcs
+struct PropVisitContext<'a, 'b> {
+    pub ctx: &'a DalContext,
+    pub func_map: &'b HashMap<Hash, Func>,
+}
+*/
 
 async fn create_schema_variant(
     ctx: &DalContext,
     schema: &mut Schema,
     variant_spec: SiPkgSchemaVariant<'_>,
     installed_pkg_id: InstalledPkgId,
+    func_map: &HashMap<Hash, Func>,
 ) -> PkgResult<()> {
     let hash = variant_spec.hash().to_string();
     let existing_schema_variant =
         InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::SchemaVariant, &hash)
             .await?
             .pop();
+
+    let context = ctx;
 
     let variant_id = match existing_schema_variant {
         Some(installed_sv_record) => match installed_sv_record.as_installed_schema_variant()? {
@@ -185,10 +204,31 @@ async fn create_schema_variant(
 
             let domain_prop_id = root_prop.domain_prop_id;
             variant_spec
-                .visit_prop_tree(create_prop, Some(domain_prop_id), ctx)
+                .visit_prop_tree(create_prop, Some(domain_prop_id), context)
                 .await?;
 
             schema_variant.finalize(ctx, None).await?;
+
+            for qualification in variant_spec.qualifications().await? {
+                match func_map.get(&qualification.func_unique_id()) {
+                    Some(qual_func) => {
+                        SchemaVariant::upsert_leaf_function(
+                            ctx,
+                            *schema_variant.id(),
+                            None,
+                            crate::LeafKind::Qualification,
+                            qual_func,
+                        )
+                        .await?;
+                    }
+                    None => {
+                        return Err(PkgError::MissingFuncUniqueId(
+                            qualification.func_unique_id().to_string(),
+                        ))
+                    }
+                }
+            }
+
             *schema_variant.id()
         }
     };

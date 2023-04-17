@@ -1,18 +1,19 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     convert::TryFrom,
     path::PathBuf,
 };
 
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecBuilder,
-    PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError,
+    PropSpecKind, QualificationSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SiPkg, SpecError,
 };
 
 use crate::{
     prop_tree::{PropTree, PropTreeNode},
-    DalContext, Func, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError,
+    DalContext, Func, FuncId, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError,
 };
 
 use super::{PkgError, PkgResult};
@@ -39,24 +40,22 @@ pub async fn export_pkg(
         pkg_spec_builder.description(description);
     }
 
-    let mut inserted_functions = HashSet::new();
+    let mut func_specs = HashMap::new();
 
     for variant_id in variant_ids {
         let related_funcs = SchemaVariant::all_funcs(ctx, variant_id).await?;
         for func in &related_funcs {
-            if !inserted_functions.contains(func.id()) {
+            if !func_specs.contains_key(func.id()) {
                 let func_spec = build_func_spec(func).await?;
+                func_specs.insert(*func.id(), func_spec.clone());
                 pkg_spec_builder.func(func_spec);
-
-                inserted_functions.insert(*func.id());
             }
         }
-        let schema_spec = build_schema_spec(ctx, variant_id).await?;
+        let schema_spec = build_schema_spec(ctx, variant_id, &func_specs).await?;
         pkg_spec_builder.schema(schema_spec);
     }
 
     let spec = pkg_spec_builder.build()?;
-    dbg!(&spec);
 
     let pkg = SiPkg::load_from_spec(spec)?;
     pkg.write_to_file(pkg_file_path).await?;
@@ -92,12 +91,13 @@ async fn build_func_spec(func: &Func) -> Result<FuncSpec, PkgError> {
 
     func_spec_builder.hidden(func.hidden());
 
-    Ok(dbg!(func_spec_builder.build()?))
+    Ok(func_spec_builder.build()?)
 }
 
 async fn build_schema_spec(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
+    func_specs: &HashMap<FuncId, FuncSpec>,
 ) -> Result<SchemaSpec, PkgError> {
     let (variant, schema) = get_schema_and_variant(ctx, variant_id).await?;
 
@@ -105,7 +105,7 @@ async fn build_schema_spec(
     schema_spec_builder.name(schema.name());
     set_schema_spec_category_data(ctx, &schema, &mut schema_spec_builder).await?;
 
-    let variant_spec = build_variant_spec(variant, ctx).await?;
+    let variant_spec = build_variant_spec(ctx, variant, func_specs).await?;
     schema_spec_builder.variant(variant_spec);
 
     let schema_spec = schema_spec_builder.build()?;
@@ -114,8 +114,9 @@ async fn build_schema_spec(
 }
 
 async fn build_variant_spec(
-    variant: SchemaVariant,
     ctx: &DalContext,
+    variant: SchemaVariant,
+    func_specs: &HashMap<FuncId, FuncSpec>,
 ) -> Result<SchemaVariantSpec, PkgError> {
     let mut variant_spec_builder = SchemaVariantSpec::builder();
     variant_spec_builder.name(variant.name());
@@ -126,6 +127,19 @@ async fn build_variant_spec(
         variant_spec_builder.try_link(link)?;
     }
     set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder).await?;
+
+    for qualification_func in
+        SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), crate::LeafKind::Qualification)
+            .await?
+    {
+        let func_spec = func_specs
+            .get(qualification_func.id())
+            .ok_or(PkgError::MissingExportedFunc(*qualification_func.id()))?;
+        let qual_spec = QualificationSpec::builder()
+            .func_unique_id(func_spec.unique_id)
+            .build()?;
+        variant_spec_builder.qualification(qual_spec);
+    }
 
     let variant_spec = variant_spec_builder.build()?;
 

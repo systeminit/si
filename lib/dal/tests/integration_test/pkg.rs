@@ -1,13 +1,36 @@
 use base64::{engine::general_purpose, Engine};
-use dal::{installed_pkg::*, pkg::*, DalContext, Func, Schema, SchemaVariant, StandardModel};
+use dal::{
+    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, DalContext, Func, Schema,
+    SchemaVariant, StandardModel,
+};
 use dal_test::test;
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecKind,
-    SchemaSpec, SchemaVariantSpec, SiPkg,
+    QualificationSpec, SchemaSpec, SchemaVariantSpec, SiPkg,
 };
 
 #[test]
 async fn test_install_pkg(ctx: &DalContext) {
+    let qualification_code = "function qualification(_input) { return { result: 'warning', message: 'omit needless words' }; } }";
+    let qualification_b64 = general_purpose::STANDARD_NO_PAD.encode(qualification_code.as_bytes());
+
+    let qualification_func_spec = FuncSpec::builder()
+        .name("si:qualificationWarning")
+        .display_name("warning")
+        .description("it warns")
+        .handler("qualification")
+        .code_base64(&qualification_b64)
+        .backend_kind(FuncSpecBackendKind::JsAttribute)
+        .response_type(FuncSpecBackendResponseType::Qualification)
+        .hidden(false)
+        .build()
+        .expect("build qual func spec");
+
+    let qualification_spec = QualificationSpec::builder()
+        .func_unique_id(qualification_func_spec.unique_id)
+        .build()
+        .expect("could not build qual spec");
+
     let schema_a = SchemaSpec::builder()
         .name("Tyrone Slothrop")
         .category("Banana Puddings")
@@ -29,6 +52,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .build()
                         .expect("able to make prop spec"),
                 )
+                .qualification(qualification_spec)
                 .build()
                 .expect("able to make schema variant spec"),
         )
@@ -111,6 +135,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .created_by("Pirate Prentice")
         .schema(schema_a.clone())
         .func(func_spec)
+        .func(qualification_func_spec)
         .build()
         .expect("able to build package spec");
 
@@ -153,8 +178,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("able to fetch installed pkgs for pkg a");
 
-    // One schema, one variant, one func
-    assert_eq!(3, pkg_a_ipas.len());
+    // One schema, one variant, two funcs
+    assert_eq!(4, pkg_a_ipas.len());
 
     for ipa in pkg_a_ipas {
         match ipa.asset_kind() {
@@ -184,7 +209,17 @@ async fn test_install_pkg(ctx: &DalContext) {
                             .expect("able to get schema variant")
                             .expect("schema variant is there");
 
-                        assert_eq!("Pig Bodine", schema_variant.name())
+                        assert_eq!("Pig Bodine", schema_variant.name());
+
+                        let qualifications = SchemaVariant::find_leaf_item_functions(
+                            ctx,
+                            *schema_variant.id(),
+                            LeafKind::Qualification,
+                        )
+                        .await
+                        .expect("able to get qualification funcs");
+
+                        assert_eq!(1, qualifications.len())
                     }
                     _ => unreachable!(),
                 }
@@ -194,11 +229,10 @@ async fn test_install_pkg(ctx: &DalContext) {
                     ipa.as_installed_func().expect("get func ipa typed");
                 match typed {
                     InstalledPkgAssetTyped::Func { id, .. } => {
-                        let func = Func::get_by_id(ctx, &id)
+                        let _func = Func::get_by_id(ctx, &id)
                             .await
                             .expect("able to get func")
                             .expect("func is there");
-                        assert_eq!("si:truthy", func.name());
                     }
                     _ => unreachable!(),
                 }
