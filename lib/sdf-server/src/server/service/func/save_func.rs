@@ -1,7 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::func::argument::FuncArgumentKind;
-use dal::schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind};
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -14,9 +13,9 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use dal::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    validation::prototype::context::ValidationPrototypeContext, AttributeContext,
-    AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeValue,
-    Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
+    schema::variant::leaves::LeafKind, validation::prototype::context::ValidationPrototypeContext,
+    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
+    AttributeValue, Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
     InternalProviderId, Prop, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
@@ -251,48 +250,15 @@ async fn attribute_view_for_leaf_func(
     component_id: Option<ComponentId>,
     leaf_kind: LeafKind,
 ) -> FuncResult<AttributePrototypeView> {
-    let prop = SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
+    let existing_proto =
+        SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, component_id, leaf_kind, func)
+            .await?;
 
     let mut prototype_view = AttributePrototypeView {
         id: AttributePrototypeId::NONE,
         component_id,
-        prop_id: *prop.id(),
+        prop_id: existing_proto.context.prop_id(),
         prototype_arguments: vec![],
-    };
-
-    let context = prototype_view.to_attribute_context()?;
-
-    let key = Some(func.name().to_string());
-
-    let existing_proto = match AttributePrototype::find_for_context_and_key(ctx, context, &key)
-        .await?
-        .pop()
-    {
-        Some(existing_proto) => existing_proto,
-        None => {
-            let arg = match FuncArgument::list_for_func(ctx, *func.id()).await?.pop() {
-                Some(arg) => arg,
-                None => {
-                    FuncArgument::new(ctx, "domain", FuncArgumentKind::Object, None, *func.id())
-                        .await?
-                }
-            };
-
-            let (_, new_proto) = SchemaVariant::add_leaf(
-                ctx,
-                *func.id(),
-                schema_variant_id,
-                component_id,
-                leaf_kind,
-                vec![LeafInput {
-                    location: LeafInputLocation::Domain,
-                    func_argument_id: *arg.id(),
-                }],
-            )
-            .await?;
-
-            new_proto
-        }
     };
 
     let arguments =

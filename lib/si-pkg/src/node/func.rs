@@ -103,7 +103,7 @@ impl ReadBytes for FuncNode {
             Some(Url::parse(&link_str).map_err(GraphError::parse)?)
         };
         let unique_id_str = read_key_value_line(reader, KEY_UNIQUE_ID_STR)?;
-        let unique_id: Hash = Hash::new(unique_id_str.as_bytes());
+        let unique_id: Hash = Hash::from_str(&unique_id_str)?;
 
         Ok(Self {
             name,

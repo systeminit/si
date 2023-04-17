@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{
+    collections::HashMap,
     convert::Infallible,
     future::Future,
     path::{Path, PathBuf},
@@ -16,7 +17,7 @@ use thiserror::Error;
 use url::Url;
 
 use crate::{
-    node::{CategoryNode, PkgNode, PropNode},
+    node::{CategoryNode, PkgNode, PropNode, SchemaVariantChildNode},
     spec::{FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SpecError},
 };
 
@@ -42,7 +43,11 @@ pub enum SiPkgError {
     UnexpectedPkgNodeType(&'static str, &'static str),
     #[error("error while visiting prop: {0}")]
     VisitProp(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("Schema Variant missing required child: {0}")]
+    SchemaVariantChildNotFound(&'static str),
 }
+
+pub type PkgResult<T> = Result<T, SiPkgError>;
 
 impl SiPkgError {
     pub fn visit_prop(source: impl std::error::Error + Send + Sync + 'static) -> Self {
@@ -62,7 +67,7 @@ pub struct SiPkg {
 }
 
 impl SiPkg {
-    pub async fn load_from_file(path: impl Into<PathBuf>) -> Result<Self, SiPkgError> {
+    pub async fn load_from_file(path: impl Into<PathBuf>) -> PkgResult<Self> {
         let tree: ObjectTree<PkgNode> = TreeFileSystemReader::tar(path).await?.read().await?;
 
         Ok(Self {
@@ -70,7 +75,7 @@ impl SiPkg {
         })
     }
 
-    pub async fn load_from_dir(path: impl Into<PathBuf>) -> Result<Self, SiPkgError> {
+    pub async fn load_from_dir(path: impl Into<PathBuf>) -> PkgResult<Self> {
         let tree: ObjectTree<PkgNode> = TreeFileSystemReader::physical(path).read().await?;
 
         Ok(Self {
@@ -78,7 +83,7 @@ impl SiPkg {
         })
     }
 
-    pub fn load_from_spec<I>(spec: I) -> Result<Self, SiPkgError>
+    pub fn load_from_spec<I>(spec: I) -> PkgResult<Self>
     where
         I: TryInto<PkgSpec>,
         I::Error: Into<SiPkgError>,
@@ -91,7 +96,7 @@ impl SiPkg {
         })
     }
 
-    pub async fn write_to_file(&self, path: impl Into<PathBuf>) -> Result<(), SiPkgError> {
+    pub async fn write_to_file(&self, path: impl Into<PathBuf>) -> PkgResult<()> {
         TreeFileSystemWriter::tar(path)
             .await?
             .write(&self.tree)
@@ -99,24 +104,34 @@ impl SiPkg {
             .map_err(Into::into)
     }
 
-    pub async fn write_to_dir(&self, path: impl AsRef<Path>) -> Result<(), SiPkgError> {
+    pub async fn write_to_dir(&self, path: impl AsRef<Path>) -> PkgResult<()> {
         TreeFileSystemWriter::physical(path)
             .write(&self.tree)
             .await
             .map_err(Into::into)
     }
 
-    pub fn metadata(&self) -> Result<SiPkgMetadata, SiPkgError> {
+    pub fn metadata(&self) -> PkgResult<SiPkgMetadata> {
         let (graph, root_idx) = self.as_petgraph();
 
         SiPkgMetadata::from_graph(graph, root_idx)
     }
 
-    pub fn hash(&self) -> Result<Hash, SiPkgError> {
+    pub fn hash(&self) -> PkgResult<Hash> {
         Ok(self.metadata()?.hash())
     }
 
-    pub fn funcs(&self) -> Result<Vec<SiPkgFunc>, SiPkgError> {
+    pub fn funcs_by_unique_id(&self) -> PkgResult<HashMap<Hash, SiPkgFunc>> {
+        let func_map: HashMap<Hash, SiPkgFunc> = self
+            .funcs()?
+            .drain(..)
+            .map(|func| (func.unique_id(), func))
+            .collect();
+
+        Ok(func_map)
+    }
+
+    pub fn funcs(&self) -> PkgResult<Vec<SiPkgFunc>> {
         let (graph, root_idx) = self.as_petgraph();
 
         let node_idxs = func_node_idxs(graph, root_idx)?;
@@ -128,7 +143,7 @@ impl SiPkg {
         Ok(funcs)
     }
 
-    pub fn schemas(&self) -> Result<Vec<SiPkgSchema>, SiPkgError> {
+    pub fn schemas(&self) -> PkgResult<Vec<SiPkgSchema>> {
         let (graph, root_idx) = self.as_petgraph();
 
         let node_idxs = schema_node_idxs(graph, root_idx)?;
@@ -141,7 +156,7 @@ impl SiPkg {
         Ok(schemas)
     }
 
-    pub fn schema_by_name(&self, name: impl AsRef<str>) -> Result<SiPkgSchema, SiPkgError> {
+    pub fn schema_by_name(&self, name: impl AsRef<str>) -> PkgResult<SiPkgSchema> {
         let (graph, root_idx) = self.as_petgraph();
 
         let node_idx = idx_for_name(graph, schema_node_idxs(graph, root_idx)?.into_iter(), name)?;
@@ -149,7 +164,7 @@ impl SiPkg {
         SiPkgSchema::from_graph(graph, node_idx)
     }
 
-    pub fn schema_by_hash(&self, hash: Hash) -> Result<SiPkgSchema, SiPkgError> {
+    pub fn schema_by_hash(&self, hash: Hash) -> PkgResult<SiPkgSchema> {
         let (graph, root_idx) = self.as_petgraph();
 
         let node_idx = idx_for_hash(graph, schema_node_idxs(graph, root_idx)?.into_iter(), hash)?;
@@ -166,7 +181,7 @@ fn idx_for_name(
     graph: &Graph<HashedNode<PkgNode>, ()>,
     mut idx_iter: impl Iterator<Item = NodeIndex>,
     name: impl AsRef<str>,
-) -> Result<NodeIndex, SiPkgError> {
+) -> PkgResult<NodeIndex> {
     let name = name.as_ref();
     let node_idx = idx_iter
         .find(|node_idx| graph[*node_idx].name() == name)
@@ -179,7 +194,7 @@ fn idx_for_hash(
     graph: &Graph<HashedNode<PkgNode>, ()>,
     mut idx_iter: impl Iterator<Item = NodeIndex>,
     hash: Hash,
-) -> Result<NodeIndex, SiPkgError> {
+) -> PkgResult<NodeIndex> {
     let node_idx = idx_iter
         .find(|node_idx| graph[*node_idx].hash() == hash)
         .ok_or_else(|| SiPkgError::NodeWithHashNotFound(hash))?;
@@ -191,7 +206,7 @@ fn category_node_idxs(
     category_node: CategoryNode,
     graph: &Graph<HashedNode<PkgNode>, ()>,
     root_idx: NodeIndex,
-) -> Result<Vec<NodeIndex>, SiPkgError> {
+) -> PkgResult<Vec<NodeIndex>> {
     let node_idxs = graph
         .neighbors_directed(root_idx, Outgoing)
         .find(|node_idx| match &graph[*node_idx].inner() {
@@ -206,14 +221,14 @@ fn category_node_idxs(
 fn schema_node_idxs(
     graph: &Graph<HashedNode<PkgNode>, ()>,
     root_idx: NodeIndex,
-) -> Result<Vec<NodeIndex>, SiPkgError> {
+) -> PkgResult<Vec<NodeIndex>> {
     category_node_idxs(CategoryNode::Schemas, graph, root_idx)
 }
 
 fn func_node_idxs(
     graph: &Graph<HashedNode<PkgNode>, ()>,
     root_idx: NodeIndex,
-) -> Result<Vec<NodeIndex>, SiPkgError> {
+) -> PkgResult<Vec<NodeIndex>> {
     category_node_idxs(CategoryNode::Funcs, graph, root_idx)
 }
 
@@ -250,10 +265,7 @@ pub struct SiPkgMetadata {
 }
 
 impl SiPkgMetadata {
-    fn from_graph(
-        graph: &Graph<HashedNode<PkgNode>, ()>,
-        node_idx: NodeIndex,
-    ) -> Result<Self, SiPkgError> {
+    fn from_graph(graph: &Graph<HashedNode<PkgNode>, ()>, node_idx: NodeIndex) -> PkgResult<Self> {
         let metadata_hashed_node = &graph[node_idx];
         let metadata_node = match metadata_hashed_node.inner() {
             PkgNode::Package(node) => node.clone(),
@@ -311,6 +323,7 @@ pub struct SiPkgFunc<'a> {
     response_type: FuncSpecBackendResponseType,
     hidden: bool,
     link: Option<Url>,
+    unique_id: Hash,
 
     hash: Hash,
     source: Source<'a>,
@@ -320,7 +333,7 @@ impl<'a> SiPkgFunc<'a> {
     fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,
-    ) -> Result<Self, SiPkgError> {
+    ) -> PkgResult<Self> {
         let func_hashed_node = &graph[node_idx];
         let func_node = match func_hashed_node.inner() {
             PkgNode::Func(node) => node.clone(),
@@ -343,6 +356,7 @@ impl<'a> SiPkgFunc<'a> {
             hidden: func_node.hidden,
             link: func_node.link,
             hash: func_hashed_node.hash(),
+            unique_id: func_node.unique_id,
             source: Source::new(graph, node_idx),
         })
     }
@@ -387,6 +401,10 @@ impl<'a> SiPkgFunc<'a> {
         self.hash
     }
 
+    pub fn unique_id(&self) -> Hash {
+        self.unique_id
+    }
+
     pub fn source(&self) -> &Source<'a> {
         &self.source
     }
@@ -407,7 +425,7 @@ impl<'a> SiPkgSchema<'a> {
     fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,
-    ) -> Result<Self, SiPkgError> {
+    ) -> PkgResult<Self> {
         let schema_hashed_node = &graph[node_idx];
         let schema_node = match schema_hashed_node.inner() {
             PkgNode::Schema(node) => node.clone(),
@@ -442,7 +460,7 @@ impl<'a> SiPkgSchema<'a> {
         self.category_name.as_deref()
     }
 
-    pub fn variants(&self) -> Result<Vec<SiPkgSchemaVariant<'a>>, SiPkgError> {
+    pub fn variants(&self) -> PkgResult<Vec<SiPkgSchemaVariant<'a>>> {
         let mut variants = vec![];
         for schema_variant_idx in self
             .source
@@ -478,7 +496,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
     fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,
-    ) -> Result<Self, SiPkgError> {
+    ) -> PkgResult<Self> {
         let schema_variant_hashed_node = &graph[node_idx];
         let schema_variant_node = match schema_variant_hashed_node.inner() {
             PkgNode::SchemaVariant(node) => node.clone(),
@@ -513,21 +531,67 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.color.as_deref()
     }
 
+    pub async fn qualifications(&self) -> PkgResult<Vec<SiPkgQualification>> {
+        let qual_child_idxs = self
+            .source
+            .graph
+            .neighbors_directed(self.source.node_idx, Outgoing)
+            .find(|node_idx| {
+                matches!(
+                    &self.source.graph[*node_idx].inner(),
+                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::Qualifications)
+                )
+            })
+            .ok_or(SiPkgError::CategoryNotFound(
+                SchemaVariantChildNode::Qualifications.kind_str(),
+            ))?;
+
+        let child_node_idxs: Vec<_> = self
+            .source
+            .graph
+            .neighbors_directed(qual_child_idxs, Outgoing)
+            .collect();
+
+        let mut qualifications = vec![];
+        for child_idx in child_node_idxs {
+            qualifications.push(SiPkgQualification::from_graph(
+                self.source.graph,
+                child_idx,
+            )?);
+        }
+
+        Ok(qualifications)
+    }
+
     pub async fn visit_prop_tree<F, Fut, I, C>(
         &'a self,
         process_prop_fn: F,
         parent_id: Option<I>,
         context: &'a C,
-    ) -> Result<(), SiPkgError>
+    ) -> PkgResult<()>
     where
         F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
-        Fut: Future<Output = Result<Option<I>, SiPkgError>>,
+        Fut: Future<Output = PkgResult<Option<I>>>,
         I: Copy,
     {
-        let mut child_node_idxs: Vec<_> = self
+        let domain_idxs = self
             .source
             .graph
             .neighbors_directed(self.source.node_idx, Outgoing)
+            .find(|node_idx| {
+                matches!(
+                    &self.source.graph[*node_idx].inner(),
+                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::Domain)
+                )
+            })
+            .ok_or(SiPkgError::CategoryNotFound(
+                SchemaVariantChildNode::Domain.kind_str(),
+            ))?;
+
+        let mut child_node_idxs: Vec<_> = self
+            .source
+            .graph
+            .neighbors_directed(domain_idxs, Outgoing)
             .collect();
         let domain_node_idx = match child_node_idxs.pop() {
             Some(idx) => idx,
@@ -566,6 +630,49 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn hash(&self) -> Hash {
         self.hash
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SiPkgQualification<'a> {
+    func_unique_id: Hash,
+    hash: Hash,
+    source: Source<'a>,
+}
+
+impl<'a> SiPkgQualification<'a> {
+    fn from_graph(
+        graph: &'a Graph<HashedNode<PkgNode>, ()>,
+        node_idx: NodeIndex,
+    ) -> PkgResult<Self> {
+        let qual_hashed_node = &graph[node_idx];
+        let qual_node = match qual_hashed_node.inner() {
+            PkgNode::Qualification(node) => node.clone(),
+            unexpected => {
+                return Err(SiPkgError::UnexpectedPkgNodeType(
+                    PkgNode::QUALIFICATION_KIND_STR,
+                    unexpected.node_kind_str(),
+                ))
+            }
+        };
+
+        Ok(Self {
+            func_unique_id: qual_node.func_unique_id,
+            hash: qual_hashed_node.hash(),
+            source: Source::new(graph, node_idx),
+        })
+    }
+
+    pub fn func_unique_id(&self) -> Hash {
+        self.func_unique_id
+    }
+
+    pub fn hash(&self) -> Hash {
+        self.hash
+    }
+
+    pub fn source(&self) -> &Source<'a> {
+        &self.source
     }
 }
 
@@ -610,7 +717,7 @@ impl<'a> SiPkgProp<'a> {
     fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,
-    ) -> Result<Self, SiPkgError> {
+    ) -> PkgResult<Self> {
         let prop_hashed_node = &graph[node_idx];
         let prop_node = match prop_hashed_node.inner() {
             PkgNode::Prop(node) => node.clone(),

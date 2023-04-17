@@ -6,7 +6,7 @@ use object_tree::{
 };
 use url::Url;
 
-use crate::SchemaVariantSpec;
+use crate::{node::SchemaVariantChild, SchemaVariantSpec};
 
 use super::PkgNode;
 
@@ -75,7 +75,13 @@ impl NodeChild for SchemaVariantSpec {
                 link: self.link.as_ref().cloned(),
                 color: self.color.as_ref().cloned(),
             }),
-            vec![Box::new(self.domain.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>],
+            vec![
+                Box::new(SchemaVariantChild::Domain(self.domain.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(SchemaVariantChild::Qualifications(
+                    self.qualifications.clone(),
+                )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            ],
         )
     }
 }

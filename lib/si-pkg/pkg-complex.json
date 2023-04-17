@@ -16,7 +16,20 @@
       "hidden": false,
       "link": "https://truth.com",
       "uniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
+    },
+    {
+      "name": "si:falsey",
+      "displayName": "false",
+      "description": "it returns false, but not really",
+      "handler": "truth",
+      "codeBase64": "ZnVuY3Rpb24gdHJ1dGgoKSB7IHJldHVybiB0cnVlOyB9",
+      "backendKind": "jsAttribute",
+      "responseType": "boolean",
+      "hidden": false,
+      "link": "https://truth.com",
+      "uniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
     }
+
   ],
   "schemas": [
     {
@@ -25,6 +38,14 @@
       "variants": [
         {
           "name": "v0",
+          "qualifications": [
+            {
+              "funcUniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
+            },
+            {
+              "funcUniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
+            }
+          ],
           "domain": {
             "name": "domain",
             "kind": "object",

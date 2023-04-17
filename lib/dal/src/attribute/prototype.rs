@@ -28,9 +28,9 @@ use crate::{
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
-    DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropKind,
-    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    Visibility,
+    DalContext, ExternalProviderId, Func, FuncBackendResponseType, HistoryEventError,
+    InternalProviderId, PropKind, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility,
 };
 
 pub mod argument;
@@ -46,6 +46,7 @@ const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
     include_str!("../queries/attribute_prototype/list_from_internal_provider_use.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype/list_for_context.sql");
+const LIST_FUNCS_FOR_CONTEXT_AND_BACKEND_RESPONSE_TYPE: &str = include_str!("../queries/attribute_prototype/list_protoype_funcs_for_context_and_func_backend_response_type.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype/find_with_parent_value_and_key_for_context.sql");
 const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype/find_for_func.sql");
@@ -482,6 +483,31 @@ impl AttributePrototype {
             current_value.delete_by_id(ctx).await?;
         }
         Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn list_prototype_funcs_by_context_and_backend_response_type(
+        ctx: &DalContext,
+        context: AttributeContext,
+        backend_response_type: FuncBackendResponseType,
+    ) -> AttributePrototypeResult<Vec<Func>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_FUNCS_FOR_CONTEXT_AND_BACKEND_RESPONSE_TYPE,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &context.prop_id(),
+                    &backend_response_type.as_ref(),
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     #[instrument(skip_all)]

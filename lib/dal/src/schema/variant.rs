@@ -1,4 +1,4 @@
-//! This module contains [`SchemaVariant`](crate::SchemaVariant), which is the "class" of a
+//! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
 use serde::{Deserialize, Serialize};
@@ -15,24 +15,26 @@ use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::root_prop::SiPropChild;
 use crate::standard_model::object_from_row;
 use crate::{
-    func::binding::FuncBindingError,
-    func::binding_return_value::FuncBindingReturnValueId,
+    func::{
+        argument::{FuncArgument, FuncArgumentError, FuncArgumentKind},
+        binding::FuncBindingError,
+        binding_return_value::FuncBindingReturnValueId,
+    },
     impl_standard_model, pk,
     schema::{RootProp, SchemaError},
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
-    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, AttributeValueId, BuiltinsError, Component, ComponentError, ComponentId,
-    DalContext, ExternalProvider, ExternalProviderError, Func, FuncBindingReturnValue, FuncError,
-    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
-    SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError,
-    Visibility, WsEventError,
+    AttributeContextBuilderError, AttributePrototype, AttributePrototypeArgumentError,
+    AttributePrototypeError, AttributeReadContext, AttributeValue, AttributeValueError,
+    AttributeValueId, BuiltinsError, Component, ComponentError, ComponentId, DalContext,
+    ExternalProvider, ExternalProviderError, Func, FuncBackendResponseType, FuncBindingReturnValue,
+    FuncError, FuncId, HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind,
+    RootPropChild, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, ValidationPrototypeError, Visibility, WsEventError,
 };
-use crate::{AttributeReadContext, AttributeValue, RootPropChild, TransactionsError};
-use crate::{FuncBackendResponseType, FuncId};
 
-use self::leaves::LeafKind;
+use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
 pub mod definition;
 pub mod leaves;
@@ -106,6 +108,8 @@ pub enum SchemaVariantError {
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("func binding return value not found {0}")]
     FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
@@ -533,6 +537,93 @@ impl SchemaVariant {
             .await?;
 
         Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn upsert_leaf_function(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        component_id: Option<ComponentId>,
+        leaf_kind: LeafKind,
+        func: &Func,
+    ) -> SchemaVariantResult<AttributePrototype> {
+        let leaf_prop =
+            SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
+
+        let context = match component_id {
+            Some(component_id) => AttributeContextBuilder::new()
+                .set_prop_id(*leaf_prop.id())
+                .set_component_id(component_id)
+                .to_context()?,
+            None => AttributeContextBuilder::new()
+                .set_prop_id(*leaf_prop.id())
+                .to_context()?,
+        };
+
+        let key = Some(func.name().to_string());
+
+        Ok(
+            match AttributePrototype::find_for_context_and_key(ctx, context, &key)
+                .await?
+                .pop()
+            {
+                Some(existing_proto) => existing_proto,
+                None => {
+                    let arg = match FuncArgument::list_for_func(ctx, *func.id()).await?.pop() {
+                        Some(arg) => arg,
+                        None => {
+                            FuncArgument::new(
+                                ctx,
+                                "domain",
+                                FuncArgumentKind::Object,
+                                None,
+                                *func.id(),
+                            )
+                            .await?
+                        }
+                    };
+
+                    let (_, new_proto) = SchemaVariant::add_leaf(
+                        ctx,
+                        *func.id(),
+                        schema_variant_id,
+                        component_id,
+                        leaf_kind,
+                        vec![LeafInput {
+                            location: LeafInputLocation::Domain,
+                            func_argument_id: *arg.id(),
+                        }],
+                    )
+                    .await?;
+
+                    new_proto
+                }
+            },
+        )
+    }
+
+    /// This method finds all the functions for a particular
+    /// ['LeafKind'](crate::schema::variant::leaves::LeafKind) for this SchemaVariant. For example,
+    /// it can find all Qualification functions for the variant.
+    pub async fn find_leaf_item_functions(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        leaf_kind: LeafKind,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let leaf_item_prop = Self::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
+        let backend_response_type: FuncBackendResponseType = leaf_kind.into();
+
+        let context = AttributeContextBuilder::new()
+            .set_prop_id(*leaf_item_prop.id())
+            .to_context()?;
+
+        Ok(
+            AttributePrototype::list_prototype_funcs_by_context_and_backend_response_type(
+                ctx,
+                context,
+                backend_response_type,
+            )
+            .await?,
+        )
     }
 
     /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry

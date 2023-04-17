@@ -33,6 +33,20 @@ impl PkgSpec {
     pub fn builder() -> PkgSpecBuilder {
         PkgSpecBuilder::default()
     }
+
+    pub fn func_for_unique_id(&self, unique_id: &FuncUniqueId) -> Option<&FuncSpec> {
+        self.funcs
+            .iter()
+            .find(|func_spec| &func_spec.unique_id == unique_id)
+    }
+
+    pub fn func_for_name(&self, name: impl AsRef<str>) -> Option<&FuncSpec> {
+        let name = name.as_ref();
+
+        self.funcs
+            .iter()
+            .find(|func_spec| func_spec.name.as_str() == name)
+    }
 }
 
 impl PkgSpecBuilder {
@@ -91,6 +105,8 @@ pub enum FuncSpecBackendResponseType {
     Command,
 }
 
+pub type FuncUniqueId = Hash;
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
@@ -111,8 +127,8 @@ pub struct FuncSpec {
     pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into))]
     pub hidden: bool,
-    #[builder(field(type = "Hash", build = "self.build_func_unique_id()"))]
-    pub unique_id: Hash,
+    #[builder(field(type = "FuncUniqueId", build = "self.build_func_unique_id()"))]
+    pub unique_id: FuncUniqueId,
 
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
@@ -231,6 +247,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(private, default = "Self::default_domain()")]
     pub domain: PropSpec,
+
+    #[builder(setter(each(name = "qualification"), into), default)]
+    pub qualifications: Vec<QualificationSpec>,
 }
 
 impl SchemaVariantSpec {
@@ -288,6 +307,20 @@ impl SchemaVariantSpecBuilder {
             ),
         };
         self
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct QualificationSpec {
+    #[builder(setter(into))]
+    pub func_unique_id: FuncUniqueId,
+}
+
+impl QualificationSpec {
+    pub fn builder() -> QualificationSpecBuilder {
+        QualificationSpecBuilder::default()
     }
 }
 

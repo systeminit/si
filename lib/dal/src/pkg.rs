@@ -12,8 +12,8 @@ pub use import::{import_pkg, import_pkg_from_pkg};
 use crate::{
     installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
     schema::variant::definition::SchemaVariantDefinitionError, FuncBackendKind,
-    FuncBackendResponseType, FuncError, PropError, SchemaError, SchemaId, SchemaVariantError,
-    SchemaVariantId, StandardModelError,
+    FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
+    SchemaVariantError, SchemaVariantId, StandardModelError,
 };
 
 #[derive(Debug, Error)]
@@ -46,6 +46,8 @@ pub enum PkgError {
     InstalledPkg(#[from] InstalledPkgError),
     #[error("Installed schema id {0} does not exist")]
     InstalledSchemaMissing(SchemaId),
+    #[error("Installed func id {0} does not exist")]
+    InstalledFuncMissing(FuncId),
     #[error("Installed schema variant {0} does not exist")]
     InstalledSchemaVariantMissing(SchemaVariantId),
     #[error("standard model relationship {0} missing belongs_to for {1} with id {2}")]
@@ -58,6 +60,10 @@ pub enum PkgError {
     InvalidFuncBackendKind(FuncBackendKind),
     #[error("Cannot package func with backend response type of {0}")]
     InvalidFuncBackendResponseType(FuncBackendResponseType),
+    #[error("Package asked for a function with the unique id {0} but none could be found")]
+    MissingFuncUniqueId(String),
+    #[error("Func {0} missing from exported funcs")]
+    MissingExportedFunc(FuncId),
 }
 
 impl PkgError {
