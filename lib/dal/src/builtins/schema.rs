@@ -18,11 +18,11 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, BuiltinSchemaOption, BuiltinsError, BuiltinsResult, DalContext,
-    ExternalProvider, Func, FuncDescription, FuncDescriptionContents, FuncError, FuncId,
-    InternalProvider, InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropError,
-    PropId, PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    AttributeValue, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
+    InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind,
+    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    SelectedTestBuiltinSchemas, StandardModel, ValidationPrototype, ValidationPrototypeContext,
     WorkflowPrototype, WorkflowPrototypeContext,
 };
 
@@ -40,6 +40,7 @@ mod docker_image;
 mod kubernetes_deployment;
 mod kubernetes_namespace;
 mod systeminit_generic_frame;
+mod test_exclusive_starfield;
 
 const NODE_COLOR_FRAMES: &str = "#FFFFFF";
 // Reference: https://aws.amazon.com/trademark-guidelines/
@@ -57,53 +58,116 @@ pub enum ValidationKind {
     Custom(FuncId),
 }
 
-pub async fn migrate(
+/// Migrate [`Schemas`](crate::Schema) for production use.
+pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
+    info!("migrating schemas");
+    let driver = MigrationDriver::new(ctx).await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    driver
+        .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
+        .await?;
+    ctx.blocking_commit().await?;
+
+    Ok(())
+}
+
+/// Migrate [`Schemas`](crate::Schema) for use in tests.
+pub async fn migrate_for_tests(
     ctx: &DalContext,
-    builtin_schema_option: BuiltinSchemaOption,
+    selected_test_builtin_schemas: SelectedTestBuiltinSchemas,
 ) -> BuiltinsResult<()> {
-    // Determine whether or not to migrate everything based on the option provided.
-    let (migrate_all, specific_builtin_schemas) = match builtin_schema_option {
-        BuiltinSchemaOption::All => {
-            info!("migrating schemas");
-            (true, HashSet::new())
-        }
-        BuiltinSchemaOption::None => {
-            info!("skipping migrating schemas (this should only be possible when running tests)");
-            return Ok(());
-        }
-        BuiltinSchemaOption::Some(provided_set) => {
-            info!("migrating schemas based on a provided set of names (this should only be possible when running tests)");
-            debug!("provided set of builtin schemas: {:?}", &provided_set);
-            (false, provided_set)
-        }
-    };
+    // Determine what to migrate based on the selected test builtin schemas provided.
+    let (migrate_all, migrate_test_exclusive, specific_builtin_schemas) =
+        match selected_test_builtin_schemas {
+            SelectedTestBuiltinSchemas::All => {
+                info!("migrating schemas for tests");
+                (true, false, HashSet::new())
+            }
+            SelectedTestBuiltinSchemas::None => {
+                info!("skipping migrating schemas for tests");
+                return Ok(());
+            }
+            SelectedTestBuiltinSchemas::Some(provided_set) => {
+                info!("migrating schemas for tests based on a provided set of names");
+                debug!("provided set of builtin schemas: {:?}", &provided_set);
+                (false, false, provided_set)
+            }
+            SelectedTestBuiltinSchemas::Test => {
+                info!("migrating test-exclusive schemas solely");
+                (false, true, HashSet::new())
+            }
+        };
 
     // Once we know what to migrate, create the driver.
     let driver = MigrationDriver::new(ctx).await?;
     ctx.blocking_commit().await?;
 
-    // Perform migrations.
+    // Perform migrations on production schemas.
     if migrate_all || specific_builtin_schemas.contains("docker image") {
         driver
             .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
-        driver
-            .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
-        driver
-            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
-        driver
-            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
         ctx.blocking_commit().await?;
     }
@@ -176,6 +240,35 @@ pub async fn migrate(
             .await?;
         ctx.blocking_commit().await?;
     }
+
+    // Perform migrations on hidden schemas, only if the user asks for them.
+    // TODO(nick): remove the "migrate_all" and replace tests using these schemas with test
+    // exclusive schemas (or if the tests test the builtins themselves and not the system,
+    // ensure there is an equivalent test for the system).
+    if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
+        driver
+            .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
+            .await?;
+        ctx.blocking_commit().await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
+        driver
+            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+        ctx.blocking_commit().await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
+        driver
+            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+        ctx.blocking_commit().await?;
+    }
+
+    // Perform migrations on test-exclusive schemas.
+    if migrate_all || migrate_test_exclusive || specific_builtin_schemas.contains("starfield") {
+        driver.migrate_test_exclusive_starfield(ctx).await?;
+    }
+
     Ok(())
 }
 

@@ -68,7 +68,7 @@ async fn get_definitions_for_schema_name(
     SchemaVariantDefinitionMetadataJson,
     SchemaVariantDefinitionJson,
 )> {
-    let schema = Schema::schema_for_name(ctx, schema_name).await?;
+    let schema = Schema::find_by_name(ctx, schema_name).await?;
     let default_variant = schema.default_variant(ctx).await?;
 
     let metadata_json = SchemaVariantDefinitionMetadataJson::from_schema_and_variant(

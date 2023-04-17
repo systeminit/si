@@ -1,179 +1,29 @@
-use dal::action_prototype::ActionKind;
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::backend::js_command::CommandRunResult;
 use dal::job::definition::{FixItem, FixesJob};
-use dal::schema::variant::leaves::LeafKind;
+
 use dal::{
-    component::confirmation::view::ConfirmationStatus,
-    generate_name,
-    schema::variant::leaves::{LeafInput, LeafInputLocation},
-    ActionPrototype, ActionPrototypeContext, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    ComponentViewProperties, DalContext, Fix, FixBatch, FixCompletionStatus, Func, FuncBackendKind,
-    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    component::confirmation::view::ConfirmationStatus, generate_name, ChangeSet, ChangeSetStatus,
+    Component, ComponentView, ComponentViewProperties, DalContext, Fix, FixBatch,
+    FixCompletionStatus, Schema, StandardModel, Visibility,
 };
 use dal_test::test;
-use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
 /// Recommendation: run this test with the following environment variable:
 /// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=none
+/// SI_TEST_BUILTIN_SCHEMAS=test
 /// ```
 #[test]
 async fn add_and_run_confirmations(mut octx: DalContext) {
     let ctx = &mut octx;
     ctx.update_to_head();
 
-    let mut schema = create_schema(ctx).await;
-    let (mut schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    let schema_variant_id = *schema_variant.id();
-    schema
-        .set_default_schema_variant_id(ctx, Some(schema_variant_id))
+    let schema_variant_id = *Schema::find_by_name(ctx, "starfield")
         .await
-        .expect("cannot set default schema variant");
-
-    // Create command and workflow funcs for our workflow and action prototypes.
-    let mut command_func = Func::new(
-        ctx,
-        "test:createCommand",
-        FuncBackendKind::JsCommand,
-        FuncBackendResponseType::Command,
-    )
-    .await
-    .expect("could not create func");
-    let code = "async function create() {
-      return { value: \"poop\", status: \"ok\" };
-    }";
-    command_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    command_func
-        .set_handler(ctx, Some("create"))
-        .await
-        .expect("set handler");
-    let mut workflow_func = Func::new(
-        ctx,
-        "test:createWorkflow",
-        FuncBackendKind::JsWorkflow,
-        FuncBackendResponseType::Workflow,
-    )
-    .await
-    .expect("could not create func");
-    let code = "async function create() {
-      return {
-        name: \"test:createWorkflow\",
-        kind: \"conditional\",
-        steps: [
-          {
-            command: \"test:createCommand\",
-          },
-        ],
-      };
-    }";
-    workflow_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    workflow_func
-        .set_handler(ctx, Some("create"))
-        .await
-        .expect("set handler");
-
-    // Create workflow and action protoypes.
-    let workflow_prototype = WorkflowPrototype::new(
-        ctx,
-        *workflow_func.id(),
-        serde_json::Value::Null,
-        WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        },
-        "create",
-    )
-    .await
-    .expect("could not create workflow prototype");
-    ActionPrototype::new(
-        ctx,
-        *workflow_prototype.id(),
-        "create",
-        ActionKind::Create,
-        ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id,
-            ..Default::default()
-        },
-    )
-    .await
-    .expect("unable to create action prototype");
-
-    // Setup the confirmation function.
-    let mut confirmation_func = Func::new(
-        ctx,
-        "test:confirmation",
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::Confirmation,
-    )
-    .await
-    .expect("could not create func");
-    let confirmation_func_id = *confirmation_func.id();
-    let code = "async function exists(input) {
-        if (!input.resource?.value) {
-            return {
-                success: false,
-                recommendedActions: [\"create\"]
-            }
-        }
-        return {
-            success: true,
-            recommendedActions: [],
-        }
-    }";
-    confirmation_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    confirmation_func
-        .set_handler(ctx, Some("exists"))
-        .await
-        .expect("set handler");
-    let confirmation_func_argument = FuncArgument::new(
-        ctx,
-        "resource",
-        FuncArgumentKind::String,
-        None,
-        confirmation_func_id,
-    )
-    .await
-    .expect("could not create func argument");
-
-    // Add the leaf for the confirmation.
-    SchemaVariant::add_leaf(
-        ctx,
-        confirmation_func_id,
-        schema_variant_id,
-        None,
-        LeafKind::Confirmation,
-        vec![LeafInput {
-            location: LeafInputLocation::Resource,
-            func_argument_id: *confirmation_func_argument.id(),
-        }],
-    )
-    .await
-    .expect("could not add qualification");
-
-    // Finalize the schema variant and create the component.
-    schema_variant
-        .finalize(ctx, None)
-        .await
-        .expect("unable to finalize schema variant");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
+        .expect("could not find schema")
+        .default_schema_variant_id()
+        .expect("could not get default variant id");
 
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
@@ -214,6 +64,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},
@@ -256,6 +107,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},
@@ -303,6 +155,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},
@@ -323,161 +176,18 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
 
 /// Recommendation: run this test with the following environment variable:
 /// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=none
+/// SI_TEST_BUILTIN_SCHEMAS=test
 /// ```
 #[test]
 async fn list_confirmations(mut octx: DalContext) {
     let ctx = &mut octx;
     ctx.update_to_head();
 
-    let mut schema = create_schema(ctx).await;
-    let (mut schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    let schema_variant_id = *schema_variant.id();
-    schema
-        .set_default_schema_variant_id(ctx, Some(schema_variant_id))
+    let schema_variant_id = *Schema::find_by_name(ctx, "starfield")
         .await
-        .expect("cannot set default schema variant");
-
-    // Setup the confirmation function.
-    let mut confirmation_func = Func::new(
-        ctx,
-        "test:confirmation",
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::Confirmation,
-    )
-    .await
-    .expect("could not create func");
-    let confirmation_func_id = *confirmation_func.id();
-    let code = "async function exists(input) {
-        if (!input.resource?.value) {
-            return {
-                success: false,
-                recommendedActions: [\"create\"]
-            }
-        }
-        return {
-            success: true,
-            recommendedActions: [],
-        }
-    }";
-    confirmation_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    confirmation_func
-        .set_handler(ctx, Some("exists"))
-        .await
-        .expect("set handler");
-    let confirmation_func_argument = FuncArgument::new(
-        ctx,
-        "resource",
-        FuncArgumentKind::String,
-        None,
-        confirmation_func_id,
-    )
-    .await
-    .expect("could not create func argument");
-
-    // Add the leaf for the confirmation.
-    SchemaVariant::add_leaf(
-        ctx,
-        confirmation_func_id,
-        schema_variant_id,
-        None,
-        LeafKind::Confirmation,
-        vec![LeafInput {
-            location: LeafInputLocation::Resource,
-            func_argument_id: *confirmation_func_argument.id(),
-        }],
-    )
-    .await
-    .expect("could not add qualification");
-
-    // Create command and workflow funcs for our workflow and action prototypes.
-    let mut command_func = Func::new(
-        ctx,
-        "test:createCommand",
-        FuncBackendKind::JsCommand,
-        FuncBackendResponseType::Command,
-    )
-    .await
-    .expect("could not create func");
-    let code = "async function create() {
-      return { value: \"poop\", status: \"ok\" };
-    }";
-    command_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    command_func
-        .set_handler(ctx, Some("create"))
-        .await
-        .expect("set handler");
-    let mut workflow_func = Func::new(
-        ctx,
-        "test:createWorkflow",
-        FuncBackendKind::JsWorkflow,
-        FuncBackendResponseType::Workflow,
-    )
-    .await
-    .expect("could not create func");
-    let code = "async function create() {
-      return {
-        name: \"test:createWorkflow\",
-        kind: \"conditional\",
-        steps: [
-          {
-            command: \"test:createCommand\",
-          },
-        ],
-      };
-    }";
-    workflow_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    workflow_func
-        .set_handler(ctx, Some("create"))
-        .await
-        .expect("set handler");
-
-    // Create workflow and action prototypes.
-    let workflow_prototype = WorkflowPrototype::new(
-        ctx,
-        *workflow_func.id(),
-        serde_json::Value::Null,
-        WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        },
-        "create",
-    )
-    .await
-    .expect("could not create workflow prototype");
-    ActionPrototype::new(
-        ctx,
-        *workflow_prototype.id(),
-        "create",
-        ActionKind::Create,
-        ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id,
-            ..Default::default()
-        },
-    )
-    .await
-    .expect("unable to create action prototype");
-
-    // Finalize the schema variant and create the component.
-    schema_variant
-        .finalize(ctx, None)
-        .await
-        .expect("unable to finalize schema variant");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
+        .expect("could not find schema")
+        .default_schema_variant_id()
+        .expect("could not get default variant id");
 
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
@@ -541,6 +251,7 @@ async fn list_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},
@@ -601,6 +312,7 @@ async fn list_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},
@@ -683,6 +395,7 @@ async fn list_confirmations(mut octx: DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
             "domain": {},

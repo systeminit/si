@@ -108,15 +108,19 @@ pub enum BuiltinsError {
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 
-/// This enum drives what builtin [`Schemas`](crate::Schema) to migrate.
+/// This enum drives what builtin [`Schemas`](crate::Schema) to migrate for tests.
+///
+/// This enum _should not_ be used outside of tests!
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum BuiltinSchemaOption {
-    /// Migrate everything (default behavior and the only option in production).
+pub enum SelectedTestBuiltinSchemas {
+    /// Migrate everything (default behavior).
     All,
-    /// Migrate nothing (available in tests only).
+    /// Migrate nothing.
     None,
-    // Migrate _some_ things based on user input (available in tests only).
+    /// Migrate _some_ [`Schema(s)`](crate::Schema) based on user input.
     Some(HashSet<String>),
+    /// Migrate _only_ test-exclusive [`Schemas`](crate::Schema).
+    Test,
 }
 
 /// Migrate all "builtins" in a definitive order.
@@ -126,7 +130,7 @@ pub enum BuiltinSchemaOption {
 /// 1. [`Schemas`](crate::Schema)
 pub async fn migrate(
     ctx: &DalContext,
-    builtin_schema_option: BuiltinSchemaOption,
+    selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
 ) -> BuiltinsResult<()> {
     info!("migrating functions");
     func::migrate(ctx).await?;
@@ -134,8 +138,14 @@ pub async fn migrate(
     info!("migrating workflows");
     workflow::migrate(ctx).await?;
 
-    // Log the status of schema migrations once we evaluate the option.
-    schema::migrate(ctx, builtin_schema_option).await?;
+    match selected_test_builtin_schemas {
+        Some(found_selected_test_builtin_schemas) => {
+            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas).await?;
+        }
+        None => {
+            schema::migrate_for_production(ctx).await?;
+        }
+    }
 
     info!("completed migrating functions, workflows and schemas");
     Ok(())

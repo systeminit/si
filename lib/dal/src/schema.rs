@@ -194,7 +194,7 @@ impl Schema {
         }
     }
 
-    pub async fn schema_for_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Schema> {
+    pub async fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Schema> {
         let name = name.as_ref();
         let schemas = Schema::find_by_attr(ctx, "name", &name).await?;
         schemas

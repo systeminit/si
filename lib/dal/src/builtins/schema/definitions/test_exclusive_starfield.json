@@ -1,0 +1,12 @@
+{
+  "inputSockets": [
+    {
+      "name": "input"
+    }
+  ],
+  "outputSockets": [
+    {
+      "name": "output"
+    }
+  ]
+}

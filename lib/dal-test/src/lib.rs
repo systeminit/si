@@ -11,7 +11,7 @@ use std::{
 #[cfg(debug_assertions)]
 use dal::check_runtime_dependencies;
 use dal::{
-    builtins::BuiltinSchemaOption,
+    builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
     DalContext, JwtPublicSigningKey, JwtSecretKey, ServicesContext,
 };
@@ -563,7 +563,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Check if the user would like to skip migrating schemas. This is helpful for boosting
     // performance when running integration tests that do not rely on builtin schemas.
-    let builtin_schema_option = assemble_builtin_schema_option();
+    let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
 
     info!("creating builtins");
     dal::migrate_builtins(
@@ -572,7 +572,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
-        builtin_schema_option,
+        Some(selected_test_builtin_schemas),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -594,7 +594,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     Ok(())
 }
 
-fn assemble_builtin_schema_option() -> BuiltinSchemaOption {
+fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
     match env::var(ENV_VAR_BUILTIN_SCHEMAS) {
         Ok(found_value) => {
             let mut builtin_schemas = HashSet::new();
@@ -607,20 +607,22 @@ fn assemble_builtin_schema_option() -> BuiltinSchemaOption {
 
                 // If we receive any keywords indicating that we need to return early, let's do so.
                 if &cleaned == "none" || &cleaned == "false" {
-                    return BuiltinSchemaOption::None;
+                    return SelectedTestBuiltinSchemas::None;
                 } else if &cleaned == "all" || &cleaned == "true" {
-                    return BuiltinSchemaOption::All;
+                    return SelectedTestBuiltinSchemas::All;
+                } else if &cleaned == "test" {
+                    return SelectedTestBuiltinSchemas::Test;
                 }
 
                 // If we do not find any keywords, we assume that the user provided the name for a
                 // builtin schema.
                 builtin_schemas.insert(cleaned);
             }
-            BuiltinSchemaOption::Some(builtin_schemas)
+            SelectedTestBuiltinSchemas::Some(builtin_schemas)
         }
         Err(_) => {
             // If the variable is unset, then we migrate everything. This is the default behavior.
-            BuiltinSchemaOption::All
+            SelectedTestBuiltinSchemas::All
         }
     }
 }
