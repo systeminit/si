@@ -4,9 +4,9 @@ use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::action_prototype::ActionKind;
-use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::definition::{
     PropCache, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
 };

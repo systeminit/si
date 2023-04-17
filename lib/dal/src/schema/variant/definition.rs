@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
+    component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
     standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
     InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant,
     SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp,
@@ -373,9 +373,9 @@ impl TryFrom<&SchemaVariantDefinition> for SchemaVariantDefinitionJson {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropWidgetDefinition {
-    /// The [`kind`](crate::edit_field::widget::WidgetKind) of the [`Prop`](crate::Prop) to be created.
+    /// The [`kind`](crate::property_editor::schema::WidgetKind) of the [`Prop`](crate::Prop) to be created.
     kind: WidgetKind,
-    /// The `Option<Value>` of the [`kind`](crate::edit_field::widget::WidgetKind) to be created.
+    /// The `Option<Value>` of the [`kind`](crate::property_editor::schema::WidgetKind) to be created.
     #[serde(default)]
     options: Option<Value>,
 }

@@ -4,11 +4,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use strum_macros::{AsRefStr, Display, EnumString};
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
 use crate::{
-    edit_field::widget::WidgetKind, DalContext, LabelEntry, LabelList, Prop, PropKind,
-    SchemaVariant, SchemaVariantId, Secret, SecretId, StandardModel,
+    DalContext, LabelEntry, LabelList, Prop, PropKind, SchemaVariant, SchemaVariantId, Secret,
+    SecretId, StandardModel,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -138,6 +139,30 @@ pub enum PropertyEditorPropWidgetKind {
     Color,
     Text,
     TextArea,
+}
+
+// NOTE(nick): this was from the old edit fields code, but it's interesting that we have multiple
+// widget kind enums? Not important to look at right now, though.
+#[derive(
+    AsRefStr, Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Display, EnumString, Copy,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum WidgetKind {
+    Array,
+    Checkbox,
+    Header,
+    Map,
+    SecretSelect,
+    Text,
+    TextArea,
+    Color,
+    /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
+    /// [`PropKinds`](crate::PropKind).
+    Select,
+    /// Provides a text input with auto-completion for corresponding "primitive" (e.g. string, number, boolean)
+    /// [`PropKinds`](crate::PropKind).
+    ComboBox,
 }
 
 impl PropertyEditorPropWidgetKind {
