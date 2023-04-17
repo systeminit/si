@@ -120,7 +120,8 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
             }
         };
 
-        let func_metadata: FunctionMetadata = serde_json::from_str(builtin_func_file.contents_str)?;
+        let func_metadata: FunctionMetadata = serde_json::from_str(builtin_func_file.contents_str)
+            .map_err(|e| BuiltinsError::FuncJson(builtin_path.to_string_lossy().to_string(), e))?;
 
         let func_name = format!(
             "si:{}",

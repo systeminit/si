@@ -153,6 +153,11 @@ impl DependentValuesUpdate {
         let ctx_builder = ctx.services_context().into_builder();
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
+        // Avoid lingering transaction while we wait to create attribute values
+        // Status updater reads from the database and uses its own connection from the pg_pool to
+        // do writes
+        ctx.rollback().await?;
+
         debug!(job_id = ?self.job_id(), "Waiting to create AttributeValues");
         if let council_server::client::State::Shutdown = council.wait_to_create_values().await? {
             return Ok(());

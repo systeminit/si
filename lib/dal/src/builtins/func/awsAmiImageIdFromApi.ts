@@ -1,17 +1,21 @@
 async function extract(input: Input): Promise<Output> {
+  if (input.domain?.ImageId) {
+    return input.domain.ImageId;
+  }
+
   if (!input.code) {
     return ""
   }
 
-    const code = input.code?.["si:generateAwsAmiJSON"]?.code;
-    if (!code) {
-      return ""
-    }
-    // Ensure we have filters (an ami id or filters are set)
-    const filters = JSON.parse(code)?.Filters ?? [];
-    if (filters.length == 0) {
-      return "";
-    }
+  const code = input.code?.["si:generateAwsAmiJSON"]?.code;
+  if (!code) {
+    return ""
+  }
+  // Ensure we have filters (an ami id or filters are set)
+  const filters = JSON.parse(code)?.Filters ?? [];
+  if (filters.length == 0) {
+    return "";
+  }
 
   const imageResponse = await siExec.waitUntilEnd("aws", [
     "ec2",

@@ -120,6 +120,9 @@ impl Component {
                     ActionKind::Create => {
                         create_recommendations.push(recommendation_component_specific)
                     }
+                    ActionKind::Refresh => {
+                        other_recommendations.push(recommendation_component_specific)
+                    }
                     ActionKind::Other => {
                         other_recommendations.push(recommendation_component_specific)
                     }

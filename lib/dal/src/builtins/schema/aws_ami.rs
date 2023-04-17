@@ -364,7 +364,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        let name = "refresh";
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -373,8 +372,8 @@ impl MigrationDriver {
         ActionPrototype::new(
             ctx,
             *workflow_prototype.id(),
-            name,
-            ActionKind::Other,
+            "refresh",
+            ActionKind::Refresh,
             context,
         )
         .await?;

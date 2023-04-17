@@ -60,6 +60,8 @@ pub struct ActionPrototypeContext {
 pub enum ActionKind {
     /// The [`action`](ActionPrototype) creates a new "resource".
     Create,
+    /// The [`action`](ActionPrototype) that refreshes an existing "resource".
+    Refresh,
     /// The [`action`](ActionPrototype) is "internal only" or has multiple effects.
     Other,
     /// The [`action`](ActionPrototype) destroys an existing "resource".

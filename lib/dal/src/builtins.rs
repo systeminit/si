@@ -76,6 +76,8 @@ pub enum BuiltinsError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("json error {1} at file {0}")]
+    FuncJson(String, serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
     SerdeJsonErrorForFunc(String, serde_json::Error),
     #[error("socket error: {0}")]
