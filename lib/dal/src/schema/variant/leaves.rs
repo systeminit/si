@@ -2,7 +2,9 @@
 //! subtrees for a [`SchemaVariant`](crate::SchemaVariant). In this domain, a "leaf" is considered
 //! to an entry of a immediate child [`map`](crate::PropKind::Map) underneath "/root".
 
-use crate::func::argument::FuncArgumentId;
+use strum_macros::EnumIter;
+
+use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeReadContext,
@@ -10,6 +12,7 @@ use crate::{
     FuncBackendResponseType, FuncError, FuncId, PropId, RootPropChild, SchemaVariant,
     SchemaVariantId, StandardModel,
 };
+use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
 /// a [`SchemaVariant`](crate::SchemaVariant). Each compatible subtree starts with a
@@ -17,7 +20,7 @@ use crate::{
 /// [`object`](crate::PropKind::Object) entries. Each entry must leverage the same kind of
 /// [`Func`](crate::Func) within the same [`map`](crate::PropKind::Map). The kind of
 /// [`Func`](crate::Func) allowed corresponds to the [`LeafKind`].
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, EnumIter)]
 pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).
@@ -28,6 +31,26 @@ pub enum LeafKind {
     /// This variant corresponds to the "/root/confirmation" subtree whose leaves leverage
     /// confirmation [`Funcs`](crate::Func).
     Confirmation,
+}
+
+impl From<PkgLeafKind> for LeafKind {
+    fn from(value: PkgLeafKind) -> Self {
+        match value {
+            PkgLeafKind::CodeGeneration => LeafKind::CodeGeneration,
+            PkgLeafKind::Confirmation => LeafKind::Confirmation,
+            PkgLeafKind::Qualification => LeafKind::Qualification,
+        }
+    }
+}
+
+impl From<LeafKind> for PkgLeafKind {
+    fn from(value: LeafKind) -> Self {
+        match value {
+            LeafKind::CodeGeneration => PkgLeafKind::CodeGeneration,
+            LeafKind::Confirmation => PkgLeafKind::Confirmation,
+            LeafKind::Qualification => PkgLeafKind::Qualification,
+        }
+    }
 }
 
 /// This enum provides available child [`Prop`](crate::Prop) trees of [`RootProp`](crate::RootProp)
@@ -58,6 +81,37 @@ impl Into<RootPropChild> for LeafInputLocation {
             LeafInputLocation::Domain => RootPropChild::Domain,
             LeafInputLocation::Resource => RootPropChild::Resource,
             LeafInputLocation::DeletedAt => RootPropChild::DeletedAt,
+        }
+    }
+}
+
+impl From<&PkgLeafInputLocation> for LeafInputLocation {
+    fn from(value: &PkgLeafInputLocation) -> LeafInputLocation {
+        match value {
+            PkgLeafInputLocation::Code => LeafInputLocation::Code,
+            PkgLeafInputLocation::Domain => LeafInputLocation::Domain,
+            PkgLeafInputLocation::Resource => LeafInputLocation::Resource,
+            PkgLeafInputLocation::DeletedAt => LeafInputLocation::DeletedAt,
+        }
+    }
+}
+
+impl LeafInputLocation {
+    pub fn arg_name(&self) -> &'static str {
+        match self {
+            LeafInputLocation::Code => "code",
+            LeafInputLocation::Domain => "domain",
+            LeafInputLocation::Resource => "resource",
+            LeafInputLocation::DeletedAt => "deleted_at",
+        }
+    }
+
+    pub fn arg_kind(&self) -> FuncArgumentKind {
+        match self {
+            LeafInputLocation::Code | LeafInputLocation::Domain | LeafInputLocation::Resource => {
+                FuncArgumentKind::Object
+            }
+            LeafInputLocation::DeletedAt => FuncArgumentKind::String,
         }
     }
 }

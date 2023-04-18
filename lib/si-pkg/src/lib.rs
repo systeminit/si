@@ -6,9 +6,10 @@ pub use pkg::{
     SiPkg, SiPkgError, SiPkgFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
 };
 pub use spec::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PkgSpecBuilder, PropSpec,
-    PropSpecBuilder, PropSpecKind, QualificationSpec, QualificationSpecBuilder, SchemaSpec,
-    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
+    LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SpecError,
 };
 
 #[cfg(test)]
@@ -81,7 +82,6 @@ mod tests {
         assert_eq!("si:truthy", truthy_func.name());
         let falsey_func = funcs.get(1).expect("failed to get second func");
         assert_eq!("si:falsey", falsey_func.name());
-        dbg!(falsey_func.unique_id());
 
         let variant = read_pkg
             .schemas()
@@ -97,13 +97,28 @@ mod tests {
             .funcs_by_unique_id()
             .expect("cannot get funcs by unique id");
 
-        dbg!(&funcs_by_unique_id);
+        let leaf_funcs = variant.leaf_functions().await.expect("get leaf funcs");
+        assert_eq!(3, leaf_funcs.len());
 
-        let qualifications = variant.qualifications().await.expect("get quals");
-        assert_eq!(2, qualifications.len());
-
-        for qual in qualifications {
-            assert!(funcs_by_unique_id.contains_key(&qual.func_unique_id()));
+        for func in leaf_funcs {
+            assert!(funcs_by_unique_id.contains_key(&func.func_unique_id()));
+            match func.leaf_kind() {
+                LeafKind::Qualification => {
+                    assert_eq!(
+                        vec![LeafInputLocation::Domain, LeafInputLocation::Code],
+                        func.inputs()
+                    )
+                }
+                LeafKind::Confirmation => {
+                    assert_eq!(
+                        vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
+                        func.inputs()
+                    )
+                }
+                LeafKind::CodeGeneration => {
+                    assert_eq!(vec![LeafInputLocation::Domain], func.inputs())
+                }
+            }
         }
 
         // Ensure we get the props

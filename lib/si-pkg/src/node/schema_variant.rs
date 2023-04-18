@@ -78,8 +78,8 @@ impl NodeChild for SchemaVariantSpec {
             vec![
                 Box::new(SchemaVariantChild::Domain(self.domain.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::Qualifications(
-                    self.qualifications.clone(),
+                Box::new(SchemaVariantChild::LeafFunctions(
+                    self.leaf_functions.clone(),
                 )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             ],
         )

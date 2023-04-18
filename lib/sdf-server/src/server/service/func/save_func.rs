@@ -12,8 +12,10 @@ use super::{
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use dal::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::variant::leaves::LeafKind, validation::prototype::context::ValidationPrototypeContext,
+    attribute::context::AttributeContextBuilder,
+    func::argument::FuncArgument,
+    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    validation::prototype::context::ValidationPrototypeContext,
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
     AttributeValue, Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
     InternalProviderId, Prop, SchemaVariantId, StandardModel, Visibility, WsEvent,
@@ -250,9 +252,21 @@ async fn attribute_view_for_leaf_func(
     component_id: Option<ComponentId>,
     leaf_kind: LeafKind,
 ) -> FuncResult<AttributePrototypeView> {
-    let existing_proto =
-        SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, component_id, leaf_kind, func)
-            .await?;
+    let inputs = match leaf_kind {
+        LeafKind::Confirmation => vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
+        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
+        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
+    };
+
+    let existing_proto = SchemaVariant::upsert_leaf_function(
+        ctx,
+        schema_variant_id,
+        component_id,
+        leaf_kind,
+        &inputs,
+        func,
+    )
+    .await?;
 
     let mut prototype_view = AttributePrototypeView {
         id: AttributePrototypeId::NONE,

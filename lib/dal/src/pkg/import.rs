@@ -9,7 +9,7 @@ use crate::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
-    schema::SchemaUiMenu,
+    schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     DalContext, Func, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
 };
 
@@ -80,11 +80,10 @@ async fn create_func(
             _ => unreachable!(),
         },
         None => {
-            let name = format!("foo-{}", func_spec.name());
             // How to handle name conflicts?
             let mut func = Func::new(
                 ctx,
-                &name,
+                func_spec.name(),
                 func_spec.backend_kind().into(),
                 func_spec.response_type().into(),
             )
@@ -209,21 +208,28 @@ async fn create_schema_variant(
 
             schema_variant.finalize(ctx, None).await?;
 
-            for qualification in variant_spec.qualifications().await? {
-                match func_map.get(&qualification.func_unique_id()) {
-                    Some(qual_func) => {
+            for leaf_func in variant_spec.leaf_functions().await? {
+                let inputs: Vec<LeafInputLocation> = leaf_func
+                    .inputs()
+                    .iter()
+                    .map(|input| input.into())
+                    .collect();
+
+                match func_map.get(&leaf_func.func_unique_id()) {
+                    Some(func) => {
                         SchemaVariant::upsert_leaf_function(
                             ctx,
                             *schema_variant.id(),
                             None,
-                            crate::LeafKind::Qualification,
-                            qual_func,
+                            leaf_func.leaf_kind().into(),
+                            &inputs,
+                            func,
                         )
                         .await?;
                     }
                     None => {
                         return Err(PkgError::MissingFuncUniqueId(
-                            qualification.func_unique_id().to_string(),
+                            leaf_func.func_unique_id().to_string(),
                         ))
                     }
                 }

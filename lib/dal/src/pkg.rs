@@ -10,7 +10,7 @@ pub use export::export_pkg;
 pub use import::{import_pkg, import_pkg_from_pkg};
 
 use crate::{
-    installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
+    func::argument::FuncArgumentError, installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
     schema::variant::definition::SchemaVariantDefinitionError, FuncBackendKind,
     FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
     SchemaVariantError, SchemaVariantId, StandardModelError,
@@ -26,6 +26,8 @@ pub enum PkgError {
     Schema(#[from] SchemaError),
     #[error(transparent)]
     Func(#[from] FuncError),
+    #[error(transparent)]
+    FuncArgument(#[from] FuncArgumentError),
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
@@ -64,6 +66,8 @@ pub enum PkgError {
     MissingFuncUniqueId(String),
     #[error("Func {0} missing from exported funcs")]
     MissingExportedFunc(FuncId),
+    #[error("Leaf Function {0} has invalid argument {1}")]
+    InvalidLeafArgument(FuncId, String),
 }
 
 impl PkgError {
