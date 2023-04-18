@@ -404,7 +404,7 @@ impl MigrationDriver {
         self.func_id_cache.get(name.as_ref()).copied()
     }
 
-    /// Create a [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    /// Create a [`Schema`](crate::Schema) with a default [`SchemaVariant`](crate::SchemaVariant) named "v0".
     ///
     /// If a UI menu name is not provided, we will fallback to the provided
     /// [`Schema`](crate::Schema) name.
@@ -424,37 +424,78 @@ impl MigrationDriver {
             Vec<ExternalProvider>,
         )>,
     > {
+        self.create_schema_and_variant_with_name(ctx, definition_metadata, definition, "v0")
+            .await
+    }
+
+    /// Create a [`Schema`](crate::Schema) with a default [`SchemaVariant`](crate::SchemaVariant) with custom a name
+    ///
+    /// If a UI menu name is not provided, we will fallback to the provided
+    /// [`Schema`](crate::Schema) name.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_schema_and_variant_with_name(
+        &self,
+        ctx: &DalContext,
+        definition_metadata: SchemaVariantDefinitionMetadataJson,
+        definition: Option<SchemaVariantDefinitionJson>,
+        schema_variant_name: &str,
+    ) -> BuiltinsResult<
+        Option<(
+            Schema,
+            SchemaVariant,
+            RootProp,
+            Option<PropCache>,
+            Vec<InternalProvider>,
+            Vec<ExternalProvider>,
+        )>,
+    > {
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
         // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
         // This should be fine since this code should likely only last as long as default schemas need to
         // be created... which is hopefully not long.... hopefully...
-        let default_schema_exists =
-            !Schema::find_by_attr(ctx, "name", &definition_metadata.name.to_string())
+        let mut schema =
+            match Schema::find_by_attr(ctx, "name", &definition_metadata.name.to_string())
                 .await?
-                .is_empty();
-        if default_schema_exists {
+                .pop()
+            {
+                Some(schema) => schema,
+                None => {
+                    // Create the schema and a ui menu.
+                    let schema = Schema::new(
+                        ctx,
+                        definition_metadata.name.clone(),
+                        &definition_metadata.component_kind,
+                    )
+                    .await?;
+
+                    let ui_menu_name = match definition_metadata.menu_name {
+                        Some(ref provided_override) => provided_override.to_owned(),
+                        None => definition_metadata.name.clone(),
+                    };
+                    let ui_menu =
+                        SchemaUiMenu::new(ctx, ui_menu_name, &definition_metadata.category).await?;
+                    ui_menu.set_schema(ctx, schema.id()).await?;
+                    schema
+                }
+            };
+
+        if schema
+            .variants(ctx)
+            .await?
+            .iter()
+            .any(|v| v.name() == schema_variant_name)
+        {
             info!(
-                "skipping {} schema (already migrated)",
-                &definition_metadata.name
+                "skipping {}:{schema_variant_name} schema variant (already migrated)",
+                definition_metadata.name
             );
             return Ok(None);
+        } else {
+            info!(
+                "migrating {}:{schema_variant_name} schema variant",
+                &definition_metadata.name
+            );
         }
-        info!("migrating {} schema", &definition_metadata.name);
-
-        // Create the schema and a ui menu.
-        let mut schema = Schema::new(
-            ctx,
-            definition_metadata.name.clone(),
-            &definition_metadata.component_kind,
-        )
-        .await?;
-
-        let ui_menu_name = match definition_metadata.menu_name {
-            Some(ref provided_override) => provided_override.to_owned(),
-            None => definition_metadata.name.clone(),
-        };
-        let ui_menu = SchemaUiMenu::new(ctx, ui_menu_name, &definition_metadata.category).await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // NOTE(nick): D.R.Y. not desired, but feel free to do so.
         if let Some(definition) = definition {
@@ -464,8 +505,13 @@ impl MigrationDriver {
                 prop_cache,
                 explicit_internal_providers,
                 external_providers,
-            ) = SchemaVariant::new_with_definition(ctx, definition_metadata.clone(), definition)
-                .await?;
+            ) = SchemaVariant::new_with_definition(
+                ctx,
+                definition_metadata.clone(),
+                definition,
+                schema_variant_name,
+            )
+            .await?;
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
                 .await?;
@@ -478,7 +524,8 @@ impl MigrationDriver {
                 external_providers,
             )))
         } else {
-            let (schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+            let (schema_variant, root_prop) =
+                SchemaVariant::new(ctx, *schema.id(), schema_variant_name).await?;
             schema_variant
                 .set_color(ctx, definition_metadata.color)
                 .await?;

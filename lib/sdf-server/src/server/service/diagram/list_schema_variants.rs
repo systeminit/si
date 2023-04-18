@@ -74,6 +74,10 @@ pub async fn list_schema_variants(
 
     let mut variants_view = Vec::with_capacity(variants.len());
     for variant in variants {
+        if variant.ui_hidden() {
+            continue;
+        }
+
         let schema = variant
             .schema(&ctx)
             .await?

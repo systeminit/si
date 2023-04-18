@@ -62,7 +62,7 @@ pub async fn exec_variant_def(
     })?;
 
     let (mut schema_variant, _, _, _, _) =
-        SchemaVariant::new_with_definition(&ctx, metadata, definition)
+        SchemaVariant::new_with_definition(&ctx, metadata, definition, "v0")
             .await
             .map_err(|e| {
                 SchemaVariantDefinitionError::CouldNotCreateSchemaVariantFromDefinition(

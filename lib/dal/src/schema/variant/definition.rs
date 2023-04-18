@@ -431,6 +431,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_definition_metadata: SchemaVariantDefinitionMetadataJson,
         schema_variant_definition: SchemaVariantDefinitionJson,
+        variant_name: &str,
     ) -> SchemaVariantResult<(
         Self,
         RootProp,
@@ -438,8 +439,6 @@ impl SchemaVariant {
         Vec<InternalProvider>,
         Vec<ExternalProvider>,
     )> {
-        let variant_name = "v0".to_string();
-
         let schema_name = schema_variant_definition_metadata.name.clone();
 
         let schema_id = match Schema::find_by_name(ctx, &schema_name).await {
