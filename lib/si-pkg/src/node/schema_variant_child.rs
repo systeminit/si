@@ -6,12 +6,12 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{PropSpec, QualificationSpec};
+use crate::{LeafFunctionSpec, PropSpec};
 
 use super::PkgNode;
 
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
-const VARIANT_CHILD_TYPE_QUALIFICATIONS: &str = "qualifications";
+const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -19,20 +19,20 @@ const KEY_KIND_STR: &str = "kind";
 #[serde(rename_all = "camelCase")]
 pub enum SchemaVariantChild {
     Domain(PropSpec),
-    Qualifications(Vec<QualificationSpec>),
+    LeafFunctions(Vec<LeafFunctionSpec>),
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum SchemaVariantChildNode {
     Domain,
-    Qualifications,
+    LeafFunctions,
 }
 
 impl SchemaVariantChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
-            Self::Qualifications => VARIANT_CHILD_TYPE_QUALIFICATIONS,
+            Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
         }
     }
 }
@@ -41,7 +41,7 @@ impl NameStr for SchemaVariantChildNode {
     fn name(&self) -> &str {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
-            Self::Qualifications => VARIANT_CHILD_TYPE_QUALIFICATIONS,
+            Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
         }
     }
 }
@@ -62,7 +62,7 @@ impl ReadBytes for SchemaVariantChildNode {
 
         let node = match kind_str.as_str() {
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
-            VARIANT_CHILD_TYPE_QUALIFICATIONS => Self::Qualifications,
+            VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid schema variant child kind: {invalid_kind}"
@@ -89,7 +89,7 @@ impl NodeChild for SchemaVariantChild {
                     vec![domain],
                 )
             }
-            Self::Qualifications(entries) => {
+            Self::LeafFunctions(entries) => {
                 let mut children = Vec::new();
                 for entry in entries {
                     children
@@ -99,7 +99,7 @@ impl NodeChild for SchemaVariantChild {
 
                 NodeWithChildren::new(
                     NodeKind::Tree,
-                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Qualifications),
+                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::LeafFunctions),
                     children,
                 )
             }

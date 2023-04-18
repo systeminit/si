@@ -3,16 +3,18 @@ use std::{
     convert::TryFrom,
     path::PathBuf,
 };
+use strum::IntoEnumIterator;
 
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecBuilder,
-    PropSpecKind, QualificationSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SiPkg, SpecError,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
+    LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError,
 };
 
 use crate::{
+    func::argument::FuncArgument,
     prop_tree::{PropTree, PropTreeNode},
-    DalContext, Func, FuncId, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    DalContext, Func, FuncId, LeafKind, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
     StandardModel, StandardModelError,
 };
 
@@ -128,17 +130,27 @@ async fn build_variant_spec(
     }
     set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder).await?;
 
-    for qualification_func in
-        SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), crate::LeafKind::Qualification)
-            .await?
-    {
-        let func_spec = func_specs
-            .get(qualification_func.id())
-            .ok_or(PkgError::MissingExportedFunc(*qualification_func.id()))?;
-        let qual_spec = QualificationSpec::builder()
-            .func_unique_id(func_spec.unique_id)
-            .build()?;
-        variant_spec_builder.qualification(qual_spec);
+    for leaf_kind in LeafKind::iter() {
+        for leaf_func in
+            SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?
+        {
+            let func_spec = func_specs
+                .get(leaf_func.id())
+                .ok_or(PkgError::MissingExportedFunc(*leaf_func.id()))?;
+
+            let mut inputs = vec![];
+            for arg in FuncArgument::list_for_func(ctx, *leaf_func.id()).await? {
+                inputs.push(PkgLeafInputLocation::try_from_arg_name(arg.name())?);
+            }
+
+            let leaf_func_spec = LeafFunctionSpec::builder()
+                .func_unique_id(func_spec.unique_id)
+                .leaf_kind(leaf_kind)
+                .inputs(inputs)
+                .build()?;
+
+            variant_spec_builder.leaf_function(leaf_func_spec);
+        }
     }
 
     let variant_spec = variant_spec_builder.build()?;

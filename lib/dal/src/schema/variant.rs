@@ -16,7 +16,7 @@ use crate::schema::variant::root_prop::SiPropChild;
 use crate::standard_model::object_from_row;
 use crate::{
     func::{
-        argument::{FuncArgument, FuncArgumentError, FuncArgumentKind},
+        argument::{FuncArgument, FuncArgumentError},
         binding::FuncBindingError,
         binding_return_value::FuncBindingReturnValueId,
     },
@@ -544,6 +544,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
         component_id: Option<ComponentId>,
         leaf_kind: LeafKind,
+        input_locations: &[LeafInputLocation],
         func: &Func,
     ) -> SchemaVariantResult<AttributePrototype> {
         let leaf_prop =
@@ -568,19 +569,29 @@ impl SchemaVariant {
             {
                 Some(existing_proto) => existing_proto,
                 None => {
-                    let arg = match FuncArgument::list_for_func(ctx, *func.id()).await?.pop() {
-                        Some(arg) => arg,
-                        None => {
-                            FuncArgument::new(
-                                ctx,
-                                "domain",
-                                FuncArgumentKind::Object,
-                                None,
-                                *func.id(),
-                            )
-                            .await?
-                        }
-                    };
+                    let existing_args = FuncArgument::list_for_func(ctx, *func.id()).await?;
+                    let mut inputs = vec![];
+                    for location in input_locations {
+                        let arg_name = location.arg_name();
+                        let arg = match existing_args.iter().find(|arg| arg.name() == arg_name) {
+                            Some(existing_arg) => existing_arg.clone(),
+                            None => {
+                                FuncArgument::new(
+                                    ctx,
+                                    arg_name,
+                                    location.arg_kind(),
+                                    None,
+                                    *func.id(),
+                                )
+                                .await?
+                            }
+                        };
+
+                        inputs.push(LeafInput {
+                            location: *location,
+                            func_argument_id: *arg.id(),
+                        });
+                    }
 
                     let (_, new_proto) = SchemaVariant::add_leaf(
                         ctx,
@@ -588,10 +599,7 @@ impl SchemaVariant {
                         schema_variant_id,
                         component_id,
                         leaf_kind,
-                        vec![LeafInput {
-                            location: LeafInputLocation::Domain,
-                            func_argument_id: *arg.id(),
-                        }],
+                        inputs,
                     )
                     .await?;
 

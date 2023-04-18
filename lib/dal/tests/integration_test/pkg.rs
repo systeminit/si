@@ -5,8 +5,9 @@ use dal::{
 };
 use dal_test::test;
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecKind,
-    QualificationSpec, SchemaSpec, SchemaVariantSpec, SiPkg,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
+    LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind, PkgSpec, PropSpec,
+    PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg,
 };
 
 #[test]
@@ -26,8 +27,13 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("build qual func spec");
 
-    let qualification_spec = QualificationSpec::builder()
+    let qualification_spec = LeafFunctionSpec::builder()
         .func_unique_id(qualification_func_spec.unique_id)
+        .leaf_kind(PkgLeafKind::Qualification)
+        .inputs(vec![
+            PkgLeafInputLocation::Domain,
+            PkgLeafInputLocation::Code,
+        ])
         .build()
         .expect("could not build qual spec");
 
@@ -52,7 +58,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .build()
                         .expect("able to make prop spec"),
                 )
-                .qualification(qualification_spec)
+                .leaf_function(qualification_spec)
                 .build()
                 .expect("able to make schema variant spec"),
         )
