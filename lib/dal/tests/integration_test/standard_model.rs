@@ -1,6 +1,6 @@
 use dal::{
-    component::ComponentKind, standard_model, ChangeSet, ChangeSetPk, DalContext, Func,
-    FuncBackendKind, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
+    standard_model, ChangeSet, ChangeSetPk, DalContext, Func, FuncBackendKind, Prop, PropId,
+    PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
 };
 use dal_test::{
     test,
@@ -621,6 +621,7 @@ async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
 #[test]
 async fn find_by_attr(ctx: &mut DalContext) {
     let schema_one = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema_one.id()).await;
 
     let result: Vec<Schema> =
         standard_model::find_by_attr(ctx, "schemas", "name", &schema_one.name().to_string())
@@ -629,19 +630,26 @@ async fn find_by_attr(ctx: &mut DalContext) {
     assert_eq!(result.len(), 1);
     assert_eq!(result[0], schema_one);
 
-    let schema_two = Schema::new(ctx, schema_one.name(), &ComponentKind::Standard)
+    let schema_two = create_schema(ctx).await;
+    let mut schema_variant_two = create_schema_variant(ctx, *schema_two.id()).await;
+    schema_variant_two
+        .set_name(ctx, schema_variant_one.name())
         .await
-        .expect("cannot create another schema with the same name");
+        .expect("unable to set name");
 
-    let result: Vec<Schema> =
-        standard_model::find_by_attr(ctx, "schemas", "name", &schema_one.name().to_string())
-            .await
-            .expect("cannot find the object by name");
+    let result: Vec<SchemaVariant> = standard_model::find_by_attr(
+        ctx,
+        "schema_variants",
+        "name",
+        &schema_variant_one.name().to_string(),
+    )
+    .await
+    .expect("cannot find the object by name");
     assert_eq!(result.len(), 2);
     assert_eq!(
         result
             .into_iter()
-            .filter(|r| r == &schema_one || r == &schema_two)
+            .filter(|r| r == &schema_variant_one || r == &schema_variant_two)
             .count(),
         2
     );

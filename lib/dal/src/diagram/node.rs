@@ -77,7 +77,7 @@ impl SocketView {
             .filter_map(|socket| {
                 (!socket.ui_hidden()).then(|| Self {
                     id: socket.id().to_string(),
-                    label: socket.name().to_owned(),
+                    label: socket.human_name().unwrap_or(socket.name()).to_owned(),
                     ty: socket.name().to_owned(),
                     // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
                     direction: match socket.edge_kind() {

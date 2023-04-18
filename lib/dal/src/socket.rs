@@ -106,6 +106,7 @@ pub struct Socket {
     pk: SocketPk,
     id: SocketId,
     name: String,
+    human_name: Option<String>,
     kind: SocketKind,
     edge_kind: SocketEdgeKind,
     diagram_kind: DiagramKind,
@@ -173,6 +174,7 @@ impl Socket {
         Ok(object)
     }
 
+    standard_model_accessor!(human_name, Option<String>, SocketResult);
     standard_model_accessor!(name, String, SocketResult);
     standard_model_accessor!(kind, Enum(SocketKind), SocketResult);
     standard_model_accessor!(edge_kind, Enum(SocketEdgeKind), SocketResult);

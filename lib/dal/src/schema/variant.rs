@@ -166,6 +166,7 @@ pub struct SchemaVariant {
     #[serde(flatten)]
     visibility: Visibility,
 
+    ui_hidden: bool,
     name: String,
     link: Option<String>,
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
@@ -393,6 +394,7 @@ impl SchemaVariant {
         Ok(())
     }
 
+    standard_model_accessor!(ui_hidden, bool, SchemaVariantResult);
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
     standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
