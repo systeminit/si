@@ -9,8 +9,8 @@ First things first - let’s set you up with a System Initiative development env
 source code out from GitHub, ensure your system has the right toolchains installed, start our ancillary services in
 Docker containers, and finally, compile and execute the various System Initiative services.
 
-| Note - If you’re running this in a VM, you’ll want to run through this all as a non-root user with sudo access. On a
-personal machine, this will likely be the case already.
+*Note - If you’re running this in a VM, you’ll want to run through this all as a non-root user with sudo access. On a
+personal machine, this will likely be the case already.*
 
 ### Check out the source code
 

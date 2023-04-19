@@ -9,6 +9,8 @@ running [Fedora CoreOS](https://getfedora.org/en/coreos/download?tab=cloud_launc
 will build a theoretical model of your infrastructure that you will later compare to the real world to create the
 necessary resources.
 
+> <Icon name="alert-triangle"></Icon>This tutorial will create resoures in AWS that have costs associated with them.
+
 At this point, you should have this tutorial open in one browser window and your System Initiative dev workspace open in
 another. Your System Initiative workspace will look like this:
 

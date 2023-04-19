@@ -16,7 +16,7 @@ We ask that you:
 
   * Run through this tutorial to the end
   * Fill out a couple of surveys as you go
-  * Talk about your experience or get help in the private Team 1 discord channels
+  * Talk about your experience or get help in the private Team 1 Discord channels
   * Explore the source code, and contribute if you’re so moved
   * Participate in a short interview about your experience
 
