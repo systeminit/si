@@ -121,18 +121,16 @@ impl RootProp {
         // FIXME(nick): we rely on ULID ordering for now, so the si prop tree creation has to come
         // before the domain prop tree creation. Once index maps for objects are added, this
         // can be moved back to its original location with the other prop tree creation methods.
-        let (si_specific_prop_id, si_child_name_prop_id) =
+        let (si_prop_id, si_child_name_prop_id) =
             Self::setup_si(ctx, root_prop_id, schema_id, schema_variant_id).await?;
 
-        let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
-        domain_specific_prop
-            .set_parent_prop(ctx, root_prop_id)
-            .await?;
+        let domain_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
+        domain_prop.set_parent_prop(ctx, root_prop_id).await?;
 
-        let resource_specific_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
-        let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
-        let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
-        let confirmation_specific_prop_id = Self::setup_confirmation(ctx, root_prop_id).await?;
+        let resource_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
+        let code_prop_id = Self::setup_code(ctx, root_prop_id).await?;
+        let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
+        let confirmation_prop_id = Self::setup_confirmation(ctx, root_prop_id).await?;
         let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id).await?;
 
         // Now that the structure is set up, we can populate default
@@ -158,7 +156,7 @@ impl RootProp {
 
         // Initialize the si object.
         let si_context = AttributeContext::builder()
-            .set_prop_id(si_specific_prop_id)
+            .set_prop_id(si_prop_id)
             .to_context()?;
         let (_, si_value_id) = AttributeValue::update_for_context(
             ctx,
@@ -192,7 +190,7 @@ impl RootProp {
 
         // Initialize the domain object.
         let domain_context = AttributeContext::builder()
-            .set_prop_id(*domain_specific_prop.id())
+            .set_prop_id(*domain_prop.id())
             .to_context()?;
         let (_, _) = AttributeValue::update_for_context(
             ctx,
@@ -209,12 +207,12 @@ impl RootProp {
 
         Ok(Self {
             prop_id: root_prop_id,
-            si_prop_id: si_specific_prop_id,
-            domain_prop_id: *domain_specific_prop.id(),
-            resource_prop_id: resource_specific_prop_id,
-            code_prop_id: code_specific_prop_id,
-            qualification_prop_id: qualification_specific_prop_id,
-            confirmation_prop_id: confirmation_specific_prop_id,
+            si_prop_id,
+            domain_prop_id: *domain_prop.id(),
+            resource_prop_id,
+            code_prop_id,
+            qualification_prop_id,
+            confirmation_prop_id,
             deleted_at_prop_id,
         })
     }

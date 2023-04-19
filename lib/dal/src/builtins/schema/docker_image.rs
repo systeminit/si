@@ -230,7 +230,6 @@ impl MigrationDriver {
         // we are just passively monitoring it, like with AMI, Docker Image and Region
         // By doing that we can avoid setting needs_destroy for passive components
         /*
-        let name = "refresh";
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -239,8 +238,8 @@ impl MigrationDriver {
         ActionPrototype::new(
             ctx,
             *workflow_prototype.id(),
-            name,
-            ActionKind::Other,
+            "refresh",
+            ActionKind::Refresh,
             context,
         )
         .await?;

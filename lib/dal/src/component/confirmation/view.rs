@@ -3,6 +3,7 @@
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
@@ -209,9 +210,18 @@ impl ConfirmationView {
                     let fix = Fix::get_by_id(ctx, &fix_resolver.last_fix_id())
                         .await?
                         .ok_or_else(|| ComponentError::FixNotFound(fix_resolver.last_fix_id()))?;
-                    fix.history_view(ctx, false)
-                        .await
-                        .map_err(|e| ComponentError::Fix(Box::new(e)))?
+
+                    // Refresh running fixes.
+                    // FIXME(paulo,fletcher,nick,paul): hardcoding 3 minutes timeout to avoid permanently fix results
+                    if Utc::now().signed_duration_since(fix.timestamp().created_at)
+                        > chrono::Duration::minutes(3)
+                    {
+                        None
+                    } else {
+                        fix.history_view(ctx, false)
+                            .await
+                            .map_err(|e| ComponentError::Fix(Box::new(e)))?
+                    }
                 }
                 None => None,
             };

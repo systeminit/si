@@ -504,7 +504,7 @@ impl AuthoringHelper {
             ctx,
             *workflow_prototype.id(),
             "refresh",
-            ActionKind::Other,
+            ActionKind::Refresh,
             ActionPrototypeContext {
                 schema_id,
                 schema_variant_id,

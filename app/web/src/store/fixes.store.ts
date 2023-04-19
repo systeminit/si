@@ -18,7 +18,7 @@ export type FixStatus =
   | "running"
   | "error"
   | "unstarted";
-export type ActionKind = "create" | "other" | "destroy";
+export type ActionKind = "create" | "refresh" | "other" | "destroy";
 
 // TODO(nick,paulo,paul,wendy): get rid of never started.
 export type ConfirmationStatus =

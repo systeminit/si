@@ -603,7 +603,7 @@ impl MigrationDriver {
             ctx,
             *workflow_prototype.id(),
             "refresh",
-            ActionKind::Other,
+            ActionKind::Refresh,
             context,
         )
         .await?;
