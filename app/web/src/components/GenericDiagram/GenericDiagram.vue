@@ -224,6 +224,7 @@ import {
   vectorAdd,
   checkRectanglesOverlap,
   rectContainsAnother,
+  vectorBetween,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -1139,13 +1140,18 @@ function onDragElementsMove() {
         nodeChildrenOfGroups,
       );
 
+      const actualParentDelta = vectorBetween(
+        draggedElementsPositionsPreDrag.value[el.uniqueKey]!,
+        newPosition,
+      );
+
       // TODO: this should get simplified once we are storing positions relative to their group parent
       _.each(childEls, (childEl) => {
         if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
 
         const newChildPosition = vectorAdd(
           draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
-          delta,
+          actualParentDelta,
         );
         // track the position locally, so we don't need to rely on parent to store the temporary position
         movedElementPositions[childEl.uniqueKey] = newChildPosition;
