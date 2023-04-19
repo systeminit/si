@@ -31,7 +31,7 @@ WITH RECURSIVE props_tree AS (
         ON parent.prop_id = pbtp2.belongs_to_id
 )
 SELECT
-    pmtmsv.right_object_id AS schema_variant_id,
+    schema_variants.id AS schema_variant_id,
     props_tree.object,
     props_tree.root_id,
     props_tree.prop_id,
@@ -40,8 +40,8 @@ SELECT
     props_tree.path,
     ip.id                  AS internal_provider_id
 FROM props_tree
-JOIN prop_many_to_many_schema_variants_v1($1, $2) pmtmsv
-    ON pmtmsv.left_object_id = props_tree.root_id
+JOIN schema_variants_v1($1, $2) schema_variants
+    ON schema_variants.root_prop_id = props_tree.root_id
 LEFT JOIN internal_providers_v1($1, $2) ip ON props_tree.prop_id = ip.prop_id
 ORDER BY
     schema_variant_id,

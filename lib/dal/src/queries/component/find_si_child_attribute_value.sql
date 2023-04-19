@@ -11,12 +11,9 @@ JOIN (
        AND si_prop.name = 'si'
   JOIN prop_belongs_to_prop_v1($1, $2) AS si_prop_belongs_to_root_prop
     ON si_prop_belongs_to_root_prop.object_id = si_prop.id
-       AND si_prop_belongs_to_root_prop.belongs_to_id IN 
-  (
-    SELECT pmtmsv.left_object_id AS root_prop_id
-    FROM prop_many_to_many_schema_variants_v1($1, $2) AS pmtmsv
-    WHERE pmtmsv.right_object_id = $4
-  )
+  JOIN schema_variants_v1($1, $2) AS schema_variants
+    ON si_prop_belongs_to_root_prop.belongs_to_id = schema_variants.root_prop_id
+       AND schema_variants.id = $4
 ) si_child_prop
   ON attribute_values.attribute_context_prop_id = si_child_prop.id
 -- We will also take the "default" type too (corresponds to the attribute

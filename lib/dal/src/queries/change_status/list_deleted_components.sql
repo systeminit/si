@@ -1,7 +1,7 @@
 SELECT DISTINCT ON (component_id) component_id,
                                   components.prop_values -> 'si' ->> 'name' AS component_name
 
-FROM components_with_attributes AS components
+FROM components_with_attributes_v2 AS components
 
 -- Ensure they are deleted
 WHERE visibility_deleted_at IS NOT NULL

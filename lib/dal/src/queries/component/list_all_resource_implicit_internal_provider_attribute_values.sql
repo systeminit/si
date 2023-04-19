@@ -10,9 +10,7 @@ LEFT JOIN props_v1($1, $2) as props
        AND props.name = 'resource'
 JOIN prop_belongs_to_prop_v1($1, $2) AS prop_belongs_to_prop
     ON prop_belongs_to_prop.object_id = props.id
-       AND prop_belongs_to_prop.belongs_to_id IN (
-           SELECT prop_many_to_many_schema_variants.left_object_id AS root_prop_id
-           FROM prop_many_to_many_schema_variants_v1($1, $2) AS prop_many_to_many_schema_variants
-           LEFT JOIN component_belongs_to_schema_variant_v1($1, $2) as component_belongs_to_schema_variant
-               ON component_belongs_to_schema_variant.belongs_to_id = prop_many_to_many_schema_variants.right_object_id
-       )
+JOIN schema_variants_v1($1, $2) AS schema_variants
+    ON schema_variants.root_prop_id = prop_belongs_to_prop.belongs_to_id
+LEFT JOIN component_belongs_to_schema_variant_v1($1, $2) as component_belongs_to_schema_variant
+    ON component_belongs_to_schema_variant.belongs_to_id = schema_variants.id

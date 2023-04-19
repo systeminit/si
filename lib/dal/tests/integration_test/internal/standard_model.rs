@@ -1,6 +1,7 @@
+use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
-    standard_model, ChangeSet, ChangeSetPk, DalContext, Func, FuncBackendKind, Prop, PropId,
-    PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
+    standard_model, ChangeSet, ChangeSetPk, DalContext, DiagramKind, Func, FuncBackendKind, Schema,
+    SchemaVariant, SchemaVariantId, Socket, SocketArity, SocketId, StandardModel,
 };
 use dal_test::{
     test,
@@ -333,12 +334,28 @@ async fn has_many(ctx: &DalContext) {
 
 #[test]
 async fn associate_many_to_many(ctx: &DalContext) {
-    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
-    let prop_two = Prop::new(ctx, "prop_two", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
+    let socket_one = Socket::new(
+        ctx,
+        "socket_one",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
+    let socket_two = Socket::new(
+        ctx,
+        "socket_two",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationInput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
 
     let schema = create_schema(ctx).await;
     let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
@@ -346,16 +363,16 @@ async fn associate_many_to_many(ctx: &DalContext) {
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_two.id(),
     )
     .await
@@ -363,16 +380,16 @@ async fn associate_many_to_many(ctx: &DalContext) {
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
         schema_variant_two.id(),
     )
     .await
@@ -381,9 +398,17 @@ async fn associate_many_to_many(ctx: &DalContext) {
 
 #[test]
 async fn disassociate_many_to_many(ctx: &DalContext) {
-    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
+    let socket_one = Socket::new(
+        ctx,
+        "socket_one",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
 
     let schema = create_schema(ctx).await;
     let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
@@ -391,24 +416,24 @@ async fn disassociate_many_to_many(ctx: &DalContext) {
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::disassociate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_two.id(),
     )
     .await
@@ -417,9 +442,17 @@ async fn disassociate_many_to_many(ctx: &DalContext) {
 
 #[test]
 async fn disassociate_all_many_to_many(ctx: &DalContext) {
-    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
+    let socket_one = Socket::new(
+        ctx,
+        "socket_one",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
 
     let schema = create_schema(ctx).await;
     let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
@@ -427,24 +460,24 @@ async fn disassociate_all_many_to_many(ctx: &DalContext) {
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::disassociate_all_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
     )
     .await
     .expect("cannot disassociate many to many");
@@ -452,12 +485,28 @@ async fn disassociate_all_many_to_many(ctx: &DalContext) {
 
 #[test]
 async fn many_to_many(ctx: &DalContext) {
-    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
-    let prop_two = Prop::new(ctx, "prop_two", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
+    let socket_one = Socket::new(
+        ctx,
+        "socket_one",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
+    let socket_two = Socket::new(
+        ctx,
+        "socket_two",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationInput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
 
     let schema = create_schema(ctx).await;
     let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
@@ -465,44 +514,44 @@ async fn many_to_many(ctx: &DalContext) {
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
 
     let right_object_id: Option<&SchemaVariantId> = None;
-    let left_object_id: Option<&PropId> = None;
-    let prop_variants: Vec<SchemaVariant> = standard_model::many_to_many(
+    let left_object_id: Option<&SocketId> = None;
+    let socket_variants: Vec<SchemaVariant> = standard_model::many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        "props",
+        "socket_many_to_many_schema_variants",
+        "sockets",
         "schema_variants",
-        Some(prop_one.id()),
+        Some(socket_one.id()),
         right_object_id,
     )
     .await
     .expect("cannot get list of users for group");
-    assert_eq!(prop_variants.len(), 2);
+    assert_eq!(socket_variants.len(), 2);
     assert_eq!(
-        prop_variants
+        socket_variants
             .into_iter()
             .filter(|v| v == &schema_variant_one || v == &schema_variant_two)
             .count(),
@@ -511,81 +560,80 @@ async fn many_to_many(ctx: &DalContext) {
 
     standard_model::disassociate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot disassociate many to many");
 
-    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
+    let variant_two_sockets: Vec<Socket> = standard_model::many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        "props",
+        "socket_many_to_many_schema_variants",
+        "sockets",
         "schema_variants",
         left_object_id,
         Some(schema_variant_two.id()),
     )
     .await
-    .expect("cannot get list of props for variant");
+    .expect("cannot get list of sockets for variant");
     assert_eq!(
-        variant_two_props
+        variant_two_sockets
             .into_iter()
-            .filter(|p| p == &prop_one)
+            .filter(|s| s == &socket_one)
             .count(),
         1
     );
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
         schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
 
-    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
+    let variant_two_sockets: Vec<Socket> = standard_model::many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        "props",
+        "socket_many_to_many_schema_variants",
+        "sockets",
         "schema_variants",
         left_object_id,
         Some(schema_variant_two.id()),
     )
     .await
-    .expect("cannot get list of props for variant");
-    assert_eq!(variant_two_props.len(), 3);
+    .expect("cannot get list of sockets for variant");
     assert_eq!(
-        variant_two_props
+        variant_two_sockets
             .into_iter()
-            .filter(|p| p == &prop_one || p == &prop_two)
+            .filter(|s| s == &socket_one || s == &socket_two)
             .count(),
         2
     );
 
     standard_model::disassociate_all_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_two.id(),
+        "socket_many_to_many_schema_variants",
+        socket_two.id(),
     )
     .await
     .expect("cannot disassociate many to many");
 
-    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
+    let variant_two_sockets: Vec<Socket> = standard_model::many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        "props",
+        "socket_many_to_many_schema_variants",
+        "sockets",
         "schema_variants",
         left_object_id,
         Some(schema_variant_two.id()),
     )
     .await
-    .expect("cannot get list of groups for user");
+    .expect("cannot get list of sockets for vairant");
     assert_eq!(
-        variant_two_props
+        variant_two_sockets
             .into_iter()
-            .filter(|p| p == &prop_one)
+            .filter(|s| s == &socket_one)
             .count(),
         1
     );
@@ -593,25 +641,33 @@ async fn many_to_many(ctx: &DalContext) {
 
 #[test]
 async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
-    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
-        .await
-        .expect("unable to create prop");
+    let socket_one = Socket::new(
+        ctx,
+        "socket_one",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        None,
+    )
+    .await
+    .expect("could not create socket");
 
     let schema = create_schema(ctx).await;
     let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
 
     standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     let result = standard_model::associate_many_to_many(
         ctx,
-        "prop_many_to_many_schema_variants",
-        prop_one.id(),
+        "socket_many_to_many_schema_variants",
+        socket_one.id(),
         schema_variant_one.id(),
     )
     .await;

@@ -25,13 +25,6 @@ async fn new_attribute_prototype(ctx: &DalContext) {
         .await
         .expect("cannot find default variant");
 
-    let first_prop = default_variant
-        .props(ctx)
-        .await
-        .expect("cannot get props")
-        .pop()
-        .expect("no prop found");
-
     let component = create_component_for_schema(ctx, schema.id()).await;
 
     let func = Func::new(
@@ -57,8 +50,11 @@ async fn new_attribute_prototype(ctx: &DalContext) {
         .await
         .expect("failed to execute func binding");
 
+    let root_prop_id = default_variant
+        .root_prop_id()
+        .expect("no root prop for schema variant");
     let context = AttributeContext::builder()
-        .set_prop_id(*first_prop.id())
+        .set_prop_id(*root_prop_id)
         .set_component_id(*component.id())
         .to_context()
         .expect("cannot create context");

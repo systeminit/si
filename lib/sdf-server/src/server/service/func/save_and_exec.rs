@@ -7,8 +7,8 @@ use axum::Json;
 use dal::{
     job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue,
     AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, Prop, PropId, RootPropChild, StandardModel, ValidationPrototype,
-    WsEvent,
+    FuncBackendResponseType, PropId, RootPropChild, SchemaVariant, StandardModel,
+    ValidationPrototype, WsEvent,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -54,19 +54,15 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                     }
                 };
 
-                // There should be an easier way to get the schema variant for a prop
-                let root_prop =
-                    match Prop::find_root_prop_for_prop(ctx, proto.context.prop_id()).await? {
-                        Some(prop) => prop,
+                let schema_variant =
+                    match SchemaVariant::find_for_prop(ctx, proto.context.prop_id()).await? {
+                        Some(sv) => sv,
                         None => {
-                            return Err(FuncError::MissingRootPropForProp(proto.context.prop_id()));
+                            return Err(FuncError::SchemaVariantNotFoundForProp(
+                                proto.context.prop_id(),
+                            ))
                         }
                     };
-
-                let schema_variant = match root_prop.schema_variants(ctx).await?.pop() {
-                    Some(sv) => sv,
-                    None => return Err(FuncError::PropMissingSchemaVariant(*root_prop.id())),
-                };
 
                 for component in
                     Component::list_for_schema_variant(ctx, *schema_variant.id()).await?

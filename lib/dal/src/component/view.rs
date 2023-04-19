@@ -6,8 +6,8 @@ use thiserror::Error;
 use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
-    EncryptedSecret, FuncBindingReturnValue, InternalProvider, InternalProviderError, Prop,
-    PropError, PropId, SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
+    EncryptedSecret, FuncBindingReturnValue, InternalProvider, InternalProviderError, PropError,
+    PropId, SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
 };
 
 pub mod properties;
@@ -82,13 +82,12 @@ impl ComponentView {
             .map_err(|e| ComponentViewError::Component(e.to_string()))?
             .ok_or_else(|| ComponentViewError::NoSchemaVariant(*component.id()))?;
 
-        let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
+        let root_prop_id = schema_variant
+            .root_prop_id()
+            .ok_or(ComponentViewError::NoRootProp(*schema_variant.id()))?;
+        let implicit_provider = InternalProvider::find_for_prop(ctx, *root_prop_id)
             .await?
-            .ok_or_else(|| ComponentViewError::NoRootProp(*schema_variant.id()))?;
-
-        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
-            .await?
-            .ok_or_else(|| ComponentViewError::NoInternalProvider(*prop.id()))?;
+            .ok_or_else(|| ComponentViewError::NoInternalProvider(*root_prop_id))?;
 
         let value_context = AttributeReadContext {
             internal_provider_id: Some(*implicit_provider.id()),
