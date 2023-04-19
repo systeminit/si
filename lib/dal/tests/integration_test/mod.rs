@@ -1,34 +1,6 @@
-mod action_prototype;
-mod attribute;
-mod builtins;
-mod change_set;
-mod component;
-mod diagram;
-mod edge;
-mod func;
-mod func_execution;
-mod graph;
-mod history_event;
-mod jwt_key;
-mod key_pair;
-mod node;
-mod node_menu;
-mod pkg;
-mod prop;
-mod property_editor;
-mod provider;
-mod schema;
-mod secret;
-mod socket;
-mod standard_model;
-mod status_update;
-mod tenancy;
-mod user;
-mod validation_prototype;
-mod validation_resolver;
-mod visibility;
-mod workflow;
-mod workflow_prototype;
-mod workflow_resolver;
-mod workflow_runner;
-mod workspace;
+/// Contains tests that will become part of individual package testing (i.e. testing that a "Docker
+/// Image" connects and works as intended with a "Kubernetes Deployment").
+mod external;
+/// Contains tests that test SI directly and use test-exclusive builtins. All tests in this module
+/// should (eventually) pass with `SI_TEST_BUILTIN_SCHEMAS=test`.
+mod internal;
