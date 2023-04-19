@@ -6,6 +6,7 @@ use object_tree::{
 
 mod category;
 mod func;
+mod func_argument;
 mod leaf_function;
 mod package;
 mod prop;
@@ -16,6 +17,7 @@ mod schema_variant_child;
 pub(crate) use self::{
     category::CategoryNode,
     func::FuncNode,
+    func_argument::FuncArgumentNode,
     leaf_function::LeafFunctionNode,
     package::PackageNode,
     prop::PropNode,
@@ -31,6 +33,7 @@ const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
 const NODE_KIND_FUNC: &str = "func";
+const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
@@ -44,6 +47,7 @@ pub enum PkgNode {
     SchemaVariant(SchemaVariantNode),
     SchemaVariantChild(SchemaVariantChildNode),
     Func(FuncNode),
+    FuncArgument(FuncArgumentNode),
     LeafFunction(LeafFunctionNode),
 }
 
@@ -55,6 +59,7 @@ impl PkgNode {
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
     pub const SCHEMA_VARIANT_KIND_CHILD_STR: &str = NODE_KIND_SCHEMA_VARIANT_CHILD;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
+    pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
 
     pub fn node_kind_str(&self) -> &'static str {
@@ -66,6 +71,7 @@ impl PkgNode {
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
             Self::Func(_) => NODE_KIND_FUNC,
+            Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
         }
     }
@@ -81,6 +87,7 @@ impl NameStr for PkgNode {
             Self::SchemaVariant(node) => node.name(),
             Self::SchemaVariantChild(node) => node.name(),
             Self::Func(node) => node.name(),
+            Self::FuncArgument(node) => node.name(),
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
         }
     }
@@ -98,6 +105,7 @@ impl WriteBytes for PkgNode {
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
+            Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
         };
 
@@ -122,6 +130,7 @@ impl ReadBytes for PkgNode {
                 Self::SchemaVariantChild(SchemaVariantChildNode::read_bytes(reader)?)
             }
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
+            NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
             NODE_KIND_LEAF_FUNCTION => Self::LeafFunction(LeafFunctionNode::read_bytes(reader)?),
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(

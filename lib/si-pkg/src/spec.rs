@@ -77,6 +77,48 @@ impl TryFrom<PkgSpecBuilder> for PkgSpec {
     }
 }
 
+#[derive(
+    Deserialize,
+    Serialize,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum FuncArgumentKind {
+    Array,
+    Boolean,
+    Integer,
+    Object,
+    String,
+    Map,
+    Any,
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct FuncArgumentSpec {
+    #[builder(setter(into))]
+    pub name: String,
+    #[builder(setter(into))]
+    pub kind: FuncArgumentKind,
+    #[builder(setter(into))]
+    pub element_kind: Option<FuncArgumentKind>,
+}
+
+impl FuncArgumentSpec {
+    pub fn builder() -> FuncArgumentSpecBuilder {
+        FuncArgumentSpecBuilder::default()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendKind {
@@ -132,6 +174,9 @@ pub struct FuncSpec {
 
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
+
+    #[builder(setter(each(name = "argument"), into), default)]
+    pub arguments: Vec<FuncArgumentSpec>,
 }
 
 impl FuncSpec {

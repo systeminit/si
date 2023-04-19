@@ -15,7 +15,35 @@
       "responseType": "boolean",
       "hidden": false,
       "link": "https://truth.com",
-      "uniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
+      "uniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
+      "arguments": [
+        {
+          "name": "value",
+          "kind": "any"
+        },
+        {
+          "name": "array_value",
+          "kind": "array",
+          "elementKind": "integer"
+        },
+        {
+          "name": "map_value",
+          "kind": "map",
+          "elementKind": "object"
+        },
+        {
+          "name": "integer_value",
+          "kind": "integer"
+        },
+        {
+          "name": "bool_value",
+          "kind": "boolean"
+        },
+        {
+          "name": "string_value",
+          "kind": "string"
+        }
+      ]
     },
     {
       "name": "si:falsey",
@@ -27,7 +55,8 @@
       "responseType": "boolean",
       "hidden": false,
       "link": "https://truth.com",
-      "uniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf"
+      "uniqueId": "badf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",
+      "arguments": []
     }
 
   ],

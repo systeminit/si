@@ -6,7 +6,7 @@ use std::{
 use strum::IntoEnumIterator;
 
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
+    FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
     SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError,
 };
@@ -48,7 +48,8 @@ pub async fn export_pkg(
         let related_funcs = SchemaVariant::all_funcs(ctx, variant_id).await?;
         for func in &related_funcs {
             if !func_specs.contains_key(func.id()) {
-                let func_spec = build_func_spec(func).await?;
+                let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
+                let func_spec = build_func_spec(func, &arguments).await?;
                 func_specs.insert(*func.id(), func_spec.clone());
                 pkg_spec_builder.func(func_spec);
             }
@@ -65,7 +66,7 @@ pub async fn export_pkg(
     Ok(())
 }
 
-async fn build_func_spec(func: &Func) -> Result<FuncSpec, PkgError> {
+async fn build_func_spec(func: &Func, args: &[FuncArgument]) -> Result<FuncSpec, PkgError> {
     let mut func_spec_builder = FuncSpec::builder();
 
     func_spec_builder.name(func.name());
@@ -92,6 +93,16 @@ async fn build_func_spec(func: &Func) -> Result<FuncSpec, PkgError> {
     func_spec_builder.backend_kind(FuncSpecBackendKind::try_from(*func.backend_kind())?);
 
     func_spec_builder.hidden(func.hidden());
+
+    for arg in args {
+        func_spec_builder.argument(
+            FuncArgumentSpec::builder()
+                .name(arg.name())
+                .kind(*arg.kind())
+                .element_kind(arg.element_kind().cloned().map(|kind| kind.into()))
+                .build()?,
+        );
+    }
 
     Ok(func_spec_builder.build()?)
 }
