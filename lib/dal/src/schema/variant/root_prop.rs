@@ -32,6 +32,8 @@ pub enum RootPropChild {
     Qualification,
     /// Corresponds to the "/root/confirmation" subtree.
     Confirmation,
+    /// Corresponds to the "/root/applied_model" subtree.
+    AppliedModel,
     /// Corresponds to the "/root/deleted_at" subtree.
     DeletedAt,
 }
@@ -45,6 +47,7 @@ impl RootPropChild {
             Self::Code => "code",
             Self::Qualification => "qualification",
             Self::Confirmation => "confirmation",
+            Self::AppliedModel => "applied_model",
             Self::DeletedAt => "deleted_at",
         }
     }
@@ -102,6 +105,8 @@ pub struct RootProp {
     pub confirmation_prop_id: PropId,
     /// The deleted_at prop on [`self`](Self).
     pub deleted_at_prop_id: PropId,
+    /// The applied_model prop on [`self`](Self).
+    pub applied_model_prop_id: PropId,
 }
 
 impl RootProp {
@@ -132,6 +137,7 @@ impl RootProp {
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
         let confirmation_prop_id = Self::setup_confirmation(ctx, root_prop_id).await?;
         let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id).await?;
+        let applied_model_prop_id = Self::setup_applied_model(ctx, root_prop_id).await?;
 
         // Now that the structure is set up, we can populate default
         // AttributePrototypes & AttributeValues to be updated appropriately below.
@@ -214,6 +220,7 @@ impl RootProp {
             qualification_prop_id,
             confirmation_prop_id,
             deleted_at_prop_id,
+            applied_model_prop_id,
         })
     }
 
@@ -409,6 +416,18 @@ impl RootProp {
             .await?;
 
         Ok(qualification_map_prop_id)
+    }
+
+    async fn setup_applied_model(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<PropId> {
+        // This is a new prop that we will use to determine if the model has changed since the last fix applied
+        let mut applied_model = Prop::new(ctx, "applied_model", PropKind::String, None).await?;
+        applied_model.set_parent_prop(ctx, root_prop_id).await?;
+        applied_model.set_hidden(ctx, true).await?;
+
+        Ok(*applied_model.id())
     }
 
     async fn setup_deleted_at(

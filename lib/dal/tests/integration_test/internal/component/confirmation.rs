@@ -325,8 +325,8 @@ async fn list_confirmations(mut octx: DalContext) {
                 "test:confirmation": {
                     "success": true,
                     "recommendedActions": []
-                }
-            }
+                },
+            },
         }], // expected
         ComponentViewProperties::try_from(component_view)
             .expect("could not create component view properties")
@@ -407,8 +407,11 @@ async fn list_confirmations(mut octx: DalContext) {
                 "test:confirmation": {
                     "success": false,
                     "recommendedActions": ["create"]
-                }
-            }
+                },
+            },
+            "applied_model": {
+                "domain": {}
+            },
         }], // expected
         component_view.properties // actual
     );

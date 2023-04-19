@@ -13,9 +13,10 @@ use crate::{
 };
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
-    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind, SchemaError,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    ActionPrototypeContext, AttributePrototype, AttributePrototypeArgument,
+    AttributePrototypeError, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
+    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 
@@ -37,7 +38,7 @@ impl MigrationDriver {
     ) -> BuiltinsResult<()> {
         let name = "Key Pair";
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
-            .create_schema_and_variant(
+            .create_schema_and_variant_with_name(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
                     name,
@@ -49,6 +50,7 @@ impl MigrationDriver {
                     None,
                 ),
                 None,
+                "v1",
             )
             .await?
         {
@@ -162,11 +164,11 @@ impl MigrationDriver {
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (key_name_external_provider, _output_socket) = ExternalProvider::new_with_socket(
+        let (key_name_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "Key Name",
+            "Key Name2",
             None,
             identity_func_item.func_id,
             identity_func_item.func_binding_id,
@@ -175,6 +177,7 @@ impl MigrationDriver {
             false,
         )
         .await?;
+        output_socket.set_human_name(ctx, Some("Key Name")).await?;
 
         // Input Socket
         let (region_explicit_internal_provider, _input_socket) =
@@ -236,26 +239,156 @@ impl MigrationDriver {
         self.set_default_value_for_prop(ctx, *key_type_prop.id(), serde_json::json!["rsa"])
             .await?;
 
-        // Connect the "/root/domain/key id" prop to the external provider.
-        let external_provider_attribute_prototype_id = key_name_external_provider
-            .attribute_prototype_id()
-            .ok_or_else(|| {
-                BuiltinsError::MissingAttributePrototypeForExternalProvider(
-                    *key_name_external_provider.id(),
-                )
-            })?;
-        let key_name_internal_provider = InternalProvider::find_for_prop(ctx, *key_name_prop.id())
+        {
+            // Connect the "/root/domain/key id" prop to the external provider.
+            let external_provider_attribute_prototype_id = key_name_external_provider
+                .attribute_prototype_id()
+                .ok_or_else(|| {
+                    BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                        *key_name_external_provider.id(),
+                    )
+                })?;
+            let mut external_provider_attribute_prototype =
+                AttributePrototype::get_by_id(ctx, external_provider_attribute_prototype_id)
+                    .await?
+                    .ok_or_else(|| {
+                        AttributePrototypeError::NotFound(
+                            *external_provider_attribute_prototype_id,
+                            *ctx.visibility(),
+                        )
+                    })?;
+
+            let key_name_metadata_func = Func::find_by_attr(
+                ctx,
+                "name",
+                &"si:awsKeyPairMetadataExternalProvider".to_string(),
+            )
+            .await
+            .expect("could not find si:awsKeyPairMetadataExternalProvider func by name attr")
+            .pop()
+            .expect("si:awsKeyPairMetadataExternalProvider func not found");
+            external_provider_attribute_prototype
+                .set_func_id(ctx, *key_name_metadata_func.id())
+                .await?;
+
+            let key_name_func_argument_name = "KeyName";
+            let key_name_func_argument = FuncArgument::find_by_name_for_func(
+                ctx,
+                key_name_func_argument_name,
+                *key_name_metadata_func.id(),
+            )
             .await?
             .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*key_name_prop.id())
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    key_name_metadata_func.name().to_owned(),
+                    key_name_func_argument_name.to_string(),
+                )
             })?;
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *external_provider_attribute_prototype_id,
-            identity_func_item.func_argument_id,
-            *key_name_internal_provider.id(),
-        )
-        .await?;
+
+            let key_name_internal_provider =
+                InternalProvider::find_for_prop(ctx, *key_name_prop.id())
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(*key_name_prop.id())
+                    })?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *external_provider_attribute_prototype_id,
+                *key_name_func_argument.id(),
+                *key_name_internal_provider.id(),
+            )
+            .await?;
+
+            let applied_model_func_argument_name = "applied_model";
+            let applied_model_func_argument = FuncArgument::find_by_name_for_func(
+                ctx,
+                applied_model_func_argument_name,
+                *key_name_metadata_func.id(),
+            )
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    key_name_metadata_func.name().to_owned(),
+                    applied_model_func_argument_name.to_string(),
+                )
+            })?;
+
+            let applied_model_internal_provider =
+                InternalProvider::find_for_prop(ctx, root_prop.applied_model_prop_id)
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                            root_prop.applied_model_prop_id,
+                        )
+                    })?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *external_provider_attribute_prototype_id,
+                *applied_model_func_argument.id(),
+                *applied_model_internal_provider.id(),
+            )
+            .await?;
+
+            let resource_func_argument_name = "resource";
+            let resource_func_argument = FuncArgument::find_by_name_for_func(
+                ctx,
+                resource_func_argument_name,
+                *key_name_metadata_func.id(),
+            )
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    key_name_metadata_func.name().to_owned(),
+                    resource_func_argument_name.to_string(),
+                )
+            })?;
+
+            let resource_internal_provider =
+                InternalProvider::find_for_prop(ctx, root_prop.resource_prop_id)
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                            root_prop.resource_prop_id,
+                        )
+                    })?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *external_provider_attribute_prototype_id,
+                *resource_func_argument.id(),
+                *resource_internal_provider.id(),
+            )
+            .await?;
+
+            let domain_func_argument_name = "domain";
+            let domain_func_argument = FuncArgument::find_by_name_for_func(
+                ctx,
+                domain_func_argument_name,
+                *key_name_metadata_func.id(),
+            )
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    key_name_metadata_func.name().to_owned(),
+                    domain_func_argument_name.to_string(),
+                )
+            })?;
+
+            let domain_internal_provider =
+                InternalProvider::find_for_prop(ctx, root_prop.domain_prop_id)
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                            root_prop.domain_prop_id,
+                        )
+                    })?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *external_provider_attribute_prototype_id,
+                *domain_func_argument.id(),
+                *domain_internal_provider.id(),
+            )
+            .await?;
+        }
 
         let tags_map_attribute_read_context =
             AttributeReadContext::default_with_prop(*tags_map_prop.id());
@@ -431,6 +564,10 @@ impl MigrationDriver {
             "si:awsKeyPairDeleteWorkflow",
         )
         .await?;
+
+        // Add update confirmation
+        self.add_update_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
 
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),

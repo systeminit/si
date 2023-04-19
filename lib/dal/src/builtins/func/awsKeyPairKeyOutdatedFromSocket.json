@@ -1,0 +1,16 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "key",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "Boolean",
+  "hidden": false,
+  "display_name": "si:awsKeyPairKeyOutdatedFromSocket",
+  "description": null,
+  "link": null,
+  "code_file": "awsKeyPairKeyOutdatedFromSocket.ts",
+  "code_entrypoint": "keyOutdated"
+}

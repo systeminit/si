@@ -46,7 +46,7 @@ impl MigrationDriver {
     ) -> BuiltinsResult<()> {
         let name = "EC2 Instance";
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
-            .create_schema_and_variant(
+            .create_schema_and_variant_with_name(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
                     name,
@@ -58,6 +58,7 @@ impl MigrationDriver {
                     None,
                 ),
                 None,
+                "v1",
             )
             .await?
         {
@@ -123,6 +124,19 @@ impl MigrationDriver {
             *schema_variant.id(),
         )
         .await?;
+
+        // Prop: /root/domain/key_outdated
+        let mut key_outdated_prop = self
+            .create_prop(
+                ctx,
+                "key_outdated",
+                PropKind::Boolean,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+        key_outdated_prop.set_hidden(ctx, true).await?;
 
         // Prop: /root/domain/KeyName
         let key_name_prop = self
@@ -282,11 +296,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        let (keyname_explicit_internal_provider, _input_socket) =
+        let (keyname_explicit_internal_provider, mut input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
-                "Key Name",
+                "Key Name2",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
@@ -294,6 +308,7 @@ impl MigrationDriver {
                 false,
             )
             .await?;
+        input_socket.set_human_name(ctx, Some("Key Name")).await?;
 
         let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
@@ -448,25 +463,81 @@ impl MigrationDriver {
         )
         .await?;
 
-        let keyname_attribute_value_read_context =
+        // Create and set the func to take off a string field.
+        let transformation_func_name = "si:awsKeyPairKeyNameFromSocket";
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
+        let transformation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "key", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        transformation_func_name.to_owned(),
+                        "key".to_string(),
+                    )
+                })?;
+
+        let key_attribute_value_read_context =
             AttributeReadContext::default_with_prop(*key_name_prop.id());
-        let keyname_attribute_value =
-            AttributeValue::find_for_context(ctx, keyname_attribute_value_read_context)
+        let key_attribute_value =
+            AttributeValue::find_for_context(ctx, key_attribute_value_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    keyname_attribute_value_read_context,
+                    key_attribute_value_read_context,
                 ))?;
-        let mut keyname_attribute_prototype = keyname_attribute_value
+        let mut key_attribute_prototype = key_attribute_value
             .attribute_prototype(ctx)
             .await?
             .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        keyname_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
+        key_attribute_prototype
+            .set_func_id(ctx, transformation_func.id())
             .await?;
+
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
-            *keyname_attribute_prototype.id(),
-            identity_func_item.func_argument_id,
+            *key_attribute_prototype.id(),
+            *transformation_func_argument.id(),
+            *keyname_explicit_internal_provider.id(),
+        )
+        .await?;
+
+        let transformation_func_name = "si:awsKeyPairKeyOutdatedFromSocket";
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
+        let transformation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "key", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        transformation_func_name.to_owned(),
+                        "key".to_string(),
+                    )
+                })?;
+
+        let key_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*key_outdated_prop.id());
+        let key_attribute_value =
+            AttributeValue::find_for_context(ctx, key_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    key_attribute_value_read_context,
+                ))?;
+        let mut key_attribute_prototype = key_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        key_attribute_prototype
+            .set_func_id(ctx, transformation_func.id())
+            .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *key_attribute_prototype.id(),
+            *transformation_func_argument.id(),
             *keyname_explicit_internal_provider.id(),
         )
         .await?;
@@ -599,6 +670,10 @@ impl MigrationDriver {
             "si:awsEc2DeleteWorkflow",
         )
         .await?;
+
+        // Add update confirmation
+        self.add_update_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
 
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),

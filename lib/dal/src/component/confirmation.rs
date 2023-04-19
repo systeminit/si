@@ -145,6 +145,11 @@ impl Component {
         recommendations.extend(destroy_recommendations);
         recommendations.extend(create_recommendations);
         recommendations.extend(other_recommendations);
+        // TODO: this is partially wrong, different recommendations may have different status and other metadata, we need to preserve both
+        // name, provider, kind, has_running_fix/last_fix
+        recommendations.dedup_by(|a, b| {
+            a.component_id == b.component_id && a.recommended_action == b.recommended_action
+        });
 
         // Finally, sort the confirmations to ensure that they are in stable order. We'll use the
         // component id and title.

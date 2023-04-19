@@ -394,6 +394,7 @@ pub enum LeafInputLocation {
     DeletedAt,
     Domain,
     Resource,
+    AppliedModel,
 }
 
 impl LeafInputLocation {
@@ -403,6 +404,7 @@ impl LeafInputLocation {
             "code" => LeafInputLocation::Code,
             "resource" => LeafInputLocation::Resource,
             "deleted_at" => LeafInputLocation::DeletedAt,
+            "applied_model" => LeafInputLocation::AppliedModel,
             _ => {
                 return Err(SpecError::LeafInputLocationConversionError(
                     arg_name.to_string(),

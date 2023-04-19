@@ -195,6 +195,10 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     "success": true,
                     "recommendedActions": [],
                 },
+                "si:confirmationResourceNeedsUpdate": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             }
         }], // expected
         to_aws_ec2_instance
@@ -243,6 +247,10 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     ],
                 },
                 "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
+                "si:confirmationResourceNeedsUpdate": {
                     "success": true,
                     "recommendedActions": [],
                 },
@@ -295,6 +303,10 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     ],
                 },
                 "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
+                "si:confirmationResourceNeedsUpdate": {
                     "success": true,
                     "recommendedActions": [],
                 },

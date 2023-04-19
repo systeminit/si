@@ -40,6 +40,7 @@ use crate::{
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
 
+pub mod applied_model;
 pub mod code;
 pub mod confirmation;
 pub mod diff;
@@ -154,6 +155,8 @@ pub enum ComponentError {
     SchemaVariantNotFinalized(SchemaVariantId),
     #[error("cannot update the resource tree when in a change set")]
     CannotUpdateResourceTreeInChangeSet,
+    #[error("cannot update the /root/applied_model tree when in a change set")]
+    CannotUpdateAppliedModelTreeInChangeSet,
     #[error("no func binding return value for leaf entry name: {0}")]
     MissingFuncBindingReturnValueIdForLeafEntryName(String),
     #[error("confirmation view error: {0}")]

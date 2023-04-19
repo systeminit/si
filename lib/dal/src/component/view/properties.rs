@@ -16,8 +16,10 @@ use crate::ComponentView;
 /// The fields on this struct are **intentionally private**.
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct ComponentViewProperties {
-    si: serde_json::Value,
-    domain: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    si: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    domain: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     resource: Option<ResourceProperties>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,6 +50,14 @@ impl ComponentViewProperties {
     /// [`ComponentView`].
     pub fn new(view: ComponentView) -> ComponentViewResult<Self> {
         Self::try_from(view)
+    }
+
+    pub fn drop_all_but_domain(&mut self) -> &mut Self {
+        *self = Self {
+            domain: self.domain.take(),
+            ..Default::default()
+        };
+        self
     }
 
     pub fn drop_private(&mut self) -> &mut Self {

@@ -67,6 +67,8 @@ pub enum LeafInputLocation {
     Domain,
     /// The input location corresponding to "/root/resource".
     Resource,
+    /// The input location corresponding to "/root/applied_model".
+    AppliedModel,
     /// The input location corresponding to "/root/deleted_at"
     DeletedAt,
 }
@@ -79,6 +81,7 @@ impl Into<RootPropChild> for LeafInputLocation {
         match self {
             LeafInputLocation::Code => RootPropChild::Code,
             LeafInputLocation::Domain => RootPropChild::Domain,
+            LeafInputLocation::AppliedModel => RootPropChild::AppliedModel,
             LeafInputLocation::Resource => RootPropChild::Resource,
             LeafInputLocation::DeletedAt => RootPropChild::DeletedAt,
         }
@@ -92,6 +95,7 @@ impl From<&PkgLeafInputLocation> for LeafInputLocation {
             PkgLeafInputLocation::Domain => LeafInputLocation::Domain,
             PkgLeafInputLocation::Resource => LeafInputLocation::Resource,
             PkgLeafInputLocation::DeletedAt => LeafInputLocation::DeletedAt,
+            PkgLeafInputLocation::AppliedModel => LeafInputLocation::AppliedModel,
         }
     }
 }
@@ -103,14 +107,16 @@ impl LeafInputLocation {
             LeafInputLocation::Domain => "domain",
             LeafInputLocation::Resource => "resource",
             LeafInputLocation::DeletedAt => "deleted_at",
+            LeafInputLocation::AppliedModel => "applied_model",
         }
     }
 
     pub fn arg_kind(&self) -> FuncArgumentKind {
         match self {
-            LeafInputLocation::Code | LeafInputLocation::Domain | LeafInputLocation::Resource => {
-                FuncArgumentKind::Object
-            }
+            LeafInputLocation::Code
+            | LeafInputLocation::Domain
+            | LeafInputLocation::Resource
+            | LeafInputLocation::AppliedModel => FuncArgumentKind::Object,
             LeafInputLocation::DeletedAt => FuncArgumentKind::String,
         }
     }

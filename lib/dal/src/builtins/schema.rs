@@ -783,4 +783,118 @@ impl MigrationDriver {
 
         Ok(())
     }
+
+    pub async fn add_update_confirmation(
+        &self,
+        ctx: &DalContext,
+        name: &str,
+        schema_variant: &SchemaVariant,
+        provider: Option<&str>,
+    ) -> BuiltinsResult<()> {
+        // Confirmation
+        let update_confirmation_func_name = "si:confirmationResourceNeedsUpdate";
+        let update_confirmation_func =
+            Func::find_by_attr(ctx, "name", &update_confirmation_func_name)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    SchemaError::FuncNotFound(update_confirmation_func_name.to_owned())
+                })?;
+        let resource_confirmation_func_argument_name = "resource";
+        let resource_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            resource_confirmation_func_argument_name,
+            *update_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                update_confirmation_func_name.to_string(),
+                resource_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        let domain_confirmation_func_argument_name = "domain";
+        let domain_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            domain_confirmation_func_argument_name,
+            *update_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                update_confirmation_func_name.to_string(),
+                domain_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        let applied_model_confirmation_func_argument_name = "applied_model";
+        let applied_model_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            applied_model_confirmation_func_argument_name,
+            *update_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                update_confirmation_func_name.to_string(),
+                applied_model_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        let deleted_at_confirmation_func_argument_name = "deleted_at";
+        let deleted_at_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            deleted_at_confirmation_func_argument_name,
+            *update_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                update_confirmation_func_name.to_string(),
+                deleted_at_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *update_confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::Domain,
+                    func_argument_id: *domain_confirmation_func_argument.id(),
+                },
+                LeafInput {
+                    location: LeafInputLocation::AppliedModel,
+                    func_argument_id: *applied_model_confirmation_func_argument.id(),
+                },
+                LeafInput {
+                    location: LeafInputLocation::Resource,
+                    func_argument_id: *resource_confirmation_func_argument.id(),
+                },
+                LeafInput {
+                    location: LeafInputLocation::DeletedAt,
+                    func_argument_id: *deleted_at_confirmation_func_argument.id(),
+                },
+            ],
+        )
+        .await
+        .expect("could not add leaf");
+
+        FuncDescription::new(
+            ctx,
+            *update_confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: format!("{name} Needs Update?"),
+                success_description: Some(format!("{name} doesn't need update!")),
+                failure_description: Some(
+                    format!("This {name} needs an update. Please run the fixes above to delete it and then re-create it!")
+                        .to_string(),
+                ),
+                provider: provider.map(String::from),
+            },
+        )
+        .await?;
+        Ok(())
+    }
 }

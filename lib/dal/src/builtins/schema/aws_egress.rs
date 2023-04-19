@@ -488,6 +488,10 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Add update confirmation
+        self.add_update_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
+
         Ok(())
     }
 }

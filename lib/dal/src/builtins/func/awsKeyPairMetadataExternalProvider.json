@@ -1,0 +1,28 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "KeyName",
+      "kind": "String"
+    },
+    {
+      "name": "resource",
+      "kind": "Object"
+    },
+    {
+      "name": "domain",
+      "kind": "Object"
+    },
+    {
+      "name": "applied_model",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "Object",
+  "hidden": false,
+  "display_name": "si:awsKeyPairMetadataExternalProvider",
+  "description": null,
+  "link": null,
+  "code_file": "awsKeyPairMetadataExternalProvider.ts",
+  "code_entrypoint": "metadata"
+}

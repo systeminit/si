@@ -124,6 +124,8 @@ pub enum FixError {
     NoFixesInBatch(FixBatchId),
     #[error("cannot stamp batch or fix as finished since it has not yet been started")]
     NotYetStarted,
+    #[error("component {0} not found")]
+    ComponentNotFound(ComponentId),
 }
 
 pub type FixResult<T> = Result<T, FixError>;
@@ -312,6 +314,16 @@ impl Fix {
             if completion_message.is_some() {
                 self.set_completion_message(ctx, completion_message).await?;
             }
+
+            ctx.run_with_deleted_visibility(|ctx| async move {
+                let component = Component::get_by_id(&ctx, &self.component_id)
+                    .await?
+                    .ok_or(FixError::ComponentNotFound(self.component_id))?;
+                component.set_applied_model(&ctx).await?;
+                Ok::<_, FixError>(())
+            })
+            .await?;
+
             Ok(())
         } else {
             Err(FixError::NotYetStarted)

@@ -1,0 +1,27 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    },
+    {
+      "name": "applied_model",
+      "kind": "Object"
+    },
+    {
+      "name": "resource",
+      "kind": "Object"
+    },
+    {
+      "name": "deleted_at",
+      "kind": "String"
+    }
+  ],
+  "response_type": "Confirmation",
+  "display_name": "si:confirmationResourceNeedsUpdate",
+  "description": null,
+  "link": null,
+  "code_file": "confirmationResourceNeedsUpdate.ts",
+  "code_entrypoint": "needsUpdate"
+}

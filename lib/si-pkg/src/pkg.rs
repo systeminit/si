@@ -738,6 +738,9 @@ impl<'a> SiPkgLeafFunction<'a> {
         if node.input_code {
             inputs.push(LeafInputLocation::Code);
         }
+        if node.input_applied_model {
+            inputs.push(LeafInputLocation::AppliedModel);
+        }
         if node.input_deleted_at {
             inputs.push(LeafInputLocation::DeletedAt);
         }

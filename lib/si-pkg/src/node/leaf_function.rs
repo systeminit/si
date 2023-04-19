@@ -18,6 +18,7 @@ const INPUT_DOMAIN_STR: &str = "input_domain";
 const INPUT_DELETED_AT_STR: &str = "input_deleted_at";
 const INPUT_CODE_STR: &str = "input_code";
 const INPUT_RESOURCE_STR: &str = "input_resource";
+const INPUT_APPLIED_MODEL_STR: &str = "applied_model";
 
 #[derive(Clone, Debug)]
 pub struct LeafFunctionNode {
@@ -27,6 +28,7 @@ pub struct LeafFunctionNode {
     pub input_deleted_at: bool,
     pub input_domain: bool,
     pub input_resource: bool,
+    pub input_applied_model: bool,
 }
 
 impl WriteBytes for LeafFunctionNode {
@@ -36,6 +38,7 @@ impl WriteBytes for LeafFunctionNode {
         write_key_value_line(writer, INPUT_CODE_STR, self.input_code)?;
         write_key_value_line(writer, INPUT_DOMAIN_STR, self.input_domain)?;
         write_key_value_line(writer, INPUT_DELETED_AT_STR, self.input_deleted_at)?;
+        write_key_value_line(writer, INPUT_APPLIED_MODEL_STR, self.input_applied_model)?;
         write_key_value_line(writer, INPUT_RESOURCE_STR, self.input_resource)?;
 
         Ok(())
@@ -57,6 +60,9 @@ impl ReadBytes for LeafFunctionNode {
             .map_err(GraphError::parse)?;
         let input_deleted_at = bool::from_str(&read_key_value_line(reader, INPUT_DELETED_AT_STR)?)
             .map_err(GraphError::parse)?;
+        let input_applied_model =
+            bool::from_str(&read_key_value_line(reader, INPUT_APPLIED_MODEL_STR)?)
+                .map_err(GraphError::parse)?;
         let input_resource = bool::from_str(&read_key_value_line(reader, INPUT_RESOURCE_STR)?)
             .map_err(GraphError::parse)?;
 
@@ -65,6 +71,7 @@ impl ReadBytes for LeafFunctionNode {
             leaf_kind,
             input_code,
             input_domain,
+            input_applied_model,
             input_deleted_at,
             input_resource,
         })
@@ -81,6 +88,7 @@ impl NodeChild for LeafFunctionSpec {
                 func_unique_id: self.func_unique_id,
                 leaf_kind: self.leaf_kind,
                 input_code: self.inputs.contains(&LeafInputLocation::Code),
+                input_applied_model: self.inputs.contains(&LeafInputLocation::AppliedModel),
                 input_deleted_at: self.inputs.contains(&LeafInputLocation::DeletedAt),
                 input_domain: self.inputs.contains(&LeafInputLocation::Domain),
                 input_resource: self.inputs.contains(&LeafInputLocation::Resource),

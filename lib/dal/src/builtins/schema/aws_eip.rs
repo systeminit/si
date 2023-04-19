@@ -341,6 +341,10 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Add update confirmation
+        self.add_update_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
+
         let context = ActionPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),

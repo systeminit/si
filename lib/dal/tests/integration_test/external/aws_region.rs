@@ -214,6 +214,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "success": true,
                     "recommendedActions": [],
                 },
+                "si:confirmationResourceNeedsUpdate": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -309,6 +313,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "success": true,
                     "recommendedActions": [],
                 },
+                "si:confirmationResourceNeedsUpdate": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -381,6 +389,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     ],
                 },
                 "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
+                "si:confirmationResourceNeedsUpdate": {
                     "success": true,
                     "recommendedActions": [],
                 },
@@ -496,6 +508,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "success": true,
                     "recommendedActions": [],
                 },
+                "si:confirmationResourceNeedsUpdate": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -591,6 +607,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "success": true,
                     "recommendedActions": [],
                 },
+                "si:confirmationResourceNeedsUpdate": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
             },
         }], // expected
         ec2_payload
@@ -663,6 +683,10 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     ],
                 },
                 "si:confirmationResourceNeedsDeletion": {
+                    "success": true,
+                    "recommendedActions": [],
+                },
+                "si:confirmationResourceNeedsUpdate": {
                     "success": true,
                     "recommendedActions": [],
                 },
