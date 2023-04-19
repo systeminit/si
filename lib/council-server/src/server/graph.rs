@@ -1,6 +1,10 @@
 use crate::{server::Error, Graph, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
 
+mod node_metadata;
+
+use node_metadata::NodeMetadata;
+
 #[derive(Default, Debug)]
 pub struct ValueCreationQueue {
     processing: Option<String>,
@@ -39,49 +43,6 @@ impl ValueCreationQueue {
     pub fn remove(&mut self, reply_channel: &str) {
         self.processing = self.processing.take().filter(|el| *el != reply_channel);
         self.queue.retain(|el| reply_channel != el);
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct NodeMetadata {
-    // This should really be an ordered set, to remove duplicates, but we'll deal with
-    // that later.
-    wanted_by_reply_channels: VecDeque<String>,
-    processing_reply_channel: Option<String>,
-    depends_on_node_ids: HashSet<Id>,
-}
-
-impl NodeMetadata {
-    pub fn merge_metadata(&mut self, reply_channel: String, dependencies: &Vec<Id>) {
-        if !self.wanted_by_reply_channels.contains(&reply_channel) {
-            self.wanted_by_reply_channels.push_back(reply_channel);
-        }
-        self.depends_on_node_ids.extend(dependencies);
-    }
-
-    pub fn remove_dependency(&mut self, node_id: Id) {
-        self.depends_on_node_ids.remove(&node_id);
-    }
-
-    pub fn next_to_process(&mut self) -> Option<String> {
-        if self.depends_on_node_ids.is_empty() && self.processing_reply_channel.is_none() {
-            self.processing_reply_channel = self.wanted_by_reply_channels.pop_front();
-            return self.processing_reply_channel.clone();
-        }
-        None
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.wanted_by_reply_channels.is_empty() && self.processing_reply_channel.is_none()
-    }
-
-    pub fn remove_channel(&mut self, reply_channel: &str) {
-        self.wanted_by_reply_channels
-            .retain(|el| el != reply_channel);
-        self.processing_reply_channel = self
-            .processing_reply_channel
-            .take()
-            .filter(|el| el != reply_channel);
     }
 }
 
@@ -151,40 +112,29 @@ impl ChangeSetGraph {
         reply_channel: String,
         change_set_id: Id,
         node_id: Id,
-    ) -> Result<VecDeque<String>, Error> {
+    ) -> Result<HashSet<String>, Error> {
         let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
 
-        let node_is_complete;
-        if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
-            if node_metadata.processing_reply_channel.as_ref() != Some(&reply_channel) {
-                return Err(Error::ShouldNotBeProcessingByJob);
-            }
-            node_metadata.processing_reply_channel = None;
+        let (ok_to_remove_node, wanted_by_reply_channels) =
+            if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
+                node_metadata.mark_as_processed(&reply_channel)?
+            } else {
+                return Err(Error::UnknownNodeId);
+            };
 
-            node_metadata
-                .wanted_by_reply_channels
-                .retain(|x| x != &reply_channel);
-
-            node_is_complete = node_metadata.depends_on_node_ids.is_empty();
-        } else {
-            return Err(Error::UnknownNodeId);
-        }
-
-        if node_is_complete {
-            let node_metadata = change_set_graph_data.remove(&node_id).unwrap();
+        if ok_to_remove_node {
+            change_set_graph_data.remove(&node_id);
 
             for node_metadata in change_set_graph_data.values_mut() {
                 node_metadata.remove_dependency(node_id);
             }
 
             if change_set_graph_data.is_empty() {
-                self.dependency_data.remove(&change_set_id).unwrap();
+                self.dependency_data.remove(&change_set_id);
             }
-
-            return Ok(node_metadata.wanted_by_reply_channels);
         }
 
-        Ok(VecDeque::new())
+        Ok(wanted_by_reply_channels)
     }
 
     pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &str) {
@@ -218,25 +168,25 @@ impl ChangeSetGraph {
 
         let mut node_ids_to_fail = VecDeque::new();
         node_ids_to_fail.push_back(node_id);
+        // Include the initial node & the processing reply channel in the
+        // list of notifications to send.
+        failure_notifications.push((reply_channel.clone(), node_id));
 
         while let Some(node_id_to_fail) = node_ids_to_fail.pop_front() {
             if let Some(node_metadata) = change_set_graph_data.remove(&node_id_to_fail) {
-                if node_metadata.processing_reply_channel.is_some()
-                    && node_metadata.processing_reply_channel.as_ref() != Some(&reply_channel)
+                if node_metadata.processing_reply_channel().is_some()
+                    && node_metadata.processing_reply_channel() != Some(&reply_channel)
                 {
                     return Err(Error::ShouldNotBeProcessingByJob);
                 }
 
-                for notification_reply_channel in &node_metadata.wanted_by_reply_channels {
+                for notification_reply_channel in node_metadata.wanted_by_reply_channels_iter() {
                     failure_notifications
                         .push((notification_reply_channel.clone(), node_id_to_fail));
                 }
 
                 for (dependent_node_id, dependent_node_metadata) in change_set_graph_data.iter() {
-                    if dependent_node_metadata
-                        .depends_on_node_ids
-                        .contains(&node_id_to_fail)
-                    {
+                    if dependent_node_metadata.depends_on(node_id_to_fail) {
                         node_ids_to_fail.push_back(*dependent_node_id);
                     }
                 }

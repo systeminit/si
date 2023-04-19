@@ -234,7 +234,6 @@ impl DependentValuesUpdate {
                         debug!(?node_ids, job_id = ?self.job_id(), "Ok to start processing nodes");
                         for node_id in node_ids {
                             let id = AttributeValueId::from(node_id);
-                            dependency_graph.remove(&id);
 
                             status_updater.values_running(ctx, vec![id]).await;
                             // Status updater reads from the database and uses its own connection
@@ -252,21 +251,24 @@ impl DependentValuesUpdate {
                                 task_ctx,
                                 attribute_value,
                                 pub_council.clone(),
-                                status_updater.clone(),
                             ));
                         }
                     }
                     council_server::Response::BeenProcessed { node_id } => {
-                        debug!(?node_id, job_id = ?self.job_id(), "Node has been processed by another job");
+                        debug!(?node_id, job_id = ?self.job_id(), "Node has been processed by a job");
                         let id = AttributeValueId::from(node_id);
                         dependency_graph.remove(&id);
 
                         // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_running(ctx, vec![id]).await;
                         status_updater.values_completed(ctx, vec![id]).await;
-                        // Status updater reads from the database and uses its own connection from
-                        // the pg_pool to do writes
-                        ctx.rollback().await?;
+
+                        WsEvent::change_set_written(ctx)
+                            .await?
+                            .publish_on_commit(ctx)
+                            .await?;
+
+                        // Publish the WsEvent
+                        ctx.commit().await?;
                     }
                     council_server::Response::Failed { node_id } => {
                         debug!(?node_id, job_id = ?self.job_id(), "Node failed on another job");
@@ -274,7 +276,6 @@ impl DependentValuesUpdate {
                         dependency_graph.remove(&id);
 
                         // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_running(ctx, vec![id]).await;
                         status_updater.values_completed(ctx, vec![id]).await;
                         // Status updater reads from the database and uses its own connection from
                         // the pg_pool to do writes
@@ -373,7 +374,6 @@ async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
     council: council_server::PubClient,
-    mut status_updater: StatusUpdater,
 ) -> JobConsumerResult<()> {
     let update_result = attribute_value.update_from_prototype_function(&ctx).await;
     // We don't propagate the error up, because we want the rest of the nodes in the graph to make progress
@@ -386,17 +386,6 @@ async fn update_value(
         ctx.rollback().await?;
     }
 
-    // Send a completed status for this value and *remove* it from the hash
-    status_updater
-        .values_completed(&ctx, vec![*attribute_value.id()])
-        .await;
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
-    // Commit the updated attr value & publish the WsEvent
     ctx.commit().await?;
 
     if update_result.is_ok() {
