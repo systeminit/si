@@ -1,0 +1,16 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "value",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "Array",
+  "hidden": false,
+  "display_name": "si:normalizeOutdated",
+  "description": null,
+  "link": null,
+  "code_file": "normalizeOutdated.ts",
+  "code_entrypoint": "normalizeOutdated"
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "value",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "Array",
+  "hidden": false,
+  "display_name": "si:awsEc2InstanceNormalizeSecurityGroupIdFromSocket",
+  "description": null,
+  "link": null,
+  "code_file": "awsEc2InstanceNormalizeSecurityGroupIdFromSocket.ts",
+  "code_entrypoint": "keyName"
+}

@@ -186,12 +186,12 @@ impl MigrationDriver {
             FuncBinding::create_and_execute(ctx, serde_json::json!({}), transformation_func_id)
                 .await?;
 
-        let (security_group_id_external_provider, _output_socket) =
+        let (security_group_id_external_provider, mut output_socket) =
             ExternalProvider::new_with_socket(
                 ctx,
                 *schema.id(),
                 *schema_variant.id(),
-                "Security Group ID",
+                "Security Group ID2",
                 None,
                 transformation_func_id,
                 *transformation_func_binding.id(),
@@ -199,6 +199,9 @@ impl MigrationDriver {
                 SocketArity::Many,
                 false,
             )
+            .await?;
+        output_socket
+            .set_human_name(ctx, Some("Security Group ID"))
             .await?;
 
         // Code Generation
@@ -404,6 +407,64 @@ impl MigrationDriver {
             *security_group_id_external_provider_attribute_prototype_id,
             *func_argument.id(),
             *security_group_id_internal_provider.id(),
+        )
+        .await?;
+
+        let domain_func_argument_name = "domain";
+        let domain_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            domain_func_argument_name,
+            *transformation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                transformation_func.name().to_owned(),
+                domain_func_argument_name.to_string(),
+            )
+        })?;
+
+        let domain_internal_provider =
+            InternalProvider::find_for_prop(ctx, root_prop.domain_prop_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(root_prop.domain_prop_id)
+                })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *security_group_id_external_provider_attribute_prototype_id,
+            *domain_func_argument.id(),
+            *domain_internal_provider.id(),
+        )
+        .await?;
+
+        let applied_model_func_argument_name = "applied_model";
+        let applied_model_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            applied_model_func_argument_name,
+            *transformation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                transformation_func.name().to_owned(),
+                applied_model_func_argument_name.to_string(),
+            )
+        })?;
+
+        let applied_model_internal_provider =
+            InternalProvider::find_for_prop(ctx, root_prop.applied_model_prop_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                        root_prop.applied_model_prop_id,
+                    )
+                })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *security_group_id_external_provider_attribute_prototype_id,
+            *applied_model_func_argument.id(),
+            *applied_model_internal_provider.id(),
         )
         .await?;
 

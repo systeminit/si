@@ -2,10 +2,6 @@
   "kind": "JsAttribute",
   "arguments": [
     {
-      "name": "KeyName",
-      "kind": "String"
-    },
-    {
       "name": "resource",
       "kind": "Object"
     },

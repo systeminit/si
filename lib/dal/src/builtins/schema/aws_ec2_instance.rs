@@ -174,6 +174,32 @@ impl MigrationDriver {
             )
             .await?;
 
+        // Prop: /root/domain/security_groups_outdated
+        let mut security_groups_outdated_prop = self
+            .create_prop(
+                ctx,
+                "security_groups_outdated",
+                PropKind::Array,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+        security_groups_outdated_prop.set_hidden(ctx, true).await?;
+
+        // Prop: /root/domain/security_groups_outdated/security_group_outdated
+        let mut security_group_outdated_prop = self
+            .create_prop(
+                ctx,
+                "security_group_oudated",
+                PropKind::Boolean,
+                None,
+                Some(*security_groups_outdated_prop.id()),
+                None,
+            )
+            .await?;
+        security_group_outdated_prop.set_hidden(ctx, true).await?;
+
         // Prop: /root/domain/tags
         let tags_map_prop = self
             .create_prop(
@@ -270,17 +296,20 @@ impl MigrationDriver {
             )
             .await?;
 
-        let (security_group_ids_explicit_internal_provider, _input_socket) =
+        let (security_group_ids_explicit_internal_provider, mut input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
-                "Security Group ID",
+                "Security Group ID2",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
                 false,
             )
+            .await?;
+        input_socket
+            .set_human_name(ctx, Some("Security Group ID"))
             .await?;
 
         let (image_id_explicit_internal_provider, _input_socket) =
@@ -503,18 +532,18 @@ impl MigrationDriver {
         )
         .await?;
 
-        let transformation_func_name = "si:awsKeyPairKeyOutdatedFromSocket";
+        let transformation_func_name = "si:getOutdated";
         let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
         let transformation_func_argument =
-            FuncArgument::find_by_name_for_func(ctx, "key", *transformation_func.id())
+            FuncArgument::find_by_name_for_func(ctx, "value", *transformation_func.id())
                 .await?
                 .ok_or_else(|| {
                     BuiltinsError::BuiltinMissingFuncArgument(
                         transformation_func_name.to_owned(),
-                        "key".to_string(),
+                        "value".to_string(),
                     )
                 })?;
 
@@ -559,7 +588,11 @@ impl MigrationDriver {
                 .await?
                 .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
             let (transformation_func_id, transformation_func_argument_id) = self
-                .find_func_and_single_argument_by_names(ctx, "si:normalizeToArray", "value")
+                .find_func_and_single_argument_by_names(
+                    ctx,
+                    "si:awsEc2InstanceNormalizeSecurityGroupIdFromSocket",
+                    "value",
+                )
                 .await?;
             security_group_id_attribute_prototype
                 .set_func_id(ctx, transformation_func_id)
@@ -567,6 +600,38 @@ impl MigrationDriver {
             AttributePrototypeArgument::new_for_intra_component(
                 ctx,
                 *security_group_id_attribute_prototype.id(),
+                transformation_func_argument_id,
+                *security_group_ids_explicit_internal_provider.id(),
+            )
+            .await?;
+        }
+
+        // Security Group Ids Outdated from input socket
+        {
+            let security_group_outdated_attribute_value_read_context =
+                AttributeReadContext::default_with_prop(*security_groups_outdated_prop.id());
+            let security_group_outdated_attribute_value = AttributeValue::find_for_context(
+                ctx,
+                security_group_outdated_attribute_value_read_context,
+            )
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                security_group_outdated_attribute_value_read_context,
+            ))?;
+            let mut security_group_outdated_attribute_prototype =
+                security_group_outdated_attribute_value
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+            let (transformation_func_id, transformation_func_argument_id) = self
+                .find_func_and_single_argument_by_names(ctx, "si:normalizeOutdated", "value")
+                .await?;
+            security_group_outdated_attribute_prototype
+                .set_func_id(ctx, transformation_func_id)
+                .await?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *security_group_outdated_attribute_prototype.id(),
                 transformation_func_argument_id,
                 *security_group_ids_explicit_internal_provider.id(),
             )

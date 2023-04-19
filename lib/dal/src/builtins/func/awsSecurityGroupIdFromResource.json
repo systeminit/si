@@ -1,10 +1,20 @@
 {
   "kind": "Json",
-  "response_type": "String",
+  "response_type": "Object",
   "code_file": "awsSecurityGroupIdFromResource.ts",
   "code_entrypoint": "parse",
-  "arguments": [{
-    "name": "resource",
-    "kind": "String"
-  }]
+  "arguments": [
+    {
+      "name": "resource",
+      "kind": "Object"
+    },
+    {
+      "name": "domain",
+      "kind": "Object"
+    },
+    {
+      "name": "applied_model",
+      "kind": "Object"
+    }
+  ]
 }
