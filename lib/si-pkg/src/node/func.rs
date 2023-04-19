@@ -124,8 +124,14 @@ impl NodeChild for FuncSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
+        let children = self
+            .arguments
+            .iter()
+            .map(|arg| Box::new(arg.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>)
+            .collect();
+
         NodeWithChildren::new(
-            NodeKind::Leaf,
+            NodeKind::Tree,
             Self::NodeType::Func(FuncNode {
                 name: self.name.to_string(),
                 display_name: self.display_name.as_ref().cloned(),
@@ -138,7 +144,7 @@ impl NodeChild for FuncSpec {
                 link: self.link.as_ref().cloned(),
                 unique_id: self.unique_id,
             }),
-            vec![],
+            children,
         )
     }
 }

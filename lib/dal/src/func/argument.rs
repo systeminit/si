@@ -1,14 +1,17 @@
-use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
-    AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
-    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
-};
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+
+use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
+
+use crate::{
+    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
+    AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
+    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+};
 
 const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument/list_for_func.sql");
 const LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS: &str =
@@ -68,6 +71,34 @@ impl From<PropKind> for FuncArgumentKind {
             PropKind::Object => FuncArgumentKind::Object,
             PropKind::String => FuncArgumentKind::String,
             PropKind::Map => FuncArgumentKind::Map,
+        }
+    }
+}
+
+impl From<PkgFuncArgumentKind> for FuncArgumentKind {
+    fn from(value: PkgFuncArgumentKind) -> Self {
+        match value {
+            PkgFuncArgumentKind::Any => FuncArgumentKind::Any,
+            PkgFuncArgumentKind::Array => FuncArgumentKind::Array,
+            PkgFuncArgumentKind::Boolean => FuncArgumentKind::Boolean,
+            PkgFuncArgumentKind::Integer => FuncArgumentKind::Integer,
+            PkgFuncArgumentKind::Map => FuncArgumentKind::Map,
+            PkgFuncArgumentKind::Object => FuncArgumentKind::Object,
+            PkgFuncArgumentKind::String => FuncArgumentKind::String,
+        }
+    }
+}
+
+impl From<FuncArgumentKind> for PkgFuncArgumentKind {
+    fn from(value: FuncArgumentKind) -> Self {
+        match value {
+            FuncArgumentKind::Any => PkgFuncArgumentKind::Any,
+            FuncArgumentKind::Array => PkgFuncArgumentKind::Array,
+            FuncArgumentKind::Boolean => PkgFuncArgumentKind::Boolean,
+            FuncArgumentKind::Integer => PkgFuncArgumentKind::Integer,
+            FuncArgumentKind::Map => PkgFuncArgumentKind::Map,
+            FuncArgumentKind::Object => PkgFuncArgumentKind::Object,
+            FuncArgumentKind::String => PkgFuncArgumentKind::String,
         }
     }
 }

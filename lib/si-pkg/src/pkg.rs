@@ -19,8 +19,8 @@ use url::Url;
 use crate::{
     node::{CategoryNode, PkgNode, PropNode, SchemaVariantChildNode},
     spec::{
-        FuncSpecBackendKind, FuncSpecBackendResponseType, LeafInputLocation, LeafKind, PkgSpec,
-        SpecError,
+        FuncArgumentKind, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafInputLocation,
+        LeafKind, PkgSpec, SpecError,
     },
 };
 
@@ -316,6 +316,63 @@ impl SiPkgMetadata {
 }
 
 #[derive(Clone, Debug)]
+pub struct SiPkgFuncArgument<'a> {
+    name: String,
+    kind: FuncArgumentKind,
+    element_kind: Option<FuncArgumentKind>,
+
+    hash: Hash,
+    source: Source<'a>,
+}
+
+impl<'a> SiPkgFuncArgument<'a> {
+    fn from_graph(
+        graph: &'a Graph<HashedNode<PkgNode>, ()>,
+        node_idx: NodeIndex,
+    ) -> PkgResult<Self> {
+        let hashed_node = &graph[node_idx];
+        let node = match hashed_node.inner() {
+            PkgNode::FuncArgument(node) => node.clone(),
+            unexpected => {
+                return Err(SiPkgError::UnexpectedPkgNodeType(
+                    PkgNode::FUNC_ARGUMENT_KIND_STR,
+                    unexpected.node_kind_str(),
+                ))
+            }
+        };
+
+        Ok(Self {
+            name: node.name,
+            kind: node.kind,
+            element_kind: node.element_kind,
+
+            hash: hashed_node.hash(),
+            source: Source::new(graph, node_idx),
+        })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> FuncArgumentKind {
+        self.kind
+    }
+
+    pub fn element_kind(&self) -> Option<&FuncArgumentKind> {
+        self.element_kind.as_ref()
+    }
+
+    pub fn hash(&self) -> Hash {
+        self.hash
+    }
+
+    pub fn source(&self) -> &Source<'a> {
+        &self.source
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct SiPkgFunc<'a> {
     name: String,
     display_name: Option<String>,
@@ -362,6 +419,19 @@ impl<'a> SiPkgFunc<'a> {
             unique_id: func_node.unique_id,
             source: Source::new(graph, node_idx),
         })
+    }
+
+    pub fn arguments(&self) -> PkgResult<Vec<SiPkgFuncArgument>> {
+        let mut arguments = vec![];
+        for idx in self
+            .source
+            .graph
+            .neighbors_directed(self.source.node_idx, Outgoing)
+        {
+            arguments.push(SiPkgFuncArgument::from_graph(self.source.graph, idx)?);
+        }
+
+        Ok(arguments)
     }
 
     pub fn name(&self) -> &str {

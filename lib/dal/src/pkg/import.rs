@@ -10,7 +10,7 @@ use crate::{
         InstalledPkgId,
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
-    DalContext, Func, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
+    DalContext, Func, FuncArgument, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -97,6 +97,19 @@ async fn create_func(
             func.set_hidden(ctx, func.hidden()).await?;
             func.set_link(ctx, func_spec.link().map(|l| l.to_string()))
                 .await?;
+
+            // If the func exists above with the matching hash, we assume the arguments are correct
+            // and only create the arguments if we're creating the function
+            for arg in func_spec.arguments()? {
+                FuncArgument::new(
+                    ctx,
+                    arg.name(),
+                    arg.kind().into(),
+                    arg.element_kind().cloned().map(|kind| kind.into()),
+                    *func.id(),
+                )
+                .await?;
+            }
 
             func
         }

@@ -6,10 +6,10 @@ pub use pkg::{
     SiPkg, SiPkgError, SiPkgFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
 };
 pub use spec::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
-    LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SpecError,
+    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation,
+    LeafKind, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
+    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
 };
 
 #[cfg(test)]
@@ -78,8 +78,16 @@ mod tests {
 
         let funcs = read_pkg.funcs().expect("failed to get funcs");
         assert_eq!(2, funcs.len());
+
         let truthy_func = funcs.get(0).expect("failed to get first func");
         assert_eq!("si:truthy", truthy_func.name());
+        let args = truthy_func.arguments().expect("failed to get arguments");
+        assert_eq!(6, args.len());
+        let arg3 = args.get(2).expect("arg3 exists");
+        assert_eq!("map_value", arg3.name());
+        assert_eq!(FuncArgumentKind::Map, arg3.kind());
+        assert_eq!(Some(&FuncArgumentKind::Object), arg3.element_kind());
+
         let falsey_func = funcs.get(1).expect("failed to get second func");
         assert_eq!("si:falsey", falsey_func.name());
 
