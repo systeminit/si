@@ -276,6 +276,11 @@ impl StatusUpdate {
         value_ids: Vec<AttributeValueId>,
     ) -> StatusUpdateResult<Vec<AttributeValueMetadata>> {
         for value_id in value_ids.iter() {
+            // The value may have been processed by a different job, so it won't have gone through
+            // `set_running_dependent_value_ids` to be removed from the list of queued value ids.
+            self.data.queued_dependent_value_ids.remove(value_id);
+
+            // Value id is done updating (regardless of success), so it's no longer running.
             self.data.running_dependent_value_ids.remove(value_id);
         }
         self.data.completed_dependent_value_ids.extend(&value_ids);

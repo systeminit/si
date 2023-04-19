@@ -300,7 +300,7 @@ pub async fn job_processed_a_value(
     for reply_channel in
         complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
     {
-        info!(%reply_channel, ?node_id, "AttributeValue has been processed by another job");
+        info!(%reply_channel, ?node_id, "AttributeValue has been processed by a job");
         nats.publish(
             reply_channel,
             serde_json::to_vec(&Response::BeenProcessed { node_id }).unwrap(),
