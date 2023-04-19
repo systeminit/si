@@ -151,6 +151,11 @@ onUpdated(adjustments);
 
   blockquote {
     padding-left: 2em;
+    .icon {
+      display: inline-block;
+      vertical-align: bottom;
+      margin-right: 0.5em;
+    }
   }
 
   > h1,
