@@ -12,8 +12,8 @@ use dal_test::{
     helpers::setup_identity_func,
     test,
     test_harness::{
-        create_component_and_schema, create_prop_and_set_parent, create_schema,
-        create_schema_variant, create_schema_variant_with_root,
+        create_component_and_schema, create_schema, create_schema_variant,
+        create_schema_variant_with_root,
     },
 };
 use pretty_assertions_sorted::assert_eq;
@@ -239,13 +239,16 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
     let noctua_schema = create_schema(ctx).await;
     let (mut noctua_schema_variant, noctua_root_prop) =
         create_schema_variant_with_root(ctx, *noctua_schema.id()).await;
-    let u12a_prop = create_prop_and_set_parent(
+    let u12a_prop = Prop::new(
         ctx,
-        PropKind::String,
         "u12a",
-        noctua_root_prop.domain_prop_id,
+        PropKind::String,
+        None,
+        *noctua_schema_variant.id(),
+        Some(noctua_root_prop.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
     noctua_schema_variant
         .finalize(ctx, None)
         .await

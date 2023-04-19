@@ -3,10 +3,10 @@ use dal::{
     generate_name,
     property_editor::{schema::PropertyEditorSchema, values::PropertyEditorValues},
     Component, DalContext, Func, FuncArgument, FuncBackendKind, FuncBackendResponseType, LeafInput,
-    LeafInputLocation, LeafKind, PropKind, Schema, SchemaVariant, StandardModel,
+    LeafInputLocation, LeafKind, Prop, PropKind, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::test;
-use dal_test::test_harness::{create_prop_and_set_parent, create_schema};
+use dal_test::test_harness::create_schema;
 
 #[test]
 async fn property_editor_schema(ctx: &DalContext) {
@@ -14,24 +14,39 @@ async fn property_editor_schema(ctx: &DalContext) {
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("could not create schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // Create a docker-image-ish schema variant.
-    let _poop_prop =
-        create_prop_and_set_parent(ctx, PropKind::Boolean, "poop", root_prop.domain_prop_id).await;
-    let exposed_ports_prop = create_prop_and_set_parent(
+    let _poop_prop = Prop::new(
         ctx,
-        PropKind::Array,
+        "poop",
+        PropKind::Boolean,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let exposed_ports_prop = Prop::new(
+        ctx,
         "ExposedPorts",
-        root_prop.domain_prop_id,
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
     )
-    .await;
-    let _exposed_port_prop = create_prop_and_set_parent(
+    .await
+    .expect("could not create prop");
+    let _exposed_port_prop = Prop::new(
         ctx,
-        PropKind::String,
         "ExposedPort",
-        *exposed_ports_prop.id(),
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*exposed_ports_prop.id()),
     )
-    .await;
+    .await
+    .expect("could not create prop");
     let mut qualification_func = Func::new(
         ctx,
         "test:qualification",

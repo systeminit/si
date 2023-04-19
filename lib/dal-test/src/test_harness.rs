@@ -6,9 +6,9 @@ use dal::{
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User, UserPk,
-    Visibility, Workspace, WorkspacePk,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Schema, SchemaId, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, User, UserPk, Visibility, Workspace,
+    WorkspacePk,
 };
 use names::{Generator, Name};
 
@@ -140,25 +140,6 @@ pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId)
 
 pub async fn create_node(ctx: &DalContext, node_kind: &NodeKind) -> Node {
     Node::new(ctx, node_kind).await.expect("cannot create node")
-}
-
-/// Create a [`Prop`](dal::Prop) with a given [`PropKind`](dal::PropKind), name and parent
-/// [`PropId`](dal::Prop).
-pub async fn create_prop_and_set_parent(
-    ctx: &DalContext,
-    prop_kind: PropKind,
-    name: impl AsRef<str>,
-    parent_prop_id: PropId,
-) -> Prop {
-    let name = name.as_ref();
-    let new_prop = Prop::new(ctx, name, prop_kind, None)
-        .await
-        .expect("cannot create prop");
-    new_prop
-        .set_parent_prop(ctx, parent_prop_id)
-        .await
-        .expect("cannot set parent to new prop");
-    new_prop
 }
 
 pub async fn create_func(ctx: &DalContext) -> Func {

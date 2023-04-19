@@ -55,6 +55,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
 
         // Prop: /root/domain/KeyName
         let key_name_prop = self
@@ -65,6 +66,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(EC2_KEYPAIR_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -89,6 +91,7 @@ impl MigrationDriver {
                 )),
                 Some(root_prop.domain_prop_id),
                 Some(EC2_KEYPAIR_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -101,6 +104,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -113,6 +117,7 @@ impl MigrationDriver {
                 None,
                 Some(*tags_map_prop.id()),
                 Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -125,6 +130,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
         aws_resource_type_prop.set_hidden(ctx, true).await?;
@@ -138,6 +144,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 

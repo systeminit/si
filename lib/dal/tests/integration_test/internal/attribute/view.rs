@@ -1,8 +1,7 @@
 use dal::{
     attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
-    AttributeView, DalContext, PropKind, SchemaVariant, StandardModel,
+    AttributeView, DalContext, Prop, PropKind, SchemaVariant, StandardModel,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -18,8 +17,17 @@ async fn schema_variant_specific(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let name_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "name", root_prop.domain_prop_id).await;
+
+    let name_prop = Prop::new(
+        ctx,
+        "name",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await

@@ -42,6 +42,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
 
         // Prop and validation creation
         let image_id_prop = self
@@ -52,6 +53,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AMI_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -75,6 +77,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -86,6 +89,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -97,6 +101,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -108,6 +113,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -119,6 +125,7 @@ impl MigrationDriver {
                 None,
                 Some(*filters_prop.id()),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -130,6 +137,7 @@ impl MigrationDriver {
                 None,
                 Some(*filter_prop.id()),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -141,6 +149,7 @@ impl MigrationDriver {
                 None,
                 Some(*filter_prop.id()),
                 None,
+                schema_variant_id,
             )
             .await?;
 
@@ -152,6 +161,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
 

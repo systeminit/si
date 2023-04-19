@@ -5,12 +5,10 @@ use dal::{
     qualification::QualificationSubCheckStatus,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::test;
-use dal_test::test_harness::{
-    create_prop_and_set_parent, create_schema, create_schema_variant_with_root,
-};
+use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -22,8 +20,18 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(schema_variant_id))
         .await
         .expect("cannot set default schema variant");
-    let poop_prop =
-        create_prop_and_set_parent(ctx, PropKind::Boolean, "poop", root_prop.domain_prop_id).await;
+    let schema_variant_id = *schema_variant.id();
+
+    let poop_prop = Prop::new(
+        ctx,
+        "poop",
+        PropKind::Boolean,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     // Create a qualification func and ensure the func argument is ready to take in an object. In
     // a qualification leaf's case, that will be "/root/domain".

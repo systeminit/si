@@ -534,11 +534,17 @@ impl MigrationDriver {
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         parent_prop_id: Option<PropId>,
         doc_link: Option<String>,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
-        let mut prop = Prop::new(ctx, prop_name, prop_kind, widget_kind_and_options).await?;
-        if let Some(parent_prop_id) = parent_prop_id {
-            prop.set_parent_prop(ctx, parent_prop_id).await?;
-        }
+        let mut prop = Prop::new(
+            ctx,
+            prop_name,
+            prop_kind,
+            widget_kind_and_options,
+            schema_variant_id,
+            parent_prop_id,
+        )
+        .await?;
         if doc_link.is_some() {
             prop.set_doc_link(ctx, doc_link).await?;
         }

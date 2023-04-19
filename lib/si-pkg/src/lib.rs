@@ -41,6 +41,7 @@ mod tests {
     pub async fn prop_visitor(
         prop: SiPkgProp<'_>,
         _parent_id: Option<()>,
+        _schema_variant_id: (),
         context: &Arc<Mutex<Vec<String>>>,
     ) -> Result<Option<()>, SiPkgError> {
         context.lock().await.push(prop.name().to_string());
@@ -134,7 +135,7 @@ mod tests {
         // Ensure we get the props
         let props: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         variant
-            .visit_prop_tree(prop_visitor, None, &props.clone())
+            .visit_prop_tree(prop_visitor, None, (), &props.clone())
             .await
             .expect("able to visit prop tree");
 

@@ -2,9 +2,9 @@ use dal::{
     func::{backend::validation::FuncBackendValidationArgs, binding::FuncBinding},
     validation::Validation,
     AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    PropKind, StandardModel, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
+    Prop, PropKind, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    ValidationResolver,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
@@ -18,8 +18,18 @@ async fn new(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "glaive", root_prop.domain_prop_id).await;
+    let schema_variant_id = *schema_variant.id();
+
+    let prop = Prop::new(
+        ctx,
+        "glaive",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     let func = Func::new(
         ctx,

@@ -6,11 +6,11 @@ use dal::{
         binding::FuncBinding,
     },
     AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    InternalProvider, PropKind, StandardModel,
+    InternalProvider, Prop, PropKind, StandardModel,
 };
 use dal_test::{
     test,
-    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -26,10 +26,26 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     // domain: Object
     // └─ object: Object
     //    └─ name: String
-    let object_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
-    let name_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "name", *object_prop.id()).await;
+    let object_prop = Prop::new(
+        ctx,
+        "object",
+        PropKind::Object,
+        None,
+        *schema_variant.id(),
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let name_prop = Prop::new(
+        ctx,
+        "name",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(*object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
 
     let func = Func::new(
         ctx,

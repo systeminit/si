@@ -5,12 +5,12 @@ use dal::{
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    PropKind, SocketArity, StandardModel,
+    Prop, PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
     helpers::setup_identity_func,
     test,
-    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -22,17 +22,42 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // domain: Object
     // └─ object: Object
     //    ├─ source: String
     //    └─ destination: String
-    let object_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
-    let source_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "source", *object_prop.id()).await;
-    let destination_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "destination", *object_prop.id()).await;
+    let object_prop = Prop::new(
+        ctx,
+        "object",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let source_prop = Prop::new(
+        ctx,
+        "source",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let destination_prop = Prop::new(
+        ctx,
+        "destination",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
 
     schema_variant
         .finalize(ctx, None)
@@ -306,8 +331,16 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let freya_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "freya", root_prop.domain_prop_id).await;
+    let freya_prop = Prop::new(
+        ctx,
+        "freya",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         setup_identity_func(ctx).await;
     let (external_provider, _output_socket) = ExternalProvider::new_with_socket(

@@ -36,10 +36,15 @@ impl MigrationDriver {
         };
         schema.set_ui_hidden(ctx, true).await?;
 
-        let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer, None).await?;
-        secret_prop
-            .set_parent_prop(ctx, root_prop.domain_prop_id)
-            .await?;
+        let mut secret_prop = Prop::new(
+            ctx,
+            "secret",
+            PropKind::Integer,
+            None,
+            *schema_variant.id(),
+            Some(root_prop.domain_prop_id),
+        )
+        .await?;
         secret_prop
             .set_widget_kind(ctx, WidgetKind::SecretSelect)
             .await?;

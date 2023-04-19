@@ -227,7 +227,12 @@ async fn create_schema_variant(
 
             let domain_prop_id = root_prop.domain_prop_id;
             variant_spec
-                .visit_prop_tree(create_prop, Some(domain_prop_id), &context)
+                .visit_prop_tree(
+                    create_prop,
+                    Some(domain_prop_id),
+                    *schema_variant.id(),
+                    &context,
+                )
                 .await?;
 
             schema_variant.finalize(ctx, None).await?;
@@ -348,6 +353,7 @@ async fn create_prop_validation(
 async fn create_prop(
     spec: SiPkgProp<'_>,
     parent_prop_id: Option<PropId>,
+    schema_variant_id: SchemaVariantId,
     ctx: &PropVisitContext<'_, '_>,
 ) -> PkgResult<Option<PropId>> {
     let prop = Prop::new(
@@ -362,15 +368,11 @@ async fn create_prop(
             SiPkgProp::Object { .. } => PropKind::Object,
         },
         None,
+        schema_variant_id,
+        parent_prop_id,
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
-
-    if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx.ctx, parent_prop_id)
-            .await
-            .map_err(SiPkgError::visit_prop)?;
-    }
 
     for validation_spec in spec.validations()? {
         create_prop_validation(validation_spec, *prop.id(), ctx).await?;

@@ -2,6 +2,7 @@ use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
     builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation, Prop, PropId,
+    SchemaVariantId,
 };
 use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
@@ -48,12 +49,17 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
         schema.set_ui_hidden(ctx, true).await?;
 
         schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
 
         let metadata_prop = self
-            .create_kubernetes_metadata_prop_for_namespace(ctx, root_prop.domain_prop_id)
+            .create_kubernetes_metadata_prop_for_namespace(
+                ctx,
+                root_prop.domain_prop_id,
+                schema_variant_id,
+            )
             .await?;
 
         // Add code generation
@@ -163,6 +169,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let metadata_prop = self
             .create_prop(
@@ -174,6 +181,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -199,6 +207,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -214,6 +223,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -229,6 +239,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/namespaces/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -242,6 +253,7 @@ impl MigrationDriver {
                     None,
                     Some(*metadata_prop.id()),
                     Some(doc_url("concepts/overview/working-with-objects/labels/")),
+                    schema_variant_id,
                 )
                 .await?;
             let _labels_value_prop = self
@@ -252,6 +264,7 @@ impl MigrationDriver {
                     None,
                     Some(*labels_prop.id()),
                     Some(doc_url("concepts/overview/working-with-objects/labels/")),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -267,6 +280,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/annotations/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
             let _annotations_value_prop = self
@@ -279,6 +293,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/annotations/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }

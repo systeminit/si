@@ -7,7 +7,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::standard_model::objects_from_rows;
+use crate::standard_model::{finish_create_from_row, objects_from_rows};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     func::{
@@ -21,9 +21,13 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
     AttributePrototypeError, AttributeReadContext, DalContext, Func, FuncId, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
+
+/// This is the separator used for the "path" column. It is a vertical tab character, which should
+/// not (we'll see) be able to be provided by our users in [`Prop`] names.
+pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
@@ -32,7 +36,6 @@ const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_p
 pub enum PropError {
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextBuilderError),
-    // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("AttributeValue error: {0}")]
@@ -57,8 +60,6 @@ pub enum PropError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
-    ParentNotAllowed(PropId, PropKind),
     #[error("unable to set default value for non scalar prop type")]
     SetDefaultForNonScalar(PropKind),
     #[error(transparent)]
@@ -124,22 +125,38 @@ impl From<PropKind> for FuncBackendResponseType {
     }
 }
 
+/// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
     pk: PropPk,
     id: PropId,
-    name: String,
-    kind: PropKind,
-    widget_kind: WidgetKind,
-    widget_options: Option<Value>,
-    doc_link: Option<String>,
-    hidden: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+
+    /// The name of the [`Prop`].
+    name: String,
+    /// The kind of the [`Prop`].
+    kind: PropKind,
+    /// The kind of "widget" that should be used for this [`Prop`].
+    widget_kind: WidgetKind,
+    /// The configuration of the "widget".
+    widget_options: Option<Value>,
+    /// A link to external documentation for working with this specific [`Prop`].
+    doc_link: Option<String>,
+    /// A toggle for whether or not the [`Prop`] should be visually hidden.
+    hidden: bool,
+    /// The "path" for a given [`Prop`]. It is a concatenation of [`Prop`] names based on lineage
+    /// with [`PROP_PATH_SEPARATOR`] as the separator between each parent and child.
+    ///
+    /// This is useful for finding and querying for specific [`Props`](Prop) in a
+    /// [`SchemaVariant`](crate::SchemaVariant)'s tree.
+    path: String,
+    /// The [`SchemaVariant`](crate::SchemaVariant) whose tree we (the [`Prop`]) reside in.
+    schema_variant_id: SchemaVariantId,
 }
 
 impl_standard_model! {
@@ -152,15 +169,17 @@ impl_standard_model! {
 }
 
 impl Prop {
-    /// Create a new [`Prop`](Self), which will additionally result in the creation of an
-    /// [`AttributeValue`](crate::AttributeValue) in a [`Prop`](Self)-specific context.
-    #[allow(clippy::too_many_arguments)]
+    /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
+    /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
+    /// [`finalized`](crate::SchemaVariant::finalize).
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
         kind: PropKind,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        schema_variant_id: SchemaVariantId,
+        parent_prop_id: Option<PropId>,
     ) -> PropResult<Self> {
         let name = name.as_ref();
         let (widget_kind, widget_options) = match widget_kind_and_options {
@@ -173,7 +192,7 @@ impl Prop {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM prop_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -181,12 +200,12 @@ impl Prop {
                     &kind.as_ref(),
                     &widget_kind.as_ref(),
                     &widget_options.as_ref(),
+                    &schema_variant_id,
+                    &parent_prop_id,
                 ],
             )
             .await?;
-        let object: Prop = standard_model::finish_create_from_row(ctx, row).await?;
-
-        Ok(object)
+        Ok(finish_create_from_row(ctx, row).await?)
     }
 
     standard_model_accessor!(name, String, PropResult);
@@ -196,10 +215,11 @@ impl Prop {
     standard_model_accessor!(doc_link, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
 
+    // TODO(nick): replace this table with a foreign key relationship.
     standard_model_belongs_to!(
         lookup_fn: parent_prop,
-        set_fn: set_parent_prop_unchecked,
-        unset_fn: unset_parent_prop,
+        set_fn: set_parent_prop_do_not_use,
+        unset_fn: unset_parent_prop_do_not_use,
         table: "prop_belongs_to_prop",
         model_table: "props",
         belongs_to_id: PropId,
@@ -207,6 +227,7 @@ impl Prop {
         result: PropResult,
     );
 
+    // TODO(nick): replace this table with a foreign key relationship.
     standard_model_has_many!(
         lookup_fn: child_props,
         table: "prop_belongs_to_prop",
@@ -214,51 +235,6 @@ impl Prop {
         returns: Prop,
         result: PropResult,
     );
-
-    /// Sets a parent for a given [`Prop`]. For the provided [`AttributeReadContext`], the [`PropId`]
-    /// is ignored.
-    pub async fn set_parent_prop(
-        &self,
-        ctx: &DalContext,
-        parent_prop_id: PropId,
-    ) -> PropResult<()> {
-        let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
-            .await?
-            .ok_or_else(|| PropError::NotFound(parent_prop_id, *ctx.visibility()))?;
-        match parent_prop.kind() {
-            PropKind::Object | PropKind::Map | PropKind::Array => (),
-            kind => {
-                return Err(PropError::ParentNotAllowed(parent_prop_id, *kind));
-            }
-        }
-
-        let attribute_read_context = AttributeReadContext {
-            prop_id: Some(*self.id()),
-            ..AttributeReadContext::default()
-        };
-
-        if let Some(attribute_value) =
-            AttributeValue::find_for_context(ctx, attribute_read_context).await?
-        {
-            let parent_attribute_read_context = AttributeReadContext {
-                prop_id: Some(parent_prop_id),
-                ..AttributeReadContext::default()
-            };
-            let parent_attribute_value =
-                AttributeValue::find_for_context(ctx, parent_attribute_read_context)
-                    .await?
-                    .ok_or(AttributeValueError::NotFoundForReadContext(
-                        parent_attribute_read_context,
-                    ))?;
-
-            attribute_value.unset_parent_attribute_value(ctx).await?;
-            attribute_value
-                .set_parent_attribute_value(ctx, parent_attribute_value.id())
-                .await?;
-        };
-
-        self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
-    }
 
     pub async fn find_root_prop_for_prop(
         ctx: &DalContext,

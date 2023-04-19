@@ -2,7 +2,6 @@ use dal::{
     schema::RootProp, AttributeContext, AttributeValue, Component, ComponentView, DalContext, Prop,
     PropKind, Schema, SchemaVariant, StandardModel,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -28,14 +27,38 @@ pub async fn create_schema_with_object_and_string_prop(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let queen_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "queen", root.domain_prop_id).await;
-    let killer_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", *queen_prop.id()).await;
-    let bohemian_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "bohemian_rhapsody", *queen_prop.id())
-            .await;
+    let queen_prop = Prop::new(
+        ctx,
+        "queen",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let killer_prop = Prop::new(
+        ctx,
+        "killer_queen",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*queen_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let bohemian_prop = Prop::new(
+        ctx,
+        "bohemian_rhapsody",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*queen_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -79,23 +102,58 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let queen_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "queen", root.domain_prop_id).await;
-    let bohemian_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "bohemian_rhapsody", *queen_prop.id())
-            .await;
-    let killer_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", *queen_prop.id()).await;
-    let pressure_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "under_pressure", *queen_prop.id()).await;
-    let dust_prop = create_prop_and_set_parent(
+    let queen_prop = Prop::new(
         ctx,
-        PropKind::String,
-        "another_one_bites_the_dust",
-        *pressure_prop.id(),
+        "queen",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let bohemian_prop = Prop::new(
+        ctx,
+        "bohemian_rhapsody",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*queen_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let killer_prop = Prop::new(
+        ctx,
+        "killer_queen",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*queen_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let pressure_prop = Prop::new(
+        ctx,
+        "under_pressure",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(*queen_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let dust_prop = Prop::new(
+        ctx,
+        "another_one_bites_the_dust",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*pressure_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -132,17 +190,28 @@ pub async fn create_schema_with_string_props(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let bohemian_prop = create_prop_and_set_parent(
+    let bohemian_prop = Prop::new(
         ctx,
-        PropKind::String,
         "bohemian_rhapsody",
-        root.domain_prop_id,
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
     )
-    .await;
-    let killer_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", root.domain_prop_id)
-            .await;
+    .await
+    .expect("could not create prop");
+    let killer_prop = Prop::new(
+        ctx,
+        "killer_queen",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -171,11 +240,28 @@ pub async fn create_schema_with_array_of_string_props(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
-    let album_string_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "ignoreme", *sammy_prop.id()).await;
+    let sammy_prop = Prop::new(
+        ctx,
+        "sammy_hagar",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let album_string_prop = Prop::new(
+        ctx,
+        "ignoreme",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*sammy_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -217,22 +303,58 @@ pub async fn create_schema_with_nested_array_objects(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
-    let album_object_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "album_ignore", *sammy_prop.id()).await;
-    let album_string_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "album", *album_object_prop.id()).await;
-    let songs_array_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "songs", *album_object_prop.id()).await;
-    let song_name_prop = create_prop_and_set_parent(
+    let sammy_prop = Prop::new(
         ctx,
-        PropKind::String,
-        "song_name_ignore",
-        *songs_array_prop.id(),
+        "sammy_hagar",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let album_object_prop = Prop::new(
+        ctx,
+        "album_ignore",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(*sammy_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let album_string_prop = Prop::new(
+        ctx,
+        "album",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*album_object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let songs_array_prop = Prop::new(
+        ctx,
+        "songs",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(*album_object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let song_name_prop = Prop::new(
+        ctx,
+        "song_name_ignore",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*songs_array_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -270,11 +392,28 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let album_prop =
-        create_prop_and_set_parent(ctx, PropKind::Map, "albums", root.domain_prop_id).await;
-    let album_item_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "album_ignore", *album_prop.id()).await;
+    let album_prop = Prop::new(
+        ctx,
+        "albums",
+        PropKind::Map,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let album_item_prop = Prop::new(
+        ctx,
+        "album_ignore",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*album_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -316,29 +455,68 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
-    let album_object_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "album_ignore", *sammy_prop.id()).await;
-    let album_string_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "album", *album_object_prop.id()).await;
-    let songs_array_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "songs", *album_object_prop.id()).await;
-    let song_map_prop = create_prop_and_set_parent(
+    let sammy_prop = Prop::new(
         ctx,
-        PropKind::Map,
-        "song_map_ignore",
-        *songs_array_prop.id(),
+        "sammy_hagar",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
     )
-    .await;
-    let song_map_item_prop = create_prop_and_set_parent(
+    .await
+    .expect("could not create prop");
+    let album_object_prop = Prop::new(
         ctx,
+        "album_ignore",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(*sammy_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let album_string_prop = Prop::new(
+        ctx,
+        "album",
         PropKind::String,
-        "song_map_item_ignore",
-        *song_map_prop.id(),
+        None,
+        schema_variant_id,
+        Some(*album_object_prop.id()),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let songs_array_prop = Prop::new(
+        ctx,
+        "songs",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(*album_object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let song_map_prop = Prop::new(
+        ctx,
+        "song_map_ignore",
+        PropKind::Map,
+        None,
+        schema_variant_id,
+        Some(*songs_array_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let song_map_item_prop = Prop::new(
+        ctx,
+        "song_map_item_ignore",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*song_map_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await

@@ -3,10 +3,9 @@ use dal::{
     func::backend::validation::FuncBackendValidationArgs,
     validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, StandardModel,
+    Func, FuncBackendKind, FuncBackendResponseType, Prop, PropId, PropKind, StandardModel,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -25,20 +24,28 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let gecs_prop = create_prop_and_set_parent(
+    let schema_variant_id = *schema_variant.id();
+
+    let gecs_prop = Prop::new(
         ctx,
-        PropKind::String,
         "thousand_gecs",
-        root_prop.domain_prop_id,
-    )
-    .await;
-    let prefix_prop = create_prop_and_set_parent(
-        ctx,
         PropKind::String,
-        "the_tree_of_clues",
-        root_prop.domain_prop_id,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let prefix_prop = Prop::new(
+        ctx,
+        "the_tree_of_clues",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     // Gather what we need to create validations
     let mut builder = ValidationPrototypeContext::builder();
@@ -300,9 +307,16 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "Tamarian", root_prop.domain_prop_id)
-            .await;
+    let prop = Prop::new(
+        ctx,
+        "Tamarian",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     let mut func = Func::new(
         ctx,

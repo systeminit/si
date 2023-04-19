@@ -66,6 +66,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
 
         // Prop Creation
         let regions_json: Vec<AwsRegion> = serde_json::from_str(REGIONS_JSON_STR)?;
@@ -83,6 +84,7 @@ impl MigrationDriver {
                 Some((WidgetKind::ComboBox, Some(regions_dropdown_options_json))),
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 

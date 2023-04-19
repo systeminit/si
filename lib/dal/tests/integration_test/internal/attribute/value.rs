@@ -1,9 +1,8 @@
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
-    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, Prop, PropKind,
     Schema, StandardModel,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -19,8 +18,17 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let name_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "name_prop", root.domain_prop_id).await;
+
+    let name_prop = Prop::new(
+        ctx,
+        "name_prop",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -168,10 +176,26 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let array_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "array_prop", root.domain_prop_id).await;
-    let array_element =
-        create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
+    let array_prop = Prop::new(
+        ctx,
+        "array_prop",
+        PropKind::Array,
+        None,
+        *schema_variant.id(),
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let array_element = Prop::new(
+        ctx,
+        "array_element",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(*array_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -261,22 +285,78 @@ async fn update_for_context_object(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let address_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "address", root.domain_prop_id).await;
-    let streets_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "streets", *address_prop.id()).await;
-    let _streets_child_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "street", *streets_prop.id()).await;
-    let _city_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "city", *address_prop.id()).await;
-    let _country_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "country", *address_prop.id()).await;
-
-    let tags_prop =
-        create_prop_and_set_parent(ctx, PropKind::Map, "tags", *address_prop.id()).await;
-    let _tags_child_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "tag", *tags_prop.id()).await;
+    let address_prop = Prop::new(
+        ctx,
+        "address",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let streets_prop = Prop::new(
+        ctx,
+        "streets",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(*address_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let _streets_child_prop = Prop::new(
+        ctx,
+        "street",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*streets_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let _city_prop = Prop::new(
+        ctx,
+        "city",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*address_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let _country_prop = Prop::new(
+        ctx,
+        "country",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*address_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let tags_prop = Prop::new(
+        ctx,
+        "tags",
+        PropKind::Map,
+        None,
+        schema_variant_id,
+        Some(*address_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let _tags_child_prop = Prop::new(
+        ctx,
+        "tag",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*tags_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -470,11 +550,28 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
-    let array_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "array_prop", root.domain_prop_id).await;
-    let array_element =
-        create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
+    let array_prop = Prop::new(
+        ctx,
+        "array_prop",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let array_element = Prop::new(
+        ctx,
+        "array_element",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*array_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await

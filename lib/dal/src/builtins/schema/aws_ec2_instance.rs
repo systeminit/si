@@ -64,6 +64,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
 
         // Prop: /root/domain/ImageId
         let image_id_prop = self
@@ -74,6 +75,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AMI_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -108,6 +110,7 @@ impl MigrationDriver {
                 Some((WidgetKind::ComboBox, Some(instance_types_option_list_json))),
                 Some(root_prop.domain_prop_id),
                 Some(EC2_INSTANCE_TYPES_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -133,6 +136,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -145,6 +149,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -157,6 +162,7 @@ impl MigrationDriver {
                 None,
                 Some(*security_groups_prop.id()),
                 Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -169,6 +175,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -181,6 +188,7 @@ impl MigrationDriver {
                 None,
                 Some(*tags_map_prop.id()),
                 Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -193,6 +201,7 @@ impl MigrationDriver {
                 Some((WidgetKind::TextArea, None)),
                 Some(root_prop.domain_prop_id),
                 Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 
@@ -205,6 +214,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 None,
+                schema_variant_id,
             )
             .await?;
         aws_resource_type_prop.set_hidden(ctx, true).await?;
@@ -218,6 +228,7 @@ impl MigrationDriver {
                 None,
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
             )
             .await?;
 

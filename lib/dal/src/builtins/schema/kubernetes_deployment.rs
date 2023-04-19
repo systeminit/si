@@ -2,6 +2,7 @@ use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
     builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation, Prop, PropId,
+    SchemaVariantId,
 };
 use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
@@ -48,6 +49,7 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
+        let schema_variant_id = *schema_variant.id();
         schema.set_ui_hidden(ctx, true).await?;
 
         schema_variant
@@ -69,6 +71,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
                 )),
+                schema_variant_id,
             )
             .await?;
         let kind_prop = self
@@ -81,15 +84,24 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
                 )),
+                schema_variant_id,
             )
             .await?;
 
         let metadata_prop = self
-            .create_kubernetes_metadata_prop_for_deployment(ctx, root_prop.domain_prop_id)
+            .create_kubernetes_metadata_prop_for_deployment(
+                ctx,
+                root_prop.domain_prop_id,
+                schema_variant_id,
+            )
             .await?;
 
         let spec_prop = self
-            .create_kubernetes_deployment_spec_prop(ctx, root_prop.domain_prop_id)
+            .create_kubernetes_deployment_spec_prop(
+                ctx,
+                root_prop.domain_prop_id,
+                schema_variant_id,
+            )
             .await?;
 
         // Qualifications
@@ -278,6 +290,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let spec_prop = self
             .create_prop(
@@ -289,6 +302,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -302,14 +316,15 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
                 )),
+                schema_variant_id,
             )
             .await?;
 
         let _selector_prop = self
-            .create_kubernetes_selector_prop(ctx, *spec_prop.id())
+            .create_kubernetes_selector_prop(ctx, *spec_prop.id(), schema_variant_id)
             .await?;
         let _template_prop = self
-            .create_kubernetes_pod_template_spec_prop(ctx, *spec_prop.id())
+            .create_kubernetes_pod_template_spec_prop(ctx, *spec_prop.id(), schema_variant_id)
             .await?;
 
         Ok(spec_prop)
@@ -319,6 +334,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let template_prop = self
             .create_prop(
@@ -330,15 +346,20 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplateSpec",
                 )),
+                schema_variant_id,
             )
             .await?;
 
         let _metadata_prop = self
-            .create_kubernetes_metadata_prop_for_deployment(ctx, *template_prop.id())
+            .create_kubernetes_metadata_prop_for_deployment(
+                ctx,
+                *template_prop.id(),
+                schema_variant_id,
+            )
             .await?;
 
         let _spec_prop = self
-            .create_kubernetes_pod_spec_prop(ctx, *template_prop.id())
+            .create_kubernetes_pod_spec_prop(ctx, *template_prop.id(), schema_variant_id)
             .await?;
 
         Ok(template_prop)
@@ -348,6 +369,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let selector_prop = self
             .create_prop(
@@ -359,6 +381,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -373,6 +396,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
             let _match_labels_value_prop = self
@@ -385,6 +409,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -396,6 +421,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let spec_prop = self
             .create_prop(
@@ -407,6 +433,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#PodSpec",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -420,10 +447,11 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#containers",
                 )),
+                schema_variant_id,
             )
             .await?;
         let _containers_element_prop = self
-            .create_kubernetes_container_prop(ctx, *containers_prop.id())
+            .create_kubernetes_container_prop(ctx, *containers_prop.id(), schema_variant_id)
             .await?;
 
         Ok(spec_prop)
@@ -433,6 +461,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let container_prop = self
             .create_prop(
@@ -444,6 +473,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#Container",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -457,6 +487,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#Container",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -470,6 +501,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#image",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -483,10 +515,11 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#ports",
                 )),
+                schema_variant_id,
             )
             .await?;
         let _ports_element_prop = self
-            .create_kubernetes_container_port_prop(ctx, *ports_prop.id())
+            .create_kubernetes_container_port_prop(ctx, *ports_prop.id(), schema_variant_id)
             .await?;
 
         Ok(container_prop)
@@ -496,6 +529,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let port_prop = self
             .create_prop(
@@ -507,6 +541,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#ports",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -520,6 +555,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#ports",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -533,6 +569,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/workload-resources/pod-v1/#ports",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -543,6 +580,7 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         parent_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<Prop> {
         let metadata_prop = self
             .create_prop(
@@ -554,6 +592,7 @@ impl MigrationDriver {
                 Some(doc_url(
                     "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                 )),
+                schema_variant_id,
             )
             .await?;
 
@@ -579,6 +618,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -594,6 +634,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -609,6 +650,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/namespaces/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -622,6 +664,7 @@ impl MigrationDriver {
                     None,
                     Some(*metadata_prop.id()),
                     Some(doc_url("concepts/overview/working-with-objects/labels/")),
+                    schema_variant_id,
                 )
                 .await?;
             let _labels_value_prop = self
@@ -632,6 +675,7 @@ impl MigrationDriver {
                     None,
                     Some(*labels_prop.id()),
                     Some(doc_url("concepts/overview/working-with-objects/labels/")),
+                    schema_variant_id,
                 )
                 .await?;
         }
@@ -647,6 +691,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/annotations/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
             let _annotations_value_prop = self
@@ -659,6 +704,7 @@ impl MigrationDriver {
                     Some(doc_url(
                         "concepts/overview/working-with-objects/annotations/",
                     )),
+                    schema_variant_id,
                 )
                 .await?;
         }

@@ -339,24 +339,6 @@ impl AttributeValue {
         result: AttributeValueResult,
     );
 
-    pub async fn set_parent_attribute_value(
-        &self,
-        ctx: &DalContext,
-        belongs_to_id: &AttributeValueId,
-    ) -> AttributeValueResult<()> {
-        let _row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT attribute_value_set_parent_attribute_value_v1($1, $2, $3, $4)",
-                &[ctx.tenancy(), ctx.visibility(), &self.id, belongs_to_id],
-            )
-            .await?;
-
-        Ok(())
-    }
-
     pub fn index_map_mut(&mut self) -> Option<&mut IndexMap> {
         self.index_map.as_mut()
     }

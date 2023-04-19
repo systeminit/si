@@ -197,11 +197,7 @@ pub async fn find_prop_and_parent_by_name(
     }
 
     // Begin to look through all props in the schema variant.
-    for prop in SchemaVariant::get_by_id(ctx, &schema_variant_id)
-        .await
-        .expect("could not find schema variant")
-        .expect("schema variant not found by id")
-        .all_props(ctx)
+    for prop in SchemaVariant::all_props(ctx, schema_variant_id)
         .await
         .expect("could not find all props for schema variant")
     {

@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::prop::PROP_PATH_SEPARATOR;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
@@ -43,6 +44,7 @@ pub mod root_prop;
 const ALL_FUNCS: &str = include_str!("../queries/schema_variant/all_related_funcs.sql");
 const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
 const FIND_ROOT_PROP: &str = include_str!("../queries/schema_variant/find_root_prop.sql");
+const FIND_PROP_IN_TREE: &str = include_str!("../queries/schema_variant/find_prop_in_tree.sql");
 const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
@@ -495,18 +497,22 @@ impl SchemaVariant {
         Ok(objects_from_rows(rows)?)
     }
 
-    // TODO(nick): change this query to take in a `SchemaVariantId` and a method that wraps this
-    // for `&self` instead.
+    /// Find all [`Props`](crate::Prop) for a given [`SchemaVariantId`](SchemaVariant).
     #[instrument(skip_all)]
-    pub async fn all_props(&self, ctx: &DalContext) -> SchemaVariantResult<Vec<Prop>> {
+    pub async fn all_props(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
-            .query(ALL_PROPS, &[ctx.tenancy(), ctx.visibility(), self.id()])
+            .query(
+                ALL_PROPS,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
+            )
             .await?;
-        let results = objects_from_rows(rows)?;
-        Ok(results)
+        Ok(objects_from_rows(rows)?)
     }
 
     /// Find all [`Func`](crate::Func) objects connected to this schema variant in any way. Only
@@ -721,5 +727,29 @@ impl SchemaVariant {
             }
         }
         Ok(None)
+    }
+
+    /// Calls [`Self::find_prop_in_tree`] using the ID off of [`self`](SchemaVariant).
+    pub async fn find_prop(&self, ctx: &DalContext, path: &[&str]) -> SchemaVariantResult<Prop> {
+        Self::find_prop_in_tree(ctx, self.id, path).await
+    }
+
+    /// Find the [`Prop`] in a tree underneath our [`RootProp`] with a given path.
+    pub async fn find_prop_in_tree(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &[&str],
+    ) -> SchemaVariantResult<Prop> {
+        let path = path.join(PROP_PATH_SEPARATOR);
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                FIND_PROP_IN_TREE,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id, &path],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
     }
 }

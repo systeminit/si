@@ -468,6 +468,7 @@ impl SchemaVariant {
                 prop_definition,
                 root_prop.domain_prop_id,
                 &doc_links,
+                schema_variant_id,
             )
             .await?;
         }
@@ -549,14 +550,22 @@ impl SchemaVariant {
         definition: PropDefinition,
         parent_prop_id: PropId,
         doc_links: &HashMap<String, String>,
+        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         // Start by creating the prop and setting the parent. We cache the id for later.
         let widget = match definition.widget {
             Some(widget) => Some((widget.kind, widget.options)),
             None => None,
         };
-        let mut prop = Prop::new(ctx, definition.name.clone(), definition.kind, widget).await?;
-        prop.set_parent_prop(ctx, parent_prop_id).await?;
+        let mut prop = Prop::new(
+            ctx,
+            definition.name.clone(),
+            definition.kind,
+            widget,
+            schema_variant_id,
+            Some(parent_prop_id),
+        )
+        .await?;
         let prop_id = *prop.id();
 
         // Always cache the prop that was created.
@@ -591,7 +600,7 @@ impl SchemaVariant {
                     ));
                 }
                 for child in definition.children {
-                    Self::walk_definition(ctx, prop_cache, child, prop_id, doc_links).await?;
+                    Self::walk_definition(ctx, prop_cache, child, prop_id, doc_links, schema_variant_id).await?;
                 }
             }
             PropKind::Array => match definition.entry {
@@ -601,7 +610,7 @@ impl SchemaVariant {
                             definition.name.clone(),
                         ));
                     }
-                    Self::walk_definition(ctx, prop_cache, *entry, prop_id, doc_links).await?;
+                    Self::walk_definition(ctx, prop_cache, *entry, prop_id, doc_links, schema_variant_id).await?;
                 }
                 None => {
                     return Err(SchemaVariantError::MissingEntryForArray(
