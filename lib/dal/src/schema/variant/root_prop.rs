@@ -104,25 +104,23 @@ pub struct RootProp {
     pub deleted_at_prop_id: PropId,
 }
 
-impl RootProp {
-    /// Creates and returns a [`RootProp`] for a [`SchemaVariant`](crate::SchemaVariant).
+impl SchemaVariant {
+    /// Create and set a [`RootProp`] for the [`SchemaVariant`].
     #[instrument(skip_all)]
-    pub async fn new(
+    pub async fn create_and_set_root_prop(
+        &mut self,
         ctx: &DalContext,
         schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<Self> {
+    ) -> SchemaVariantResult<RootProp> {
         let root_prop = Prop::new(ctx, "root", PropKind::Object, None).await?;
-        root_prop
-            .add_schema_variant(ctx, &schema_variant_id)
-            .await?;
         let root_prop_id = *root_prop.id();
+        self.set_root_prop_id(ctx, Some(root_prop_id)).await?;
 
         // FIXME(nick): we rely on ULID ordering for now, so the si prop tree creation has to come
         // before the domain prop tree creation. Once index maps for objects are added, this
         // can be moved back to its original location with the other prop tree creation methods.
         let (si_prop_id, si_child_name_prop_id) =
-            Self::setup_si(ctx, root_prop_id, schema_id, schema_variant_id).await?;
+            Self::setup_si(ctx, root_prop_id, schema_id, self.id).await?;
 
         let domain_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_prop.set_parent_prop(ctx, root_prop_id).await?;
@@ -135,7 +133,7 @@ impl RootProp {
 
         // Now that the structure is set up, we can populate default
         // AttributePrototypes & AttributeValues to be updated appropriately below.
-        SchemaVariant::create_default_prototypes_and_values(ctx, schema_variant_id).await?;
+        SchemaVariant::create_default_prototypes_and_values(ctx, self.id).await?;
 
         // Initialize the root object.
         let root_context = AttributeContext::builder()
@@ -205,7 +203,7 @@ impl RootProp {
         )
         .await?;
 
-        Ok(Self {
+        Ok(RootProp {
             prop_id: root_prop_id,
             si_prop_id,
             domain_prop_id: *domain_prop.id(),
@@ -372,7 +370,7 @@ impl RootProp {
 
     async fn setup_code(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
         let (code_map_prop_id, code_map_item_prop_id) =
-            RootProp::insert_leaf_props(ctx, LeafKind::CodeGeneration, root_prop_id).await?;
+            Self::insert_leaf_props(ctx, LeafKind::CodeGeneration, root_prop_id).await?;
 
         let mut child_code_prop = Prop::new(ctx, "code", PropKind::String, None).await?;
         child_code_prop.set_hidden(ctx, true).await?;
@@ -394,7 +392,7 @@ impl RootProp {
         root_prop_id: PropId,
     ) -> SchemaVariantResult<PropId> {
         let (qualification_map_prop_id, qualification_map_item_prop_id) =
-            RootProp::insert_leaf_props(ctx, LeafKind::Qualification, root_prop_id).await?;
+            Self::insert_leaf_props(ctx, LeafKind::Qualification, root_prop_id).await?;
 
         let mut child_qualified_prop = Prop::new(ctx, "result", PropKind::String, None).await?;
         child_qualified_prop.set_hidden(ctx, true).await?;
@@ -428,7 +426,7 @@ impl RootProp {
         root_prop_id: PropId,
     ) -> SchemaVariantResult<PropId> {
         let (confirmation_map_prop_id, confirmation_map_item_prop_id) =
-            RootProp::insert_leaf_props(ctx, LeafKind::Confirmation, root_prop_id).await?;
+            Self::insert_leaf_props(ctx, LeafKind::Confirmation, root_prop_id).await?;
 
         let mut child_success_prop = Prop::new(ctx, "success", PropKind::Boolean, None).await?;
         child_success_prop.set_hidden(ctx, true).await?;

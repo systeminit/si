@@ -139,10 +139,8 @@ pub enum FuncError {
     FuncExecutionFailed(String),
     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
     FuncExecutionFailedNoPrototypes,
-    #[error("Could not root prop for child prop {0}")]
-    MissingRootPropForProp(PropId),
-    #[error("Could not find schema variant for root prop {0}")]
-    PropMissingSchemaVariant(PropId),
+    #[error("Could not find schema variant for prop {0}")]
+    SchemaVariantNotFoundForProp(PropId),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

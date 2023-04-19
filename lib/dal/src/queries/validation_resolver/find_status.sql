@@ -16,9 +16,9 @@ LEFT JOIN func_binding_return_values_v1($1, $2) as func_binding_return_values
 WHERE
     attribute_values.attribute_context_prop_id IN (
         WITH RECURSIVE recursive_props AS (
-            SELECT left_object_id AS prop_id
-            FROM prop_many_to_many_schema_variants_v1($1, $2) AS prop_many_to_many_schema_variants
-            WHERE right_object_id = $4
+            SELECT root_prop_id AS prop_id
+            FROM schema_variants_v1($1, $2) AS schema_variants
+            WHERE schema_variants.id = $4
             UNION ALL
             SELECT pbp.object_id AS prop_id
             FROM prop_belongs_to_prop_v1($1, $2) AS pbp

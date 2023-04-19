@@ -5,8 +5,6 @@ FROM internal_providers_v1($1, $2) as internal_providers
                        AND props.name = $4
          JOIN prop_belongs_to_prop_v1($1, $2) AS prop_belongs_to_prop
               ON prop_belongs_to_prop.object_id = props.id
-                  AND prop_belongs_to_prop.belongs_to_id IN (
-                      SELECT prop_many_to_many_schema_variants.left_object_id AS root_prop_id
-                      FROM prop_many_to_many_schema_variants_v1($1, $2) AS prop_many_to_many_schema_variants
-                      WHERE prop_many_to_many_schema_variants.right_object_id = $3
-                  )
+         JOIN schema_variants_v1($1, $2) AS schema_variants
+              ON prop_belongs_to_prop.belongs_to_id = schema_variants.root_prop_id
+                    AND schema_variants.id = $3

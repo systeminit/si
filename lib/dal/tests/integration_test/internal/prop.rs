@@ -1,9 +1,6 @@
 use dal::{DalContext, Prop, PropKind, StandardModel};
 use dal_test::helpers::generate_fake_name;
-use dal_test::{
-    test,
-    test_harness::{create_schema, create_schema_variant},
-};
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -13,35 +10,6 @@ async fn new(ctx: &DalContext) {
         .expect("cannot create prop");
     assert_eq!(prop.name(), "coolness");
     assert_eq!(prop.kind(), &PropKind::String);
-}
-
-#[test]
-async fn schema_variants(ctx: &DalContext) {
-    let schema = create_schema(ctx).await;
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    let prop = Prop::new(ctx, generate_fake_name(), PropKind::String, None)
-        .await
-        .expect("cannot create prop");
-
-    prop.add_schema_variant(ctx, schema_variant.id())
-        .await
-        .expect("cannot add schema variant");
-
-    let relations = prop
-        .schema_variants(ctx)
-        .await
-        .expect("cannot get schema variants");
-    assert_eq!(relations, vec![schema_variant.clone()]);
-
-    prop.remove_schema_variant(ctx, schema_variant.id())
-        .await
-        .expect("cannot remove schema variant");
-
-    let relations = prop
-        .schema_variants(ctx)
-        .await
-        .expect("cannot get schema variants");
-    assert_eq!(relations, vec![]);
 }
 
 #[test]

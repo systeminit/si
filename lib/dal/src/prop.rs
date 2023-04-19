@@ -7,7 +7,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::standard_model::{object_option_from_row_option, objects_from_rows};
+use crate::standard_model::objects_from_rows;
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     func::{
@@ -19,17 +19,14 @@ use crate::{
     pk,
     property_editor::schema::WidgetKind,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    standard_model_many_to_many, AttributeContext, AttributeContextBuilder,
-    AttributeContextBuilderError, AttributePrototypeError, AttributeReadContext, DalContext, Func,
-    FuncId, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility,
+    AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
+    AttributePrototypeError, AttributeReadContext, DalContext, Func, FuncId, HistoryEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
-const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
-    include_str!("queries/prop/find_root_for_schema_variant.sql");
 
 #[derive(Error, Debug)]
 pub enum PropError {
@@ -199,23 +196,6 @@ impl Prop {
     standard_model_accessor!(doc_link, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
 
-    // FIXME(nick): change the relationship to a "belongs to" relationship and the name to
-    // "prop_belongs_to_schema_variant".
-    standard_model_many_to_many!(
-        lookup_fn: schema_variants,
-        associate_fn: add_schema_variant,
-        disassociate_fn: remove_schema_variant,
-        disassociate_all_fn: remove_all_schema_variants,
-        table_name: "prop_many_to_many_schema_variants",
-        left_table: "props",
-        left_id: PropId,
-        right_table: "schema_variants",
-        right_id: SchemaVariantId,
-        which_table_is_this: "left",
-        returns: SchemaVariant,
-        result: PropResult,
-    );
-
     standard_model_belongs_to!(
         lookup_fn: parent_prop,
         set_fn: set_parent_prop_unchecked,
@@ -278,24 +258,6 @@ impl Prop {
         };
 
         self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
-    }
-
-    /// Returns the root [`Prop`] for a given [`SchemaVariantId`](crate::SchemaVariant). Returns
-    /// [`None`] if no [`Props`](Self) have been created for the [`SchemaVariant`](crate::SchemaVariant).
-    pub async fn find_root_for_schema_variant(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> PropResult<Option<Prop>> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                FIND_ROOT_FOR_SCHEMA_VARIANT,
-                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
-            )
-            .await?;
-        Ok(object_option_from_row_option(row)?)
     }
 
     pub async fn find_root_prop_for_prop(

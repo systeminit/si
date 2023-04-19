@@ -13,7 +13,7 @@ use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::root_prop::SiPropChild;
-use crate::standard_model::object_from_row;
+use crate::standard_model::{object_from_row, option_object_from_row};
 use crate::{
     func::{
         argument::{FuncArgument, FuncArgumentError},
@@ -42,6 +42,7 @@ pub mod root_prop;
 
 const ALL_FUNCS: &str = include_str!("../queries/schema_variant/all_related_funcs.sql");
 const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
+const FIND_ROOT_PROP: &str = include_str!("../queries/schema_variant/find_root_prop.sql");
 const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
@@ -172,6 +173,8 @@ pub struct SchemaVariant {
 
     ui_hidden: bool,
     name: String,
+    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
+    root_prop_id: Option<PropId>,
     link: Option<String>,
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
     // components are not created unless the variant has been finalized at least once.
@@ -205,9 +208,8 @@ impl SchemaVariant {
                 &[ctx.tenancy(), ctx.visibility(), &name],
             )
             .await?;
-        let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
-        let root_prop = RootProp::new(ctx, schema_id, *object.id()).await?;
-
+        let mut object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
+        let root_prop = object.create_and_set_root_prop(ctx, schema_id).await?;
         object.set_schema(ctx, &schema_id).await?;
 
         let (identity_func, identity_func_binding, identity_func_binding_return_value) =
@@ -355,7 +357,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let root_prop = match Prop::find_root_for_schema_variant(ctx, schema_variant_id).await? {
+        let root_prop = match Self::find_root_prop(ctx, schema_variant_id).await? {
             Some(root_prop) => root_prop,
             None => return Ok(()),
         };
@@ -372,7 +374,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<()> {
         // If no props have been created for the schema variant, there are no internal providers
         // to create.
-        let root_prop = match Prop::find_root_for_schema_variant(ctx, schema_variant_id).await? {
+        let root_prop = match Self::find_root_prop(ctx, schema_variant_id).await? {
             Some(root_prop) => root_prop,
             None => return Ok(()),
         };
@@ -400,6 +402,7 @@ impl SchemaVariant {
 
     standard_model_accessor!(ui_hidden, bool, SchemaVariantResult);
     standard_model_accessor!(name, String, SchemaVariantResult);
+    standard_model_accessor!(root_prop_id, Option<Pk(PropId)>, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
     standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
 
@@ -470,20 +473,6 @@ impl SchemaVariant {
         right_id: SchemaId,
         which_table_is_this: "right",
         returns: Socket,
-        result: SchemaVariantResult,
-    );
-
-    standard_model_many_to_many!(
-        lookup_fn: props,
-        associate_fn: add_prop,
-        disassociate_fn: remove_prop,
-        table_name: "prop_many_to_many_schema_variants",
-        left_table: "props",
-        left_id: PropId,
-        right_table: "schema_variants",
-        right_id: SchemaVariantId,
-        which_table_is_this: "right",
-        returns: Prop,
         result: SchemaVariantResult,
     );
 
@@ -684,5 +673,53 @@ impl SchemaVariant {
             )
             .await?;
         Ok(object_from_row(row)?)
+    }
+
+    /// Call [`Self::find_root_prop`] with the [`SchemaVariantId`](SchemaVariant) off
+    /// [`self`](SchemaVariant).
+    pub async fn root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<Option<Prop>> {
+        Self::find_root_prop(ctx, self.id).await
+    }
+
+    /// Find the [`Prop`](crate::Prop) corresponding to "/root" for a given
+    /// [`SchemaVariantId`](SchemaVariant).
+    pub async fn find_root_prop(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Option<Prop>> {
+        let maybe_row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                FIND_ROOT_PROP,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(option_object_from_row(maybe_row)?)
+    }
+
+    /// Find the [`SchemaVariant`] for a given [`PropId`](crate::Prop) that resides _anywhere_ in a
+    /// [`Prop`](crate::Prop) tree.
+    ///
+    /// For instance, if you have a [`PropId`](crate::Prop) corresponding to "/root/domain/poop"
+    /// and want to know what [`SchemaVariant`]'s [`Prop`](crate::Prop) tree it resides in, use this
+    /// method to find out.
+    pub async fn find_for_prop(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> SchemaVariantResult<Option<Self>> {
+        // FIXME(nick): this is expensive and should be one query. Please WON'T SOMEBODY THINK OF
+        // THE CPU AND THE DATABASE??? OHHHHHHH THE HUMANITY!!!!!!! Oh well, anyway.
+        if let Some(root_prop) = Prop::find_root_prop_for_prop(ctx, prop_id).await? {
+            for schema_variant in Self::list(ctx).await? {
+                if let Some(populated_root_prop_id) = schema_variant.root_prop_id {
+                    if *root_prop.id() == populated_root_prop_id {
+                        return Ok(Some(schema_variant));
+                    }
+                }
+            }
+        }
+        Ok(None)
     }
 }

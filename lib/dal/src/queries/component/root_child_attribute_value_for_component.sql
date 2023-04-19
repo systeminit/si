@@ -7,13 +7,11 @@ FROM attribute_values_v1($1, $2) AS av
              JOIN prop_belongs_to_prop_v1($1, $2) AS pbtp
                   ON root_child_prop.name = $3
                       AND pbtp.object_id = root_child_prop.id
-                      AND pbtp.belongs_to_id IN (
-                          SELECT pmtmsv.left_object_id AS root_prop_id
-                          FROM prop_many_to_many_schema_variants_v1($1, $2) AS pmtmsv
-                                   JOIN component_belongs_to_schema_variant_v1($1, $2) AS cbtsv
-                                        ON cbtsv.belongs_to_id = pmtmsv.right_object_id
-                                            AND cbtsv.object_id = $4
-                      )
+             JOIN schema_variants_v1($1, $2) AS schema_variants
+                  ON schema_variants.root_prop_id = pbtp.belongs_to_id
+             JOIN component_belongs_to_schema_variant_v1($1, $2) AS cbtsv
+                  ON cbtsv.belongs_to_id = schema_variants.id
+                      AND cbtsv.object_id = $4
 ) AS root_child_prop
               ON av.attribute_context_prop_id = root_child_prop.id
 

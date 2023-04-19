@@ -33,12 +33,6 @@ impl PropertyEditorSchema {
             .ok_or(PropertyEditorError::SchemaVariantNotFound(
                 schema_variant_id,
             ))?;
-        let root_prop = schema_variant
-            .props(ctx)
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(PropertyEditorError::RootPropNotFound)?;
         let mut props: HashMap<PropertyEditorPropId, PropertyEditorProp> = HashMap::new();
         let mut child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>> =
             HashMap::new();
@@ -66,8 +60,11 @@ impl PropertyEditorSchema {
             props.insert(property_editor_prop.id, property_editor_prop);
         }
 
+        let root_prop_id = schema_variant
+            .root_prop_id()
+            .ok_or(PropertyEditorError::RootPropNotFound)?;
         Ok(PropertyEditorSchema {
-            root_prop_id: (*root_prop.id()).into(),
+            root_prop_id: (*root_prop_id).into(),
             props,
             child_props,
         })
