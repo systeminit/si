@@ -1,7 +1,9 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use object_tree::Hash;
-use si_pkg::{SiPkg, SiPkgError, SiPkgFunc, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
+use si_pkg::{
+    SiPkg, SiPkgError, SiPkgFunc, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgValidation,
+};
 
 use crate::{
     component::ComponentKind,
@@ -10,7 +12,9 @@ use crate::{
         InstalledPkgId,
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
-    DalContext, Func, FuncArgument, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
+    validation::{create_validation, Validation, ValidationKind},
+    DalContext, Func, FuncArgument, FuncError, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -175,12 +179,12 @@ async fn create_schema(
     Ok(())
 }
 
-/* - we'll need this in the prop visitor to create attribute funcs
 struct PropVisitContext<'a, 'b> {
     pub ctx: &'a DalContext,
+    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
     pub func_map: &'b HashMap<Hash, Func>,
 }
-*/
 
 async fn create_schema_variant(
     ctx: &DalContext,
@@ -195,16 +199,23 @@ async fn create_schema_variant(
             .await?
             .pop();
 
-    let context = ctx;
-
     let variant_id = match existing_schema_variant {
         Some(installed_sv_record) => match installed_sv_record.as_installed_schema_variant()? {
             InstalledPkgAssetTyped::SchemaVariant { id, .. } => id,
-            _ => unreachable!(),
+            _ => unreachable!(
+                "the as_installed_schema_variant method ensures we cannot hit this branch"
+            ),
         },
         None => {
             let (mut schema_variant, root_prop) =
                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name()).await?;
+
+            let context = PropVisitContext {
+                ctx,
+                schema_id: *schema.id(),
+                schema_variant_id: *schema_variant.id(),
+                func_map,
+            };
 
             schema
                 .set_default_schema_variant_id(ctx, Some(schema_variant.id()))
@@ -216,12 +227,12 @@ async fn create_schema_variant(
 
             let domain_prop_id = root_prop.domain_prop_id;
             variant_spec
-                .visit_prop_tree(create_prop, Some(domain_prop_id), context)
+                .visit_prop_tree(create_prop, Some(domain_prop_id), &context)
                 .await?;
 
             schema_variant.finalize(ctx, None).await?;
 
-            for leaf_func in variant_spec.leaf_functions().await? {
+            for leaf_func in variant_spec.leaf_functions()? {
                 let inputs: Vec<LeafInputLocation> = leaf_func
                     .inputs()
                     .iter()
@@ -261,13 +272,86 @@ async fn create_schema_variant(
     Ok(())
 }
 
+async fn create_prop_validation(
+    spec: SiPkgValidation<'_>,
+    prop_id: PropId,
+    ctx: &PropVisitContext<'_, '_>,
+) -> PkgResult<()> {
+    // Consider grabbing this much earlier and sticking it on the PropVisitContext, since we will
+    // fetch it for every validation!
+    let builtin_validation_func = Func::find_by_attr(ctx.ctx, "name", &"si:validation")
+        .await?
+        .pop()
+        .ok_or(FuncError::NotFoundByName("si_validation".to_string()))?;
+
+    let validation_kind = match spec {
+        SiPkgValidation::IntegerIsBetweenTwoIntegers {
+            lower_bound,
+            upper_bound,
+            ..
+        } => ValidationKind::Builtin(Validation::IntegerIsBetweenTwoIntegers {
+            value: None,
+            lower_bound,
+            upper_bound,
+        }),
+        SiPkgValidation::StringEquals { expected, .. } => {
+            ValidationKind::Builtin(Validation::StringEquals {
+                value: None,
+                expected,
+            })
+        }
+        SiPkgValidation::StringHasPrefix { expected, .. } => {
+            ValidationKind::Builtin(Validation::StringHasPrefix {
+                value: None,
+                expected,
+            })
+        }
+        SiPkgValidation::StringInStringArray {
+            expected,
+            display_expected,
+            ..
+        } => ValidationKind::Builtin(Validation::StringInStringArray {
+            value: None,
+            expected,
+            display_expected,
+        }),
+        SiPkgValidation::StringIsHexColor { .. } => {
+            ValidationKind::Builtin(Validation::StringIsHexColor { value: None })
+        }
+        SiPkgValidation::StringIsNotEmpty { .. } => {
+            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None })
+        }
+        SiPkgValidation::StringIsValidIpAddr { .. } => {
+            ValidationKind::Builtin(Validation::StringIsValidIpAddr { value: None })
+        }
+        SiPkgValidation::CustomValidation { func_unique_id, .. } => ValidationKind::Custom(
+            *ctx.func_map
+                .get(&func_unique_id)
+                .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                .id(),
+        ),
+    };
+
+    create_validation(
+        ctx.ctx,
+        validation_kind,
+        *builtin_validation_func.id(),
+        prop_id,
+        ctx.schema_id,
+        ctx.schema_variant_id,
+    )
+    .await?;
+
+    Ok(())
+}
+
 async fn create_prop(
     spec: SiPkgProp<'_>,
     parent_prop_id: Option<PropId>,
-    ctx: &DalContext,
-) -> Result<Option<PropId>, SiPkgError> {
+    ctx: &PropVisitContext<'_, '_>,
+) -> PkgResult<Option<PropId>> {
     let prop = Prop::new(
-        ctx,
+        ctx.ctx,
         spec.name(),
         match spec {
             SiPkgProp::String { .. } => PropKind::String,
@@ -283,9 +367,13 @@ async fn create_prop(
     .map_err(SiPkgError::visit_prop)?;
 
     if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx, parent_prop_id)
+        prop.set_parent_prop(ctx.ctx, parent_prop_id)
             .await
             .map_err(SiPkgError::visit_prop)?;
+    }
+
+    for validation_spec in spec.validations()? {
+        create_prop_validation(validation_spec, *prop.id(), ctx).await?;
     }
 
     Ok(Some(*prop.id()))

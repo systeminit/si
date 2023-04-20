@@ -4,12 +4,14 @@ mod spec;
 
 pub use pkg::{
     SiPkg, SiPkgError, SiPkgFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
+    SiPkgValidation,
 };
 pub use spec::{
     FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation,
     LeafKind, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
-    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
+    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError, ValidationSpec,
+    ValidationSpecKind,
 };
 
 #[cfg(test)]
@@ -105,7 +107,7 @@ mod tests {
             .funcs_by_unique_id()
             .expect("cannot get funcs by unique id");
 
-        let leaf_funcs = variant.leaf_functions().await.expect("get leaf funcs");
+        let leaf_funcs = variant.leaf_functions().expect("get leaf funcs");
         assert_eq!(3, leaf_funcs.len());
 
         for func in leaf_funcs {
@@ -138,5 +140,7 @@ mod tests {
 
         // k8s deployments are really complex!
         assert_eq!(123, props.lock().await.len());
+
+        let _ = dbg!(props.lock().await);
     }
 }

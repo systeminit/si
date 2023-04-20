@@ -17,10 +17,10 @@ use thiserror::Error;
 use url::Url;
 
 use crate::{
-    node::{CategoryNode, PkgNode, PropNode, SchemaVariantChildNode},
+    node::{CategoryNode, PkgNode, PropChildNode, PropNode, SchemaVariantChildNode},
     spec::{
         FuncArgumentKind, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafInputLocation,
-        LeafKind, PkgSpec, SpecError,
+        LeafKind, PkgSpec, SpecError, ValidationSpecKind,
     },
 };
 
@@ -48,6 +48,8 @@ pub enum SiPkgError {
     VisitProp(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
     #[error("Schema Variant missing required child: {0}")]
     SchemaVariantChildNotFound(&'static str),
+    #[error("Validation spec missing required field: {0}")]
+    ValidationMissingField(String),
 }
 
 pub type PkgResult<T> = Result<T, SiPkgError>;
@@ -604,7 +606,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.color.as_deref()
     }
 
-    pub async fn leaf_functions(&self) -> PkgResult<Vec<SiPkgLeafFunction>> {
+    pub fn leaf_functions(&self) -> PkgResult<Vec<SiPkgLeafFunction>> {
         let child_idxs = self
             .source
             .graph
@@ -633,15 +635,52 @@ impl<'a> SiPkgSchemaVariant<'a> {
         Ok(leaf_functions)
     }
 
-    pub async fn visit_prop_tree<F, Fut, I, C>(
+    fn prop_stack_from_source<I>(
+        source: Source<'a>,
+        node_idx: NodeIndex,
+        parent_id: Option<I>,
+    ) -> PkgResult<Vec<(SiPkgProp, Option<I>)>>
+    where
+        I: Copy,
+    {
+        Ok(
+            match source
+                .graph
+                .neighbors_directed(node_idx, Outgoing)
+                .find(|node_idx| {
+                    matches!(
+                        &source.graph[*node_idx].inner(),
+                        PkgNode::PropChild(PropChildNode::Props)
+                    )
+                }) {
+                Some(prop_child_idxs) => {
+                    let child_node_idxs: Vec<_> = source
+                        .graph
+                        .neighbors_directed(prop_child_idxs, Outgoing)
+                        .collect();
+
+                    let mut entries = vec![];
+                    for child_idx in child_node_idxs {
+                        entries.push((SiPkgProp::from_graph(source.graph, child_idx)?, parent_id));
+                    }
+
+                    entries
+                }
+                None => vec![],
+            },
+        )
+    }
+
+    pub async fn visit_prop_tree<F, Fut, I, C, E>(
         &'a self,
         process_prop_fn: F,
         parent_id: Option<I>,
         context: &'a C,
-    ) -> PkgResult<()>
+    ) -> Result<(), E>
     where
         F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
-        Fut: Future<Output = PkgResult<Option<I>>>,
+        Fut: Future<Output = Result<Option<I>, E>>,
+        E: std::convert::From<SiPkgError>,
         I: Copy,
     {
         let domain_idxs = self
@@ -665,34 +704,27 @@ impl<'a> SiPkgSchemaVariant<'a> {
             .collect();
         let domain_node_idx = match child_node_idxs.pop() {
             Some(idx) => idx,
-            None => return Err(SiPkgError::DomainPropNotFound(self.hash())),
+            None => Err(SiPkgError::DomainPropNotFound(self.hash()))?,
         };
         if !child_node_idxs.is_empty() {
-            return Err(SiPkgError::DomainPropMultipleFound(self.hash()));
+            Err(SiPkgError::DomainPropMultipleFound(self.hash()))?;
         }
 
-        let mut stack: Vec<(_, Option<I>)> = Vec::new();
         // Skip processing the domain prop as a `dal::SchemaVariant` already guarantees such a prop
         // has already been created. Rather, we will push all immediate children of the domain prop
         // to be ready for processing.
-        for child_idx in self
-            .source
-            .graph
-            .neighbors_directed(domain_node_idx, Outgoing)
-        {
-            stack.push((
-                SiPkgProp::from_graph(self.source.graph, child_idx)?,
-                parent_id,
-            ));
-        }
+        let mut stack =
+            Self::prop_stack_from_source(self.source.clone(), domain_node_idx, parent_id)?;
 
         while let Some((prop, parent_id)) = stack.pop() {
             let node_idx = prop.source().node_idx;
             let new_id = process_prop_fn(prop, parent_id, context).await?;
 
-            for child_idx in self.source.graph.neighbors_directed(node_idx, Outgoing) {
-                stack.push((SiPkgProp::from_graph(self.source.graph, child_idx)?, new_id));
-            }
+            stack.extend(Self::prop_stack_from_source(
+                self.source.clone(),
+                node_idx,
+                new_id,
+            )?);
         }
 
         Ok(())
@@ -773,6 +805,134 @@ impl<'a> SiPkgLeafFunction<'a> {
 }
 
 #[derive(Clone, Debug)]
+pub enum SiPkgValidation<'a> {
+    IntegerIsBetweenTwoIntegers {
+        lower_bound: i64,
+        upper_bound: i64,
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringEquals {
+        expected: String,
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringHasPrefix {
+        expected: String,
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringInStringArray {
+        expected: Vec<String>,
+        display_expected: bool,
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringIsValidIpAddr {
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringIsHexColor {
+        hash: Hash,
+        source: Source<'a>,
+    },
+    StringIsNotEmpty {
+        hash: Hash,
+        source: Source<'a>,
+    },
+    CustomValidation {
+        func_unique_id: Hash,
+        hash: Hash,
+        source: Source<'a>,
+    },
+}
+
+impl<'a> SiPkgValidation<'a> {
+    fn from_graph(
+        graph: &'a Graph<HashedNode<PkgNode>, ()>,
+        node_idx: NodeIndex,
+    ) -> PkgResult<Self> {
+        let hashed_node = &graph[node_idx];
+        let node = match hashed_node.inner() {
+            PkgNode::Validation(node) => node.clone(),
+            unexpected => {
+                return Err(SiPkgError::UnexpectedPkgNodeType(
+                    PkgNode::PROP_KIND_STR,
+                    unexpected.node_kind_str(),
+                ))
+            }
+        };
+
+        let hash = hashed_node.hash();
+        let source = Source::new(graph, node_idx);
+
+        Ok(match node.kind {
+            ValidationSpecKind::IntegerIsBetweenTwoIntegers => {
+                SiPkgValidation::IntegerIsBetweenTwoIntegers {
+                    upper_bound: node.upper_bound.ok_or(SiPkgError::ValidationMissingField(
+                        "upper_bound".to_string(),
+                    ))?,
+                    lower_bound: node.lower_bound.ok_or(SiPkgError::ValidationMissingField(
+                        "upper_bound".to_string(),
+                    ))?,
+                    hash,
+                    source,
+                }
+            }
+            ValidationSpecKind::StringEquals => SiPkgValidation::StringEquals {
+                expected: node
+                    .expected_string
+                    .ok_or(SiPkgError::ValidationMissingField(
+                        "expected_string".to_string(),
+                    ))?,
+                hash,
+                source,
+            },
+            ValidationSpecKind::StringHasPrefix => SiPkgValidation::StringHasPrefix {
+                expected: node
+                    .expected_string
+                    .ok_or(SiPkgError::ValidationMissingField(
+                        "expected_string".to_string(),
+                    ))?,
+                hash,
+                source,
+            },
+            ValidationSpecKind::StringInStringArray => {
+                SiPkgValidation::StringInStringArray {
+                    expected: node.expected_string_array.ok_or(
+                        SiPkgError::ValidationMissingField("expected_string_array".to_string()),
+                    )?,
+                    display_expected: node.display_expected.ok_or(
+                        SiPkgError::ValidationMissingField("display_expected".to_string()),
+                    )?,
+                    hash,
+                    source,
+                }
+            }
+
+            ValidationSpecKind::StringIsValidIpAddr => {
+                SiPkgValidation::StringIsValidIpAddr { hash, source }
+            }
+            ValidationSpecKind::StringIsHexColor => {
+                SiPkgValidation::StringIsHexColor { hash, source }
+            }
+            ValidationSpecKind::StringIsNotEmpty => {
+                SiPkgValidation::StringIsNotEmpty { hash, source }
+            }
+            ValidationSpecKind::CustomValidation => {
+                SiPkgValidation::CustomValidation {
+                    func_unique_id: node.func_unique_id.ok_or(
+                        SiPkgError::ValidationMissingField("func_unique_id".to_string()),
+                    )?,
+                    hash,
+                    source,
+                }
+            }
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum SiPkgProp<'a> {
     String {
         name: String,
@@ -791,25 +951,58 @@ pub enum SiPkgProp<'a> {
     },
     Map {
         name: String,
-        // type_prop: Box<Prop>,
         hash: Hash,
         source: Source<'a>,
     },
     Array {
         name: String,
-        // type_prop: Box<Prop>,
         hash: Hash,
         source: Source<'a>,
     },
     Object {
         name: String,
-        // entries: Vec<Prop>,
         hash: Hash,
         source: Source<'a>,
     },
 }
 
 impl<'a> SiPkgProp<'a> {
+    pub fn validations(&self) -> PkgResult<Vec<SiPkgValidation>> {
+        Ok(match self {
+            SiPkgProp::Map { source, .. }
+            | SiPkgProp::Array { source, .. }
+            | SiPkgProp::String { source, .. }
+            | SiPkgProp::Number { source, .. }
+            | SiPkgProp::Object { source, .. }
+            | SiPkgProp::Boolean { source, .. } => {
+                let validation_child_idxs = source
+                    .graph
+                    .neighbors_directed(source.node_idx, Outgoing)
+                    .find(|node_idx| {
+                        matches!(
+                            &source.graph[*node_idx].inner(),
+                            PkgNode::PropChild(PropChildNode::Validations)
+                        )
+                    })
+                    .ok_or(SiPkgError::CategoryNotFound(
+                        PropChildNode::Validations.kind_str(),
+                    ))?;
+
+                let child_node_idxs: Vec<_> = source
+                    .graph
+                    .neighbors_directed(validation_child_idxs, Outgoing)
+                    .collect();
+
+                let mut validations = vec![];
+                for child_idx in child_node_idxs {
+                    validations.push(SiPkgValidation::from_graph(source.graph, child_idx)?);
+                }
+
+                validations
+            }
+        })
+    }
+
     fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,
         node_idx: NodeIndex,

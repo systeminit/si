@@ -5,25 +5,23 @@ use telemetry::prelude::*;
 
 use crate::action_prototype::ActionKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
-use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::definition::{
     PropCache, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
 };
 use crate::schema::{RootProp, SchemaUiMenu};
-use crate::validation::Validation;
 use crate::{
     func::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
+    validation::{create_validation, ValidationKind},
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
     FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
     InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind,
     Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
-    SelectedTestBuiltinSchemas, StandardModel, ValidationPrototype, ValidationPrototypeContext,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    SelectedTestBuiltinSchemas, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod aws_ami;
@@ -52,11 +50,6 @@ const NODE_COLOR_DOCKER: &str = "#4695E7";
 // This node color is purely meant the complement existing node colors.
 // It does not reflect an official branding Kubernetes color.
 const NODE_COLOR_KUBERNETES: &str = "#30BA78";
-
-pub enum ValidationKind {
-    Builtin(Validation),
-    Custom(FuncId),
-}
 
 /// Migrate [`Schemas`](crate::Schema) for production use.
 pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -325,29 +318,17 @@ impl MigrationDriver {
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<()> {
-        let (validation_func_id, validation_args) = match validation_kind {
-            ValidationKind::Builtin(validation) => (
-                self.get_func_id("si:validation")
-                    .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?,
-                serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-            ),
-
-            ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-        };
-
-        let mut builder = ValidationPrototypeContext::builder();
-        builder
-            .set_prop_id(prop_id)
-            .set_schema_id(schema_id)
-            .set_schema_variant_id(schema_variant_id);
-
-        ValidationPrototype::new(
+        create_validation(
             ctx,
-            validation_func_id,
-            validation_args,
-            builder.to_context(ctx).await?,
+            validation_kind,
+            self.get_func_id("si:validation")
+                .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?,
+            prop_id,
+            schema_id,
+            schema_variant_id,
         )
         .await?;
+
         Ok(())
     }
 
@@ -386,7 +367,7 @@ impl MigrationDriver {
 
     /// Add a [`FuncId`](crate::Func) for a given [`Func`](crate::Func) name.
     pub async fn add_func_id(&mut self, ctx: &DalContext, func_name: String) -> BuiltinsResult<()> {
-        let func: Func = Func::find_by_attr(ctx, "name", &func_name)
+        let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
