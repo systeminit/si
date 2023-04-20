@@ -9,6 +9,7 @@ derive_builder = "0.12.0"
 object-tree = { path = "../../lib/object-tree" }
 petgraph = { version = "0.6.2", features = ["serde-1"] }
 serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
 strum = { version = "0.24.1", features = ["derive"] }
 strum_macros = "0.24.3"
 thiserror = "1.0.38"

@@ -8,14 +8,16 @@ use strum::IntoEnumIterator;
 use si_pkg::{
     FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError, ValidationSpec,
+    ValidationSpecKind,
 };
 
 use crate::{
-    func::argument::FuncArgument,
+    func::{argument::FuncArgument, backend::validation::FuncBackendValidationArgs},
     prop_tree::{PropTree, PropTreeNode},
+    validation::Validation,
     DalContext, Func, FuncId, LeafKind, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModel, StandardModelError,
+    StandardModel, StandardModelError, ValidationPrototype,
 };
 
 use super::{PkgError, PkgResult};
@@ -139,7 +141,7 @@ async fn build_variant_spec(
     if let Some(link) = variant.link() {
         variant_spec_builder.try_link(link)?;
     }
-    set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder).await?;
+    set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder, func_specs).await?;
 
     for leaf_kind in LeafKind::iter() {
         for leaf_func in
@@ -221,6 +223,7 @@ async fn set_variant_spec_prop_data(
     ctx: &DalContext,
     variant: &SchemaVariant,
     variant_spec: &mut SchemaVariantSpecBuilder,
+    func_specs: &HashMap<FuncId, FuncSpec>,
 ) -> Result<(), PkgError> {
     let mut prop_tree = PropTree::new(ctx, false, Some(*variant.id())).await?;
     let root_tree_node = prop_tree
@@ -313,6 +316,10 @@ async fn set_variant_spec_prop_data(
             };
         }
 
+        for validation in get_validations_for_prop(ctx, entry.prop_id, func_specs).await? {
+            entry.builder.validation(validation);
+        }
+
         let prop_spec = entry.builder.build()?;
 
         match entry.parent_prop_id {
@@ -333,4 +340,70 @@ async fn set_variant_spec_prop_data(
     }
 
     Ok(())
+}
+
+async fn get_validations_for_prop(
+    ctx: &DalContext,
+    prop_id: PropId,
+    func_specs: &HashMap<FuncId, FuncSpec>,
+) -> PkgResult<Vec<ValidationSpec>> {
+    let mut validation_specs = vec![];
+
+    for prototype in ValidationPrototype::list_for_prop(ctx, prop_id).await? {
+        let mut spec_builder = ValidationSpec::builder();
+        let args: Option<FuncBackendValidationArgs> =
+            serde_json::from_value(prototype.args().clone())?;
+
+        match args {
+            Some(validation) => match validation.validation {
+                Validation::IntegerIsBetweenTwoIntegers {
+                    lower_bound,
+                    upper_bound,
+                    ..
+                } => {
+                    spec_builder.kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers);
+                    spec_builder.upper_bound(upper_bound);
+                    spec_builder.lower_bound(lower_bound);
+                }
+                Validation::StringHasPrefix { expected, .. } => {
+                    spec_builder.kind(ValidationSpecKind::StringHasPrefix);
+                    spec_builder.expected_string(expected);
+                }
+                Validation::StringEquals { expected, .. } => {
+                    spec_builder.kind(ValidationSpecKind::StringEquals);
+                    spec_builder.expected_string(expected);
+                }
+                Validation::StringInStringArray {
+                    expected,
+                    display_expected,
+                    ..
+                } => {
+                    spec_builder.kind(ValidationSpecKind::StringInStringArray);
+                    spec_builder.expected_string_array(expected);
+                    spec_builder.display_expected(display_expected);
+                }
+                Validation::StringIsNotEmpty { .. } => {
+                    spec_builder.kind(ValidationSpecKind::StringIsNotEmpty);
+                }
+                Validation::StringIsValidIpAddr { .. } => {
+                    spec_builder.kind(ValidationSpecKind::StringIsValidIpAddr);
+                }
+                Validation::StringIsHexColor { .. } => {
+                    spec_builder.kind(ValidationSpecKind::StringIsHexColor);
+                }
+            },
+            None => {
+                let func_spec = func_specs
+                    .get(&prototype.func_id())
+                    .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
+
+                spec_builder.kind(ValidationSpecKind::CustomValidation);
+                spec_builder.func_unique_id(func_spec.unique_id);
+            }
+        }
+
+        validation_specs.push(spec_builder.build()?);
+    }
+
+    Ok(validation_specs)
 }

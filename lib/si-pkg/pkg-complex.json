@@ -90,7 +90,12 @@
             "entries": [
               {
                 "name": "apiVersion",
-                "kind": "string"
+                "kind": "string",
+                "validations": [{
+                  "kind": "integerIsBetweenTwoIntegers",
+                  "upper_bound": 31337,
+                  "lower_bound": 2600 
+                }]
               },
               {
                 "name": "kind",

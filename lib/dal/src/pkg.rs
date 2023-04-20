@@ -13,11 +13,14 @@ use crate::{
     func::argument::FuncArgumentError, installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
     schema::variant::definition::SchemaVariantDefinitionError, FuncBackendKind,
     FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError,
+    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
 };
 
 #[derive(Debug, Error)]
 pub enum PkgError {
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+
     #[error(transparent)]
     Pkg(#[from] SiPkgError),
     #[error(transparent)]
@@ -68,6 +71,8 @@ pub enum PkgError {
     MissingExportedFunc(FuncId),
     #[error("Leaf Function {0} has invalid argument {1}")]
     InvalidLeafArgument(FuncId, String),
+    #[error("Validation Creation Error: {0}")]
+    Validation(#[from] ValidationPrototypeError),
 }
 
 impl PkgError {

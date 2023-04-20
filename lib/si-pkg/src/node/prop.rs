@@ -7,7 +7,7 @@ use object_tree::{
 
 use crate::PropSpec;
 
-use super::PkgNode;
+use super::{prop_child::PropChild, PkgNode};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
@@ -94,57 +94,87 @@ impl NodeChild for PropSpec {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
-            Self::String { name } => NodeWithChildren::new(
+            Self::String { name, validations } => NodeWithChildren::new(
                 NodeKind::Leaf,
                 Self::NodeType::Prop(PropNode::String {
                     name: name.to_string(),
                 }),
-                vec![],
+                vec![Box::new(PropChild::Validations(
+                    validations.clone().unwrap_or(vec![]),
+                ))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
-            Self::Number { name } => NodeWithChildren::new(
+            Self::Number { name, validations } => NodeWithChildren::new(
                 NodeKind::Leaf,
                 Self::NodeType::Prop(PropNode::Integer {
                     name: name.to_string(),
                 }),
-                vec![],
+                vec![Box::new(PropChild::Validations(
+                    validations.clone().unwrap_or(vec![]),
+                ))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
-            Self::Boolean { name } => NodeWithChildren::new(
+            Self::Boolean { name, validations } => NodeWithChildren::new(
                 NodeKind::Leaf,
                 Self::NodeType::Prop(PropNode::Boolean {
                     name: name.to_string(),
                 }),
-                vec![],
+                vec![Box::new(PropChild::Validations(
+                    validations.clone().unwrap_or(vec![]),
+                ))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
-            Self::Map { name, type_prop } => NodeWithChildren::new(
+            Self::Map {
+                name,
+                type_prop,
+                validations,
+            } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Map {
                     name: name.to_string(),
                 }),
-                vec![type_prop.clone() as Box<dyn NodeChild<NodeType = Self::NodeType>>],
+                vec![
+                    Box::new(PropChild::Props(vec![*type_prop.clone()]))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(
+                        validations.clone().unwrap_or(vec![]),
+                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                ],
             ),
-            Self::Array { name, type_prop } => NodeWithChildren::new(
+            Self::Array {
+                name,
+                type_prop,
+                validations,
+            } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Array {
                     name: name.to_string(),
                 }),
-                vec![type_prop.clone() as Box<dyn NodeChild<NodeType = Self::NodeType>>],
+                vec![
+                    Box::new(PropChild::Props(vec![*type_prop.clone()]))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(
+                        validations.clone().unwrap_or(vec![]),
+                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                ],
             ),
-            Self::Object { name, entries } => {
-                let mut children = Vec::new();
-                for entry in entries {
-                    children
-                        .push(Box::new(entry.clone())
-                            as Box<dyn NodeChild<NodeType = Self::NodeType>>);
-                }
-
-                NodeWithChildren::new(
-                    NodeKind::Tree,
-                    Self::NodeType::Prop(PropNode::Object {
-                        name: name.to_string(),
-                    }),
-                    children,
-                )
-            }
+            Self::Object {
+                name,
+                entries,
+                validations,
+            } => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::Prop(PropNode::Object {
+                    name: name.to_string(),
+                }),
+                vec![
+                    Box::new(PropChild::Props(entries.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(
+                        validations.clone().unwrap_or(vec![]),
+                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                ],
+            ),
         }
     }
 }
