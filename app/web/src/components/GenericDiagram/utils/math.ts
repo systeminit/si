@@ -13,6 +13,13 @@ export function vectorAdd(v1: Vector2d, v2: Vector2d) {
   } as Vector2d;
 }
 
+export function vectorBetween(v1: Vector2d, v2: Vector2d) {
+  return {
+    x: v2.x - v1.x,
+    y: v2.y - v1.y,
+  } as Vector2d;
+}
+
 /** check if 2 rectangles overlap, each rect defined by 2 opposite corner points */
 export function checkRectanglesOverlap(
   r1v1: Vector2d,
@@ -52,6 +59,7 @@ export function pointAlongLinePx(
   const pctDistance = pxDistanceFromP1 / distance;
   return pointAlongLinePct(p1, p2, pctDistance);
 }
+
 /**
  * returns a new point at a set % distance along a line from P1 to P2
  */
