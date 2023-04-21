@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use std::collections::{HashMap, HashSet};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -63,10 +64,10 @@ pk!(NodeId);
     Clone,
     PartialEq,
     Eq,
-    strum_macros::Display,
-    strum_macros::EnumString,
-    strum_macros::AsRefStr,
-    strum_macros::EnumIter,
+    Display,
+    EnumString,
+    AsRefStr,
+    EnumIter,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

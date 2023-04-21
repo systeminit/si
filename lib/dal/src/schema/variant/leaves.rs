@@ -2,7 +2,7 @@
 //! subtrees for a [`SchemaVariant`](crate::SchemaVariant). In this domain, a "leaf" is considered
 //! to an entry of a immediate child [`map`](crate::PropKind::Map) underneath "/root".
 
-use strum_macros::EnumIter;
+use strum::EnumIter;
 
 use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};

@@ -1,9 +1,9 @@
 [package]
 name = "si-test-macros"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [lib]
 proc-macro = true

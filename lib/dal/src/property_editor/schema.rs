@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
 use crate::{

@@ -2,7 +2,7 @@ use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;

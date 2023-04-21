@@ -1,19 +1,19 @@
 [package]
 name = "si-data-nats"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 crossbeam-channel = { version = "0.5.1" }
-futures = { version = "0.3.17" }
+futures = { workspace = true }
 nats-client = { package = "nats", version = "0.24.0" }
-serde = { version = "1.0.123", features = ["derive"] }
-serde_json = { version = "1.0.64" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 nkeys = "0.2.0"

@@ -2,6 +2,7 @@ use crate::{Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use strum::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
@@ -39,17 +40,7 @@ pub type FuncExecutionResult<T> = Result<T, FuncExecutionError>;
 pk!(FuncExecutionPk);
 
 // Are these the right states? -- Adam
-#[derive(
-    Deserialize,
-    Serialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    strum_macros::EnumString,
-    strum_macros::Display,
-    Copy,
-)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, EnumString, Display, Copy)]
 pub enum FuncExecutionState {
     Create,
     Dispatch,

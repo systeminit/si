@@ -1,30 +1,30 @@
 [package]
 name = "dal-test"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
-color-eyre = { version = "0.6.1" }
+color-eyre = { workspace = true }
+council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
+jwt-simple = "0.11.0"
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
 pinga-server = { path = "../../lib/pinga-server" }
-serde = { version = "1.0.123", features = ["rc", "derive"] }
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
-sodiumoxide = "0.2.6"
+sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = "3.2.0"
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
-council-server = { path = "../../lib/council-server" }
-jwt-simple = "0.11.0"

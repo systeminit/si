@@ -1,11 +1,11 @@
 [package]
 name = "si-std"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 # NOTE: dependencies should be extremely minimal or very broadly re-used
 # amongst a potential large number of component crates
 [dependencies]
-serde = { version = "1.0.123", features = ["derive"] }
+serde = { workspace = true }

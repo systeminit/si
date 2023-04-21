@@ -40,3 +40,27 @@ members = [
 [patch.crates-io]
 # pending a potential merge and release of https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
+
+[workspace.dependencies]
+async-trait = { version = "0.1.68" }
+axum = { version = "0.6.16", features = ["macros", "ws"] }
+base64 = { version = "0.21.0" }
+chrono = { version = "0.4.24", features = ["serde"] }
+clap = { version = "4.2.4", features = ["derive", "color", "env", "wrap_help"] }
+color-eyre = { version = "0.6.2" }
+derive_builder = { version = "0.12.0" }
+futures = { version = "0.3.28" }
+petgraph = { version = "0.6.3", features = ["serde-1"] }
+serde = { version = "1.0.160", features = ["derive", "rc"] }
+serde_json = { version = "1.0.96", features = ["preserve_order"] }
+sodiumoxide = { version = "0.2.7" }
+strum = { version = "0.24.1", features = ["derive"] }
+thiserror = { version = "1.0.24" }
+tokio = { version = "1.27.0", features = ["full"] }
+ulid = { version = "1.0.0", features = ["serde"] }
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.69"
+version = "0.1.0"
+publish = false

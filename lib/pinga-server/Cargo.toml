@@ -1,24 +1,24 @@
 [package]
 name = "pinga-server"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 dal = { path = "../../lib/dal" }
-derive_builder = { version = "0.12" }
-futures = "0.3"
+derive_builder = { workspace = true }
+futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-settings = { path = "../../lib/si-settings" }
 stream-cancel = "0.8.1"
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tokio-stream = "0.1.12"
-ulid = { version = "1.0.0", features = ["serde"] }
+ulid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }

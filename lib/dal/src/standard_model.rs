@@ -5,7 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use std::fmt::Debug;
-use strum_macros::AsRefStr;
+use strum::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
 

@@ -1,28 +1,28 @@
 [package]
 name = "sdf-server"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
-async-trait = "0.1.51"
-axum = { version = "0.6.12", features = ["macros", "ws"] }
+async-trait = { workspace = true }
+axum = { workspace = true }
 axum-macros = { version = "0.3", optional = true } # enable: cargo build --features axum-macro
-base64 = "0.21"
-chrono = { version = "0.4.19", features = ["serde"] }
+base64 = { workspace = true }
+chrono = { workspace = true }
 convert_case = "0.6.0"
 dal = { path = "../dal" }
-derive_builder = { version = "0.12" }
-futures = { version = "0.3.17" }
+derive_builder = { workspace = true }
+futures = { workspace = true }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.26" }
 pathdiff = "0.2.1"
 rand = "0.8"
 reqwest = { version = "0.11.14", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_with = "2.0.0"
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
@@ -30,19 +30,18 @@ si-pkg = { path = "../../lib/si-pkg"}
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-posthog-rs = { path = "../../lib/si-posthog-rs" }
-sodiumoxide = "0.2.7"
-strum = "0.24.0"
-strum_macros = "0.24.0"
+sodiumoxide = { workspace = true }
+strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tokio-tungstenite = "0.18"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.4", features = ["cors", "trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [build-dependencies]
-thiserror = { version = "1.0" }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

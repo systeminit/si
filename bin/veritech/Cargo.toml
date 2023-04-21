@@ -1,17 +1,17 @@
 [package]
 name = "veritech"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [[bin]]
 name = "veritech"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.0.14", features = ["derive", "color", "env", "wrap_help"] }
-color-eyre = { version = "0.6.1" }
+clap = { workspace = true }
+color-eyre = { workspace = true }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
-tokio = { version = "1.12.0", features = ["full"] }
+tokio = { workspace = true }
 veritech-server = { path = "../../lib/veritech-server" }

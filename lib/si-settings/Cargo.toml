@@ -1,13 +1,13 @@
 [package]
 name = "si-settings"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true }
 serde_with = "2.0.0"
-sodiumoxide = "0.2"
-thiserror = "1.0"
+sodiumoxide = { workspace = true }
+thiserror = { workspace = true }

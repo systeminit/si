@@ -9,7 +9,7 @@ use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
 };
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;

@@ -1,6 +1,6 @@
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumIter, EnumString};
+use strum::{Display, EnumIter, EnumString};
 
 use object_tree::Hash;
 

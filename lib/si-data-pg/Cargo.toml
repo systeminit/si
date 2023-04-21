@@ -9,13 +9,13 @@ publish = false
 bytes = { version = "1.0.1" }
 deadpool = { version = "0.9.3" }
 deadpool-postgres = { version = "0.10.2" }
-futures = { version = "0.3.17" }
+futures = { workspace = true }
 num_cpus = { version = "1.13.0" }
 ouroboros = { version = "0.15.4" }
 refinery = { version = "0.8.4", features = ["tokio-postgres"] }
-serde = { version = "1.0.123", features = ["derive"] }
+serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tokio-postgres = { version = "0.7.0", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }

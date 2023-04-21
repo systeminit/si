@@ -1,21 +1,20 @@
 [package]
 name = "dal"
-version = "0.1.0"
-authors = ["Adam Jacob <adam@systeminit.com>"]
-edition = "2021"
-rust-version = "1.64"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 async-recursion = "1.0.0"
-async-trait = "0.1.51"
-base64 = "0.21"
-chrono = { version = "0.4.19", features = ["serde"] }
+async-trait = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
 council-server = { path = "../../lib/council-server" }
 derive_more = "0.99.16"
 diff = "0.1"
 dyn-clone = "1.0.6"
-futures = "0.3.13"
+futures = { workspace = true }
 hex = "0.4.3"
 iftree = "1.0.3"
 jwt-simple = "0.11.0"
@@ -24,26 +23,25 @@ nats-subscriber = { path = "../../lib/nats-subscriber" }
 object-tree = { path = "../../lib/object-tree" }
 once_cell = "1.15.0"
 paste = "1.0"
-petgraph = { version = "0.6.2", features = ["serde-1"] }
+petgraph = { workspace = true }
 postgres-types = { version = "0.2.2", features = ["derive"] }
 rand = "0.8.3"
 refinery = "0.8.4"
 regex = "1.5.4"
-serde = { version = "1.0.123", features = ["rc", "derive"] }
+serde = { workspace = true }
 serde-aux = "4.0.0"
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde_json = { workspace = true }
 serde_with = "2.0.0"
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-pkg = { path = "../../lib/si-pkg" }
-sodiumoxide = "0.2.6"
-strum = "0.24.0"
-strum_macros = "0.24.0"
+sodiumoxide = { workspace = true }
+strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tokio-stream = "0.1.3"
-ulid = { version = "1", features = ["serde"] }
+ulid = { workspace = true }
 url = "2.2.2"
 veritech-client = { path = "../../lib/veritech-client" }
 which = "4.3.0"
