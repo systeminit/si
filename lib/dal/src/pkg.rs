@@ -1,4 +1,3 @@
-use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 use std::convert::TryFrom;
 use thiserror::Error;
 use url::ParseError;
@@ -9,11 +8,14 @@ mod import;
 pub use export::export_pkg;
 pub use import::{import_pkg, import_pkg_from_pkg};
 
+use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
+
 use crate::{
     func::argument::FuncArgumentError, installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
-    schema::variant::definition::SchemaVariantDefinitionError, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
+    schema::variant::definition::SchemaVariantDefinitionError, ActionPrototypeError,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
     SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 #[derive(Debug, Error)]
@@ -71,8 +73,12 @@ pub enum PkgError {
     MissingExportedFunc(FuncId),
     #[error("Leaf Function {0} has invalid argument {1}")]
     InvalidLeafArgument(FuncId, String),
-    #[error("Validation Creation Error: {0}")]
+    #[error("Validation creation error: {0}")]
     Validation(#[from] ValidationPrototypeError),
+    #[error("Workflow creation error: {0}")]
+    Workflow(#[from] WorkflowPrototypeError),
+    #[error("Action creation error: {0}")]
+    Action(#[from] ActionPrototypeError),
 }
 
 impl PkgError {

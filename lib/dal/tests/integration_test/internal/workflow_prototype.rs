@@ -1,7 +1,6 @@
 use dal::{
-    workflow_prototype::WorkflowPrototypeContext, ComponentId, ComponentView, DalContext, Func,
-    Schema, SchemaId, SchemaVariantId, StandardModel, WorkflowKind, WorkflowPrototype,
-    WorkflowTreeStep,
+    workflow_prototype::WorkflowPrototypeContext, ComponentView, DalContext, Func, Schema,
+    StandardModel, WorkflowKind, WorkflowPrototype, WorkflowTreeStep,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -48,14 +47,10 @@ async fn find_for_context(ctx: &DalContext) {
     .await
     .expect("cannot create workflow_prototype");
 
-    let found_prototypes = WorkflowPrototype::find_for_context(
-        ctx,
-        ComponentId::NONE,
-        SchemaId::NONE,
-        SchemaVariantId::NONE,
-    )
-    .await
-    .expect("could not find for context");
+    let found_prototypes =
+        WorkflowPrototype::find_for_context(ctx, WorkflowPrototypeContext::default())
+            .await
+            .expect("could not find for context");
 
     let mut found_poem_prototype = false;
     let mut found_new_prototype = false;

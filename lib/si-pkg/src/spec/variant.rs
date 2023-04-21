@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use super::{LeafFunctionSpec, PropSpec, SpecError};
+use super::{LeafFunctionSpec, PropSpec, SpecError, WorkflowSpec};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,6 +20,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "leaf_function"), into), default)]
     pub leaf_functions: Vec<LeafFunctionSpec>,
+
+    #[builder(setter(each(name = "workflow"), into), default)]
+    pub workflows: Vec<WorkflowSpec>,
 }
 
 impl SchemaVariantSpec {

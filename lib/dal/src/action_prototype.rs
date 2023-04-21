@@ -6,6 +6,7 @@ use thiserror::Error;
 
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_pkg::ActionSpecKind;
 use telemetry::prelude::*;
 
 use crate::{
@@ -15,6 +16,8 @@ use crate::{
 };
 
 const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
+const FIND_FOR_CONTEXT_AND_WORKFLOW_PROTOTYPE: &str =
+    include_str!("./queries/action_prototype_find_for_context_and_workflow_prototype.sql");
 
 #[derive(Error, Debug)]
 pub enum ActionPrototypeError {
@@ -66,6 +69,28 @@ pub enum ActionKind {
     Other,
     /// The [`action`](ActionPrototype) destroys an existing "resource".
     Destroy,
+}
+
+impl From<ActionSpecKind> for ActionKind {
+    fn from(value: ActionSpecKind) -> Self {
+        match value {
+            ActionSpecKind::Create => ActionKind::Create,
+            ActionSpecKind::Refresh => ActionKind::Refresh,
+            ActionSpecKind::Other => ActionKind::Other,
+            ActionSpecKind::Destroy => ActionKind::Destroy,
+        }
+    }
+}
+
+impl From<&ActionKind> for ActionSpecKind {
+    fn from(value: &ActionKind) -> Self {
+        match value {
+            ActionKind::Create => ActionSpecKind::Create,
+            ActionKind::Refresh => ActionSpecKind::Refresh,
+            ActionKind::Other => ActionSpecKind::Other,
+            ActionKind::Destroy => ActionSpecKind::Destroy,
+        }
+    }
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -218,6 +243,30 @@ impl ActionPrototype {
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
+    }
+
+    pub async fn find_for_context_and_workflow_prototype(
+        ctx: &DalContext,
+        context: ActionPrototypeContext,
+        workflow_prototype_id: WorkflowPrototypeId,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_FOR_CONTEXT_AND_WORKFLOW_PROTOTYPE,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &context.component_id,
+                    &context.schema_variant_id,
+                    &context.schema_id,
+                    &workflow_prototype_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn find_by_name(

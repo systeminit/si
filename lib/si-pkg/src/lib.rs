@@ -3,15 +3,16 @@ mod pkg;
 mod spec;
 
 pub use pkg::{
-    SiPkg, SiPkgError, SiPkgFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
-    SiPkgValidation,
+    SiPkg, SiPkgAction, SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp,
+    SiPkgSchema, SiPkgSchemaVariant, SiPkgValidation, SiPkgWorkflow,
 };
 pub use spec::{
-    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation,
-    LeafKind, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
-    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError, ValidationSpec,
-    ValidationSpecKind,
+    ActionSpec, ActionSpecBuilder, ActionSpecKind, FuncArgumentKind, FuncArgumentSpec,
+    FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
+    FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec,
+    PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError, ValidationSpec, ValidationSpecKind,
+    WorkflowSpec, WorkflowSpecBuilder,
 };
 
 #[cfg(test)]

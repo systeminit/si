@@ -20,8 +20,9 @@ mod prop;
 mod schema;
 mod validation;
 mod variant;
+mod workflow;
 
-pub use {func::*, leaf_function::*, prop::*, schema::*, validation::*, variant::*};
+pub use {func::*, leaf_function::*, prop::*, schema::*, validation::*, variant::*, workflow::*};
 
 use crate::{
     node::{CategoryNode, PkgNode},

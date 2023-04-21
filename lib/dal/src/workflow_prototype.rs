@@ -285,9 +285,7 @@ impl WorkflowPrototype {
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_context(
         ctx: &DalContext,
-        component_id: ComponentId,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
+        context: WorkflowPrototypeContext,
     ) -> WorkflowPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -298,9 +296,9 @@ impl WorkflowPrototype {
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &component_id,
-                    &schema_variant_id,
-                    &schema_id,
+                    &context.component_id,
+                    &context.schema_variant_id,
+                    &context.schema_id,
                 ],
             )
             .await?;

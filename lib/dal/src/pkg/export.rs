@@ -6,21 +6,24 @@ use std::{
 use strum::IntoEnumIterator;
 
 use si_pkg::{
-    FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
-    LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError, ValidationSpec,
-    ValidationSpecKind,
+    ActionSpec, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
+    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg,
+    SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
 };
 
 use crate::{
     func::{argument::FuncArgument, backend::validation::FuncBackendValidationArgs},
     prop_tree::{PropTree, PropTreeNode},
     validation::Validation,
-    DalContext, Func, FuncId, LeafKind, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModel, StandardModelError, ValidationPrototype,
+    ActionPrototype, ActionPrototypeContext, DalContext, Func, FuncId, LeafKind, PropId, PropKind,
+    Schema, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, ValidationPrototype,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
+
+type FuncSpecMap = HashMap<FuncId, FuncSpec>;
 
 // TODO(fnichol): another first-pass function with arguments. At the moment we're passing a list of
 // `SchemaVariantId`s in an effort to export specific schema/variant combos but this will change in
@@ -44,7 +47,7 @@ pub async fn export_pkg(
         pkg_spec_builder.description(description);
     }
 
-    let mut func_specs = HashMap::new();
+    let mut func_specs = FuncSpecMap::new();
 
     for variant_id in variant_ids {
         let related_funcs = SchemaVariant::all_funcs(ctx, variant_id).await?;
@@ -112,7 +115,7 @@ async fn build_func_spec(func: &Func, args: &[FuncArgument]) -> Result<FuncSpec,
 async fn build_schema_spec(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
-    func_specs: &HashMap<FuncId, FuncSpec>,
+    func_specs: &FuncSpecMap,
 ) -> Result<SchemaSpec, PkgError> {
     let (variant, schema) = get_schema_and_variant(ctx, variant_id).await?;
 
@@ -120,7 +123,7 @@ async fn build_schema_spec(
     schema_spec_builder.name(schema.name());
     set_schema_spec_category_data(ctx, &schema, &mut schema_spec_builder).await?;
 
-    let variant_spec = build_variant_spec(ctx, variant, func_specs).await?;
+    let variant_spec = build_variant_spec(ctx, &schema, variant, func_specs).await?;
     schema_spec_builder.variant(variant_spec);
 
     let schema_spec = schema_spec_builder.build()?;
@@ -130,8 +133,9 @@ async fn build_schema_spec(
 
 async fn build_variant_spec(
     ctx: &DalContext,
+    schema: &Schema,
     variant: SchemaVariant,
-    func_specs: &HashMap<FuncId, FuncSpec>,
+    func_specs: &FuncSpecMap,
 ) -> Result<SchemaVariantSpec, PkgError> {
     let mut variant_spec_builder = SchemaVariantSpec::builder();
     variant_spec_builder.name(variant.name());
@@ -164,6 +168,46 @@ async fn build_variant_spec(
 
             variant_spec_builder.leaf_function(leaf_func_spec);
         }
+    }
+
+    for workflow_prototype in WorkflowPrototype::find_for_context(
+        ctx,
+        WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *variant.id(),
+            ..Default::default()
+        },
+    )
+    .await?
+    {
+        let func_spec = func_specs
+            .get(&workflow_prototype.func_id())
+            .ok_or(PkgError::MissingExportedFunc(workflow_prototype.func_id()))?;
+
+        let mut workflow_builder = WorkflowSpec::builder();
+        workflow_builder.title(workflow_prototype.title());
+        workflow_builder.func_unique_id(func_spec.unique_id);
+
+        for action_prototype in ActionPrototype::find_for_context_and_workflow_prototype(
+            ctx,
+            ActionPrototypeContext {
+                schema_id: *schema.id(),
+                schema_variant_id: *variant.id(),
+                ..Default::default()
+            },
+            *workflow_prototype.id(),
+        )
+        .await?
+        {
+            let action_spec = ActionSpec::builder()
+                .name(action_prototype.name())
+                .kind(action_prototype.kind())
+                .build()?;
+
+            workflow_builder.action(action_spec);
+        }
+
+        variant_spec_builder.workflow(workflow_builder.build()?);
     }
 
     let variant_spec = variant_spec_builder.build()?;
