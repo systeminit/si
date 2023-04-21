@@ -1,5 +1,5 @@
 <template>
-  <VButton2
+  <VButton
     tone="action"
     icon="plus"
     icon-right="chevron--down"
@@ -20,7 +20,7 @@
         {{ fnLabel }}
       </DropdownMenuItem>
     </DropdownMenu>
-  </VButton2>
+  </VButton>
 </template>
 
 <script setup lang="ts">
@@ -29,7 +29,7 @@ import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import {
   DropdownMenu,
   DropdownMenuItem,
-  VButton2,
+  VButton,
 } from "@si/vue-lib/design-system";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import { FuncVariant } from "@/api/sdf/dal/func";

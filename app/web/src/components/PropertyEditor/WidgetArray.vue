@@ -10,7 +10,7 @@
       v-show="isShown && !isCollapsed && !props.disabled"
       class="flex pl-8 pt-4 w-full"
     >
-      <VButton2
+      <VButton
         icon="plus"
         size="xs"
         label="Add to array"
@@ -23,7 +23,7 @@
 
 <script lang="ts" setup>
 import { toRefs } from "vue";
-import { VButton2 } from "@si/vue-lib/design-system";
+import { VButton } from "@si/vue-lib/design-system";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import { AddToArray, PropertyPath } from "@/api/sdf/dal/property_editor";
 import WidgetHeader from "./WidgetHeader.vue";

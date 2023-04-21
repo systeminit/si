@@ -17,7 +17,7 @@
         </VormInput>
 
         <VormInput type="container">
-          <VButton2
+          <VButton
             ref="mergeButtonRef"
             icon="git-merge"
             size="md"
@@ -55,7 +55,7 @@
             required-message="Please choose a name for your change set!"
           />
           <div class="flex flex-row-reverse gap-sm">
-            <VButton2
+            <VButton
               :disabled="validationState.isError"
               tone="success"
               icon="plus-circle"
@@ -86,15 +86,15 @@
           @update:model-value="onSelectChangeSet"
         />
         <Divider label="or" />
-        <VButton2 icon="plus-circle" @click="openCreateModal">
+        <VButton icon="plus-circle" @click="openCreateModal">
           Create a new change set
-        </VButton2>
+        </VButton>
       </Stack>
     </Modal>
 
     <Wipe ref="wipeRef">
       <template #duringWipe>
-        <VButton2
+        <VButton
           icon="loader"
           size="md"
           label="Merging"
@@ -135,7 +135,7 @@ import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import JSConfetti from "js-confetti";
 import {
-  VButton2,
+  VButton,
   Icon,
   VormInput,
   VormInputOption,

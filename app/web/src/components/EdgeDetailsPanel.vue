@@ -28,7 +28,7 @@
           This edge will be removed from your model when this change set is
           merged
         </ErrorMessage>
-        <VButton2
+        <VButton
           tone="shade"
           variant="ghost"
           size="md"
@@ -40,7 +40,7 @@
     </template>
     <!-- <template v-else>
       <div class="p-sm">
-        <VButton2
+        <VButton
           tone="destructive"
           variant="ghost"
           icon="trash"
@@ -57,7 +57,7 @@ import * as _ from "lodash-es";
 import { computed } from "vue";
 import {
   Icon,
-  VButton2,
+  VButton,
   Inline,
   Stack,
   ErrorMessage,

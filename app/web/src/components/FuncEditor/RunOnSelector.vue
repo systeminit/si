@@ -10,8 +10,8 @@
       />
       <VButton
         label="Add"
-        button-rank="secondary"
-        button-type="action"
+        variant="ghost"
+        tone="action"
         size="xs"
         icon="plus"
         :disabled="disabled || addIsDisabled"
@@ -35,7 +35,8 @@
             <VButton
               label=""
               icon="trash"
-              button-rank="tertiary"
+              tone="neutral"
+              variant="transparent"
               :disabled="disabled"
               @click="removeOption(option)"
             />
@@ -48,8 +49,8 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
+import { VButton } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import VButton from "@/components/VButton.vue";
 import { nilId } from "@/utils/nilId";
 
 const props = defineProps<{

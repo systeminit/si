@@ -10,7 +10,7 @@
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <!-- TODO - currently this button doesn't do anything -->
-        <VButton2
+        <VButton
           label="Add Asset"
           tone="action"
           icon="plus"
@@ -38,7 +38,7 @@ import * as _ from "lodash-es";
 import { onMounted } from "vue";
 import {
   ScrollArea,
-  VButton2,
+  VButton,
   RequestStatusMessage,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";

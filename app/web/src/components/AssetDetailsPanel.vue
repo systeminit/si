@@ -9,7 +9,7 @@
       <div
         class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-end gap-2"
       >
-        <VButton2
+        <VButton
           label="Execute"
           :disabled="disabled"
           tone="action"
@@ -17,7 +17,7 @@
           size="md"
           @click="executeAsset"
         />
-        <VButton2
+        <VButton
           label="Clone"
           tone="neutral"
           icon="clipboard-copy"
@@ -116,7 +116,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import {
-  VButton2,
+  VButton,
   VormInput,
   RequestStatusMessage,
   Modal,

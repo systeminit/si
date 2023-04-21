@@ -3,10 +3,9 @@
     <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
       <VButton
         :disabled="disabled"
-        button-rank="primary"
-        button-type="success"
+        tone="success"
         icon="plus"
-        label="Add binding"
+        label="Add Binding"
         size="md"
         @click="openModal()"
       />
@@ -45,19 +44,18 @@
         <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
           <VButton
             :disabled="disabled"
-            button-rank="primary"
-            button-type="neutral"
+            tone="neutral"
             label="Edit Binding"
             size="md"
             @click="openModal(proto.id)"
           />
           <VButton
             :disabled="disabled"
-            button-rank="tertiary"
-            button-type="destructive"
+            variant="transparent"
+            tone="destructive"
             icon="x"
             label="Remove Binding"
-            size="sm"
+            size="md"
             @click="removeBinding(proto.id)"
           />
         </div>
@@ -78,11 +76,11 @@
 <script lang="ts" setup>
 import { computed, inject, ref, Ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { VButton } from "@si/vue-lib/design-system";
 import {
   AttributeAssocations,
   AttributePrototypeView,
 } from "@/store/func/types";
-import VButton from "@/components/VButton.vue";
 import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";

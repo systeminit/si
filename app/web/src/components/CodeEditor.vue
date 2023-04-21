@@ -1,7 +1,7 @@
 <template>
   <div class="w-full h-full ph-no-capture">
     <div class="absolute right-xs top-xs">
-      <VButton2
+      <VButton
         size="xs"
         :tone="vimEnabled ? 'success' : 'neutral'"
         icon="logo-vim"
@@ -23,7 +23,7 @@ import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
-import { useTheme, VButton2 } from "@si/vue-lib/design-system";
+import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import { createTypescriptSource } from "@/utils/typescriptLinter";

@@ -14,7 +14,7 @@
         <SiTextBox :id="newKeyId" v-model="newKey" title="key" />
       </div>
       <div class="flex pt-4 pr-16">
-        <VButton2
+        <VButton
           :disabled="submitDisabled"
           icon="plus"
           size="xs"
@@ -29,7 +29,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, toRefs } from "vue";
-import { VButton2 } from "@si/vue-lib/design-system";
+import { VButton } from "@si/vue-lib/design-system";
 import SiTextBox from "@/components/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import { AddToMap, PropertyPath } from "@/api/sdf/dal/property_editor";

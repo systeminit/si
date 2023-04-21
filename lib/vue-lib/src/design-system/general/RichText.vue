@@ -31,13 +31,12 @@ const hasCodeBlocks = ref(false);
 const containerRef = ref<HTMLDivElement>();
 
 function adjustments() {
-  highlightCode();
+  styleCodeElements();
   adjustLinks();
   adjustImages();
 }
 
-// fairly naive way of doing this... we look for code blocks and replace the code with the highlighted html version
-function highlightCode() {
+function styleCodeElements() {
   if (!containerRef.value) return;
   const codeEls = containerRef.value.querySelectorAll("code");
   if (codeEls.length) hasCodeBlocks.value = true;
@@ -69,7 +68,18 @@ function highlightCode() {
       pasteButton.innerHTML = copyIcon;
       pasteButton.addEventListener("click", () => {
         if(code) {
-          navigator.clipboard.writeText(code);
+          let paste = code;
+
+          // TODO - we're currently manually truncating characters we don't want, better to fix this elsewhere in the future
+          if(paste.substring(0, 2) === '$ ') {
+            paste = paste.substring(2);
+          }
+          while(paste.substring(paste.length - 1) === "\n") {
+            paste = paste.substring(0, paste.length - 1);
+          }
+          // TODO - we're currently manually truncating characters we don't want, better to fix this elsewhere in the future
+
+          navigator.clipboard.writeText(paste);
         }
       });
 

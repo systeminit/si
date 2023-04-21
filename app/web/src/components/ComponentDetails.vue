@@ -32,7 +32,7 @@
         :deleted="selectedComponent.deletedInfo"
       />
       <div class="pr-xs shrink-0">
-        <VButton2
+        <VButton
           v-if="selectedComponent.resource.data"
           icon="refresh"
           size="sm"
@@ -43,7 +43,7 @@
           @click="onClickRefreshButton"
         >
           Resource
-        </VButton2>
+        </VButton>
       </div>
     </div>
 
@@ -53,7 +53,7 @@
           This component will be removed from your model when this change set is
           merged
         </ErrorMessage>
-        <VButton2
+        <VButton
           tone="shade"
           variant="ghost"
           size="md"
@@ -119,7 +119,7 @@ import { computed, onBeforeMount } from "vue";
 import {
   Icon,
   ErrorMessage,
-  VButton2,
+  VButton,
   Stack,
   TabGroup,
   TabGroupItem,

@@ -86,7 +86,7 @@
               <span class="opacity-50">|</span>
             </nav>
 
-            <VButton2
+            <VButton
               class="flex items-center gap-sm children:pointer-events-none"
               variant="transparent"
               tone="shade"
@@ -103,7 +103,7 @@
                 />
                 <Icon v-else name="user-circle" />
               </template>
-            </VButton2>
+            </VButton>
           </template>
         </header>
         <DropdownMenu ref="profileMenuRef" force-align-right>
@@ -120,7 +120,7 @@
 
         <!-- dark/light mode toggle, floating in bottom left -->
         <div class="fixed left-0 bottom-0 p-sm">
-          <VButton2
+          <VButton
             :icon="rootTheme === 'dark' ? 'moon' : 'sun'"
             tone="shade"
             variant="transparent"
@@ -169,7 +169,7 @@ import {
   Icon,
   useThemeContainer,
   userOverrideTheme,
-  VButton2,
+  VButton,
   DropdownMenu,
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";

@@ -102,7 +102,7 @@
       </p>
 
       <div class="flex space-x-sm justify-end">
-        <VButton2 tone="action" @click="closeDeleteBlockedModal"> Ok</VButton2>
+        <VButton tone="action" @click="closeDeleteBlockedModal"> Ok</VButton>
       </div>
     </Stack>
   </Modal>
@@ -131,17 +131,17 @@
       </p>
 
       <div class="flex space-x-sm justify-end">
-        <VButton2
+        <VButton
           icon="x"
           tone="shade"
           variant="ghost"
           @click="confirmDeleteModalRef?.close()"
         >
           Cancel
-        </VButton2>
-        <VButton2 icon="trash" tone="destructive" @click="onConfirmDelete">
+        </VButton>
+        <VButton icon="trash" tone="destructive" @click="onConfirmDelete">
           Confirm
-        </VButton2>
+        </VButton>
       </div>
     </Stack>
   </Modal>
@@ -154,7 +154,7 @@ import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
 import {
-  VButton2,
+  VButton,
   Modal,
   Stack,
   TabGroup,

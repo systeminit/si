@@ -93,7 +93,7 @@
               v-if="TUTORIAL_STEPS[activeStepSlug]"
             />
           </RichText>
-          <VButton2
+          <VButton
             class="w-full mt-lg"
             icon-right="arrow--right"
             variant="solid"
@@ -101,7 +101,7 @@
             @click="stepContinueHandler"
           >
             Continue
-          </VButton2>
+          </VButton>
         </div>
       </div>
     </template>
@@ -118,7 +118,7 @@ import {
   IconNames,
   Inline,
   RichText,
-  VButton2,
+  VButton,
 } from "@si/vue-lib/design-system";
 
 import { RouterLink, useRoute, useRouter } from "vue-router";

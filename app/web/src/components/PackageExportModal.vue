@@ -27,7 +27,7 @@
           class="flex-1"
           :options="schemaVariantOptions"
         />
-        <VButton2
+        <VButton
           label="Add"
           tone="action"
           icon="plus"
@@ -45,7 +45,7 @@
           <div class="pr-2" role="decoration">•</div>
           {{ schemaVariantsById?.[svId]?.schemaName }}
           <div class="ml-auto">
-            <VButton2
+            <VButton
               label=""
               icon="trash"
               @click="removeSchemaVariant(svId)"
@@ -57,7 +57,7 @@
         v-if="exportPkgReqStatus.isError"
         :request-status="exportPkgReqStatus"
       />
-      <VButton2
+      <VButton
         :request-status="exportPkgReqStatus"
         loading-text="Exporting..."
         label="Export"
@@ -74,7 +74,7 @@
 import { ref, computed } from "vue";
 import {
   Modal,
-  VButton2,
+  VButton,
   VormInput,
   useModal,
   Stack,

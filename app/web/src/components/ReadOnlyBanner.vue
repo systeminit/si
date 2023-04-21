@@ -27,7 +27,7 @@
         </div>
       </div>
     </div>
-    <VButton2
+    <VButton
       v-if="showRefreshAllButton"
       icon="refresh"
       variant="ghost"
@@ -35,13 +35,13 @@
       loading-text="Refreshing..."
       :loading="refreshing"
       @click="onClickRefreshButton"
-      >Resources</VButton2
+      >Resources</VButton
     >
   </div>
 </template>
 
 <script lang="ts" setup>
-import { VButton2 } from "@si/vue-lib/design-system";
+import { VButton } from "@si/vue-lib/design-system";
 import { ref, onBeforeUnmount } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 
