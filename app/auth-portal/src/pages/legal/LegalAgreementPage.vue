@@ -5,7 +5,7 @@
 
     <RichText class="mb-xl">
       <template v-if="viewOnlyMode">
-        <h1>System Initiative Legal Docs</h1>
+        <h1>System Initiative Legal Documents</h1>
         <p><i>Last updated 2023-03-30</i></p>
       </template>
       <template v-else>
