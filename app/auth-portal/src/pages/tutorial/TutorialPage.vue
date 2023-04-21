@@ -12,8 +12,8 @@
           GitHub! It may take us an hour or more to process things, depending on
           our availability. If you have any questions, or run into trouble, you
           can email us at
-          <a href="mailto:preview@systeminit.com" target="_blank"
-            >preview@systeminit.com</a
+          <a href="mailto:help@systeminit.com" target="_blank"
+            >help@systeminit.com</a
           >, or hit us up on
           <a href="https://discord.gg/system-init">discord</a>.
         </p>
