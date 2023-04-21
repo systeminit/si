@@ -9,8 +9,9 @@ mod prop;
 mod schema;
 mod validation;
 mod variant;
+mod workflow;
 
-pub use {func::*, leaf_function::*, prop::*, schema::*, validation::*, variant::*};
+pub use {func::*, leaf_function::*, prop::*, schema::*, validation::*, variant::*, workflow::*};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

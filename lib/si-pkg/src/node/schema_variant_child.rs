@@ -6,12 +6,13 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{LeafFunctionSpec, PropSpec};
+use crate::{LeafFunctionSpec, PropSpec, WorkflowSpec};
 
 use super::PkgNode;
 
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
+const VARIANT_CHILD_TYPE_WORKFLOWS: &str = "workflows";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -20,12 +21,14 @@ const KEY_KIND_STR: &str = "kind";
 pub enum SchemaVariantChild {
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
+    Workflows(Vec<WorkflowSpec>),
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum SchemaVariantChildNode {
     Domain,
     LeafFunctions,
+    Workflows,
 }
 
 impl SchemaVariantChildNode {
@@ -33,6 +36,7 @@ impl SchemaVariantChildNode {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
 }
@@ -42,6 +46,7 @@ impl NameStr for SchemaVariantChildNode {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
 }
@@ -63,6 +68,7 @@ impl ReadBytes for SchemaVariantChildNode {
         let node = match kind_str.as_str() {
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
+            VARIANT_CHILD_TYPE_WORKFLOWS => Self::Workflows,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid schema variant child kind: {invalid_kind}"
@@ -89,20 +95,26 @@ impl NodeChild for SchemaVariantChild {
                     vec![domain],
                 )
             }
-            Self::LeafFunctions(entries) => {
-                let mut children = Vec::new();
-                for entry in entries {
-                    children
-                        .push(Box::new(entry.clone())
-                            as Box<dyn NodeChild<NodeType = Self::NodeType>>);
-                }
-
-                NodeWithChildren::new(
-                    NodeKind::Tree,
-                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::LeafFunctions),
-                    children,
-                )
-            }
+            Self::LeafFunctions(entries) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::LeafFunctions),
+                entries
+                    .iter()
+                    .map(|entry| {
+                        Box::new(entry.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::Workflows(workflows) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Workflows),
+                workflows
+                    .iter()
+                    .map(|workflow| {
+                        Box::new(workflow.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
         }
     }
 }

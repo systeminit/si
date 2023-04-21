@@ -4,7 +4,7 @@ use std::future::Future;
 
 use url::Url;
 
-use super::{PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, Source};
+use super::{PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgWorkflow, Source};
 
 use crate::node::{PkgNode, PropChildNode, SchemaVariantChildNode};
 
@@ -56,6 +56,35 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn color(&self) -> Option<&str> {
         self.color.as_deref()
+    }
+
+    pub fn workflows(&self) -> PkgResult<Vec<SiPkgWorkflow>> {
+        let child_idxs = self
+            .source
+            .graph
+            .neighbors_directed(self.source.node_idx, Outgoing)
+            .find(|node_idx| {
+                matches!(
+                    &self.source.graph[*node_idx].inner(),
+                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::Workflows)
+                )
+            })
+            .ok_or(SiPkgError::CategoryNotFound(
+                SchemaVariantChildNode::Workflows.kind_str(),
+            ))?;
+
+        let child_node_idxs: Vec<_> = self
+            .source
+            .graph
+            .neighbors_directed(child_idxs, Outgoing)
+            .collect();
+
+        let mut workflows = vec![];
+        for child_idx in child_node_idxs {
+            workflows.push(SiPkgWorkflow::from_graph(self.source.graph, child_idx)?);
+        }
+
+        Ok(workflows)
     }
 
     pub fn leaf_functions(&self) -> PkgResult<Vec<SiPkgLeafFunction>> {

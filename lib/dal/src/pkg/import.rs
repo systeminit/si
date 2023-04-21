@@ -1,8 +1,8 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
-use object_tree::Hash;
 use si_pkg::{
-    SiPkg, SiPkgError, SiPkgFunc, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgValidation,
+    FuncUniqueId, SiPkg, SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
+    SiPkgSchemaVariant, SiPkgValidation, SiPkgWorkflow,
 };
 
 use crate::{
@@ -13,11 +13,14 @@ use crate::{
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
-    DalContext, Func, FuncArgument, FuncError, Prop, PropId, PropKind, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, StandardModel,
+    ActionPrototype, ActionPrototypeContext, DalContext, Func, FuncArgument, FuncError, Prop,
+    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
+
+type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
 
 pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str) -> PkgResult<()> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
@@ -33,7 +36,7 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
 
     let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
 
-    let mut funcs_by_unique_id = HashMap::new();
+    let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {
         let unique_id = func_spec.unique_id();
         let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
@@ -132,7 +135,7 @@ async fn create_schema(
     ctx: &DalContext,
     schema_spec: SiPkgSchema<'_>,
     installed_pkg_id: InstalledPkgId,
-    func_map: &HashMap<Hash, Func>,
+    func_map: &FuncMap,
 ) -> PkgResult<()> {
     let hash = schema_spec.hash().to_string();
     let existing_schema =
@@ -183,7 +186,86 @@ struct PropVisitContext<'a, 'b> {
     pub ctx: &'a DalContext,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
-    pub func_map: &'b HashMap<Hash, Func>,
+    pub func_map: &'b FuncMap,
+}
+
+async fn create_leaf_function(
+    ctx: &DalContext,
+    leaf_func: SiPkgLeafFunction<'_>,
+    schema_variant_id: SchemaVariantId,
+    func_map: &FuncMap,
+) -> PkgResult<()> {
+    let inputs: Vec<LeafInputLocation> = leaf_func
+        .inputs()
+        .iter()
+        .map(|input| input.into())
+        .collect();
+
+    match func_map.get(&leaf_func.func_unique_id()) {
+        Some(func) => {
+            SchemaVariant::upsert_leaf_function(
+                ctx,
+                schema_variant_id,
+                None,
+                leaf_func.leaf_kind().into(),
+                &inputs,
+                func,
+            )
+            .await?;
+        }
+        None => {
+            return Err(PkgError::MissingFuncUniqueId(
+                leaf_func.func_unique_id().to_string(),
+            ))
+        }
+    };
+
+    Ok(())
+}
+
+async fn create_workflow(
+    ctx: &DalContext,
+    workflow_spec: SiPkgWorkflow<'_>,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    func_map: &FuncMap,
+) -> PkgResult<()> {
+    let func =
+        func_map
+            .get(&workflow_spec.func_unique_id())
+            .ok_or(PkgError::MissingFuncUniqueId(
+                workflow_spec.func_unique_id().to_string(),
+            ))?;
+
+    let workflow_proto = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        WorkflowPrototypeContext {
+            schema_id,
+            schema_variant_id,
+            ..Default::default()
+        },
+        workflow_spec.title(),
+    )
+    .await?;
+
+    for action_spec in workflow_spec.actions()? {
+        ActionPrototype::new(
+            ctx,
+            *workflow_proto.id(),
+            action_spec.name(),
+            action_spec.kind().into(),
+            ActionPrototypeContext {
+                schema_id,
+                schema_variant_id,
+                ..Default::default()
+            },
+        )
+        .await?;
+    }
+
+    Ok(())
 }
 
 async fn create_schema_variant(
@@ -191,7 +273,7 @@ async fn create_schema_variant(
     schema: &mut Schema,
     variant_spec: SiPkgSchemaVariant<'_>,
     installed_pkg_id: InstalledPkgId,
-    func_map: &HashMap<Hash, Func>,
+    func_map: &FuncMap,
 ) -> PkgResult<()> {
     let hash = variant_spec.hash().to_string();
     let existing_schema_variant =
@@ -233,30 +315,12 @@ async fn create_schema_variant(
             schema_variant.finalize(ctx, None).await?;
 
             for leaf_func in variant_spec.leaf_functions()? {
-                let inputs: Vec<LeafInputLocation> = leaf_func
-                    .inputs()
-                    .iter()
-                    .map(|input| input.into())
-                    .collect();
+                create_leaf_function(ctx, leaf_func, *schema_variant.id(), func_map).await?;
+            }
 
-                match func_map.get(&leaf_func.func_unique_id()) {
-                    Some(func) => {
-                        SchemaVariant::upsert_leaf_function(
-                            ctx,
-                            *schema_variant.id(),
-                            None,
-                            leaf_func.leaf_kind().into(),
-                            &inputs,
-                            func,
-                        )
-                        .await?;
-                    }
-                    None => {
-                        return Err(PkgError::MissingFuncUniqueId(
-                            leaf_func.func_unique_id().to_string(),
-                        ))
-                    }
-                }
+            for workflow in variant_spec.workflows()? {
+                create_workflow(ctx, workflow, *schema.id(), *schema_variant.id(), func_map)
+                    .await?;
             }
 
             *schema_variant.id()
