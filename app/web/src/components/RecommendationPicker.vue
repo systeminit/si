@@ -21,14 +21,14 @@
               @update:model-value="selectAll"
               >Select All
             </VormInput>
-            <VButton2
+            <VButton
               :disabled="disableApply"
               icon="tools"
               tone="action"
               @click="runFixes"
             >
               Apply
-            </VButton2>
+            </VButton>
           </div>
           <div
             :class="
@@ -150,7 +150,7 @@ import clsx from "clsx";
 import {
   TabGroup,
   TabGroupItem,
-  VButton2,
+  VButton,
   Icon,
   VormInput,
   themeClasses,

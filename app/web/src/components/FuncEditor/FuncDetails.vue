@@ -24,7 +24,7 @@
               <div
                 class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
               >
-                <VButton2
+                <VButton
                   class="--tone-success"
                   icon="save"
                   size="md"
@@ -35,7 +35,7 @@
                   @click="execFunc"
                 />
 
-                <VButton2
+                <VButton
                   class="--tone-neutral"
                   :disabled="!isRevertible"
                   icon="x"
@@ -164,7 +164,7 @@ import * as _ from "lodash-es";
 import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  VButton2,
+  VButton,
   TabGroup,
   TabGroupItem,
   LoadingMessage,

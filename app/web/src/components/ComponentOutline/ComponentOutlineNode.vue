@@ -78,7 +78,7 @@
         <div class="ml-auto flex flex-none">
           <!-- refresh resource button -->
           <div class="pr-xs group-hover:block hidden">
-            <VButton2
+            <VButton
               v-if="component.resource.data"
               icon="refresh"
               size="xs"
@@ -135,7 +135,7 @@ import { computed, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
-import { themeClasses, Icon, VButton2 } from "@si/vue-lib/design-system";
+import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";

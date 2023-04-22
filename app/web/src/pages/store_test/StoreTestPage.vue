@@ -6,17 +6,17 @@
     <Stack>
       <h2>Store test!</h2>
       <Inline>
-        <VButton2 icon="plus-circle" tone="success" @click="addWidget"
-          >Add widget</VButton2
+        <VButton icon="plus-circle" tone="success" @click="addWidget"
+          >Add widget</VButton
         >
-        <!-- <VButton2
+        <!-- <VButton
           icon="minus-circle"
           tone="destructive"
           :disabled="numWidgets === 0"
           @click=""
         >
           Remove widget
-        </VButton2> -->
+        </VButton> -->
       </Inline>
       <CounterWidget
         v-for="i in _.keys(widgets)"
@@ -33,7 +33,7 @@
 /* eslint-disable */
 import { computed, reactive, ref } from "vue";
 import * as _ from "lodash-es";
-import { VButton2, Stack, Inline } from "@si/vue-lib/design-system";
+import { VButton, Stack, Inline } from "@si/vue-lib/design-system";
 import { useCounterStore, useCounterStore2 } from "@/store/counter.store";
 import CounterWidget from "./CounterWidget.vue";
 

@@ -13,14 +13,14 @@
         {{ countDownSeconds === 1 ? "second" : "seconds" }}
       </template>
     </p>
-    <VButton2 :href="LOGIN_URL" size="lg">Log in or Sign up!</VButton2>
+    <VButton :href="LOGIN_URL" size="lg">Log in or Sign up!</VButton>
   </RichText>
 </template>
 
 <script setup lang="ts">
 import { onBeforeMount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { RichText, VButton2 } from "@si/vue-lib/design-system";
+import { RichText, VButton } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useAuthStore } from "@/store/auth.store";
 

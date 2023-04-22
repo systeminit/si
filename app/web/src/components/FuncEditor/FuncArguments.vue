@@ -20,8 +20,7 @@
       />
       <VButton
         label="Add"
-        button-rank="primary"
-        button-type="success"
+        tone="success"
         :disabled="disabled"
         @click="addArgument"
       />
@@ -44,9 +43,8 @@
           @change="saveArguments"
         />
         <VButton
-          label="Del"
-          button-rank="primary"
-          button-type="destructive"
+          label="Delete"
+          tone="destructive"
           :disabled="disabled"
           @click="deleteArgument(arg.name)"
         />
@@ -57,9 +55,8 @@
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { Inline, VormInput } from "@si/vue-lib/design-system";
+import { Inline, VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
-import VButton from "@/components/VButton.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributeAssocations } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";

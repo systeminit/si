@@ -7,7 +7,7 @@
       <div class="whitespace-nowrap text-ellipsis overflow-hidden">
         Components Menu
       </div>
-      <VButton2
+      <VButton
         icon="filter"
         size="sm"
         class="justify-self-end"
@@ -56,7 +56,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import {
-  VButton2,
+  VButton,
   DropdownMenu,
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";

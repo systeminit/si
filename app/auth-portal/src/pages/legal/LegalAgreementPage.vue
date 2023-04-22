@@ -59,7 +59,7 @@
             <Component :is="doc.component" />
           </RichText>
           <div class="mt-md">
-            <VButton2
+            <VButton
               icon="download"
               variant="soft"
               tone="shade"
@@ -70,7 +70,7 @@
               }"
               target="_blank"
               >Print / Download
-            </VButton2>
+            </VButton>
           </div>
         </div>
 
@@ -78,7 +78,7 @@
           <VormInput v-model="userAgreed" type="checkbox"
             >I have read and agree to the terms above
           </VormInput>
-          <VButton2
+          <VButton
             variant="solid"
             icon="arrow--right"
             :disabled="disableContinueButton"
@@ -86,7 +86,7 @@
             @click="agreeButtonHandler"
           >
             Agree & Continue
-          </VButton2>
+          </VButton>
         </Stack>
       </div>
     </div>
@@ -107,7 +107,7 @@ import {
 import {
   RichText,
   Stack,
-  VButton2,
+  VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";

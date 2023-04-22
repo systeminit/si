@@ -19,7 +19,7 @@
     </Stack>
 
     <!-- <div class="p-xs">
-      <VButton2
+      <VButton
         v-if="selectedEdge.changeStatus !== 'deleted'"
         tone="destructive"
         icon="trash"

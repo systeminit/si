@@ -11,7 +11,7 @@ export { default as LoadingMessage } from "./general/LoadingMessage.vue";
 export { default as RequestStatusMessage } from "./general/RequestStatusMessage.vue";
 export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";
-export { default as VButton2 } from "./general/VButton2.vue";
+export { default as VButton } from "./general/VButton.vue";
 
 // ./icons
 export { default as Icon } from "./icons/Icon.vue";

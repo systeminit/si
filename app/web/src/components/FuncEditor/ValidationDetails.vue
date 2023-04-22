@@ -19,9 +19,9 @@
         :options="propOptions"
       />
       <VButton
-        label="Add"
-        button-rank="primary"
         icon="plus"
+        label="Add"
+        tone="neutral"
         :disabled="disabled"
         @click="addValidation"
       />
@@ -39,9 +39,10 @@
         {{ protoView.schemaVariantName }}: {{ protoView.propName }}
         <VButton
           class="flex-none"
+          tone="neutral"
+          variant="transparent"
           label=""
           icon="trash"
-          button-rank="tertiary"
           :disabled="disabled"
           @click="deleteValidation(protoView.proto)"
         />
@@ -54,13 +55,13 @@
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
+import { VButton } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import {
   ValidationAssociations,
   ValidationPrototypeView,
 } from "@/store/func/types";
-import VButton from "@/components/VButton.vue";
 
 const funcStore = useFuncStore();
 const {

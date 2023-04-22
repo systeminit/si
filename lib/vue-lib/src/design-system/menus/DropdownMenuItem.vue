@@ -123,7 +123,7 @@ function onMouseLeave() {
 }
 
 // some attributes need to get set only if the item is a router link or <a>
-// similar logic to VButton2 - maybe can DRY this up at some point
+// similar logic to VButton - maybe can DRY this up at some point
 const dynamicAttrs = computed(() => ({
   // set the "to" prop if we are in router link mode
   ...(htmlTagOrComponentType.value === RouterLink && {

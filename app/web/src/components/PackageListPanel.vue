@@ -8,7 +8,7 @@
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
-        <VButton2
+        <VButton
           label="Package"
           tone="action"
           icon="plus"
@@ -61,7 +61,7 @@ import {
   Modal,
   RequestStatusMessage,
   ScrollArea,
-  VButton2,
+  VButton,
 } from "@si/vue-lib/design-system";
 import SiPackageListItem from "@/components/SiPackageListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";

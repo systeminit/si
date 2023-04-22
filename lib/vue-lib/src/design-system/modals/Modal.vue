@@ -47,7 +47,7 @@
                 <slot />
 
                 <div v-if="type === 'save'" class="py-3 flex justify-between">
-                  <VButton2
+                  <VButton
                     tone="destructive"
                     button-rank="tertiary"
                     icon="trash"
@@ -55,7 +55,7 @@
                     size="xs"
                     @click="close"
                   />
-                  <VButton2
+                  <VButton
                     :disabled="disableSave"
                     tone="success"
                     icon="check"
@@ -109,7 +109,7 @@ import {
 } from "@headlessui/vue";
 import { PropType, toRef, ref } from "vue";
 import clsx from "clsx";
-import { Icon, VButton2 } from "..";
+import { Icon, VButton } from "..";
 import { useThemeContainer } from "../utils/theme_tools";
 
 const props = defineProps({

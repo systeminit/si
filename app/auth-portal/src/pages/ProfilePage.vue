@@ -49,24 +49,24 @@
                     :src="draftUser.pictureUrl"
                     class="rounded-full w-xl h-xl"
                   />
-                  <VButton2
+                  <VButton
                     tone="destructive"
                     size="xs"
                     variant="ghost"
                     @click="clearPicture"
                     >Clear Picture
-                  </VButton2>
+                  </VButton>
                 </div>
                 <div v-else class="h-xl items-center flex flex-row gap-sm">
                   <div class="italic text-sm">No image set.</div>
-                  <VButton2
+                  <VButton
                     v-if="storeUser?.pictureUrl"
                     tone="action"
                     size="xs"
                     variant="ghost"
                     @click="restorePicture"
                     >Restore Picture
-                  </VButton2>
+                  </VButton>
                 </div>
 
                 <!--
@@ -122,7 +122,7 @@
                 regex-message="Invalid discord tag"
               />
 
-              <VButton2
+              <VButton
                 icon-right="chevron--right"
                 :disabled="validationState.isError"
                 :request-status="updateUserReqStatus"
@@ -133,7 +133,7 @@
                 @click="saveHandler"
               >
                 Save
-              </VButton2>
+              </VButton>
             </Stack>
           </Stack>
         </form>
@@ -154,7 +154,7 @@ import {
   Tiles,
   Stack,
   useValidatedInputGroup,
-  VButton2,
+  VButton,
   VormInput,
   RichText,
 } from "@si/vue-lib/design-system";

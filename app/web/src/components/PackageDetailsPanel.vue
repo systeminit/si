@@ -11,7 +11,7 @@
       <div class="font-bold truncate leading-relaxed">
         {{ selectedPackage.name }}
       </div>
-      <VButton2
+      <VButton
         :disabled="disableInstallButton"
         :loading="disableInstallButton"
         :label="selectedPackage.installed ? 'Remove' : 'Install'"
@@ -30,7 +30,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 
-import { VButton2, RequestStatusMessage } from "@si/vue-lib/design-system";
+import { VButton, RequestStatusMessage } from "@si/vue-lib/design-system";
 import { usePackageStore } from "@/store/package.store";
 
 const packageStore = usePackageStore();
