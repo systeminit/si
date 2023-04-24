@@ -63,12 +63,13 @@ function darwin-bootstrap {
         butane
         coreutils
         git
+        jq
         kubeval
         libtool
         make
+        pkg-config
         protobuf
         skopeo
-        jq
     )
 
     brew update
@@ -84,7 +85,10 @@ function arch-bootstrap {
         aws-cli
         base-devel
         git
+        jq
         make
+        openssl
+        pkgconf
         protobuf
         skopeo
         wget
@@ -104,8 +108,11 @@ function fedora-bootstrap {
         butane
         git
         golang-github-instrumenta-kubeval
+        jq
         lld
         make
+        openssl
+        pkgconf
         protobuf-compiler
         skopeo
         wget
@@ -122,9 +129,12 @@ function pop-bootstrap {
     local pkgs=(
         build-essential
         git
+        jq
         libprotobuf-dev
+        libssl-dev
         lld
         make
+        pkg-config
         protobuf-compiler
         wget
     )
@@ -170,13 +180,16 @@ function ubuntu-bootstrap {
     local pkgs=(
         build-essential
         git
+        jq
         libprotobuf-dev
+        libssl-dev
         lld
         make
+        pkg-config
         protobuf-compiler
         skopeo
+        unzip
         wget
-	unzip
     )
 
     . /etc/os-release
