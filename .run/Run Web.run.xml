@@ -1,8 +1,14 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run Web" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile">
-    <makefile filename="$PROJECT_DIR$/Makefile" target="run//app/web" workingDirectory="$PROJECT_DIR$" arguments="">
-      <envs />
-    </makefile>
+  <configuration default="false" name="Run Web" type="ShConfigurationType">
+    <option name="SCRIPT_TEXT" value="make run//app/web" />
+    <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
+    <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
+    <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="INDEPENDENT_INTERPRETER_PATH" value="true" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="EXECUTE_IN_TERMINAL" value="true" />
+    <option name="EXECUTE_SCRIPT_FILE" value="false" />
+    <envs />
     <method v="2" />
   </configuration>
 </component>
