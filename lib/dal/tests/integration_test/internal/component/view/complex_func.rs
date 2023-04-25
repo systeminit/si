@@ -3,10 +3,9 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBinding, InternalProvider, PropKind, SocketArity, StandardModel,
+    FuncBinding, InternalProvider, Prop, PropKind, SocketArity, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -22,13 +21,38 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let ragnarok_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "ragnarok", root_prop.domain_prop_id)
-            .await;
-    let kratos_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "kratos", *ragnarok_prop.id()).await;
-    let atreus_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "atreus", *ragnarok_prop.id()).await;
+    let schema_variant_id = *schema_variant.id();
+
+    let ragnarok_prop = Prop::new(
+        ctx,
+        "ragnarok",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let kratos_prop = Prop::new(
+        ctx,
+        "kratos",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*ragnarok_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let atreus_prop = Prop::new(
+        ctx,
+        "atreus",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*ragnarok_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
 
     // Setup the external provider and finalize.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
@@ -304,21 +328,62 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // Create direct children of domain, including a map of objects.
-    let concat_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "concat", root_prop.domain_prop_id).await;
-    let map_prop =
-        create_prop_and_set_parent(ctx, PropKind::Map, "map", root_prop.domain_prop_id).await;
+    let concat_prop = Prop::new(
+        ctx,
+        "concat",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let map_prop = Prop::new(
+        ctx,
+        "map",
+        PropKind::Map,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
     let map_prop_id = *map_prop.id();
 
     // Setup the map and finalize.
-    let map_item_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "item", map_prop_id).await;
-    let _poop_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "poop", *map_item_prop.id()).await;
-    let _canoe_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "canoe", *map_item_prop.id()).await;
+    let map_item_prop = Prop::new(
+        ctx,
+        "item",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(map_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let _poop_prop = Prop::new(
+        ctx,
+        "poop",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*map_item_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let _canoe_prop = Prop::new(
+        ctx,
+        "canoe",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*map_item_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await

@@ -38,20 +38,35 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        let image_prop = Prop::new(ctx, "image", PropKind::String, None).await?;
-        image_prop
-            .set_parent_prop(ctx, root_prop.domain_prop_id)
-            .await?;
+        let image_prop = Prop::new(
+            ctx,
+            "image",
+            PropKind::String,
+            None,
+            *schema_variant.id(),
+            Some(root_prop.domain_prop_id),
+        )
+        .await?;
 
         // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
-        let exposed_ports_prop = Prop::new(ctx, "ExposedPorts", PropKind::Array, None).await?;
-        exposed_ports_prop
-            .set_parent_prop(ctx, root_prop.domain_prop_id)
-            .await?;
-        let exposed_port_prop = Prop::new(ctx, "ExposedPort", PropKind::String, None).await?;
-        exposed_port_prop
-            .set_parent_prop(ctx, *exposed_ports_prop.id())
-            .await?;
+        let exposed_ports_prop = Prop::new(
+            ctx,
+            "ExposedPorts",
+            PropKind::Array,
+            None,
+            *schema_variant.id(),
+            Some(root_prop.domain_prop_id),
+        )
+        .await?;
+        let _exposed_port_prop = Prop::new(
+            ctx,
+            "ExposedPort",
+            PropKind::String,
+            None,
+            *schema_variant.id(),
+            Some(*exposed_ports_prop.id()),
+        )
+        .await?;
 
         // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
         // This means if someone updates this function the properties will be invalid

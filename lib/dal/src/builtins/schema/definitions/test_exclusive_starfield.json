@@ -1,4 +1,30 @@
 {
+  "props": [
+    {
+      "name": "freestar",
+      "kind": "string"
+    },
+    {
+      "name": "universe",
+      "kind": "object",
+      "children": [
+        {
+          "name": "galaxies",
+          "kind": "array",
+          "entry": {
+            "name": "galaxy",
+            "kind": "object",
+            "children": [
+              {
+                "name": "sun",
+                "kind": "string"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
   "inputSockets": [
     {
       "name": "input"

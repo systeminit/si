@@ -1,6 +1,6 @@
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    DalContext, InternalProvider, Prop, PropId, RootPropChild, StandardModel,
+    DalContext, InternalProvider, Prop, PropId, RootPropChild, Schema, StandardModel,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -35,6 +35,117 @@ async fn set_schema(ctx: &DalContext) {
         .expect("cannot unassociate variant with schema");
     let attached_schema = variant.schema(ctx).await.expect("cannot get schema");
     assert_eq!(attached_schema, None);
+}
+
+#[test]
+async fn find_prop_in_tree(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("could not find default schema variant for name");
+    let schema_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not get default variant");
+    let root_prop = schema_variant
+        .root_prop(ctx)
+        .await
+        .expect("could not get root prop")
+        .expect("no root prop found");
+
+    // Find the target prop without using the query.
+    let domain_prop = root_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "domain")
+        .expect("could not find prop");
+    let freestar_prop = domain_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "freestar")
+        .expect("could not find prop");
+
+    // Find the target prop with the query.
+    let prop_from_query = SchemaVariant::find_prop_in_tree(
+        ctx,
+        *schema_variant.id(),
+        &["root", "domain", "freestar"],
+    )
+    .await
+    .expect("could not find prop in tree");
+    let prop_from_self = schema_variant
+        .find_prop(ctx, &["root", "domain", "freestar"])
+        .await
+        .expect("could not find prop in tree");
+
+    // Ensure everything looks as expected.
+    assert_eq!(
+        *freestar_prop.id(),   // expected
+        *prop_from_query.id(), // actual
+    );
+    assert_eq!(
+        *freestar_prop.id(),  // expected
+        *prop_from_self.id(), // actual
+    );
+
+    // Find the target prop without using the query.
+    let universe_prop = domain_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "universe")
+        .expect("could not find prop");
+    let galaxies_prop = universe_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "galaxies")
+        .expect("could not find prop");
+    let galaxy_prop = galaxies_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "galaxy")
+        .expect("could not find prop");
+    let sun_prop = galaxy_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props")
+        .into_iter()
+        .find(|p| p.name() == "sun")
+        .expect("could not find prop");
+
+    // Find the target prop with the query.
+    let prop_from_query = SchemaVariant::find_prop_in_tree(
+        ctx,
+        *schema_variant.id(),
+        &["root", "domain", "universe", "galaxies", "galaxy", "sun"],
+    )
+    .await
+    .expect("could not find prop in tree");
+    let prop_from_self = schema_variant
+        .find_prop(
+            ctx,
+            &["root", "domain", "universe", "galaxies", "galaxy", "sun"],
+        )
+        .await
+        .expect("could not find prop in tree");
+
+    // Ensure everything looks as expected.
+    assert_eq!(
+        *sun_prop.id(),        // expected
+        *prop_from_query.id(), // actual
+    );
+    assert_eq!(
+        *sun_prop.id(),       // expected
+        *prop_from_self.id(), // actual
+    );
 }
 
 #[test]

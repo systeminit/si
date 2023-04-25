@@ -426,15 +426,11 @@ async fn create_prop(
             SiPkgProp::Object { .. } => PropKind::Object,
         },
         None,
+        ctx.schema_variant_id,
+        parent_prop_id,
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
-
-    if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx.ctx, parent_prop_id)
-            .await
-            .map_err(SiPkgError::visit_prop)?;
-    }
 
     for validation_spec in spec.validations()? {
         create_prop_validation(validation_spec, *prop.id(), ctx).await?;

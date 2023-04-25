@@ -3,9 +3,8 @@ use dal::{
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaVariant, StandardModel,
 };
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
@@ -80,18 +79,43 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
     let base_prototype_context = AttributeContext::builder();
+    let schema_variant_id = *schema_variant.id();
 
     // {
     //   albums: [
     //     { String: String, },
     //   ]
     // }
-    let albums_prop =
-        create_prop_and_set_parent(ctx, PropKind::Array, "albums_array", root.domain_prop_id).await;
-    let album_prop =
-        create_prop_and_set_parent(ctx, PropKind::Map, "album_object", *albums_prop.id()).await;
-    let hash_key_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "album_hash_key", *album_prop.id()).await;
+    let albums_prop = Prop::new(
+        ctx,
+        "albums_array",
+        PropKind::Array,
+        None,
+        schema_variant_id,
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let album_prop = Prop::new(
+        ctx,
+        "album_object",
+        PropKind::Map,
+        None,
+        schema_variant_id,
+        Some(*albums_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let hash_key_prop = Prop::new(
+        ctx,
+        "album_hash_key",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*album_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await
@@ -317,9 +341,25 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
 /// Test attribute prototype removal corresponding to a least specific context.
 #[test]
 async fn remove_least_specific(ctx: &DalContext) {
-    let prop = Prop::new(ctx, "toddhoward", PropKind::String, None)
+    let schema = Schema::find_by_name(ctx, "starfield")
         .await
-        .expect("could not create prop");
+        .expect("could not find schema");
+    let schema_variant_id = *schema
+        .default_schema_variant_id()
+        .expect("could not find default schema variant id");
+    let domain_prop = SchemaVariant::find_prop_in_tree(ctx, schema_variant_id, &["root", "domain"])
+        .await
+        .expect("could not find prop");
+    let prop = Prop::new(
+        ctx,
+        "toddhoward",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*domain_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
 
     let context = AttributeContextBuilder::new()
         .set_prop_id(*prop.id())
@@ -352,7 +392,16 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let prop = create_prop_and_set_parent(ctx, PropKind::String, "god", root.domain_prop_id).await;
+    let prop = Prop::new(
+        ctx,
+        "god",
+        PropKind::String,
+        None,
+        *schema_variant.id(),
+        Some(root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
     schema_variant
         .finalize(ctx, None)
         .await

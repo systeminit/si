@@ -11,9 +11,7 @@ use dal::{
     PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::test;
-use dal_test::test_harness::{
-    create_prop_and_set_parent, create_schema, create_schema_variant_with_root,
-};
+use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -24,11 +22,20 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // domain: Object
     // └─ poop: String
-    let poop_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "poop", root_prop.domain_prop_id).await;
+    let poop_prop = Prop::new(
+        ctx,
+        "poop",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
 
     // Create code prototype(s).
     let mut func = Func::new(
@@ -164,13 +171,16 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*navi_schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let ange1_prop = create_prop_and_set_parent(
+    let ange1_prop = Prop::new(
         ctx,
-        PropKind::String,
         "ange1",
-        navi_root_prop.domain_prop_id,
+        PropKind::String,
+        None,
+        *navi_schema_variant.id(),
+        Some(navi_root_prop.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
 
     let mut kru_schema = Schema::new(ctx, "kru", &ComponentKind::Standard)
         .await
@@ -181,13 +191,16 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*kru_schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let _melser_prop = create_prop_and_set_parent(
+    let _melser_prop = Prop::new(
         ctx,
-        PropKind::String,
         "melser",
-        kru_root_prop.domain_prop_id,
+        PropKind::String,
+        None,
+        *kru_schema_variant.id(),
+        Some(kru_root_prop.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
 
     // Create two code generation funcs.
     let code = "function generateYAML(input) {

@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider, InternalProvider,
-    PropKind, StandardModel,
+    Prop, PropKind, StandardModel,
 };
 use dal_test::{
     helpers::{component_payload::ComponentPayload, setup_identity_func},
     test,
-    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -335,18 +335,43 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // "esp"
     // domain: Object
     // └─ object: Object
     //    ├─ source: String
     //    └─ intermediate: String
-    let object_prop =
-        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
-    let source_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "source", *object_prop.id()).await;
-    let intermediate_prop =
-        create_prop_and_set_parent(ctx, PropKind::String, "intermediate", *object_prop.id()).await;
+    let object_prop = Prop::new(
+        ctx,
+        "object",
+        PropKind::Object,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let source_prop = Prop::new(
+        ctx,
+        "source",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
+    let intermediate_prop = Prop::new(
+        ctx,
+        "intermediate",
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
 
     schema_variant
         .finalize(ctx, None)
@@ -418,17 +443,21 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
 
     // "swings"
     // domain: Object
     // └─ destination: string
-    let destination_prop = create_prop_and_set_parent(
+    let destination_prop = Prop::new(
         ctx,
-        PropKind::String,
         "destination",
-        root_prop.domain_prop_id,
+        PropKind::String,
+        None,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
     )
-    .await;
+    .await
+    .expect("could not create prop");
 
     schema_variant
         .finalize(ctx, None)
@@ -486,27 +515,36 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let source_object_prop = create_prop_and_set_parent(
+    let source_object_prop = Prop::new(
         ctx,
-        PropKind::Object,
         "base_object",
-        source_root.domain_prop_id,
+        PropKind::Object,
+        None,
+        *source_schema_variant.id(),
+        Some(source_root.domain_prop_id),
     )
-    .await;
-    let source_foo_prop = create_prop_and_set_parent(
+    .await
+    .expect("could not create prop");
+    let source_foo_prop = Prop::new(
         ctx,
-        PropKind::String,
         "foo_string",
-        *source_object_prop.id(),
-    )
-    .await;
-    let source_bar_prop = create_prop_and_set_parent(
-        ctx,
         PropKind::String,
-        "bar_string",
-        *source_object_prop.id(),
+        None,
+        *source_schema_variant.id(),
+        Some(*source_object_prop.id()),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let source_bar_prop = Prop::new(
+        ctx,
+        "bar_string",
+        PropKind::String,
+        None,
+        *source_schema_variant.id(),
+        Some(*source_object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     source_schema_variant
         .finalize(ctx, None)
         .await
@@ -553,34 +591,46 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let destination_parent_object_prop = create_prop_and_set_parent(
+    let destination_parent_object_prop = Prop::new(
         ctx,
-        PropKind::Object,
         "parent_object",
-        destination_root.domain_prop_id,
-    )
-    .await;
-    let destination_object_prop = create_prop_and_set_parent(
-        ctx,
         PropKind::Object,
+        None,
+        *destination_schema_variant.id(),
+        Some(destination_root.domain_prop_id),
+    )
+    .await
+    .expect("could not create prop");
+    let destination_object_prop = Prop::new(
+        ctx,
         "base_object",
-        *destination_parent_object_prop.id(),
+        PropKind::Object,
+        None,
+        *destination_schema_variant.id(),
+        Some(*destination_parent_object_prop.id()),
     )
-    .await;
-    let destination_foo_prop = create_prop_and_set_parent(
+    .await
+    .expect("could not create prop");
+    let destination_foo_prop = Prop::new(
         ctx,
-        PropKind::String,
         "foo_string",
-        *destination_object_prop.id(),
-    )
-    .await;
-    let _destination_bar_prop = create_prop_and_set_parent(
-        ctx,
         PropKind::String,
-        "bar_string",
-        *destination_object_prop.id(),
+        None,
+        *destination_schema_variant.id(),
+        Some(*destination_object_prop.id()),
     )
-    .await;
+    .await
+    .expect("could not create prop");
+    let _destination_bar_prop = Prop::new(
+        ctx,
+        "bar_string",
+        PropKind::String,
+        None,
+        *destination_schema_variant.id(),
+        Some(*destination_object_prop.id()),
+    )
+    .await
+    .expect("could not create prop");
     destination_schema_variant
         .finalize(ctx, None)
         .await
