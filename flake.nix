@@ -30,6 +30,7 @@
           buildInputs = [
             automake
             bash
+            clang
             coreutils
             docker-compose
             gcc
