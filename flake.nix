@@ -7,29 +7,32 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    buck2 = {
+      url = "path:nix/buck2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # Flake outputs
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [
           (import rust-overlay)
 
           (self: super: {
-            rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
+            rustToolchain =
+              super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
           })
         ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-      in
-      with pkgs;
-      {
+        pkgs = import nixpkgs { inherit system overlays; };
+        buck2-pkg = buck2.packages.${system}.buck2;
+      in with pkgs; {
         devShells.default = mkShell {
           buildInputs = [
             automake
             bash
+            buck2-pkg
             clang
             coreutils
             docker-compose
@@ -59,13 +62,7 @@
             libiconv
             darwin.apple_sdk.frameworks.Security
           ];
-          depsTargetTarget = [
-            awscli
-            butane
-            kubeval
-            nodejs-18_x
-            skopeo
-          ];
+          depsTargetTarget = [ awscli butane kubeval nodejs-18_x skopeo ];
           # This is awful, but necessary (until we find a better way) to
           # be able to `cargo run` anything that compiles against
           # openssl. Without this, ld is unable to find libssl.so.3 and
@@ -79,6 +76,5 @@
           # version of openssl they were compiled against.
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
         };
-      }
-    );
+      });
 }
