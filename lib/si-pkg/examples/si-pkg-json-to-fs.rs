@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dbg!(&schema);
 
     for variant in schema.variants()? {
-        variant.visit_prop_tree(process_prop, None, (), &()).await?;
+        variant.visit_prop_tree(process_prop, None, &()).await?;
     }
 
     println!("--- Done.");
@@ -32,7 +32,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn process_prop(
     prop: SiPkgProp<'_>,
     _parent_id: Option<()>,
-    _schema_variant_id: (),
     _context: &(),
 ) -> Result<Option<()>, SiPkgError> {
     dbg!(prop);

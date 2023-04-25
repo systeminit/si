@@ -123,19 +123,17 @@ impl<'a> SiPkgSchemaVariant<'a> {
         )
     }
 
-    pub async fn visit_prop_tree<F, Fut, I, S, C, E>(
+    pub async fn visit_prop_tree<F, Fut, I, C, E>(
         &'a self,
         process_prop_fn: F,
         parent_id: Option<I>,
-        schema_variant_id: S,
         context: &'a C,
     ) -> Result<(), E>
     where
-        F: Fn(SiPkgProp<'a>, Option<I>, S, &'a C) -> Fut,
+        F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
         Fut: Future<Output = Result<Option<I>, E>>,
         E: std::convert::From<SiPkgError>,
         I: Copy,
-        S: Copy,
     {
         let domain_idxs = self
             .source
@@ -172,7 +170,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
         while let Some((prop, parent_id)) = stack.pop() {
             let node_idx = prop.source().node_idx;
-            let new_id = process_prop_fn(prop, parent_id, schema_variant_id, context).await?;
+            let new_id = process_prop_fn(prop, parent_id, context).await?;
 
             stack.extend(Self::prop_stack_from_source(
                 self.source.clone(),
