@@ -6,12 +6,13 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{LeafFunctionSpec, PropSpec, WorkflowSpec};
+use crate::{LeafFunctionSpec, PropSpec, SocketSpec, WorkflowSpec};
 
 use super::PkgNode;
 
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
+const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
 const VARIANT_CHILD_TYPE_WORKFLOWS: &str = "workflows";
 
 const KEY_KIND_STR: &str = "kind";
@@ -21,6 +22,7 @@ const KEY_KIND_STR: &str = "kind";
 pub enum SchemaVariantChild {
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
+    Sockets(Vec<SocketSpec>),
     Workflows(Vec<WorkflowSpec>),
 }
 
@@ -28,6 +30,7 @@ pub enum SchemaVariantChild {
 pub enum SchemaVariantChildNode {
     Domain,
     LeafFunctions,
+    Sockets,
     Workflows,
 }
 
@@ -36,6 +39,7 @@ impl SchemaVariantChildNode {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -46,6 +50,7 @@ impl NameStr for SchemaVariantChildNode {
         match self {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
+            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -68,6 +73,7 @@ impl ReadBytes for SchemaVariantChildNode {
         let node = match kind_str.as_str() {
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
+            VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
             VARIANT_CHILD_TYPE_WORKFLOWS => Self::Workflows,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
@@ -102,6 +108,16 @@ impl NodeChild for SchemaVariantChild {
                     .iter()
                     .map(|entry| {
                         Box::new(entry.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::Sockets(sockets) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Sockets),
+                sockets
+                    .iter()
+                    .map(|socket| {
+                        Box::new(socket.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),

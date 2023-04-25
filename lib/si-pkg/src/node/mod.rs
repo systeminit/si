@@ -5,6 +5,7 @@ use object_tree::{
 };
 
 mod action;
+mod attr_func_input;
 mod category;
 mod func;
 mod func_argument;
@@ -15,11 +16,13 @@ mod prop_child;
 mod schema;
 mod schema_variant;
 mod schema_variant_child;
+mod socket;
 mod validation;
 mod workflow;
 
 pub(crate) use self::{
     action::ActionNode,
+    attr_func_input::AttrFuncInputNode,
     category::CategoryNode,
     func::FuncNode,
     func_argument::FuncArgumentNode,
@@ -30,11 +33,13 @@ pub(crate) use self::{
     schema::SchemaNode,
     schema_variant::SchemaVariantNode,
     schema_variant_child::{SchemaVariantChild, SchemaVariantChildNode},
+    socket::SocketNode,
     validation::ValidationNode,
     workflow::WorkflowNode,
 };
 
 const NODE_KIND_ACTION: &str = "action";
+const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
 const NODE_KIND_CATEGORY: &str = "category";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
@@ -45,6 +50,7 @@ const NODE_KIND_PROP_CHILD: &str = "prop_child";
 const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
+const NODE_KIND_SOCKET: &str = "socket";
 const NODE_KIND_VALIDATION: &str = "validation";
 const NODE_KIND_WORKFLOW: &str = "workflow";
 
@@ -53,6 +59,7 @@ const KEY_NODE_KIND_STR: &str = "node_kind";
 #[derive(Clone, Debug)]
 pub enum PkgNode {
     Action(ActionNode),
+    AttrFuncInput(AttrFuncInputNode),
     Category(CategoryNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
@@ -63,12 +70,14 @@ pub enum PkgNode {
     Schema(SchemaNode),
     SchemaVariant(SchemaVariantNode),
     SchemaVariantChild(SchemaVariantChildNode),
+    Socket(SocketNode),
     Validation(ValidationNode),
     Workflow(WorkflowNode),
 }
 
 impl PkgNode {
     pub const ACTION_KIND_STR: &str = NODE_KIND_ACTION;
+    pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
     pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
@@ -79,12 +88,14 @@ impl PkgNode {
     pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
     pub const SCHEMA_VARIANT_KIND_CHILD_STR: &str = NODE_KIND_SCHEMA_VARIANT_CHILD;
+    pub const SOCKET_KIND_STR: &str = NODE_KIND_SOCKET;
     pub const VALIDATION_KIND_STR: &str = NODE_KIND_VALIDATION;
     pub const WORKFLOW_KIND_STR: &str = NODE_KIND_WORKFLOW;
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {
             Self::Action(_) => NODE_KIND_ACTION,
+            Self::AttrFuncInput(_) => NODE_KIND_ATTR_FUNC_INPUT,
             Self::Category(_) => NODE_KIND_CATEGORY,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
@@ -95,6 +106,7 @@ impl PkgNode {
             Self::Schema(_) => NODE_KIND_SCHEMA,
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
+            Self::Socket(_) => NODE_KIND_SOCKET,
             Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::Workflow(_) => NODE_KIND_WORKFLOW,
         }
@@ -105,6 +117,7 @@ impl NameStr for PkgNode {
     fn name(&self) -> &str {
         match self {
             Self::Action(node) => node.name(),
+            Self::AttrFuncInput(node) => node.name(),
             Self::Category(node) => node.name(),
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
@@ -115,6 +128,7 @@ impl NameStr for PkgNode {
             Self::Schema(node) => node.name(),
             Self::SchemaVariant(node) => node.name(),
             Self::SchemaVariantChild(node) => node.name(),
+            Self::Socket(node) => node.name(),
             Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::Workflow(_) => NODE_KIND_WORKFLOW,
         }
@@ -127,6 +141,7 @@ impl WriteBytes for PkgNode {
 
         match self {
             Self::Action(node) => node.write_bytes(writer)?,
+            Self::AttrFuncInput(node) => node.write_bytes(writer)?,
             Self::Category(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
@@ -137,6 +152,7 @@ impl WriteBytes for PkgNode {
             Self::Schema(node) => node.write_bytes(writer)?,
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
+            Self::Socket(node) => node.write_bytes(writer)?,
             Self::Validation(node) => node.write_bytes(writer)?,
             Self::Workflow(node) => node.write_bytes(writer)?,
         };
@@ -154,6 +170,9 @@ impl ReadBytes for PkgNode {
 
         let node = match node_kind_str.as_str() {
             NODE_KIND_ACTION => Self::Action(ActionNode::read_bytes(reader)?),
+            NODE_KIND_ATTR_FUNC_INPUT => {
+                Self::AttrFuncInput(AttrFuncInputNode::read_bytes(reader)?)
+            }
             NODE_KIND_CATEGORY => Self::Category(CategoryNode::read_bytes(reader)?),
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
@@ -166,6 +185,7 @@ impl ReadBytes for PkgNode {
             NODE_KIND_SCHEMA_VARIANT_CHILD => {
                 Self::SchemaVariantChild(SchemaVariantChildNode::read_bytes(reader)?)
             }
+            NODE_KIND_SOCKET => Self::Socket(SocketNode::read_bytes(reader)?),
             NODE_KIND_VALIDATION => Self::Validation(ValidationNode::read_bytes(reader)?),
             NODE_KIND_WORKFLOW => Self::Workflow(WorkflowNode::read_bytes(reader)?),
             invalid_kind => {

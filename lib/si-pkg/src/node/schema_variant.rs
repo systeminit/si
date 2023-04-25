@@ -83,6 +83,8 @@ impl NodeChild for SchemaVariantSpec {
                 )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::Workflows(self.workflows.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(SchemaVariantChild::Sockets(self.sockets.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             ],
         )
     }

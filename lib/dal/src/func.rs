@@ -24,6 +24,24 @@ pub mod description;
 pub mod execution;
 pub mod identity;
 
+/// These are the names of functions that are handled internally by the dal instead of being sent
+/// to veritech for execution by the language runtime.
+pub const INTRINSIC_FUNC_NAMES: [&str; 9] = [
+    "si:identity",
+    "si:setObject",
+    "si:setArray",
+    "si:setBoolean",
+    "si:setInteger",
+    "si:setMap",
+    "si:setString",
+    "si:unset",
+    "si:validation",
+];
+
+pub fn is_intrinsic(name: &str) -> bool {
+    INTRINSIC_FUNC_NAMES.contains(&name)
+}
+
 #[derive(Error, Debug)]
 pub enum FuncError {
     #[error("error serializing/deserializing json: {0}")]
@@ -191,6 +209,16 @@ impl Func {
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
+    }
+
+    pub async fn find_by_name(ctx: &DalContext, name: &str) -> FuncResult<Option<Self>> {
+        Ok(Self::find_by_attr(ctx, "name", &name).await?.pop())
+    }
+
+    /// Returns `true` if this function is one handled internally by the `dal`, `false` if the
+    /// function is one that will be executed by `veritech`
+    pub fn is_intrinsic(&self) -> bool {
+        is_intrinsic(self.name())
     }
 
     standard_model_accessor!(name, String, FuncResult);

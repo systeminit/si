@@ -5,12 +5,12 @@ use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
     node::PkgNode,
-    spec::{LeafInputLocation, LeafKind},
+    spec::{FuncUniqueId, LeafInputLocation, LeafKind},
 };
 
 #[derive(Clone, Debug)]
 pub struct SiPkgLeafFunction<'a> {
-    func_unique_id: Hash,
+    func_unique_id: FuncUniqueId,
     leaf_kind: LeafKind,
     inputs: Vec<LeafInputLocation>,
     hash: Hash,
@@ -56,7 +56,7 @@ impl<'a> SiPkgLeafFunction<'a> {
         })
     }
 
-    pub fn func_unique_id(&self) -> Hash {
+    pub fn func_unique_id(&self) -> FuncUniqueId {
         self.func_unique_id
     }
 
