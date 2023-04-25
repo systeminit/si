@@ -1,0 +1,8 @@
+rust_library(
+  name = "si-std",
+  deps = [
+    "//third-party:serde",
+  ],
+  srcs = glob(["src/**/*.rs"]),
+  visibility = ["PUBLIC"],
+)

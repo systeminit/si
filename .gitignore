@@ -28,3 +28,9 @@ app/web/cypress/videos/
 .env.local
 # Local Netlify folder
 .netlify
+
+# Buck
+buck-out
+third-party/vendor
+third-party/target
+third-party/.cargo
