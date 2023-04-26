@@ -37,7 +37,7 @@ impl SchemaVariantSpec {
 impl SchemaVariantSpecBuilder {
     fn default_domain() -> PropSpec {
         PropSpec::Object {
-            validations: None,
+            validations: vec![],
             name: "domain".to_string(),
             entries: vec![],
         }

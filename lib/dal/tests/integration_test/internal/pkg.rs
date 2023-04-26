@@ -1,7 +1,8 @@
 use base64::{engine::general_purpose, Engine};
 use dal::{
-    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, DalContext, ExternalProvider,
-    Func, InternalProvider, Schema, SchemaVariant, StandardModel,
+    func::backend::validation::FuncBackendValidationArgs, installed_pkg::*, pkg::*,
+    schema::variant::leaves::LeafKind, validation::Validation, DalContext, ExternalProvider, Func,
+    InternalProvider, Schema, SchemaVariant, StandardModel, ValidationPrototype,
 };
 use dal_test::test;
 use si_pkg::{
@@ -66,6 +67,20 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("able to make schema spec");
 
+    let custom_validation_code = "function validate(value) { return { valid: false, message: 'whatever it is, im against it' }; }";
+    let validation_b64 = general_purpose::STANDARD_NO_PAD.encode(custom_validation_code.as_bytes());
+    let validation_func_spec = FuncSpec::builder()
+        .name("groucho")
+        .display_name("Horse Feathers")
+        .description("it rejects values")
+        .handler("validate")
+        .code_base64(&validation_b64)
+        .backend_kind(FuncSpecBackendKind::JsValidation)
+        .response_type(FuncSpecBackendResponseType::Validation)
+        .hidden(false)
+        .build()
+        .expect("able to build validation func spec");
+
     let schema_b = SchemaSpec::builder()
         .name("Roger Mexico")
         .category("Banana Puddings")
@@ -108,6 +123,13 @@ async fn test_install_pkg(ctx: &DalContext) {
                     PropSpec::builder()
                         .name("sixes_and_sevens")
                         .kind(PropSpecKind::Number)
+                        .validation(
+                            ValidationSpec::builder()
+                                .kind(ValidationSpecKind::CustomValidation)
+                                .func_unique_id(validation_func_spec.unique_id)
+                                .build()
+                                .expect("able to add custom validation"),
+                        )
                         .build()
                         .expect("able to make prop spec"),
                 )
@@ -176,6 +198,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .name("The Kenosha Kid")
         .version("0.1")
         .created_by("Pointsman")
+        .func(validation_func_spec)
         .schema(schema_a)
         .schema(schema_b)
         .build()
@@ -291,8 +314,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("able to fetch installed pkgs for pkg a");
 
-    // Two schemas, two variants
-    assert_eq!(4, pkg_b_ipas.len());
+    // Two schemas, two variants, one func
+    assert_eq!(5, pkg_b_ipas.len());
 
     // Ensure we did not install the schema that is in both packages twice
     let schemas = Schema::find_by_attr(ctx, "name", &"Tyrone Slothrop".to_string())
@@ -319,7 +342,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .pop()
         .expect("able to get the light bulb conspiracy");
 
-    let ac_input = InternalProvider::find_explicit_for_schema_variant_and_name(
+    let _ac_input = InternalProvider::find_explicit_for_schema_variant_and_name(
         ctx,
         *light_bulb.id(),
         "AC Power",
@@ -328,11 +351,35 @@ async fn test_install_pkg(ctx: &DalContext) {
     .expect("able to search for ac input")
     .expect("able to find ac input");
 
-    let light_output =
+    let _light_output =
         ExternalProvider::find_for_schema_variant_and_name(ctx, *light_bulb.id(), "Light")
             .await
             .expect("able to search for light output")
             .expect("able to find light output");
 
-    dbg!(ac_input, light_output);
+    let validations = ValidationPrototype::list_for_schema_variant(ctx, *light_bulb.id())
+        .await
+        .expect("able to find validations");
+
+    // The "/root/color" prop gets a StringIsHexColor validation, plus the validation from the spec
+    assert_eq!(3, validations.len());
+    let number_validation = validations.get(1).expect("able to get validation");
+    let validation_args: FuncBackendValidationArgs =
+        serde_json::from_value(number_validation.args().clone()).expect("able to deserialize");
+
+    assert!(matches!(
+        validation_args.validation,
+        Validation::IntegerIsBetweenTwoIntegers {
+            lower_bound: 2,
+            upper_bound: 100,
+            ..
+        }
+    ));
+
+    let custom_validation = validations.get(2).expect("able to get custom validation");
+    let func = Func::get_by_id(ctx, &custom_validation.func_id())
+        .await
+        .expect("able to get func")
+        .expect("func is there");
+    assert_eq!(func.name(), "groucho");
 }

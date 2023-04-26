@@ -95,33 +95,27 @@ impl NodeChild for PropSpec {
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
             Self::String { name, validations } => NodeWithChildren::new(
-                NodeKind::Leaf,
+                NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::String {
                     name: name.to_string(),
                 }),
-                vec![Box::new(PropChild::Validations(
-                    validations.clone().unwrap_or(vec![]),
-                ))
+                vec![Box::new(PropChild::Validations(validations.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
             Self::Number { name, validations } => NodeWithChildren::new(
-                NodeKind::Leaf,
+                NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Integer {
                     name: name.to_string(),
                 }),
-                vec![Box::new(PropChild::Validations(
-                    validations.clone().unwrap_or(vec![]),
-                ))
+                vec![Box::new(PropChild::Validations(validations.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
             Self::Boolean { name, validations } => NodeWithChildren::new(
-                NodeKind::Leaf,
+                NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Boolean {
                     name: name.to_string(),
                 }),
-                vec![Box::new(PropChild::Validations(
-                    validations.clone().unwrap_or(vec![]),
-                ))
+                vec![Box::new(PropChild::Validations(validations.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>],
             ),
             Self::Map {
@@ -136,9 +130,8 @@ impl NodeChild for PropSpec {
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
                         as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                    Box::new(PropChild::Validations(
-                        validations.clone().unwrap_or(vec![]),
-                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(validations.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 ],
             ),
             Self::Array {
@@ -153,9 +146,8 @@ impl NodeChild for PropSpec {
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
                         as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                    Box::new(PropChild::Validations(
-                        validations.clone().unwrap_or(vec![]),
-                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(validations.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 ],
             ),
             Self::Object {
@@ -170,9 +162,8 @@ impl NodeChild for PropSpec {
                 vec![
                     Box::new(PropChild::Props(entries.clone()))
                         as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                    Box::new(PropChild::Validations(
-                        validations.clone().unwrap_or(vec![]),
-                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PropChild::Validations(validations.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 ],
             ),
         }

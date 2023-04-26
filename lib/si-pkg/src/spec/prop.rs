@@ -9,35 +9,35 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     String {
         name: String,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
         name: String,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
         name: String,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
         name: String,
         type_prop: Box<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Array {
         name: String,
         type_prop: Box<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
         name: String,
         entries: Vec<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
+        validations: Vec<ValidationSpec>,
     },
 }
 
@@ -124,18 +124,9 @@ impl PropSpecBuilder {
 
         Ok(match self.kind {
             Some(kind) => match kind {
-                PropSpecKind::String => PropSpec::String {
-                    name,
-                    validations: Some(validations),
-                },
-                PropSpecKind::Number => PropSpec::Number {
-                    name,
-                    validations: Some(validations),
-                },
-                PropSpecKind::Boolean => PropSpec::Boolean {
-                    name,
-                    validations: Some(validations),
-                },
+                PropSpecKind::String => PropSpec::String { name, validations },
+                PropSpecKind::Number => PropSpec::Number { name, validations },
+                PropSpecKind::Boolean => PropSpec::Boolean { name, validations },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
                     type_prop: match self.type_prop {
@@ -144,7 +135,7 @@ impl PropSpecBuilder {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations: Some(validations),
+                    validations,
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
@@ -154,12 +145,12 @@ impl PropSpecBuilder {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations: Some(validations),
+                    validations,
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
                     entries: self.entries.clone(),
-                    validations: Some(validations),
+                    validations,
                 },
             },
             None => {
