@@ -19,11 +19,12 @@ use crate::{
     prop_tree::PropTreeError,
     schema::variant::definition::SchemaVariantDefinitionError,
     socket::SocketError,
-    ActionPrototypeError, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-    AttributePrototypeId, ExternalProviderError, ExternalProviderId, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
-    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
+    AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
+    ExternalProviderError, ExternalProviderId, FuncBackendKind, FuncBackendResponseType, FuncError,
+    FuncId, InternalProviderError, InternalProviderId, PropError, PropId, SchemaError, SchemaId,
+    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 #[derive(Debug, Error)]
@@ -97,6 +98,10 @@ pub enum PkgError {
     ExternalProvider(#[from] ExternalProviderError),
     #[error(transparent)]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error(transparent)]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error(transparent)]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error(transparent)]
     Socket(#[from] SocketError),
     #[error(transparent)]

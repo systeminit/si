@@ -1,7 +1,7 @@
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
 
-use super::{SpecError, ValidationSpec};
+use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -10,34 +10,46 @@ pub enum PropSpec {
     String {
         name: String,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
         name: String,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
         name: String,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
         name: String,
         type_prop: Box<PropSpec>,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Array {
         name: String,
         type_prop: Box<PropSpec>,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
         name: String,
         entries: Vec<PropSpec>,
         validations: Vec<ValidationSpec>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Vec<AttrFuncInputSpec>,
     },
 }
 
@@ -64,6 +76,8 @@ pub struct PropSpecBuilder {
     type_prop: Option<PropSpec>,
     entries: Vec<PropSpec>,
     validations: Vec<ValidationSpec>,
+    func_unique_id: Option<FuncUniqueId>,
+    inputs: Vec<AttrFuncInputSpec>,
 }
 
 impl PropSpecBuilder {
@@ -107,6 +121,18 @@ impl PropSpecBuilder {
         self
     }
 
+    #[allow(unused_mut)]
+    pub fn func_unique_id(&mut self, value: FuncUniqueId) -> &mut Self {
+        self.func_unique_id = Some(value);
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn input(&mut self, value: impl Into<AttrFuncInputSpec>) -> &mut Self {
+        self.inputs.push(value.into());
+        self
+    }
+
     /// Builds a new `Prop`.
     ///
     /// # Errors
@@ -121,12 +147,29 @@ impl PropSpecBuilder {
         };
 
         let validations = self.validations.clone();
+        let inputs = self.inputs.clone();
+        let func_unique_id = self.func_unique_id;
 
         Ok(match self.kind {
             Some(kind) => match kind {
-                PropSpecKind::String => PropSpec::String { name, validations },
-                PropSpecKind::Number => PropSpec::Number { name, validations },
-                PropSpecKind::Boolean => PropSpec::Boolean { name, validations },
+                PropSpecKind::String => PropSpec::String {
+                    name,
+                    validations,
+                    func_unique_id,
+                    inputs,
+                },
+                PropSpecKind::Number => PropSpec::Number {
+                    name,
+                    validations,
+                    func_unique_id,
+                    inputs,
+                },
+                PropSpecKind::Boolean => PropSpec::Boolean {
+                    name,
+                    validations,
+                    func_unique_id,
+                    inputs,
+                },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
                     type_prop: match self.type_prop {
@@ -136,6 +179,8 @@ impl PropSpecBuilder {
                         }
                     },
                     validations,
+                    func_unique_id,
+                    inputs,
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
@@ -146,11 +191,15 @@ impl PropSpecBuilder {
                         }
                     },
                     validations,
+                    func_unique_id,
+                    inputs,
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
                     entries: self.entries.clone(),
                     validations,
+                    func_unique_id,
+                    inputs,
                 },
             },
             None => {

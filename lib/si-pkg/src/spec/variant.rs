@@ -40,6 +40,8 @@ impl SchemaVariantSpecBuilder {
             validations: vec![],
             name: "domain".to_string(),
             entries: vec![],
+            func_unique_id: None,
+            inputs: vec![],
         }
     }
 
