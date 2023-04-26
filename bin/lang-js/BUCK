@@ -1,0 +1,33 @@
+load("//build-rules/ts.bzl", "pnpm_run_binary", "pnpm_run_library")
+
+export_file(
+  name = "package.json",
+  src = "./package.json",
+  mode = "reference",
+  visibility = ["//:pnpm-install"],
+)
+
+pnpm_run_library(
+  name = "build",
+  command = "build",
+  srcs = glob(["src/**/*.ts"]),
+  deps = ["//:pnpm-install"],
+  path = "bin/lang-js",
+)
+
+pnpm_run_library(
+  name = "build_lint",
+  command = "lint",
+  srcs = glob(["src/**/*.ts"]),
+  deps = ["//:pnpm-install"],
+  out = "src",
+  path = "bin/lang-js",
+)
+
+pnpm_run_binary(
+  name = "lint",
+  command = "lint",
+  srcs = glob(["src/**/*.ts"]),
+  path = "bin/lang-js",
+  deps = ["//:pnpm-install"],
+)

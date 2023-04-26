@@ -1,7 +1,7 @@
 {
   "name": "lang-js",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.14",
   "description": "Inference for Entities",
   "main": "dist/index.js",
   "bin": {

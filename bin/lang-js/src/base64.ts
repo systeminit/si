@@ -7,7 +7,7 @@ import ts from 'typescript';
 //
 // Turns out they were using the same DEBUG env var we use for our logs, so disabling on import works
 // We may want to rethink our env var to have it scoped, and we may need to fix the underlying issue
-// but for now this gets us through, enabling ts as a language
+// but for now this gets us through, enabling ts as a language.
 const oldDebug = process.env['DEBUG'];
 delete process.env['DEBUG'];
 import * as tsvfs from '@typescript/vfs'

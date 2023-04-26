@@ -1,7 +1,9 @@
-# A list of available rules and their signatures can be found here: https://buck2.build/docs/api/rules/
+load("//build-rules/ts.bzl", "si_typescript_bin", "pnpm_install")
 
-genrule(
-    name = "hello_world",
-    out = "out.txt",
-    cmd = "echo BUILT BY BUCK2> $OUT",
+pnpm_install(
+  name = "pnpm-install",
+  srcs = [
+    "//bin/lang-js:package.json"
+  ],
+  visibility = ["PUBLIC"]
 )
