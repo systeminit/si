@@ -1,5 +1,5 @@
 {
-  description = "buck2";
+  description = "A builder for buck2";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,23 +10,20 @@
   outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        # The commit is the primary variable controlling the version of buck2. When that variable
-        # is changed, all variables in the below group should be re-evaluated and the update
-        # script in this flake's directory should be ran with the commit passed in as the first
-        # argument.
-        latestBranchCommit = "c755dc088b5fc15b65f7b5537c34f7a90b228e2c";
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs { inherit system overlays; };
+
+        # First, run the update script with the new commit. Then, use "pkgs.lib.fakeSha256" to
+        # determine hashes.
+        latestBranchCommit = "6ce606949631ca86c4cbb3de53ee90ceb031257a";
         rustChannel = "nightly";
-        rustVersion = "2023-01-24";
-        gitHubSha256 = "sha256-V97Kq3TpEUDmmNfwPT3fA9pgYWS4UX2ykaXHMHc3hhE=";
+        rustVersion = "2023-03-07";
+        gitHubSha256 = "sha256-gsmGC3qYnmVAqV7Hnqt0OlQ9ek4ODenhDH5GN1czk+Q=";
         outputHashes = {
           "perf-event-0.4.8" =
             "sha256-4OSGmbrL5y1g+wdA+W9DrhWlHQGeVCsMLz87pJNckvw=";
           "tonic-0.8.3" = "sha256-xuQVixIxTDS4IZIN46aMAer3v4/81IQEG975vuNNerU=";
         };
-
-        overlays = [ (import rust-overlay) ];
-
-        pkgs = import nixpkgs { inherit system overlays; };
 
         buck2RustPlatform = pkgs.makeRustPlatform {
           rustc = pkgs.rust-bin."${rustChannel}"."${rustVersion}".default;
@@ -43,6 +40,9 @@
             rev = latestBranchCommit;
             sha256 = gitHubSha256;
           };
+
+          # TODO(nick,jacob): temporarily disable the check to investigate dependencies needed.
+          doCheck = false;
 
           cargoPatches = [ ./Cargo.lock.patch ];
           cargoLock = {

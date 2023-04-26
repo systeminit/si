@@ -7,14 +7,19 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    buck2 = {
-      url = "path:nix/buck2";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # TODO(nick): re-enable once remote caching is enabled.
+    # buck2 = {
+    #   url = "path:nix/buck2";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
+    # reindeer = {
+    #   url = "path:nix/reindeer";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
   };
 
   # Flake outputs
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [
@@ -26,13 +31,17 @@
           })
         ];
         pkgs = import nixpkgs { inherit system overlays; };
-        buck2-pkg = buck2.packages.${system}.buck2;
+
+        # TODO(nick): re-enable once remote caching is enabled.
+        # buck2-pkg = buck2.packages.${system}.buck2;
+        # reindeer-pkg = reindeer.packages.${system}.reindeer;
       in with pkgs; {
         devShells.default = mkShell {
           buildInputs = [
+            # buck2-pkg
+            # reindeer-pkg
             automake
             bash
-            buck2-pkg
             clang
             coreutils
             docker-compose
