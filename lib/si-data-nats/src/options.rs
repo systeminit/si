@@ -5,7 +5,7 @@ use super::{Client, Result};
 /// Connect options.
 #[derive(Debug, Default)]
 pub struct Options {
-    pub(crate) inner: nats_client::Options,
+    pub(crate) inner: nats::Options,
 }
 
 impl Options {
@@ -27,7 +27,7 @@ impl Options {
     /// ```
     #[must_use]
     pub fn with_token(token: &str) -> Self {
-        nats_client::Options::with_token(token).into()
+        nats::Options::with_token(token).into()
     }
 
     /// Authenticate with NATS using a username and password.
@@ -43,7 +43,7 @@ impl Options {
     /// ```
     #[must_use]
     pub fn with_user_pass(user: &str, password: &str) -> Self {
-        nats_client::Options::with_user_pass(user, password).into()
+        nats::Options::with_user_pass(user, password).into()
     }
 
     /// Authenticate with NATS using a `.creds` file.
@@ -61,7 +61,7 @@ impl Options {
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     pub fn with_credentials(path: impl AsRef<Path>) -> Self {
-        nats_client::Options::with_credentials(path).into()
+        nats::Options::with_credentials(path).into()
     }
 
     /// Authenticate with NATS using a static credential str, using the creds file format.
@@ -96,7 +96,7 @@ impl Options {
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     pub fn with_static_credentials(creds: &str) -> Result<Self> {
-        Ok(nats_client::Options::with_static_credentials(creds)?.into())
+        Ok(nats::Options::with_static_credentials(creds)?.into())
     }
 
     /// Authenticate with a function that loads user JWT and a signature function.
@@ -122,7 +122,7 @@ impl Options {
         J: Fn() -> io::Result<String> + Send + Sync + 'static,
         S: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
     {
-        nats_client::Options::with_jwt(jwt_cb, sig_cb).into()
+        nats::Options::with_jwt(jwt_cb, sig_cb).into()
     }
 
     /// Authenticate with NATS using a public key and a signature function.
@@ -144,7 +144,7 @@ impl Options {
     where
         F: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
     {
-        nats_client::Options::with_nkey(nkey, sig_cb).into()
+        nats::Options::with_nkey(nkey, sig_cb).into()
     }
 
     /// Set client certificate and private key files.
@@ -191,7 +191,7 @@ impl Options {
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn tls_client_config(self, tls_client_config: nats_client::rustls::ClientConfig) -> Self {
+    pub fn tls_client_config(self, tls_client_config: nats::rustls::ClientConfig) -> Self {
         self.inner.tls_client_config(tls_client_config).into()
     }
 
@@ -453,8 +453,8 @@ impl Options {
     }
 }
 
-impl From<nats_client::Options> for Options {
-    fn from(inner: nats_client::Options) -> Self {
+impl From<nats::Options> for Options {
+    fn from(inner: nats::Options) -> Self {
         Self { inner }
     }
 }

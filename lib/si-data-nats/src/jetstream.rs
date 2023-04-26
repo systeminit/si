@@ -1,5 +1,3 @@
-use nats_client as nats;
-
 pub use super::{Client, Message};
 
 // Re-export JetStream types. Since this is a private module, we'll have to name them from

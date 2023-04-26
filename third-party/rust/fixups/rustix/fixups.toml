@@ -1,0 +1,8 @@
+# vendored-date: 2023-05-01
+# project: https://github.com/facebook/buck2
+# commit-hash: 9080cce1b8588afc08e5c9d53d22c652f7567ecf
+# commit-date: 2022-12-01T03:10:27-0800
+# source: https://github.com/facebook/buck2/blob/9080cce1b8588afc08e5c9d53d22c652f7567ecf/shim/third-party/rust/fixups/rustix/fixups.toml
+
+[[buildscript]]
+[buildscript.rustc_flags]

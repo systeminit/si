@@ -31,9 +31,6 @@ app/web/cypress/videos/
 
 # Buck
 buck-out
-third-party/vendor
-third-party/target
-third-party/.cargo
 
 # direnv
 .direnv

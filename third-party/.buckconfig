@@ -1,4 +1,0 @@
-[rust]
-default_edition = 2018
-remap_src_paths = yes
-rustc_check_flags = --cap-lints=warn

@@ -1,0 +1,12 @@
+# vendored-date: 2023-05-01
+# project: https://github.com/facebook/buck2
+# commit-hash: 9080cce1b8588afc08e5c9d53d22c652f7567ecf
+# commit-date: 2022-12-01T03:10:27-0800
+# source: https://github.com/facebook/buck2/blob/9080cce1b8588afc08e5c9d53d22c652f7567ecf/shim/third-party/rust/fixups/windows_x86_64_gnu/fixups.toml
+
+buildscript = []
+
+[[platform_fixup.'cfg(target_os = "windows")'.buildscript]]
+[platform_fixup.'cfg(target_os = "windows")'.buildscript.prebuilt_cxx_library]
+name = "libwindows.a"
+static_libs = ["lib/libwindows.a"]

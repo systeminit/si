@@ -1,3 +1,8 @@
+#
+# TODO(fnichol): keep this file until we decide to extract this crate into its
+# own open source project or port the Cargo features
+#
+
 [package]
 name = "config-file"
 version = "0.1.0"
@@ -25,16 +30,16 @@ layered-toml = ["layered", "toml", "config/toml"]
 layered-yaml = ["layered", "yaml", "config/yaml"]
 
 [dependencies]
-config = { version = "0.13.1", default-features = false, optional = true }
-directories = "5.0"
-pathdiff = "0.2.1"
-serde = { version = "1.0.136", optional = true }
-serde_json = { version = "1.0.79", optional = true }
+config = { workspace = true, optional = true }
+directories = { workspace = true }
+pathdiff = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 serde_toml = { package = "toml", version = "0.7", optional = true }
-serde_yaml = { version = "0.9.10", optional = true }
-thiserror = "1.0.30"
-tokio = { version = "1.17.0", features = ["fs", "io-util"], optional = true }
-tracing = "0.1"
+serde_yaml = { workspace = true, optional = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { workspace = true }

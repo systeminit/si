@@ -6,16 +6,16 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-chrono = "0.4.24"
+chrono = { workspace = true }
 deadpool-cyclone = { path = "../../lib/deadpool-cyclone" }
-derive_builder = { version = "0.12" }
-futures = { version = "0.3.17" }
+derive_builder = { workspace = true }
+futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-serde = "1.0.123"
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-settings = { path = "../../lib/si-settings" }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 veritech-core = { path = "../../lib/veritech-core" }

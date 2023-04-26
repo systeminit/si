@@ -1,0 +1,3 @@
+# Reindeer can't find all the sources due to being confused by the
+# cfg_attr(target_os = "linux", path = "tz_linux.rs") attributes.
+extra_srcs = ["src/**/*.rs"]

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use config_file::ConfigMap;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
 mod canonical_file;
@@ -48,47 +48,5 @@ pub trait StandardConfigFile:
         )
         .map_err(SettingsError::ConfigFile)
         .map_err(Into::into)
-    }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(default)]
-struct Veritech {
-    pub ws_url: String,
-    pub http_url: String,
-}
-
-impl Default for Veritech {
-    fn default() -> Self {
-        Self {
-            ws_url: "ws://localhost:5157".to_string(),
-            http_url: "http://localhost:5157".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(default)]
-struct Service {
-    pub port: u16,
-}
-
-impl Default for Service {
-    fn default() -> Self {
-        Self { port: 5156 }
-    }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(default)]
-struct Paging {
-    pub key: sodiumoxide::crypto::secretbox::Key,
-}
-
-impl Default for Paging {
-    fn default() -> Self {
-        Paging {
-            key: sodiumoxide::crypto::secretbox::gen_key(),
-        }
     }
 }

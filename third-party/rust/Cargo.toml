@@ -1,0 +1,57 @@
+# Definitions of third-party libraries used for Rust build of SI.
+#
+# Note: This file is **not** used by a regular Cargo build of SI.
+
+[workspace]
+
+[package]
+# Pseudo-package whose dependencies are imported and buckified
+name = "third-party"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+# Do-nothing target to keep Cargo happy
+[[bin]]
+name = "top"
+path = "top/main.rs"
+
+# List of packages to be imported, with version constraints, features and all
+# options Cargo supports.
+[dependencies]
+async-trait = "0.1.68"
+base64 = "0.21.0"
+chrono = { version = "0.4.24", features = ["serde"] }
+clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
+color-eyre = "0.6.2"
+config = { version = "0.13.3", default-features = false, features = ["toml"]}
+crossbeam-channel = "0.5.8"
+deadpool = { version = "0.9.5", features = ["rt_tokio_1"] }
+derive_builder = "0.12.0"
+directories = "5.0.1"
+futures = "0.3.28"
+nats = { version = "0.24.0" }
+nix = "0.26.2"
+nkeys = "0.2.0"
+opentelemetry = { version = "~0.18.0", features = ["rt-tokio", "trace"] } # pinned, pending new release of tracing-opentelemetry, 0.18
+opentelemetry-otlp = "~0.11.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
+opentelemetry-semantic-conventions = "~0.10.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
+pathdiff = "0.2.1"
+serde = { version = "1.0.160", features = ["derive", "rc"] }
+serde_json = { version = "1.0.96", features = ["preserve_order"] }
+serde_toml = { version = "0.7.3", package = "toml" }
+serde_with = "3.0.0"
+serde_yaml = "0.9.21"
+# sodiumoxide = "0.2.7"
+tempfile = "3.5.0"
+thiserror = "1.0.40"
+tokio = { version = "1.28.0", features = ["full"] }
+tokio-test = "0.4.2"
+tracing = { version = "0.1" }
+tracing-opentelemetry = "0.18.0"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "std"] }
+ulid = { version = "1.0.0", features = ["serde"] }
+uuid = { version = "1.3.2", features = ["serde", "v4"] }
+
+# Local patches - typically Git references
+[patch.crates-io]

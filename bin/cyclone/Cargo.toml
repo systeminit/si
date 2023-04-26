@@ -10,7 +10,7 @@ name = "cyclone"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.0.14", features = ["derive", "color", "env", "wrap_help"] }
+clap = { workspace = true }
 color-eyre = { version = "0.6.1" }
 cyclone-server = { path = "../../lib/cyclone-server" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }

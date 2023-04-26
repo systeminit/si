@@ -24,7 +24,7 @@ mod options;
 mod subscription;
 
 pub use message::Message;
-pub use nats_client::{header::HeaderMap, rustls};
+pub use nats::{header::HeaderMap, rustls};
 pub use options::Options;
 pub use subscription::Subscription;
 
@@ -80,7 +80,7 @@ pub type NatsClient = Client;
 
 #[derive(Clone, Debug)]
 pub struct Client {
-    inner: nats_client::Connection,
+    inner: nats::Connection,
     metadata: Arc<ConnectionMetadata>,
 }
 
