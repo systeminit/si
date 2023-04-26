@@ -2,20 +2,21 @@ use std::path::PathBuf;
 
 use si_pkg::{
     FuncUniqueId, SiPkg, SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgValidation, SiPkgWorkflow,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
 };
 
 use crate::{
     component::ComponentKind,
+    func::{binding::FuncBinding, binding_return_value::FuncBindingReturnValue},
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
-    ActionPrototype, ActionPrototypeContext, DalContext, Func, FuncArgument, FuncError, Prop,
-    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncArgument,
+    FuncError, InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -39,7 +40,15 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {
         let unique_id = func_spec.unique_id();
-        let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
+        let func = if crate::func::is_intrinsic(func_spec.name()) {
+            // We don't want to create intrinsic funcs but we need them in our map
+            Func::find_by_name(ctx, func_spec.name())
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_string()))?
+        } else {
+            create_func(ctx, func_spec, *installed_pkg.id()).await?
+        };
+
         funcs_by_unique_id.insert(unique_id, func);
     }
 
@@ -87,10 +96,12 @@ async fn create_func(
             _ => unreachable!(),
         },
         None => {
+            let name = func_spec.name();
+
             // How to handle name conflicts?
             let mut func = Func::new(
                 ctx,
-                func_spec.name(),
+                name,
                 func_spec.backend_kind().into(),
                 func_spec.response_type().into(),
             )
@@ -223,6 +234,79 @@ async fn create_leaf_function(
     Ok(())
 }
 
+// TODO: cache this so we don't fetch it for every socket
+async fn get_identity_func(
+    ctx: &DalContext,
+) -> PkgResult<(Func, FuncBinding, FuncBindingReturnValue, FuncArgument)> {
+    let func_name = "si:identity";
+    let func_argument_name = "identity";
+    let func: Func = Func::find_by_name(ctx, func_name)
+        .await?
+        .ok_or_else(|| FuncError::NotFoundByName(func_name.to_string()))?;
+
+    let func_id = *func.id();
+    let (func_binding, func_binding_return_value) =
+        FuncBinding::create_and_execute(ctx, serde_json::json![{ "identity": null }], func_id)
+            .await?;
+    let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
+        .await?
+        .ok_or_else(|| {
+            PkgError::MissingIntrinsicFuncArgument(
+                func_name.to_string(),
+                func_argument_name.to_string(),
+            )
+        })?;
+
+    Ok((func, func_binding, func_binding_return_value, func_argument))
+}
+
+async fn create_socket(
+    ctx: &DalContext,
+    socket_spec: SiPkgSocket<'_>,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    _func_map: &FuncMap,
+) -> PkgResult<()> {
+    let (identity_func, identity_func_binding, identity_fbrv, _identity_func_argument) =
+        get_identity_func(ctx).await?;
+
+    let name = socket_spec.name();
+    let arity = socket_spec.arity();
+
+    match socket_spec.kind() {
+        SocketSpecKind::Input => {
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                schema_variant_id,
+                name,
+                *identity_func.id(),
+                *identity_func_binding.id(),
+                *identity_fbrv.id(),
+                arity.into(),
+                false,
+            )
+            .await?;
+        }
+        SocketSpecKind::Output => {
+            ExternalProvider::new_with_socket(
+                ctx,
+                schema_id,
+                schema_variant_id,
+                name,
+                None,
+                *identity_func.id(),
+                *identity_func_binding.id(),
+                *identity_fbrv.id(),
+                arity.into(),
+                false,
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
+}
+
 async fn create_workflow(
     ctx: &DalContext,
     workflow_spec: SiPkgWorkflow<'_>,
@@ -323,6 +407,12 @@ async fn create_schema_variant(
                     .await?;
             }
 
+            for socket in variant_spec.sockets()? {
+                create_socket(ctx, socket, *schema.id(), *schema_variant.id(), func_map).await?;
+            }
+
+            schema_variant.finalize(ctx, None).await?;
+
             *schema_variant.id()
         }
     };
@@ -346,7 +436,7 @@ async fn create_prop_validation(
     let builtin_validation_func = Func::find_by_attr(ctx.ctx, "name", &"si:validation")
         .await?
         .pop()
-        .ok_or(FuncError::NotFoundByName("si_validation".to_string()))?;
+        .ok_or(FuncError::NotFoundByName("si:validation".to_string()))?;
 
     let validation_kind = match spec {
         SiPkgValidation::IntegerIsBetweenTwoIntegers {

@@ -3,15 +3,20 @@ use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod attr_func_input;
 mod func;
 mod leaf_function;
 mod prop;
 mod schema;
+mod socket;
 mod validation;
 mod variant;
 mod workflow;
 
-pub use {func::*, leaf_function::*, prop::*, schema::*, validation::*, variant::*, workflow::*};
+pub use {
+    attr_func_input::*, func::*, leaf_function::*, prop::*, schema::*, socket::*, validation::*,
+    variant::*, workflow::*,
+};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

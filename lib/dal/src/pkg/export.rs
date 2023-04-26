@@ -6,18 +6,22 @@ use std::{
 use strum::IntoEnumIterator;
 
 use si_pkg::{
-    ActionSpec, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg,
+    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
+    LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SocketSpec, SocketSpecKind,
     SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
 };
 
 use crate::{
     func::{argument::FuncArgument, backend::validation::FuncBackendValidationArgs},
     prop_tree::{PropTree, PropTreeNode},
+    socket::SocketKind,
     validation::Validation,
-    ActionPrototype, ActionPrototypeContext, DalContext, Func, FuncId, LeafKind, PropId, PropKind,
-    Schema, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, ValidationPrototype,
+    ActionPrototype, ActionPrototypeContext, AttributePrototype, AttributePrototypeArgument,
+    DalContext, ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider,
+    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
     WorkflowPrototype, WorkflowPrototypeContext,
 };
 
@@ -49,12 +53,23 @@ pub async fn export_pkg(
 
     let mut func_specs = FuncSpecMap::new();
 
+    for intrinsic_name in crate::func::INTRINSIC_FUNC_NAMES {
+        // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
+        // mapping one prop to another via si:identity)
+        let intrinsic_func = Func::find_by_name(ctx, intrinsic_name)
+            .await?
+            .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
+        let intrinsic_spec = build_intrinsic_func_spec(intrinsic_name)?;
+        func_specs.insert(*intrinsic_func.id(), intrinsic_spec.clone());
+        pkg_spec_builder.func(intrinsic_spec);
+    }
+
     for variant_id in variant_ids {
         let related_funcs = SchemaVariant::all_funcs(ctx, variant_id).await?;
         for func in &related_funcs {
             if !func_specs.contains_key(func.id()) {
                 let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
-                let func_spec = build_func_spec(func, &arguments).await?;
+                let func_spec = build_func_spec(func, &arguments)?;
                 func_specs.insert(*func.id(), func_spec.clone());
                 pkg_spec_builder.func(func_spec);
             }
@@ -71,7 +86,18 @@ pub async fn export_pkg(
     Ok(())
 }
 
-async fn build_func_spec(func: &Func, args: &[FuncArgument]) -> Result<FuncSpec, PkgError> {
+fn build_intrinsic_func_spec(name: &str) -> Result<FuncSpec, PkgError> {
+    Ok(FuncSpec::builder()
+        .name(name)
+        .handler(name)
+        .code_base64("")
+        .response_type(FuncSpecBackendResponseType::Json)
+        .backend_kind(FuncSpecBackendKind::Json)
+        .hidden(false)
+        .build()?)
+}
+
+fn build_func_spec(func: &Func, args: &[FuncArgument]) -> Result<FuncSpec, PkgError> {
     let mut func_spec_builder = FuncSpec::builder();
 
     func_spec_builder.name(func.name());
@@ -131,25 +157,15 @@ async fn build_schema_spec(
     Ok(schema_spec)
 }
 
-async fn build_variant_spec(
+async fn build_leaf_function_specs(
     ctx: &DalContext,
-    schema: &Schema,
-    variant: SchemaVariant,
+    variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> Result<SchemaVariantSpec, PkgError> {
-    let mut variant_spec_builder = SchemaVariantSpec::builder();
-    variant_spec_builder.name(variant.name());
-    if let Some(color_str) = variant.color(ctx).await? {
-        variant_spec_builder.color(color_str);
-    };
-    if let Some(link) = variant.link() {
-        variant_spec_builder.try_link(link)?;
-    }
-    set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder, func_specs).await?;
+) -> Result<Vec<LeafFunctionSpec>, PkgError> {
+    let mut specs = vec![];
 
     for leaf_kind in LeafKind::iter() {
-        for leaf_func in
-            SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?
+        for leaf_func in SchemaVariant::find_leaf_item_functions(ctx, variant_id, leaf_kind).await?
         {
             let func_spec = func_specs
                 .get(leaf_func.id())
@@ -160,21 +176,32 @@ async fn build_variant_spec(
                 inputs.push(PkgLeafInputLocation::try_from_arg_name(arg.name())?);
             }
 
-            let leaf_func_spec = LeafFunctionSpec::builder()
-                .func_unique_id(func_spec.unique_id)
-                .leaf_kind(leaf_kind)
-                .inputs(inputs)
-                .build()?;
-
-            variant_spec_builder.leaf_function(leaf_func_spec);
+            specs.push(
+                LeafFunctionSpec::builder()
+                    .func_unique_id(func_spec.unique_id)
+                    .leaf_kind(leaf_kind)
+                    .inputs(inputs)
+                    .build()?,
+            );
         }
     }
+
+    Ok(specs)
+}
+
+async fn build_workflow_specs(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    func_specs: &FuncSpecMap,
+) -> Result<Vec<WorkflowSpec>, PkgError> {
+    let mut specs = vec![];
 
     for workflow_prototype in WorkflowPrototype::find_for_context(
         ctx,
         WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *variant.id(),
+            schema_id,
+            schema_variant_id,
             ..Default::default()
         },
     )
@@ -191,8 +218,8 @@ async fn build_variant_spec(
         for action_prototype in ActionPrototype::find_for_context_and_workflow_prototype(
             ctx,
             ActionPrototypeContext {
-                schema_id: *schema.id(),
-                schema_variant_id: *variant.id(),
+                schema_id,
+                schema_variant_id,
                 ..Default::default()
             },
             *workflow_prototype.id(),
@@ -207,8 +234,228 @@ async fn build_variant_spec(
             workflow_builder.action(action_spec);
         }
 
-        variant_spec_builder.workflow(workflow_builder.build()?);
+        specs.push(workflow_builder.build()?);
     }
+
+    Ok(specs)
+}
+
+async fn build_socket_input_func_and_arguments(
+    ctx: &DalContext,
+    proto: AttributePrototype,
+    func_specs: &FuncSpecMap,
+) -> Result<Option<(FuncUniqueId, Vec<AttrFuncInputSpec>)>, PkgError> {
+    let proto_func = Func::get_by_id(ctx, &proto.func_id()).await?.ok_or(
+        PkgError::MissingAttributePrototypeFunc(*proto.id(), proto.func_id()),
+    )?;
+
+    let apas = AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?;
+
+    // If the protote func is intrinsic and has no arguments, it's one that is created by default
+    // and we don't have to track it in the package
+    if apas.is_empty() && proto_func.is_intrinsic() {
+        return Ok(None);
+    }
+
+    let mut inputs = vec![];
+
+    for apa in apas {
+        let func_arg = FuncArgument::get_by_id(ctx, &apa.func_argument_id())
+            .await?
+            .ok_or(PkgError::AttributePrototypeArgumentMissingFuncArgument(
+                *apa.id(),
+                apa.func_argument_id(),
+            ))?;
+        let arg_name = func_arg.name();
+
+        if apa.internal_provider_id() != InternalProviderId::NONE {
+            let ip = InternalProvider::get_by_id(ctx, &apa.internal_provider_id())
+                .await?
+                .ok_or(PkgError::AttributePrototypeArgumentMissingInternalProvider(
+                    *apa.id(),
+                    apa.internal_provider_id(),
+                ))?;
+
+            match *ip.prop_id() {
+                PropId::NONE => {
+                    inputs.push(
+                        AttrFuncInputSpec::builder()
+                            .name(arg_name)
+                            .kind(AttrFuncInputSpecKind::InputSocket)
+                            .socket_name(ip.name())
+                            .build()?,
+                    );
+                }
+                prop_id => {
+                    let prop = Prop::get_by_id(ctx, &prop_id)
+                        .await?
+                        .ok_or(PkgError::InternalProviderMissingProp(*ip.id(), prop_id))?;
+
+                    inputs.push(
+                        AttrFuncInputSpec::builder()
+                            .name(arg_name)
+                            .kind(AttrFuncInputSpecKind::Prop)
+                            .prop_path(prop.path())
+                            .build()?,
+                    );
+                }
+            }
+        } else if apa.external_provider_id() != ExternalProviderId::NONE {
+            let ep = ExternalProvider::get_by_id(ctx, &apa.external_provider_id())
+                .await?
+                .ok_or(PkgError::AttributePrototypeArgumentMissingExternalProvider(
+                    *apa.id(),
+                    apa.external_provider_id(),
+                ))?;
+
+            inputs.push(
+                AttrFuncInputSpec::builder()
+                    .name(arg_name)
+                    .kind(AttrFuncInputSpecKind::OutputSocket)
+                    .socket_name(ep.name())
+                    .build()?,
+            );
+        }
+    }
+
+    let func_spec = func_specs
+        .get(proto_func.id())
+        .ok_or(PkgError::MissingExportedFunc(*proto_func.id()))?;
+
+    let func_unique_id = func_spec.unique_id;
+
+    Ok(Some((func_unique_id, inputs)))
+}
+
+async fn build_socket_specs(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    func_specs: &FuncSpecMap,
+) -> Result<Vec<SocketSpec>, PkgError> {
+    let mut specs = vec![];
+
+    for input_socket_ip in
+        InternalProvider::list_explicit_for_schema_variant(ctx, schema_variant_id).await?
+    {
+        let socket = Socket::find_for_internal_provider(ctx, *input_socket_ip.id())
+            .await?
+            .pop()
+            .ok_or(PkgError::ExplicitInternalProviderMissingSocket(
+                *input_socket_ip.id(),
+            ))?;
+
+        if let SocketKind::Frame = socket.kind() {
+            continue;
+        }
+
+        let mut socket_spec_builder = SocketSpec::builder();
+        socket_spec_builder
+            .name(dbg!(input_socket_ip.name()))
+            .kind(SocketSpecKind::Input)
+            .arity(socket.arity());
+
+        if let Some(attr_proto_id) = input_socket_ip.attribute_prototype_id() {
+            let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
+                .await?
+                .ok_or(PkgError::MissingAttributePrototypeForInputSocket(
+                    *attr_proto_id,
+                    *input_socket_ip.id(),
+                ))?;
+
+            if let Some((func_unique_id, mut inputs)) =
+                build_socket_input_func_and_arguments(ctx, proto, func_specs).await?
+            {
+                socket_spec_builder.func_unique_id(func_unique_id);
+                inputs.drain(..).for_each(|input| {
+                    socket_spec_builder.input(input);
+                });
+            }
+        }
+
+        specs.push(socket_spec_builder.build()?);
+    }
+
+    for output_socket_ep in
+        ExternalProvider::list_for_schema_variant(ctx, schema_variant_id).await?
+    {
+        let socket = Socket::find_for_external_provider(ctx, *output_socket_ep.id())
+            .await?
+            .pop()
+            .ok_or(PkgError::ExternalProviderMissingSocket(
+                *output_socket_ep.id(),
+            ))?;
+
+        if let SocketKind::Frame = socket.kind() {
+            continue;
+        }
+
+        let mut socket_spec_builder = SocketSpec::builder();
+        socket_spec_builder
+            .name(dbg!(output_socket_ep.name()))
+            .kind(SocketSpecKind::Output)
+            .arity(socket.arity());
+
+        if let Some(attr_proto_id) = output_socket_ep.attribute_prototype_id() {
+            let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
+                .await?
+                .ok_or(PkgError::MissingAttributePrototypeForOutputSocket(
+                    *attr_proto_id,
+                    *output_socket_ep.id(),
+                ))?;
+
+            if let Some((func_unique_id, mut inputs)) =
+                build_socket_input_func_and_arguments(ctx, proto, func_specs).await?
+            {
+                socket_spec_builder.func_unique_id(func_unique_id);
+                inputs.drain(..).for_each(|input| {
+                    socket_spec_builder.input(input);
+                });
+            }
+        }
+
+        specs.push(socket_spec_builder.build()?);
+    }
+
+    Ok(specs)
+}
+
+async fn build_variant_spec(
+    ctx: &DalContext,
+    schema: &Schema,
+    variant: SchemaVariant,
+    func_specs: &FuncSpecMap,
+) -> Result<SchemaVariantSpec, PkgError> {
+    let mut variant_spec_builder = SchemaVariantSpec::builder();
+    variant_spec_builder.name(variant.name());
+    if let Some(color_str) = variant.color(ctx).await? {
+        variant_spec_builder.color(color_str);
+    };
+    if let Some(link) = variant.link() {
+        variant_spec_builder.try_link(link)?;
+    }
+
+    set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder, func_specs).await?;
+
+    build_leaf_function_specs(ctx, *variant.id(), func_specs)
+        .await?
+        .drain(..)
+        .for_each(|leaf_func_spec| {
+            variant_spec_builder.leaf_function(leaf_func_spec);
+        });
+
+    build_workflow_specs(ctx, *schema.id(), *variant.id(), func_specs)
+        .await?
+        .drain(..)
+        .for_each(|workflow_spec| {
+            variant_spec_builder.workflow(workflow_spec);
+        });
+
+    build_socket_specs(ctx, *variant.id(), func_specs)
+        .await?
+        .drain(..)
+        .for_each(|socket_spec| {
+            variant_spec_builder.socket(socket_spec);
+        });
 
     let variant_spec = variant_spec_builder.build()?;
 

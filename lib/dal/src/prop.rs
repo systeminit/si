@@ -18,10 +18,11 @@ use crate::{
     label_list::ToLabelList,
     pk,
     property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
-    AttributePrototypeError, AttributeReadContext, DalContext, Func, FuncId, HistoryEventError,
-    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model, standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
+    standard_model_has_many, AttributeContext, AttributeContextBuilder,
+    AttributeContextBuilderError, AttributePrototypeError, AttributeReadContext, DalContext, Func,
+    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
@@ -214,6 +215,7 @@ impl Prop {
     standard_model_accessor!(widget_options, Option<Value>, PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
+    standard_model_accessor_ro!(path, String);
 
     // TODO(nick): replace this table with a foreign key relationship.
     standard_model_belongs_to!(

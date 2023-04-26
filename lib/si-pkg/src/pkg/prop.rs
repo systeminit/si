@@ -48,7 +48,9 @@ impl<'a> SiPkgProp<'a> {
             | SiPkgProp::Number { source, .. }
             | SiPkgProp::Object { source, .. }
             | SiPkgProp::Boolean { source, .. } => {
-                let validation_child_idxs = source
+                let mut validations = vec![];
+
+                if let Some(validation_child_idxs) = source
                     .graph
                     .neighbors_directed(source.node_idx, Outgoing)
                     .find(|node_idx| {
@@ -57,18 +59,15 @@ impl<'a> SiPkgProp<'a> {
                             PkgNode::PropChild(PropChildNode::Validations)
                         )
                     })
-                    .ok_or(SiPkgError::CategoryNotFound(
-                        PropChildNode::Validations.kind_str(),
-                    ))?;
+                {
+                    let child_node_idxs: Vec<_> = source
+                        .graph
+                        .neighbors_directed(validation_child_idxs, Outgoing)
+                        .collect();
 
-                let child_node_idxs: Vec<_> = source
-                    .graph
-                    .neighbors_directed(validation_child_idxs, Outgoing)
-                    .collect();
-
-                let mut validations = vec![];
-                for child_idx in child_node_idxs {
-                    validations.push(SiPkgValidation::from_graph(source.graph, child_idx)?);
+                    for child_idx in child_node_idxs {
+                        validations.push(SiPkgValidation::from_graph(source.graph, child_idx)?);
+                    }
                 }
 
                 validations

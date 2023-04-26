@@ -11,11 +11,19 @@ pub use import::{import_pkg, import_pkg_from_pkg};
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
 use crate::{
-    func::argument::FuncArgumentError, installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
-    schema::variant::definition::SchemaVariantDefinitionError, ActionPrototypeError,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, PropError, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    func::{
+        argument::{FuncArgumentError, FuncArgumentId},
+        binding::FuncBindingError,
+    },
+    installed_pkg::InstalledPkgError,
+    prop_tree::PropTreeError,
+    schema::variant::definition::SchemaVariantDefinitionError,
+    socket::SocketError,
+    ActionPrototypeError, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    AttributePrototypeId, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
+    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
+    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 #[derive(Debug, Error)]
@@ -79,6 +87,44 @@ pub enum PkgError {
     Workflow(#[from] WorkflowPrototypeError),
     #[error("Action creation error: {0}")]
     Action(#[from] ActionPrototypeError),
+    #[error("Missing AttributePrototype {0} for explicit InternalProvider {1}")]
+    MissingAttributePrototypeForInputSocket(AttributePrototypeId, InternalProviderId),
+    #[error("Missing AttributePrototype {0} for ExternalProvider {1}")]
+    MissingAttributePrototypeForOutputSocket(AttributePrototypeId, ExternalProviderId),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error(transparent)]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error(transparent)]
+    Socket(#[from] SocketError),
+    #[error(transparent)]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("Intrinsic function {0} not found")]
+    MissingIntrinsicFunc(String),
+    #[error("Intrinsic function (0) argument {1} not found")]
+    MissingIntrinsicFuncArgument(String, String),
+    #[error("Missing Func {1} for AttributePrototype {0}")]
+    MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
+    #[error("AttributePrototypeArgument {0} missing FuncArgument {1}")]
+    AttributePrototypeArgumentMissingFuncArgument(AttributePrototypeArgumentId, FuncArgumentId),
+    #[error("Missing InternalProvider {1} for AttributePrototypeArgument {1}")]
+    AttributePrototypeArgumentMissingInternalProvider(
+        AttributePrototypeArgumentId,
+        InternalProviderId,
+    ),
+    #[error("Missing ExternalProvider {1} for AttributePrototypeArgument {1}")]
+    AttributePrototypeArgumentMissingExternalProvider(
+        AttributePrototypeArgumentId,
+        ExternalProviderId,
+    ),
+    #[error("Missing Prop {1} for InternalProvider {1}")]
+    InternalProviderMissingProp(InternalProviderId, PropId),
+    #[error("Cannot find Socket for explicit InternalProvider {0}")]
+    ExplicitInternalProviderMissingSocket(InternalProviderId),
+    #[error("Cannot find Socket for ExternalProvider {0}")]
+    ExternalProviderMissingSocket(ExternalProviderId),
 }
 
 impl PkgError {

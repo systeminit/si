@@ -4,7 +4,9 @@ use std::future::Future;
 
 use url::Url;
 
-use super::{PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgWorkflow, Source};
+use super::{
+    PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgSocket, SiPkgWorkflow, Source,
+};
 
 use crate::node::{PkgNode, PropChildNode, SchemaVariantChildNode};
 
@@ -17,6 +19,37 @@ pub struct SiPkgSchemaVariant<'a> {
     hash: Hash,
 
     source: Source<'a>,
+}
+
+macro_rules! impl_variant_children_from_graph {
+    ($fn_name:ident, SchemaVariantChildNode::$child_node:ident, $pkg_type:ident) => {
+        pub fn $fn_name(&self) -> PkgResult<Vec<$pkg_type>> {
+            let mut entries = vec![];
+            if let Some(child_idxs) = self
+                .source
+                .graph
+                .neighbors_directed(self.source.node_idx, Outgoing)
+                .find(|node_idx| {
+                    matches!(
+                        &self.source.graph[*node_idx].inner(),
+                        PkgNode::SchemaVariantChild(SchemaVariantChildNode::$child_node)
+                    )
+                })
+            {
+                let child_node_idxs: Vec<_> = self
+                    .source
+                    .graph
+                    .neighbors_directed(child_idxs, Outgoing)
+                    .collect();
+
+                for child_idx in child_node_idxs {
+                    entries.push($pkg_type::from_graph(self.source.graph, child_idx)?);
+                }
+            }
+
+            Ok(entries)
+        }
+    };
 }
 
 impl<'a> SiPkgSchemaVariant<'a> {
@@ -58,63 +91,13 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.color.as_deref()
     }
 
-    pub fn workflows(&self) -> PkgResult<Vec<SiPkgWorkflow>> {
-        let child_idxs = self
-            .source
-            .graph
-            .neighbors_directed(self.source.node_idx, Outgoing)
-            .find(|node_idx| {
-                matches!(
-                    &self.source.graph[*node_idx].inner(),
-                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::Workflows)
-                )
-            })
-            .ok_or(SiPkgError::CategoryNotFound(
-                SchemaVariantChildNode::Workflows.kind_str(),
-            ))?;
-
-        let child_node_idxs: Vec<_> = self
-            .source
-            .graph
-            .neighbors_directed(child_idxs, Outgoing)
-            .collect();
-
-        let mut workflows = vec![];
-        for child_idx in child_node_idxs {
-            workflows.push(SiPkgWorkflow::from_graph(self.source.graph, child_idx)?);
-        }
-
-        Ok(workflows)
-    }
-
-    pub fn leaf_functions(&self) -> PkgResult<Vec<SiPkgLeafFunction>> {
-        let child_idxs = self
-            .source
-            .graph
-            .neighbors_directed(self.source.node_idx, Outgoing)
-            .find(|node_idx| {
-                matches!(
-                    &self.source.graph[*node_idx].inner(),
-                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::LeafFunctions)
-                )
-            })
-            .ok_or(SiPkgError::CategoryNotFound(
-                SchemaVariantChildNode::LeafFunctions.kind_str(),
-            ))?;
-
-        let child_node_idxs: Vec<_> = self
-            .source
-            .graph
-            .neighbors_directed(child_idxs, Outgoing)
-            .collect();
-
-        let mut leaf_functions = vec![];
-        for child_idx in child_node_idxs {
-            leaf_functions.push(SiPkgLeafFunction::from_graph(self.source.graph, child_idx)?);
-        }
-
-        Ok(leaf_functions)
-    }
+    impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);
+    impl_variant_children_from_graph!(workflows, SchemaVariantChildNode::Workflows, SiPkgWorkflow);
+    impl_variant_children_from_graph!(
+        leaf_functions,
+        SchemaVariantChildNode::LeafFunctions,
+        SiPkgLeafFunction
+    );
 
     fn prop_stack_from_source<I>(
         source: Source<'a>,

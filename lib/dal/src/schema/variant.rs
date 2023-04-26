@@ -517,7 +517,8 @@ impl SchemaVariant {
 
     /// Find all [`Func`](crate::Func) objects connected to this schema variant in any way. Only
     /// finds funcs connected at the schema variant context, ignoring any funcs connected to
-    /// directly to components
+    /// directly to components. Ignores any functions that have no code (these are typically
+    /// intrinsics)
     #[instrument(skip_all)]
     pub async fn all_funcs(
         ctx: &DalContext,

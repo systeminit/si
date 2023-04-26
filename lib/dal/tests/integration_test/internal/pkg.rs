@@ -1,13 +1,14 @@
 use base64::{engine::general_purpose, Engine};
 use dal::{
-    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, DalContext, Func, Schema,
-    SchemaVariant, StandardModel,
+    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, DalContext, ExternalProvider,
+    Func, InternalProvider, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::test;
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind, PkgSpec, PropSpec,
-    PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg,
+    PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecArity,
+    SocketSpecKind, ValidationSpec, ValidationSpecKind,
 };
 
 #[test]
@@ -72,10 +73,34 @@ async fn test_install_pkg(ctx: &DalContext) {
             SchemaVariantSpec::builder()
                 .name("The Light Bulb Conspiracy")
                 .color("baddad")
+                .socket(
+                    SocketSpec::builder()
+                        .name("AC Power")
+                        .kind(SocketSpecKind::Input)
+                        .arity(SocketSpecArity::One)
+                        .build()
+                        .expect("able to make input socket"),
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("Light")
+                        .kind(SocketSpecKind::Output)
+                        .arity(SocketSpecArity::Many)
+                        .build()
+                        .expect("able to make output socket"),
+                )
                 .prop(
                     PropSpec::builder()
                         .name("distress_jess")
                         .kind(PropSpecKind::Number)
+                        .validation(
+                            ValidationSpec::builder()
+                                .kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers)
+                                .lower_bound(2)
+                                .upper_bound(100)
+                                .build()
+                                .expect("able to add validation"),
+                        )
                         .build()
                         .expect("able to make prop spec"),
                 )
@@ -269,7 +294,7 @@ async fn test_install_pkg(ctx: &DalContext) {
     // Two schemas, two variants
     assert_eq!(4, pkg_b_ipas.len());
 
-    // Ensure we did not install the schema that is in both packages
+    // Ensure we did not install the schema that is in both packages twice
     let schemas = Schema::find_by_attr(ctx, "name", &"Tyrone Slothrop".to_string())
         .await
         .expect("get tyrones");
@@ -284,9 +309,30 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("roger roger roger roger");
     assert_eq!(1, schemas.len());
-    let schema_variants =
+    let mut schema_variants =
         SchemaVariant::find_by_attr(ctx, "name", &"The Light Bulb Conspiracy".to_string())
             .await
             .expect("above your head like you had an idea");
     assert_eq!(1, schema_variants.len());
+
+    let light_bulb = schema_variants
+        .pop()
+        .expect("able to get the light bulb conspiracy");
+
+    let ac_input = InternalProvider::find_explicit_for_schema_variant_and_name(
+        ctx,
+        *light_bulb.id(),
+        "AC Power",
+    )
+    .await
+    .expect("able to search for ac input")
+    .expect("able to find ac input");
+
+    let light_output =
+        ExternalProvider::find_for_schema_variant_and_name(ctx, *light_bulb.id(), "Light")
+            .await
+            .expect("able to search for light output")
+            .expect("able to find light output");
+
+    dbg!(ac_input, light_output);
 }

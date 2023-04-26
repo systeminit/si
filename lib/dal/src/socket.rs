@@ -4,6 +4,8 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use si_pkg::SocketSpecArity;
+
 use crate::{
     impl_standard_model, label_list::ToLabelList, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, standard_model_many_to_many, ComponentId, DalContext, DiagramKind,
@@ -17,6 +19,10 @@ const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
 const FIND_FRAME_SOCKET_FOR_NODE: &str =
     include_str!("queries/socket/find_frame_socket_for_node.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component.sql");
+const FIND_FOR_INTERNAL_PROVIDER: &str =
+    include_str!("queries/socket/find_for_internal_provider.sql");
+const FIND_FOR_EXTERNAL_PROVIDER: &str =
+    include_str!("queries/socket/find_for_external_provider.sql");
 
 #[derive(Error, Debug)]
 pub enum SocketError {
@@ -78,6 +84,24 @@ pub enum SocketKind {
 pub enum SocketArity {
     Many,
     One,
+}
+
+impl From<&SocketArity> for SocketSpecArity {
+    fn from(value: &SocketArity) -> Self {
+        match value {
+            SocketArity::One => Self::One,
+            SocketArity::Many => Self::Many,
+        }
+    }
+}
+
+impl From<SocketSpecArity> for SocketArity {
+    fn from(value: SocketSpecArity) -> Self {
+        match value {
+            SocketSpecArity::One => Self::One,
+            SocketSpecArity::Many => Self::Many,
+        }
+    }
 }
 
 impl ToLabelList for SocketArity {}
@@ -243,6 +267,40 @@ impl Socket {
             )
             .await?;
         Ok(standard_model::object_from_row(row)?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_for_internal_provider(
+        ctx: &DalContext,
+        internal_provider_id: InternalProviderId,
+    ) -> SocketResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_FOR_INTERNAL_PROVIDER,
+                &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_for_external_provider(
+        ctx: &DalContext,
+        external_provider_id: ExternalProviderId,
+    ) -> SocketResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_FOR_EXTERNAL_PROVIDER,
+                &[ctx.tenancy(), ctx.visibility(), &external_provider_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     /// List all [`Sockets`](Self) for the given [`ComponentId`](crate::Component).
