@@ -84,7 +84,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                value: Some(serde_json::json!["poop"]),
+                payload: Some(serde_json::json!["poop"]),
                 message: None,
                 logs: vec![],
                 last_synced: Default::default(),
@@ -113,7 +113,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             "domain": {},
             "resource": {
                 "logs": [],
-                "value": "poop",
+                "payload": "poop",
                 "status": "ok"
             },
             "confirmation": {
@@ -132,7 +132,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                value: None,
+                payload: None,
                 message: None,
                 logs: vec![],
                 last_synced: Default::default(),
@@ -318,7 +318,6 @@ async fn list_confirmations(mut octx: DalContext) {
             "domain": {},
             "resource": {
                 "logs": [],
-                "value": "poop",
                 "status": "ok"
             },
             "confirmation": {
@@ -342,7 +341,7 @@ async fn list_confirmations(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                value: None,
+                payload: None,
                 message: None,
                 logs: vec![],
                 last_synced: Default::default(),

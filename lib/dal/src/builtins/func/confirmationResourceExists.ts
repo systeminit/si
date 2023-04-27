@@ -1,5 +1,5 @@
 async function exists(input: Input): Promise<Output> {
-  if (!input.resource?.value) {
+  if (!input.resource?.payload) {
     return {
       success: false,
       recommendedActions: ["create"]

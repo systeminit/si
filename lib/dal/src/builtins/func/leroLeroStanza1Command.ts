@@ -6,5 +6,5 @@ async function firstStanza() {
   console.log("I really like Fulana, but Sicrana is the one who wants me");
   console.log("Because in love, whoever loses almost always wins");
   console.log("Such a strange thing, avoid it if you can\n");
-  return { value: "first stanza return value", status: "ok" };
+  return { payload: "first stanza return value", status: "ok" };
 }

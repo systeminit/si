@@ -1,11 +1,11 @@
 async function deleteResource(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
 
   const instances = Array.isArray(resource) ? resource : [resource];
   const instanceIds = instances.flatMap((i) => i.Instances).map((i) => i.InstanceId).filter((id) => !!id);
   if (!instanceIds || instanceIds.length === 0) return {
     status: "error",
-    value: resource,
+    payload: resource,
     message: "No EC2 instance id found"
   };
 
@@ -23,10 +23,10 @@ async function deleteResource(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: `Unable to delete Ec2 Instance, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
     };
   }
 
-  return { value: null, status: "ok" };
+  return { payload: null, status: "ok" };
 }

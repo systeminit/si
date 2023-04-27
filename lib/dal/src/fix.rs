@@ -358,7 +358,7 @@ impl Fix {
         } else if batch_timed_out {
             Some(CommandRunResult {
                 status: ResourceStatus::Error,
-                value: None,
+                payload: None,
                 message: Some("Execution timed-out".to_owned()),
                 // TODO: add proper logs here
                 logs: vec![],

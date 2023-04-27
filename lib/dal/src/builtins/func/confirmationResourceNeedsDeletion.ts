@@ -1,5 +1,5 @@
 async function exists(input: Input): Promise<Output> {
-  if (input.resource?.value && input.deleted_at) {
+  if (input.resource?.payload && input.deleted_at) {
     return {
       success: false,
       recommendedActions: ["delete"]

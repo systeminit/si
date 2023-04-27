@@ -23,7 +23,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: component.properties.resource?.value,
+      payload: component.properties.resource?.payload,
       message: "AMI ${component.properties.domain.ImageId} is invalid (InvalidAMIID.Malformed)",
     }
   }
@@ -33,7 +33,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: component.properties.resource?.value,
+      payload: component.properties.resource?.payload,
       message: `AWS CLI 2 "aws ec2 describe-images" returned non zero exit code (${child.exitCode})`,
     }
   }
@@ -44,10 +44,10 @@ async function refresh(component: Input): Promise<Output> {
     console.log(child.stdout);
     return {
       status: "error",
-      value: component.properties.resource?.value,
+      payload: component.properties.resource?.payload,
       message: `AMI ${component.properties.domain.ImageId} not found in region ${component.properties.domain.region}`,
     }
   }
 
-  return { value: images[0], status: "ok" };
+  return { payload: images[0], status: "ok" };
 }

@@ -51,7 +51,7 @@ impl MigrationDriver {
         .await?;
         let confirmation_func_id = *confirmation_func.id();
         let code = "async function exists(input) {
-            if (!input.resource?.value) {
+            if (!input.resource?.payload) {
                 return {
                     success: false,
                     recommendedActions: [\"create\"]
@@ -98,7 +98,7 @@ impl MigrationDriver {
         )
         .await?;
         let code = "async function create() {
-            return { value: \"poop\", status: \"ok\" };
+            return { payload: \"poop\", status: \"ok\" };
         }";
         command_func.set_code_plaintext(ctx, Some(code)).await?;
         command_func.set_handler(ctx, Some("create")).await?;

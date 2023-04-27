@@ -1,5 +1,5 @@
 async function refresh(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
@@ -20,7 +20,7 @@ async function refresh(component: Input): Promise<Output> {
     console.log(`EIP Allocation ID: ${resource.AllocationId}`);
     console.error(child.stderr);
     return {
-      value: resource,
+      payload: resource,
       status: "error",
       message: `AWS CLI 2 "aws ec2 describe-addresses" returned non zero exit code (${child.exitCode})`,
     };
@@ -28,5 +28,5 @@ async function refresh(component: Input): Promise<Output> {
 
   const object = JSON.parse(child.stdout);
 
-  return { value: object.Addresses[0], status: "ok" };
+  return { payload: object.Addresses[0], status: "ok" };
 }
