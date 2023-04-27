@@ -58,7 +58,7 @@ impl<'a> SiPkgValidation<'a> {
             PkgNode::Validation(node) => node.clone(),
             unexpected => {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
-                    PkgNode::PROP_KIND_STR,
+                    PkgNode::VALIDATION_KIND_STR,
                     unexpected.node_kind_str(),
                 ))
             }

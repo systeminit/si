@@ -6,12 +6,13 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{PropSpec, ValidationSpec};
+use crate::{AttrFuncInputSpec, PropSpec, ValidationSpec};
 
 use super::PkgNode;
 
 const PROP_CHILD_TYPE_PROPS: &str = "props";
 const PROP_CHILD_TYPE_VALIDATIONS: &str = "validations";
+const PROP_CHILD_TYPE_ATTR_FUNC_INPUTS: &str = "attr_func_inputs";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -20,12 +21,14 @@ const KEY_KIND_STR: &str = "kind";
 pub enum PropChild {
     Props(Vec<PropSpec>),
     Validations(Vec<ValidationSpec>),
+    AttrFuncInputs(Vec<AttrFuncInputSpec>),
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum PropChildNode {
     Props,
     Validations,
+    AttrFuncInputs,
 }
 
 impl PropChildNode {
@@ -33,6 +36,7 @@ impl PropChildNode {
         match self {
             Self::Props => PROP_CHILD_TYPE_PROPS,
             Self::Validations => PROP_CHILD_TYPE_VALIDATIONS,
+            Self::AttrFuncInputs => PROP_CHILD_TYPE_ATTR_FUNC_INPUTS,
         }
     }
 }
@@ -42,6 +46,7 @@ impl NameStr for PropChildNode {
         match self {
             Self::Props => PROP_CHILD_TYPE_PROPS,
             Self::Validations => PROP_CHILD_TYPE_VALIDATIONS,
+            Self::AttrFuncInputs => PROP_CHILD_TYPE_ATTR_FUNC_INPUTS,
         }
     }
 }
@@ -63,6 +68,7 @@ impl ReadBytes for PropChildNode {
         let node = match kind_str.as_str() {
             PROP_CHILD_TYPE_PROPS => Self::Props,
             PROP_CHILD_TYPE_VALIDATIONS => Self::Validations,
+            PROP_CHILD_TYPE_ATTR_FUNC_INPUTS => Self::AttrFuncInputs,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid schema variant child kind: {invalid_kind}"
@@ -79,35 +85,37 @@ impl NodeChild for PropChild {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
-            Self::Props(props) => {
-                let props = props
+            Self::Props(props) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::PropChild(PropChildNode::Props),
+                props
                     .iter()
                     .map(|prop| {
                         Box::new(prop.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
-                    .collect();
-
-                NodeWithChildren::new(
-                    NodeKind::Tree,
-                    Self::NodeType::PropChild(PropChildNode::Props),
-                    props,
-                )
-            }
-            Self::Validations(validations) => {
-                let validations = validations
+                    .collect(),
+            ),
+            Self::Validations(validations) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::PropChild(PropChildNode::Validations),
+                validations
                     .iter()
                     .map(|validation| {
                         Box::new(validation.clone())
                             as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
-                    .collect();
-
-                NodeWithChildren::new(
-                    NodeKind::Tree,
-                    Self::NodeType::PropChild(PropChildNode::Validations),
-                    validations,
-                )
-            }
+                    .collect(),
+            ),
+            Self::AttrFuncInputs(inputs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::PropChild(PropChildNode::AttrFuncInputs),
+                inputs
+                    .iter()
+                    .map(|input| {
+                        Box::new(input.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
         }
     }
 }

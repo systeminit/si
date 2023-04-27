@@ -18,10 +18,10 @@ use crate::{
     prop_tree::{PropTree, PropTreeNode},
     socket::SocketKind,
     validation::Validation,
-    ActionPrototype, ActionPrototypeContext, AttributePrototype, AttributePrototypeArgument,
-    DalContext, ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider,
-    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
+    ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
+    AttributePrototypeArgument, DalContext, ExternalProvider, ExternalProviderId, Func, FuncId,
+    InternalProvider, InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
     WorkflowPrototype, WorkflowPrototypeContext,
 };
 
@@ -240,7 +240,7 @@ async fn build_workflow_specs(
     Ok(specs)
 }
 
-async fn build_socket_input_func_and_arguments(
+async fn build_input_func_and_arguments(
     ctx: &DalContext,
     proto: AttributePrototype,
     func_specs: &FuncSpecMap,
@@ -251,7 +251,7 @@ async fn build_socket_input_func_and_arguments(
 
     let apas = AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?;
 
-    // If the protote func is intrinsic and has no arguments, it's one that is created by default
+    // If the prototype func is intrinsic and has no arguments, it's one that is created by default
     // and we don't have to track it in the package
     if apas.is_empty() && proto_func.is_intrinsic() {
         return Ok(None);
@@ -350,7 +350,7 @@ async fn build_socket_specs(
 
         let mut socket_spec_builder = SocketSpec::builder();
         socket_spec_builder
-            .name(dbg!(input_socket_ip.name()))
+            .name(input_socket_ip.name())
             .kind(SocketSpecKind::Input)
             .arity(socket.arity());
 
@@ -363,7 +363,7 @@ async fn build_socket_specs(
                 ))?;
 
             if let Some((func_unique_id, mut inputs)) =
-                build_socket_input_func_and_arguments(ctx, proto, func_specs).await?
+                build_input_func_and_arguments(ctx, proto, func_specs).await?
             {
                 socket_spec_builder.func_unique_id(func_unique_id);
                 inputs.drain(..).for_each(|input| {
@@ -391,7 +391,7 @@ async fn build_socket_specs(
 
         let mut socket_spec_builder = SocketSpec::builder();
         socket_spec_builder
-            .name(dbg!(output_socket_ep.name()))
+            .name(output_socket_ep.name())
             .kind(SocketSpecKind::Output)
             .arity(socket.arity());
 
@@ -404,7 +404,7 @@ async fn build_socket_specs(
                 ))?;
 
             if let Some((func_unique_id, mut inputs)) =
-                build_socket_input_func_and_arguments(ctx, proto, func_specs).await?
+                build_input_func_and_arguments(ctx, proto, func_specs).await?
             {
                 socket_spec_builder.func_unique_id(func_unique_id);
                 inputs.drain(..).for_each(|input| {
@@ -605,6 +605,26 @@ async fn set_variant_spec_prop_data(
                     return Err(SpecError::UninitializedField("kind").into());
                 }
             };
+        }
+
+        if let Some(prototype) = AttributePrototype::find_for_context_and_key(
+            ctx,
+            AttributeContextBuilder::new()
+                .set_prop_id(entry.prop_id)
+                .to_context()?,
+            &None,
+        )
+        .await?
+        .pop()
+        {
+            if let Some((func_unique_id, mut inputs)) =
+                build_input_func_and_arguments(ctx, prototype, func_specs).await?
+            {
+                entry.builder.func_unique_id(func_unique_id);
+                inputs.drain(..).for_each(|input| {
+                    entry.builder.input(input);
+                });
+            }
         }
 
         for validation in get_validations_for_prop(ctx, entry.prop_id, func_specs).await? {

@@ -4,11 +4,11 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, Hash, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line, GraphError, NodeChild, NodeKind, NodeWithChildren,
+    ReadBytes, WriteBytes,
 };
 
-use crate::{LeafFunctionSpec, LeafInputLocation, LeafKind};
+use crate::{FuncUniqueId, LeafFunctionSpec, LeafInputLocation, LeafKind};
 
 use super::PkgNode;
 
@@ -21,7 +21,7 @@ const INPUT_RESOURCE_STR: &str = "input_resource";
 
 #[derive(Clone, Debug)]
 pub struct LeafFunctionNode {
-    pub func_unique_id: Hash,
+    pub func_unique_id: FuncUniqueId,
     pub leaf_kind: LeafKind,
     pub input_code: bool,
     pub input_deleted_at: bool,
@@ -50,7 +50,8 @@ impl ReadBytes for LeafFunctionNode {
         let leaf_kind_str = read_key_value_line(reader, LEAF_KIND_STR)?;
         let leaf_kind = LeafKind::from_str(&leaf_kind_str).map_err(GraphError::parse)?;
         let func_unique_id_str = read_key_value_line(reader, FUNC_UNIQUE_ID_STR)?;
-        let func_unique_id = Hash::from_str(&func_unique_id_str)?;
+        let func_unique_id =
+            FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?;
         let input_code = bool::from_str(&read_key_value_line(reader, INPUT_CODE_STR)?)
             .map_err(GraphError::parse)?;
         let input_domain = bool::from_str(&read_key_value_line(reader, INPUT_DOMAIN_STR)?)

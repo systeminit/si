@@ -3,9 +3,9 @@ mod pkg;
 mod spec;
 
 pub use pkg::{
-    SiPkg, SiPkgAction, SiPkgAttrFuncInput, SiPkgError, SiPkgFunc, SiPkgLeafFunction,
-    SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
-    SiPkgWorkflow,
+    SiPkg, SiPkgAction, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
+    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket,
+    SiPkgValidation, SiPkgWorkflow,
 };
 pub use spec::{
     ActionSpec, ActionSpecBuilder, ActionSpecKind, AttrFuncInputSpec, AttrFuncInputSpecKind,
@@ -19,7 +19,7 @@ pub use spec::{
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs, path::PathBuf, sync::Arc};
+    use std::{env, fs, path::PathBuf};
 
     use petgraph::dot::Dot;
 
@@ -44,7 +44,7 @@ mod tests {
     pub async fn prop_visitor(
         prop: SiPkgProp<'_>,
         _parent_id: Option<()>,
-        context: &Arc<Mutex<Vec<String>>>,
+        context: &Mutex<Vec<String>>,
     ) -> Result<Option<()>, SiPkgError> {
         context.lock().await.push(prop.name().to_string());
 
@@ -135,9 +135,9 @@ mod tests {
         }
 
         // Ensure we get the props
-        let props: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let props: Mutex<Vec<String>> = Mutex::new(Vec::new());
         variant
-            .visit_prop_tree(prop_visitor, None, &props.clone())
+            .visit_prop_tree(prop_visitor, None, &props)
             .await
             .expect("able to visit prop tree");
 

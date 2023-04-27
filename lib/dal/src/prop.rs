@@ -7,7 +7,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::standard_model::{finish_create_from_row, objects_from_rows};
+use crate::standard_model::{finish_create_from_row, object_from_row, objects_from_rows};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     func::{
@@ -32,6 +32,7 @@ pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
+const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql");
 
 #[derive(Error, Debug)]
 pub enum PropError {
@@ -289,6 +290,30 @@ impl Prop {
                 .join("/"),
         ]
         .join(""))
+    }
+
+    /// Finds a prop by a path made up of prop names separated by
+    /// [`PROP_PATH_SEPARATOR`](crate::prop::PROP_PATH_SEPARATOR) for each depth level
+    pub async fn find_prop_by_raw_path(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        raw_path: &str,
+    ) -> PropResult<Self> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                FIND_PROP_IN_TREE,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &raw_path,
+                ],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
     }
 
     pub async fn create_default_prototypes_and_values(
