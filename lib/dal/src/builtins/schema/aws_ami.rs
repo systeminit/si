@@ -45,7 +45,7 @@ impl MigrationDriver {
         let schema_variant_id = *schema_variant.id();
 
         // Prop and validation creation
-        let image_id_prop = self
+        let _image_id_prop = self
             .create_prop(
                 ctx,
                 "ImageId",
@@ -318,6 +318,7 @@ impl MigrationDriver {
         .await?;
 
         // Connect the props to providers.
+        /* With the transformation func above, we don't *also* want this link!
         let external_provider_attribute_prototype_id = image_id_external_provider
             .attribute_prototype_id()
             .ok_or_else(|| {
@@ -338,6 +339,7 @@ impl MigrationDriver {
             *image_id_implicit_internal_provider.id(),
         )
         .await?;
+        */
 
         self.link_region_prop_to_explicit_internal_provider(
             ctx,
