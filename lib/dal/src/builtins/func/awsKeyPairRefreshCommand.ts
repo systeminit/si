@@ -1,5 +1,5 @@
 async function refresh(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
@@ -30,7 +30,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: "Key Pair Id is invalid (InvalidParameterValue)",
     }
   }
@@ -39,7 +39,7 @@ async function refresh(component: Input): Promise<Output> {
     console.log(`Key Pair Id: ${resource.KeyPairId}`);
     console.error(child.stderr);
     return {
-      value: resource,
+      payload: resource,
       status: "error",
       message: `AWS CLI 2 "aws ec2 describe-key-pairs" returned non zero exit code (${child.exitCode})`,
     }
@@ -52,7 +52,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stdout);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: "Key Pair not found in payload returned by AWS, but it should be there",
     }
   }
@@ -61,5 +61,5 @@ async function refresh(component: Input): Promise<Output> {
   // Key sync does not include secret key, so copy it from existing resource
   keyPair.KeyMaterial = resource.KeyMaterial;
 
-  return { value: keyPair, status: "ok" };
+  return { payload: keyPair, status: "ok" };
 }

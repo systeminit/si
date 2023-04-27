@@ -78,7 +78,7 @@ pub struct CommandRunResult {
     pub status: ResourceStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub value: Option<serde_json::Value>,
+    pub payload: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub message: Option<String>,
@@ -93,7 +93,7 @@ impl ExtractPayload for CommandRunResultSuccess {
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
         Ok(CommandRunResult {
-            value: self.value,
+            payload: self.payload,
             status: self.status,
             message: self.message.or(self.error),
             logs: Default::default(),

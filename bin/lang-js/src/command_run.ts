@@ -23,7 +23,7 @@ export type CommandRunResult =
   | CommandRunResultFailure;
 
 export interface CommandRunResultSuccess extends ResultSuccess {
-  value: unknown;
+  payload: unknown;
   health: "ok" | "warning" | "error";
   message?: string;
 }
@@ -127,7 +127,7 @@ async function execute(
       status: "success",
       executionId,
       error: commandRunResult.error as string | undefined,
-      value: commandRunResult.value,
+      payload: commandRunResult.payload,
       health: commandRunResult.status as "ok" | "warning" | "error",
       message: commandRunResult.message as string | undefined,
     };
@@ -141,13 +141,13 @@ function wrapCode(code: string, handle: string): string {
   const wrapped = `module.exports = function(arg, callback) {
     ${code}
     arg = Array.isArray(arg) ? arg : [arg];
-    const resource = arg[0]?.properties?.resource?.value ?? null;
+    const resource = arg[0]?.properties?.resource?.payload ?? null;
     const returnValue = ${handle}(...arg, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
           .catch((err) => callback({
             status: "error",
-            value: resource,
+            payload: resource,
       	    message: err.message,
 	  }));
     } else {

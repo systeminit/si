@@ -418,7 +418,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                value: Some(serde_json::json!["quantum"]),
+                payload: Some(serde_json::json!["quantum"]),
                 logs: Default::default(),
                 message: Default::default(),
                 last_synced: Default::default(),
@@ -449,7 +449,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {},
             "resource": {
                 "logs": [],
-                "value": "quantum",
+                "payload": "quantum",
                 "status": "ok",
             }
         }], // expected
@@ -465,7 +465,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {
                 "u12a": {
                     "logs": [],
-                    "value": "quantum",
+                    "payload": "quantum",
                     "status": "ok",
                 }
             }
@@ -497,7 +497,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {},
             "resource": {
                 "logs": [],
-                "value": "quantum",
+                "payload": "quantum",
                 "status": "ok",
             }
         }], // expected
@@ -513,7 +513,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {
                 "u12a": {
                     "logs": [],
-                    "value": "quantum",
+                    "payload": "quantum",
                     "status": "ok",
                 }
             }

@@ -1,5 +1,5 @@
 async function refresh(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
@@ -12,7 +12,7 @@ async function refresh(component: Input): Promise<Output> {
     if (groupId !== undefined && groupId !== rule.GroupId) {
       return {
         status: "error",
-        value: resource,
+        payload: resource,
         message: "Egress references multiple group ids",
       }
     }
@@ -42,7 +42,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: "Security Group Id is invalid (InvalidGroupId.Malformed)",
     }
   }
@@ -52,7 +52,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: `AWS CLI 2 "aws ec2 describe-security-groups" returned non zero exit code (${child.exitCode})`,
     }
   }
@@ -66,7 +66,7 @@ async function refresh(component: Input): Promise<Output> {
 
         for (const range of IpPermission.IpRanges) {
           if (range.CidrIp === rule.CidrIpv4) {
-            return { value: resource, status: "ok" };
+            return { payload: resource, status: "ok" };
           }
         }
       }

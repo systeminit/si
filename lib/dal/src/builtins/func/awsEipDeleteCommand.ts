@@ -1,5 +1,5 @@
 async function deleteResource(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
   // Now, delete the EIP.
   const child = await siExec.waitUntilEnd("aws", [
     "ec2",
@@ -14,10 +14,11 @@ async function deleteResource(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: `Unable to delete Elastic IP, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
     };
   }
 
-  return { value: null, status: "ok" };
+  return { payload: null, status: "ok" };
 }
+``

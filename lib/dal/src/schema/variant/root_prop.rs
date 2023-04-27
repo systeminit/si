@@ -432,16 +432,16 @@ impl SchemaVariant {
         .await?;
         resource_logs_log_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_value_prop = Prop::new(
+        let mut resource_payload_prop = Prop::new(
             ctx,
-            "value",
+            "payload",
             PropKind::String,
             None,
             schema_variant_id,
             Some(resource_prop_id),
         )
         .await?;
-        resource_value_prop.set_hidden(ctx, true).await?;
+        resource_payload_prop.set_hidden(ctx, true).await?;
 
         let mut resource_last_synced_prop = Prop::new(
             ctx,

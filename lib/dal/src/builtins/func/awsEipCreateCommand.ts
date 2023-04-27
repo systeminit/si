@@ -1,9 +1,9 @@
 async function create(component: Input): Promise<Output> {
-  if (component.properties.resource?.value) {
+  if (component.properties.resource?.payload) {
     return {
       status: "error",
       message: "Resource already exists",
-      value: component.properties.resource.value,
+      payload: component.properties.resource.payload,
     };
   }
 
@@ -27,5 +27,5 @@ async function create(component: Input): Promise<Output> {
     };
   }
 
-  return { value: JSON.parse(child.stdout), status: "ok" };
+  return { payload: JSON.parse(child.stdout), status: "ok" };
 }

@@ -345,7 +345,7 @@ impl WorkflowRunner {
                     .await?
                     .ok_or(WorkflowRunnerError::ComponentNotFound(component_id))?;
 
-                if component.needs_destroy() && result.value.is_none() {
+                if component.needs_destroy() && result.payload.is_none() {
                     component
                         .set_needs_destroy(deleted_ctx, false)
                         .await

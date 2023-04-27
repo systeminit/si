@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct LangServerCommandRunResultSuccess {
     pub execution_id: String,
     #[serde(default)]
-    pub value: Option<serde_json::Value>,
+    pub payload: Option<serde_json::Value>,
     pub health: ResourceStatus,
     #[serde(default)]
     pub message: Option<String>,
@@ -24,7 +24,7 @@ impl From<LangServerCommandRunResultSuccess> for CommandRunResultSuccess {
             error: value.error,
             status: value.health,
             message: value.message,
-            value: value.value,
+            payload: value.payload,
         }
     }
 }

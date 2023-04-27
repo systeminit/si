@@ -21,7 +21,7 @@ pub enum ResourceStatus {
 #[serde(rename_all = "camelCase")]
 pub struct CommandRunResultSuccess {
     pub execution_id: String,
-    pub value: Option<serde_json::Value>,
+    pub payload: Option<serde_json::Value>,
     pub status: ResourceStatus,
     pub message: Option<String>,
     // Collects the error if the function throws

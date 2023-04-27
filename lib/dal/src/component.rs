@@ -1048,7 +1048,7 @@ impl Component {
             _ => None,
         };
 
-        let has_resource = self.resource(ctx).await?.value.is_some();
+        let has_resource = self.resource(ctx).await?.payload.is_some();
         let rows = ctx
             .txns()
             .await?

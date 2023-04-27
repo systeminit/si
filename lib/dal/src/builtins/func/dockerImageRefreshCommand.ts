@@ -5,9 +5,9 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       message: "Unable to refresh docker image",
-      value: component.properties.resource?.value,
+      payload: component.properties.resource?.payload,
     }
   }
 
-  return { value: JSON.parse(child.stdout), status: "ok" };
+  return { payload: JSON.parse(child.stdout), status: "ok" };
 }

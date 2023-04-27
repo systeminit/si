@@ -1,5 +1,5 @@
 async function refresh(component: Input): Promise<Output> {
-  const resource = component.properties.resource?.value;
+  const resource = component.properties.resource?.payload;
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
@@ -11,7 +11,7 @@ async function refresh(component: Input): Promise<Output> {
   const instanceIds = instances.flatMap((i) => i.Instances).map((i) => i.InstanceId).filter((id) => !!id);
   if (!instanceIds || instanceIds.length === 0) return {
     status: "error",
-    value: resource,
+    payload: resource,
     message: "No EC2 instance id found"
   };
 
@@ -38,7 +38,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: "EC2 Instance Id is invalid (InvalidInstanceID.Malformed)",
     }
   }
@@ -48,7 +48,7 @@ async function refresh(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      value: resource,
+      payload: resource,
       message: `AWS CLI 2 "aws ec2 describe-instances" returned non zero exit code (${child.exitCode})`,
     }
   }
@@ -80,5 +80,5 @@ async function refresh(component: Input): Promise<Output> {
     }
   }
 
-  return { value: object.Reservations, status, message };
+  return { payload: object.Reservations, status, message };
 }

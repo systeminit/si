@@ -179,7 +179,7 @@ async fn run(ctx: &mut DalContext) {
         .resource(ctx)
         .await
         .expect("unable to fetch resource")
-        .value
+        .payload
         .is_none());
 
     // Apply the change set.
@@ -228,6 +228,6 @@ async fn run(ctx: &mut DalContext) {
         .resource(ctx)
         .await
         .expect("unable to fetch resource")
-        .value
+        .payload
         .is_some());
 }

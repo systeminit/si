@@ -188,7 +188,7 @@ pub struct ResourceView {
 impl ResourceView {
     pub fn new(result: CommandRunResult) -> Self {
         Self {
-            data: result.value,
+            data: result.payload,
             message: result.message,
             status: result.status,
             logs: result.logs,
