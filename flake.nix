@@ -7,6 +7,15 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    # TODO(nick): re-enable once remote caching is enabled.
+    # buck2 = {
+    #   url = "path:nix/buck2";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
+    # reindeer = {
+    #   url = "path:nix/reindeer";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
   };
 
   # Flake outputs
@@ -17,17 +26,20 @@
           (import rust-overlay)
 
           (self: super: {
-            rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
+            rustToolchain =
+              super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
           })
         ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-      in
-      with pkgs;
-      {
+        pkgs = import nixpkgs { inherit system overlays; };
+
+        # TODO(nick): re-enable once remote caching is enabled.
+        # buck2-pkg = buck2.packages.${system}.buck2;
+        # reindeer-pkg = reindeer.packages.${system}.reindeer;
+      in with pkgs; {
         devShells.default = mkShell {
           buildInputs = [
+            # buck2-pkg
+            # reindeer-pkg
             automake
             bash
             clang
@@ -59,13 +71,7 @@
             libiconv
             darwin.apple_sdk.frameworks.Security
           ];
-          depsTargetTarget = [
-            awscli
-            butane
-            kubeval
-            nodejs-18_x
-            skopeo
-          ];
+          depsTargetTarget = [ awscli butane kubeval nodejs-18_x skopeo ];
           # This is awful, but necessary (until we find a better way) to
           # be able to `cargo run` anything that compiles against
           # openssl. Without this, ld is unable to find libssl.so.3 and
@@ -79,6 +85,5 @@
           # version of openssl they were compiled against.
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
         };
-      }
-    );
+      });
 }
