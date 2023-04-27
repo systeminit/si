@@ -19,6 +19,8 @@
   };
 
   # Flake outputs
+  # TODO(nick): re-enable once remote caching is enabled.
+  # outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, reindeer, ... }:
   outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -35,11 +37,23 @@
         # TODO(nick): re-enable once remote caching is enabled.
         # buck2-pkg = buck2.packages.${system}.buck2;
         # reindeer-pkg = reindeer.packages.${system}.reindeer;
+
+        # Ensure pnpm uses our defined node toolchain and does not download its own.
+        pinnedNode = pkgs.nodejs-18_x;
+        nodePackagesWithPinnedNode =
+          pkgs.nodePackages.override { nodejs = pinnedNode; };
+
       in with pkgs; {
         devShells.default = mkShell {
           buildInputs = [
+            # TODO(nick): re-enable once remote caching is enabled.
             # buck2-pkg
             # reindeer-pkg
+
+            # NOTE(nick): we may not need this if we are purely using pnpm's toolchain. More
+            # investigation with veritech on NixOS is recommended.
+            pinnedNode
+
             automake
             bash
             clang
@@ -51,10 +65,9 @@
             jq
             libtool
             lld
-            nodejs-18_x
-            nodePackages.pnpm
-            nodePackages.typescript
-            nodePackages.typescript-language-server
+            nodePackagesWithPinnedNode.pnpm
+            nodePackagesWithPinnedNode.typescript
+            nodePackagesWithPinnedNode.typescript-language-server
             openssl
             pgcli
             pkg-config
@@ -71,7 +84,16 @@
             libiconv
             darwin.apple_sdk.frameworks.Security
           ];
-          depsTargetTarget = [ awscli butane kubeval nodejs-18_x skopeo ];
+          depsTargetTarget = [
+            awscli
+            butane
+            kubeval
+            skopeo
+
+            # NOTE(nick): we may not need this if we are purely using pnpm's toolchain. More
+            # investigation with veritech on NixOS is recommended.
+            pinnedNode
+          ];
           # This is awful, but necessary (until we find a better way) to
           # be able to `cargo run` anything that compiles against
           # openssl. Without this, ld is unable to find libssl.so.3 and
