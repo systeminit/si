@@ -21,10 +21,10 @@ use crate::{
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    ExternalProviderError, ExternalProviderId, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, InternalProviderError, InternalProviderId, PropError, PropId, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    AttributeValueError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
+    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
+    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 #[derive(Debug, Error)]
@@ -103,6 +103,8 @@ pub enum PkgError {
     #[error(transparent)]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error(transparent)]
+    AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
     Socket(#[from] SocketError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
@@ -130,6 +132,12 @@ pub enum PkgError {
     ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error("Cannot find Socket for ExternalProvider {0}")]
     ExternalProviderMissingSocket(ExternalProviderId),
+    #[error("Cannot find FuncArgument {0} for Func {1}")]
+    MissingFuncArgument(String, FuncId),
+    #[error("Cannot find InternalProvider for Prop {0}")]
+    MissingInternalProviderForProp(PropId),
+    #[error("Cannot find InternalProvider for Socket named {0}")]
+    MissingInternalProviderForSocketName(String),
 }
 
 impl PkgError {

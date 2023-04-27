@@ -9,47 +9,47 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     String {
         name: String,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
         name: String,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
         name: String,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
         name: String,
         type_prop: Box<PropSpec>,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Array {
         name: String,
         type_prop: Box<PropSpec>,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
         name: String,
         entries: Vec<PropSpec>,
-        validations: Vec<ValidationSpec>,
+        validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
-        inputs: Vec<AttrFuncInputSpec>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
     },
 }
 
@@ -154,21 +154,21 @@ impl PropSpecBuilder {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
                     name,
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
                 PropSpecKind::Number => PropSpec::Number {
                     name,
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
                     name,
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
@@ -178,9 +178,9 @@ impl PropSpecBuilder {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
@@ -190,16 +190,16 @@ impl PropSpecBuilder {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
                     entries: self.entries.clone(),
-                    validations,
+                    validations: Some(validations),
                     func_unique_id,
-                    inputs,
+                    inputs: Some(inputs),
                 },
             },
             None => {

@@ -27,6 +27,30 @@ pub enum SiPkgAttrFuncInput<'a> {
     },
 }
 
+// We want a version of this free of the restrictive lifetime on Source for the prop visitor
+#[derive(Clone, Debug)]
+pub enum SiPkgAttrFuncInputView {
+    Prop { name: String, prop_path: String },
+    InputSocket { name: String, socket_name: String },
+    OutputSocket { name: String, socket_name: String },
+}
+
+impl<'a> From<SiPkgAttrFuncInput<'a>> for SiPkgAttrFuncInputView {
+    fn from(value: SiPkgAttrFuncInput<'a>) -> Self {
+        match value {
+            SiPkgAttrFuncInput::Prop {
+                name, prop_path, ..
+            } => Self::Prop { name, prop_path },
+            SiPkgAttrFuncInput::InputSocket {
+                name, socket_name, ..
+            } => Self::InputSocket { name, socket_name },
+            SiPkgAttrFuncInput::OutputSocket {
+                name, socket_name, ..
+            } => Self::OutputSocket { name, socket_name },
+        }
+    }
+}
+
 impl<'a> SiPkgAttrFuncInput<'a> {
     pub fn from_graph(
         graph: &'a Graph<HashedNode<PkgNode>, ()>,

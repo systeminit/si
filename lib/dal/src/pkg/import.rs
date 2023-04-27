@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use tokio::sync::Mutex;
 
 use si_pkg::{
-    FuncUniqueId, SiPkg, SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
+    FuncUniqueId, SiPkg, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc, SiPkgLeafFunction,
+    SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow,
+    SocketSpecKind,
 };
 
 use crate::{
@@ -14,9 +16,10 @@ use crate::{
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
-    ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncArgument,
-    FuncError, InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, DalContext, ExternalProvider, ExternalProviderId, Func,
+    FuncArgument, FuncError, FuncId, InternalProvider, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -193,11 +196,19 @@ async fn create_schema(
     Ok(())
 }
 
+#[derive(Clone, Debug)]
+struct AttrFuncInfo {
+    func_unique_id: FuncUniqueId,
+    prop_id: PropId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+}
+
 struct PropVisitContext<'a, 'b> {
     pub ctx: &'a DalContext,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub func_map: &'b FuncMap,
+    pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
 }
 
 async fn create_leaf_function(
@@ -265,10 +276,9 @@ async fn create_socket(
     socket_spec: SiPkgSocket<'_>,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    _func_map: &FuncMap,
+    func_map: &FuncMap,
 ) -> PkgResult<()> {
-    let (identity_func, identity_func_binding, identity_fbrv, _identity_func_argument) =
-        get_identity_func(ctx).await?;
+    let (identity_func, identity_func_binding, identity_fbrv, _) = get_identity_func(ctx).await?;
 
     let name = socket_spec.name();
     let arity = socket_spec.arity();
@@ -286,9 +296,17 @@ async fn create_socket(
                 false,
             )
             .await?;
+
+            if let Some(func_unique_id) = socket_spec.func_unique_id() {
+                dbg!(
+                    "Input socket that is set by a function?",
+                    func_unique_id,
+                    socket_spec.inputs()?
+                );
+            }
         }
         SocketSpecKind::Output => {
-            ExternalProvider::new_with_socket(
+            let (ep, _) = ExternalProvider::new_with_socket(
                 ctx,
                 schema_id,
                 schema_variant_id,
@@ -301,6 +319,18 @@ async fn create_socket(
                 false,
             )
             .await?;
+
+            if let Some(func_unique_id) = socket_spec.func_unique_id() {
+                create_attribute_function_for_output_socket(
+                    ctx,
+                    schema_variant_id,
+                    *ep.id(),
+                    func_unique_id,
+                    socket_spec.inputs()?.drain(..).map(Into::into).collect(),
+                    func_map,
+                )
+                .await?;
+            }
         }
     }
 
@@ -381,6 +411,7 @@ async fn create_schema_variant(
                 schema_id: *schema.id(),
                 schema_variant_id: *schema_variant.id(),
                 func_map,
+                attr_funcs: Mutex::new(vec![]),
             };
 
             schema
@@ -411,6 +442,11 @@ async fn create_schema_variant(
                 create_socket(ctx, socket, *schema.id(), *schema_variant.id(), func_map).await?;
             }
 
+            for attr_func in context.attr_funcs.into_inner() {
+                create_attribute_function_for_prop(ctx, *schema_variant.id(), attr_func, func_map)
+                    .await?;
+            }
+
             schema_variant.finalize(ctx, None).await?;
 
             *schema_variant.id()
@@ -422,6 +458,134 @@ async fn create_schema_variant(
         InstalledPkgAssetTyped::new_for_schema_variant(variant_id, installed_pkg_id, hash),
     )
     .await?;
+
+    Ok(())
+}
+
+async fn create_attribute_function_for_prop(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    AttrFuncInfo {
+        func_unique_id,
+        prop_id,
+        inputs,
+    }: AttrFuncInfo,
+    func_map: &FuncMap,
+) -> PkgResult<()> {
+    let func = func_map
+        .get(&func_unique_id)
+        .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?;
+
+    create_attribute_function(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(prop_id),
+            ..Default::default()
+        },
+        schema_variant_id,
+        *func.id(),
+        inputs,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn create_attribute_function_for_output_socket(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    external_provider_id: ExternalProviderId,
+    func_unique_id: FuncUniqueId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+    func_map: &FuncMap,
+) -> PkgResult<()> {
+    let func = func_map
+        .get(&func_unique_id)
+        .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?;
+
+    create_attribute_function(
+        ctx,
+        AttributeReadContext {
+            external_provider_id: Some(external_provider_id),
+            ..Default::default()
+        },
+        schema_variant_id,
+        *func.id(),
+        inputs,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn create_attribute_function(
+    ctx: &DalContext,
+    context: AttributeReadContext,
+    schema_variant_id: SchemaVariantId,
+    func_id: FuncId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+) -> PkgResult<()> {
+    let value = AttributeValue::find_for_context(ctx, context)
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+
+    let mut prototype = value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+
+    prototype.set_func_id(ctx, func_id).await?;
+
+    for input in inputs {
+        let arg = match &input {
+            SiPkgAttrFuncInputView::Prop { name, .. }
+            | SiPkgAttrFuncInputView::InputSocket { name, .. }
+            | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
+                FuncArgument::find_by_name_for_func(ctx, name, func_id)
+                    .await?
+                    .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
+            }
+        };
+
+        match input {
+            SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
+                let prop = Prop::find_prop_by_raw_path(ctx, schema_variant_id, &prop_path).await?;
+                let prop_ip = InternalProvider::find_for_prop(ctx, *prop.id())
+                    .await?
+                    .ok_or(PkgError::MissingInternalProviderForProp(*prop.id()))?;
+
+                AttributePrototypeArgument::new_for_intra_component(
+                    ctx,
+                    *prototype.id(),
+                    *arg.id(),
+                    *prop_ip.id(),
+                )
+                .await?;
+            }
+            SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
+                let explicit_ip = InternalProvider::find_explicit_for_schema_variant_and_name(
+                    ctx,
+                    schema_variant_id,
+                    &socket_name,
+                )
+                .await?
+                .ok_or(PkgError::MissingInternalProviderForSocketName(
+                    socket_name.to_owned(),
+                ))?;
+
+                AttributePrototypeArgument::new_for_intra_component(
+                    ctx,
+                    *prototype.id(),
+                    *arg.id(),
+                    *explicit_ip.id(),
+                )
+                .await?;
+            }
+            _ => {
+                dbg!("unsupported taking external provider as input for prop");
+            }
+        }
+    }
 
     Ok(())
 }
@@ -521,6 +685,15 @@ async fn create_prop(
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
+
+    if let Some(func_unique_id) = spec.func_unique_id() {
+        let mut inputs = spec.inputs()?;
+        ctx.attr_funcs.lock().await.push(AttrFuncInfo {
+            func_unique_id,
+            prop_id: *prop.id(),
+            inputs: inputs.drain(..).map(Into::into).collect(),
+        });
+    }
 
     for validation_spec in spec.validations()? {
         create_prop_validation(validation_spec, *prop.id(), ctx).await?;

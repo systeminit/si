@@ -44,7 +44,6 @@ pub mod root_prop;
 const ALL_FUNCS: &str = include_str!("../queries/schema_variant/all_related_funcs.sql");
 const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
 const FIND_ROOT_PROP: &str = include_str!("../queries/schema_variant/find_root_prop.sql");
-const FIND_PROP_IN_TREE: &str = include_str!("../queries/schema_variant/find_prop_in_tree.sql");
 const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
@@ -742,15 +741,6 @@ impl SchemaVariant {
         path: &[&str],
     ) -> SchemaVariantResult<Prop> {
         let path = path.join(PROP_PATH_SEPARATOR);
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                FIND_PROP_IN_TREE,
-                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id, &path],
-            )
-            .await?;
-        Ok(object_from_row(row)?)
+        Ok(Prop::find_prop_by_raw_path(ctx, schema_variant_id, &path).await?)
     }
 }

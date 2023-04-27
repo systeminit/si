@@ -82,7 +82,7 @@ impl NodeChild for SocketSpec {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         NodeWithChildren::new(
-            NodeKind::Leaf,
+            NodeKind::Tree,
             Self::NodeType::Socket(SocketNode {
                 func_unique_id: self.func_unique_id,
                 name: self.name.clone(),
