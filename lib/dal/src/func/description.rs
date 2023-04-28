@@ -21,6 +21,8 @@ use crate::{
 
 const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
     include_str!("../queries/func_description_find_for_func_and_schema_variant.sql");
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("../queries/func_description_list_for_schema_variant.sql");
 
 /// The contents of a [`FuncDescription`], which differ based on the [`Func's`](crate::Func)
 /// [`FuncBackendResponseType`](crate::FuncBackendResponseType).
@@ -144,6 +146,24 @@ impl FuncDescription {
 
     pub fn response_type(&self) -> FuncBackendResponseType {
         self.response_type
+    }
+
+    /// Find all [`Self`] for the provided [`SchemaVariantId`](crate::SchemaVariantId).
+    #[instrument(skip_all)]
+    pub async fn list_for_schema_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncResult<Vec<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_FOR_SCHEMA_VARIANT,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(row)?)
     }
 
     /// Find [`Self`] with a provided [`FuncId`](crate::FuncId) and

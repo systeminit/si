@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
-use super::{LeafFunctionSpec, PropSpec, SocketSpec, SpecError, WorkflowSpec};
+use super::{FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SocketSpec, SpecError, WorkflowSpec};
 
 #[derive(
     Debug,
@@ -46,6 +46,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "leaf_function"), into), default)]
     pub leaf_functions: Vec<LeafFunctionSpec>,
+
+    #[builder(setter(each(name = "func_description"), into), default)]
+    pub func_descriptions: Vec<FuncDescriptionSpec>,
 
     #[builder(setter(each(name = "workflow"), into), default)]
     pub workflows: Vec<WorkflowSpec>,

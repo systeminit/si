@@ -6,8 +6,8 @@ use std::{
 use strum::IntoEnumIterator;
 
 use si_pkg::{
-    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
+    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncDescriptionSpec,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
     SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SiPkg,
     SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
@@ -20,10 +20,10 @@ use crate::{
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
-    ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId,
-    LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    ExternalProvider, ExternalProviderId, Func, FuncDescription, FuncId, InternalProvider,
+    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, Socket, StandardModel, StandardModelError,
+    ValidationPrototype, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -87,7 +87,7 @@ pub async fn export_pkg(
     Ok(())
 }
 
-fn build_intrinsic_func_spec(name: &str) -> Result<FuncSpec, PkgError> {
+fn build_intrinsic_func_spec(name: &str) -> PkgResult<FuncSpec> {
     Ok(FuncSpec::builder()
         .name(name)
         .handler(name)
@@ -98,7 +98,7 @@ fn build_intrinsic_func_spec(name: &str) -> Result<FuncSpec, PkgError> {
         .build()?)
 }
 
-fn build_func_spec(func: &Func, args: &[FuncArgument]) -> Result<FuncSpec, PkgError> {
+fn build_func_spec(func: &Func, args: &[FuncArgument]) -> PkgResult<FuncSpec> {
     let mut func_spec_builder = FuncSpec::builder();
 
     func_spec_builder.name(func.name());
@@ -143,7 +143,7 @@ async fn build_schema_spec(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> Result<SchemaSpec, PkgError> {
+) -> PkgResult<SchemaSpec> {
     let (variant, schema) = get_schema_and_variant(ctx, variant_id).await?;
 
     let mut schema_spec_builder = SchemaSpec::builder();
@@ -158,11 +158,34 @@ async fn build_schema_spec(
     Ok(schema_spec)
 }
 
+async fn build_func_description_specs(
+    ctx: &DalContext,
+    variant_id: SchemaVariantId,
+    func_specs: &FuncSpecMap,
+) -> PkgResult<Vec<FuncDescriptionSpec>> {
+    let mut specs = vec![];
+
+    for func_description in FuncDescription::list_for_schema_variant(ctx, variant_id).await? {
+        let func_spec = func_specs
+            .get(&func_description.func_id())
+            .ok_or(PkgError::MissingExportedFunc(func_description.func_id()))?;
+
+        specs.push(
+            FuncDescriptionSpec::builder()
+                .func_unique_id(func_spec.unique_id)
+                .contents(func_description.serialized_contents().to_owned())
+                .build()?,
+        )
+    }
+
+    Ok(specs)
+}
+
 async fn build_leaf_function_specs(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> Result<Vec<LeafFunctionSpec>, PkgError> {
+) -> PkgResult<Vec<LeafFunctionSpec>> {
     let mut specs = vec![];
 
     for leaf_kind in LeafKind::iter() {
@@ -195,7 +218,7 @@ async fn build_workflow_specs(
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> Result<Vec<WorkflowSpec>, PkgError> {
+) -> PkgResult<Vec<WorkflowSpec>> {
     let mut specs = vec![];
 
     for workflow_prototype in WorkflowPrototype::find_for_context(
@@ -245,7 +268,7 @@ async fn build_input_func_and_arguments(
     ctx: &DalContext,
     proto: AttributePrototype,
     func_specs: &FuncSpecMap,
-) -> Result<Option<(FuncUniqueId, Vec<AttrFuncInputSpec>)>, PkgError> {
+) -> PkgResult<Option<(FuncUniqueId, Vec<AttrFuncInputSpec>)>> {
     let proto_func = Func::get_by_id(ctx, &proto.func_id()).await?.ok_or(
         PkgError::MissingAttributePrototypeFunc(*proto.id(), proto.func_id()),
     )?;
@@ -332,7 +355,7 @@ async fn build_socket_specs(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> Result<Vec<SocketSpec>, PkgError> {
+) -> PkgResult<Vec<SocketSpec>> {
     let mut specs = vec![];
 
     for input_socket_ip in
@@ -450,7 +473,7 @@ async fn build_variant_spec(
     schema: &Schema,
     variant: SchemaVariant,
     func_specs: &FuncSpecMap,
-) -> Result<SchemaVariantSpec, PkgError> {
+) -> PkgResult<SchemaVariantSpec> {
     let mut variant_spec_builder = SchemaVariantSpec::builder();
     variant_spec_builder.name(variant.name());
     if let Some(color_str) = variant.color(ctx).await? {
@@ -469,6 +492,13 @@ async fn build_variant_spec(
         .drain(..)
         .for_each(|leaf_func_spec| {
             variant_spec_builder.leaf_function(leaf_func_spec);
+        });
+
+    build_func_description_specs(ctx, *variant.id(), func_specs)
+        .await?
+        .drain(..)
+        .for_each(|func_desc_spec| {
+            variant_spec_builder.func_description(func_desc_spec);
         });
 
     build_workflow_specs(ctx, *schema.id(), *variant.id(), func_specs)
@@ -493,7 +523,7 @@ async fn build_variant_spec(
 async fn get_schema_and_variant(
     ctx: &DalContext,
     variant_id: SchemaVariantId,
-) -> Result<(SchemaVariant, Schema), PkgError> {
+) -> PkgResult<(SchemaVariant, Schema)> {
     let variant = SchemaVariant::get_by_id(ctx, &variant_id)
         .await?
         .ok_or_else(|| {
@@ -515,7 +545,7 @@ async fn set_schema_spec_category_data(
     ctx: &DalContext,
     schema: &Schema,
     schema_spec_builder: &mut si_pkg::SchemaSpecBuilder,
-) -> Result<(), PkgError> {
+) -> PkgResult<()> {
     let mut schema_ui_menus = schema.ui_menus(ctx).await?;
     let schema_ui_menu = schema_ui_menus.pop().ok_or_else(|| {
         PkgError::StandardModelMissingBelongsTo(
@@ -543,7 +573,7 @@ async fn set_variant_spec_prop_data(
     variant: &SchemaVariant,
     variant_spec: &mut SchemaVariantSpecBuilder,
     func_specs: &HashMap<FuncId, FuncSpec>,
-) -> Result<(), PkgError> {
+) -> PkgResult<()> {
     let mut prop_tree = PropTree::new(ctx, false, Some(*variant.id())).await?;
     let root_tree_node = prop_tree
         .root_props
