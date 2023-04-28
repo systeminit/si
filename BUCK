@@ -1,4 +1,4 @@
-load("//build-rules/ts.bzl", "si_typescript_bin", "pnpm_install")
+load("//build-rules/ts.bzl", "pnpm_install")
 
 pnpm_install(
   name = "pnpm-install",

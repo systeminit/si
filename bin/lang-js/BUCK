@@ -1,4 +1,4 @@
-load("//build-rules/ts.bzl", "pnpm_run_binary", "pnpm_run_library")
+load("//build-rules/ts.bzl", "pnpm_task_library", "pnpm_task_binary", "pnpm_task_test")
 
 export_file(
   name = "package.json",
@@ -7,27 +7,56 @@ export_file(
   visibility = ["//:pnpm-install"],
 )
 
-pnpm_run_library(
+pnpm_task_library(
   name = "build",
   command = "build",
-  srcs = glob(["src/**/*.ts"]),
-  deps = ["//:pnpm-install"],
+  srcs = glob(["src/**/*.ts", "tsconfig.json"]),
+  deps = ["//:pnpm-install", ":build-lint"],
   path = "bin/lang-js",
+  outs = ["dist"],
 )
 
-pnpm_run_library(
-  name = "build_lint",
+pnpm_task_library(
+  name = "build-lint",
   command = "lint",
-  srcs = glob(["src/**/*.ts"]),
+  srcs = glob(["src/**/*.ts", "tsconfig.json"]),
   deps = ["//:pnpm-install"],
-  out = "src",
   path = "bin/lang-js",
 )
 
-pnpm_run_binary(
+pnpm_task_library(
+  name = "build-package",
+  command = "package:nobuild",
+  deps = [":build"],
+  path = "bin/lang-js",
+  outs = ["target/lang-js"],
+)
+
+pnpm_task_binary(
   name = "lint",
   command = "lint",
   srcs = glob(["src/**/*.ts"]),
   path = "bin/lang-js",
   deps = ["//:pnpm-install"],
+)
+
+pnpm_task_binary(
+  name = "package",
+  command = "package:nobuild",
+  deps = [":build"],
+  path = "bin/lang-js",
+)
+
+pnpm_task_binary(
+  name = "run",
+  command = "start:nobuild",
+  deps = [":build"],
+  path = "bin/lang-js",
+)
+
+pnpm_task_test(
+  name = "test",
+  command = "test",
+  deps = [":build"],
+  path = "bin/lang-js",
 )
