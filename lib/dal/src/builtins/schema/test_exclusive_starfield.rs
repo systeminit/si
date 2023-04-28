@@ -6,8 +6,9 @@ use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
     builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ActionKind,
-    ActionPrototype, ActionPrototypeContext, Func, FuncArgument, FuncBackendKind,
-    FuncBackendResponseType, WorkflowPrototype, WorkflowPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, BuiltinsError, Func, FuncArgument, FuncBackendKind,
+    FuncBackendResponseType, InternalProvider, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{BuiltinsResult, DalContext, SchemaVariant, StandardModel};
 
@@ -44,7 +45,7 @@ impl MigrationDriver {
         // Setup the confirmation function.
         let mut confirmation_func = Func::new(
             ctx,
-            "test:confirmation",
+            "test:confirmationStarfield",
             FuncBackendKind::JsAttribute,
             FuncBackendResponseType::Confirmation,
         )
@@ -89,68 +90,167 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Create command and workflow funcs for our workflow and action prototypes.
-        let mut command_func = Func::new(
-            ctx,
-            "test:createCommand",
-            FuncBackendKind::JsCommand,
-            FuncBackendResponseType::Command,
-        )
-        .await?;
-        let code = "async function create() {
-            return { payload: \"poop\", status: \"ok\" };
-        }";
-        command_func.set_code_plaintext(ctx, Some(code)).await?;
-        command_func.set_handler(ctx, Some("create")).await?;
-        let mut workflow_func = Func::new(
-            ctx,
-            "test:createWorkflow",
-            FuncBackendKind::JsWorkflow,
-            FuncBackendResponseType::Workflow,
-        )
-        .await?;
-        let code = "async function create() {
-          return {
-            name: \"test:createWorkflow\",
-            kind: \"conditional\",
-            steps: [
-              {
-                command: \"test:createCommand\",
-              },
-            ],
-          };
-        }";
-        workflow_func.set_code_plaintext(ctx, Some(code)).await?;
-        workflow_func.set_handler(ctx, Some("create")).await?;
+        // Add create command, workflow and action.
+        {
+            let mut command_func = Func::new(
+                ctx,
+                "test:createCommandStarfield",
+                FuncBackendKind::JsCommand,
+                FuncBackendResponseType::Command,
+            )
+            .await?;
+            let code = "async function create() {
+                return { payload: \"poop\", status: \"ok\" };
+            }";
+            command_func.set_code_plaintext(ctx, Some(code)).await?;
+            command_func.set_handler(ctx, Some("create")).await?;
+            let mut workflow_func = Func::new(
+                ctx,
+                "test:createWorkflowStarfield",
+                FuncBackendKind::JsWorkflow,
+                FuncBackendResponseType::Workflow,
+            )
+            .await?;
+            let code = "async function create() {
+              return {
+                name: \"test:createWorkflowStarfield\",
+                kind: \"conditional\",
+                steps: [
+                  {
+                    command: \"test:createCommandStarfield\",
+                  },
+                ],
+              };
+            }";
+            workflow_func.set_code_plaintext(ctx, Some(code)).await?;
+            workflow_func.set_handler(ctx, Some("create")).await?;
+            let workflow_prototype = WorkflowPrototype::new(
+                ctx,
+                *workflow_func.id(),
+                serde_json::Value::Null,
+                WorkflowPrototypeContext {
+                    schema_id: *schema.id(),
+                    schema_variant_id: *schema_variant.id(),
+                    ..Default::default()
+                },
+                "Create Starfield",
+            )
+            .await?;
+            ActionPrototype::new(
+                ctx,
+                *workflow_prototype.id(),
+                "create",
+                ActionKind::Create,
+                ActionPrototypeContext {
+                    schema_id: *schema.id(),
+                    schema_variant_id,
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
 
-        // Create workflow and action prototypes.
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            WorkflowPrototypeContext {
-                schema_id: *schema.id(),
-                schema_variant_id: *schema_variant.id(),
-                ..Default::default()
-            },
-            "create",
-        )
-        .await?;
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "create",
-            ActionKind::Create,
-            ActionPrototypeContext {
-                schema_id: *schema.id(),
-                schema_variant_id,
-                ..Default::default()
-            },
-        )
-        .await?;
+        // Add refresh command, workflow and action.
+        {
+            let mut refresh_func = Func::new(
+                ctx,
+                "test:refreshCommandStarfield",
+                FuncBackendKind::JsCommand,
+                FuncBackendResponseType::Command,
+            )
+            .await?;
+            let code = "async function refresh(component: Input): Promise<Output> {
+              return { payload: \"poop\", status: \"ok\" };
+            }";
+            refresh_func.set_code_plaintext(ctx, Some(code)).await?;
+            refresh_func.set_handler(ctx, Some("refresh")).await?;
+            let mut workflow_func = Func::new(
+                ctx,
+                "test:refreshWorkflowStarfield",
+                FuncBackendKind::JsWorkflow,
+                FuncBackendResponseType::Workflow,
+            )
+            .await?;
+            let code = "async function refresh(arg: Input): Promise<Output> {
+              return {
+                name: \"test:refreshWorkflowStarfield\",
+                kind: \"conditional\",
+                steps: [
+                  {
+                    command: \"test:refreshCommandStarfield\",
+                    args: [arg],
+                  },
+                ],
+              };
+            }";
+            workflow_func.set_code_plaintext(ctx, Some(code)).await?;
+            workflow_func.set_handler(ctx, Some("refresh")).await?;
+            let workflow_prototype = WorkflowPrototype::new(
+                ctx,
+                *workflow_func.id(),
+                serde_json::Value::Null,
+                WorkflowPrototypeContext {
+                    schema_id: *schema.id(),
+                    schema_variant_id: *schema_variant.id(),
+                    ..Default::default()
+                },
+                "Refresh Starfield",
+            )
+            .await?;
+            ActionPrototype::new(
+                ctx,
+                *workflow_prototype.id(),
+                "refresh",
+                ActionKind::Create,
+                ActionPrototypeContext {
+                    schema_id: *schema.id(),
+                    schema_variant_id,
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
 
         // Finalize the schema variant.
         schema_variant.finalize(ctx, None).await?;
+
+        // Get the identity func from the cache.
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+        // Connect the "/root/si/name" field to the "/root/domain/name" field.
+        let domain_name_prop = schema_variant
+            .find_prop(ctx, &["root", "domain", "name"])
+            .await?;
+        let si_name_prop = schema_variant
+            .find_prop(ctx, &["root", "si", "name"])
+            .await?;
+        let domain_name_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext::default_with_prop(*domain_name_prop.id()),
+        )
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+        let mut domain_name_attribute_prototype = domain_name_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(AttributeValueError::MissingAttributePrototype)?;
+        domain_name_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+            })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *domain_name_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *si_name_internal_provider.id(),
+        )
+        .await?;
 
         Ok(())
     }

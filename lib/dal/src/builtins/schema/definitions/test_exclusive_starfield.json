@@ -1,6 +1,10 @@
 {
   "props": [
     {
+      "name": "name",
+      "kind": "string"
+    },
+    {
       "name": "freestar",
       "kind": "string"
     },
@@ -27,12 +31,7 @@
   ],
   "inputSockets": [
     {
-      "name": "input"
-    }
-  ],
-  "outputSockets": [
-    {
-      "name": "output"
+      "name": "bethesda"
     }
   ]
 }

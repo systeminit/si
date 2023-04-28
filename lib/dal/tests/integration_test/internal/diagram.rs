@@ -1,14 +1,11 @@
 use dal::change_status::ChangeStatus;
 use dal::edge::EdgeKind;
 use dal::{
-    socket::{SocketArity, SocketEdgeKind, SocketKind},
-    Component, ComponentView, ComponentViewProperties, Connection, DalContext, Diagram,
-    DiagramEdgeView, DiagramKind, Node, Schema, SchemaVariant, StandardModel,
+    socket::SocketEdgeKind, Component, ComponentView, ComponentViewProperties, Connection,
+    DalContext, Diagram, DiagramEdgeView, Node, Schema, Socket, StandardModel,
 };
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_payload::ComponentPayloadAssembler;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -83,221 +80,53 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
 }
 
 #[test]
-async fn get_diagram_and_create_connection(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let from_docker_hub_credential = harness
-        .create_component(ctx, "from", Builtin::DockerHubCredential)
-        .await;
-    let to_docker_image = harness
-        .create_component(ctx, "to", Builtin::DockerImage)
-        .await;
+async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
+    let mut assembler = ComponentPayloadAssembler::new();
+    let fallout_payload = assembler.create_component(ctx, "tail", "fallout").await;
+    let starfield_payload = assembler.create_component(ctx, "head", "starfield").await;
 
-    let _from_schema = Schema::get_by_id(ctx, &from_docker_hub_credential.schema_id)
-        .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-    let _to_schema = Schema::get_by_id(ctx, &to_docker_image.schema_id)
-        .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-
-    let from_schema_variant =
-        SchemaVariant::get_by_id(ctx, &from_docker_hub_credential.schema_variant_id)
-            .await
-            .expect("could not find schema variant by id")
-            .expect("schema variant by id not found");
-    let to_schema_variant = SchemaVariant::get_by_id(ctx, &to_docker_image.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-
-    let from_sockets = from_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let to_sockets = to_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let output_socket = from_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find output socket");
-
-    let input_socket = to_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find input socket");
-
-    let mut from_node = Node::get_by_id(ctx, &from_docker_hub_credential.node_id)
-        .await
-        .expect("Couldn't find node for from_docker_hub_credential")
-        .unwrap();
-
-    from_node
-        .set_geometry(ctx, "123", "-10", Some("500"), Some("500"))
-        .await
-        .expect("cannot set node geometry");
-
-    let mut to_node = Node::get_by_id(ctx, &to_docker_image.node_id)
-        .await
-        .expect("Couldn't find node for to_docker_image")
-        .unwrap();
-
-    to_node
-        .set_geometry(ctx, "124", "-11", Some("500"), Some("500"))
-        .await
-        .expect("cannot set node geometry");
-
-    let connection = Connection::new(
+    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        from_docker_hub_credential.node_id,
-        *output_socket.id(),
-        to_docker_image.node_id,
-        *input_socket.id(),
-        EdgeKind::Configuration,
+        "bethesda",
+        SocketEdgeKind::ConfigurationOutput,
+        fallout_payload.node_id,
     )
     .await
-    .expect("could not create connection");
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
+    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "bethesda",
+        SocketEdgeKind::ConfigurationInput,
+        starfield_payload.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
 
-    let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
-
-    // Check the nodes.
-    assert_eq!(diagram.components().len(), 2);
-    assert_eq!(
-        diagram
-            .components()
-            .iter()
-            .filter(|n| n.node_id() == from_docker_hub_credential.node_id
-                || n.node_id() == to_docker_image.node_id)
-            .count(),
-        2
-    );
-
-    // Check the node positions.
-    assert_eq!(
-        diagram
-            .components()
-            .iter()
-            .filter(|n| (n.position().x().to_string() == from_node.x()
-                && n.position().y().to_string() == from_node.y())
-                || (n.position().x().to_string() == to_node.x()
-                    && n.position().y().to_string() == to_node.y()))
-            .count(),
-        2
-    );
-
-    // Check the connection on the diagram.
-    assert_eq!(diagram.edges().len(), 1);
-    assert_eq!(
-        diagram.edges()[0],
-        DiagramEdgeView::from_with_change_status(connection.clone(), ChangeStatus::Added)
-    );
-
-    // Check the connection itself.
-    let (source_node_id, source_socket_id) = connection.source();
-    let (destination_node_id, destination_socket_id) = connection.destination();
-
-    assert_eq!(source_node_id, from_docker_hub_credential.node_id);
-    assert_eq!(source_socket_id, *output_socket.id());
-    assert_eq!(destination_node_id, to_docker_image.node_id);
-    assert_eq!(destination_socket_id, *input_socket.id());
-}
-
-#[test]
-async fn get_diagram_and_delete_connection(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let from_docker_hub_credential = harness
-        .create_component(ctx, "from", Builtin::DockerHubCredential)
-        .await;
-    let to_docker_image = harness
-        .create_component(ctx, "to", Builtin::DockerImage)
-        .await;
-
-    let _from_schema = Schema::get_by_id(ctx, &from_docker_hub_credential.schema_id)
+    let mut fallout_node = Node::get_by_id(ctx, &fallout_payload.node_id)
         .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-    let _to_schema = Schema::get_by_id(ctx, &to_docker_image.schema_id)
-        .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-
-    let from_schema_variant =
-        SchemaVariant::get_by_id(ctx, &from_docker_hub_credential.schema_variant_id)
-            .await
-            .expect("could not find schema variant by id")
-            .expect("schema variant by id not found");
-    let to_schema_variant = SchemaVariant::get_by_id(ctx, &to_docker_image.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-
-    let from_sockets = from_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let to_sockets = to_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let output_socket = from_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find output socket");
-
-    let input_socket = to_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find input socket");
-
-    Node::get_by_id(ctx, &from_docker_hub_credential.node_id)
-        .await
-        .expect("Can't find node")
-        .unwrap()
+        .expect("could not find node")
+        .expect("node not found");
+    fallout_node
         .set_geometry(ctx, "123", "-10", Some("500"), Some("500"))
         .await
         .expect("cannot set node geometry");
 
-    Node::get_by_id(ctx, &to_docker_image.node_id)
+    let mut starfield_node = Node::get_by_id(ctx, &starfield_payload.node_id)
         .await
-        .expect("Can't find node")
-        .unwrap()
+        .expect("could not find node")
+        .expect("node not found");
+    starfield_node
         .set_geometry(ctx, "124", "-11", Some("500"), Some("500"))
         .await
-        .expect("cannot upsert node position");
+        .expect("cannot set node geometry");
 
     let connection = Connection::new(
         ctx,
-        from_docker_hub_credential.node_id,
+        fallout_payload.node_id,
         *output_socket.id(),
-        to_docker_image.node_id,
+        starfield_payload.node_id,
         *input_socket.id(),
         EdgeKind::Configuration,
     )
@@ -320,9 +149,9 @@ async fn get_diagram_and_delete_connection(ctx: &DalContext) {
     let (source_node_id, source_socket_id) = connection.source();
     let (destination_node_id, destination_socket_id) = connection.destination();
 
-    assert_eq!(source_node_id, from_docker_hub_credential.node_id);
+    assert_eq!(source_node_id, fallout_payload.node_id);
     assert_eq!(source_socket_id, *output_socket.id());
-    assert_eq!(destination_node_id, to_docker_image.node_id);
+    assert_eq!(destination_node_id, starfield_payload.node_id);
     assert_eq!(destination_socket_id, *input_socket.id());
 
     // Delete the connection
