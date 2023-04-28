@@ -12,9 +12,9 @@ pub use spec::{
     FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
     LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SocketSpec,
-    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
-    WorkflowSpecBuilder,
+    SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SchemaVariantSpecComponentType, SocketSpec, SocketSpecArity, SocketSpecKind, SpecError,
+    ValidationSpec, ValidationSpecKind, WorkflowSpec, WorkflowSpecBuilder,
 };
 
 #[cfg(test)]

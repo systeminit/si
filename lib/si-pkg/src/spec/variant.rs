@@ -1,8 +1,31 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{LeafFunctionSpec, PropSpec, SocketSpec, SpecError, WorkflowSpec};
+
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Copy,
+    Default,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum SchemaVariantSpecComponentType {
+    #[default]
+    Component,
+    ConfigurationFrame,
+    AggregationFrame,
+}
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +37,9 @@ pub struct SchemaVariantSpec {
     pub link: Option<Url>,
     #[builder(setter(into, strip_option), default)]
     pub color: Option<String>,
+
+    #[builder(setter(into), default)]
+    pub component_type: SchemaVariantSpecComponentType,
 
     #[builder(private, default = "Self::default_domain()")]
     pub domain: PropSpec,

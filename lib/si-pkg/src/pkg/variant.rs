@@ -8,13 +8,17 @@ use super::{
     PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgSocket, SiPkgWorkflow, Source,
 };
 
-use crate::node::{PkgNode, PropChildNode, SchemaVariantChildNode};
+use crate::{
+    node::{PkgNode, PropChildNode, SchemaVariantChildNode},
+    SchemaVariantSpecComponentType,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaVariant<'a> {
     name: String,
     link: Option<Url>,
     color: Option<String>,
+    component_type: SchemaVariantSpecComponentType,
 
     hash: Hash,
 
@@ -72,6 +76,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
             name: schema_variant_node.name,
             link: schema_variant_node.link,
             color: schema_variant_node.color,
+            component_type: schema_variant_node.component_type,
             hash: schema_variant_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -89,6 +94,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn color(&self) -> Option<&str> {
         self.color.as_deref()
+    }
+
+    pub fn component_type(&self) -> SchemaVariantSpecComponentType {
+        self.component_type
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);

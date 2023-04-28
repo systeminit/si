@@ -445,7 +445,9 @@ async fn create_schema_variant(
                 .visit_prop_tree(create_prop, Some(domain_prop_id), &context)
                 .await?;
 
-            schema_variant.finalize(ctx, None).await?;
+            schema_variant
+                .finalize(ctx, Some(variant_spec.component_type().into()))
+                .await?;
 
             for leaf_func in variant_spec.leaf_functions()? {
                 create_leaf_function(ctx, leaf_func, *schema_variant.id(), func_map).await?;
@@ -469,7 +471,9 @@ async fn create_schema_variant(
                     .await?;
             }
 
-            schema_variant.finalize(ctx, None).await?;
+            schema_variant
+                .finalize(ctx, Some(variant_spec.component_type().into()))
+                .await?;
 
             *schema_variant.id()
         }
