@@ -1,4 +1,7 @@
-use std::io::{BufRead, Write};
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
 
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
@@ -6,19 +9,21 @@ use object_tree::{
 };
 use url::Url;
 
-use crate::{node::SchemaVariantChild, SchemaVariantSpec};
+use crate::{node::SchemaVariantChild, SchemaVariantSpec, SchemaVariantSpecComponentType};
 
 use super::PkgNode;
 
 const KEY_COLOR_STR: &str = "color";
 const KEY_LINK_STR: &str = "link";
 const KEY_NAME_STR: &str = "name";
+const KEY_COMPONENT_TYPE_STR: &str = "component_type";
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantNode {
     pub name: String,
     pub link: Option<Url>,
     pub color: Option<String>,
+    pub component_type: SchemaVariantSpecComponentType,
 }
 
 impl NameStr for SchemaVariantNode {
@@ -36,6 +41,7 @@ impl WriteBytes for SchemaVariantNode {
             self.link.as_ref().map(|l| l.as_str()).unwrap_or(""),
         )?;
         write_key_value_line(writer, KEY_COLOR_STR, self.color.as_deref().unwrap_or(""))?;
+        write_key_value_line(writer, KEY_COMPONENT_TYPE_STR, self.component_type)?;
 
         Ok(())
     }
@@ -59,8 +65,16 @@ impl ReadBytes for SchemaVariantNode {
         } else {
             Some(color_str)
         };
+        let component_type_str = read_key_value_line(reader, KEY_COMPONENT_TYPE_STR)?;
+        let component_type = SchemaVariantSpecComponentType::from_str(&component_type_str)
+            .map_err(GraphError::parse)?;
 
-        Ok(Self { name, link, color })
+        Ok(Self {
+            name,
+            link,
+            color,
+            component_type,
+        })
     }
 }
 
@@ -74,6 +88,7 @@ impl NodeChild for SchemaVariantSpec {
                 name: self.name.to_string(),
                 link: self.link.as_ref().cloned(),
                 color: self.color.as_ref().cloned(),
+                component_type: self.component_type,
             }),
             vec![
                 Box::new(SchemaVariantChild::Domain(self.domain.clone()))

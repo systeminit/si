@@ -9,8 +9,8 @@ use si_pkg::{
     ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SocketSpec, SocketSpecKind,
-    SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
+    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SiPkg,
+    SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
 };
 
 use crate::{
@@ -19,10 +19,11 @@ use crate::{
     socket::SocketKind,
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    AttributePrototypeArgument, AttributeValue, DalContext, ExternalProvider, ExternalProviderId,
-    Func, FuncId, InternalProvider, InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariant, SchemaVariantId, Socket, StandardModel, StandardModelError,
-    ValidationPrototype, WorkflowPrototype, WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
+    ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId,
+    LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -419,6 +420,31 @@ async fn build_socket_specs(
     Ok(specs)
 }
 
+async fn get_component_type(
+    ctx: &DalContext,
+    variant: &SchemaVariant,
+) -> Result<SchemaVariantSpecComponentType, PkgError> {
+    let type_prop = variant.find_prop(ctx, &["root", "si", "type"]).await?;
+    let type_context = AttributeReadContext {
+        prop_id: Some(*type_prop.id()),
+        ..Default::default()
+    };
+
+    let type_av = AttributeValue::find_for_context(ctx, type_context)
+        .await?
+        .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
+            type_context,
+        ))?;
+
+    Ok(match type_av.get_value(ctx).await? {
+        Some(type_value) => {
+            let component_type: ComponentType = serde_json::from_value(type_value)?;
+            component_type.into()
+        }
+        None => SchemaVariantSpecComponentType::default(),
+    })
+}
+
 async fn build_variant_spec(
     ctx: &DalContext,
     schema: &Schema,
@@ -433,6 +459,8 @@ async fn build_variant_spec(
     if let Some(link) = variant.link() {
         variant_spec_builder.try_link(link)?;
     }
+
+    variant_spec_builder.component_type(get_component_type(ctx, &variant).await?);
 
     set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder, func_specs).await?;
 

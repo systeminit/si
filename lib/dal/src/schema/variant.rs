@@ -293,8 +293,8 @@ impl SchemaVariant {
         }
         let type_prop_id =
             maybe_type_prop_id.ok_or(SchemaVariantError::PropNotFound("/root/si/type"))?;
-        let protected_prop_id =
-            maybe_protected_prop_id.ok_or(SchemaVariantError::PropNotFound("/root/si/type"))?;
+        let protected_prop_id = maybe_protected_prop_id
+            .ok_or(SchemaVariantError::PropNotFound("/root/si/protected"))?;
 
         // Set the default type of the schema variant.
         let attribute_read_context = AttributeReadContext::default_with_prop(type_prop_id);
