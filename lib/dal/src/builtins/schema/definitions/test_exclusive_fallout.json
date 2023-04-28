@@ -1,0 +1,13 @@
+{
+  "props": [
+    {
+      "name": "special",
+      "kind": "string"
+    }
+  ],
+  "outputSockets": [
+    {
+      "name": "bethesda"
+    }
+  ]
+}

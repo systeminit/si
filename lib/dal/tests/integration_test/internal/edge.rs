@@ -2,8 +2,10 @@ use dal::socket::SocketKind;
 use dal::{
     edge::{EdgeKind, EdgeObjectId, VertexObjectKind},
     socket::SocketEdgeKind,
-    Connection, DalContext, DiagramKind, Edge, Schema, SchemaVariant, SocketArity, StandardModel,
+    Connection, DalContext, DiagramKind, Edge, Schema, SchemaVariant, Socket, SocketArity,
+    StandardModel,
 };
+use dal_test::helpers::component_payload::ComponentPayloadAssembler;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -12,68 +14,49 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let credential_payload = harness
-        .create_component(ctx, "tail", Builtin::DockerHubCredential)
-        .await;
-    let image_payload = harness
-        .create_component(ctx, "head", Builtin::DockerImage)
-        .await;
+    let mut assembler = ComponentPayloadAssembler::new();
+    let fallout_payload = assembler.create_component(ctx, "tail", "fallout").await;
+    let starfield_payload = assembler.create_component(ctx, "head", "starfield").await;
 
-    let credential_schema_variant =
-        SchemaVariant::get_by_id(ctx, &credential_payload.schema_variant_id)
-            .await
-            .expect("could not get schema variant by id")
-            .expect("schema variant by id not found");
-    let image_schema_variant = SchemaVariant::get_by_id(ctx, &image_payload.schema_variant_id)
-        .await
-        .expect("could not get schema variant by id")
-        .expect("schema variant by id not found");
-
-    let credential_sockets = credential_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let image_sockets = image_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let output_socket = credential_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find output socket");
-    let input_socket = image_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.name() == "Docker Hub Credential"
-        })
-        .expect("cannot find input socket");
+    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "bethesda",
+        SocketEdgeKind::ConfigurationOutput,
+        fallout_payload.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
+    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "bethesda",
+        SocketEdgeKind::ConfigurationInput,
+        starfield_payload.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
 
     let _edge = Edge::new(
         ctx,
         EdgeKind::Configuration,
-        image_payload.node_id,
+        starfield_payload.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(image_payload.component_id),
+        EdgeObjectId::from(starfield_payload.component_id),
         *input_socket.id(),
-        credential_payload.node_id,
+        fallout_payload.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(credential_payload.component_id),
+        EdgeObjectId::from(fallout_payload.component_id),
         *output_socket.id(),
     )
     .await
     .expect("cannot create new edge");
 
-    let parents = Edge::list_parents_for_component(ctx, image_payload.component_id)
+    let parents = Edge::list_parents_for_component(ctx, starfield_payload.component_id)
         .await
         .expect("unable to find component's parents");
     assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], credential_payload.component_id);
+    assert_eq!(parents[0], fallout_payload.component_id);
 }
 
 #[test]

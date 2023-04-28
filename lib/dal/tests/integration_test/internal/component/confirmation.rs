@@ -67,9 +67,11 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
+            "domain": {
+                "name": "component",
+            },
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
@@ -110,14 +112,16 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
+            "domain": {
+                "name": "component"
+            },
             "resource": {
                 "logs": [],
-                "payload": "poop",
-                "status": "ok"
+                "status": "ok",
+                "payload": "poop"
             },
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": true,
                     "recommendedActions": []
                 }
@@ -158,13 +162,15 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
+            "domain": {
+                "name": "component"
+            },
             "resource": {
                 "logs": [],
                 "status": "ok"
             },
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
@@ -256,7 +262,7 @@ async fn list_confirmations(mut octx: DalContext) {
             },
             "domain": {},
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
@@ -299,7 +305,7 @@ async fn list_confirmations(mut octx: DalContext) {
         .expect("could not list confirmations");
     let confirmation = confirmations.pop().expect("views are empty");
     assert!(confirmations.is_empty());
-    assert_eq!(confirmation.status, ConfirmationStatus::Success);
+    assert_eq!(ConfirmationStatus::Success, confirmation.status);
     assert!(recommendations.is_empty());
 
     // Observe that the confirmation worked after "creation".
@@ -321,7 +327,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 "status": "ok"
             },
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": true,
                     "recommendedActions": []
                 }
@@ -403,7 +409,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 "status": "ok"
             },
             "confirmation": {
-                "test:confirmation": {
+                "test:confirmationStarfield": {
                     "success": false,
                     "recommendedActions": ["create"]
                 }

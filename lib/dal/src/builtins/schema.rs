@@ -38,6 +38,7 @@ mod docker_image;
 mod kubernetes_deployment;
 mod kubernetes_namespace;
 mod systeminit_generic_frame;
+mod test_exclusive_fallout;
 mod test_exclusive_starfield;
 
 const NODE_COLOR_FRAMES: &str = "#FFFFFF";
@@ -234,10 +235,7 @@ pub async fn migrate_for_tests(
         ctx.blocking_commit().await?;
     }
 
-    // Perform migrations on hidden schemas, only if the user asks for them.
-    // TODO(nick): remove the "migrate_all" and replace tests using these schemas with test
-    // exclusive schemas (or if the tests test the builtins themselves and not the system,
-    // ensure there is an equivalent test for the system).
+    // Perform migrations on "hidden" schemas.
     if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
         driver
             .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
@@ -260,6 +258,9 @@ pub async fn migrate_for_tests(
     // Perform migrations on test-exclusive schemas.
     if migrate_all || migrate_test_exclusive || specific_builtin_schemas.contains("starfield") {
         driver.migrate_test_exclusive_starfield(ctx).await?;
+    }
+    if migrate_all || migrate_test_exclusive || specific_builtin_schemas.contains("fallout") {
+        driver.migrate_test_exclusive_fallout(ctx).await?;
     }
 
     Ok(())

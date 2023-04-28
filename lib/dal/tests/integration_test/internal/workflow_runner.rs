@@ -154,18 +154,16 @@ async fn fail(ctx: &mut DalContext) {
 
 #[test]
 async fn run(ctx: &mut DalContext) {
-    let title = "Refresh Docker Image";
+    let title = "Refresh Starfield";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource refresh workflow prototype");
+        .expect("unable to find refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
+    let schema = Schema::find_by_name(ctx, "starfield")
         .await
-        .expect("unable to find docker image schema")
-        .pop()
-        .expect("unable to find docker image");
+        .expect("unable to find schema");
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "systeminit/whiskers", *schema.id())
             .await

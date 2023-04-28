@@ -5,10 +5,67 @@
 use dal::{
     attribute::context::AttributeContextBuilder, node::NodeId, AttributeContext,
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
-    ComponentViewProperties, DalContext, Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
+    ComponentViewProperties, DalContext, Prop, PropId, Schema, SchemaId, SchemaVariantId,
+    StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;
+
+/// An assembler for creating [`Components`](dal::Component) and assembling
+/// [`ComponentPayloads`](ComponentPayload).
+#[derive(Debug, Default)]
+pub struct ComponentPayloadAssembler {
+    /// A _private_ cache used for creating multiple [`Components`](dal::Component) of the
+    /// same [`Schema`](dal::Schema) and default [`SchemaVariant`](dal::SchemaVariant).
+    schema_cache: HashMap<String, (SchemaId, SchemaVariantId)>,
+}
+
+impl ComponentPayloadAssembler {
+    /// Create a new [`assembler`](ComponentPayloadAssembler) and initialize its cache.
+    pub fn new() -> Self {
+        Self {
+            schema_cache: Default::default(),
+        }
+    }
+
+    /// Create a [`Component`](dal::Component) and assemble a [`ComponentPayload`] using its
+    /// metadata.
+    pub async fn create_component(
+        &mut self,
+        ctx: &DalContext,
+        component_name: &str,
+        schema_name: impl Into<String>,
+    ) -> ComponentPayload {
+        let schema_name = schema_name.into();
+        let (schema_id, schema_variant_id) =
+            self.schema_cache.entry(schema_name.clone()).or_insert({
+                let schema = Schema::find_by_name(ctx, schema_name)
+                    .await
+                    .expect("could not find schema by name");
+                let schema_variant_id = schema
+                    .default_schema_variant_id()
+                    .expect("no default variant for schema");
+                (*schema.id(), *schema_variant_id)
+            });
+
+        let (component, node) = Component::new(ctx, component_name, *schema_variant_id)
+            .await
+            .expect("could not create component");
+
+        ComponentPayload {
+            schema_id: *schema_id,
+            schema_variant_id: *schema_variant_id,
+            component_id: *component.id(),
+            node_id: *node.id(),
+            prop_map: HashMap::new(),
+            base_attribute_read_context: AttributeReadContext {
+                prop_id: None,
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        }
+    }
+}
 
 #[derive(Debug)]
 /// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for a test.
