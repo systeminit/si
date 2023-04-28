@@ -4,11 +4,11 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, Hash, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line, GraphError, NodeChild, NodeKind, NodeWithChildren,
+    ReadBytes, WriteBytes,
 };
 
-use crate::{ValidationSpec, ValidationSpecKind};
+use crate::{FuncUniqueId, ValidationSpec, ValidationSpecKind};
 
 use super::PkgNode;
 
@@ -28,7 +28,7 @@ pub struct ValidationNode {
     pub expected_string: Option<String>,
     pub expected_string_array: Option<Vec<String>>,
     pub display_expected: Option<bool>,
-    pub func_unique_id: Option<Hash>,
+    pub func_unique_id: Option<FuncUniqueId>,
 }
 
 impl Default for ValidationNode {
@@ -149,7 +149,8 @@ impl ReadBytes for ValidationNode {
             }
             ValidationSpecKind::CustomValidation => {
                 let func_unique_id_str = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
-                func_unique_id = Some(Hash::from_str(&func_unique_id_str)?);
+                func_unique_id =
+                    Some(FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?);
             }
             ValidationSpecKind::StringIsValidIpAddr
             | ValidationSpecKind::StringIsHexColor

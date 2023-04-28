@@ -203,12 +203,29 @@ struct AttrFuncInfo {
     inputs: Vec<SiPkgAttrFuncInputView>,
 }
 
+#[derive(Clone, Debug)]
+enum DefaultValueInfo {
+    String {
+        prop_id: PropId,
+        default_value: String,
+    },
+    Number {
+        prop_id: PropId,
+        default_value: i64,
+    },
+    Boolean {
+        prop_id: PropId,
+        default_value: bool,
+    },
+}
+
 struct PropVisitContext<'a, 'b> {
     pub ctx: &'a DalContext,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub func_map: &'b FuncMap,
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
+    pub default_values: Mutex<Vec<DefaultValueInfo>>,
 }
 
 async fn create_leaf_function(
@@ -412,6 +429,7 @@ async fn create_schema_variant(
                 schema_variant_id: *schema_variant.id(),
                 func_map,
                 attr_funcs: Mutex::new(vec![]),
+                default_values: Mutex::new(vec![]),
             };
 
             schema
@@ -442,6 +460,10 @@ async fn create_schema_variant(
                 create_socket(ctx, socket, *schema.id(), *schema_variant.id(), func_map).await?;
             }
 
+            for default_value_info in context.default_values.into_inner() {
+                set_default_value(ctx, default_value_info).await?;
+            }
+
             for attr_func in context.attr_funcs.into_inner() {
                 create_attribute_function_for_prop(ctx, *schema_variant.id(), attr_func, func_map)
                     .await?;
@@ -458,6 +480,33 @@ async fn create_schema_variant(
         InstalledPkgAssetTyped::new_for_schema_variant(variant_id, installed_pkg_id, hash),
     )
     .await?;
+
+    Ok(())
+}
+
+async fn set_default_value(
+    ctx: &DalContext,
+    default_value_info: DefaultValueInfo,
+) -> PkgResult<()> {
+    let prop = match &default_value_info {
+        DefaultValueInfo::Number { prop_id, .. }
+        | DefaultValueInfo::String { prop_id, .. }
+        | DefaultValueInfo::Boolean { prop_id, .. } => Prop::get_by_id(ctx, prop_id)
+            .await?
+            .ok_or(PkgError::MissingProp(*prop_id))?,
+    };
+
+    match default_value_info {
+        DefaultValueInfo::Boolean { default_value, .. } => {
+            prop.set_default_value(ctx, default_value).await?
+        }
+        DefaultValueInfo::Number { default_value, .. } => {
+            prop.set_default_value(ctx, default_value).await?
+        }
+        DefaultValueInfo::String { default_value, .. } => {
+            prop.set_default_value(ctx, default_value).await?
+        }
+    }
 
     Ok(())
 }
@@ -685,12 +734,43 @@ async fn create_prop(
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
+    let prop_id = *prop.id();
+
+    // Both attribute functions and default values have to be set *after* the schema variant is
+    // "finalized", so we can't do until we construct the *entire* prop tree. Hence we push work
+    // queues up to the outer context via the PropVisitContext, which uses Mutexes for interior
+    // mutability (maybe there's a better type for that here?)
+
+    if let Some(default_value_info) = match &spec {
+        SiPkgProp::String { default_value, .. } => {
+            default_value.as_ref().map(|dv| DefaultValueInfo::String {
+                prop_id,
+                default_value: dv.to_owned(),
+            })
+        }
+        SiPkgProp::Number { default_value, .. } => {
+            default_value.map(|default_value| DefaultValueInfo::Number {
+                prop_id,
+                default_value,
+            })
+        }
+        SiPkgProp::Boolean { default_value, .. } => {
+            default_value.map(|default_value| DefaultValueInfo::Boolean {
+                prop_id,
+                default_value,
+            })
+        }
+        // Default values for complex types are not yet supported in packages
+        _ => None,
+    } {
+        ctx.default_values.lock().await.push(default_value_info);
+    }
 
     if let Some(func_unique_id) = spec.func_unique_id() {
         let mut inputs = spec.inputs()?;
         ctx.attr_funcs.lock().await.push(AttrFuncInfo {
             func_unique_id,
-            prop_id: *prop.id(),
+            prop_id,
             inputs: inputs.drain(..).map(Into::into).collect(),
         });
     }

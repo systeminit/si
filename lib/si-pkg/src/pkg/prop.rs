@@ -12,36 +12,42 @@ use crate::{
 pub enum SiPkgProp<'a> {
     String {
         name: String,
+        default_value: Option<String>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
     },
     Number {
         name: String,
+        default_value: Option<i64>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
     },
     Boolean {
         name: String,
+        default_value: Option<bool>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
     },
     Map {
         name: String,
+        default_value: Option<serde_json::Value>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
     },
     Array {
         name: String,
+        default_value: Option<serde_json::Value>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
     },
     Object {
         name: String,
+        default_value: Option<serde_json::Value>,
         func_unique_id: Option<FuncUniqueId>,
         hash: Hash,
         source: Source<'a>,
@@ -111,54 +117,66 @@ impl<'a> SiPkgProp<'a> {
         Ok(match prop_node {
             PropNode::String {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::String {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,
             },
             PropNode::Integer {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::Number {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,
             },
             PropNode::Boolean {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::Boolean {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,
             },
             PropNode::Map {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::Map {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,
             },
             PropNode::Array {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::Array {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,
             },
             PropNode::Object {
                 name,
+                default_value,
                 func_unique_id,
             } => Self::Object {
                 name,
+                default_value,
                 func_unique_id,
                 hash,
                 source,

@@ -9,6 +9,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     String {
         name: String,
+        default_value: Option<String>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
@@ -16,6 +17,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Number {
         name: String,
+        default_value: Option<i64>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
@@ -23,6 +25,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Boolean {
         name: String,
+        default_value: Option<bool>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
@@ -30,6 +33,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Map {
         name: String,
+        default_value: Option<serde_json::Value>,
         type_prop: Box<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
@@ -38,6 +42,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Array {
         name: String,
+        default_value: Option<serde_json::Value>,
         type_prop: Box<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
@@ -46,6 +51,7 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Object {
         name: String,
+        default_value: Option<serde_json::Value>,
         entries: Vec<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
@@ -73,6 +79,7 @@ pub enum PropSpecKind {
 pub struct PropSpecBuilder {
     kind: Option<PropSpecKind>,
     name: Option<String>,
+    default_value: Option<serde_json::Value>,
     type_prop: Option<PropSpec>,
     entries: Vec<PropSpec>,
     validations: Vec<ValidationSpec>,
@@ -81,6 +88,12 @@ pub struct PropSpecBuilder {
 }
 
 impl PropSpecBuilder {
+    #[allow(unused_mut)]
+    pub fn default_value(&mut self, value: serde_json::Value) -> &mut Self {
+        self.default_value = Some(value);
+        self
+    }
+
     #[allow(unused_mut)]
     pub fn kind(&mut self, value: PropSpecKind) -> &mut Self {
         self.kind = Some(value);
@@ -154,24 +167,59 @@ impl PropSpecBuilder {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
                     name,
+                    default_value: match &self.default_value {
+                        Some(serde_json::Value::String(s)) => Some(s.to_owned()),
+                        Some(_) => {
+                            return Err(SpecError::ValidationError(
+                                "String prop must get a string as a default value".to_string(),
+                            ));
+                        }
+                        None => None,
+                    },
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
                 },
                 PropSpecKind::Number => PropSpec::Number {
                     name,
+                    default_value: match &self.default_value {
+                        Some(value) => {
+                            if value.is_i64() {
+                                value.as_i64()
+                            } else {
+                                return Err(SpecError::ValidationError(
+                                    "Number props must get an i64 as a default value".to_string(),
+                                ));
+                            }
+                        }
+                        None => None,
+                    },
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
                     name,
+                    default_value: match &self.default_value {
+                        Some(value) => {
+                            if value.is_boolean() {
+                                value.as_bool()
+                            } else {
+                                return Err(SpecError::ValidationError(
+                                    "Boolean props must get a bool as a default value".to_string(),
+                                ));
+                            }
+                        }
+                        None => None,
+                    },
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
                 },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
+                    // TODO: Validate these types
+                    default_value: self.default_value.to_owned(),
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -184,6 +232,7 @@ impl PropSpecBuilder {
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
+                    default_value: self.default_value.to_owned(),
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -196,6 +245,7 @@ impl PropSpecBuilder {
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
+                    default_value: self.default_value.to_owned(),
                     entries: self.entries.clone(),
                     validations: Some(validations),
                     func_unique_id,
