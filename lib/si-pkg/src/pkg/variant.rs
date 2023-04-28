@@ -5,7 +5,8 @@ use std::future::Future;
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgSocket, SiPkgWorkflow, Source,
+    PkgResult, SiPkgError, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSocket,
+    SiPkgWorkflow, Source,
 };
 
 use crate::{
@@ -101,6 +102,11 @@ impl<'a> SiPkgSchemaVariant<'a> {
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);
+    impl_variant_children_from_graph!(
+        func_descriptions,
+        SchemaVariantChildNode::FuncDescriptions,
+        SiPkgFuncDescription
+    );
     impl_variant_children_from_graph!(workflows, SchemaVariantChildNode::Workflows, SiPkgWorkflow);
     impl_variant_children_from_graph!(
         leaf_functions,

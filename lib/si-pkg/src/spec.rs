@@ -5,6 +5,7 @@ use thiserror::Error;
 
 mod attr_func_input;
 mod func;
+mod func_description;
 mod leaf_function;
 mod prop;
 mod schema;
@@ -14,8 +15,8 @@ mod variant;
 mod workflow;
 
 pub use {
-    attr_func_input::*, func::*, leaf_function::*, prop::*, schema::*, socket::*, validation::*,
-    variant::*, workflow::*,
+    attr_func_input::*, func::*, func_description::*, leaf_function::*, prop::*, schema::*,
+    socket::*, validation::*, variant::*, workflow::*,
 };
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

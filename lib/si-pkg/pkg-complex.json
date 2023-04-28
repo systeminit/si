@@ -70,6 +70,7 @@
           "workflows": [],
           "sockets": [],
           "componentType": "component",
+          "funcDescriptions": [],
           "leafFunctions": [
             {
               "funcUniqueId": "dadf3f20e1abe3fa9346adac47e0e147733959bee8e24719147c61ce9b5828bf",

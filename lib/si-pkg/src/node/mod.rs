@@ -9,6 +9,7 @@ mod attr_func_input;
 mod category;
 mod func;
 mod func_argument;
+mod func_description;
 mod leaf_function;
 mod package;
 mod prop;
@@ -26,6 +27,7 @@ pub(crate) use self::{
     category::CategoryNode,
     func::FuncNode,
     func_argument::FuncArgumentNode,
+    func_description::FuncDescriptionNode,
     leaf_function::LeafFunctionNode,
     package::PackageNode,
     prop::PropNode,
@@ -43,6 +45,7 @@ const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
 const NODE_KIND_CATEGORY: &str = "category";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
+const NODE_KIND_FUNC_DESCRIPTION: &str = "func_description";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
 const NODE_KIND_PACKAGE: &str = "package";
 const NODE_KIND_PROP: &str = "prop";
@@ -63,6 +66,7 @@ pub enum PkgNode {
     Category(CategoryNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
+    FuncDescription(FuncDescriptionNode),
     LeafFunction(LeafFunctionNode),
     Package(PackageNode),
     Prop(PropNode),
@@ -79,8 +83,9 @@ impl PkgNode {
     pub const ACTION_KIND_STR: &str = NODE_KIND_ACTION;
     pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
     pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
-    pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
+    pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
+    pub const FUNC_DESCRIPTION_KIND_STR: &str = NODE_KIND_FUNC_DESCRIPTION;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
     pub const PACKAGE_KIND_STR: &str = NODE_KIND_PACKAGE;
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
@@ -99,6 +104,7 @@ impl PkgNode {
             Self::Category(_) => NODE_KIND_CATEGORY,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
+            Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::Package(_) => NODE_KIND_PACKAGE,
             Self::Prop(_) => NODE_KIND_PROP,
@@ -121,6 +127,7 @@ impl NameStr for PkgNode {
             Self::Category(node) => node.name(),
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
+            Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::Package(node) => node.name(),
             Self::Prop(node) => node.name(),
@@ -145,6 +152,7 @@ impl WriteBytes for PkgNode {
             Self::Category(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
+            Self::FuncDescription(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
             Self::Package(node) => node.write_bytes(writer)?,
             Self::Prop(node) => node.write_bytes(writer)?,
@@ -176,6 +184,9 @@ impl ReadBytes for PkgNode {
             NODE_KIND_CATEGORY => Self::Category(CategoryNode::read_bytes(reader)?),
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
+            NODE_KIND_FUNC_DESCRIPTION => {
+                Self::FuncDescription(FuncDescriptionNode::read_bytes(reader)?)
+            }
             NODE_KIND_LEAF_FUNCTION => Self::LeafFunction(LeafFunctionNode::read_bytes(reader)?),
             NODE_KIND_PACKAGE => Self::Package(PackageNode::read_bytes(reader)?),
             NODE_KIND_PROP => Self::Prop(PropNode::read_bytes(reader)?),
