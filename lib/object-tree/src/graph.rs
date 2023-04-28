@@ -13,7 +13,7 @@ use serde::Serialize;
 use strum::{AsRefStr, EnumString};
 use thiserror::Error;
 
-use crate::{Hash, HashParseError};
+use crate::Hash;
 
 const KEY_VERSION_STR: &str = "version";
 const KEY_NODE_KIND_STR: &str = "node_kind";
@@ -65,9 +65,6 @@ pub enum GraphError {
     /// When a hash value failed to verify an expected value
     #[error("failed to verify hash; expected={0}, computed={1}")]
     Verify(Hash, Hash),
-    /// When a hash is not a valid blake3 hash
-    #[error("transparent")]
-    HashParse(#[from] HashParseError),
 }
 
 impl GraphError {

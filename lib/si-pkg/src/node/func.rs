@@ -1,12 +1,17 @@
-use super::PkgNode;
-use crate::spec::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType};
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
+use url::Url;
+
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, Hash, NameStr, NodeChild, NodeKind,
+    read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
     NodeWithChildren, ReadBytes, WriteBytes,
 };
-use std::io::{BufRead, Write};
-use std::str::FromStr;
-use url::Url;
+
+use crate::spec::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId};
+
+use super::PkgNode;
 
 const KEY_NAME_STR: &str = "name";
 const KEY_DISPLAY_NAME_STR: &str = "display_name";
@@ -30,7 +35,7 @@ pub struct FuncNode {
     pub response_type: FuncSpecBackendResponseType,
     pub hidden: bool,
     pub link: Option<Url>,
-    pub unique_id: Hash,
+    pub unique_id: FuncUniqueId,
 }
 
 impl NameStr for FuncNode {
@@ -103,7 +108,7 @@ impl ReadBytes for FuncNode {
             Some(Url::parse(&link_str).map_err(GraphError::parse)?)
         };
         let unique_id_str = read_key_value_line(reader, KEY_UNIQUE_ID_STR)?;
-        let unique_id: Hash = Hash::from_str(&unique_id_str)?;
+        let unique_id = FuncUniqueId::from_str(&unique_id_str).map_err(GraphError::parse)?;
 
         Ok(Self {
             name,

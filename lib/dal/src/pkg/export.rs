@@ -19,10 +19,10 @@ use crate::{
     socket::SocketKind,
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    AttributePrototypeArgument, DalContext, ExternalProvider, ExternalProviderId, Func, FuncId,
-    InternalProvider, InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeValue, DalContext, ExternalProvider, ExternalProviderId,
+    Func, FuncId, InternalProvider, InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariant, SchemaVariantId, Socket, StandardModel, StandardModelError,
+    ValidationPrototype, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -607,15 +607,13 @@ async fn set_variant_spec_prop_data(
             };
         }
 
-        if let Some(prototype) = AttributePrototype::find_for_context_and_key(
-            ctx,
-            AttributeContextBuilder::new()
-                .set_prop_id(entry.prop_id)
-                .to_context()?,
-            &None,
-        )
-        .await?
-        .pop()
+        let context = AttributeContextBuilder::new()
+            .set_prop_id(entry.prop_id)
+            .to_context()?;
+
+        if let Some(prototype) = AttributePrototype::find_for_context_and_key(ctx, context, &None)
+            .await?
+            .pop()
         {
             if let Some((func_unique_id, mut inputs)) =
                 build_input_func_and_arguments(ctx, prototype, func_specs).await?
@@ -624,6 +622,18 @@ async fn set_variant_spec_prop_data(
                 inputs.drain(..).for_each(|input| {
                     entry.builder.input(input);
                 });
+            }
+        }
+
+        // TODO: handle default values for complex types.
+        if matches!(
+            entry.builder.get_kind(),
+            Some(PropSpecKind::String) | Some(PropSpecKind::Number) | Some(PropSpecKind::Boolean)
+        ) {
+            if let Some(av) = AttributeValue::find_for_context(ctx, context.into()).await? {
+                if let Some(default_value) = av.get_value(ctx).await? {
+                    entry.builder.default_value(default_value);
+                }
             }
         }
 

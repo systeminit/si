@@ -38,6 +38,7 @@ impl SchemaVariantSpecBuilder {
     fn default_domain() -> PropSpec {
         PropSpec::Object {
             validations: None,
+            default_value: None,
             name: "domain".to_string(),
             entries: vec![],
             func_unique_id: None,

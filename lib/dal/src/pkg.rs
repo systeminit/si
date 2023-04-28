@@ -138,6 +138,8 @@ pub enum PkgError {
     MissingInternalProviderForProp(PropId),
     #[error("Cannot find InternalProvider for Socket named {0}")]
     MissingInternalProviderForSocketName(String),
+    #[error("Cannot find installed prop {0}")]
+    MissingProp(PropId),
 }
 
 impl PkgError {
