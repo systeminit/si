@@ -1,28 +1,23 @@
-use dal::socket::SocketKind;
 use dal::{
     edge::{EdgeKind, EdgeObjectId, VertexObjectKind},
     socket::SocketEdgeKind,
-    Connection, DalContext, DiagramKind, Edge, Schema, SchemaVariant, Socket, SocketArity,
-    StandardModel,
+    Connection, DalContext, Edge, Socket, StandardModel,
 };
-use dal_test::helpers::component_payload::ComponentPayloadAssembler;
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let mut assembler = ComponentPayloadAssembler::new();
-    let fallout_payload = assembler.create_component(ctx, "tail", "fallout").await;
-    let starfield_payload = assembler.create_component(ctx, "head", "starfield").await;
+    let mut bagger = ComponentBagger::new();
+    let fallout_bag = bagger.create_component(ctx, "tail", "fallout").await;
+    let starfield_bag = bagger.create_component(ctx, "head", "starfield").await;
 
     let output_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationOutput,
-        fallout_payload.node_id,
+        fallout_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -31,7 +26,7 @@ async fn new(ctx: &DalContext) {
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationInput,
-        starfield_payload.node_id,
+        starfield_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -40,86 +35,54 @@ async fn new(ctx: &DalContext) {
     let _edge = Edge::new(
         ctx,
         EdgeKind::Configuration,
-        starfield_payload.node_id,
+        starfield_bag.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(starfield_payload.component_id),
+        EdgeObjectId::from(starfield_bag.component_id),
         *input_socket.id(),
-        fallout_payload.node_id,
+        fallout_bag.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(fallout_payload.component_id),
+        EdgeObjectId::from(fallout_bag.component_id),
         *output_socket.id(),
     )
     .await
     .expect("cannot create new edge");
 
-    let parents = Edge::list_parents_for_component(ctx, starfield_payload.component_id)
+    let parents = Edge::list_parents_for_component(ctx, starfield_bag.component_id)
         .await
         .expect("unable to find component's parents");
     assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], fallout_payload.component_id);
+    assert_eq!(parents[0], fallout_bag.component_id);
 }
 
 #[test]
 async fn create_delete_and_restore_edges(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
+    let mut bagger = ComponentBagger::new();
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let from_aws_region = harness
-        .create_component(ctx, "from", Builtin::AwsRegion)
-        .await;
-    let to_aws_ec2_instance = harness.create_component(ctx, "to", Builtin::AwsEc2).await;
+    let from_aws_region = bagger.create_component(ctx, "from", "Region").await;
+    let to_aws_ec2_instance = bagger.create_component(ctx, "to", "EC2 Instance").await;
 
-    let _from_schema = Schema::get_by_id(ctx, &from_aws_region.schema_id)
-        .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-    let _to_schema = Schema::get_by_id(ctx, &to_aws_ec2_instance.schema_id)
-        .await
-        .expect("could not find schema by id")
-        .expect("schema by id not found");
-
-    let from_schema_variant = SchemaVariant::get_by_id(ctx, &from_aws_region.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-    let to_schema_variant = SchemaVariant::get_by_id(ctx, &to_aws_ec2_instance.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-
-    let from_sockets = from_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let to_sockets = to_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let output_socket = from_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Region"
-        })
-        .expect("cannot find output socket");
-
-    let input_socket = to_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::One
-                && s.name() == "Region"
-        })
-        .expect("cannot find input socket");
+    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Region",
+        SocketEdgeKind::ConfigurationOutput,
+        from_aws_region.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
+    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Region",
+        SocketEdgeKind::ConfigurationInput,
+        to_aws_ec2_instance.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
 
     let connection = Connection::new(
         ctx,
@@ -133,10 +96,13 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     .expect("could not create connection");
 
     // Update the region to be us-east-2
+    let region_prop = from_aws_region
+        .find_prop(ctx, &["root", "domain", "region"])
+        .await;
     from_aws_region
-        .update_attribute_value_for_prop_name(
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/region",
+            *region_prop.id(),
             Some(serde_json::json!["us-east-2"]),
         )
         .await;
@@ -294,73 +260,51 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
 
 #[test]
 async fn create_multiple_connections_and_delete(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
+    let mut bagger = ComponentBagger::new();
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let nginx_container = harness
-        .create_component(ctx, "nginx", Builtin::DockerImage)
+    let nginx_container = bagger.create_component(ctx, "nginx", "Docker Image").await;
+    let apache2_container = bagger
+        .create_component(ctx, "apache2", "Docker Image")
         .await;
-    let apache2_container = harness
-        .create_component(ctx, "apache2", Builtin::DockerImage)
+    let docker_image_prop = nginx_container
+        .find_prop(ctx, &["root", "domain", "image"])
         .await;
+
     apache2_container
-        .update_attribute_value_for_prop_name(
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/image",
+            *docker_image_prop.id(),
             Some(serde_json::json!["apache2"]),
         )
         .await;
-    let butane_instance = harness
-        .create_component(ctx, "userdata", Builtin::CoreOsButane)
-        .await;
+    let butane_instance = bagger.create_component(ctx, "userdata", "Butane").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let docker_image_schema_variant =
-        SchemaVariant::get_by_id(ctx, &nginx_container.schema_variant_id)
-            .await
-            .expect("could not find schema variant by id")
-            .expect("schema variant by id not found");
-    let butane_schema_variant = SchemaVariant::get_by_id(ctx, &butane_instance.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-
-    let docker_image_sockets = docker_image_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let butane_sockets = butane_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let from_container_image_socket = docker_image_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Container Image"
-        })
-        .expect("cannot find output socket");
-
-    let to_container_image_socket = butane_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Container Image"
-        })
-        .expect("cannot find input socket");
+    let from_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Container Image",
+        SocketEdgeKind::ConfigurationOutput,
+        nginx_container.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
+    let to_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Container Image",
+        SocketEdgeKind::ConfigurationInput,
+        butane_instance.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
 
     let connect_from_nginx = Connection::new(
         ctx,
@@ -386,9 +330,9 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
     nginx_container
-        .update_attribute_value_for_prop_name(
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/image",
+            *docker_image_prop.id(),
             Some(serde_json::json!["nginx"]),
         )
         .await;

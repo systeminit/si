@@ -6,8 +6,8 @@ use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, Prop, PropId, PropKind, StandardModel,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
@@ -550,15 +550,16 @@ fn get_validation_status(
 /// attribute context that we expect (schema, schema variant, and component).
 #[test]
 async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let component_payload = harness
-        .create_component(ctx, "ksg", Builtin::AwsRegion)
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "ksg", "Region").await;
+    let region_prop = component_bag
+        .find_prop(ctx, &["root", "domain", "region"])
         .await;
 
-    let updated_region_attribute_value_id = component_payload
-        .update_attribute_value_for_prop_name(
+    let updated_region_attribute_value_id = component_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/region",
+            *region_prop.id(),
             Some(serde_json::json!["us-east-1"]),
         )
         .await;
@@ -580,7 +581,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
                 "region": "us-east-1",
             }
         }], // actual
-        component_payload
+        component_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -590,7 +591,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
 
     // Ensure that we see exactly one expected validation status with exactly one expected
     // validation error.
-    let validation_statuses = ValidationResolver::find_status(ctx, component_payload.component_id)
+    let validation_statuses = ValidationResolver::find_status(ctx, component_bag.component_id)
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -603,7 +604,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             .expect("attribute value not found by id");
         assert_eq!(
             attribute_value.context.component_id(),
-            component_payload.component_id
+            component_bag.component_id
         );
 
         // Now, we can find the expected validation status.

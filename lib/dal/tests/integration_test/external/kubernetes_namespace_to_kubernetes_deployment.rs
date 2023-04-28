@@ -1,23 +1,28 @@
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let tail_namespace_payload = harness
-        .create_component(ctx, "tail", Builtin::KubernetesNamespace)
+    let mut bagger = ComponentBagger::new();
+    let tail_namespace_bag = bagger
+        .create_component(ctx, "tail", "Kubernetes Namespace")
         .await;
-    let head_deployment_payload = harness
-        .create_component(ctx, "head", Builtin::KubernetesDeployment)
+    let head_deployment_bag = bagger
+        .create_component(ctx, "head", "Kubernetes Deployment")
+        .await;
+    let namespace_name_prop = tail_namespace_bag
+        .find_prop(ctx, &["root", "si", "name"])
         .await;
 
     // Initialize the tail name field.
-    tail_namespace_payload
-        .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
+    tail_namespace_bag
+        .update_attribute_value_for_prop(
+            ctx,
+            *namespace_name_prop.id(),
+            Some(serde_json::json!["tail"]),
+        )
         .await;
 
     ctx.blocking_commit()
@@ -45,9 +50,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        tail_namespace_payload
-            .component_view_properties_raw(ctx)
-            .await // actual
+        tail_namespace_bag.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -68,7 +71,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -79,7 +82,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     // Find the providers we need for connection.
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        tail_namespace_payload.schema_variant_id,
+        tail_namespace_bag.schema_variant_id,
         "Kubernetes Namespace",
     )
     .await
@@ -88,7 +91,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     let head_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
-            head_deployment_payload.schema_variant_id,
+            head_deployment_bag.schema_variant_id,
             "Kubernetes Namespace",
         )
         .await
@@ -99,9 +102,9 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     Edge::connect_providers_for_components(
         ctx,
         *head_explicit_internal_provider.id(),
-        head_deployment_payload.component_id,
+        head_deployment_bag.component_id,
         *tail_external_provider.id(),
-        tail_namespace_payload.component_id,
+        tail_namespace_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -131,9 +134,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        tail_namespace_payload
-            .component_view_properties_raw(ctx)
-            .await // actual
+        tail_namespace_bag.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -154,7 +155,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -163,10 +164,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     );
 
     // Perform update!
-    tail_namespace_payload
-        .update_attribute_value_for_prop_name(
+    tail_namespace_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *namespace_name_prop.id(),
             Some(serde_json::json!["look-at-me-mom-i-updated"]),
         )
         .await;
@@ -196,9 +197,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        tail_namespace_payload
-            .component_view_properties_raw(ctx)
-            .await // actual
+        tail_namespace_bag.component_view_properties_raw(ctx).await // actual
     );
 
     assert_eq!(
@@ -230,7 +229,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()

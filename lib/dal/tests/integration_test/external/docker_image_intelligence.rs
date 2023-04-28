@@ -1,18 +1,16 @@
-use dal::DalContext;
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal::{DalContext, StandardModel};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn docker_image_intra_component_update(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let soulrender_payload = harness
-        .create_component(ctx, "soulrender", Builtin::DockerImage)
+    let mut bagger = ComponentBagger::new();
+    let soulrender_bag = bagger
+        .create_component(ctx, "soulrender", "Docker Image")
         .await;
-    let bloodscythe_payload = harness
-        .create_component(ctx, "bloodscythe", Builtin::DockerImage)
+    let bloodscythe_bag = bagger
+        .create_component(ctx, "bloodscythe", "Docker Image")
         .await;
 
     ctx.blocking_commit()
@@ -32,7 +30,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "soulrender",
             },
         }], // expected
-        soulrender_payload
+        soulrender_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -51,7 +49,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "bloodscythe",
             },
         }], // expected
-        bloodscythe_payload
+        bloodscythe_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -61,10 +59,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
 
     // Update the "/root/si/name" value for "bloodscythe", observe that it worked, and observe
     // that the "soulrender" component was not updated.
-    bloodscythe_payload
-        .update_attribute_value_for_prop_name(
+    let name_prop = bloodscythe_bag
+        .find_prop(ctx, &["root", "si", "name"])
+        .await;
+    bloodscythe_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *name_prop.id(),
             Some(serde_json::json!["bloodscythe-updated"]),
         )
         .await;
@@ -85,7 +86,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "soulrender"
             },
         }], // expected
-        soulrender_payload
+        soulrender_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -105,7 +106,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "bloodscythe-updated"
             },
         }], // expected
-        bloodscythe_payload
+        bloodscythe_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -115,10 +116,10 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
 
     // Now, the "/root/si/name" value for "soulrender", observe that it worked, and observe
     // that the "bloodscythe" component was not updated.
-    soulrender_payload
-        .update_attribute_value_for_prop_name(
+    soulrender_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *name_prop.id(),
             Some(serde_json::json!["soulrender-updated"]),
         )
         .await;
@@ -139,7 +140,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "soulrender-updated",
             },
         }], // expected
-        soulrender_payload
+        soulrender_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -158,7 +159,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
                 "image": "bloodscythe-updated",
             },
         }], // expected
-        bloodscythe_payload
+        bloodscythe_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()

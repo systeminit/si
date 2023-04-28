@@ -4,7 +4,7 @@ use dal::{
     socket::SocketEdgeKind, Component, ComponentView, ComponentViewProperties, Connection,
     DalContext, Diagram, DiagramEdgeView, Node, Schema, Socket, StandardModel,
 };
-use dal_test::helpers::component_payload::ComponentPayloadAssembler;
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -81,15 +81,15 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
 
 #[test]
 async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
-    let mut assembler = ComponentPayloadAssembler::new();
-    let fallout_payload = assembler.create_component(ctx, "tail", "fallout").await;
-    let starfield_payload = assembler.create_component(ctx, "head", "starfield").await;
+    let mut bagger = ComponentBagger::new();
+    let fallout_bag = bagger.create_component(ctx, "tail", "fallout").await;
+    let starfield_bag = bagger.create_component(ctx, "head", "starfield").await;
 
     let output_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationOutput,
-        fallout_payload.node_id,
+        fallout_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -98,13 +98,13 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationInput,
-        starfield_payload.node_id,
+        starfield_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
 
-    let mut fallout_node = Node::get_by_id(ctx, &fallout_payload.node_id)
+    let mut fallout_node = Node::get_by_id(ctx, &fallout_bag.node_id)
         .await
         .expect("could not find node")
         .expect("node not found");
@@ -113,7 +113,7 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
         .await
         .expect("cannot set node geometry");
 
-    let mut starfield_node = Node::get_by_id(ctx, &starfield_payload.node_id)
+    let mut starfield_node = Node::get_by_id(ctx, &starfield_bag.node_id)
         .await
         .expect("could not find node")
         .expect("node not found");
@@ -124,9 +124,9 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
 
     let connection = Connection::new(
         ctx,
-        fallout_payload.node_id,
+        fallout_bag.node_id,
         *output_socket.id(),
-        starfield_payload.node_id,
+        starfield_bag.node_id,
         *input_socket.id(),
         EdgeKind::Configuration,
     )
@@ -149,9 +149,9 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
     let (source_node_id, source_socket_id) = connection.source();
     let (destination_node_id, destination_socket_id) = connection.destination();
 
-    assert_eq!(source_node_id, fallout_payload.node_id);
+    assert_eq!(source_node_id, fallout_bag.node_id);
     assert_eq!(source_socket_id, *output_socket.id());
-    assert_eq!(destination_node_id, starfield_payload.node_id);
+    assert_eq!(destination_node_id, starfield_bag.node_id);
     assert_eq!(destination_socket_id, *input_socket.id());
 
     // Delete the connection
