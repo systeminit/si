@@ -24,6 +24,7 @@ pub mod builtins;
 pub mod change_set;
 pub mod change_status;
 pub mod code_view;
+pub mod command_prototype;
 pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
@@ -94,6 +95,9 @@ pub use attribute::{
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
+pub use command_prototype::{
+    CommandPrototype, CommandPrototypeContext, CommandPrototypeError, CommandPrototypeId,
+};
 pub use component::{
     resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
     ComponentError, ComponentId, ComponentView, ComponentViewProperties,

@@ -21,10 +21,10 @@ use crate::{
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
-    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    AttributeValueError, CommandPrototypeError, ExternalProviderError, ExternalProviderId,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, InternalProviderError,
+    InternalProviderId, PropError, PropId, SchemaError, SchemaId, SchemaVariantError,
+    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 #[derive(Debug, Error)]
@@ -140,6 +140,8 @@ pub enum PkgError {
     MissingInternalProviderForSocketName(String),
     #[error("Cannot find installed prop {0}")]
     MissingProp(PropId),
+    #[error(transparent)]
+    CommandPrototype(#[from] CommandPrototypeError),
 }
 
 impl PkgError {

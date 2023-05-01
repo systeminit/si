@@ -11,8 +11,8 @@ use telemetry::prelude::*;
 use crate::BuiltinsError::SerdeJson;
 use crate::{
     func::argument::{FuncArgument, FuncArgumentKind},
-    BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    StandardModel,
+    BuiltinsError, BuiltinsResult, CommandPrototype, CommandPrototypeContext, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -103,6 +103,97 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
             .map(|func_builtin| (func_builtin.relative_path, func_builtin))
             .collect()
     });
+
+// This is a transitional function that creates the necessary command prototypes during
+// migration so that we have the correct data for the initial SI package.
+pub async fn migrate_command_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
+    let command_functions = vec![
+        "si:awsAmiRefreshCommand",
+        "si:awsEc2CreateCommand",
+        "si:awsEc2DeleteCommand",
+        "si:awsEc2RefreshCommand",
+        "si:awsEgressCreateCommand",
+        "si:awsEgressRefreshCommand",
+        "si:awsEipCreateCommand",
+        "si:awsEipDeleteCommand",
+        "si:awsEipRefreshCommand",
+        "si:awsIngressCreateCommand",
+        "si:awsIngressDeleteCommand",
+        "si:awsIngressDeleteCommand",
+        "si:awsIngressRefreshCommand",
+        "si:awsKeyPairCreateCommand",
+        "si:awsKeyPairDeleteCommand",
+        "si:awsKeyPairRefreshCommand",
+        "si:awsRegionRefreshCommand",
+        "si:awsSecurityGroupCreateCommand",
+        "si:awsSecurityGroupDeleteCommand",
+        "si:awsSecurityGroupRefreshCommand",
+        "si:dockerImageRefreshCommand",
+    ];
+
+    for func_name in command_functions {
+        let schema_name = match func_name {
+            "si:awsEc2DeleteCommand" | "si:awsEc2CreateCommand" | "si:awsEc2RefreshCommand" => {
+                "EC2 Instance"
+            }
+            "si:awsSecurityGroupRefreshCommand"
+            | "si:awsSecurityGroupCreateCommand"
+            | "si:awsSecurityGroupDeleteCommand" => "Security Group",
+            "si:awsEgressCreateCommand"
+            | "si:awsEgressRefreshCommand"
+            | "si:awsEgressDeleteCommand" => "Egress",
+            "si:awsEipCreateCommand" | "si:awsEipDeleteCommand" | "si:awsEipRefreshCommand" => {
+                "Elastic IP"
+            }
+            "si:awsAmiRefreshCommand" => "AMI",
+            "si:awsIngressDeleteCommand"
+            | "si:awsIngressRefreshCommand"
+            | "si:awsIngressCreateCommand" => "Ingress",
+            "si:awsRegionRefreshCommand" => "Region",
+            "si:awsKeyPairCreateCommand"
+            | "si:awsKeyPairRefreshCommand"
+            | "si:awsKeyPairDeleteCommand" => "Key Pair",
+            "si:dockerImageRefreshCommand" => "Docker Image",
+            _ => unreachable!("that string is not in my list!"),
+        };
+
+        let schema = Schema::find_by_attr(ctx, "name", &schema_name)
+            .await?
+            .pop()
+            .expect("able to find default schema");
+
+        let default_variant = schema.default_variant(ctx).await?;
+
+        let func = Func::find_by_name(ctx, func_name)
+            .await?
+            .expect("cannot find builtin command function");
+
+        if CommandPrototype::find_for_func_and_schema_variant(
+            ctx,
+            *func.id(),
+            *default_variant.id(),
+        )
+        .await
+        .expect("able to search for the command prototype")
+        .is_none()
+        {
+            info!("migrating command prototype for {}", func.name());
+
+            CommandPrototype::new(
+                ctx,
+                *func.id(),
+                CommandPrototypeContext {
+                    schema_variant_id: *default_variant.id(),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("could not create command prototype");
+        }
+    }
+
+    Ok(())
+}
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     for builtin_func_file in ASSETS.iter() {

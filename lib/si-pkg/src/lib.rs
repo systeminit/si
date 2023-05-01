@@ -3,18 +3,19 @@ mod pkg;
 mod spec;
 
 pub use pkg::{
-    SiPkg, SiPkgAction, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgSchema,
+    SiPkg, SiPkgAction, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgCommandFunc, SiPkgError,
+    SiPkgFunc, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgSchema,
     SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow,
 };
 pub use spec::{
     ActionSpec, ActionSpecBuilder, ActionSpecKind, AttrFuncInputSpec, AttrFuncInputSpecKind,
-    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncDescriptionSpec,
-    FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec,
-    PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SocketSpec,
-    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
+    CommandFuncSpec, CommandFuncSpecBuilder, FuncArgumentKind, FuncArgumentSpec,
+    FuncArgumentSpecBuilder, FuncDescriptionSpec, FuncDescriptionSpecBuilder, FuncSpec,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
+    LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SocketSpec, SocketSpecArity,
+    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
     WorkflowSpecBuilder,
 };
 

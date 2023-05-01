@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    FuncUniqueId, SiPkg, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc, SiPkgFuncDescription,
-    SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
-    SiPkgWorkflow, SocketSpecKind,
+    FuncUniqueId, SiPkg, SiPkgAttrFuncInputView, SiPkgCommandFunc, SiPkgError, SiPkgFunc,
+    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
+    SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
 };
 
 use crate::{
@@ -17,10 +17,11 @@ use crate::{
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, DalContext, ExternalProvider, ExternalProviderId, Func,
-    FuncArgument, FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
-    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    AttributeValue, AttributeValueError, CommandPrototype, CommandPrototypeContext, DalContext,
+    ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncDescription,
+    FuncDescriptionContents, FuncError, FuncId, InternalProvider, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariant, SchemaVariantId, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -376,6 +377,32 @@ async fn create_socket(
     Ok(())
 }
 
+async fn create_command_func(
+    ctx: &DalContext,
+    command_func_spec: SiPkgCommandFunc<'_>,
+    schema_variant_id: SchemaVariantId,
+    func_map: &FuncMap,
+) -> PkgResult<()> {
+    let func =
+        func_map
+            .get(&command_func_spec.func_unique_id())
+            .ok_or(PkgError::MissingFuncUniqueId(
+                command_func_spec.func_unique_id().to_string(),
+            ))?;
+
+    CommandPrototype::new(
+        ctx,
+        *func.id(),
+        CommandPrototypeContext {
+            schema_variant_id,
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    Ok(())
+}
+
 async fn create_workflow(
     ctx: &DalContext,
     workflow_spec: SiPkgWorkflow<'_>,
@@ -470,6 +497,10 @@ async fn create_schema_variant(
             schema_variant
                 .finalize(ctx, Some(variant_spec.component_type().into()))
                 .await?;
+
+            for command_func in variant_spec.command_funcs()? {
+                create_command_func(ctx, command_func, *schema_variant.id(), func_map).await?;
+            }
 
             for leaf_func in variant_spec.leaf_functions()? {
                 create_leaf_function(ctx, leaf_func, *schema_variant.id(), func_map).await?;

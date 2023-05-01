@@ -91,6 +91,8 @@ impl NodeChild for SchemaVariantSpec {
                 component_type: self.component_type,
             }),
             vec![
+                Box::new(SchemaVariantChild::CommandFuncs(self.command_funcs.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::Domain(self.domain.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::LeafFunctions(

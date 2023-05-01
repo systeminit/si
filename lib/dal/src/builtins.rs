@@ -146,6 +146,8 @@ pub async fn migrate(
         }
         None => {
             schema::migrate_for_production(ctx).await?;
+
+            func::migrate_command_prototypes(ctx).await?;
         }
     }
 

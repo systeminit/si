@@ -6,11 +6,12 @@ use std::{
 use strum::IntoEnumIterator;
 
 use si_pkg::{
-    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncDescriptionSpec,
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
-    LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SiPkg,
-    SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
+    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, CommandFuncSpec, FuncArgumentSpec,
+    FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
+    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SchemaVariantSpecComponentType, SiPkg, SocketSpec, SocketSpecKind, SpecError, ValidationSpec,
+    ValidationSpecKind, WorkflowSpec,
 };
 
 use crate::{
@@ -19,11 +20,12 @@ use crate::{
     socket::SocketKind,
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
-    ExternalProvider, ExternalProviderId, Func, FuncDescription, FuncId, InternalProvider,
-    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Socket, StandardModel, StandardModelError,
-    ValidationPrototype, WorkflowPrototype, WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, CommandPrototype,
+    CommandPrototypeContext, ComponentType, DalContext, ExternalProvider, ExternalProviderId, Func,
+    FuncDescription, FuncId, InternalProvider, InternalProviderId, LeafKind, Prop, PropId,
+    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
+    StandardModel, StandardModelError, ValidationPrototype, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 use super::{PkgError, PkgResult};
@@ -468,6 +470,37 @@ async fn get_component_type(
     })
 }
 
+async fn build_command_func_specs(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    func_specs: &FuncSpecMap,
+) -> PkgResult<Vec<CommandFuncSpec>> {
+    let mut specs = vec![];
+
+    let command_prototypes = CommandPrototype::find_for_context(
+        ctx,
+        CommandPrototypeContext {
+            schema_variant_id,
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    for command_proto in command_prototypes {
+        let func_spec = func_specs
+            .get(&command_proto.func_id())
+            .ok_or(PkgError::MissingExportedFunc(command_proto.func_id()))?;
+
+        specs.push(
+            CommandFuncSpec::builder()
+                .func_unique_id(func_spec.unique_id)
+                .build()?,
+        )
+    }
+
+    Ok(specs)
+}
+
 async fn build_variant_spec(
     ctx: &DalContext,
     schema: &Schema,
@@ -513,6 +546,13 @@ async fn build_variant_spec(
         .drain(..)
         .for_each(|socket_spec| {
             variant_spec_builder.socket(socket_spec);
+        });
+
+    build_command_func_specs(ctx, *variant.id(), func_specs)
+        .await?
+        .drain(..)
+        .for_each(|command_func_spec| {
+            variant_spec_builder.command_func(command_func_spec);
         });
 
     let variant_spec = variant_spec_builder.build()?;

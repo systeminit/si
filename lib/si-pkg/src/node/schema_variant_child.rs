@@ -6,10 +6,13 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SocketSpec, WorkflowSpec};
+use crate::{
+    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SocketSpec, WorkflowSpec,
+};
 
 use super::PkgNode;
 
+const VARIANT_CHILD_TYPE_COMMAND_FUNCS: &str = "command_funcs";
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS: &str = "func_descriptions";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
@@ -21,6 +24,7 @@ const KEY_KIND_STR: &str = "kind";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SchemaVariantChild {
+    CommandFuncs(Vec<CommandFuncSpec>),
     Domain(PropSpec),
     FuncDescriptions(Vec<FuncDescriptionSpec>),
     LeafFunctions(Vec<LeafFunctionSpec>),
@@ -30,6 +34,7 @@ pub enum SchemaVariantChild {
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum SchemaVariantChildNode {
+    CommandFuncs,
     Domain,
     FuncDescriptions,
     LeafFunctions,
@@ -40,6 +45,7 @@ pub enum SchemaVariantChildNode {
 impl SchemaVariantChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
+            Self::CommandFuncs => VARIANT_CHILD_TYPE_COMMAND_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
@@ -52,6 +58,7 @@ impl SchemaVariantChildNode {
 impl NameStr for SchemaVariantChildNode {
     fn name(&self) -> &str {
         match self {
+            Self::CommandFuncs => VARIANT_CHILD_TYPE_COMMAND_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
@@ -76,6 +83,7 @@ impl ReadBytes for SchemaVariantChildNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let node = match kind_str.as_str() {
+            VARIANT_CHILD_TYPE_COMMAND_FUNCS => Self::CommandFuncs,
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS => Self::FuncDescriptions,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
@@ -97,6 +105,17 @@ impl NodeChild for SchemaVariantChild {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
+            Self::CommandFuncs(command_funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::CommandFuncs),
+                command_funcs
+                    .iter()
+                    .map(|command_func| {
+                        Box::new(command_func.clone())
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
             Self::Domain(domain) => {
                 let domain =
                     Box::new(domain.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>;
