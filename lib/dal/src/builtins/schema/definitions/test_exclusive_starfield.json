@@ -9,6 +9,10 @@
       "kind": "string"
     },
     {
+      "name": "attributes",
+      "kind": "string"
+    },
+    {
       "name": "universe",
       "kind": "object",
       "children": [
@@ -22,6 +26,10 @@
               {
                 "name": "sun",
                 "kind": "string"
+              },
+              {
+                "name": "planets",
+                "kind": "integer"
               }
             ]
           }
@@ -32,6 +40,9 @@
   "inputSockets": [
     {
       "name": "bethesda"
+    },
+    {
+      "name": "fallout"
     }
   ]
 }

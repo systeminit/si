@@ -2,9 +2,10 @@ use dal::func::argument::FuncArgumentKind;
 use dal::{
     generate_name,
     property_editor::{schema::PropertyEditorSchema, values::PropertyEditorValues},
-    Component, DalContext, Func, FuncArgument, FuncBackendKind, FuncBackendResponseType, LeafInput,
-    LeafInputLocation, LeafKind, Prop, PropKind, Schema, SchemaVariant, StandardModel,
+    DalContext, Func, FuncArgument, FuncBackendKind, FuncBackendResponseType, LeafInput,
+    LeafInputLocation, LeafKind, Prop, PropKind, SchemaVariant, StandardModel,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
 use dal_test::test_harness::create_schema;
 
@@ -107,29 +108,21 @@ async fn property_editor_schema(ctx: &DalContext) {
 
 #[test]
 async fn property_editor_value(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("cannot find docker image schema")
-        .pop()
-        .expect("no docker image schema found");
-    let schema_variant_id = schema
-        .default_schema_variant_id()
-        .expect("missing default schema variant id");
+    let mut bagger = ComponentBagger::new();
     let name = generate_name();
-    let (component, _node) = Component::new(ctx, &name, *schema_variant_id)
-        .await
-        .expect("could not create component");
+    let component_bag = bagger.create_component(ctx, &name, "starfield").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let property_editor_values = PropertyEditorValues::for_component(ctx, *component.id())
-        .await
-        .expect("cannot create property editor values from context");
+    let property_editor_values =
+        PropertyEditorValues::for_component(ctx, component_bag.component_id)
+            .await
+            .expect("cannot create property editor values from context");
 
-    let mut name_value = None;
-    let mut image_value = None;
+    let mut si_name_value = None;
+    let mut domain_name_value = None;
     for (_id, value) in property_editor_values.values {
         let prop = value
             .prop(ctx)
@@ -141,23 +134,23 @@ async fn property_editor_value(ctx: &DalContext) {
             .expect("could not perform parent prop fetch")
         {
             if prop.name() == "name" && parent_prop.name() == "si" {
-                if name_value.is_some() {
+                if si_name_value.is_some() {
                     panic!("found more than one property editor value with prop \"name\" and parent \"si\"");
                 }
-                name_value = Some(value.value());
-            } else if prop.name() == "image" && parent_prop.name() == "domain" {
-                if image_value.is_some() {
-                    panic!("found more than one property editor value with prop \"image\" and parent \"domain\"");
+                si_name_value = Some(value.value());
+            } else if prop.name() == "name" && parent_prop.name() == "domain" {
+                if domain_name_value.is_some() {
+                    panic!("found more than one property editor value with prop \"name\" and parent \"domain\"");
                 }
-                image_value = Some(value.value());
+                domain_name_value = Some(value.value());
             }
         }
     }
-    let name_value = name_value
+    let si_name_value = si_name_value
         .expect("did not find property editor value with prop \"name\" and parent \"si\"");
-    let image_value = image_value
-        .expect("did not find property editor value with prop \"image\" and parent \"domain\"");
-    let found_name = serde_json::to_string(&name_value).expect("could not deserialize value");
+    let domain_name_value = domain_name_value
+        .expect("did not find property editor value with prop \"name\" and parent \"domain\"");
+    let found_name = serde_json::to_string(&si_name_value).expect("could not deserialize value");
     assert_eq!(found_name.replace('"', ""), name);
-    assert_eq!(name_value, image_value);
+    assert_eq!(si_name_value, domain_name_value);
 }

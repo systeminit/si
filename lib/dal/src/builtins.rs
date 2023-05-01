@@ -18,8 +18,9 @@ use crate::socket::SocketError;
 use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
-    DalContext, ExternalProviderId, FuncError, PropError, PropId, SchemaError, SchemaVariantId,
-    StandardModelError, TransactionsError, ValidationPrototypeError, WorkflowPrototypeError,
+    DalContext, ExternalProviderId, FuncError, InternalProviderId, PropError, PropId, SchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -62,7 +63,9 @@ pub enum BuiltinsError {
     InternalProvider(#[from] InternalProviderError),
     #[error("missing attribute prototype for attribute value")]
     MissingAttributePrototypeForAttributeValue,
-    #[error("missing attribute prototype for external provider id: {0}")]
+    #[error("missing attribute prototype for explicit internal provider: {0}")]
+    MissingAttributePrototypeForExplicitInternalProvider(InternalProviderId),
+    #[error("missing attribute prototype for external provider: {0}")]
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),

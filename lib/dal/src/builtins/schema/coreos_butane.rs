@@ -37,8 +37,8 @@ impl MigrationDriver {
             mut schema_variant,
             root_prop,
             maybe_prop_cache,
-            explicit_internal_providers,
-            external_providers,
+            _explicit_internal_providers,
+            _external_providers,
         ) = match self
             .create_schema_and_variant(ctx, metadata, Some(definition))
             .await?
@@ -96,31 +96,30 @@ impl MigrationDriver {
         let systemd_prop_id = prop_cache.get("systemd", root_prop.domain_prop_id)?;
         let units_prop_id = prop_cache.get("units", systemd_prop_id)?;
 
-        // FIXME(nick,wendy): use a hash map or something more elegant with O(1) lookup.
-        let docker_image_explicit_internal_provider_name = "Container Image";
-        let docker_image_explicit_internal_provider = explicit_internal_providers
-            .into_iter()
-            .filter(|p| p.name() == docker_image_explicit_internal_provider_name)
-            .collect::<Vec<InternalProvider>>()
-            .pop()
+        let docker_image_explicit_internal_provider_name = "Container Image".to_string();
+        let docker_image_explicit_internal_provider =
+            InternalProvider::find_explicit_for_schema_variant_and_name(
+                ctx,
+                *schema_variant.id(),
+                &docker_image_explicit_internal_provider_name,
+            )
+            .await?
             .ok_or_else(|| {
                 BuiltinsError::ExplicitInternalProviderNotFound(
-                    docker_image_explicit_internal_provider_name.to_string(),
+                    docker_image_explicit_internal_provider_name,
                 )
             })?;
 
-        // FIXME(nick,wendy): use a hash map or something more elegant with O(1) lookup.
-        let user_data_external_provider_name = "User Data";
-        let user_data_external_provider = external_providers
-            .into_iter()
-            .filter(|p| p.name() == user_data_external_provider_name)
-            .collect::<Vec<ExternalProvider>>()
-            .pop()
-            .ok_or_else(|| {
-                BuiltinsError::ExternalProviderNotFound(
-                    user_data_external_provider_name.to_string(),
-                )
-            })?;
+        let user_data_external_provider_name = "User Data".to_string();
+        let user_data_external_provider = ExternalProvider::find_for_schema_variant_and_name(
+            ctx,
+            *schema_variant.id(),
+            &user_data_external_provider_name,
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ExternalProviderNotFound(user_data_external_provider_name.to_string())
+        })?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(ctx, variant_prop_id, serde_json::json!["fcos"])

@@ -1,36 +1,23 @@
 use dal::{
     func::backend::validation::FuncBackendValidationArgs, validation::Validation, DalContext, Func,
-    Prop, Schema, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
-use dal_test::{helpers::find_prop_and_parent_by_name, test};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("cannot find docker image")
-        .pop()
-        .expect("no docker image found");
-
-    let default_variant = schema
-        .default_variant(ctx)
-        .await
-        .expect("cannot find default variant");
-
-    let (prop_id, _) =
-        find_prop_and_parent_by_name(ctx, "image", "domain", None, *default_variant.id())
-            .await
-            .expect("could not find prop by name");
-    let prop = Prop::get_by_id(ctx, &prop_id)
-        .await
-        .expect("could not find prop by id")
-        .expect("prop not found by id");
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "starfield", "starfield").await;
+    let prop = component_bag
+        .find_prop(ctx, &["root", "domain", "freestar"])
+        .await;
 
     let func_name = "si:validation".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
-        .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:validation");
+        .expect("error fetching builtin function");
+    let func = funcs.pop().expect("missing builtin function si:validation");
 
     let args = FuncBackendValidationArgs::new(Validation::StringEquals {
         value: Some("".to_string()),
@@ -42,7 +29,7 @@ async fn new(ctx: &DalContext) {
     let _validation_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
-        serde_json::to_value(&args).expect("Serialization failed"),
+        serde_json::to_value(&args).expect("serialization failed"),
         builder
             .to_context(ctx)
             .await
@@ -54,31 +41,17 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_for_prop(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("cannot find docker image")
-        .pop()
-        .expect("no docker image found");
-
-    let default_variant = schema
-        .default_variant(ctx)
-        .await
-        .expect("cannot find default variant");
-
-    let (prop_id, _) =
-        find_prop_and_parent_by_name(ctx, "image", "domain", None, *default_variant.id())
-            .await
-            .expect("could not find prop by name");
-    let prop = Prop::get_by_id(ctx, &prop_id)
-        .await
-        .expect("could not find prop by id")
-        .expect("prop not found by id");
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "starfield", "starfield").await;
+    let prop = component_bag
+        .find_prop(ctx, &["root", "domain", "freestar"])
+        .await;
 
     let func_name = "si:validation".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:validation");
+    let func = funcs.pop().expect("missing builtin function si:validation");
 
     let first_args = FuncBackendValidationArgs::new(Validation::StringEquals {
         value: Some("".to_string()),

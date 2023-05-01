@@ -1,8 +1,8 @@
 use dal::change_status::ChangeStatus;
 use dal::edge::EdgeKind;
 use dal::{
-    socket::SocketEdgeKind, Component, ComponentView, ComponentViewProperties, Connection,
-    DalContext, Diagram, DiagramEdgeView, Node, Schema, Socket, StandardModel,
+    socket::SocketEdgeKind, Connection, DalContext, Diagram, DiagramEdgeView, Node, Socket,
+    StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
@@ -10,70 +10,56 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("could not perform schema find by attr")
-        .pop()
-        .expect("docker image schema not found");
-    let schema_variant_id = schema
-        .default_schema_variant_id()
-        .expect("could not find default schema variant id");
-    let name = "13700KF".to_string();
-
-    let (component, mut node) = Component::new(ctx, &name, *schema_variant_id)
-        .await
-        .expect("could not create component");
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "13700KF", "starfield").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let component_view = ComponentView::new(ctx, *component.id())
-        .await
-        .expect("could not get component view");
-    let mut component_view_properties = ComponentViewProperties::try_from(component_view)
-        .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "13700KF",
-                "color": "#4695E7",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false,
             },
             "domain": {
-                "image": "13700KF",
+                "name": "13700KF",
             },
         }], // expected
-        component_view_properties
+        component_bag
+            .component_view_properties(ctx)
+            .await
             .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
 
+    let mut node = component_bag.node(ctx).await;
     node.set_geometry(ctx, "0", "0", Some("500"), Some("500"))
         .await
         .expect("Could not set node geometry");
 
-    let component_view = ComponentView::new(ctx, *component.id())
-        .await
-        .expect("could not get component view");
-    let mut component_view_properties = ComponentViewProperties::try_from(component_view)
-        .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "13700KF",
-                "color": "#4695E7",
                 "type": "component",
+                "color": "#ffffff",
                 "protected": false,
             },
             "domain": {
-                "image": "13700KF",
+                "name": "13700KF",
             },
         }], // expected
-        component_view_properties
+        component_bag
+            .component_view_properties(ctx)
+            .await
             .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );

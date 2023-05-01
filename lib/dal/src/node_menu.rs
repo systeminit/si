@@ -209,7 +209,7 @@ pub struct GenerateMenuItem {
 
 impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
-    pub async fn new(ctx: &DalContext) -> NodeMenuResult<Self> {
+    pub async fn new(ctx: &DalContext, include_ui_hidden: bool) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
 
         // NOTE(nick): currently, we only generate ui menus for schemas.
@@ -221,7 +221,7 @@ impl GenerateMenuItem {
 
         for ui_menu in ui_menus.into_iter() {
             if let Some(schema) = ui_menu.schema(ctx).await? {
-                if schema.ui_hidden() {
+                if !include_ui_hidden && schema.ui_hidden() {
                     continue;
                 }
                 item_list.push((

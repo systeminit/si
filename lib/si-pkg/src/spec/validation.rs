@@ -13,6 +13,7 @@ pub enum ValidationSpec {
         lower_bound: i64,
         upper_bound: i64,
     },
+    IntegerIsNotEmpty,
     StringEquals {
         expected: String,
     },
@@ -42,6 +43,7 @@ impl ValidationSpec {
 )]
 pub enum ValidationSpecKind {
     IntegerIsBetweenTwoIntegers,
+    IntegerIsNotEmpty,
     StringEquals,
     StringHasPrefix,
     StringInStringArray,
@@ -111,6 +113,7 @@ impl ValidationSpecBuilder {
                             .ok_or(UninitializedFieldError::from("lower_bound"))?,
                     }
                 }
+                ValidationSpecKind::IntegerIsNotEmpty => ValidationSpec::IntegerIsNotEmpty,
                 ValidationSpecKind::StringEquals => ValidationSpec::StringEquals {
                     expected: self
                         .expected_string

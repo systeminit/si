@@ -1,13 +1,28 @@
 {
   "props": [
     {
+      "name": "name",
+      "kind": "string"
+    },
+    {
       "name": "special",
       "kind": "string"
+    },
+    {
+      "name": "rads",
+      "kind": "integer"
+    },
+    {
+      "name": "active",
+      "kind": "boolean"
     }
   ],
   "outputSockets": [
     {
       "name": "bethesda"
+    },
+    {
+      "name": "fallout"
     }
   ]
 }

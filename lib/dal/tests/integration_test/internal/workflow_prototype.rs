@@ -1,8 +1,9 @@
 use dal::{
-    workflow_prototype::WorkflowPrototypeContext, ComponentView, DalContext, Func, Schema,
-    StandardModel, WorkflowKind, WorkflowPrototype, WorkflowTreeStep,
+    workflow_prototype::WorkflowPrototypeContext, DalContext, Func, StandardModel, WorkflowKind,
+    WorkflowPrototype, WorkflowTreeStep,
 };
-use dal_test::{test, test_harness::create_component_for_schema};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
@@ -74,36 +75,32 @@ async fn find_for_context(ctx: &DalContext) {
 
 #[test]
 async fn resolve(ctx: &DalContext) {
-    let title = "Refresh Docker Image";
+    let title = "Refresh Starfield";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource refresh workflow prototype");
+        .expect("unable to find refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
-        .await
-        .expect("unable to find docker image schema")
-        .pop()
-        .expect("unable to find docker image");
-    let component = create_component_for_schema(ctx, schema.id()).await;
-    let component_view = ComponentView::new(ctx, *component.id())
-        .await
-        .expect("unable to generate component view for docker image component");
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "starfield", "starfield").await;
+
+    let component_view = component_bag.component_view(ctx).await;
+
     let mut tree = prototype
-        .resolve(ctx, *component.id())
+        .resolve(ctx, component_bag.component_id)
         .await
         .expect("unable to resolve prototype")
         .tree(ctx)
         .await
         .expect("unable to extract tree");
 
-    assert_eq!("si:dockerImageRefreshWorkflow", tree.name);
+    assert_eq!("test:refreshWorkflowStarfield", tree.name);
     assert_eq!(WorkflowKind::Conditional, tree.kind);
     assert_eq!(1, tree.steps.len());
-    let step = tree.steps.pop().expect("Cannot get first step");
+    let step = tree.steps.pop().expect("cannot get first step");
     match step {
-        WorkflowTreeStep::Workflow(_) => panic!("Expected workflow step to be of kind Command"),
+        WorkflowTreeStep::Workflow(_) => panic!("expected workflow step to be of kind Command"),
         WorkflowTreeStep::Command { func_binding } => {
             assert_eq!(
                 json!([serde_json::to_value(component_view)
@@ -116,22 +113,20 @@ async fn resolve(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: DalContext) {
-    let title = "Refresh Docker Image";
+    let title = "Refresh Starfield";
     let prototype = WorkflowPrototype::find_by_attr(&ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource refresh workflow prototype");
+        .expect("unable to find refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(&ctx, "name", &"Docker Image")
-        .await
-        .expect("unable to find docker image schema")
-        .pop()
-        .expect("unable to find docker image");
-    let component = create_component_for_schema(&ctx, schema.id()).await;
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger
+        .create_component(&ctx, "starfield", "starfield")
+        .await;
 
     let tree = prototype
-        .resolve(&ctx, *component.id())
+        .resolve(&ctx, component_bag.component_id)
         .await
         .expect("unable to resolve prototype")
         .tree(&ctx)

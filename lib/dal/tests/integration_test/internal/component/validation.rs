@@ -2,9 +2,10 @@ use dal::{
     attribute::context::AttributeContextBuilder,
     func::backend::validation::FuncBackendValidationArgs,
     validation::{Validation, ValidationError, ValidationErrorKind},
-    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, Prop, PropId, PropKind, StandardModel,
-    ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
+    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropId, PropKind,
+    StandardModel, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
+    ValidationStatus,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
@@ -215,8 +216,20 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .await
         .expect("could not find status for validation(s) of a given component");
     let (match_validation_status, prefix_validation_status) = (
-        get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
-        get_validation_status(&validation_statuses, updated_prefix_attribute_value_id),
+        find_validation_status(
+            ctx,
+            updated_gecs_attribute_value_id,
+            *component.id(),
+            Some(validation_statuses.clone()),
+        )
+        .await,
+        find_validation_status(
+            ctx,
+            updated_prefix_attribute_value_id,
+            *component.id(),
+            Some(validation_statuses.clone()),
+        )
+        .await,
     );
 
     // Check match validation errors.
@@ -292,8 +305,20 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .await
         .expect("could not find status for validation(s) of a given component");
     let (match_validation_status, prefix_validation_status) = (
-        get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
-        get_validation_status(&validation_statuses, updated_prefix_attribute_value_id),
+        find_validation_status(
+            ctx,
+            updated_gecs_attribute_value_id,
+            *component.id(),
+            Some(validation_statuses.clone()),
+        )
+        .await,
+        find_validation_status(
+            ctx,
+            updated_prefix_attribute_value_id,
+            *component.id(),
+            Some(validation_statuses),
+        )
+        .await,
     );
     assert!(match_validation_status.errors.is_empty());
     assert!(prefix_validation_status.errors.is_empty());
@@ -429,11 +454,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         properties
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let status = get_validation_status(&validation_statuses, updated_av_id);
+    let status = find_validation_status(ctx, updated_av_id, *component.id(), None).await;
 
     let darmok: Vec<ValidationError> = vec![ValidationError {
         message: "Darmok and Jalad at Tanagra".to_string(),
@@ -461,11 +482,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .await
         .expect("check single validation");
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let status = get_validation_status(&validation_statuses, updated_av_id);
+    let status = find_validation_status(ctx, updated_av_id, *component.id(), None).await;
 
     let darmok: Vec<ValidationError> = vec![ValidationError {
         message: "Darmok and Jalad on the ocean".to_string(),
@@ -518,50 +535,31 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         properties
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let status = get_validation_status(&validation_statuses, updated_av_id);
+    let status = find_validation_status(ctx, updated_av_id, *component.id(), None).await;
 
     let empty: Vec<ValidationError> = vec![];
     assert_eq!(empty, status.errors);
 }
 
-fn get_validation_status(
-    validation_statuses: &[ValidationStatus],
-    attribute_value_id: AttributeValueId,
-) -> ValidationStatus {
-    let mut the_validation_status = None;
-    for validation_status in validation_statuses {
-        if validation_status.attribute_value_id == attribute_value_id {
-            if the_validation_status.is_some() {
-                panic!(
-                    "found more than one validation status for that attribute_value_id: {validation_statuses:?}"
-                );
-            }
-            the_validation_status = Some(validation_status.clone());
-        }
-    }
-    the_validation_status.expect("did not find a validation status")
-}
-
 /// This test ensures that validation statuses correspond to attribute values that exist in an
 /// attribute context that we expect (schema, schema variant, and component).
+///
+/// Recommended to run this test with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=fallout
+/// ```
 #[test]
 async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
-    let component_bag = bagger.create_component(ctx, "ksg", "Region").await;
-    let region_prop = component_bag
-        .find_prop(ctx, &["root", "domain", "region"])
+    let component_bag = bagger.create_component(ctx, "ksg", "fallout").await;
+    let rads_prop = component_bag
+        .find_prop(ctx, &["root", "domain", "rads"])
         .await;
 
-    let updated_region_attribute_value_id = component_bag
-        .update_attribute_value_for_prop(
-            ctx,
-            *region_prop.id(),
-            Some(serde_json::json!["us-east-1"]),
-        )
+    // Purposefully pass one validation (integer is not empty) and fail the other (integer is not
+    // between two integers).
+    let updated_rads_attribute_value_id = component_bag
+        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![-2]))
         .await;
 
     ctx.blocking_commit()
@@ -571,29 +569,103 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "us-east-1",
-                "color": "#FF9900",
-                "type": "configurationFrame",
+                "name": "ksg",
+                "type": "component",
+                "color": "#ffffff",
                 "protected": false
             },
-
             "domain": {
-                "region": "us-east-1",
+                "name": "ksg",
+                "rads": -2,
+                "active": true
             }
         }], // actual
         component_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // expected
     );
 
     // Ensure that we see exactly one expected validation status with exactly one expected
     // validation error.
-    let validation_statuses = ValidationResolver::find_status(ctx, component_bag.component_id)
+    let mut status = find_validation_status(
+        ctx,
+        updated_rads_attribute_value_id,
+        component_bag.component_id,
+        None,
+    )
+    .await;
+    let error = status.errors.pop().expect("found empty errors");
+    assert!(
+        status.errors.is_empty(),
+        "found more than one error (should be exactly one)"
+    );
+    assert_eq!(
+        ValidationErrorKind::IntegerNotInBetweenTwoIntegers, // expected
+        error.kind                                           // actual
+    );
+
+    // Now pass both validations with another update.
+    let updated_rads_attribute_value_id = component_bag
+        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![1]))
+        .await;
+
+    ctx.blocking_commit()
         .await
-        .expect("could not find status for validation(s) of a given component");
+        .expect("could not commit & run jobs");
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "ksg",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false
+            },
+            "domain": {
+                "name": "ksg",
+                "rads": 1,
+                "active": true
+            }
+        }], // actual
+        component_bag
+            .component_view_properties(ctx)
+            .await
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value") // expected
+    );
+
+    // Ensure that we see exactly one expected validation status with no errors.
+    let status = find_validation_status(
+        ctx,
+        updated_rads_attribute_value_id,
+        component_bag.component_id,
+        None,
+    )
+    .await;
+    assert!(status.errors.is_empty());
+}
+
+/// Finds exactly one [`ValidationStatus`](dal::ValidationStatus) for a given
+/// [`AttributeValueId`](dal::AttributeValue) corresponding to a [`Prop`](dal::Prop) and
+/// [`Component`](dal::Component).
+async fn find_validation_status(
+    ctx: &DalContext,
+    prop_attribute_value_id: AttributeValueId,
+    component_id: ComponentId,
+    validation_statuses: Option<Vec<ValidationStatus>>,
+) -> ValidationStatus {
+    // If statuses were provided, use them. This is useful for reducing the number of queries used
+    // in the test if we expect the returned data to be static.
+    let validation_statuses = match validation_statuses {
+        Some(statuses) => statuses,
+        None => ValidationResolver::find_status(ctx, component_id)
+            .await
+            .expect("could not find status for validation(s) of a given component"),
+    };
 
     let mut expected_validation_status = None;
     for validation_status in &validation_statuses {
@@ -602,20 +674,15 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             .await
             .expect("could not get attribute value by id")
             .expect("attribute value not found by id");
-        assert_eq!(
-            attribute_value.context.component_id(),
-            component_bag.component_id
-        );
+        assert_eq!(attribute_value.context.component_id(), component_id);
 
         // Now, we can find the expected validation status.
-        if validation_status.attribute_value_id == updated_region_attribute_value_id {
+        if validation_status.attribute_value_id == prop_attribute_value_id {
             if expected_validation_status.is_some() {
                 panic!("found more than one expected validation status: {validation_statuses:?}");
             }
             expected_validation_status = Some(validation_status.clone());
         }
     }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-    assert!(expected_validation_status.errors.is_empty());
+    expected_validation_status.expect("did not find expected validation status")
 }

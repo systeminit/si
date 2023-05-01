@@ -122,6 +122,13 @@ impl ComponentBag {
             .expect("could not find prop")
     }
 
+    /// Generates a new [`ComponentView`] and returns it.
+    pub async fn component_view(&self, ctx: &DalContext) -> ComponentView {
+        ComponentView::new(ctx, self.component_id)
+            .await
+            .expect("cannot get component view")
+    }
+
     /// Generates a new [`ComponentView`] and returns [`ComponentViewProperties`].
     ///
     /// Use this over [`Self::component_view_properties_raw()`] if you'd like to drop certain

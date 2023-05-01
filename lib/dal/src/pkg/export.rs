@@ -834,6 +834,9 @@ async fn get_validations_for_prop(
                     spec_builder.upper_bound(upper_bound);
                     spec_builder.lower_bound(lower_bound);
                 }
+                Validation::IntegerIsNotEmpty { .. } => {
+                    spec_builder.kind(ValidationSpecKind::IntegerIsNotEmpty);
+                }
                 Validation::StringHasPrefix { expected, .. } => {
                     spec_builder.kind(ValidationSpecKind::StringHasPrefix);
                     spec_builder.expected_string(expected);

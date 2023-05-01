@@ -751,6 +751,9 @@ async fn create_prop_validation(
             lower_bound,
             upper_bound,
         }),
+        SiPkgValidation::IntegerIsNotEmpty { .. } => {
+            ValidationKind::Builtin(Validation::IntegerIsNotEmpty { value: None })
+        }
         SiPkgValidation::StringEquals { expected, .. } => {
             ValidationKind::Builtin(Validation::StringEquals {
                 value: None,

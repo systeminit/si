@@ -95,7 +95,8 @@ impl WriteBytes for ValidationNode {
                     .map(|id| id.to_string())
                     .unwrap_or("".to_string()),
             )?,
-            ValidationSpecKind::StringIsValidIpAddr
+            ValidationSpecKind::IntegerIsNotEmpty
+            | ValidationSpecKind::StringIsValidIpAddr
             | ValidationSpecKind::StringIsHexColor
             | ValidationSpecKind::StringIsNotEmpty => {}
         }
@@ -152,7 +153,8 @@ impl ReadBytes for ValidationNode {
                 func_unique_id =
                     Some(FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?);
             }
-            ValidationSpecKind::StringIsValidIpAddr
+            ValidationSpecKind::IntegerIsNotEmpty
+            | ValidationSpecKind::StringIsValidIpAddr
             | ValidationSpecKind::StringIsHexColor
             | ValidationSpecKind::StringIsNotEmpty => {}
         }
@@ -183,6 +185,10 @@ impl NodeChild for ValidationSpec {
                     kind: ValidationSpecKind::IntegerIsBetweenTwoIntegers,
                     upper_bound: Some(*upper_bound),
                     lower_bound: Some(*lower_bound),
+                    ..ValidationNode::default()
+                },
+                ValidationSpec::IntegerIsNotEmpty => ValidationNode {
+                    kind: ValidationSpecKind::IntegerIsNotEmpty,
                     ..ValidationNode::default()
                 },
                 ValidationSpec::StringEquals { expected } => ValidationNode {
