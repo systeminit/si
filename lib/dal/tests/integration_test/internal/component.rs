@@ -1,14 +1,14 @@
 use dal::edge::EdgeKind;
 use dal::schema::variant::root_prop::SiPropChild;
-use dal::socket::{SocketEdgeKind, SocketKind};
+use dal::socket::SocketEdgeKind;
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
-    ComponentView, Connection, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider,
-    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility,
+    ComponentView, Connection, DalContext, Edge, ExternalProvider, InternalProvider, Prop, PropId,
+    PropKind, SchemaVariant, Socket, SocketArity, StandardModel, Visibility,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     helpers::setup_identity_func,
     test,
     test_harness::{
@@ -524,7 +524,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
 
 #[test]
 async fn create_delete_and_restore_components(ctx: &mut DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
+    let mut bagger = ComponentBagger::new();
 
     // Restoration is only a well defined operation for objects that existed on HEAD at some point
     // so for this test, we need to create and merge the component before running delete and restore
@@ -534,53 +534,27 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(change_set.pk, None));
 
-    let nginx_container = harness
-        .create_component(ctx, "nginx", Builtin::DockerImage)
-        .await;
-    let butane_instance = harness
-        .create_component(ctx, "userdata", Builtin::CoreOsButane)
-        .await;
+    let nginx_container = bagger.create_component(ctx, "nginx", "Docker Image").await;
+    let butane_instance = bagger.create_component(ctx, "userdata", "Butane").await;
 
-    let docker_image_schema_variant =
-        SchemaVariant::get_by_id(ctx, &nginx_container.schema_variant_id)
-            .await
-            .expect("could not find schema variant by id")
-            .expect("schema variant by id not found");
-    let butane_schema_variant = SchemaVariant::get_by_id(ctx, &butane_instance.schema_variant_id)
-        .await
-        .expect("could not find schema variant by id")
-        .expect("schema variant by id not found");
-
-    let docker_image_sockets = docker_image_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-    let butane_sockets = butane_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let from_container_image_socket = docker_image_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Container Image"
-        })
-        .expect("cannot find output socket");
-
-    let to_container_image_socket = butane_sockets
-        .iter()
-        .find(|s| {
-            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.kind() == &SocketKind::Provider
-                && s.diagram_kind() == &DiagramKind::Configuration
-                && s.arity() == &SocketArity::Many
-                && s.name() == "Container Image"
-        })
-        .expect("cannot find input socket");
+    let from_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Container Image",
+        SocketEdgeKind::ConfigurationOutput,
+        nginx_container.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
+    let to_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "Container Image",
+        SocketEdgeKind::ConfigurationInput,
+        butane_instance.node_id,
+    )
+    .await
+    .expect("could not perform socket find'")
+    .expect("could not find socket");
 
     let _connection = Connection::new(
         ctx,
@@ -594,12 +568,11 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     .expect("could not create connection");
 
     // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
+    let image_prop = nginx_container
+        .find_prop(ctx, &["root", "domain", "image"])
+        .await;
     nginx_container
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/domain/image",
-            Some(serde_json::json!["nginx"]),
-        )
+        .update_attribute_value_for_prop(ctx, *image_prop.id(), Some(serde_json::json!["nginx"]))
         .await;
 
     ctx.blocking_commit()

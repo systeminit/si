@@ -1,9 +1,7 @@
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::test;
 
+use dal_test::helpers::component_bag::ComponentBagger;
 use pretty_assertions_sorted::assert_eq;
 
 /// This test simulates a usability study test from June 2021 that showcased the
@@ -12,22 +10,18 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn kubernetes_deployment_intelligence(octx: DalContext) {
     let ctx = &octx;
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let fedora_docker_image_payload = harness
-        .create_component(ctx, "fedora", Builtin::DockerImage)
+    let mut bagger = ComponentBagger::new();
+    let fedora_docker_image_bag = bagger.create_component(ctx, "fedora", "Docker Image").await;
+    let namespace_bag = bagger
+        .create_component(ctx, "namespace", "Kubernetes Namespace")
         .await;
-    let namespace_payload = harness
-        .create_component(ctx, "namespace", Builtin::KubernetesNamespace)
+    let spongebob_deployment_bag = bagger
+        .create_component(ctx, "spongebob", "Kubernetes Deployment")
         .await;
-    let spongebob_deployment_payload = harness
-        .create_component(ctx, "spongebob", Builtin::KubernetesDeployment)
+    let patrick_deployment_bag = bagger
+        .create_component(ctx, "patrick", "Kubernetes Deployment")
         .await;
-    let patrick_deployment_payload = harness
-        .create_component(ctx, "patrick", Builtin::KubernetesDeployment)
-        .await;
-    let alpine_docker_image_payload = harness
-        .create_component(ctx, "alpine", Builtin::DockerImage)
-        .await;
+    let alpine_docker_image_bag = bagger.create_component(ctx, "alpine", "Docker Image").await;
 
     ctx.blocking_commit()
         .await
@@ -35,15 +29,15 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
 
     // Cache schema variants to increase clarity in the test structure.
     assert_eq!(
-        spongebob_deployment_payload.schema_variant_id,
-        patrick_deployment_payload.schema_variant_id
+        spongebob_deployment_bag.schema_variant_id,
+        patrick_deployment_bag.schema_variant_id
     );
-    let kubernetes_namespace_schema_variant_id = spongebob_deployment_payload.schema_variant_id;
+    let kubernetes_namespace_schema_variant_id = spongebob_deployment_bag.schema_variant_id;
     assert_eq!(
-        fedora_docker_image_payload.schema_variant_id,
-        alpine_docker_image_payload.schema_variant_id
+        fedora_docker_image_bag.schema_variant_id,
+        alpine_docker_image_bag.schema_variant_id
     );
-    let docker_image_schema_variant_id = fedora_docker_image_payload.schema_variant_id;
+    let docker_image_schema_variant_id = fedora_docker_image_bag.schema_variant_id;
 
     // First, collect all the external providers that we need
     // (correspond to "output sockets" on the configuration diagram).
@@ -57,7 +51,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     .expect("external provider not found");
     let namespace_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        namespace_payload.schema_variant_id,
+        namespace_bag.schema_variant_id,
         "Kubernetes Namespace",
     )
     .await
@@ -86,24 +80,30 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         .expect("explicit internal provider not found");
 
     // Initialize the tail component primary fields.
-    fedora_docker_image_payload
-        .update_attribute_value_for_prop_name(
+    let docker_si_name_prop = fedora_docker_image_bag
+        .find_prop(ctx, &["root", "si", "name"])
+        .await;
+    let namespace_metadata_name_prop = namespace_bag
+        .find_prop(ctx, &["root", "domain", "metadata", "name"])
+        .await;
+    fedora_docker_image_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["fedora"]),
         )
         .await;
-    alpine_docker_image_payload
-        .update_attribute_value_for_prop_name(
+    alpine_docker_image_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["alpine"]),
         )
         .await;
-    namespace_payload
-        .update_attribute_value_for_prop_name(
+    namespace_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/metadata/name",
+            *namespace_metadata_name_prop.id(),
             Some(serde_json::json!["squidward-system"]),
         )
         .await;
@@ -125,7 +125,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "fedora",
             },
         }], // expected
-        fedora_docker_image_payload
+        fedora_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -144,7 +144,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "alpine",
             },
         }], // expected
-        alpine_docker_image_payload
+        alpine_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -171,7 +171,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 },
             },
         }], // expected
-        namespace_payload.component_view_properties_raw(ctx).await // actual
+        namespace_bag.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -192,7 +192,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        spongebob_deployment_payload
+        spongebob_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -218,7 +218,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        patrick_deployment_payload
+        patrick_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -230,18 +230,18 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
-        spongebob_deployment_payload.component_id,
+        spongebob_deployment_bag.component_id,
         *docker_image_external_provider.id(),
-        fedora_docker_image_payload.component_id,
+        fedora_docker_image_bag.component_id,
     )
     .await
     .expect("could not connect providers");
 
     // Perform one update for the fedora docker image.
-    fedora_docker_image_payload
-        .update_attribute_value_for_prop_name(
+    fedora_docker_image_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["fedora-updated"]),
         )
         .await;
@@ -263,7 +263,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "fedora-updated",
             },
         }], // expected
-        fedora_docker_image_payload
+        fedora_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -282,7 +282,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "alpine",
             },
         }], // expected
-        alpine_docker_image_payload
+        alpine_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -309,7 +309,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 },
             },
         }], // expected
-        namespace_payload.component_view_properties_raw(ctx).await // actual
+        namespace_bag.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -343,7 +343,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        spongebob_deployment_payload
+        spongebob_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -369,7 +369,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        patrick_deployment_payload
+        patrick_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -381,9 +381,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
-        spongebob_deployment_payload.component_id,
+        spongebob_deployment_bag.component_id,
         *docker_image_external_provider.id(),
-        alpine_docker_image_payload.component_id,
+        alpine_docker_image_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -392,9 +392,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *kubernetes_deployment_explicit_internal_provider_for_namespace.id(),
-        spongebob_deployment_payload.component_id,
+        spongebob_deployment_bag.component_id,
         *namespace_external_provider.id(),
-        namespace_payload.component_id,
+        namespace_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -404,32 +404,32 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
-        patrick_deployment_payload.component_id,
+        patrick_deployment_bag.component_id,
         *docker_image_external_provider.id(),
-        fedora_docker_image_payload.component_id,
+        fedora_docker_image_bag.component_id,
     )
     .await
     .expect("could not connect providers");
 
     // Perform updates before assertions.
-    alpine_docker_image_payload
-        .update_attribute_value_for_prop_name(
+    alpine_docker_image_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["alpine-updated"]),
         )
         .await;
-    namespace_payload
-        .update_attribute_value_for_prop_name(
+    namespace_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/metadata/name",
+            *namespace_metadata_name_prop.id(),
             Some(serde_json::json!["squidward-system-updated"]),
         )
         .await;
-    fedora_docker_image_payload
-        .update_attribute_value_for_prop_name(
+    fedora_docker_image_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["fedora-updated-twice"]),
         )
         .await;
@@ -452,7 +452,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "fedora-updated-twice",
             },
         }], // expected
-        fedora_docker_image_payload
+        fedora_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -471,7 +471,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "image": "alpine-updated"
             },
         }], // expected
-        alpine_docker_image_payload
+        alpine_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -498,7 +498,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 },
             },
         }], // expected
-        namespace_payload.component_view_properties_raw(ctx).await // actual
+        namespace_bag.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -543,7 +543,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        spongebob_deployment_payload
+        spongebob_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -582,7 +582,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "apiVersion": "apps/v1",
             },
         }], // expected
-        patrick_deployment_payload
+        patrick_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()

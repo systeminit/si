@@ -2,10 +2,8 @@ use dal::{
     qualification::QualificationSubCheckStatus, Component, ComponentId, DalContext, Edge,
     ExternalProvider, InternalProvider, StandardModel,
 };
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 const SYSTEMD_UNIT_FILE_PAYLOAD: &str = "\
@@ -31,12 +29,10 @@ const EXPECTED_DOCKER_TO_BUTANE_IGNITION: &str = include_str!("ignition/docker-t
 
 #[test]
 async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let butane_payload = harness
-        .create_component(ctx, "Mimic Tear", Builtin::CoreOsButane)
-        .await;
-    let ec2_payload = harness
-        .create_component(ctx, "Regal Ancestor Spirit", Builtin::AwsEc2)
+    let mut bagger = ComponentBagger::new();
+    let butane_bag = bagger.create_component(ctx, "Mimic Tear", "Butane").await;
+    let ec2_bag = bagger
+        .create_component(ctx, "Regal Ancestor Spirit", "EC2 Instance")
         .await;
 
     ctx.blocking_commit()
@@ -47,7 +43,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
     let ec2_user_data_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
-            ec2_payload.schema_variant_id,
+            ec2_bag.schema_variant_id,
             "User Data",
         )
         .await
@@ -55,7 +51,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
         .expect("no explicit internal provider found");
     let butane_user_data_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        butane_payload.schema_variant_id,
+        butane_bag.schema_variant_id,
         "User Data",
     )
     .await
@@ -64,41 +60,71 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *ec2_user_data_explicit_internal_provider.id(),
-        ec2_payload.component_id,
+        ec2_bag.component_id,
         *butane_user_data_external_provider.id(),
-        butane_payload.component_id,
+        butane_bag.component_id,
     )
     .await
     .expect("could not connect providers for components");
 
-    // Update all required fields for generating ignition.
-    let element_attribute_value_id = butane_payload
-        .insert_array_object_element(
+    // Cache props in array element.
+    let name_prop = butane_bag
+        .find_prop(ctx, &["root", "domain", "systemd", "units", "unit", "name"])
+        .await;
+    let enabled_prop = butane_bag
+        .find_prop(
             ctx,
-            "/root/domain/systemd/units",
-            "/root/domain/systemd/units/unit",
+            &["root", "domain", "systemd", "units", "unit", "enabled"],
         )
         .await;
-    butane_payload
-        .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
+    let contents_prop = butane_bag
+        .find_prop(
             ctx,
-            "/root/domain/systemd/units/unit/name",
+            &["root", "domain", "systemd", "units", "unit", "contents"],
+        )
+        .await;
+    let name_prop_id = *name_prop.id();
+    let enabled_prop_id = *enabled_prop.id();
+    let contents_prop_id = *contents_prop.id();
+
+    // Cache lineage props.
+    let element_prop = name_prop
+        .parent_prop(ctx)
+        .await
+        .expect("could not perform parent prop lookup")
+        .expect("parent prop not found");
+    let array_prop = element_prop
+        .parent_prop(ctx)
+        .await
+        .expect("could not perform parent prop lookup")
+        .expect("parent prop not found");
+    let element_prop_id = *element_prop.id();
+    let array_prop_id = *array_prop.id();
+
+    // Update all required fields for generating ignition.
+    let element_attribute_value_id = butane_bag
+        .insert_array_object_element(ctx, array_prop_id, element_prop_id)
+        .await;
+    butane_bag
+        .update_attribute_value_for_prop_and_parent_element_attribute_value_id(
+            ctx,
+            name_prop_id,
             Some(serde_json::json!["whiskers.service"]),
             element_attribute_value_id,
         )
         .await;
-    butane_payload
-        .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
+    butane_bag
+        .update_attribute_value_for_prop_and_parent_element_attribute_value_id(
             ctx,
-            "/root/domain/systemd/units/unit/enabled",
+            enabled_prop_id,
             Some(serde_json::json![true]),
             element_attribute_value_id,
         )
         .await;
-    butane_payload
-        .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
+    butane_bag
+        .update_attribute_value_for_prop_and_parent_element_attribute_value_id(
             ctx,
-            "/root/domain/systemd/units/unit/contents",
+            contents_prop_id,
             Some(serde_json::json![SYSTEMD_UNIT_FILE_PAYLOAD]),
             element_attribute_value_id,
         )
@@ -137,7 +163,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
                 },
             },
         }], // expected
-        butane_payload
+        butane_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -149,7 +175,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
     // again to include the new "UserData" in its code generation output. Sometimes, the "UserData"
     // populated when we generate the view. Other times, it is not. Thus, this test _temporarily_
     // looks at the contents of the "UserData" field alone, rather than the entire object.
-    let ec2_component_view_properties = ec2_payload.component_view_properties_raw(ctx).await;
+    let ec2_component_view_properties = ec2_bag.component_view_properties_raw(ctx).await;
     let ec2_properties = ec2_component_view_properties
         .as_object()
         .expect("could not convert ec2 component view properties to object");
@@ -180,29 +206,27 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
     //             "awsResourceType": "instance",
     //         },
     //     }], // expected
-    //     ec2_payload.component_view_properties(ctx).await // actual
+    //     ec2_bag.component_view_properties(ctx).await // actual
     // );
 
     // Finally, check the ignition qualification.
-    let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
+    let ignition = get_ignition_from_qualification_output(ctx, &butane_bag.component_id).await;
     assert_eq!(
         &ignition,                       // actual
         EXPECTED_BUTANE_TO_EC2_IGNITION  // expected
     );
 }
 
+/// Recommended to run with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=docker image,coreos butane
+/// ```
 #[test]
 async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let alpine_payload = harness
-        .create_component(ctx, "alpine", Builtin::DockerImage)
-        .await;
-    let butane_payload = harness
-        .create_component(ctx, "butane", Builtin::CoreOsButane)
-        .await;
-    let nginx_payload = harness
-        .create_component(ctx, "nginx", Builtin::DockerImage)
-        .await;
+    let mut bagger = ComponentBagger::new();
+    let alpine_bag = bagger.create_component(ctx, "alpine", "Docker Image").await;
+    let butane_bag = bagger.create_component(ctx, "butane", "Butane").await;
+    let nginx_bag = bagger.create_component(ctx, "nginx", "Docker Image").await;
 
     ctx.blocking_commit()
         .await
@@ -211,7 +235,7 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     // Collect the providers needed to perform the two connections from each docker image to butane.
     let alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        alpine_payload.schema_variant_id,
+        alpine_bag.schema_variant_id,
         "Container Image",
     )
     .await
@@ -219,7 +243,7 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     .expect("external provider not found");
     let nginx_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        nginx_payload.schema_variant_id,
+        nginx_bag.schema_variant_id,
         "Container Image",
     )
     .await
@@ -227,7 +251,7 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     .expect("external provider not found");
     let butane_provider = InternalProvider::find_explicit_for_schema_variant_and_name(
         ctx,
-        butane_payload.schema_variant_id,
+        butane_bag.schema_variant_id,
         "Container Image",
     )
     .await
@@ -238,18 +262,18 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *butane_provider.id(),
-        butane_payload.component_id,
+        butane_bag.component_id,
         *alpine_provider.id(),
-        alpine_payload.component_id,
+        alpine_bag.component_id,
     )
     .await
     .expect("could not connect providers for components");
     Edge::connect_providers_for_components(
         ctx,
         *butane_provider.id(),
-        butane_payload.component_id,
+        butane_bag.component_id,
         *nginx_provider.id(),
-        nginx_payload.component_id,
+        nginx_bag.component_id,
     )
     .await
     .expect("could not connect providers for components");
@@ -258,30 +282,46 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
+    // Cache props.
+    let docker_si_name_prop = alpine_bag.find_prop(ctx, &["root", "si", "name"]).await;
+    let docker_image_prop = alpine_bag
+        .find_prop(ctx, &["root", "domain", "image"])
+        .await;
+    let docker_image_exposed_port_element_prop = alpine_bag
+        .find_prop(ctx, &["root", "domain", "ExposedPorts", "ExposedPort"])
+        .await;
+    let docker_image_exposed_port_array_prop = docker_image_exposed_port_element_prop
+        .parent_prop(ctx)
+        .await
+        .expect("could not perform parent lookup")
+        .expect("parent prop not found");
+    let docker_image_exposed_port_element_prop_id = *docker_image_exposed_port_element_prop.id();
+    let docker_image_exposed_port_array_prop_id = *docker_image_exposed_port_array_prop.id();
+
     // Set values required for butane.
-    alpine_payload
-        .update_attribute_value_for_prop_name(
+    alpine_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["alpine8675"]),
         )
         .await;
     let alpine_image_value =
         serde_json::to_value("docker.io/library/alpine").expect("could not convert to value");
-    alpine_payload
-        .update_attribute_value_for_prop_name(ctx, "/root/domain/image", Some(alpine_image_value))
+    alpine_bag
+        .update_attribute_value_for_prop(ctx, *docker_image_prop.id(), Some(alpine_image_value))
         .await;
-    nginx_payload
-        .update_attribute_value_for_prop_name(
+    nginx_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/si/name",
+            *docker_si_name_prop.id(),
             Some(serde_json::json!["nginx309"]),
         )
         .await;
     let nginx_image_value =
         serde_json::to_value("docker.io/library/nginx").expect("could not convert to value");
-    nginx_payload
-        .update_attribute_value_for_prop_name(ctx, "/root/domain/image", Some(nginx_image_value))
+    nginx_bag
+        .update_attribute_value_for_prop(ctx, *docker_image_prop.id(), Some(nginx_image_value))
         .await;
 
     ctx.blocking_commit()
@@ -289,20 +329,20 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
         .expect("could not commit & run jobs");
 
     let nginx_port80_value = serde_json::to_value("80/tcp").expect("could not convert to value");
-    nginx_payload
+    nginx_bag
         .insert_array_primitive_element(
             ctx,
-            "/root/domain/exposed-ports",
-            "/root/domain/exposed-ports/exposed-port",
+            docker_image_exposed_port_array_prop_id,
+            docker_image_exposed_port_element_prop_id,
             nginx_port80_value,
         )
         .await;
     let nginx_port443_value = serde_json::to_value("443/tcp").expect("could not convert to value");
-    nginx_payload
+    nginx_bag
         .insert_array_primitive_element(
             ctx,
-            "/root/domain/exposed-ports",
-            "/root/domain/exposed-ports/exposed-port",
+            docker_image_exposed_port_array_prop_id,
+            docker_image_exposed_port_element_prop_id,
             nginx_port443_value,
         )
         .await;
@@ -312,7 +352,7 @@ async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
         .expect("could not commit & run jobs");
 
     // Check the ignition qualification.
-    let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
+    let ignition = get_ignition_from_qualification_output(ctx, &butane_bag.component_id).await;
     assert_eq!(
         EXPECTED_DOCKER_TO_BUTANE_IGNITION, // expected
         &ignition,                          // actual

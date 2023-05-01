@@ -1,41 +1,41 @@
-//! This module contains [`ComponentPayload`], which is useful for creating
+//! This module contains [`ComponentBag`], which is useful for creating
 //! [`Components`](dal::Component), caching relevant information for them, and providing
 //! helper functions for them by leveraging the cached information.
 
 use dal::{
-    attribute::context::AttributeContextBuilder, node::NodeId, AttributeContext,
-    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
-    ComponentViewProperties, DalContext, Prop, PropId, Schema, SchemaId, SchemaVariantId,
-    StandardModel,
+    attribute::context::AttributeContextBuilder, node::NodeId, AttributeReadContext,
+    AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
+    ComponentViewProperties, DalContext, ExternalProviderId, InternalProviderId, Node, Prop,
+    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// An assembler for creating [`Components`](dal::Component) and assembling
-/// [`ComponentPayloads`](ComponentPayload).
+/// A "bagger" for creating [`Components`](dal::Component) and assembling
+/// [`ComponentBags`](ComponentBag).
 #[derive(Debug, Default)]
-pub struct ComponentPayloadAssembler {
+pub struct ComponentBagger {
     /// A _private_ cache used for creating multiple [`Components`](dal::Component) of the
     /// same [`Schema`](dal::Schema) and default [`SchemaVariant`](dal::SchemaVariant).
     schema_cache: HashMap<String, (SchemaId, SchemaVariantId)>,
 }
 
-impl ComponentPayloadAssembler {
-    /// Create a new [`assembler`](ComponentPayloadAssembler) and initialize its cache.
+impl ComponentBagger {
+    /// Create a new [`bagger`](ComponentBagger) and initialize its cache.
     pub fn new() -> Self {
         Self {
             schema_cache: Default::default(),
         }
     }
 
-    /// Create a [`Component`](dal::Component) and assemble a [`ComponentPayload`] using its
+    /// Create a [`Component`](dal::Component) and assemble a [`ComponentBag`] using its
     /// metadata.
     pub async fn create_component(
         &mut self,
         ctx: &DalContext,
         component_name: &str,
         schema_name: impl Into<String>,
-    ) -> ComponentPayload {
+    ) -> ComponentBag {
         let schema_name = schema_name.into();
         let (schema_id, schema_variant_id) =
             self.schema_cache.entry(schema_name.clone()).or_insert({
@@ -52,12 +52,11 @@ impl ComponentPayloadAssembler {
             .await
             .expect("could not create component");
 
-        ComponentPayload {
+        ComponentBag {
             schema_id: *schema_id,
             schema_variant_id: *schema_variant_id,
             component_id: *component.id(),
             node_id: *node.id(),
-            prop_map: HashMap::new(),
             base_attribute_read_context: AttributeReadContext {
                 prop_id: None,
                 component_id: Some(*component.id()),
@@ -68,43 +67,59 @@ impl ComponentPayloadAssembler {
 }
 
 #[derive(Debug)]
-/// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for a test.
-pub struct ComponentPayload {
+/// This struct is used for bundling a [`Component`](dal::Component) with all metadata needed for a
+/// test.
+pub struct ComponentBag {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub component_id: ComponentId,
     pub node_id: NodeId,
-    /// A map that uses [`Prop`] "json pointer names" as keys and their ids as values.
-    pub prop_map: HashMap<&'static str, PropId>,
     /// An [`AttributeReadContext`] that can be used for generating a [`ComponentView`].
     pub base_attribute_read_context: AttributeReadContext,
 }
 
-impl ComponentPayload {
-    /// Get the [`PropId`] (value) corresponding to the "json pointer name" (key) in the "prop_map"
-    /// (e.g. "/root/si/name" passed in as the name).
-    pub fn get_prop_id(&self, prop_name: &str) -> PropId {
-        *self
-            .prop_map
-            .get(prop_name)
-            .expect("could not find PropId for key")
+impl ComponentBag {
+    pub fn bagger() -> ComponentBagger {
+        ComponentBagger::default()
     }
 
-    /// Merge the base [`AttributeReadContext`] with the [`PropId`] found.
-    pub fn attribute_read_context_with_prop_id(&self, prop_name: &str) -> AttributeReadContext {
-        AttributeReadContext {
-            prop_id: Some(self.get_prop_id(prop_name)),
-            ..self.base_attribute_read_context
-        }
+    /// Gets the [`Node`](dal::Node) for [`self`](ComponentBag).
+    pub async fn node(&self, ctx: &DalContext) -> Node {
+        Node::get_by_id(ctx, &self.node_id)
+            .await
+            .expect("could not perform get by id")
+            .expect("not found")
     }
 
-    /// Merge the base [`AttributeReadContext`] with the [`PropId`] found and convert into an
-    /// [`AttributeContext`].
-    pub fn attribute_context_with_prop_id(&self, prop_name: &str) -> AttributeContext {
-        AttributeContextBuilder::from(self.base_attribute_read_context)
-            .set_prop_id(self.get_prop_id(prop_name))
-            .to_context()
-            .expect("could not convert builder to attribute context")
+    /// Gets the [`Component`](dal::Component) for [`self`](ComponentBag).
+    pub async fn component(&self, ctx: &DalContext) -> Component {
+        Component::get_by_id(ctx, &self.component_id)
+            .await
+            .expect("could not perform get by id")
+            .expect("not found")
+    }
+
+    /// Gets the [`Schema`](dal::Schema) for [`self`](ComponentBag).
+    pub async fn schema(&self, ctx: &DalContext) -> Schema {
+        Schema::get_by_id(ctx, &self.schema_id)
+            .await
+            .expect("could not perform get by id")
+            .expect("not found")
+    }
+
+    /// Gets the [`SchemaVariant`](dal::SchemaVariant) for [`self`](ComponentBag).
+    pub async fn schema_variant(&self, ctx: &DalContext) -> SchemaVariant {
+        SchemaVariant::get_by_id(ctx, &self.schema_variant_id)
+            .await
+            .expect("could not perform get by id")
+            .expect("not found")
+    }
+
+    /// Finds the [`Prop`](dal::Prop) corresponding to the "path" provided.
+    pub async fn find_prop(&self, ctx: &DalContext, prop_path: &[&str]) -> Prop {
+        SchemaVariant::find_prop_in_tree(ctx, self.schema_variant_id, prop_path)
+            .await
+            .expect("could not find prop")
     }
 
     /// Generates a new [`ComponentView`] and returns [`ComponentViewProperties`].
@@ -130,16 +145,47 @@ impl ComponentPayload {
             .properties
     }
 
+    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
+    /// [`PropId`](dal::Prop) and [`ComponentId`](dal::Component).
+    pub fn attribute_read_context_with_prop(&self, prop_id: PropId) -> AttributeReadContext {
+        AttributeReadContext {
+            prop_id: Some(prop_id),
+            ..self.base_attribute_read_context
+        }
+    }
+
+    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
+    /// [`InternalProviderId`](dal::InternalProvider) and [`ComponentId`](dal::Component).
+    pub fn attribute_read_context_with_internal_provider(
+        &self,
+        internal_provider_id: InternalProviderId,
+    ) -> AttributeReadContext {
+        AttributeReadContext {
+            internal_provider_id: Some(internal_provider_id),
+            ..self.base_attribute_read_context
+        }
+    }
+
+    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
+    /// [`ExternalProviderId`](dal::ExternalProvider) and [`ComponentId`](dal::Component).
+    pub fn attribute_read_context_with_external_provider(
+        &self,
+        external_provider_id: ExternalProviderId,
+    ) -> AttributeReadContext {
+        AttributeReadContext {
+            external_provider_id: Some(external_provider_id),
+            ..self.base_attribute_read_context
+        }
+    }
+
     /// Update a [`AttributeValue`]. This only works if the parent `AttributeValue` for the same
     /// context corresponds to an _"object"_ [`Prop`].
-    pub async fn update_attribute_value_for_prop_name(
+    pub async fn update_attribute_value_for_prop(
         &self,
         ctx: &DalContext,
-        prop_name: impl AsRef<str>,
+        prop_id: PropId,
         value: Option<Value>,
     ) -> AttributeValueId {
-        let prop_id = self.get_prop_id(prop_name.as_ref());
-
         let attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
@@ -159,6 +205,7 @@ impl ComponentPayload {
             .await
             .expect("could not find parent prop")
             .expect("parent prop not found or prop does not have parent");
+        assert_eq!(&PropKind::Object, parent_prop.kind());
         let parent_attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
@@ -196,13 +243,10 @@ impl ComponentPayload {
     pub async fn insert_array_primitive_element(
         &self,
         ctx: &DalContext,
-        array_prop_name: impl AsRef<str>,
-        element_prop_name: impl AsRef<str>,
+        array_prop_id: PropId,
+        element_prop_id: PropId,
         value: Value,
     ) -> AttributeValueId {
-        let array_prop_id = self.get_prop_id(array_prop_name.as_ref());
-        let element_prop_id = self.get_prop_id(element_prop_name.as_ref());
-
         let array_attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
@@ -237,12 +281,9 @@ impl ComponentPayload {
     pub async fn insert_array_object_element(
         &self,
         ctx: &DalContext,
-        array_prop_name: impl AsRef<str>,
-        element_prop_name: impl AsRef<str>,
+        array_prop_id: PropId,
+        element_prop_id: PropId,
     ) -> AttributeValueId {
-        let array_prop_id = self.get_prop_id(array_prop_name.as_ref());
-        let element_prop_id = self.get_prop_id(element_prop_name.as_ref());
-
         let array_attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
@@ -274,14 +315,13 @@ impl ComponentPayload {
 
     /// Using the element [`AttributeValueId`] from [`Self::insert_array_object_element()`], update
     /// an [`AttributeValue`] corresponding to a "field" within the _object_ element.
-    pub async fn update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
+    pub async fn update_attribute_value_for_prop_and_parent_element_attribute_value_id(
         &self,
         ctx: &DalContext,
-        prop_name: impl AsRef<str>,
+        prop_id: PropId,
         value: Option<Value>,
         element_attribute_value_id: AttributeValueId,
     ) -> AttributeValueId {
-        let prop_id = self.get_prop_id(prop_name.as_ref());
         let attribute_value = AttributeValue::find_with_parent_and_key_for_context(
             ctx,
             Some(element_attribute_value_id),
@@ -314,14 +354,5 @@ impl ComponentPayload {
 
         // Return the updated attribute value id.
         updated_attribute_value_id
-    }
-
-    /// Get the full [`Component`](dal::Component) using the [`ComponentId`](dal::Component)
-    /// from [`self`](Self).
-    pub async fn component(&self, ctx: &DalContext) -> Component {
-        Component::get_by_id(ctx, &self.component_id)
-            .await
-            .expect("could not get component by id")
-            .expect("no component found")
     }
 }

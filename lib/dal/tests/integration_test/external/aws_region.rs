@@ -2,23 +2,23 @@ use dal::{
     validation::ValidationErrorKind, ComponentType, DalContext, Edge, ExternalProvider,
     InternalProvider, StandardModel, ValidationResolver,
 };
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn aws_region_field_validation(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let region_payload = harness
-        .create_component(ctx, "region", Builtin::AwsRegion)
+    let mut bagger = ComponentBagger::new();
+    let region_bag = bagger.create_component(ctx, "region", "Region").await;
+
+    let region_prop = region_bag
+        .find_prop(ctx, &["root", "domain", "region"])
         .await;
 
-    let updated_region_attribute_value_id = region_payload
-        .update_attribute_value_for_prop_name(
+    let updated_region_attribute_value_id = region_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/region",
+            *region_prop.id(),
             Some(serde_json::json!["us-poop-1"]),
         )
         .await;
@@ -39,7 +39,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-poop-1",
             }
         }], // actual
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -47,7 +47,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             .expect("could not convert to value") // expected
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
+    let validation_statuses = ValidationResolver::find_status(ctx, region_bag.component_id)
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -74,10 +74,10 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     }
     assert!(found_expected_validation_error);
 
-    let updated_region_attribute_value_id = region_payload
-        .update_attribute_value_for_prop_name(
+    let updated_region_attribute_value_id = region_bag
+        .update_attribute_value_for_prop(
             ctx,
-            "/root/domain/region",
+            *region_prop.id(),
             Some(serde_json::json!["us-east-1"]),
         )
         .await;
@@ -98,7 +98,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-east-1",
             },
         }], // actual
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -107,7 +107,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     );
 
     // TODO(nick): now, ensure we have the right value! Huzzah.
-    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
+    let validation_statuses = ValidationResolver::find_status(ctx, region_bag.component_id)
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -127,20 +127,16 @@ async fn aws_region_field_validation(ctx: &DalContext) {
 
 #[test]
 async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let ec2_payload = harness
-        .create_component(ctx, "server", Builtin::AwsEc2)
-        .await;
-    let region_payload = harness
-        .create_component(ctx, "region", Builtin::AwsRegion)
-        .await;
+    let mut bagger = ComponentBagger::new();
+    let ec2_bag = bagger.create_component(ctx, "server", "EC2 Instance").await;
+    let region_bag = bagger.create_component(ctx, "region", "Region").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
     // Ensure the component type is a frame, which should be the default.
-    let region_component = region_payload.component(ctx).await;
+    let region_component = region_bag.component(ctx).await;
     let component_type = region_component
         .get_type(ctx)
         .await
@@ -151,12 +147,12 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     );
 
     // Initialize the tail name field.
-    region_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/domain/region",
-            Some(serde_json::json!["us-east-2"]),
-        )
+    let region_prop_id = *region_bag
+        .find_prop(ctx, &["root", "domain", "region"])
+        .await
+        .id();
+    region_bag
+        .update_attribute_value_for_prop(ctx, region_prop_id, Some(serde_json::json!["us-east-2"]))
         .await;
 
     ctx.blocking_commit()
@@ -176,7 +172,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-east-2",
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -216,7 +212,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -227,7 +223,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     // Find the providers we need for connection.
     let region_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        region_payload.schema_variant_id,
+        region_bag.schema_variant_id,
         "Region",
     )
     .await
@@ -236,7 +232,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     let ec2_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
-            ec2_payload.schema_variant_id,
+            ec2_bag.schema_variant_id,
             "Region",
         )
         .await
@@ -247,9 +243,9 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     Edge::connect_providers_for_components(
         ctx,
         *ec2_explicit_internal_provider.id(),
-        ec2_payload.component_id,
+        ec2_bag.component_id,
         *region_external_provider.id(),
-        region_payload.component_id,
+        region_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -271,7 +267,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-east-2"
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -311,7 +307,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -320,12 +316,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     );
 
     // Perform update!
-    region_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/domain/region",
-            Some(serde_json::json!["us-west-2"]),
-        )
+    region_bag
+        .update_attribute_value_for_prop(ctx, region_prop_id, Some(serde_json::json!["us-west-2"]))
         .await;
 
     ctx.blocking_commit()
@@ -345,7 +337,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-west-2"
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -386,7 +378,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -397,20 +389,16 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
 
 #[test]
 async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let ec2_payload = harness
-        .create_component(ctx, "server", Builtin::AwsEc2)
-        .await;
-    let region_payload = harness
-        .create_component(ctx, "region", Builtin::AwsRegion)
-        .await;
+    let mut bagger = ComponentBagger::new();
+    let ec2_bag = bagger.create_component(ctx, "server", "EC2 Instance").await;
+    let region_bag = bagger.create_component(ctx, "region", "Region").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
     // Switch the component type to a component, which should not be the default.
-    let region_component = region_payload.component(ctx).await;
+    let region_component = region_bag.component(ctx).await;
     let component_type = region_component
         .get_type(ctx)
         .await
@@ -433,12 +421,12 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     );
 
     // Initialize the tail name field.
-    region_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/domain/region",
-            Some(serde_json::json!["us-east-2"]),
-        )
+    let region_prop_id = *region_bag
+        .find_prop(ctx, &["root", "domain", "region"])
+        .await
+        .id();
+    region_bag
+        .update_attribute_value_for_prop(ctx, region_prop_id, Some(serde_json::json!["us-east-2"]))
         .await;
 
     ctx.blocking_commit()
@@ -458,7 +446,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "region": "us-east-2",
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -498,7 +486,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -509,7 +497,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     // Find the providers we need for connection.
     let region_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        region_payload.schema_variant_id,
+        region_bag.schema_variant_id,
         "Region",
     )
     .await
@@ -518,7 +506,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     let ec2_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
-            ec2_payload.schema_variant_id,
+            ec2_bag.schema_variant_id,
             "Region",
         )
         .await
@@ -529,9 +517,9 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     Edge::connect_providers_for_components(
         ctx,
         *ec2_explicit_internal_provider.id(),
-        ec2_payload.component_id,
+        ec2_bag.component_id,
         *region_external_provider.id(),
-        region_payload.component_id,
+        region_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -553,7 +541,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "region": "us-east-2"
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -593,7 +581,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -602,12 +590,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     );
 
     // Perform update!
-    region_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/domain/region",
-            Some(serde_json::json!["us-west-2"]),
-        )
+    region_bag
+        .update_attribute_value_for_prop(ctx, region_prop_id, Some(serde_json::json!["us-west-2"]))
         .await;
 
     ctx.blocking_commit()
@@ -627,7 +611,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "region": "us-west-2"
             },
         }], // expected
-        region_payload
+        region_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -668,7 +652,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
         }], // expected
-        ec2_payload
+        ec2_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()

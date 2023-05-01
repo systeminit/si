@@ -1,15 +1,11 @@
 use dal::{node_menu::GenerateMenuItem, DalContext};
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 
 #[test]
 async fn get_node_menu(ctx: &DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let _docker_image_payload = harness
-        .create_component(ctx, "valorant", Builtin::DockerImage)
-        .await;
+    let mut bagger = ComponentBagger::new();
+    let _docker_image_bag = bagger.create_component(ctx, "valorant", "Docker Image");
 
     let gmi = GenerateMenuItem::new(ctx).await.expect("cannot get items");
     let items = gmi.raw_items;

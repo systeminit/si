@@ -13,8 +13,7 @@ use jwt_simple::algorithms::{RS256KeyPair, RSAKeyPairLike};
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
 use names::{Generator, Name};
 
-pub mod builtins;
-pub mod component_payload;
+pub mod component_bag;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()

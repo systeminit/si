@@ -1,23 +1,22 @@
 use dal::{ChangeSet, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use dal_test::{
-    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
-    test,
-};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut DalContext) {
-    let mut harness = SchemaBuiltinsTestHarness::new();
-    let tail_docker_image_payload = harness
-        .create_component(ctx, "image", Builtin::DockerImage)
-        .await;
-    let head_deployment_payload = harness
-        .create_component(ctx, "deployment", Builtin::KubernetesDeployment)
+    let mut bagger = ComponentBagger::new();
+    let tail_docker_image_bag = bagger.create_component(ctx, "image", "Docker Image").await;
+    let head_deployment_bag = bagger
+        .create_component(ctx, "deployment", "Kubernetes Deployment")
         .await;
 
     // Initialize the tail "/root/si/name" field.
-    tail_docker_image_payload
-        .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
+    let name_prop = tail_docker_image_bag
+        .find_prop(ctx, &["root", "si", "name"])
+        .await;
+    tail_docker_image_bag
+        .update_attribute_value_for_prop(ctx, *name_prop.id(), Some(serde_json::json!["tail"]))
         .await;
 
     ctx.blocking_commit()
@@ -37,7 +36,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 "image": "tail",
             },
         }], // expected
-        tail_docker_image_payload
+        tail_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -63,7 +62,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -74,7 +73,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
     // Find the providers we need for connection.
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        tail_docker_image_payload.schema_variant_id,
+        tail_docker_image_bag.schema_variant_id,
         "Container Image",
     )
     .await
@@ -83,7 +82,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
     let head_explicit_internal_provider =
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
-            head_deployment_payload.schema_variant_id,
+            head_deployment_bag.schema_variant_id,
             "Container Image",
         )
         .await
@@ -94,9 +93,9 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
     Edge::connect_providers_for_components(
         ctx,
         *head_explicit_internal_provider.id(),
-        head_deployment_payload.component_id,
+        head_deployment_bag.component_id,
         *tail_external_provider.id(),
-        tail_docker_image_payload.component_id,
+        tail_docker_image_bag.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -118,7 +117,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 "image": "tail",
             },
         }], // expected
-        tail_docker_image_payload
+        tail_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -144,7 +143,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -153,12 +152,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
     );
 
     // Perform update!
-    tail_docker_image_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/si/name",
-            Some(serde_json::json!["ironsides"]),
-        )
+    tail_docker_image_bag
+        .update_attribute_value_for_prop(ctx, *name_prop.id(), Some(serde_json::json!["ironsides"]))
         .await;
 
     ctx.blocking_commit()
@@ -178,7 +173,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 "image": "ironsides"
             },
         }], // expected
-        tail_docker_image_payload
+        tail_docker_image_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
@@ -218,7 +213,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut 
                 },
             },
         }], // expected
-        head_deployment_payload
+        head_deployment_bag
             .component_view_properties(ctx)
             .await
             .drop_qualification()
