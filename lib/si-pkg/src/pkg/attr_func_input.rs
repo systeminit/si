@@ -3,7 +3,10 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::node::{AttrFuncInputNode, PkgNode};
+use crate::{
+    node::{AttrFuncInputNode, PkgNode},
+    AttrFuncInputSpec, AttrFuncInputSpecKind,
+};
 
 #[derive(Clone, Debug)]
 pub enum SiPkgAttrFuncInput<'a> {
@@ -89,5 +92,38 @@ impl<'a> SiPkgAttrFuncInput<'a> {
                 source,
             },
         })
+    }
+}
+
+impl<'a> TryFrom<SiPkgAttrFuncInput<'a>> for AttrFuncInputSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgAttrFuncInput<'a>) -> Result<Self, Self::Error> {
+        let mut builder = AttrFuncInputSpec::builder();
+        match value {
+            SiPkgAttrFuncInput::Prop {
+                name, prop_path, ..
+            } => {
+                builder.kind(AttrFuncInputSpecKind::Prop);
+                builder.name(name);
+                builder.prop_path(prop_path);
+            }
+            SiPkgAttrFuncInput::InputSocket {
+                name, socket_name, ..
+            } => {
+                builder.kind(AttrFuncInputSpecKind::InputSocket);
+                builder.name(name);
+                builder.socket_name(socket_name);
+            }
+            SiPkgAttrFuncInput::OutputSocket {
+                name, socket_name, ..
+            } => {
+                builder.kind(AttrFuncInputSpecKind::OutputSocket);
+                builder.name(name);
+                builder.socket_name(socket_name);
+            }
+        }
+
+        Ok(builder.build()?)
     }
 }

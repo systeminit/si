@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, ActionSpecKind};
+use crate::{node::PkgNode, ActionSpec, ActionSpecKind, WorkflowSpec};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgWorkflow<'a> {
@@ -70,6 +70,24 @@ impl<'a> SiPkgWorkflow<'a> {
     }
 }
 
+impl<'a> TryFrom<SiPkgWorkflow<'a>> for WorkflowSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgWorkflow<'a>) -> Result<Self, Self::Error> {
+        let mut builder = WorkflowSpec::builder();
+
+        builder
+            .title(value.title())
+            .func_unique_id(value.func_unique_id);
+
+        for action in value.actions()? {
+            builder.action(action.try_into()?);
+        }
+
+        Ok(builder.build()?)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SiPkgAction<'a> {
     kind: ActionSpecKind,
@@ -119,5 +137,16 @@ impl<'a> SiPkgAction<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgAction<'a>> for ActionSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgAction<'a>) -> Result<Self, Self::Error> {
+        Ok(ActionSpec::builder()
+            .kind(value.kind)
+            .name(value.name)
+            .build()?)
     }
 }

@@ -3,7 +3,10 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, spec::FuncUniqueId};
+use crate::{
+    FuncDescriptionSpec,
+    {node::PkgNode, spec::FuncUniqueId},
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgFuncDescription<'a> {
@@ -51,5 +54,16 @@ impl<'a> SiPkgFuncDescription<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgFuncDescription<'a>> for FuncDescriptionSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgFuncDescription<'a>) -> Result<Self, Self::Error> {
+        Ok(FuncDescriptionSpec::builder()
+            .func_unique_id(value.func_unique_id)
+            .contents(value.contents)
+            .build()?)
     }
 }

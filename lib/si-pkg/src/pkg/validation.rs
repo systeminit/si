@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, spec::ValidationSpecKind};
+use crate::{node::PkgNode, ValidationSpec, ValidationSpecKind};
 
 #[derive(Clone, Debug)]
 pub enum SiPkgValidation<'a> {
@@ -130,5 +130,57 @@ impl<'a> SiPkgValidation<'a> {
                 }
             }
         })
+    }
+}
+
+impl<'a> TryFrom<SiPkgValidation<'a>> for ValidationSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgValidation<'a>) -> Result<Self, Self::Error> {
+        let mut builder = ValidationSpec::builder();
+
+        match value {
+            SiPkgValidation::IntegerIsBetweenTwoIntegers {
+                lower_bound,
+                upper_bound,
+                ..
+            } => {
+                builder.kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers);
+                builder.lower_bound(lower_bound);
+                builder.upper_bound(upper_bound);
+            }
+            SiPkgValidation::StringEquals { expected, .. } => {
+                builder.kind(ValidationSpecKind::StringEquals);
+                builder.expected_string(expected);
+            }
+            SiPkgValidation::StringHasPrefix { expected, .. } => {
+                builder.kind(ValidationSpecKind::StringHasPrefix);
+                builder.expected_string(expected);
+            }
+            SiPkgValidation::CustomValidation { func_unique_id, .. } => {
+                builder.kind(ValidationSpecKind::CustomValidation);
+                builder.func_unique_id(func_unique_id);
+            }
+            SiPkgValidation::StringInStringArray {
+                expected,
+                display_expected,
+                ..
+            } => {
+                builder.kind(ValidationSpecKind::StringInStringArray);
+                builder.expected_string_array(expected);
+                builder.display_expected(display_expected);
+            }
+            SiPkgValidation::StringIsValidIpAddr { .. } => {
+                builder.kind(ValidationSpecKind::StringIsValidIpAddr);
+            }
+            SiPkgValidation::StringIsHexColor { .. } => {
+                builder.kind(ValidationSpecKind::StringIsHexColor);
+            }
+            SiPkgValidation::StringIsNotEmpty { .. } => {
+                builder.kind(ValidationSpecKind::StringIsNotEmpty);
+            }
+        }
+
+        Ok(builder.build()?)
     }
 }

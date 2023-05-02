@@ -11,7 +11,7 @@ use super::{
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
-    SchemaVariantSpecComponentType,
+    SchemaVariantSpec, SchemaVariantSpecComponentType,
 };
 
 #[derive(Clone, Debug)]
@@ -216,5 +216,43 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn hash(&self) -> Hash {
         self.hash
+    }
+}
+
+impl<'a> TryFrom<SiPkgSchemaVariant<'a>> for SchemaVariantSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgSchemaVariant<'a>) -> Result<Self, Self::Error> {
+        let mut builder = SchemaVariantSpec::builder();
+
+        builder
+            .name(value.name())
+            .component_type(value.component_type);
+
+        if let Some(link) = value.link() {
+            builder.link(link.to_owned());
+        }
+
+        if let Some(color) = value.color() {
+            builder.color(color);
+        }
+
+        for command_func in value.command_funcs()? {
+            builder.command_func(command_func.try_into()?);
+        }
+
+        for func_description in value.func_descriptions()? {
+            builder.func_description(func_description.try_into()?);
+        }
+
+        for socket in value.sockets()? {
+            builder.socket(socket.try_into()?);
+        }
+
+        for workflow in value.workflows()? {
+            builder.workflow(workflow.try_into()?);
+        }
+
+        Ok(builder.build()?)
     }
 }
