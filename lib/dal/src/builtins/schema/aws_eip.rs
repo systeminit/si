@@ -54,6 +54,136 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
+        // Prop: /resource/value
+        let _value_prop = self
+            .create_prop(
+                ctx,
+                "value",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/domain
+        let _eip_domain_resource_prop = self
+            .create_prop(
+                ctx,
+                "domain",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/public_ipv4_pool
+        let _eip_public_ipv4_pool_resource_prop = self
+            .create_prop(
+                ctx,
+                "public_ipv4_pool",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/instance_id
+        let _eip_instance_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "instance_id",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/network_interface_id
+        let _eip_network_interface_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "network_interface_id",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/association_id
+        let _eip_association_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "association_id",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/network_interface_owner_id
+        let _eip_network_interface_owner_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "network_interface_owner_id",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/public_ip
+        let _eip_public_ip_resource_prop = self
+            .create_prop(
+                ctx,
+                "public_ip",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/allocation_id
+        let _eip_allocation_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "allocation_id",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/private_ip_address
+        let _eip_private_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "private_ip_address",
+                PropKind::String,
+                None,
+                Some(*_value_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
         // Prop: /root/domain/tags
         let tags_map_prop = self
             .create_prop(
