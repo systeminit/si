@@ -125,7 +125,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         parent_id: Option<I>,
     ) -> PkgResult<Vec<(SiPkgProp, Option<I>)>>
     where
-        I: Copy,
+        I: ToOwned + Clone,
     {
         Ok(
             match source
@@ -145,7 +145,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
                     let mut entries = vec![];
                     for child_idx in child_node_idxs {
-                        entries.push((SiPkgProp::from_graph(source.graph, child_idx)?, parent_id));
+                        entries.push((
+                            SiPkgProp::from_graph(source.graph, child_idx)?,
+                            parent_id.to_owned(),
+                        ));
                     }
 
                     entries
@@ -165,7 +168,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
         Fut: Future<Output = Result<Option<I>, E>>,
         E: std::convert::From<SiPkgError>,
-        I: Copy,
+        I: ToOwned + Clone,
     {
         let domain_idxs = self
             .source
@@ -197,17 +200,20 @@ impl<'a> SiPkgSchemaVariant<'a> {
         // Skip processing the domain prop as a `dal::SchemaVariant` already guarantees such a prop
         // has already been created. Rather, we will push all immediate children of the domain prop
         // to be ready for processing.
-        let mut stack =
-            Self::prop_stack_from_source(self.source.clone(), domain_node_idx, parent_id)?;
+        let mut stack = Self::prop_stack_from_source(
+            self.source.clone(),
+            domain_node_idx,
+            parent_id.to_owned(),
+        )?;
 
         while let Some((prop, parent_id)) = stack.pop() {
             let node_idx = prop.source().node_idx;
-            let new_id = process_prop_fn(prop, parent_id, context).await?;
+            let new_id = process_prop_fn(prop, parent_id.to_owned(), context).await?;
 
             stack.extend(Self::prop_stack_from_source(
                 self.source.clone(),
                 node_idx,
-                new_id,
+                new_id.to_owned(),
             )?);
         }
 
