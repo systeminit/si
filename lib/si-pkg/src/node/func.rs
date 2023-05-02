@@ -99,7 +99,7 @@ impl ReadBytes for FuncNode {
         let response_type_str = read_key_value_line(reader, KEY_RESPONSE_TYPE_STR)?;
         let response_type =
             FuncSpecBackendResponseType::from_str(&response_type_str).map_err(GraphError::parse)?;
-        let hidden: bool = bool::from_str(&read_key_value_line(reader, KEY_HIDDEN_STR)?)
+        let hidden = bool::from_str(&read_key_value_line(reader, KEY_HIDDEN_STR)?)
             .map_err(GraphError::parse)?;
         let link_str = read_key_value_line(reader, KEY_LINK_STR)?;
         let link = if link_str.is_empty() {
