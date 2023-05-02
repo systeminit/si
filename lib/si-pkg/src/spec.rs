@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 mod attr_func_input;
+mod command_func;
 mod func;
 mod func_description;
 mod leaf_function;
@@ -15,8 +16,8 @@ mod variant;
 mod workflow;
 
 pub use {
-    attr_func_input::*, func::*, func_description::*, leaf_function::*, prop::*, schema::*,
-    socket::*, validation::*, variant::*, workflow::*,
+    attr_func_input::*, command_func::*, func::*, func_description::*, leaf_function::*, prop::*,
+    schema::*, socket::*, validation::*, variant::*, workflow::*,
 };
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

@@ -69,6 +69,7 @@
           "name": "v0",
           "workflows": [],
           "sockets": [],
+          "commandFuncs": [],
           "componentType": "component",
           "funcDescriptions": [],
           "leafFunctions": [

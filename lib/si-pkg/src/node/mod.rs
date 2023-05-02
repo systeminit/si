@@ -7,6 +7,7 @@ use object_tree::{
 mod action;
 mod attr_func_input;
 mod category;
+mod command_func;
 mod func;
 mod func_argument;
 mod func_description;
@@ -25,6 +26,7 @@ pub(crate) use self::{
     action::ActionNode,
     attr_func_input::AttrFuncInputNode,
     category::CategoryNode,
+    command_func::CommandFuncNode,
     func::FuncNode,
     func_argument::FuncArgumentNode,
     func_description::FuncDescriptionNode,
@@ -43,6 +45,7 @@ pub(crate) use self::{
 const NODE_KIND_ACTION: &str = "action";
 const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
 const NODE_KIND_CATEGORY: &str = "category";
+const NODE_KIND_COMMAND_FUNC: &str = "command_func";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_FUNC_DESCRIPTION: &str = "func_description";
@@ -62,6 +65,7 @@ const KEY_NODE_KIND_STR: &str = "node_kind";
 #[derive(Clone, Debug)]
 pub enum PkgNode {
     Action(ActionNode),
+    CommandFunc(CommandFuncNode),
     AttrFuncInput(AttrFuncInputNode),
     Category(CategoryNode),
     Func(FuncNode),
@@ -83,6 +87,7 @@ impl PkgNode {
     pub const ACTION_KIND_STR: &str = NODE_KIND_ACTION;
     pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
     pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
+    pub const COMMAND_FUNC_KIND_STR: &str = NODE_KIND_COMMAND_FUNC;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const FUNC_DESCRIPTION_KIND_STR: &str = NODE_KIND_FUNC_DESCRIPTION;
@@ -102,6 +107,7 @@ impl PkgNode {
             Self::Action(_) => NODE_KIND_ACTION,
             Self::AttrFuncInput(_) => NODE_KIND_ATTR_FUNC_INPUT,
             Self::Category(_) => NODE_KIND_CATEGORY,
+            Self::CommandFunc(_) => NODE_KIND_COMMAND_FUNC,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
@@ -125,6 +131,7 @@ impl NameStr for PkgNode {
             Self::Action(node) => node.name(),
             Self::AttrFuncInput(node) => node.name(),
             Self::Category(node) => node.name(),
+            Self::CommandFunc(_) => NODE_KIND_COMMAND_FUNC,
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
             Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
@@ -150,6 +157,7 @@ impl WriteBytes for PkgNode {
             Self::Action(node) => node.write_bytes(writer)?,
             Self::AttrFuncInput(node) => node.write_bytes(writer)?,
             Self::Category(node) => node.write_bytes(writer)?,
+            Self::CommandFunc(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::FuncDescription(node) => node.write_bytes(writer)?,
@@ -182,6 +190,7 @@ impl ReadBytes for PkgNode {
                 Self::AttrFuncInput(AttrFuncInputNode::read_bytes(reader)?)
             }
             NODE_KIND_CATEGORY => Self::Category(CategoryNode::read_bytes(reader)?),
+            NODE_KIND_COMMAND_FUNC => Self::CommandFunc(CommandFuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
             NODE_KIND_FUNC_DESCRIPTION => {

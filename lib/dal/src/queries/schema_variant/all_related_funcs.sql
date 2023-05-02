@@ -61,5 +61,15 @@ UNION ALL
           JOIN funcs_v1($1, $2) funcs
                ON funcs.id = wp.func_id
  WHERE wp.schema_variant_id = $3
+   AND wp.component_id = ident_nil_v1()
    AND funcs.code_sha256 != '0')
 
+UNION ALL
+
+(SELECT row_to_json(funcs.*) AS object 
+  FROM command_prototypes_v1($1, $2) cprotos
+          JOIN funcs_v1($1, $2) funcs
+              ON funcs.id = cprotos.func_id
+  WHERE cprotos.schema_variant_id = $3
+    AND cprotos.component_id = ident_nil_v1()
+    AND funcs.code_sha256 != '0')
