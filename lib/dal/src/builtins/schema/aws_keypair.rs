@@ -57,6 +57,120 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
+        // Prop: /resource/value/key_pair_id
+        let _key_pair_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "key_pair_id",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/key_fingerprint
+        let _key_pair_fingerprint_resource_prop = self
+            .create_prop(
+                ctx,
+                "key_fingerprint",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/key_fingerprint
+        let _key_pair_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "key_name",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/key_type
+        let _key_pair_type_resource_prop = self
+            .create_prop(
+                ctx,
+                "key_type",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/tags
+        let key_pair_tags_resource_prop = self
+            .create_prop(
+                ctx,
+                "tags",
+                PropKind::Array,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let key_pair_tag_resource_prop = self
+            .create_prop(
+                ctx,
+                "tag",
+                PropKind::Object,
+                None,
+                Some(*key_pair_tags_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _tag_key_resource_prop = self
+            .create_prop(
+                ctx,
+                "key",
+                PropKind::String,
+                None,
+                Some(*key_pair_tag_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _tag_value_resource_prop = self
+            .create_prop(
+                ctx,
+                "value",
+                PropKind::String,
+                None,
+                Some(*key_pair_tag_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/create_time
+        let _key_pair_create_time_resource_prop = self
+            .create_prop(
+                ctx,
+                "create_time",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
         // Prop: /root/domain/KeyName
         let key_name_prop = self
             .create_prop(

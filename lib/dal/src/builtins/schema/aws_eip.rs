@@ -54,19 +54,6 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Prop: /resource/value
-        let _value_prop = self
-            .create_prop(
-                ctx,
-                "value",
-                PropKind::Object,
-                None,
-                Some(root_prop.resource_prop_id),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-
         // Prop: /resource/value/domain
         let _eip_domain_resource_prop = self
             .create_prop(
@@ -74,7 +61,7 @@ impl MigrationDriver {
                 "domain",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -87,7 +74,7 @@ impl MigrationDriver {
                 "public_ipv4_pool",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -100,7 +87,7 @@ impl MigrationDriver {
                 "instance_id",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -113,7 +100,7 @@ impl MigrationDriver {
                 "network_interface_id",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -126,7 +113,7 @@ impl MigrationDriver {
                 "association_id",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -139,7 +126,7 @@ impl MigrationDriver {
                 "network_interface_owner_id",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -152,7 +139,7 @@ impl MigrationDriver {
                 "public_ip",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -165,7 +152,7 @@ impl MigrationDriver {
                 "allocation_id",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
@@ -178,7 +165,7 @@ impl MigrationDriver {
                 "private_ip_address",
                 PropKind::String,
                 None,
-                Some(*_value_prop.id()),
+                Some(root_prop.resource_value_prop_id),
                 None,
                 schema_variant_id,
             )
