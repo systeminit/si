@@ -5,7 +5,10 @@ use url::Url;
 
 use crate::{
     node::PkgNode,
-    spec::{FuncArgumentKind, FuncSpecBackendKind, FuncSpecBackendResponseType},
+    spec::{
+        FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
+        FuncSpecBackendResponseType,
+    },
 };
 
 use super::{PkgResult, SiPkgError, Source};
@@ -64,6 +67,18 @@ impl<'a> SiPkgFuncArgument<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgFuncArgument<'a>> for FuncArgumentSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgFuncArgument<'a>) -> Result<Self, Self::Error> {
+        Ok(FuncArgumentSpec::builder()
+            .name(value.name)
+            .kind(value.kind)
+            .element_kind(value.element_kind)
+            .build()?)
     }
 }
 
@@ -175,5 +190,39 @@ impl<'a> SiPkgFunc<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgFunc<'a>) -> Result<Self, Self::Error> {
+        let mut builder = FuncSpec::builder();
+
+        builder
+            .name(&value.name)
+            .handler(&value.handler)
+            .code_base64(&value.code_base64)
+            .backend_kind(value.backend_kind)
+            .response_type(value.response_type)
+            .hidden(value.hidden);
+
+        if let Some(display_name) = &value.display_name {
+            builder.display_name(display_name);
+        }
+
+        if let Some(description) = &value.description {
+            builder.description(description);
+        }
+
+        for argument in value.arguments()? {
+            builder.argument(argument.try_into()?);
+        }
+
+        if let Some(link) = value.link {
+            builder.link(link);
+        }
+
+        Ok(builder.build()?)
     }
 }

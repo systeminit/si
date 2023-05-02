@@ -23,16 +23,6 @@ impl SchemaSpec {
     pub fn builder() -> SchemaSpecBuilder {
         SchemaSpecBuilder::default()
     }
-
-    #[allow(unused_mut)]
-    pub fn try_variant<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
-    where
-        I: TryInto<SchemaVariantSpec>,
-    {
-        let converted: SchemaVariantSpec = item.try_into()?;
-        self.variants.extend(Some(converted));
-        Ok(self)
-    }
 }
 
 impl TryFrom<SchemaSpecBuilder> for SchemaSpec {

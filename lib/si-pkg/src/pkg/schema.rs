@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, SiPkgSchemaVariant, Source};
 
-use crate::node::PkgNode;
+use crate::{node::PkgNode, SchemaSpec, SchemaVariantSpec};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchema<'a> {
@@ -73,5 +73,24 @@ impl<'a> SiPkgSchema<'a> {
 
     pub fn hash(&self) -> Hash {
         self.hash
+    }
+}
+
+impl<'a> TryFrom<SiPkgSchema<'a>> for SchemaSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgSchema<'a>) -> Result<Self, Self::Error> {
+        let mut builder = SchemaSpec::builder();
+
+        builder.name(value.name()).category(value.category());
+        if let Some(category_name) = value.category_name() {
+            builder.category_name(category_name);
+        }
+
+        for variant in value.variants()? {
+            builder.variant(SchemaVariantSpec::try_from(variant)?);
+        }
+
+        Ok(builder.build()?)
     }
 }

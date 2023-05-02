@@ -6,6 +6,7 @@ use super::{PkgResult, SiPkgError, Source};
 use crate::{
     node::PkgNode,
     spec::{FuncUniqueId, LeafInputLocation, LeafKind},
+    LeafFunctionSpec,
 };
 
 #[derive(Clone, Debug)]
@@ -74,5 +75,17 @@ impl<'a> SiPkgLeafFunction<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgLeafFunction<'a>> for LeafFunctionSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgLeafFunction<'a>) -> Result<Self, Self::Error> {
+        Ok(LeafFunctionSpec::builder()
+            .leaf_kind(value.leaf_kind)
+            .func_unique_id(value.func_unique_id)
+            .inputs(value.inputs)
+            .build()?)
     }
 }

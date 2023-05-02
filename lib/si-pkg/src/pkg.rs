@@ -33,7 +33,7 @@ pub use {
 
 use crate::{
     node::{CategoryNode, PkgNode},
-    spec::{PkgSpec, SpecError},
+    spec::{FuncSpec, PkgSpec, SchemaSpec, SpecError},
 };
 
 #[derive(Debug, Error)]
@@ -326,5 +326,32 @@ impl SiPkgMetadata {
 
     pub fn hash(&self) -> Hash {
         self.hash
+    }
+}
+
+impl TryFrom<SiPkg> for PkgSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkg) -> Result<Self, Self::Error> {
+        let mut builder = PkgSpec::builder();
+
+        let metadata = value.metadata()?;
+
+        builder
+            .name(metadata.name())
+            .description(metadata.description())
+            .version(metadata.version())
+            .created_at(metadata.created_at())
+            .created_by(metadata.created_by());
+
+        for func in value.funcs()? {
+            builder.func(FuncSpec::try_from(func)?);
+        }
+
+        for schema in value.schemas()? {
+            builder.schema(SchemaSpec::try_from(schema)?);
+        }
+
+        Ok(builder.build()?)
     }
 }

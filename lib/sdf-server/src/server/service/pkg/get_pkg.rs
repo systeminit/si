@@ -1,10 +1,12 @@
-use super::{pkg_open, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use chrono::{DateTime, Utc};
 use dal::{installed_pkg::InstalledPkg, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, PartialOrd};
+
+use super::{pkg_open, PkgResult};
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use si_pkg::PkgSpec;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,6 +47,7 @@ pub struct PkgGetResponse {
     pub created_by: String,
     pub schemas: Vec<String>,
     pub funcs: Vec<PkgFuncView>,
+    pub spec: serde_json::Value,
     pub installed: bool,
 }
 
@@ -80,6 +83,9 @@ pub async fn get_pkg(
         .await?
         .is_empty();
 
+    // This type can be serialized to json with serde_json::to_string/to_string_pretty
+    let pkg_spec = PkgSpec::try_from(pkg)?;
+
     Ok(Json(PkgGetResponse {
         hash: root_hash,
         name: metadata.name().to_string(),
@@ -87,6 +93,7 @@ pub async fn get_pkg(
         description: metadata.description().to_string(),
         created_at: metadata.created_at(),
         created_by: metadata.created_by().to_string(),
+        spec: serde_json::to_value(&pkg_spec)?,
         installed,
         schemas,
         funcs,

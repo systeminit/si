@@ -3,10 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, Source};
 
-use crate::{
-    node::PkgNode,
-    spec::{FuncUniqueId, SocketSpecArity, SocketSpecKind},
-};
+use crate::{node::PkgNode, FuncUniqueId, SocketSpec, SocketSpecArity, SocketSpecKind};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSocket<'a> {
@@ -81,5 +78,25 @@ impl<'a> SiPkgSocket<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
+    type Error = SiPkgError;
+
+    fn try_from(value: SiPkgSocket<'a>) -> Result<Self, Self::Error> {
+        let mut builder = SocketSpec::builder();
+
+        builder
+            .kind(value.kind)
+            .name(value.name())
+            .func_unique_id(value.func_unique_id)
+            .arity(value.arity);
+
+        for input in value.inputs()? {
+            builder.input(input.try_into()?);
+        }
+
+        Ok(builder.build()?)
     }
 }
