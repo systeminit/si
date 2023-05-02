@@ -1,7 +1,48 @@
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
+
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Copy,
+    Default,
+)]
+pub enum PropSpecWidgetKind {
+    Array,
+    Checkbox,
+    Color,
+    ComboBox,
+    Header,
+    Map,
+    SecretSelect,
+    Select,
+    #[default]
+    Text,
+    TextArea,
+}
+
+impl From<&PropSpec> for PropSpecWidgetKind {
+    fn from(node: &PropSpec) -> Self {
+        match node {
+            PropSpec::Array { .. } => Self::Array,
+            PropSpec::Boolean { .. } => Self::Checkbox,
+            PropSpec::String { .. } | PropSpec::Number { .. } => Self::Text,
+            PropSpec::Object { .. } => Self::Header,
+            PropSpec::Map { .. } => Self::Map,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -13,6 +54,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
@@ -21,6 +65,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
@@ -29,6 +76,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
@@ -38,6 +88,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     Array {
@@ -47,6 +100,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
@@ -56,6 +112,9 @@ pub enum PropSpec {
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
     },
 }
 
@@ -85,6 +144,9 @@ pub struct PropSpecBuilder {
     validations: Vec<ValidationSpec>,
     func_unique_id: Option<FuncUniqueId>,
     inputs: Vec<AttrFuncInputSpec>,
+    widget_kind: Option<PropSpecWidgetKind>,
+    widget_options: Option<serde_json::Value>,
+    hidden: bool,
 }
 
 impl PropSpecBuilder {
@@ -146,6 +208,21 @@ impl PropSpecBuilder {
         self
     }
 
+    pub fn widget_kind(&mut self, value: impl Into<PropSpecWidgetKind>) -> &mut Self {
+        self.widget_kind = Some(value.into());
+        self
+    }
+
+    pub fn widget_options(&mut self, value: impl Into<serde_json::Value>) -> &mut Self {
+        self.widget_options = Some(value.into());
+        self
+    }
+
+    pub fn hidden(&mut self, value: impl Into<bool>) -> &mut Self {
+        self.hidden = value.into();
+        self
+    }
+
     /// Builds a new `Prop`.
     ///
     /// # Errors
@@ -162,6 +239,9 @@ impl PropSpecBuilder {
         let validations = self.validations.clone();
         let inputs = self.inputs.clone();
         let func_unique_id = self.func_unique_id;
+        let widget_kind = self.widget_kind;
+        let widget_options = self.widget_options.to_owned();
+        let hidden = self.hidden;
 
         Ok(match self.kind {
             Some(kind) => match kind {
@@ -179,6 +259,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
                 PropSpecKind::Number => PropSpec::Number {
                     name,
@@ -197,6 +280,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
                     name,
@@ -215,6 +301,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
@@ -229,6 +318,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
@@ -242,6 +334,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
@@ -250,6 +345,9 @@ impl PropSpecBuilder {
                     validations: Some(validations),
                     func_unique_id,
                     inputs: Some(inputs),
+                    widget_kind,
+                    widget_options,
+                    hidden: Some(hidden),
                 },
             },
             None => {

@@ -6,6 +6,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumString};
 
+use si_pkg::PropSpecWidgetKind;
+
 use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
 use crate::{
     DalContext, LabelEntry, LabelList, Prop, PropKind, SchemaVariant, SchemaVariantId, Secret,
@@ -160,6 +162,40 @@ pub enum WidgetKind {
     /// Provides a text input with auto-completion for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
     ComboBox,
+}
+
+impl From<WidgetKind> for PropSpecWidgetKind {
+    fn from(value: WidgetKind) -> Self {
+        match value {
+            WidgetKind::Array => Self::Array,
+            WidgetKind::Checkbox => Self::Checkbox,
+            WidgetKind::Header => Self::Header,
+            WidgetKind::Map => Self::Map,
+            WidgetKind::Select => Self::Select,
+            WidgetKind::Color => Self::Color,
+            WidgetKind::SecretSelect => Self::SecretSelect,
+            WidgetKind::Text => Self::Text,
+            WidgetKind::TextArea => Self::TextArea,
+            WidgetKind::ComboBox => Self::ComboBox,
+        }
+    }
+}
+
+impl From<&PropSpecWidgetKind> for WidgetKind {
+    fn from(value: &PropSpecWidgetKind) -> Self {
+        match value {
+            PropSpecWidgetKind::Array => Self::Array,
+            PropSpecWidgetKind::Checkbox => Self::Checkbox,
+            PropSpecWidgetKind::Header => Self::Header,
+            PropSpecWidgetKind::Map => Self::Map,
+            PropSpecWidgetKind::Select => Self::Select,
+            PropSpecWidgetKind::Color => Self::Color,
+            PropSpecWidgetKind::SecretSelect => Self::SecretSelect,
+            PropSpecWidgetKind::Text => Self::Text,
+            PropSpecWidgetKind::TextArea => Self::TextArea,
+            PropSpecWidgetKind::ComboBox => Self::ComboBox,
+        }
+    }
 }
 
 impl PropertyEditorPropWidgetKind {

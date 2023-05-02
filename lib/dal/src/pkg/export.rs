@@ -656,7 +656,11 @@ async fn set_variant_spec_prop_data(
                 PropKind::String => PropSpecKind::String,
                 PropKind::Map => PropSpecKind::Map,
             })
-            .name(tree_node.name);
+            .name(tree_node.name)
+            .hidden(tree_node.hidden)
+            .widget_kind(tree_node.widget_kind)
+            .widget_options(tree_node.widget_options);
+
         traversal_stack.push(TraversalStackEntry {
             builder,
             prop_id,

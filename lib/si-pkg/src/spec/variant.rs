@@ -4,8 +4,8 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SocketSpec, SpecError,
-    WorkflowSpec,
+    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
+    SocketSpec, SpecError, WorkflowSpec,
 };
 
 #[derive(
@@ -78,6 +78,9 @@ impl SchemaVariantSpecBuilder {
             entries: vec![],
             func_unique_id: None,
             inputs: None,
+            widget_kind: Some(PropSpecWidgetKind::Header),
+            widget_options: None,
+            hidden: Some(false),
         }
     }
 

@@ -779,10 +779,10 @@ async fn create_prop(
     parent_prop_id: Option<PropId>,
     ctx: &PropVisitContext<'_, '_>,
 ) -> PkgResult<Option<PropId>> {
-    let prop = Prop::new(
+    let mut prop = Prop::new(
         ctx.ctx,
         spec.name(),
-        match spec {
+        match &spec {
             SiPkgProp::String { .. } => PropKind::String,
             SiPkgProp::Number { .. } => PropKind::Integer,
             SiPkgProp::Boolean { .. } => PropKind::Boolean,
@@ -790,12 +790,57 @@ async fn create_prop(
             SiPkgProp::Array { .. } => PropKind::Array,
             SiPkgProp::Object { .. } => PropKind::Object,
         },
-        None,
+        match &spec {
+            SiPkgProp::String {
+                widget_kind,
+                widget_options,
+                ..
+            }
+            | SiPkgProp::Number {
+                widget_kind,
+                widget_options,
+                ..
+            }
+            | SiPkgProp::Boolean {
+                widget_kind,
+                widget_options,
+                ..
+            }
+            | SiPkgProp::Map {
+                widget_kind,
+                widget_options,
+                ..
+            }
+            | SiPkgProp::Array {
+                widget_kind,
+                widget_options,
+                ..
+            }
+            | SiPkgProp::Object {
+                widget_kind,
+                widget_options,
+                ..
+            } => Some((widget_kind.into(), widget_options.to_owned())),
+        },
         ctx.schema_variant_id,
         parent_prop_id,
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
+
+    prop.set_hidden(
+        ctx.ctx,
+        match &spec {
+            SiPkgProp::String { hidden, .. }
+            | SiPkgProp::Number { hidden, .. }
+            | SiPkgProp::Boolean { hidden, .. }
+            | SiPkgProp::Map { hidden, .. }
+            | SiPkgProp::Array { hidden, .. }
+            | SiPkgProp::Object { hidden, .. } => *hidden,
+        },
+    )
+    .await?;
+
     let prop_id = *prop.id();
 
     // Both attribute functions and default values have to be set *after* the schema variant is

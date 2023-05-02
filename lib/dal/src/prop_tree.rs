@@ -1,6 +1,6 @@
 use crate::{
-    DalContext, InternalProviderId, Prop, PropId, PropKind, SchemaVariantId, StandardModel,
-    StandardModelError, TransactionsError,
+    property_editor::schema::WidgetKind, DalContext, InternalProviderId, Prop, PropId, PropKind,
+    SchemaVariantId, StandardModel, StandardModelError, TransactionsError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -33,6 +33,9 @@ pub struct PropTreeNode {
     pub internal_provider_id: Option<InternalProviderId>,
     pub path: String,
     pub name: String,
+    pub hidden: bool,
+    pub widget_kind: WidgetKind,
+    pub widget_options: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -101,6 +104,9 @@ impl PropTree {
                 internal_provider_id,
                 path,
                 name,
+                hidden: prop.hidden(),
+                widget_kind: *prop.widget_kind(),
+                widget_options: prop.widget_options().cloned(),
             };
 
             // The ordering of the query ensures parent nodes will always come before their children

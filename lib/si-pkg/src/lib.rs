@@ -13,9 +13,9 @@ pub use spec::{
     FuncArgumentSpecBuilder, FuncDescriptionSpec, FuncDescriptionSpecBuilder, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
     LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SocketSpec, SocketSpecArity,
-    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
+    PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SocketSpec,
+    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
     WorkflowSpecBuilder,
 };
 
