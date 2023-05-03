@@ -583,16 +583,25 @@ importers:
     dependencies:
       cyclone:
         specifier: workspace:*
-        version: link:../cyclone
+        version: file:bin/cyclone
       lang-js:
         specifier: workspace:*
-        version: link:../lang-js
+        version: file:bin/lang-js
       telemetry-application:
         specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
+        version: file:lib/telemetry-application-rs
       veritech-server:
         specifier: workspace:*
-        version: link:../../lib/veritech-server
+        version: file:lib/veritech-server
+    dependenciesMeta:
+      cyclone:
+        injected: true
+      lang-js:
+        injected: true
+      telemetry-application:
+        injected: true
+      veritech-server:
+        injected: true
 
   lib/bytes-lines-codec: {}
 
@@ -5846,7 +5855,6 @@ packages:
   /commander@9.5.0:
     resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
     engines: {node: ^12.20.0 || >=14}
-    dev: true
 
   /comment-json@4.2.3:
     resolution: {integrity: sha512-SsxdiOf064DWoZLH799Ata6u7iV658A11PlWtZATDlXPpKGJnbJZ5Z24ybixAi+LUUqJ/GKowAejtC5GFUG7Tw==}
@@ -15538,4 +15546,55 @@ packages:
 
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
+    dev: false
+
+  file:bin/cyclone:
+    resolution: {directory: bin/cyclone, type: directory}
+    name: cyclone
+    version: 0.1.0
+    dependencies:
+      cyclone-server: link:lib/cyclone-server
+      lang-js: link:bin/lang-js
+      telemetry-application: link:lib/telemetry-application-rs
+    dev: false
+
+  file:bin/lang-js:
+    resolution: {directory: bin/lang-js, type: directory}
+    name: lang-js
+    version: 0.1.11
+    hasBin: true
+    dependencies:
+      '@typescript/vfs': 1.4.0
+      commander: 9.5.0
+      debug: 4.3.4(supports-color@8.1.1)
+      execa: 5.1.1
+      js-yaml: 4.1.0
+      lodash: 4.17.21
+      node-fetch: 2.6.7
+      typescript: 4.9.5
+      vm2: 3.9.11
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: false
+
+  file:lib/telemetry-application-rs:
+    resolution: {directory: lib/telemetry-application-rs, type: directory}
+    name: telemetry-application
+    version: 0.1.0
+    dependencies:
+      telemetry: link:lib/telemetry-rs
+    dev: false
+
+  file:lib/veritech-server:
+    resolution: {directory: lib/veritech-server, type: directory}
+    name: veritech-server
+    version: 0.1.0
+    dependencies:
+      deadpool-cyclone: link:lib/deadpool-cyclone
+      nats-subscriber: link:lib/nats-subscriber
+      si-data-nats: link:lib/si-data-nats
+      si-settings: link:lib/si-settings
+      telemetry: link:lib/telemetry-rs
+      veritech-core: link:lib/veritech-core
     dev: false

@@ -24,6 +24,7 @@
     "build:clean": "npm run clean && npm run build",
     "build:watch": "npm run clean && tsc --watch",
     "package": "pnpm run build && pkg . --output ./target/lang-js",
+    "package:nobuild": "pkg . --output ./target/lang-js",
     "jsbuild:backend": "pnpm package",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js --ignore-path .gitignore src",
@@ -33,6 +34,7 @@
     "check": "npm run lint && npm run build:check && npm run fmt:check",
     "dev": "npm run start",
     "start": "npm run build && node ./dist/index.js",
+    "start:nobuild": "node ./dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"

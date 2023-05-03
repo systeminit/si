@@ -24,5 +24,19 @@
     "cyclone": "workspace:*",
     "lang-js": "workspace:*"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependenciesMeta": {
+    "telemetry-application": {
+      "injected": true
+    },
+    "lang-js": {
+      "injected": true
+    },
+    "veritech-server": {
+      "injected": true
+    },
+    "cyclone": {
+      "injected": true
+    }
+  }
 }
