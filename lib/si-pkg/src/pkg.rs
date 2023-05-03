@@ -33,7 +33,7 @@ pub use {
 
 use crate::{
     node::{CategoryNode, PkgNode},
-    spec::{FuncSpec, PkgSpec, SchemaSpec, SpecError},
+    spec::{FuncSpec, PkgSpec, SpecError},
 };
 
 #[derive(Debug, Error)]
@@ -62,6 +62,16 @@ pub enum SiPkgError {
     SchemaVariantChildNotFound(&'static str),
     #[error("Validation spec missing required field: {0}")]
     ValidationMissingField(String),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("SiPkg prop tree is invalid: {0}")]
+    PropTreeInvalid(String),
+}
+
+impl SiPkgError {
+    fn prop_tree_invalid(message: impl Into<String>) -> Self {
+        Self::PropTreeInvalid(message.into())
+    }
 }
 
 pub type PkgResult<T> = Result<T, SiPkgError>;
@@ -191,6 +201,29 @@ impl SiPkg {
 
     pub fn as_petgraph(&self) -> (&Graph<HashedNode<PkgNode>, ()>, NodeIndex) {
         self.tree.as_petgraph()
+    }
+
+    pub async fn to_spec(&self) -> PkgResult<PkgSpec> {
+        let mut builder = PkgSpec::builder();
+
+        let metadata = self.metadata()?;
+
+        builder
+            .name(metadata.name())
+            .description(metadata.description())
+            .version(metadata.version())
+            .created_at(metadata.created_at())
+            .created_by(metadata.created_by());
+
+        for func in self.funcs()? {
+            builder.func(FuncSpec::try_from(func)?);
+        }
+
+        for schema in self.schemas()? {
+            builder.schema(schema.to_spec().await?);
+        }
+
+        Ok(builder.build()?)
     }
 }
 
@@ -326,32 +359,5 @@ impl SiPkgMetadata {
 
     pub fn hash(&self) -> Hash {
         self.hash
-    }
-}
-
-impl TryFrom<SiPkg> for PkgSpec {
-    type Error = SiPkgError;
-
-    fn try_from(value: SiPkg) -> Result<Self, Self::Error> {
-        let mut builder = PkgSpec::builder();
-
-        let metadata = value.metadata()?;
-
-        builder
-            .name(metadata.name())
-            .description(metadata.description())
-            .version(metadata.version())
-            .created_at(metadata.created_at())
-            .created_by(metadata.created_by());
-
-        for func in value.funcs()? {
-            builder.func(FuncSpec::try_from(func)?);
-        }
-
-        for schema in value.schemas()? {
-            builder.schema(SchemaSpec::try_from(schema)?);
-        }
-
-        Ok(builder.build()?)
     }
 }

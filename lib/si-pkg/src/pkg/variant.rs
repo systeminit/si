@@ -1,6 +1,8 @@
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
+use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::future::Future;
+use tokio::sync::Mutex;
 
 use url::Url;
 
@@ -11,7 +13,8 @@ use super::{
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
-    SchemaVariantSpec, SchemaVariantSpecComponentType,
+    AttrFuncInputSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
+    SchemaVariantSpecComponentType,
 };
 
 #[derive(Clone, Debug)]
@@ -125,7 +128,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         parent_id: Option<I>,
     ) -> PkgResult<Vec<(SiPkgProp, Option<I>)>>
     where
-        I: Copy,
+        I: ToOwned + Clone,
     {
         Ok(
             match source
@@ -145,7 +148,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
                     let mut entries = vec![];
                     for child_idx in child_node_idxs {
-                        entries.push((SiPkgProp::from_graph(source.graph, child_idx)?, parent_id));
+                        entries.push((
+                            SiPkgProp::from_graph(source.graph, child_idx)?,
+                            parent_id.to_owned(),
+                        ));
                     }
 
                     entries
@@ -165,7 +171,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         F: Fn(SiPkgProp<'a>, Option<I>, &'a C) -> Fut,
         Fut: Future<Output = Result<Option<I>, E>>,
         E: std::convert::From<SiPkgError>,
-        I: Copy,
+        I: ToOwned + Clone,
     {
         let domain_idxs = self
             .source
@@ -197,17 +203,20 @@ impl<'a> SiPkgSchemaVariant<'a> {
         // Skip processing the domain prop as a `dal::SchemaVariant` already guarantees such a prop
         // has already been created. Rather, we will push all immediate children of the domain prop
         // to be ready for processing.
-        let mut stack =
-            Self::prop_stack_from_source(self.source.clone(), domain_node_idx, parent_id)?;
+        let mut stack = Self::prop_stack_from_source(
+            self.source.clone(),
+            domain_node_idx,
+            parent_id.to_owned(),
+        )?;
 
         while let Some((prop, parent_id)) = stack.pop() {
             let node_idx = prop.source().node_idx;
-            let new_id = process_prop_fn(prop, parent_id, context).await?;
+            let new_id = process_prop_fn(prop, parent_id.to_owned(), context).await?;
 
             stack.extend(Self::prop_stack_from_source(
                 self.source.clone(),
                 node_idx,
-                new_id,
+                new_id.to_owned(),
             )?);
         }
 
@@ -217,42 +226,233 @@ impl<'a> SiPkgSchemaVariant<'a> {
     pub fn hash(&self) -> Hash {
         self.hash
     }
-}
 
-impl<'a> TryFrom<SiPkgSchemaVariant<'a>> for SchemaVariantSpec {
-    type Error = SiPkgError;
-
-    fn try_from(value: SiPkgSchemaVariant<'a>) -> Result<Self, Self::Error> {
+    pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
 
         builder
-            .name(value.name())
-            .component_type(value.component_type);
+            .name(self.name())
+            .component_type(self.component_type);
 
-        if let Some(link) = value.link() {
+        if let Some(link) = self.link() {
             builder.link(link.to_owned());
         }
 
-        if let Some(color) = value.color() {
+        if let Some(color) = self.color() {
             builder.color(color);
         }
 
-        for command_func in value.command_funcs()? {
+        let context = PropSpecVisitContext {
+            prop_stack: Mutex::new(VecDeque::new()),
+            prop_parents: Mutex::new(HashMap::new()),
+        };
+
+        self.visit_prop_tree(create_prop_stack, None, &context)
+            .await?;
+
+        let prop_stack = context.prop_stack.into_inner();
+        let prop_parents = context.prop_parents.into_inner();
+        let mut prop_children: HashMap<String, Vec<PropSpec>> = HashMap::new();
+        for (path, mut prop) in prop_stack {
+            if let Some(children) = prop_children.get(&path) {
+                match prop
+                    .get_kind()
+                    .ok_or(SiPkgError::prop_tree_invalid("Prop missing a kind"))?
+                {
+                    PropSpecKind::Array | PropSpecKind::Map => {
+                        if children.len() > 1 {
+                            return Err(SiPkgError::prop_tree_invalid(
+                                "Array or map has more than one direct child",
+                            ));
+                        }
+                        let type_prop = children.get(0).ok_or(SiPkgError::prop_tree_invalid(
+                            "Array or map prop missing type prop",
+                        ))?;
+                        prop.type_prop(type_prop.clone());
+                    }
+                    PropSpecKind::Object => {
+                        prop.entries(children.to_owned());
+                    }
+                    _ => {
+                        return Err(SiPkgError::prop_tree_invalid(
+                            "Leaf prop (String, Number, Boolean) cannot have children",
+                        ))
+                    }
+                }
+            }
+
+            let spec = prop.build()?;
+
+            match prop_parents.get(&path) {
+                Some(parent_path) => match prop_children.entry(parent_path.clone()) {
+                    Entry::Occupied(mut occupied) => {
+                        occupied.get_mut().push(spec);
+                    }
+                    Entry::Vacant(vacant) => {
+                        vacant.insert(vec![spec]);
+                    }
+                },
+                None => {
+                    builder.prop(spec);
+                }
+            }
+        }
+
+        for command_func in self.command_funcs()? {
             builder.command_func(command_func.try_into()?);
         }
 
-        for func_description in value.func_descriptions()? {
+        for func_description in self.func_descriptions()? {
             builder.func_description(func_description.try_into()?);
         }
 
-        for socket in value.sockets()? {
+        for socket in self.sockets()? {
             builder.socket(socket.try_into()?);
         }
 
-        for workflow in value.workflows()? {
+        for workflow in self.workflows()? {
             builder.workflow(workflow.try_into()?);
         }
 
         Ok(builder.build()?)
     }
+}
+
+#[derive(Debug)]
+// These have to be some kind of tokio type with interior mutability because we need the Send trait
+// for axum to be happy (it rejects using RefCell)
+struct PropSpecVisitContext {
+    // All the props in depth-first order
+    prop_stack: Mutex<VecDeque<(String, PropSpecBuilder)>>,
+    // A map from the prop path to prop's parent path
+    prop_parents: Mutex<HashMap<String, String>>,
+}
+
+const PROP_PATH_SEPARATOR: &str = "\x0B";
+
+async fn create_prop_stack(
+    spec: SiPkgProp<'_>,
+    parent_path: Option<String>,
+    ctx: &PropSpecVisitContext,
+) -> PkgResult<Option<String>> {
+    let path = match &parent_path {
+        Some(parent_path) => format!("{}{}{}", parent_path, PROP_PATH_SEPARATOR, spec.name()),
+        None => spec.name().to_owned(),
+    };
+
+    let mut builder = PropSpec::builder();
+
+    match &spec {
+        SiPkgProp::String { default_value, .. } => {
+            builder.kind(PropSpecKind::String);
+            if let Some(dv) = default_value {
+                builder.default_value(serde_json::to_value(dv)?);
+            }
+        }
+        SiPkgProp::Boolean { default_value, .. } => {
+            builder.kind(PropSpecKind::Boolean);
+            if let Some(dv) = default_value {
+                builder.default_value(serde_json::to_value(dv)?);
+            }
+        }
+        SiPkgProp::Number { default_value, .. } => {
+            builder.kind(PropSpecKind::Number);
+            if let Some(dv) = default_value {
+                builder.default_value(serde_json::to_value(dv)?);
+            }
+        }
+        SiPkgProp::Object { .. } => {
+            builder.kind(PropSpecKind::Object);
+        }
+        SiPkgProp::Array { .. } => {
+            builder.kind(PropSpecKind::Array);
+        }
+        SiPkgProp::Map { .. } => {
+            builder.kind(PropSpecKind::Map);
+        }
+    }
+
+    match &spec {
+        SiPkgProp::String {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        }
+        | SiPkgProp::Map {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        }
+        | SiPkgProp::Array {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        }
+        | SiPkgProp::Number {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        }
+        | SiPkgProp::Object {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        }
+        | SiPkgProp::Boolean {
+            name,
+            func_unique_id,
+            widget_kind,
+            widget_options,
+            hidden,
+            ..
+        } => {
+            builder.name(name);
+            builder.hidden(*hidden);
+            builder.widget_kind(*widget_kind);
+
+            if let Some(widget_options) = widget_options {
+                builder.widget_options(widget_options.to_owned());
+            }
+
+            if let Some(func_unique_id) = func_unique_id {
+                builder.func_unique_id(*func_unique_id);
+                for input in spec.inputs()? {
+                    builder.input(AttrFuncInputSpec::try_from(input)?);
+                }
+            }
+        }
+    }
+
+    let mut stack = ctx.prop_stack.lock().await;
+    stack.push_front((path.to_owned(), builder));
+
+    if let Some(parent_path) = parent_path {
+        match ctx.prop_parents.lock().await.entry(path.to_owned()) {
+            Entry::Occupied(_) => {
+                return Err(SiPkgError::prop_tree_invalid(
+                    "Prop has more than one parent",
+                ));
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(parent_path);
+            }
+        }
+    }
+
+    Ok(Some(path))
 }
