@@ -8,7 +8,7 @@ use url::Url;
 
 use super::{
     PkgResult, SiPkgCommandFunc, SiPkgError, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp,
-    SiPkgSocket, SiPkgWorkflow, Source,
+    SiPkgSiPropFunc, SiPkgSocket, SiPkgWorkflow, Source,
 };
 
 use crate::{
@@ -120,6 +120,11 @@ impl<'a> SiPkgSchemaVariant<'a> {
         command_funcs,
         SchemaVariantChildNode::CommandFuncs,
         SiPkgCommandFunc
+    );
+    impl_variant_children_from_graph!(
+        si_prop_funcs,
+        SchemaVariantChildNode::SiPropFuncs,
+        SiPkgSiPropFunc
     );
 
     fn prop_stack_from_source<I>(
@@ -312,6 +317,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
         for workflow in self.workflows()? {
             builder.workflow(workflow.try_into()?);
+        }
+
+        for si_prop_func in self.si_prop_funcs()? {
+            builder.si_prop_func(si_prop_func.try_into()?);
         }
 
         Ok(builder.build()?)

@@ -7,7 +7,8 @@ use object_tree::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SocketSpec, WorkflowSpec,
+    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SiPropFuncSpec, SocketSpec,
+    WorkflowSpec,
 };
 
 use super::PkgNode;
@@ -17,6 +18,7 @@ const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS: &str = "func_descriptions";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
 const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
+const VARIANT_CHILD_TYPE_SI_PROP_FUNCS: &str = "si_prop_funcs";
 const VARIANT_CHILD_TYPE_WORKFLOWS: &str = "workflows";
 
 const KEY_KIND_STR: &str = "kind";
@@ -29,6 +31,7 @@ pub enum SchemaVariantChild {
     FuncDescriptions(Vec<FuncDescriptionSpec>),
     LeafFunctions(Vec<LeafFunctionSpec>),
     Sockets(Vec<SocketSpec>),
+    SiPropFuncs(Vec<SiPropFuncSpec>),
     Workflows(Vec<WorkflowSpec>),
 }
 
@@ -39,6 +42,7 @@ pub enum SchemaVariantChildNode {
     FuncDescriptions,
     LeafFunctions,
     Sockets,
+    SiPropFuncs,
     Workflows,
 }
 
@@ -50,6 +54,7 @@ impl SchemaVariantChildNode {
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
+            Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -63,6 +68,7 @@ impl NameStr for SchemaVariantChildNode {
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
+            Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -88,6 +94,7 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS => Self::FuncDescriptions,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
             VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
+            VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
             VARIANT_CHILD_TYPE_WORKFLOWS => Self::Workflows,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
@@ -154,6 +161,17 @@ impl NodeChild for SchemaVariantChild {
                     .iter()
                     .map(|socket| {
                         Box::new(socket.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::SiPropFuncs(si_prop_funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::SiPropFuncs),
+                si_prop_funcs
+                    .iter()
+                    .map(|si_prop_func| {
+                        Box::new(si_prop_func.clone())
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),

@@ -105,6 +105,8 @@ impl NodeChild for SchemaVariantSpec {
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::Sockets(self.sockets.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(SchemaVariantChild::SiPropFuncs(self.si_prop_funcs.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             ],
         )
     }
