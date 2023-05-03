@@ -57,11 +57,24 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Prop: /resource/value/key_pair_id
+        // Create Resource Prop Tree
+
+        // The root prop tree for aws keypair looks like this
+        // - KeyPairId
+        // - KeyFingerprint": "d0:34:9a:7c:66:83:8f:b2:b7:df:c4:76:cb:d5:79:02:58:10:4d:00",
+        // - KeyName": "si-7243",
+        // - KeyType": "rsa",
+        // - Tags
+        //   -- Tag
+        //       -- Key
+        //       -- Value
+        // - CreateTime": "2023-04-26T23:27:20.204000+00:00"
+
+        // Prop: /resource/value/KeyPairId
         let _key_pair_id_resource_prop = self
             .create_prop(
                 ctx,
-                "key_pair_id",
+                "KeyPairId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -70,11 +83,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/key_fingerprint
+        // Prop: /resource/value/KeyFingerprint
         let _key_pair_fingerprint_resource_prop = self
             .create_prop(
                 ctx,
-                "key_fingerprint",
+                "KeyFingerprint",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -83,11 +96,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/key_fingerprint
+        // Prop: /resource/value/KeyName
         let _key_pair_name_resource_prop = self
             .create_prop(
                 ctx,
-                "key_name",
+                "KeyName",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -96,11 +109,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/key_type
+        // Prop: /resource/value/KeyType
         let _key_pair_type_resource_prop = self
             .create_prop(
                 ctx,
-                "key_type",
+                "KeyType",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -109,60 +122,14 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/tags
-        let key_pair_tags_resource_prop = self
-            .create_prop(
-                ctx,
-                "tags",
-                PropKind::Array,
-                None,
-                Some(root_prop.resource_value_prop_id),
-                None,
-                schema_variant_id,
-            )
+        self.create_aws_tags_prop_tree(ctx, root_prop.resource_value_prop_id, schema_variant_id)
             .await?;
 
-        let key_pair_tag_resource_prop = self
-            .create_prop(
-                ctx,
-                "tag",
-                PropKind::Object,
-                None,
-                Some(*key_pair_tags_resource_prop.id()),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-
-        let _tag_key_resource_prop = self
-            .create_prop(
-                ctx,
-                "key",
-                PropKind::String,
-                None,
-                Some(*key_pair_tag_resource_prop.id()),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-
-        let _tag_value_resource_prop = self
-            .create_prop(
-                ctx,
-                "value",
-                PropKind::String,
-                None,
-                Some(*key_pair_tag_resource_prop.id()),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/create_time
+        // Prop: /resource/value/CreateTime
         let _key_pair_create_time_resource_prop = self
             .create_prop(
                 ctx,
-                "create_time",
+                "CreateTime",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -170,6 +137,8 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+
+        // Create Domain Prop Tree
 
         // Prop: /root/domain/KeyName
         let key_name_prop = self

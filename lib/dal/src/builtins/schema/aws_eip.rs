@@ -54,11 +54,13 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Prop: /resource/value/domain
+        // Create Resource Prop Tree
+
+        // Prop: /resource/value/Domain
         let _eip_domain_resource_prop = self
             .create_prop(
                 ctx,
-                "domain",
+                "Domain",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -67,11 +69,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/public_ipv4_pool
+        // Prop: /resource/value/PublicIpv4Pool
         let _eip_public_ipv4_pool_resource_prop = self
             .create_prop(
                 ctx,
-                "public_ipv4_pool",
+                "PublicIpv4Pool",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -80,11 +82,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/instance_id
+        // Prop: /resource/value/InstanceId
         let _eip_instance_id_resource_prop = self
             .create_prop(
                 ctx,
-                "instance_id",
+                "InstanceId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -93,11 +95,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/network_interface_id
+        // Prop: /resource/value/NetworkInterfaceId
         let _eip_network_interface_id_resource_prop = self
             .create_prop(
                 ctx,
-                "network_interface_id",
+                "NetworkInterfaceId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -106,11 +108,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/association_id
+        // Prop: /resource/value/AssociationId
         let _eip_association_id_resource_prop = self
             .create_prop(
                 ctx,
-                "association_id",
+                "AssociationId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -119,11 +121,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/network_interface_owner_id
+        // Prop: /resource/value/NetworkInterfaceOwnerId
         let _eip_network_interface_owner_id_resource_prop = self
             .create_prop(
                 ctx,
-                "network_interface_owner_id",
+                "NetworkInterfaceOwnerId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -132,11 +134,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/public_ip
+        // Prop: /resource/value/PublicIp
         let _eip_public_ip_resource_prop = self
             .create_prop(
                 ctx,
-                "public_ip",
+                "PublicIp",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -145,11 +147,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/allocation_id
+        // Prop: /resource/value/AllocationId
         let _eip_allocation_id_resource_prop = self
             .create_prop(
                 ctx,
-                "allocation_id",
+                "AllocationId",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -158,11 +160,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/private_ip_address
+        // Prop: /resource/value/PrivateIpAddress
         let _eip_private_ip_address_resource_prop = self
             .create_prop(
                 ctx,
-                "private_ip_address",
+                "PrivateIpAddress",
                 PropKind::String,
                 None,
                 Some(root_prop.resource_value_prop_id),
@@ -170,6 +172,8 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+
+        // Create Domain Prop Tree
 
         // Prop: /root/domain/tags
         let tags_map_prop = self

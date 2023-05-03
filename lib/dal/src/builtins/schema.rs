@@ -751,4 +751,249 @@ impl MigrationDriver {
 
         Ok(())
     }
+
+    pub async fn create_aws_ip_permission_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let _ip_perm_from_port_resource_prop = self
+            .create_prop(
+                ctx,
+                "FromPort",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_perm_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "IpProtocol",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_perm_to_port_resource_prop = self
+            .create_prop(
+                ctx,
+                "ToPort",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let ip_ranges_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "IpRanges",
+                PropKind::Array,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let ip_range_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "IpRange",
+                PropKind::Object,
+                None,
+                Some(*ip_ranges_protocol_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_ip_range_prop_tree(
+            ctx,
+            *ip_range_protocol_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let ipv6_ranges_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ipv6Ranges",
+                PropKind::Array,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let ipv6_range_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ipv6Range",
+                PropKind::Object,
+                None,
+                Some(*ipv6_ranges_protocol_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_ip_range_prop_tree(
+            ctx,
+            *ipv6_range_protocol_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let prefix_list_ids_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrefixListIds",
+                PropKind::Array,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let prefix_list_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrefixListId",
+                PropKind::Object,
+                None,
+                Some(*prefix_list_ids_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _prefix_list_id_description_resource_prop = self
+            .create_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                None,
+                Some(*prefix_list_id_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _prefix_list_id_id_description_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrefixListId",
+                PropKind::String,
+                None,
+                Some(*prefix_list_id_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_ip_range_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let _ip_range_description_resource_prop = self
+            .create_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_range_cidr_ip_resource_prop = self
+            .create_prop(
+                ctx,
+                "CidrIp",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn create_aws_tags_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        // Prop: /resource/value/tags
+        let key_pair_tags_resource_prop = self
+            .create_prop(
+                ctx,
+                "Tags",
+                PropKind::Array,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let key_pair_tag_resource_prop = self
+            .create_prop(
+                ctx,
+                "Tag",
+                PropKind::Object,
+                None,
+                Some(*key_pair_tags_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _tag_key_resource_prop = self
+            .create_prop(
+                ctx,
+                "Key",
+                PropKind::String,
+                None,
+                Some(*key_pair_tag_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _tag_value_resource_prop = self
+            .create_prop(
+                ctx,
+                "Value",
+                PropKind::String,
+                None,
+                Some(*key_pair_tag_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
 }
