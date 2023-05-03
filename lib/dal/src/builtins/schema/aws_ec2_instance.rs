@@ -8,7 +8,6 @@ use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
-use crate::SchemaVariant;
 use crate::{
     action_prototype::ActionKind,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
@@ -20,6 +19,7 @@ use crate::{
     BuiltinsResult, DalContext, Func, InternalProvider, PropKind, SchemaError, StandardModel,
     WorkflowPrototype, WorkflowPrototypeContext,
 };
+use crate::{PropId, SchemaVariant, SchemaVariantId};
 
 // Documentation URL(s)
 const EC2_TAG_DOCS_URL: &str =
@@ -65,6 +65,832 @@ impl MigrationDriver {
             None => return Ok(()),
         };
         let schema_variant_id = *schema_variant.id();
+
+        // Create Resource Props
+
+        // Prop: /root/domain/AmiLaunchIndex
+        let _ami_launch_index_resource_prop = self
+            .create_prop(
+                ctx,
+                "AmiLaunchIndex",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _image_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "ImageId",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _instance_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "InstanceId",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _instance_type_resource_prop = self
+            .create_prop(
+                ctx,
+                "InstanceType",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _key_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "KeyName",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _launch_time_resource_prop = self
+            .create_prop(
+                ctx,
+                "LaunchTime",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let monitoring_resource_prop = self
+            .create_prop(
+                ctx,
+                "Monitoring",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _state_resource_prop = self
+            .create_prop(
+                ctx,
+                "State",
+                PropKind::String,
+                None,
+                Some(*monitoring_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let placement_resource_prop = self
+            .create_prop(
+                ctx,
+                "Placement",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _az_resource_prop = self
+            .create_prop(
+                ctx,
+                "AvailabilityZone",
+                PropKind::String,
+                None,
+                Some(*placement_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _groupname_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupName",
+                PropKind::String,
+                None,
+                Some(*placement_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _tenancy_resource_prop = self
+            .create_prop(
+                ctx,
+                "Tenancy",
+                PropKind::String,
+                None,
+                Some(*placement_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _private_dns_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateDnsName",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _private_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddress",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _public_dns_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "PublicDnsName",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _public_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "PublicIpAddress",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let state_resource_prop = self
+            .create_prop(
+                ctx,
+                "State",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _code_resource_prop = self
+            .create_prop(
+                ctx,
+                "Code",
+                PropKind::String,
+                None,
+                Some(*state_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _name_resource_prop = self
+            .create_prop(
+                ctx,
+                "Name",
+                PropKind::String,
+                None,
+                Some(*state_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _state_transition_reason_resource_prop = self
+            .create_prop(
+                ctx,
+                "StateTransitionReason",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _subnet_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "SubnetId",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _vpc_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "VpcId",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _architecture_resource_prop = self
+            .create_prop(
+                ctx,
+                "Architecture",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let block_device_mappings_resource_prop = self
+            .create_prop(
+                ctx,
+                "BlockDeviceMappings",
+                PropKind::Array,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let block_device_mapping_resource_prop = self
+            .create_prop(
+                ctx,
+                "BlockDeviceMapping",
+                PropKind::Object,
+                None,
+                Some(*block_device_mappings_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _device_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "DeviceName",
+                PropKind::String,
+                None,
+                Some(*block_device_mapping_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_ebs_volume_resource_prop_tree(
+            ctx,
+            *block_device_mapping_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let _client_token_resource_prop = self
+            .create_prop(
+                ctx,
+                "ClientToken",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ebs_optimized_resource_prop = self
+            .create_prop(
+                ctx,
+                "EbsOptimized",
+                PropKind::Boolean,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ena_support_resource_prop = self
+            .create_prop(
+                ctx,
+                "EnaSupport",
+                PropKind::Boolean,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _hypervisor_resource_prop = self
+            .create_prop(
+                ctx,
+                "Hypervisor",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let iam_instance_profile_resource_prop = self
+            .create_prop(
+                ctx,
+                "IamInstanceProfile",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _iam_instance_profile_arn_resource_prop = self
+            .create_prop(
+                ctx,
+                "Arn",
+                PropKind::String,
+                None,
+                Some(*iam_instance_profile_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _iam_instance_profile_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "Id",
+                PropKind::String,
+                None,
+                Some(*iam_instance_profile_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let network_interfaces_resource_prop = self
+            .create_prop(
+                ctx,
+                "NetworkInterfaces",
+                PropKind::Array,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_network_interfaces_resource_prop_tree(
+            ctx,
+            *network_interfaces_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let _root_device_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "RootDeviceName",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _root_device_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "RootDeviceType",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let security_groups_resource_prop = self
+            .create_prop(
+                ctx,
+                "SecurityGroups",
+                PropKind::Array,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let security_group_resource_prop = self
+            .create_prop(
+                ctx,
+                "SecurityGroup",
+                PropKind::Object,
+                None,
+                Some(*security_groups_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_groups_group_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupName",
+                PropKind::String,
+                None,
+                Some(*security_group_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_groups_group_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                None,
+                Some(*security_group_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _source_dest_check_resource_prop = self
+            .create_prop(
+                ctx,
+                "SourceDestCheck",
+                PropKind::Boolean,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_tags_prop_tree(ctx, root_prop.resource_value_prop_id, schema_variant_id)
+            .await?;
+
+        let _virtualization_type_resource_prop = self
+            .create_prop(
+                ctx,
+                "VirtualizationType",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let cpu_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "CpuOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _core_count_resource_prop = self
+            .create_prop(
+                ctx,
+                "CoreCount",
+                PropKind::String,
+                None,
+                Some(*cpu_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _threads_per_core_resource_prop = self
+            .create_prop(
+                ctx,
+                "ThreadsPerCore",
+                PropKind::String,
+                None,
+                Some(*cpu_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let capacity_reservation_specification_resource_prop = self
+            .create_prop(
+                ctx,
+                "CapacityReservationSpecification",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _capacity_reservation_preferences_resource_prop = self
+            .create_prop(
+                ctx,
+                "CapacityReservationPreference",
+                PropKind::String,
+                None,
+                Some(*capacity_reservation_specification_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let hibernation_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "HibernationOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _configured_resource_prop = self
+            .create_prop(
+                ctx,
+                "Configured",
+                PropKind::Boolean,
+                None,
+                Some(*hibernation_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let metadata_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "MetadataOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _metadata_state_resource_prop = self
+            .create_prop(
+                ctx,
+                "State",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _http_tokens_resource_prop = self
+            .create_prop(
+                ctx,
+                "HttpTokens",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _http_put_response_hop_limit_resource_prop = self
+            .create_prop(
+                ctx,
+                "HttpPutResponseHopLimit",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _http_endpoint_resource_prop = self
+            .create_prop(
+                ctx,
+                "HttpEndpoint",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _http_protocol_ipv6_resource_prop = self
+            .create_prop(
+                ctx,
+                "HttpProtocolIpv6",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _instance_metadata_tags_resource_prop = self
+            .create_prop(
+                ctx,
+                "InstanceMetadataTags",
+                PropKind::String,
+                None,
+                Some(*metadata_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let enclave_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "EnclaveOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _enclave_options_enabled_resource_prop = self
+            .create_prop(
+                ctx,
+                "Enabled",
+                PropKind::Boolean,
+                None,
+                Some(*enclave_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _platform_details_resource_prop = self
+            .create_prop(
+                ctx,
+                "PlatformDetails",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _usage_operation_resource_prop = self
+            .create_prop(
+                ctx,
+                "UsageOperation",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _usage_operation_update_time_resource_prop = self
+            .create_prop(
+                ctx,
+                "UsageOperationUpdateTime",
+                PropKind::String,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let private_dns_name_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateDnsNameOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _private_dns_name_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "HostnameType",
+                PropKind::String,
+                None,
+                Some(*private_dns_name_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _enable_resource_name_dns_a_record_resource_prop = self
+            .create_prop(
+                ctx,
+                "EnableResourceNameDnsARecord",
+                PropKind::Boolean,
+                None,
+                Some(*private_dns_name_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _enable_resource_name_dns_aaaa_record_resource_prop = self
+            .create_prop(
+                ctx,
+                "EnableResourceNameDnsAAAARecord",
+                PropKind::Boolean,
+                None,
+                Some(*private_dns_name_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let maintenance_options_resource_prop = self
+            .create_prop(
+                ctx,
+                "MaintenanceOptions",
+                PropKind::Object,
+                None,
+                Some(root_prop.resource_value_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _auto_recovery_resource_prop = self
+            .create_prop(
+                ctx,
+                "AutoRecovery",
+                PropKind::String,
+                None,
+                Some(*maintenance_options_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        // Create Domain Props
 
         // Prop: /root/domain/ImageId
         let image_id_prop = self
@@ -660,6 +1486,538 @@ impl MigrationDriver {
             context,
         )
         .await?;
+
+        Ok(())
+    }
+
+    async fn create_aws_network_interfaces_resource_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let network_interface_resource_prop = self
+            .create_prop(
+                ctx,
+                "NetworkInterface",
+                PropKind::Object,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_network_interface_association_resource_prop_tree(
+            ctx,
+            *network_interface_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let attachment_resource_prop = self
+            .create_prop(
+                ctx,
+                "Attachment",
+                PropKind::Object,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _attach_time_resource_prop = self
+            .create_prop(
+                ctx,
+                "AttachTime",
+                PropKind::String,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _attachment_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "AttachmentId",
+                PropKind::String,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _delete_on_termination_resource_prop = self
+            .create_prop(
+                ctx,
+                "DeleteOnTermination",
+                PropKind::Boolean,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _device_index_resource_prop = self
+            .create_prop(
+                ctx,
+                "DeviceIndex",
+                PropKind::String,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _status_resource_prop = self
+            .create_prop(
+                ctx,
+                "Status",
+                PropKind::String,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _network_card_index_resource_prop = self
+            .create_prop(
+                ctx,
+                "NetworkCardIndex",
+                PropKind::String,
+                None,
+                Some(*attachment_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _description_resource_prop = self
+            .create_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let groups_resource_prop = self
+            .create_prop(
+                ctx,
+                "Groups",
+                PropKind::Array,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let group_resource_prop = self
+            .create_prop(
+                ctx,
+                "Group",
+                PropKind::Object,
+                None,
+                Some(*groups_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _group_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupName",
+                PropKind::String,
+                None,
+                Some(*group_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _group_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                None,
+                Some(*group_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let ipv6_addresses_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ipv6Addresses",
+                PropKind::Array,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let ipv6_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ipv6Address",
+                PropKind::Object,
+                None,
+                Some(*ipv6_addresses_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ipv6_address_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ipv6Address",
+                PropKind::String,
+                None,
+                Some(*ipv6_address_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _mac_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "MacAddress",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _network_interface_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "NetworkInterfaceId",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _owner_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "OwnerId",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _private_dns_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateDnsName",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _private_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddress",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _source_dest_check_resource_prop = self
+            .create_prop(
+                ctx,
+                "SourceDestCheck",
+                PropKind::Boolean,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _status_resource_prop = self
+            .create_prop(
+                ctx,
+                "Status",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _subnet_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "SubnetId",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _vpc_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "VpcId",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _interface_type_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "InterfaceType",
+                PropKind::String,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let private_ip_addresses_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddresses",
+                PropKind::Array,
+                None,
+                Some(*network_interface_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let p_ip_addresses_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddress",
+                PropKind::Object,
+                None,
+                Some(*private_ip_addresses_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let p_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddress",
+                PropKind::Object,
+                None,
+                Some(*p_ip_addresses_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_network_interface_association_resource_prop_tree(
+            ctx,
+            *p_ip_address_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let _primary_resource_prop = self
+            .create_prop(
+                ctx,
+                "Primary",
+                PropKind::Boolean,
+                None,
+                Some(*p_ip_address_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _p_private_dns_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateDnsName",
+                PropKind::String,
+                None,
+                Some(*p_ip_address_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _p_private_ip_address_resource_prop = self
+            .create_prop(
+                ctx,
+                "PrivateIpAddress",
+                PropKind::String,
+                None,
+                Some(*p_ip_address_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn create_aws_network_interface_association_resource_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let association_resource_prop = self
+            .create_prop(
+                ctx,
+                "Association",
+                PropKind::Object,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_owner_resource_prop = self
+            .create_prop(
+                ctx,
+                "IpOwnerId",
+                PropKind::String,
+                None,
+                Some(*association_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+        let _public_dns_name_resource_prop = self
+            .create_prop(
+                ctx,
+                "PublicDnsName",
+                PropKind::String,
+                None,
+                Some(*association_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _public_ip_resource_prop = self
+            .create_prop(
+                ctx,
+                "PublicIp",
+                PropKind::String,
+                None,
+                Some(*association_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn create_aws_ebs_volume_resource_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let ebs_resource_prop = self
+            .create_prop(
+                ctx,
+                "Ebs",
+                PropKind::Object,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _attach_time_resource_prop = self
+            .create_prop(
+                ctx,
+                "AttachTime",
+                PropKind::String,
+                None,
+                Some(*ebs_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _delete_on_termination_resource_prop = self
+            .create_prop(
+                ctx,
+                "DeleteOnTermination",
+                PropKind::Boolean,
+                None,
+                Some(*ebs_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _status_resource_prop = self
+            .create_prop(
+                ctx,
+                "Status",
+                PropKind::String,
+                None,
+                Some(*ebs_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _volume_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "VolumeId",
+                PropKind::String,
+                None,
+                Some(*ebs_resource_prop.id()),
+                None,
+                schema_variant_id,
+            )
+            .await?;
 
         Ok(())
     }
