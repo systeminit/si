@@ -6,7 +6,6 @@ use std::cmp::{Ord, PartialOrd};
 
 use super::{pkg_open, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use si_pkg::PkgSpec;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -84,7 +83,7 @@ pub async fn get_pkg(
         .is_empty();
 
     // This type can be serialized to json with serde_json::to_string/to_string_pretty
-    let pkg_spec = PkgSpec::try_from(pkg)?;
+    let pkg_spec = pkg.to_spec().await?;
 
     Ok(Json(PkgGetResponse {
         hash: root_hash,
