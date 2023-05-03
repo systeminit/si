@@ -54,6 +54,14 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
+        // Create Resource Prop Tree
+        self.create_aws_security_group_rule_prop_tree(
+            ctx,
+            root_prop.resource_value_prop_id,
+            schema_variant_id,
+        )
+        .await?;
+
         // Prop Creation
         let group_id_prop = self
             .create_prop(

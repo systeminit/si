@@ -59,17 +59,6 @@ impl MigrationDriver {
 
         // Create Resource Prop Tree
 
-        // The root prop tree for aws keypair looks like this
-        // - KeyPairId
-        // - KeyFingerprint": "d0:34:9a:7c:66:83:8f:b2:b7:df:c4:76:cb:d5:79:02:58:10:4d:00",
-        // - KeyName": "si-7243",
-        // - KeyType": "rsa",
-        // - Tags
-        //   -- Tag
-        //       -- Key
-        //       -- Value
-        // - CreateTime": "2023-04-26T23:27:20.204000+00:00"
-
         // Prop: /resource/value/KeyPairId
         let _key_pair_id_resource_prop = self
             .create_prop(

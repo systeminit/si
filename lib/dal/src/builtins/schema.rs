@@ -752,6 +752,111 @@ impl MigrationDriver {
         Ok(())
     }
 
+    pub async fn create_aws_security_group_rule_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let _security_group_rule_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "SecurityGroupRuleId",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_group_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_group_owner_id_resource_prop = self
+            .create_prop(
+                ctx,
+                "GroupOwnerId",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_ip_protocol_resource_prop = self
+            .create_prop(
+                ctx,
+                "IpProtocol",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_from_port_resource_prop = self
+            .create_prop(
+                ctx,
+                "FromPort",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_to_port_resource_prop = self
+            .create_prop(
+                ctx,
+                "ToPort",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_cidr_ipv6_resource_prop = self
+            .create_prop(
+                ctx,
+                "CidrIpv6",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        let _security_group_rule_description_resource_prop = self
+            .create_prop(
+                ctx,
+                "CidrIpv6",
+                PropKind::String,
+                None,
+                Some(prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn create_aws_ip_permission_prop_tree(
         &self,
         ctx: &DalContext,
