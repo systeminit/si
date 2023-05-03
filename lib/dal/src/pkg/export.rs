@@ -10,8 +10,8 @@ use si_pkg::{
     FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
     LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
     PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SchemaVariantSpecComponentType, SiPkg, SocketSpec, SocketSpecKind, SpecError, ValidationSpec,
-    ValidationSpecKind, WorkflowSpec,
+    SchemaVariantSpecComponentType, SiPkg, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec,
+    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
 };
 
 use crate::{
@@ -504,6 +504,42 @@ async fn build_command_func_specs(
     Ok(specs)
 }
 
+async fn build_si_prop_func_specs(
+    ctx: &DalContext,
+    variant: &SchemaVariant,
+    func_specs: &FuncSpecMap,
+) -> PkgResult<Vec<SiPropFuncSpec>> {
+    let mut specs = vec![];
+
+    for kind in SiPropFuncSpecKind::iter() {
+        let prop = variant.find_prop(ctx, &kind.prop_path()).await?;
+
+        let context = AttributeContextBuilder::new()
+            .set_prop_id(*prop.id())
+            .to_context()?;
+
+        if let Some(prototype) = AttributePrototype::find_for_context_and_key(ctx, context, &None)
+            .await?
+            .pop()
+        {
+            if let Some((func_unique_id, mut inputs)) =
+                build_input_func_and_arguments(ctx, prototype, func_specs).await?
+            {
+                let mut builder = SiPropFuncSpec::builder();
+                builder.func_unique_id(func_unique_id);
+                builder.kind(kind);
+                inputs.drain(..).for_each(|input| {
+                    builder.input(input);
+                });
+
+                specs.push(builder.build()?);
+            }
+        }
+    }
+
+    Ok(specs)
+}
+
 async fn build_variant_spec(
     ctx: &DalContext,
     schema: &Schema,
@@ -556,6 +592,13 @@ async fn build_variant_spec(
         .drain(..)
         .for_each(|command_func_spec| {
             variant_spec_builder.command_func(command_func_spec);
+        });
+
+    build_si_prop_func_specs(ctx, &variant, func_specs)
+        .await?
+        .drain(..)
+        .for_each(|si_prop_func_spec| {
+            variant_spec_builder.si_prop_func(si_prop_func_spec);
         });
 
     let variant_spec = variant_spec_builder.build()?;

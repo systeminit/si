@@ -5,7 +5,7 @@ use url::Url;
 
 use super::{
     CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
-    SocketSpec, SpecError, WorkflowSpec,
+    SiPropFuncSpec, SocketSpec, SpecError, WorkflowSpec,
 };
 
 #[derive(
@@ -61,6 +61,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "socket"), into), default)]
     pub sockets: Vec<SocketSpec>,
+
+    #[builder(setter(each(name = "si_prop_func"), into), default)]
+    pub si_prop_funcs: Vec<SiPropFuncSpec>,
 }
 
 impl SchemaVariantSpec {

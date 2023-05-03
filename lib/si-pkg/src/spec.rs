@@ -10,6 +10,7 @@ mod func_description;
 mod leaf_function;
 mod prop;
 mod schema;
+mod si_prop_func;
 mod socket;
 mod validation;
 mod variant;
@@ -17,7 +18,7 @@ mod workflow;
 
 pub use {
     attr_func_input::*, command_func::*, func::*, func_description::*, leaf_function::*, prop::*,
-    schema::*, socket::*, validation::*, variant::*, workflow::*,
+    schema::*, si_prop_func::*, socket::*, validation::*, variant::*, workflow::*,
 };
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

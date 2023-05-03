@@ -527,6 +527,27 @@ async fn create_schema_variant(
                 create_socket(ctx, socket, *schema.id(), *schema_variant.id(), func_map).await?;
             }
 
+            for si_prop_func in variant_spec.si_prop_funcs()? {
+                let prop = schema_variant
+                    .find_prop(ctx, &si_prop_func.kind().prop_path())
+                    .await?;
+                create_attribute_function_for_prop(
+                    ctx,
+                    *schema_variant.id(),
+                    AttrFuncInfo {
+                        func_unique_id: si_prop_func.func_unique_id(),
+                        prop_id: *prop.id(),
+                        inputs: si_prop_func
+                            .inputs()?
+                            .iter()
+                            .map(|input| input.to_owned().into())
+                            .collect(),
+                    },
+                    func_map,
+                )
+                .await?;
+            }
+
             for default_value_info in context.default_values.into_inner() {
                 set_default_value(ctx, default_value_info).await?;
             }

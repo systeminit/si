@@ -14,9 +14,9 @@ pub use spec::{
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
     LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
     PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SocketSpec,
-    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
-    WorkflowSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SiPropFuncSpec,
+    SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity, SocketSpecKind,
+    SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec, WorkflowSpecBuilder,
 };
 
 #[cfg(test)]

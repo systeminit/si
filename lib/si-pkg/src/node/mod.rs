@@ -18,6 +18,7 @@ mod prop_child;
 mod schema;
 mod schema_variant;
 mod schema_variant_child;
+mod si_prop_func;
 mod socket;
 mod validation;
 mod workflow;
@@ -37,6 +38,7 @@ pub(crate) use self::{
     schema::SchemaNode,
     schema_variant::SchemaVariantNode,
     schema_variant_child::{SchemaVariantChild, SchemaVariantChildNode},
+    si_prop_func::SiPropFuncNode,
     socket::SocketNode,
     validation::ValidationNode,
     workflow::WorkflowNode,
@@ -57,6 +59,7 @@ const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
 const NODE_KIND_SOCKET: &str = "socket";
+const NODE_KIND_SI_PROP_FUNC: &str = "si_prop_func";
 const NODE_KIND_VALIDATION: &str = "validation";
 const NODE_KIND_WORKFLOW: &str = "workflow";
 
@@ -79,6 +82,7 @@ pub enum PkgNode {
     SchemaVariant(SchemaVariantNode),
     SchemaVariantChild(SchemaVariantChildNode),
     Socket(SocketNode),
+    SiPropFunc(SiPropFuncNode),
     Validation(ValidationNode),
     Workflow(WorkflowNode),
 }
@@ -99,6 +103,7 @@ impl PkgNode {
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
     pub const SCHEMA_VARIANT_KIND_CHILD_STR: &str = NODE_KIND_SCHEMA_VARIANT_CHILD;
     pub const SOCKET_KIND_STR: &str = NODE_KIND_SOCKET;
+    pub const SI_PROP_FUNC_KIND_STR: &str = NODE_KIND_SI_PROP_FUNC;
     pub const VALIDATION_KIND_STR: &str = NODE_KIND_VALIDATION;
     pub const WORKFLOW_KIND_STR: &str = NODE_KIND_WORKFLOW;
 
@@ -119,6 +124,7 @@ impl PkgNode {
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
             Self::Socket(_) => NODE_KIND_SOCKET,
+            Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::Workflow(_) => NODE_KIND_WORKFLOW,
         }
@@ -143,6 +149,7 @@ impl NameStr for PkgNode {
             Self::SchemaVariant(node) => node.name(),
             Self::SchemaVariantChild(node) => node.name(),
             Self::Socket(node) => node.name(),
+            Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::Workflow(_) => NODE_KIND_WORKFLOW,
         }
@@ -169,6 +176,7 @@ impl WriteBytes for PkgNode {
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
             Self::Socket(node) => node.write_bytes(writer)?,
+            Self::SiPropFunc(node) => node.write_bytes(writer)?,
             Self::Validation(node) => node.write_bytes(writer)?,
             Self::Workflow(node) => node.write_bytes(writer)?,
         };
@@ -206,6 +214,7 @@ impl ReadBytes for PkgNode {
                 Self::SchemaVariantChild(SchemaVariantChildNode::read_bytes(reader)?)
             }
             NODE_KIND_SOCKET => Self::Socket(SocketNode::read_bytes(reader)?),
+            NODE_KIND_SI_PROP_FUNC => Self::SiPropFunc(SiPropFuncNode::read_bytes(reader)?),
             NODE_KIND_VALIDATION => Self::Validation(ValidationNode::read_bytes(reader)?),
             NODE_KIND_WORKFLOW => Self::Workflow(WorkflowNode::read_bytes(reader)?),
             invalid_kind => {

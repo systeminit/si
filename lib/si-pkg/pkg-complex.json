@@ -68,6 +68,7 @@
       "variants": [
         {
           "name": "v0",
+          "siPropFuncs": [],
           "workflows": [],
           "sockets": [],
           "commandFuncs": [],
