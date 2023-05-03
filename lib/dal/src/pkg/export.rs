@@ -150,6 +150,7 @@ async fn build_schema_spec(
 
     let mut schema_spec_builder = SchemaSpec::builder();
     schema_spec_builder.name(schema.name());
+    schema_spec_builder.ui_hidden(schema.ui_hidden());
     set_schema_spec_category_data(ctx, &schema, &mut schema_spec_builder).await?;
 
     let variant_spec = build_variant_spec(ctx, &schema, variant, func_specs).await?;
@@ -378,6 +379,7 @@ async fn build_socket_specs(
         socket_spec_builder
             .name(input_socket_ip.name())
             .kind(SocketSpecKind::Input)
+            .ui_hidden(socket.ui_hidden())
             .arity(socket.arity());
 
         if let Some(attr_proto_id) = input_socket_ip.attribute_prototype_id() {
@@ -419,6 +421,7 @@ async fn build_socket_specs(
         socket_spec_builder
             .name(output_socket_ep.name())
             .kind(SocketSpecKind::Output)
+            .ui_hidden(socket.ui_hidden())
             .arity(socket.arity());
 
         if let Some(attr_proto_id) = output_socket_ep.attribute_prototype_id() {

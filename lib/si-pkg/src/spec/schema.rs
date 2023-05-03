@@ -13,9 +13,10 @@ pub struct SchemaSpec {
     pub category: String,
     #[builder(setter(into, strip_option), default)]
     pub category_name: Option<String>,
-
     #[builder(setter(each(name = "variant", into)), default)]
     pub variants: Vec<SchemaVariantSpec>,
+    #[builder(setter(into), default)]
+    pub ui_hidden: bool,
 }
 
 impl SchemaSpec {

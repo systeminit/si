@@ -42,6 +42,7 @@ async fn test_install_pkg(ctx: &DalContext) {
     let schema_a = SchemaSpec::builder()
         .name("Tyrone Slothrop")
         .category("Banana Puddings")
+        .ui_hidden(false)
         .variant(
             SchemaVariantSpec::builder()
                 .name("Pig Bodine")
@@ -83,6 +84,7 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let schema_b = SchemaSpec::builder()
         .name("Roger Mexico")
+        .ui_hidden(false)
         .category("Banana Puddings")
         .variant(
             SchemaVariantSpec::builder()
@@ -91,6 +93,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                 .socket(
                     SocketSpec::builder()
                         .name("AC Power")
+                        .ui_hidden(false)
                         .kind(SocketSpecKind::Input)
                         .arity(SocketSpecArity::One)
                         .build()
@@ -101,6 +104,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .name("Light")
                         .kind(SocketSpecKind::Output)
                         .arity(SocketSpecArity::Many)
+                        .ui_hidden(false)
                         .build()
                         .expect("able to make output socket"),
                 )

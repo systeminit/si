@@ -10,6 +10,7 @@ pub struct SiPkgSchema<'a> {
     name: String,
     category: String,
     category_name: Option<String>,
+    ui_hidden: bool,
 
     hash: Hash,
 
@@ -36,6 +37,7 @@ impl<'a> SiPkgSchema<'a> {
             name: schema_node.name,
             category: schema_node.category,
             category_name: schema_node.category_name,
+            ui_hidden: schema_node.ui_hidden,
             hash: schema_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -71,6 +73,10 @@ impl<'a> SiPkgSchema<'a> {
         Ok(variants)
     }
 
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+
     pub fn hash(&self) -> Hash {
         self.hash
     }
@@ -86,6 +92,8 @@ impl<'a> SiPkgSchema<'a> {
         for variant in self.variants()? {
             builder.variant(variant.to_spec().await?);
         }
+
+        builder.ui_hidden(self.ui_hidden());
 
         Ok(builder.build()?)
     }

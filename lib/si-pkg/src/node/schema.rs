@@ -1,4 +1,7 @@
-use std::io::{BufRead, Write};
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
 
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
@@ -12,12 +15,14 @@ use super::PkgNode;
 const KEY_CATEGORY_STR: &str = "category";
 const KEY_CATEGORY_NAME_STR: &str = "category_name";
 const KEY_NAME_STR: &str = "name";
+const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
 
 #[derive(Clone, Debug)]
 pub struct SchemaNode {
     pub name: String,
     pub category: String,
     pub category_name: Option<String>,
+    pub ui_hidden: bool,
 }
 
 impl NameStr for SchemaNode {
@@ -35,6 +40,7 @@ impl WriteBytes for SchemaNode {
             KEY_CATEGORY_NAME_STR,
             self.category_name.as_deref().unwrap_or(""),
         )?;
+        write_key_value_line(writer, KEY_UI_HIDDEN_STR, self.ui_hidden)?;
 
         Ok(())
     }
@@ -53,11 +59,14 @@ impl ReadBytes for SchemaNode {
         } else {
             Some(category_name_str)
         };
+        let ui_hidden = bool::from_str(&read_key_value_line(reader, KEY_UI_HIDDEN_STR)?)
+            .map_err(GraphError::parse)?;
 
         Ok(Self {
             name,
             category,
             category_name,
+            ui_hidden,
         })
     }
 }
@@ -77,6 +86,7 @@ impl NodeChild for SchemaSpec {
                 name: self.name.to_string(),
                 category: self.category.to_string(),
                 category_name: self.category_name.clone(),
+                ui_hidden: self.ui_hidden,
             }),
             children,
         )

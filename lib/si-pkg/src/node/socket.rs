@@ -16,6 +16,7 @@ const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
 const KEY_ARITY_STR: &str = "arity";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
+const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
 
 #[derive(Clone, Debug)]
 pub struct SocketNode {
@@ -23,6 +24,7 @@ pub struct SocketNode {
     pub name: String,
     pub kind: SocketSpecKind,
     pub arity: SocketSpecArity,
+    pub ui_hidden: bool,
 }
 
 impl NameStr for SocketNode {
@@ -44,6 +46,8 @@ impl WriteBytes for SocketNode {
                 .map(|fuid| fuid.to_string())
                 .unwrap_or("".to_string()),
         )?;
+
+        write_key_value_line(writer, KEY_UI_HIDDEN_STR, self.ui_hidden)?;
 
         Ok(())
     }
@@ -68,11 +72,15 @@ impl ReadBytes for SocketNode {
             Some(FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?)
         };
 
+        let ui_hidden = bool::from_str(&read_key_value_line(reader, KEY_UI_HIDDEN_STR)?)
+            .map_err(GraphError::parse)?;
+
         Ok(Self {
             name,
             kind,
             arity,
             func_unique_id,
+            ui_hidden,
         })
     }
 }
@@ -88,6 +96,7 @@ impl NodeChild for SocketSpec {
                 name: self.name.clone(),
                 kind: self.kind,
                 arity: self.arity,
+                ui_hidden: self.ui_hidden,
             }),
             self.inputs
                 .iter()
