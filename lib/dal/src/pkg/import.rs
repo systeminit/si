@@ -161,7 +161,8 @@ async fn create_schema(
 
     let mut schema = match existing_schema {
         None => {
-            let schema = Schema::new(ctx, schema_spec.name(), &ComponentKind::Standard).await?;
+            let mut schema = Schema::new(ctx, schema_spec.name(), &ComponentKind::Standard).await?;
+            schema.set_ui_hidden(ctx, schema_spec.ui_hidden()).await?;
             let ui_menu = SchemaUiMenu::new(
                 ctx,
                 schema_spec
@@ -323,9 +324,9 @@ async fn create_socket(
     let name = socket_spec.name();
     let arity = socket_spec.arity();
 
-    match socket_spec.kind() {
+    let mut socket = match socket_spec.kind() {
         SocketSpecKind::Input => {
-            InternalProvider::new_explicit_with_socket(
+            let (_, socket) = InternalProvider::new_explicit_with_socket(
                 ctx,
                 schema_variant_id,
                 name,
@@ -344,9 +345,11 @@ async fn create_socket(
                     socket_spec.inputs()?
                 );
             }
+
+            socket
         }
         SocketSpecKind::Output => {
-            let (ep, _) = ExternalProvider::new_with_socket(
+            let (ep, socket) = ExternalProvider::new_with_socket(
                 ctx,
                 schema_id,
                 schema_variant_id,
@@ -371,8 +374,12 @@ async fn create_socket(
                 )
                 .await?;
             }
+
+            socket
         }
-    }
+    };
+
+    socket.set_ui_hidden(ctx, socket_spec.ui_hidden()).await?;
 
     Ok(())
 }

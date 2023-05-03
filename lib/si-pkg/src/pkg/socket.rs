@@ -11,6 +11,7 @@ pub struct SiPkgSocket<'a> {
     kind: SocketSpecKind,
     name: String,
     arity: SocketSpecArity,
+    ui_hidden: bool,
 
     hash: Hash,
     source: Source<'a>,
@@ -37,6 +38,7 @@ impl<'a> SiPkgSocket<'a> {
             arity: node.arity,
             kind: node.kind,
             name: node.name,
+            ui_hidden: node.ui_hidden,
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
@@ -76,6 +78,10 @@ impl<'a> SiPkgSocket<'a> {
         self.hash
     }
 
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+
     pub fn source(&self) -> &Source<'a> {
         &self.source
     }
@@ -91,7 +97,8 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
             .kind(value.kind)
             .name(value.name())
             .func_unique_id(value.func_unique_id)
-            .arity(value.arity);
+            .arity(value.arity)
+            .ui_hidden(value.ui_hidden);
 
         for input in value.inputs()? {
             builder.input(input.try_into()?);

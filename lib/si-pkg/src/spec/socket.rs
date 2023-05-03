@@ -60,6 +60,9 @@ pub struct SocketSpec {
 
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
+
+    #[builder(setter(into))]
+    pub ui_hidden: bool,
 }
 
 impl SocketSpec {
