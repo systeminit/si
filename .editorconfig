@@ -1,0 +1,26 @@
+root = true
+
+[*]
+charset = utf-8
+tab_width = 8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.sh]
+indent_style = space
+indent_size = 2
+max_line_length = 80
+binary_next_line = true
+switch_case_indent = true
+
+[BUCK]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 100
+
+[Dockerfile]
+indent_style = space
+indent_size = 4
+max_line_length = 80
