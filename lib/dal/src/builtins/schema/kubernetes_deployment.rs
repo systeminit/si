@@ -88,7 +88,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let metadata_prop = self
+        let _metadata_prop = self
             .create_kubernetes_metadata_prop_for_deployment(
                 ctx,
                 root_prop.domain_prop_id,
@@ -96,7 +96,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let spec_prop = self
+        let _spec_prop = self
             .create_kubernetes_deployment_spec_prop(
                 ctx,
                 root_prop.domain_prop_id,
@@ -186,8 +186,8 @@ impl MigrationDriver {
             .await?;
 
         // Connect the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
-        let domain_namespace_prop = self
-            .find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace")
+        let domain_namespace_prop = schema_variant
+            .find_prop(ctx, &["root", "domain", "metadata", "namespace"])
             .await?;
         let domain_namespace_attribute_value_read_context =
             AttributeReadContext::default_with_prop(*domain_namespace_prop.id());
@@ -213,14 +213,18 @@ impl MigrationDriver {
         .await?;
 
         // Connect the "template namespace" prop to the "kubernetes_namespace" explicit internal provider.
-        let template_prop = self
-            .find_child_prop_by_name(ctx, *spec_prop.id(), "template")
-            .await?;
-        let template_metadata_prop = self
-            .find_child_prop_by_name(ctx, *template_prop.id(), "metadata")
-            .await?;
-        let template_namespace_prop = self
-            .find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace")
+        let template_namespace_prop = schema_variant
+            .find_prop(
+                ctx,
+                &[
+                    "root",
+                    "domain",
+                    "spec",
+                    "template",
+                    "metadata",
+                    "namespace",
+                ],
+            )
             .await?;
         let template_namespace_attribute_value_read_context =
             AttributeReadContext::default_with_prop(*template_namespace_prop.id());
@@ -247,11 +251,11 @@ impl MigrationDriver {
 
         // Connect the "/root/domain/spec/template/spec/containers" field to the "Container Image" explicit
         // internal provider. We need to use the appropriate function with and name the argument "images".
-        let template_spec_prop = self
-            .find_child_prop_by_name(ctx, *template_prop.id(), "spec")
-            .await?;
-        let containers_prop = self
-            .find_child_prop_by_name(ctx, *template_spec_prop.id(), "containers")
+        let containers_prop = schema_variant
+            .find_prop(
+                ctx,
+                &["root", "domain", "spec", "template", "spec", "containers"],
+            )
             .await?;
         let containers_attribute_value_read_context =
             AttributeReadContext::default_with_prop(*containers_prop.id());

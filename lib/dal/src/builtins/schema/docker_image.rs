@@ -161,8 +161,8 @@ impl MigrationDriver {
         image_attribute_prototype
             .set_func_id(ctx, identity_func_item.func_id)
             .await?;
-        let si_name_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
+        let si_name_prop = schema_variant
+            .find_prop(ctx, &["root", "si", "name"])
             .await?;
         let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
             .await?
