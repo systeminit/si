@@ -5,6 +5,7 @@ use dal::{
     AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaVariant, StandardModel,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
     test,
     test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
@@ -13,18 +14,9 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new_attribute_prototype(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("cannot find docker image")
-        .pop()
-        .expect("no docker image found");
-
-    let default_variant = schema
-        .default_variant(ctx)
-        .await
-        .expect("cannot find default variant");
-
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let mut bagger = ComponentBagger::new();
+    let component_bag = bagger.create_component(ctx, "poop", "starfield").await;
+    let schema_variant = component_bag.schema_variant(ctx).await;
 
     let func = Func::new(
         ctx,
@@ -49,12 +41,12 @@ async fn new_attribute_prototype(ctx: &DalContext) {
         .await
         .expect("failed to execute func binding");
 
-    let root_prop_id = default_variant
+    let root_prop_id = schema_variant
         .root_prop_id()
         .expect("no root prop for schema variant");
     let context = AttributeContext::builder()
         .set_prop_id(*root_prop_id)
-        .set_component_id(*component.id())
+        .set_component_id(component_bag.component_id)
         .to_context()
         .expect("cannot create context");
     let _attribute_prototype = AttributePrototype::new(

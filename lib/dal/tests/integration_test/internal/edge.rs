@@ -62,23 +62,23 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let from_aws_region = bagger.create_component(ctx, "from", "Region").await;
-    let to_aws_ec2_instance = bagger.create_component(ctx, "to", "EC2 Instance").await;
+    let from_fallout = bagger.create_component(ctx, "from", "fallout").await;
+    let to_starfield = bagger.create_component(ctx, "to", "starfield").await;
 
     let output_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Region",
+        "bethesda",
         SocketEdgeKind::ConfigurationOutput,
-        from_aws_region.node_id,
+        from_fallout.node_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
     let input_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Region",
+        "bethesda",
         SocketEdgeKind::ConfigurationInput,
-        to_aws_ec2_instance.node_id,
+        to_starfield.node_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -86,70 +86,44 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
 
     let connection = Connection::new(
         ctx,
-        from_aws_region.node_id,
+        from_fallout.node_id,
         *output_socket.id(),
-        to_aws_ec2_instance.node_id,
+        to_starfield.node_id,
         *input_socket.id(),
         EdgeKind::Configuration,
     )
     .await
     .expect("could not create connection");
 
-    // Update the region to be us-east-2
-    let region_prop = from_aws_region
-        .find_prop(ctx, &["root", "domain", "region"])
+    // Update the special prop
+    let special_prop = from_fallout
+        .find_prop(ctx, &["root", "domain", "special"])
         .await;
-    from_aws_region
-        .update_attribute_value_for_prop(
-            ctx,
-            *region_prop.id(),
-            Some(serde_json::json!["us-east-2"]),
-        )
+    from_fallout
+        .update_attribute_value_for_prop(ctx, *special_prop.id(), Some(serde_json::json!["foo"]))
         .await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    // check that the value of the ec2 instance region
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "to",
-                "color": "#FF9900",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "awsResourceType": "instance",
-                "region": "us-east-2",
-                "tags": {
-                    "Name": "to",
-                },
-            },
-            "code": {
-                "si:generateAwsEc2JSON": {
-                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            }
+           "si": {
+               "name": "to",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "to",
+               "attributes": "foo",
+           },
         }], // expected
-        to_aws_ec2_instance
+        to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -163,44 +137,23 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    // check that the region of the ec2 instance is empty
+    // Check that the field of the head node is empty.
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "to",
-                "color": "#FF9900",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "tags": {
-                    "Name": "to",
-                },
-                "awsResourceType": "instance",
-            },
-            "code": {
-                "si:generateAwsEc2JSON": {
-                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
+               "name": "to",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "to",
+           },
         }], // expected
-        to_aws_ec2_instance
+        to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -214,45 +167,24 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    // check that the value of the ec2 instance region
+    // Check that the value has "returned".
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "to",
-                "color": "#FF9900",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "awsResourceType": "instance",
-                "region": "us-east-2",
-                "tags": {
-                    "Name": "to",
-                },
-            },
-            "code": {
-                "si:generateAwsEc2JSON": {
-                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
+           "si": {
+               "name": "to",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "to",
+               "attributes": "foo",
+           },
         }], // expected
-        to_aws_ec2_instance
+        to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -266,125 +198,106 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let nginx_container = bagger.create_component(ctx, "nginx", "Docker Image").await;
-    let apache2_container = bagger
-        .create_component(ctx, "apache2", "Docker Image")
-        .await;
-    let docker_image_prop = nginx_container
-        .find_prop(ctx, &["root", "domain", "image"])
+    let three_bag = bagger.create_component(ctx, "three", "fallout").await;
+    let new_vegas_bag = bagger.create_component(ctx, "new vegas", "fallout").await;
+
+    let rads_prop = three_bag.find_prop(ctx, &["root", "domain", "rads"]).await;
+    new_vegas_bag
+        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![1]))
         .await;
 
-    apache2_container
-        .update_attribute_value_for_prop(
-            ctx,
-            *docker_image_prop.id(),
-            Some(serde_json::json!["apache2"]),
-        )
+    let starfield_bag = bagger
+        .create_component(ctx, "destination", "starfield")
         .await;
-    let butane_instance = bagger.create_component(ctx, "userdata", "Butane").await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let from_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let from_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Container Image",
+        "fallout",
         SocketEdgeKind::ConfigurationOutput,
-        nginx_container.node_id,
+        three_bag.node_id,
     )
     .await
-    .expect("could not perform socket find'")
+    .expect("could not perform socket find")
     .expect("could not find socket");
-    let to_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let to_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Container Image",
+        "fallout",
         SocketEdgeKind::ConfigurationInput,
-        butane_instance.node_id,
+        starfield_bag.node_id,
     )
     .await
-    .expect("could not perform socket find'")
+    .expect("could not perform socket find")
     .expect("could not find socket");
 
-    let connect_from_nginx = Connection::new(
+    let connect_from_three = Connection::new(
         ctx,
-        nginx_container.node_id,
-        *from_container_image_socket.id(),
-        butane_instance.node_id,
-        *to_container_image_socket.id(),
+        three_bag.node_id,
+        *from_socket.id(),
+        starfield_bag.node_id,
+        *to_socket.id(),
         EdgeKind::Configuration,
     )
     .await
     .expect("could not create connection");
 
-    let connect_from_apache2 = Connection::new(
+    let connect_from_new_vegas = Connection::new(
         ctx,
-        apache2_container.node_id,
-        *from_container_image_socket.id(),
-        butane_instance.node_id,
-        *to_container_image_socket.id(),
+        new_vegas_bag.node_id,
+        *from_socket.id(),
+        starfield_bag.node_id,
+        *to_socket.id(),
         EdgeKind::Configuration,
     )
     .await
     .expect("could not create connection");
 
     // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
-    nginx_container
-        .update_attribute_value_for_prop(
-            ctx,
-            *docker_image_prop.id(),
-            Some(serde_json::json!["nginx"]),
-        )
+    three_bag
+        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![2]))
         .await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    // check that the value of the butance instance
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [
-                        {
-                            "name": "nginx.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull docker.io/library/nginx\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\n\n[Install]\nWantedBy=multi-user.target",
-                        },
-                        {
-                            "name": "apache2.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull docker.io/library/apache2\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\n\n[Install]\nWantedBy=multi-user.target",
-                        },
-                    ],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull docker.io/library/nginx\\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      },\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull docker.io/library/apache2\\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [
+                       {
+                           "sun": "three-sun",
+                           "planets": 2
+                       },
+                       {
+                           "sun": "new vegas-sun",
+                           "planets": 1
+                       },
+                   ],
+               },
+           },
         }], // expected
-        butane_instance
+        starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
 
-    // delete the nginx connection
-    Connection::delete_for_edge(ctx, connect_from_nginx.id)
+    // delete one of the connections
+    Connection::delete_for_edge(ctx, connect_from_three.id)
         .await
         .expect("Deletion should work");
 
@@ -394,42 +307,34 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [
-                        {
-                            "name": "apache2.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull docker.io/library/apache2\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\n\n[Install]\nWantedBy=multi-user.target",
-                        },
-                    ],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull docker.io/library/apache2\\nExecStart=/bin/podman run --name apache2 docker.io/library/apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [
+                       {
+                           "sun": "new vegas-sun",
+                           "planets": 1
+                       },
+                   ],
+               },
+           },
         }], // expected
-        butane_instance
+        starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
 
-    // delete the nginx connection
-    let _result = Connection::delete_for_edge(ctx, connect_from_apache2.id).await;
+    // delete the other connection
+    let _result = Connection::delete_for_edge(ctx, connect_from_new_vegas.id).await;
 
     ctx.blocking_commit()
         .await
@@ -437,30 +342,23 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [],
+               },
+           },
         }], // expected
-        butane_instance
+        starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );

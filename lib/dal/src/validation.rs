@@ -53,6 +53,8 @@ pub enum Validation {
         lower_bound: i64,
         upper_bound: i64,
     },
+    /// Validate that the "value" integer is not empty
+    IntegerIsNotEmpty { value: Option<i64> },
     /// Validate that the "value" string is the same as the expected string.
     StringEquals {
         value: Option<String>,
@@ -79,7 +81,7 @@ pub enum Validation {
     StringIsValidIpAddr { value: Option<String> },
     /// Validate that the "value" string is a Hex Color.
     StringIsHexColor { value: Option<String> },
-    /// Validate that the "value" is not empty
+    /// Validate that the "value" string is not empty
     StringIsNotEmpty { value: Option<String> },
 }
 
@@ -96,6 +98,9 @@ impl Validation {
                 value: Self::value_as_i64(value)?,
                 lower_bound,
                 upper_bound,
+            },
+            Validation::IntegerIsNotEmpty { value: _ } => Validation::IntegerIsNotEmpty {
+                value: Self::value_as_i64(value)?,
             },
             Validation::StringEquals { value: _, expected } => Validation::StringEquals {
                 value: Self::value_as_string(value)?,

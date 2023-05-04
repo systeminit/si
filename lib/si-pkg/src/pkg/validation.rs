@@ -13,6 +13,10 @@ pub enum SiPkgValidation<'a> {
         hash: Hash,
         source: Source<'a>,
     },
+    IntegerIsNotEmpty {
+        hash: Hash,
+        source: Source<'a>,
+    },
     StringEquals {
         expected: String,
         hash: Hash,
@@ -79,6 +83,9 @@ impl<'a> SiPkgValidation<'a> {
                     hash,
                     source,
                 }
+            }
+            ValidationSpecKind::IntegerIsNotEmpty => {
+                SiPkgValidation::IntegerIsNotEmpty { hash, source }
             }
             ValidationSpecKind::StringEquals => SiPkgValidation::StringEquals {
                 expected: node
@@ -148,6 +155,9 @@ impl<'a> TryFrom<SiPkgValidation<'a>> for ValidationSpec {
                 builder.kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers);
                 builder.lower_bound(lower_bound);
                 builder.upper_bound(upper_bound);
+            }
+            SiPkgValidation::IntegerIsNotEmpty { .. } => {
+                builder.kind(ValidationSpecKind::IntegerIsNotEmpty);
             }
             SiPkgValidation::StringEquals { expected, .. } => {
                 builder.kind(ValidationSpecKind::StringEquals);

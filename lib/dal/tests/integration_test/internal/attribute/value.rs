@@ -1,8 +1,9 @@
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, Prop, PropKind,
-    Schema, StandardModel,
+    StandardModel,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -673,18 +674,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
 
 #[test]
 async fn list_payload(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
-        .await
-        .expect("cannot find docker image schema")
-        .pop()
-        .expect("no docker image schema found");
-    let schema_variant_id = schema
-        .default_schema_variant_id()
-        .expect("missing default schema variant id");
+    let mut bagger = ComponentBagger::new();
     let name = generate_name();
-    let (component, _node) = Component::new(ctx, &name, *schema_variant_id)
-        .await
-        .expect("could not create component");
+    let component_bag = bagger.create_component(ctx, &name, "starfield").await;
 
     ctx.blocking_commit()
         .await
@@ -694,15 +686,15 @@ async fn list_payload(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            component_id: Some(*component.id()),
+            component_id: Some(component_bag.component_id),
             ..AttributeReadContext::default()
         },
     )
     .await
     .expect("could not list payload for read context");
 
-    let mut name_value = None;
-    let mut image_value = None;
+    let mut si_name_value = None;
+    let mut domain_name_value = None;
     for payload in payloads {
         if let Some(parent_prop) = payload
             .prop
@@ -711,34 +703,34 @@ async fn list_payload(ctx: &DalContext) {
             .expect("could not perform parent prop fetch")
         {
             if payload.prop.name() == "name" && parent_prop.name() == "si" {
-                if name_value.is_some() {
+                if si_name_value.is_some() {
                     panic!("found more than one list payload value with prop \"name\" and parent \"si\"");
                 }
-                name_value = Some(payload.func_binding_return_value);
-            } else if payload.prop.name() == "image" && parent_prop.name() == "domain" {
-                if image_value.is_some() {
-                    panic!("found more than one list payload value with prop \"image\" and parent \"domain\"");
+                si_name_value = Some(payload.func_binding_return_value);
+            } else if payload.prop.name() == "name" && parent_prop.name() == "domain" {
+                if domain_name_value.is_some() {
+                    panic!("found more than one list payload value with prop \"name\" and parent \"domain\"");
                 }
-                image_value = Some(payload.func_binding_return_value);
+                domain_name_value = Some(payload.func_binding_return_value);
             }
         }
     }
 
-    let name_value = name_value
+    let si_name_value = si_name_value
         .expect("did not find list payload value with prop \"name\" and parent \"si\"")
         .expect("value is empty");
-    let name_value = name_value
+    let si_name_value = si_name_value
         .value()
         .expect("value empty for func binding return value");
 
-    let image_value = image_value
-        .expect("did not find list payload value with prop \"image\" and parent \"domain\"")
+    let domain_name_value = domain_name_value
+        .expect("did not find list payload value with prop \"name\" and parent \"domain\"")
         .expect("value is empty");
-    let image_value = image_value
+    let domain_name_value = domain_name_value
         .value()
         .expect("value empty for func binding return value");
 
-    let found_name = serde_json::to_string(name_value).expect("could not deserialize value");
+    let found_name = serde_json::to_string(si_name_value).expect("could not deserialize value");
     assert_eq!(found_name.replace('"', ""), name);
-    assert_eq!(name_value, image_value);
+    assert_eq!(si_name_value, domain_name_value);
 }

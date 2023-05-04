@@ -55,10 +55,14 @@ impl FuncBackend for FuncBackendValidation {
                 },
                 None => Some(value_must_be_present_error),
             },
+            Validation::IntegerIsNotEmpty { value} => match value {
+                Some(_value) => None,
+                None => Some(value_must_be_present_error),
+            },
             Validation::StringIsNotEmpty { value} => match value {
-                Some(value) => match !value.is_empty() {
-                    true => None,
-                    false => Some(value_must_be_present_error),
+                Some(value) => match value.is_empty() {
+                    true => Some(value_must_be_present_error),
+                    false => None,
                 },
                 None => Some(value_must_be_present_error),
             },

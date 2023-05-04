@@ -23,7 +23,7 @@ pub async fn get_node_add_menu(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // NOTE(nick): return only configuration-related content at the moment.
-    let gmi = GenerateMenuItem::new(&ctx).await?;
+    let gmi = GenerateMenuItem::new(&ctx, false).await?;
     let response = gmi.create_menu_json()?;
 
     Ok(Json(response))

@@ -211,46 +211,176 @@ impl MigrationDriver {
             .await?;
         }
 
+        // Create the transformation func for one of the input sockets.
+        let mut transformation_func = Func::new(
+            ctx,
+            "test:falloutEntriesToGalaxies",
+            FuncBackendKind::Json,
+            FuncBackendResponseType::Array,
+        )
+        .await?;
+        let code =  "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+          let galaxies = [];
+          let entries = input.entries;
+
+          // Force the entries arg to be an Array (and return an empty array if the arg is absent/undefined/null).
+          if (entries === undefined) return galaxies;
+          if (entries === null) return galaxies;
+          if (!Array.isArray(entries)) entries = [entries];
+
+          entries.filter(i => i ?? false).forEach(function (entry) {
+
+            let name = entry.si.name;
+            let rads = entry.domain.rads;
+            let galaxy = {
+              sun: name + \"-sun\",
+              planets: rads
+            };
+
+            galaxies.push(galaxy);
+          });
+
+          return galaxies;
+        }";
+        transformation_func
+            .set_code_plaintext(ctx, Some(code))
+            .await?;
+        transformation_func
+            .set_handler(ctx, Some("falloutEntriesToGalaxies"))
+            .await?;
+        let transformation_func_argument = FuncArgument::new(
+            ctx,
+            "entries",
+            FuncArgumentKind::Array,
+            Some(FuncArgumentKind::Object),
+            *transformation_func.id(),
+        )
+        .await?;
+
         // Finalize the schema variant.
         schema_variant.finalize(ctx, None).await?;
 
-        // Get the identity func from the cache.
+        // Get the identity func and cache props.
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        // Connect the "/root/si/name" field to the "/root/domain/name" field.
         let domain_name_prop = schema_variant
             .find_prop(ctx, &["root", "domain", "name"])
             .await?;
         let si_name_prop = schema_variant
             .find_prop(ctx, &["root", "si", "name"])
             .await?;
-        let domain_name_attribute_value = AttributeValue::find_for_context(
-            ctx,
-            AttributeReadContext::default_with_prop(*domain_name_prop.id()),
-        )
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-        let mut domain_name_attribute_prototype = domain_name_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(AttributeValueError::MissingAttributePrototype)?;
-        domain_name_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
+        let attributes_prop = schema_variant
+            .find_prop(ctx, &["root", "domain", "attributes"])
             .await?;
-        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+        let galaxies_prop = schema_variant
+            .find_prop(ctx, &["root", "domain", "universe", "galaxies"])
+            .await?;
+
+        // Connect the "/root/si/name" field to the "/root/domain/name" field.
+        {
+            let domain_name_attribute_value = AttributeValue::find_for_context(
+                ctx,
+                AttributeReadContext::default_with_prop(*domain_name_prop.id()),
+            )
             .await?
-            .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
-            })?;
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *domain_name_attribute_prototype.id(),
-            identity_func_item.func_argument_id,
-            *si_name_internal_provider.id(),
-        )
-        .await?;
+            .ok_or(AttributeValueError::Missing)?;
+            let mut domain_name_attribute_prototype = domain_name_attribute_value
+                .attribute_prototype(ctx)
+                .await?
+                .ok_or(AttributeValueError::MissingAttributePrototype)?;
+            domain_name_attribute_prototype
+                .set_func_id(ctx, identity_func_item.func_id)
+                .await?;
+            let si_name_internal_provider =
+                InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+                    })?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *domain_name_attribute_prototype.id(),
+                identity_func_item.func_argument_id,
+                *si_name_internal_provider.id(),
+            )
+            .await?;
+        }
+
+        // Connect the "bethesda" explicit internal provider to the "/root/domain/attributes" prop.
+        {
+            let explicit_internal_provider_name = "bethesda".to_string();
+            let explicit_internal_provider =
+                InternalProvider::find_explicit_for_schema_variant_and_name(
+                    ctx,
+                    schema_variant_id,
+                    &explicit_internal_provider_name,
+                )
+                .await?
+                .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
+                    explicit_internal_provider_name,
+                ))?;
+            let attribute_read_context =
+                AttributeReadContext::default_with_prop(*attributes_prop.id());
+            let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    attribute_read_context,
+                ))?;
+            let mut attribute_prototype = attribute_value
+                .attribute_prototype(ctx)
+                .await?
+                .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+            attribute_prototype
+                .set_func_id(ctx, &identity_func_item.func_id)
+                .await?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *attribute_prototype.id(),
+                identity_func_item.func_argument_id,
+                *explicit_internal_provider.id(),
+            )
+            .await?;
+        }
+
+        // Enable connections from the "fallout" explicit internal provider to the
+        // "/root/domain/universe/galaxies/" field. We need to use the appropriate function with and
+        // name the argument "galaxies".
+        {
+            let explicit_internal_provider_name = "fallout".to_string();
+            let explicit_internal_provider =
+                InternalProvider::find_explicit_for_schema_variant_and_name(
+                    ctx,
+                    schema_variant_id,
+                    &explicit_internal_provider_name,
+                )
+                .await?
+                .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
+                    explicit_internal_provider_name,
+                ))?;
+            let galaxies_attribute_read_context =
+                AttributeReadContext::default_with_prop(*galaxies_prop.id());
+            let galaxies_attribute_value =
+                AttributeValue::find_for_context(ctx, galaxies_attribute_read_context)
+                    .await?
+                    .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                        galaxies_attribute_read_context,
+                    ))?;
+            let mut galaxies_attribute_prototype = galaxies_attribute_value
+                .attribute_prototype(ctx)
+                .await?
+                .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+            galaxies_attribute_prototype
+                .set_func_id(ctx, *transformation_func.id())
+                .await?;
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *galaxies_attribute_prototype.id(),
+                *transformation_func_argument.id(),
+                *explicit_internal_provider.id(),
+            )
+            .await?;
+        }
 
         Ok(())
     }

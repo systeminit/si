@@ -534,23 +534,25 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(change_set.pk, None));
 
-    let nginx_container = bagger.create_component(ctx, "nginx", "Docker Image").await;
-    let butane_instance = bagger.create_component(ctx, "userdata", "Butane").await;
+    let fallout_bag = bagger.create_component(ctx, "source", "fallout").await;
+    let starfield_bag = bagger
+        .create_component(ctx, "destination", "starfield")
+        .await;
 
-    let from_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let from_fallout_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Container Image",
+        "fallout",
         SocketEdgeKind::ConfigurationOutput,
-        nginx_container.node_id,
+        fallout_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
-    let to_container_image_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let to_fallout_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "Container Image",
+        "fallout",
         SocketEdgeKind::ConfigurationInput,
-        butane_instance.node_id,
+        starfield_bag.node_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -558,60 +560,80 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     let _connection = Connection::new(
         ctx,
-        nginx_container.node_id,
-        *from_container_image_socket.id(),
-        butane_instance.node_id,
-        *to_container_image_socket.id(),
+        fallout_bag.node_id,
+        *from_fallout_socket.id(),
+        starfield_bag.node_id,
+        *to_fallout_socket.id(),
         EdgeKind::Configuration,
     )
     .await
     .expect("could not create connection");
 
     // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
-    let image_prop = nginx_container
-        .find_prop(ctx, &["root", "domain", "image"])
+    let name_prop = fallout_bag.find_prop(ctx, &["root", "si", "name"]).await;
+    let rads_prop = fallout_bag
+        .find_prop(ctx, &["root", "domain", "rads"])
         .await;
-    nginx_container
-        .update_attribute_value_for_prop(ctx, *image_prop.id(), Some(serde_json::json!["nginx"]))
+    fallout_bag
+        .update_attribute_value_for_prop(
+            ctx,
+            *name_prop.id(),
+            Some(serde_json::json!["source-updated"]),
+        )
+        .await;
+    fallout_bag
+        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![1]))
         .await;
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    // check that the value of the butane instance
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [
-                        {
-                            "name": "nginx.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull docker.io/library/nginx\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\n\n[Install]\nWantedBy=multi-user.target",
-                        }
-                    ],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull docker.io/library/nginx\\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "source-updated",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "source-updated",
+               "rads": 1,
+               "active": true
+           },
         }], // expected
-        butane_instance
+        fallout_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value") // actual
+    );
+    assert_eq!(
+        serde_json::json![{
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [
+                       {
+                           "sun": "source-updated-sun",
+                           "planets": 1
+                       },
+                   ],
+               },
+           },
+        }], // expected
+        starfield_bag
+            .component_view_properties(ctx)
+            .await
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -631,12 +653,13 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(change_set_2.pk, None));
 
-    // delete the nginx container
-    let mut comp = Component::get_by_id(ctx, &nginx_container.component_id)
+    // delete the source component
+    let mut component = Component::get_by_id(ctx, &fallout_bag.component_id)
         .await
         .expect("could not retrieve component by id")
         .expect("component missing");
-    comp.delete_and_propagate(ctx)
+    component
+        .delete_and_propagate(ctx)
         .await
         .expect("Deletion of nginx component should work");
 
@@ -646,35 +669,28 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [],
+               },
+           },
         }], // expected
-        butane_instance
+        starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
 
-    Component::restore_and_propagate(ctx, nginx_container.component_id)
+    Component::restore_and_propagate(ctx, fallout_bag.component_id)
         .await
         .expect("Restoring nginx component should work");
 
@@ -682,39 +698,51 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    // check that the value of the butane instance
     assert_eq!(
         serde_json::json![{
-            "si": {
-                "name": "userdata",
-                "color": "#e26b70",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "systemd": {
-                    "units": [
-                        {
-                            "name": "nginx.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull docker.io/library/nginx\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\n\n[Install]\nWantedBy=multi-user.target",
-                        }
-                    ],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull docker.io/library/nginx\\nExecStart=/bin/podman run --name nginx docker.io/library/nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
-            },
+           "si": {
+               "name": "source-updated",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "source-updated",
+               "rads": 1,
+               "active": true
+           },
         }], // expected
-        butane_instance
+        fallout_bag
             .component_view_properties(ctx)
             .await
-            .drop_qualification()
+            .drop_confirmation()
+            .to_value()
+            .expect("could not convert to value") // actual
+    );
+    assert_eq!(
+        serde_json::json![{
+           "si": {
+               "name": "destination",
+               "type": "component",
+               "color": "#ffffff",
+               "protected": false,
+           },
+           "domain": {
+               "name": "destination",
+               "universe": {
+                   "galaxies": [
+                       {
+                           "sun": "source-updated-sun",
+                           "planets": 1
+                       },
+                   ],
+               },
+           },
+        }], // expected
+        starfield_bag
+            .component_view_properties(ctx)
+            .await
+            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
