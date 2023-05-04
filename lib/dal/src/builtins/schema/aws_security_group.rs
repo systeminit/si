@@ -61,78 +61,66 @@ impl MigrationDriver {
 
         // Prop: /resource/value/GroupName
         let _sg_group_name_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "GroupName",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/GroupId
         let _sg_group_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "GroupId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/OwnerId
         let _sg_owner_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "OwnerId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/VpcId
         let _sg_vpc_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "VpcId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/GroupName
         let _sg_group_name_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "GroupName",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/Description
         let _sg_description_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Description",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -142,26 +130,22 @@ impl MigrationDriver {
 
         // Prop: /resource/value/IpPermissions
         let sg_ip_permissions_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpPermissions",
                 PropKind::Array,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/IpPermission
         let sg_ip_permission_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpPermission",
                 PropKind::Object,
-                None,
                 Some(*sg_ip_permissions_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -175,26 +159,22 @@ impl MigrationDriver {
 
         // Prop: /resource/value/IpPermissionsEgress
         let sg_ip_permissions_egress_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpPermissionsEgress",
                 PropKind::Array,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/IpPermissionsgress
         let sg_ip_permission_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpPermissionsgress",
                 PropKind::Object,
-                None,
                 Some(*sg_ip_permissions_egress_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -729,97 +709,81 @@ impl MigrationDriver {
         schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<()> {
         let _security_group_rule_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "SecurityGroupRuleId",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_group_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "GroupId",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_group_owner_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "GroupOwnerId",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_ip_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpProtocol",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_from_port_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "FromPort",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_to_port_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "ToPort",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_cidr_ipv6_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "CidrIpv6",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _security_group_rule_description_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "CidrIpv6",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -834,61 +798,51 @@ impl MigrationDriver {
         schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<()> {
         let _ip_perm_from_port_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "FromPort",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _ip_perm_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpProtocol",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _ip_perm_to_port_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "ToPort",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let ip_ranges_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpRanges",
                 PropKind::Array,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let ip_range_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "IpRange",
                 PropKind::Object,
-                None,
                 Some(*ip_ranges_protocol_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -901,25 +855,21 @@ impl MigrationDriver {
         .await?;
 
         let ipv6_ranges_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Ipv6Ranges",
                 PropKind::Array,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let ipv6_range_protocol_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Ipv6Range",
                 PropKind::Object,
-                None,
                 Some(*ipv6_ranges_protocol_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -932,49 +882,41 @@ impl MigrationDriver {
         .await?;
 
         let prefix_list_ids_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PrefixListIds",
                 PropKind::Array,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let prefix_list_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PrefixListId",
                 PropKind::Object,
-                None,
                 Some(*prefix_list_ids_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _prefix_list_id_description_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Description",
                 PropKind::String,
-                None,
                 Some(*prefix_list_id_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _prefix_list_id_id_description_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PrefixListId",
                 PropKind::String,
-                None,
                 Some(*prefix_list_id_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -989,25 +931,21 @@ impl MigrationDriver {
         schema_variant_id: SchemaVariantId,
     ) -> BuiltinsResult<()> {
         let _ip_range_description_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Description",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _ip_range_cidr_ip_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "CidrIp",
                 PropKind::String,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;

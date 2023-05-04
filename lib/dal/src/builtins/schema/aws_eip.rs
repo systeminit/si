@@ -58,117 +58,99 @@ impl MigrationDriver {
 
         // Prop: /resource/value/Domain
         let _eip_domain_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Domain",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/PublicIpv4Pool
         let _eip_public_ipv4_pool_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PublicIpv4Pool",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/InstanceId
         let _eip_instance_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "InstanceId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/NetworkInterfaceId
         let _eip_network_interface_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "NetworkInterfaceId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/AssociationId
         let _eip_association_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "AssociationId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/NetworkInterfaceOwnerId
         let _eip_network_interface_owner_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "NetworkInterfaceOwnerId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/PublicIp
         let _eip_public_ip_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PublicIp",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/AllocationId
         let _eip_allocation_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "AllocationId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/PrivateIpAddress
         let _eip_private_ip_address_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "PrivateIpAddress",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;

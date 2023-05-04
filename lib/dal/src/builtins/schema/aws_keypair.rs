@@ -61,52 +61,44 @@ impl MigrationDriver {
 
         // Prop: /resource/value/KeyPairId
         let _key_pair_id_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "KeyPairId",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/KeyFingerprint
         let _key_pair_fingerprint_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "KeyFingerprint",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/KeyName
         let _key_pair_name_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "KeyName",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         // Prop: /resource/value/KeyType
         let _key_pair_type_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "KeyType",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
@@ -116,13 +108,11 @@ impl MigrationDriver {
 
         // Prop: /resource/value/CreateTime
         let _key_pair_create_time_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "CreateTime",
                 PropKind::String,
-                None,
                 Some(root_prop.resource_value_prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;

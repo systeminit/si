@@ -525,6 +525,30 @@ impl MigrationDriver {
         }
     }
 
+    /// Creates a [`Prop`](crate::Prop) and marks it as hidden.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_hidden_prop(
+        &self,
+        ctx: &DalContext,
+        prop_name: &str,
+        prop_kind: PropKind,
+        parent_prop_id: Option<PropId>,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<Prop> {
+        let mut prop = Prop::new(
+            ctx,
+            prop_name,
+            prop_kind,
+            None,
+            schema_variant_id,
+            parent_prop_id,
+        )
+        .await?;
+        prop.set_hidden(ctx, true).await?;
+
+        Ok(prop)
+    }
+
     /// Creates a [`Prop`](crate::Prop) with some common settings.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_prop(
@@ -549,6 +573,7 @@ impl MigrationDriver {
         if doc_link.is_some() {
             prop.set_doc_link(ctx, doc_link).await?;
         }
+
         Ok(prop)
     }
 
@@ -760,49 +785,41 @@ impl MigrationDriver {
     ) -> BuiltinsResult<()> {
         // Prop: /resource/value/tags
         let key_pair_tags_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Tags",
                 PropKind::Array,
-                None,
                 Some(prop_id),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let key_pair_tag_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Tag",
                 PropKind::Object,
-                None,
                 Some(*key_pair_tags_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _tag_key_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Key",
                 PropKind::String,
-                None,
                 Some(*key_pair_tag_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;
 
         let _tag_value_resource_prop = self
-            .create_prop(
+            .create_hidden_prop(
                 ctx,
                 "Value",
                 PropKind::String,
-                None,
                 Some(*key_pair_tag_resource_prop.id()),
-                None,
                 schema_variant_id,
             )
             .await?;

@@ -1,5 +1,5 @@
 async function deleteResource(component: Input): Promise<Output> {
-    const resource = component.properties.resource?.payload[0];
+    const resource = component.properties.resource?.payload;
 
     if (resource.SecurityGroupRuleId === undefined) {
         console.error("unable to find a valid SecurityGroupRuleID");
