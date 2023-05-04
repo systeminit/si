@@ -47,14 +47,14 @@ async fn test_install_pkg(ctx: &DalContext) {
             SchemaVariantSpec::builder()
                 .name("Pig Bodine")
                 .color("baddad")
-                .prop(
+                .domain_prop(
                     PropSpec::builder()
                         .name("ImpolexG")
                         .kind(PropSpecKind::String)
                         .build()
                         .expect("able to make prop spec"),
                 )
-                .prop(
+                .domain_prop(
                     PropSpec::builder()
                         .name("TheZone")
                         .kind(PropSpecKind::String)
@@ -108,7 +108,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .build()
                         .expect("able to make output socket"),
                 )
-                .prop(
+                .domain_prop(
                     PropSpec::builder()
                         .name("distress_jess")
                         .kind(PropSpecKind::Number)
@@ -123,7 +123,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .build()
                         .expect("able to make prop spec"),
                 )
-                .prop(
+                .domain_prop(
                     PropSpec::builder()
                         .name("sixes_and_sevens")
                         .kind(PropSpecKind::Number)

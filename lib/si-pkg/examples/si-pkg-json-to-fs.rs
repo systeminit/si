@@ -1,6 +1,6 @@
 use std::{env::args, fs};
 
-use si_pkg::{PkgSpec, SiPkg, SiPkgError, SiPkgProp};
+use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,7 +22,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dbg!(&schema);
 
     for variant in schema.variants()? {
-        variant.visit_prop_tree(process_prop, None, &()).await?;
+        variant
+            .visit_prop_tree(SchemaVariantSpecPropRoot::Domain, process_prop, None, &())
+            .await?;
     }
 
     println!("--- Done.");

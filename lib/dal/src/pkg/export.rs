@@ -4,14 +4,16 @@ use std::{
     path::PathBuf,
 };
 use strum::IntoEnumIterator;
+use telemetry::prelude::*;
 
 use si_pkg::{
     ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, CommandFuncSpec, FuncArgumentSpec,
     FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
     LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
     PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SchemaVariantSpecComponentType, SiPkg, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec,
-    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec,
+    SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
+    SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    WorkflowSpec,
 };
 
 use crate::{
@@ -557,7 +559,22 @@ async fn build_variant_spec(
 
     variant_spec_builder.component_type(get_component_type(ctx, &variant).await?);
 
-    set_variant_spec_prop_data(ctx, &variant, &mut variant_spec_builder, func_specs).await?;
+    set_variant_spec_prop_data(
+        ctx,
+        &variant,
+        &mut variant_spec_builder,
+        SchemaVariantSpecPropRoot::Domain,
+        func_specs,
+    )
+    .await?;
+    set_variant_spec_prop_data(
+        ctx,
+        &variant,
+        &mut variant_spec_builder,
+        SchemaVariantSpecPropRoot::ResourceValue,
+        func_specs,
+    )
+    .await?;
 
     build_leaf_function_specs(ctx, *variant.id(), func_specs)
         .await?
@@ -658,9 +675,10 @@ async fn set_variant_spec_prop_data(
     ctx: &DalContext,
     variant: &SchemaVariant,
     variant_spec: &mut SchemaVariantSpecBuilder,
+    prop_root: SchemaVariantSpecPropRoot,
     func_specs: &HashMap<FuncId, FuncSpec>,
 ) -> PkgResult<()> {
-    let mut prop_tree = PropTree::new(ctx, false, Some(*variant.id())).await?;
+    let mut prop_tree = PropTree::new(ctx, true, Some(*variant.id())).await?;
     let root_tree_node = prop_tree
         .root_props
         .pop()
@@ -670,11 +688,26 @@ async fn set_variant_spec_prop_data(
             "prop tree contained multiple root props",
         ));
     }
-    let domain_tree_node = root_tree_node
-        .children
-        .into_iter()
-        .find(|tree_node| tree_node.name == "domain" && tree_node.path == "/root/")
-        .ok_or_else(|| PkgError::prop_tree_invalid("domain prop not found"))?;
+    let prop_root_tree_node = match root_tree_node.children.into_iter().find(|tree_node| {
+        match prop_root {
+            SchemaVariantSpecPropRoot::Domain => {
+                tree_node.name == "domain" && tree_node.path == "/root/"
+            }
+            SchemaVariantSpecPropRoot::ResourceValue => {
+                tree_node.name == "value" && tree_node.path == "/root/resource/"
+            }
+        }
+    }) {
+        Some(root_tree_node) => root_tree_node,
+        None => {
+            if matches!(prop_root, SchemaVariantSpecPropRoot::Domain) {
+                return Err(PkgError::prop_tree_invalid("domain prop not found"));
+            } else {
+                warn!("/root/resource/value prop not found, if value prop PR has merged, this should be an error not a warning.");
+                return Ok(());
+            }
+        }
+    };
 
     #[derive(Debug)]
     struct TraversalStackEntry {
@@ -684,8 +717,8 @@ async fn set_variant_spec_prop_data(
     }
 
     let mut stack: Vec<(PropTreeNode, Option<PropId>)> = Vec::new();
-    for domain_child_tree_node in domain_tree_node.children {
-        stack.push((domain_child_tree_node, None));
+    for child_tree_node in prop_root_tree_node.children {
+        stack.push((child_tree_node, None));
     }
 
     let mut traversal_stack: Vec<TraversalStackEntry> = Vec::new();
@@ -793,7 +826,7 @@ async fn set_variant_spec_prop_data(
 
         match entry.parent_prop_id {
             None => {
-                variant_spec.prop(prop_spec);
+                variant_spec.prop(prop_root, prop_spec);
             }
             Some(parent_prop_id) => {
                 match prop_children_map.entry(parent_prop_id) {

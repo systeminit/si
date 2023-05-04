@@ -14,7 +14,7 @@ use super::{
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
     AttrFuncInputSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
-    SchemaVariantSpecComponentType,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
 };
 
 #[derive(Clone, Debug)]
@@ -166,8 +166,40 @@ impl<'a> SiPkgSchemaVariant<'a> {
         )
     }
 
+    async fn get_prop_root_idx(
+        &self,
+        prop_root: SchemaVariantSpecPropRoot,
+    ) -> PkgResult<NodeIndex> {
+        self.source
+            .graph
+            .neighbors_directed(self.source.node_idx, Outgoing)
+            .find(|node_idx| {
+                let node = &self.source.graph[*node_idx].inner();
+                match prop_root {
+                    SchemaVariantSpecPropRoot::Domain => matches!(
+                        node,
+                        PkgNode::SchemaVariantChild(SchemaVariantChildNode::Domain)
+                    ),
+                    SchemaVariantSpecPropRoot::ResourceValue => matches!(
+                        node,
+                        PkgNode::SchemaVariantChild(SchemaVariantChildNode::ResourceValue)
+                    ),
+                }
+            })
+            .ok_or(SiPkgError::SchemaVariantChildNotFound(
+                match prop_root {
+                    SchemaVariantSpecPropRoot::Domain => SchemaVariantChildNode::Domain,
+                    SchemaVariantSpecPropRoot::ResourceValue => {
+                        SchemaVariantChildNode::ResourceValue
+                    }
+                }
+                .kind_str(),
+            ))
+    }
+
     pub async fn visit_prop_tree<F, Fut, I, C, E>(
         &'a self,
+        prop_root: SchemaVariantSpecPropRoot,
         process_prop_fn: F,
         parent_id: Option<I>,
         context: &'a C,
@@ -178,31 +210,19 @@ impl<'a> SiPkgSchemaVariant<'a> {
         E: std::convert::From<SiPkgError>,
         I: ToOwned + Clone,
     {
-        let domain_idxs = self
-            .source
-            .graph
-            .neighbors_directed(self.source.node_idx, Outgoing)
-            .find(|node_idx| {
-                matches!(
-                    &self.source.graph[*node_idx].inner(),
-                    PkgNode::SchemaVariantChild(SchemaVariantChildNode::Domain)
-                )
-            })
-            .ok_or(SiPkgError::CategoryNotFound(
-                SchemaVariantChildNode::Domain.kind_str(),
-            ))?;
+        let prop_root_idx = self.get_prop_root_idx(prop_root).await?;
 
         let mut child_node_idxs: Vec<_> = self
             .source
             .graph
-            .neighbors_directed(domain_idxs, Outgoing)
+            .neighbors_directed(prop_root_idx, Outgoing)
             .collect();
-        let domain_node_idx = match child_node_idxs.pop() {
+        let prop_root_node_idx = match child_node_idxs.pop() {
             Some(idx) => idx,
-            None => Err(SiPkgError::DomainPropNotFound(self.hash()))?,
+            None => Err(SiPkgError::PropRootNotFound(prop_root, self.hash()))?,
         };
         if !child_node_idxs.is_empty() {
-            Err(SiPkgError::DomainPropMultipleFound(self.hash()))?;
+            Err(SiPkgError::PropRootMultipleFound(prop_root, self.hash()))?;
         }
 
         // Skip processing the domain prop as a `dal::SchemaVariant` already guarantees such a prop
@@ -210,7 +230,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         // to be ready for processing.
         let mut stack = Self::prop_stack_from_source(
             self.source.clone(),
-            domain_node_idx,
+            prop_root_node_idx,
             parent_id.to_owned(),
         )?;
 
@@ -232,27 +252,17 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.hash
     }
 
-    pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
-        let mut builder = SchemaVariantSpec::builder();
-
-        builder
-            .name(self.name())
-            .component_type(self.component_type);
-
-        if let Some(link) = self.link() {
-            builder.link(link.to_owned());
-        }
-
-        if let Some(color) = self.color() {
-            builder.color(color);
-        }
-
+    async fn build_prop_specs(
+        &self,
+        prop_root: SchemaVariantSpecPropRoot,
+        builder: &mut SchemaVariantSpecBuilder,
+    ) -> PkgResult<()> {
         let context = PropSpecVisitContext {
             prop_stack: Mutex::new(VecDeque::new()),
             prop_parents: Mutex::new(HashMap::new()),
         };
 
-        self.visit_prop_tree(create_prop_stack, None, &context)
+        self.visit_prop_tree(prop_root, create_prop_stack, None, &context)
             .await?;
 
         let prop_stack = context.prop_stack.into_inner();
@@ -298,9 +308,27 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     }
                 },
                 None => {
-                    builder.prop(spec);
+                    builder.prop(prop_root, spec);
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
+        let mut builder = SchemaVariantSpec::builder();
+
+        builder
+            .name(self.name())
+            .component_type(self.component_type);
+
+        if let Some(link) = self.link() {
+            builder.link(link.to_owned());
+        }
+
+        if let Some(color) = self.color() {
+            builder.color(color);
         }
 
         for command_func in self.command_funcs()? {
@@ -322,6 +350,11 @@ impl<'a> SiPkgSchemaVariant<'a> {
         for si_prop_func in self.si_prop_funcs()? {
             builder.si_prop_func(si_prop_func.try_into()?);
         }
+
+        self.build_prop_specs(SchemaVariantSpecPropRoot::Domain, &mut builder)
+            .await?;
+        self.build_prop_specs(SchemaVariantSpecPropRoot::ResourceValue, &mut builder)
+            .await?;
 
         Ok(builder.build()?)
     }

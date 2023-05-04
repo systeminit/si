@@ -4,6 +4,10 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 
+/// SiPropFuncs track custom functions for for props created for all schema variants and not part
+/// of the domain tree (which varies for each variant). Currently these are the props under the
+/// /root/si Object and also some props in the resource Object that are also invariant across
+/// schema variants but which can have custom functions
 #[derive(
     Debug,
     Serialize,
@@ -21,6 +25,7 @@ use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 pub enum SiPropFuncSpecKind {
     Name,
     Color,
+    ResourcePayload,
 }
 
 impl SiPropFuncSpecKind {
@@ -28,6 +33,7 @@ impl SiPropFuncSpecKind {
         match self {
             Self::Name => vec!["root", "si", "name"],
             Self::Color => vec!["root", "si", "color"],
+            Self::ResourcePayload => vec!["root", "resource", "payload"],
         }
     }
 }

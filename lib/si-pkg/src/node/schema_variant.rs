@@ -95,6 +95,9 @@ impl NodeChild for SchemaVariantSpec {
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::Domain(self.domain.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(SchemaVariantChild::ResourceValue(
+                    self.resource_value.clone(),
+                )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(SchemaVariantChild::LeafFunctions(
                     self.leaf_functions.clone(),
                 )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,

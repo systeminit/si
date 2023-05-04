@@ -14,9 +14,10 @@ pub use spec::{
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec,
     LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec,
     PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SiPropFuncSpec,
-    SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity, SocketSpecKind,
-    SpecError, ValidationSpec, ValidationSpecKind, WorkflowSpec, WorkflowSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    WorkflowSpec, WorkflowSpecBuilder,
 };
 
 #[cfg(test)]
@@ -139,7 +140,12 @@ mod tests {
         // Ensure we get the props
         let props: Mutex<Vec<String>> = Mutex::new(Vec::new());
         variant
-            .visit_prop_tree(prop_visitor, None, &props)
+            .visit_prop_tree(
+                SchemaVariantSpecPropRoot::Domain,
+                prop_visitor,
+                None,
+                &props,
+            )
             .await
             .expect("able to visit prop tree");
 

@@ -34,17 +34,17 @@ pub use {
 
 use crate::{
     node::{CategoryNode, PkgNode},
-    spec::{FuncSpec, PkgSpec, SpecError},
+    spec::{FuncSpec, PkgSpec, SchemaVariantSpecPropRoot, SpecError},
 };
 
 #[derive(Debug, Error)]
 pub enum SiPkgError {
     #[error("Package missing required category: {0}")]
     CategoryNotFound(&'static str),
-    #[error("could not find pkg node domain prop for variant with hash={0}")]
-    DomainPropNotFound(Hash),
+    #[error("could not find pkg node root prop {0} for variant with hash={1}")]
+    PropRootNotFound(SchemaVariantSpecPropRoot, Hash),
     #[error("found multiple pkg node domain props for variant with hash={0}")]
-    DomainPropMultipleFound(Hash),
+    PropRootMultipleFound(SchemaVariantSpecPropRoot, Hash),
     #[error(transparent)]
     Fs(#[from] FsError),
     #[error(transparent)]

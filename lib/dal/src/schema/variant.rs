@@ -154,6 +154,8 @@ pub enum SchemaVariantError {
     AttributeValueDoesNotHaveParent(AttributeValueId),
     #[error("schema variant definition error")]
     SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
+    #[error("cannot find prop at path {1} for SchemaVariant {0} and Visibility {2:?}")]
+    PropNotFoundAtPath(SchemaVariantId, String, Visibility),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -741,6 +743,13 @@ impl SchemaVariant {
         path: &[&str],
     ) -> SchemaVariantResult<Prop> {
         let path = path.join(PROP_PATH_SEPARATOR);
-        Ok(Prop::find_prop_by_raw_path(ctx, schema_variant_id, &path).await?)
+
+        match Prop::find_prop_by_raw_path(ctx, schema_variant_id, &path).await {
+            Ok(prop) => Ok(prop),
+            Err(PropError::NotFoundAtPath(path, visiblity)) => Err(
+                SchemaVariantError::PropNotFoundAtPath(schema_variant_id, path, visiblity),
+            ),
+            Err(err) => Err(err)?,
+        }
     }
 }
