@@ -1,10 +1,11 @@
 use std::path::PathBuf;
+use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    FuncUniqueId, SiPkg, SiPkgAttrFuncInputView, SiPkgCommandFunc, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
-    SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
+    FuncUniqueId, SchemaVariantSpecPropRoot, SiPkg, SiPkgAttrFuncInputView, SiPkgCommandFunc,
+    SiPkgError, SiPkgFunc, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
 };
 
 use crate::{
@@ -20,7 +21,7 @@ use crate::{
     AttributeValue, AttributeValueError, CommandPrototype, CommandPrototypeContext, DalContext,
     ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncDescription,
     FuncDescriptionContents, FuncError, FuncId, InternalProvider, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariant, SchemaVariantId, StandardModel, WorkflowPrototype,
+    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, WorkflowPrototype,
     WorkflowPrototypeContext,
 };
 
@@ -455,6 +456,34 @@ async fn create_workflow(
     Ok(())
 }
 
+async fn create_props(
+    ctx: &DalContext,
+    variant_spec: &SiPkgSchemaVariant<'_>,
+    prop_root: SchemaVariantSpecPropRoot,
+    prop_root_prop_id: PropId,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    func_map: &FuncMap,
+) -> PkgResult<(Vec<AttrFuncInfo>, Vec<DefaultValueInfo>)> {
+    let context = PropVisitContext {
+        ctx,
+        schema_id,
+        schema_variant_id,
+        func_map,
+        attr_funcs: Mutex::new(vec![]),
+        default_values: Mutex::new(vec![]),
+    };
+
+    variant_spec
+        .visit_prop_tree(prop_root, create_prop, Some(prop_root_prop_id), &context)
+        .await?;
+
+    Ok((
+        context.attr_funcs.into_inner(),
+        context.default_values.into_inner(),
+    ))
+}
+
 async fn create_schema_variant(
     ctx: &DalContext,
     schema: &mut Schema,
@@ -479,15 +508,6 @@ async fn create_schema_variant(
             let (mut schema_variant, root_prop) =
                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name()).await?;
 
-            let context = PropVisitContext {
-                ctx,
-                schema_id: *schema.id(),
-                schema_variant_id: *schema_variant.id(),
-                func_map,
-                attr_funcs: Mutex::new(vec![]),
-                default_values: Mutex::new(vec![]),
-            };
-
             schema
                 .set_default_schema_variant_id(ctx, Some(schema_variant.id()))
                 .await?;
@@ -496,10 +516,39 @@ async fn create_schema_variant(
                 schema_variant.set_color(ctx, color.to_owned()).await?;
             }
 
-            let domain_prop_id = root_prop.domain_prop_id;
-            variant_spec
-                .visit_prop_tree(create_prop, Some(domain_prop_id), &context)
-                .await?;
+            let (domain_attr_funcs, domain_default_values) = create_props(
+                ctx,
+                &variant_spec,
+                SchemaVariantSpecPropRoot::Domain,
+                root_prop.domain_prop_id,
+                *schema.id(),
+                *schema_variant.id(),
+                func_map,
+            )
+            .await?;
+
+            let (rv_attr_funcs, rv_default_values) = match schema_variant
+                .find_prop(ctx, &["root", "resource", "value"])
+                .await
+            {
+                Ok(resource_value_prop) => {
+                    create_props(
+                        ctx,
+                        &variant_spec,
+                        SchemaVariantSpecPropRoot::ResourceValue,
+                        *resource_value_prop.id(),
+                        *schema.id(),
+                        *schema_variant.id(),
+                        func_map,
+                    )
+                    .await?
+                }
+                Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
+                    warn!("Cannot find /root/resource/value prop, so skipping creating props under the resource value. If the /root/resource/value pr has been merged, this should be an error!");
+                    (vec![], vec![])
+                }
+                Err(err) => Err(err)?,
+            };
 
             schema_variant
                 .finalize(ctx, Some(variant_spec.component_type().into()))
@@ -548,11 +597,17 @@ async fn create_schema_variant(
                 .await?;
             }
 
-            for default_value_info in context.default_values.into_inner() {
+            for default_value_info in domain_default_values
+                .into_iter()
+                .chain(rv_default_values.into_iter())
+            {
                 set_default_value(ctx, default_value_info).await?;
             }
 
-            for attr_func in context.attr_funcs.into_inner() {
+            for attr_func in domain_attr_funcs
+                .into_iter()
+                .chain(rv_attr_funcs.into_iter())
+            {
                 create_attribute_function_for_prop(ctx, *schema_variant.id(), attr_func, func_map)
                     .await?;
             }

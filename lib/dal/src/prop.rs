@@ -7,7 +7,9 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::standard_model::{finish_create_from_row, object_from_row, objects_from_rows};
+use crate::standard_model::{
+    finish_create_from_row, object_option_from_row_option, objects_from_rows,
+};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     func::{
@@ -56,6 +58,8 @@ pub enum PropError {
     MissingFuncById(FuncId),
     #[error("prop not found: {0} ({1:?})")]
     NotFound(PropId, Visibility),
+    #[error("prop not found at path: {0} {1:?}")]
+    NotFoundAtPath(String, Visibility),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
@@ -303,7 +307,7 @@ impl Prop {
             .txns()
             .await?
             .pg()
-            .query_one(
+            .query_opt(
                 FIND_PROP_IN_TREE,
                 &[
                     ctx.tenancy(),
@@ -313,7 +317,11 @@ impl Prop {
                 ],
             )
             .await?;
-        Ok(object_from_row(row)?)
+
+        object_option_from_row_option(row)?.ok_or(PropError::NotFoundAtPath(
+            raw_path.into(),
+            *ctx.visibility(),
+        ))
     }
 
     pub async fn create_default_prototypes_and_values(

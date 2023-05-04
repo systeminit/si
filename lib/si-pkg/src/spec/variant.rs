@@ -30,6 +30,24 @@ pub enum SchemaVariantSpecComponentType {
     AggregationFrame,
 }
 
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Copy,
+)]
+pub enum SchemaVariantSpecPropRoot {
+    Domain,
+    ResourceValue,
+}
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
@@ -46,6 +64,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(private, default = "Self::default_domain()")]
     pub domain: PropSpec,
+
+    #[builder(private, default = "Self::default_resource_value()")]
+    pub resource_value: PropSpec,
 
     #[builder(setter(each(name = "command_func"), into), default)]
     pub command_funcs: Vec<CommandFuncSpec>,
@@ -71,7 +92,6 @@ impl SchemaVariantSpec {
         SchemaVariantSpecBuilder::default()
     }
 }
-
 impl SchemaVariantSpecBuilder {
     fn default_domain() -> PropSpec {
         PropSpec::Object {
@@ -87,6 +107,20 @@ impl SchemaVariantSpecBuilder {
         }
     }
 
+    fn default_resource_value() -> PropSpec {
+        PropSpec::Object {
+            validations: None,
+            default_value: None,
+            name: "value".to_string(),
+            entries: vec![],
+            func_unique_id: None,
+            inputs: None,
+            widget_kind: Some(PropSpecWidgetKind::Header),
+            widget_options: None,
+            hidden: Some(true),
+        }
+    }
+
     #[allow(unused_mut)]
     pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
     where
@@ -96,10 +130,29 @@ impl SchemaVariantSpecBuilder {
         Ok(self.link(converted))
     }
 
+    pub fn domain_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+        self.prop(SchemaVariantSpecPropRoot::Domain, item)
+    }
+
+    pub fn resource_value_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+        self.prop(SchemaVariantSpecPropRoot::ResourceValue, item)
+    }
+
     #[allow(unused_mut)]
-    pub fn prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+    pub fn prop(
+        &mut self,
+        root: SchemaVariantSpecPropRoot,
+        item: impl Into<PropSpec>,
+    ) -> &mut Self {
         let converted: PropSpec = item.into();
-        match self.domain.get_or_insert_with(Self::default_domain) {
+        match match root {
+            SchemaVariantSpecPropRoot::Domain => {
+                self.domain.get_or_insert_with(Self::default_domain)
+            }
+            SchemaVariantSpecPropRoot::ResourceValue => self
+                .resource_value
+                .get_or_insert_with(Self::default_resource_value),
+        } {
             PropSpec::Object { entries, .. } => entries.push(converted),
             invalid => unreachable!(
                 "domain prop is an object but was found to be: {:?}",
@@ -110,12 +163,16 @@ impl SchemaVariantSpecBuilder {
     }
 
     #[allow(unused_mut)]
-    pub fn try_prop<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
+    pub fn try_prop<I>(
+        &mut self,
+        root: SchemaVariantSpecPropRoot,
+        item: I,
+    ) -> Result<&mut Self, I::Error>
     where
         I: TryInto<PropSpec>,
     {
         let converted: PropSpec = item.try_into()?;
-        Ok(self.prop(converted))
+        Ok(self.prop(root, converted))
     }
 
     #[allow(unused_mut)]

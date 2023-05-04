@@ -17,8 +17,9 @@ const VARIANT_CHILD_TYPE_COMMAND_FUNCS: &str = "command_funcs";
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS: &str = "func_descriptions";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
-const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
+const VARIANT_CHILD_TYPE_RESOURCE_VALUE: &str = "resource_value";
 const VARIANT_CHILD_TYPE_SI_PROP_FUNCS: &str = "si_prop_funcs";
+const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
 const VARIANT_CHILD_TYPE_WORKFLOWS: &str = "workflows";
 
 const KEY_KIND_STR: &str = "kind";
@@ -30,8 +31,9 @@ pub enum SchemaVariantChild {
     Domain(PropSpec),
     FuncDescriptions(Vec<FuncDescriptionSpec>),
     LeafFunctions(Vec<LeafFunctionSpec>),
-    Sockets(Vec<SocketSpec>),
+    ResourceValue(PropSpec),
     SiPropFuncs(Vec<SiPropFuncSpec>),
+    Sockets(Vec<SocketSpec>),
     Workflows(Vec<WorkflowSpec>),
 }
 
@@ -41,8 +43,9 @@ pub enum SchemaVariantChildNode {
     Domain,
     FuncDescriptions,
     LeafFunctions,
-    Sockets,
+    ResourceValue,
     SiPropFuncs,
+    Sockets,
     Workflows,
 }
 
@@ -53,8 +56,9 @@ impl SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
-            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
+            Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
+            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -67,8 +71,9 @@ impl NameStr for SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::FuncDescriptions => VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
-            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
+            Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
+            Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
             Self::Workflows => VARIANT_CHILD_TYPE_WORKFLOWS,
         }
     }
@@ -93,8 +98,9 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_FUNC_DESCRIPTIONS => Self::FuncDescriptions,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
-            VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
+            VARIANT_CHILD_TYPE_RESOURCE_VALUE => Self::ResourceValue,
             VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
+            VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
             VARIANT_CHILD_TYPE_WORKFLOWS => Self::Workflows,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
@@ -131,6 +137,16 @@ impl NodeChild for SchemaVariantChild {
                     NodeKind::Tree,
                     Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Domain),
                     vec![domain],
+                )
+            }
+            Self::ResourceValue(resource_value) => {
+                let resource_value = Box::new(resource_value.clone())
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>;
+
+                NodeWithChildren::new(
+                    NodeKind::Tree,
+                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::ResourceValue),
+                    vec![resource_value],
                 )
             }
             Self::FuncDescriptions(descriptions) => NodeWithChildren::new(

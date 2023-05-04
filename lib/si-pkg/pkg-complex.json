@@ -91,6 +91,11 @@
               "inputs": ["domain"]
             }
           ],
+          "resourceValue": {
+            "name": "value",
+            "kind": "object",
+            "entries": []
+          },
           "domain": {
             "name": "domain",
             "kind": "object",
