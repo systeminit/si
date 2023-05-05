@@ -1,0 +1,23 @@
+load("@prelude//rust:cargo_buildscript.bzl", "buildscript_run")
+
+rust_library(
+    name = "veritech-server",
+    edition = "2021",
+    deps = [
+        "//lib/deadpool-cyclone:deadpool-cyclone",
+        "//lib/nats-subscriber:nats-subscriber",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-settings:si-settings",
+        "//lib/telemetry-rs:telemetry",
+        "//lib/veritech-core:veritech-core",
+        "//third-party/rust:chrono",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:futures",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

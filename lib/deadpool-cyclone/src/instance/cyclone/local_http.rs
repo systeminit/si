@@ -17,6 +17,7 @@ use cyclone_core::{
 };
 use derive_builder::Builder;
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -404,7 +405,8 @@ impl LocalHttpInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a TCP socket.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum LocalHttpSocketStrategy {
     /// Randomly assign a port.
     Random,

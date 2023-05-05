@@ -18,6 +18,7 @@ use cyclone_core::{
 };
 use derive_builder::Builder;
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
 use tempfile::{NamedTempFile, TempPath};
 use thiserror::Error;
 use tokio::{
@@ -418,7 +419,8 @@ impl LocalUdsInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a local Unix domain socket.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum LocalUdsSocketStrategy {
     /// Randomly assign a socket from a temp file.
     Random,
