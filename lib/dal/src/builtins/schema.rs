@@ -19,8 +19,8 @@ use crate::{
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
     FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
-    InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind,
-    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema,
+    SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
     SelectedTestBuiltinSchemas, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
@@ -550,26 +550,6 @@ impl MigrationDriver {
             prop.set_doc_link(ctx, doc_link).await?;
         }
         Ok(prop)
-    }
-
-    /// Find the child of a [`Prop`](crate::Prop) by name.
-    ///
-    /// _Use with caution!_
-    pub async fn find_child_prop_by_name(
-        &self,
-        ctx: &DalContext,
-        prop_id: PropId,
-        child_prop_name: &str,
-    ) -> BuiltinsResult<Prop> {
-        let prop = Prop::get_by_id(ctx, &prop_id)
-            .await?
-            .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
-        for current in prop.child_props(ctx).await? {
-            if current.name() == child_prop_name {
-                return Ok(current);
-            }
-        }
-        Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
     }
 
     /// Set a default [`Value`](serde_json::Value) for a given [`Prop`](crate::Prop) in a

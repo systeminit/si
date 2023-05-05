@@ -166,8 +166,8 @@ impl MigrationDriver {
                 })?;
 
         // domain/region to si/name
-        let si_name_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
+        let si_name_prop = schema_variant
+            .find_prop(ctx, &["root", "si", "name"])
             .await?;
 
         self.set_default_value_for_prop(ctx, *si_name_prop.id(), serde_json::json!["region"])

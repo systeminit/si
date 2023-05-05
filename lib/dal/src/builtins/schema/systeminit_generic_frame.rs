@@ -10,7 +10,7 @@ impl MigrationDriver {
         ui_menu_category: &str,
         node_color: &str,
     ) -> BuiltinsResult<()> {
-        let (_schema, mut schema_variant, root_prop, _, _, _) = match self
+        let (_schema, mut schema_variant, _root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
@@ -30,8 +30,8 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        let mut type_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
+        let mut type_prop = schema_variant
+            .find_prop(ctx, &["root", "si", "type"])
             .await?;
         type_prop.set_hidden(ctx, true).await?;
 
