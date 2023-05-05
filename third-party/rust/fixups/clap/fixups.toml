@@ -1,0 +1,7 @@
+# vendored-date: 2023-05-03
+# project: https://github.com/facebook/buck2
+# commit-hash: 009d2158f5b845cbb2cea9b2d1e9e0d4d42887b1
+# commit-date: 2023-05-02T16:14:27-0700
+# source: https://github.com/facebook/buck2/blob/009d2158f5b845cbb2cea9b2d1e9e0d4d42887b1/shim/third-party/rust/fixups/clap/fixups.toml
+
+omit_features = ["deprecated"]

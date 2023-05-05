@@ -1,6 +1,5 @@
 use std::{fmt, sync::Arc};
 
-use nats_client as nats;
 use telemetry::prelude::*;
 use tokio::task::spawn_blocking;
 

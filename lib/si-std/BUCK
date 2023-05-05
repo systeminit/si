@@ -1,8 +1,9 @@
 rust_library(
-  name = "si-std",
-  deps = [
-    "//third-party:serde",
-  ],
-  srcs = glob(["src/**/*.rs"]),
-  visibility = ["PUBLIC"],
+    name = "si-std",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:serde",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
 )

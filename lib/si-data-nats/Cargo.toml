@@ -6,22 +6,16 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-crossbeam-channel = { version = "0.5.1" }
-futures = { version = "0.3.17" }
-nats-client = { package = "nats", version = "0.24.0" }
-serde = { version = "1.0.123", features = ["derive"] }
-serde_json = { version = "1.0.64" }
+crossbeam-channel = { workspace = true }
+futures = { workspace = true }
+nats = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
-nkeys = "0.2.0"
-tokio-test = "0.4.2"
-tracing-subscriber = { version = "0.3.11", features = [ "env-filter", "std" ] }
-
-[package.metadata.cargo-udeps.ignore]
-development = [
-  # used in NATS doctest to run async code with a suitable test runtime
-  "tokio-test",
-]
+nkeys = { workspace = true }
+tokio-test = { workspace = true }
+tracing-subscriber = { workspace = true }

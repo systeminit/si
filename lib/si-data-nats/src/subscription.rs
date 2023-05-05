@@ -14,7 +14,7 @@ use super::{ConnectionMetadata, Error, Message, Result};
 /// A `Subscription` receives `Message`s published to specific NATS `Subject`s.
 #[derive(Debug)]
 pub struct Subscription {
-    inner: nats_client::Subscription,
+    inner: nats::Subscription,
     next: Option<NextMessage>,
     #[allow(dead_code)]
     shutdown_tx: crossbeam_channel::Sender<()>,
@@ -26,7 +26,7 @@ pub struct Subscription {
 
 impl Subscription {
     pub(crate) fn new(
-        inner: nats_client::Subscription,
+        inner: nats::Subscription,
         subject: String,
         connection_metadata: Arc<ConnectionMetadata>,
         sub_span: Span,
@@ -296,7 +296,7 @@ impl Stream for Subscription {
 /// to completion.
 #[derive(Debug)]
 struct NextMessage {
-    handle: JoinHandle<Option<nats_client::Message>>,
+    handle: JoinHandle<Option<nats::Message>>,
     metadata: Arc<ConnectionMetadata>,
 }
 

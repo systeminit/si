@@ -6,13 +6,13 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-derive_builder = { version = "0.12" }
-futures = "0.3.13"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-settings = { path = "../../lib/si-settings" }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = "1.0.24"
-tokio = { version = "1.12.0", features = ["full"] }
-ulid = { version = "1", features = ["serde"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+ulid = { workspace = true }

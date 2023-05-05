@@ -1,0 +1,13 @@
+rust_library(
+    name = "telemetry",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:async-trait",
+        "//third-party/rust:opentelemetry",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

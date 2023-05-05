@@ -1,0 +1,13 @@
+rust_binary(
+    name = "council",
+    edition = "2021",
+    deps = [
+        "//lib/council-server:council-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

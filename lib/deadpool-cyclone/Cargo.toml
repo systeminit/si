@@ -8,30 +8,22 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = { version = "0.1.51" }
+async-trait = { workspace = true }
 cyclone-client = { path = "../cyclone-client" }
 cyclone-core = { path = "../cyclone-core" }
-deadpool = { version = "0.9.0", features = ["rt_tokio_1"] }
-derive_builder = { version = "0.12" }
-futures = { version = "0.3.17" }
-nix = { version = "0.26" }
-tempfile = { version = "3.2.0" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
-tracing = { version = "0.1" }
+deadpool = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+nix = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
-serde = "1.0.130"
-serde_json = "1.0.68"
-tokio = { version = "1.12.0", features = ["full"] }
-tokio-test = "0.4.2"
-tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
-uuid = { version = "1.1.2", features = ["serde", "v4"] }
-
-[package.metadata.cargo-udeps.ignore]
-development = [
-  # used in examples to add tracing support
-  "tracing-subscriber",
-  # used in instance doctests to run async code with a suitable test runtime
-  "tokio-test",
-]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-test = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }

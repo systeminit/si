@@ -1,0 +1,22 @@
+rust_library(
+    name = "config-file",
+    edition = "2021",
+    features = [
+        "config",
+        "default",
+        "layered",
+        "layered-toml",
+        "serde",
+        "toml",
+    ],
+    deps = [
+        "//third-party/rust:config",
+        "//third-party/rust:directories",
+        "//third-party/rust:pathdiff",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

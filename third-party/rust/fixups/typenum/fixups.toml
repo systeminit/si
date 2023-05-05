@@ -1,0 +1,10 @@
+# vendored-date: 2023-05-01
+# project: https://github.com/facebook/buck2
+# commit-hash: c42dbc0761faa6ba93d6a59870c9c67f97a15a50
+# commit-date: 2023-04-30T21:41:52-0700
+# source: https://github.com/facebook/buck2/blob/c42dbc0761faa6ba93d6a59870c9c67f97a15a50/shim/third-party/rust/fixups/typenum/fixups.toml
+
+features = ["force_unix_path_separator"]
+
+[[buildscript]]
+[buildscript.gen_srcs]
