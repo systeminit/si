@@ -25,7 +25,8 @@
     "rc:fmt": "cargo fmt",
     "rc:check": "cargo check",
     "rc:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps",
-    "nodev": "node -v"
+    "nodev": "node -v",
+    "whichnode": "which node"
   },
   "devDependencies": {
     "fast-glob": "^3.2.12",
@@ -38,7 +39,7 @@
   },
   "volta": {
     "node": "18.16.0",
-    "pnpm": "8.2.0"
+    "pnpm": "8.4.0"
   },
-  "packageManager": "pnpm@8.2.0"
+  "packageManager": "pnpm@8.4.0"
 }

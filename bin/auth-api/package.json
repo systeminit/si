@@ -6,10 +6,10 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "node --watch --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
-    "build": "tsc --incremental false",
+    "build": "tsc --incremental false -p tsconfig-build.json",
     "boot": "node --experimental-specifier-resolution=node ./dist/main.js",
     "boot-ts": "node --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
-    "lint": "eslint src --ext .ts,.cjs",
+    "lint": "eslint src test --ext .ts,.cjs",
     "lint:strict": "STRICT_LINT=1 pnpm run lint",
     "lint:fix": "pnpm run lint --fix",
     "db:reset": "prisma migrate reset --force && prisma migrate deploy && prisma generate",
@@ -17,21 +17,24 @@
     "docker:tag:aws": "docker tag si/si-auth-api:latest 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",
     "docker:push:aws": "docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-auth-api:latest",
     "docker:deploy:aws": "pnpm run docker:build:aws && pnpm run docker:tag:aws && pnpm run docker:push:aws",
-    "docker:build:local": "cd ../.. && docker build -f bin/auth-api/Dockerfile . -t si/si-auth-api-local"
+    "docker:build:local": "cd ../.. && docker build -f bin/auth-api/Dockerfile . -t si/si-auth-api-local",
+    "test:all": "NODE_ENV=test tap -j1 test/**/*.test.ts",
+    "test": "NODE_ENV=test tap",
+    "nodev": "node -v",
+    "whichnode": "which node"
   },
   "dependencies": {
     "@koa/cors": "^4.0.0",
     "@koa/router": "^12.0.0",
     "@prisma/client": "^4.12.0",
-    "@types/ioredis": "^5.0.0",
+    "@si/ts-lib": "workspace:*",
     "auth0": "^3.2.0",
     "axios": "^0.27.2",
     "chalk": "^5.2.0",
     "debug": "^4.3.4",
     "dotenv": "^16.0.3",
-    "dotenv-expand": "^10.0.0",
     "exit-hook": "^3.2.0",
-    "glob": "^8.1.0",
+    "glob": "^10.2.2",
     "ioredis": "^5.3.1",
     "is-promise": "^4.0.0",
     "jsonwebtoken": "^9.0.0",
@@ -55,8 +58,11 @@
     "@si/tsconfig": "workspace:*",
     "@swc/core": "^1.3.36",
     "@types/auth0": "^2.35.11",
+    "@types/chai": "^4.3.5",
+    "@types/chai-subset": "^1.3.3",
     "@types/debug": "^4.1.7",
     "@types/glob": "^8.1.0",
+    "@types/ioredis": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/koa": "^2.13.5",
     "@types/koa-bodyparser": "^4.3.10",
@@ -64,13 +70,34 @@
     "@types/koa__router": "^12.0.0",
     "@types/lodash": "^4.14.191",
     "@types/marked": "^4.0.8",
+    "@types/nock": "^11.1.0",
     "@types/node": "^18.15.11",
     "@types/request-ip": "^0.0.37",
+    "@types/supertest": "^2.0.12",
+    "@types/tap": "^15.0.8",
     "@types/uuid": "^9.0.1",
+    "chai": "^4.3.7",
+    "chai-subset": "^1.6.0",
+    "nock": "^13.3.1",
+    "supertest": "^6.3.3",
+    "tap": "^16.3.4",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^4.9.5"
   },
   "volta": {
     "extends": "../../package.json"
+  },
+  "tap": {
+    "coverage": false,
+    "node-arg": [
+      "--no-warnings",
+      "--loader",
+      "ts-node/esm",
+      "--experimental-specifier-resolution=node"
+    ],
+    "ts": false,
+    "before": "test/helpers/global-setup.ts",
+    "after": "test/helpers/global-teardown.ts"
   }
 }

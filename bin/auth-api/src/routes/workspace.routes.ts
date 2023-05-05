@@ -58,6 +58,7 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
   const workspace = await handleWorkspaceIdParam(ctx);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const authUser = ctx.state.authUser!;
 
   // generate a new single use authentication code that we will send to the instance

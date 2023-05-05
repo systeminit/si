@@ -7,6 +7,7 @@ import { tryCatch } from "../lib/try-catch";
 import { getQueryString } from "../lib/querystring";
 
 const auth0Client = new Auth0.AuthenticationClient({
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
   domain: process.env.AUTH0_DOMAIN!,
   clientId: process.env.AUTH0_CLIENT_ID!,
 });
@@ -145,8 +146,6 @@ export async function completeAuth0TokenExchange(code: string) {
   //   email: 'theozero@gmail.com',
   //   email_verified: false
   // }
-
-  // console.log(profile);
 
   return { profile, token };
 }

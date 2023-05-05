@@ -2,7 +2,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { getThisDirname } from "./lib/this-file-path";
 
-const __dirname = getThisDirname(import.meta.url);
+const __dirname2 = getThisDirname(import.meta.url);
 
 // config setup inspired by vite and other similar tools
 // will replace with more feature complete config system later if we need
@@ -18,6 +18,6 @@ const envFiles = [
 ];
 envFiles.forEach((filename) => {
   dotenv.config({
-    path: path.resolve(`${__dirname}/../${filename}`),
+    path: path.resolve(`${__dirname2}/../${filename}`),
   });
 });

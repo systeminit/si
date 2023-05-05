@@ -1,19 +1,25 @@
 {
   "extends": "@si/tsconfig/tsconfig.node.json",
   "ts-node": {
-    "transpileOnly": true,
-    "transpiler": "ts-node/transpilers/swc",
+    "swc": true,
+    // "transpileOnly": true,
+    // "transpiler": "ts-node/transpilers/swc",
     "files": true,
     "compilerOptions": {
       "module": "esnext",
-      "isolatedModules": false
+      "isolatedModules": false,
     }
   },
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "./",
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true
   },
   "include": [
-    "**/*.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
   ],
 }

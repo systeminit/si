@@ -97,7 +97,7 @@ COPY ./config ./config
 
 # # ENV NODE_ENV=production
 COPY --from=builder /app/bin/auth-api/pruned .
-COPY --from=builder /app/bin/auth-api/dist ./dist
+COPY --from=builder /app/bin/auth-api/dist/src ./dist
 
 # have to re-run, as it seems the prune call wipes the generated prisma client...
 # TODO figure out the best way to avoid this

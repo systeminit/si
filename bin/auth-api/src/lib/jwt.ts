@@ -33,8 +33,10 @@ export function createJWT(
   payload: Record<string, any>,
   options?: Omit<JWT.SignOptions, 'algorithm'>,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return JWT.sign(payload, _JWT_PRIVATE_KEY!, { algorithm: "RS256", ...options });
 }
 export function verifyJWT(token: string) {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return JWT.verify(token, _JWT_PUBLIC_KEY!);
 }
