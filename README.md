@@ -1,36 +1,59 @@
 # System Initiative
 
-This is a monolithic repository containing the source for System Initiative (SI)
+This is a monolithic repository containing the source for System Initiative (SI).
 
-## Installation
+## Environment Setup
 
-First ensure that Docker is installed on your machine and that the `docker` executable is in your `PATH`.
+Running SI locally can be done in a variety of ways, but the officially supported method is to use the [Nix Flake](flake.nix)
+at the root of the repository.
+This section will focus on getting your environment ready to get SI up and running.
 
-This section is designed for the following architecture + platform combinations:
+### Choose a Supported Platform
 
-* `x86_64  (amd64)`: Arch Linux, Fedora, macOS, Pop!_OS, Ubuntu, WSL2
-* `aarch64 (arm64)`: macOS
+Using the flake requires using one of the following platforms:
 
-*aarch64 (arm64) depends on Rosetta 2 to properly execute, install it with `softwareupdate --install-rosetta`*
 
-*If your architecture + platform is not listed above it's probably not supported by the installation script. If that is the case, or you don't want the dependencies to be installed directly in your machine, you can use Nix to encapsulate them. Check the Nix section in the [DEVELOPING](./DEVELOPING.md) document for more information. If doing so, you can skip to the [Configuration](#configuration) section*
+| Architecture    | Operating System                                                                           |
+|-----------------|--------------------------------------------------------------------------------------------|
+| x86_64 (amd64)  | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
+| aarch64 (arm64) | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
 
-To continue the default installation process you must ensure that you have the `rust` toolchain and the `node` toolchain installed and available in your `PATH`. We recommend the following tools to help you manage those toolchains:
+**Platform Notes:**
+* Using macOS `aarch64 (arm64)` requires on Rosetta 2 (install it with `softwareupdate --install-rosetta`)
+* [NixOS](https://nixos.org/) will not likely work at this time (though, this may be desired in the future)
+* [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or configured to work with `nix`
+* Linux with MUSL instead of GNU *might* work, but it is untested
 
-* [**rustup**](https://rustup.rs) 🦀: Rust, `cargo`, etc.
-* [**volta**](https://volta.sh) ⚡: `node`, `npm`, etc.
+### Installation
 
-Now you can run the bootstrap script, that will install and update all dependencies.
+Once a platform is chosen, we can install the dependencies for using the flake.
 
-```bash
-./scripts/bootstrap.sh
-```
+1) `nix` with flakes enabled
+2) `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
+3) (optional, but recommended) [`direnv`](https://direnv.net) version `>= 2.30` hooked into your shell
 
-For more informations regarding the bootstrap script, or the installation process refer to [DEVELOPING](./DEVELOPING.md). Including troubleshooting and expanding it to support new architectures, or functionalities - generally needed to make more CLI tools available to custom Javascript functions.
+For `nix`, we highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
+official installer; one reason being that the former will enable flakes by default.
 
-*You can also refer to the [docs directory](./docs) for even more details.*
+For `docker`, the Docker Desktop version corresponding to your native architecture should be used on macOS.
+WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
+Native Linux or Linux VM users might be able to use `podman` a drop in replacement for `docker`, though this is untested.
 
-## Configuration
+For `direnv`, we recommend using it for both ease of running commands and editor integration.
+You can install it with [your package manager of choice](https://direnv.net/docs/installation.html), but at least
+version `2.30.x` must be used for the flake integration to work properly.
+If you're unsure which installation method to use or your package manager does not provide a compatible version, you
+can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
+
+### Running Commands
+
+All commands need to be run from the `nix` environment.
+If `direnv` is installed and [hooked into your shell](https://direnv.net/docs/hook.html), you can `cd` into
+the repository and `nix` will boostrap the environment for you using the flake.
+Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
+execute a command, or use the environment in whatever way your prefer.
+
+### Configuration
 
 You must authenticate to the AWS console and Docker Hub to ensure System Initiative will work properly.
 
@@ -74,7 +97,7 @@ make run//bin/veritech
 
 Wait for `veritech` to finish initializing, otherwise the system might behave weirdly, as custom functions execution will fail.
 
-The following should be be started in order, but the previous doesn't need to be fully initialized for the subsequent to start.
+The following should be started in order, but the previous doesn't need to be fully initialized for the subsequent to start.
 
 ```bash
 make run//bin/council
@@ -96,14 +119,21 @@ After everything is initialized, access it through: http://localhost:8080
 
 *Note: initial compilation times may be long, depending on the machine used*
 
-## Contributing
+## Tearing Down the Stack
 
-We highly recommend following the [Convential Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) format when committing changes.
-Our prefixes are derived from the official specification as well as the those found in [commitlint](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional), based on [Angular's commit conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md).
-When in doubt, use `feat`, `fix`, or `chore`!
+Stop all `make` targets and run the following command:
 
-Moreover, please sign your commits using `git commit -s`.
-You can amend an existing commit with `git commit -s --amend`, if needed.
+```bash
+make down
+```
+
+The above target will not only stop all running containers, but will remove them as well.
+
+## Additional Information For Environment Setup and Running the Stack
+
+For more information regarding the environment setup process and running the stack, refer to
+[DEVELOPING](./DEVELOPING.md).
+You can also refer to the [docs directory](./docs) for even more details.
 
 ## Architecture
 

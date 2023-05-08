@@ -8,8 +8,6 @@ use std::{
     sync::{Arc, Once},
 };
 
-#[cfg(debug_assertions)]
-use dal::check_runtime_dependencies;
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
@@ -477,12 +475,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     debug!("initializing crypto");
     sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
-
-    #[cfg(debug_assertions)]
-    {
-        info!("checking for required runtime dependencies");
-        check_runtime_dependencies()?;
-    }
 
     // Create a `ServicesContext`
     let services_ctx = test_context.create_services_context().await;

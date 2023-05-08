@@ -909,7 +909,6 @@ dependencies = [
  "ulid",
  "url",
  "veritech-client",
- "which",
 ]
 
 [[package]]
