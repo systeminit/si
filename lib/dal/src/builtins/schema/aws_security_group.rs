@@ -170,7 +170,7 @@ impl MigrationDriver {
 
         // Create Resource Prop Tree
 
-        // Prop: /resource/value/GroupName
+        // Prop: /resource_value/GroupName
         let mut sg_group_name_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -184,7 +184,7 @@ impl MigrationDriver {
             .set_refers_to_prop_id(ctx, Some(*group_name_prop.id()))
             .await?;
 
-        // Prop: /resource/value/GroupId
+        // Prop: /resource_value/GroupId
         let _sg_group_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -195,7 +195,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/OwnerId
+        // Prop: /resource_value/OwnerId
         let _sg_owner_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -206,7 +206,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/VpcId
+        // Prop: /resource_value/VpcId
         let mut sg_vpc_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -220,7 +220,7 @@ impl MigrationDriver {
             .set_refers_to_prop_id(ctx, Some(*vpc_id_prop.id()))
             .await?;
 
-        // Prop: /resource/value/Description
+        // Prop: /resource_value/Description
         let mut sg_description_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -243,7 +243,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Prop: /resource/value/IpPermissions
+        // Prop: /resource_value/IpPermissions
         let sg_ip_permissions_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -254,7 +254,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/IpPermission
+        // Prop: /resource_value/IpPermission
         let sg_ip_permission_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -272,7 +272,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Prop: /resource/value/IpPermissionsEgress
+        // Prop: /resource_value/IpPermissionsEgress
         let sg_ip_permissions_egress_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -283,7 +283,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/IpPermissionEgress
+        // Prop: /resource_value/IpPermissionEgress
         let sg_ip_permission_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -706,11 +706,19 @@ impl MigrationDriver {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_aws_security_group_rule_prop_tree(
         &self,
         ctx: &DalContext,
         prop_id: PropId,
         schema_variant_id: SchemaVariantId,
+        group_id_prop_id: Option<PropId>,
+        ip_protocol_prop_id: Option<PropId>,
+        to_port_prop_id: Option<PropId>,
+        from_port_prop_id: Option<PropId>,
+        cidr_ip_prop_id: Option<PropId>,
+        tags_array_prop_id: Option<PropId>,
+        tag_item_prop_id: Option<PropId>,
     ) -> BuiltinsResult<()> {
         let _security_group_rule_id_resource_prop = self
             .create_hidden_prop(
@@ -722,7 +730,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _security_group_rule_group_id_resource_prop = self
+        let mut security_group_rule_group_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "GroupId",
@@ -731,6 +739,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if group_id_prop_id.is_some() {
+            security_group_rule_group_id_resource_prop
+                .set_refers_to_prop_id(ctx, group_id_prop_id)
+                .await?;
+        }
 
         let _security_group_rule_group_owner_id_resource_prop = self
             .create_hidden_prop(
@@ -742,7 +755,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _security_group_rule_ip_protocol_resource_prop = self
+        let mut security_group_rule_ip_protocol_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "IpProtocol",
@@ -751,8 +764,13 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if ip_protocol_prop_id.is_some() {
+            security_group_rule_ip_protocol_resource_prop
+                .set_refers_to_prop_id(ctx, ip_protocol_prop_id)
+                .await?;
+        }
 
-        let _security_group_rule_from_port_resource_prop = self
+        let mut security_group_rule_from_port_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "FromPort",
@@ -761,8 +779,13 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if from_port_prop_id.is_some() {
+            security_group_rule_from_port_resource_prop
+                .set_refers_to_prop_id(ctx, from_port_prop_id)
+                .await?;
+        }
 
-        let _security_group_rule_to_port_resource_prop = self
+        let mut security_group_rule_to_port_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "ToPort",
@@ -771,6 +794,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if to_port_prop_id.is_some() {
+            security_group_rule_to_port_resource_prop
+                .set_refers_to_prop_id(ctx, to_port_prop_id)
+                .await?;
+        }
 
         let _security_group_rule_cidr_ipv6_resource_prop = self
             .create_hidden_prop(
@@ -782,7 +810,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _security_group_rule_cidr_ipv4_resource_prop = self
+        let mut security_group_rule_cidr_ipv4_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "CidrIpv4",
@@ -791,6 +819,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if cidr_ip_prop_id.is_some() {
+            security_group_rule_cidr_ipv4_resource_prop
+                .set_refers_to_prop_id(ctx, cidr_ip_prop_id)
+                .await?;
+        }
 
         let _security_group_rule_description_resource_prop = self
             .create_hidden_prop(
@@ -801,6 +834,15 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+
+        self.create_aws_tags_prop_tree(
+            ctx,
+            prop_id,
+            schema_variant_id,
+            tags_array_prop_id,
+            tag_item_prop_id,
+        )
+        .await?;
 
         Ok(())
     }

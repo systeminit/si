@@ -134,8 +134,8 @@ impl SchemaVariant {
         )
         .await?;
 
-        let (resource_prop_id, resource_value_prop_id) =
-            Self::setup_resource(ctx, root_prop_id, self.id).await?;
+        let resource_prop_id = Self::setup_resource(ctx, root_prop_id, self.id).await?;
+        let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self.id).await?;
         let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id, self.id).await?;
         let confirmation_prop_id = Self::setup_confirmation(ctx, root_prop_id, self.id).await?;
@@ -375,11 +375,30 @@ impl SchemaVariant {
         Ok((si_prop_id, *si_name_prop.id()))
     }
 
+    async fn setup_resource_value(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<PropId> {
+        let mut resource_value_payload_prop = Prop::new(
+            ctx,
+            "resource_value",
+            PropKind::Object,
+            None,
+            schema_variant_id,
+            Some(root_prop_id),
+        )
+        .await?;
+        resource_value_payload_prop.set_hidden(ctx, true).await?;
+
+        Ok(*resource_value_payload_prop.id())
+    }
+
     async fn setup_resource(
         ctx: &DalContext,
         root_prop_id: PropId,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<(PropId, PropId)> {
+    ) -> SchemaVariantResult<PropId> {
         let mut resource_prop = Prop::new(
             ctx,
             "resource",
@@ -447,17 +466,6 @@ impl SchemaVariant {
         .await?;
         resource_payload_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_value_payload_prop = Prop::new(
-            ctx,
-            "value",
-            PropKind::Object,
-            None,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_value_payload_prop.set_hidden(ctx, true).await?;
-
         let mut resource_last_synced_prop = Prop::new(
             ctx,
             "last_synced",
@@ -469,7 +477,7 @@ impl SchemaVariant {
         .await?;
         resource_last_synced_prop.set_hidden(ctx, true).await?;
 
-        Ok((resource_prop_id, *resource_value_payload_prop.id()))
+        Ok(resource_prop_id)
     }
 
     async fn setup_code(

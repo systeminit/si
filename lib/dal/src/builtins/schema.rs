@@ -785,7 +785,7 @@ impl MigrationDriver {
         domain_tags_prop_id: Option<PropId>,
         domain_tag_prop_id: Option<PropId>,
     ) -> BuiltinsResult<()> {
-        // Prop: /resource/value/tags
+        // Prop: /resource_value/tags
         let mut key_pair_tags_resource_prop = self
             .create_hidden_prop(
                 ctx,

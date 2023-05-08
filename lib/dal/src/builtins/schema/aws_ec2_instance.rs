@@ -66,6 +66,174 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
+        // Create Domain Props
+
+        // Prop: /root/domain/ImageId
+        let image_id_prop = self
+            .create_prop(
+                ctx,
+                "ImageId",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(AMI_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_validation(
+            ctx,
+            ValidationKind::Builtin(Validation::StringHasPrefix {
+                value: None,
+                expected: "ami-".to_string(),
+            }),
+            *image_id_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
+        let expected_instance_types: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
+        let instance_types_option_list: Vec<SelectWidgetOption> = expected_instance_types
+            .iter()
+            .map(|instance_type| SelectWidgetOption {
+                label: instance_type.to_string(),
+                value: instance_type.to_string(),
+            })
+            .collect();
+        let instance_types_option_list_json = serde_json::to_value(instance_types_option_list)?;
+
+        // Prop: /root/domain/InstanceType
+        let instance_type_prop = self
+            .create_prop(
+                ctx,
+                "InstanceType",
+                PropKind::String,
+                Some((WidgetKind::ComboBox, Some(instance_types_option_list_json))),
+                Some(root_prop.domain_prop_id),
+                Some(EC2_INSTANCE_TYPES_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_validation(
+            ctx,
+            ValidationKind::Builtin(Validation::StringInStringArray {
+                value: None,
+                expected: expected_instance_types,
+                display_expected: false,
+            }),
+            *instance_type_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
+        // Prop: /root/domain/KeyName
+        let key_name_prop = self
+            .create_prop(
+                ctx,
+                "KeyName",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/SecurityGroupIds
+        let security_groups_prop = self
+            .create_prop(
+                ctx,
+                "SecurityGroupIds",
+                PropKind::Array,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/SecurityGroupIds/SecurityGroupId
+        let security_group_id_prop = self
+            .create_prop(
+                ctx,
+                "Security Group ID",
+                PropKind::String,
+                None,
+                Some(*security_groups_prop.id()),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/tags
+        let tags_map_prop = self
+            .create_prop(
+                ctx,
+                "tags",
+                PropKind::Map,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/tags/tag
+        let tags_map_item_prop = self
+            .create_prop(
+                ctx,
+                "tag",
+                PropKind::String,
+                None,
+                Some(*tags_map_prop.id()),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/UserData
+        let user_data_prop = self
+            .create_prop(
+                ctx,
+                "UserData",
+                PropKind::String,
+                Some((WidgetKind::TextArea, None)),
+                Some(root_prop.domain_prop_id),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/awsResourceType
+        let mut aws_resource_type_prop = self
+            .create_prop(
+                ctx,
+                "awsResourceType",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+        aws_resource_type_prop.set_hidden(ctx, true).await?;
+
+        // Prop: /root/domain/region
+        let region_prop = self
+            .create_prop(
+                ctx,
+                "region",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
         // Create Resource Props
 
         // Prop: /root/domain/AmiLaunchIndex
@@ -79,7 +247,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _image_id_resource_prop = self
+        let mut image_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "ImageId",
@@ -87,6 +255,9 @@ impl MigrationDriver {
                 Some(root_prop.resource_value_prop_id),
                 schema_variant_id,
             )
+            .await?;
+        image_id_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*image_id_prop.id()))
             .await?;
 
         let _instance_id_resource_prop = self
@@ -99,7 +270,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _instance_type_resource_prop = self
+        let mut instance_type_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "InstanceType",
@@ -108,8 +279,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        instance_type_resource_prop
+            .set_refers_to_prop_id(ctx, Some(instance_type_prop.id()))
+            .await?;
 
-        let _key_name_resource_prop = self
+        let mut key_name_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "KeyName",
@@ -117,6 +291,9 @@ impl MigrationDriver {
                 Some(root_prop.resource_value_prop_id),
                 schema_variant_id,
             )
+            .await?;
+        key_name_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*key_name_prop.id()))
             .await?;
 
         let _launch_time_resource_prop = self
@@ -443,7 +620,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let security_groups_resource_prop = self
+        let mut security_groups_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "SecurityGroups",
@@ -451,6 +628,9 @@ impl MigrationDriver {
                 Some(root_prop.resource_value_prop_id),
                 schema_variant_id,
             )
+            .await?;
+        security_groups_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*security_groups_prop.id()))
             .await?;
 
         let security_group_resource_prop = self
@@ -473,7 +653,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _security_groups_group_id_resource_prop = self
+        let mut security_groups_group_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "GroupId",
@@ -481,6 +661,9 @@ impl MigrationDriver {
                 Some(*security_group_resource_prop.id()),
                 schema_variant_id,
             )
+            .await?;
+        security_groups_group_id_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*security_group_id_prop.id()))
             .await?;
 
         let _source_dest_check_resource_prop = self
@@ -497,8 +680,8 @@ impl MigrationDriver {
             ctx,
             root_prop.resource_value_prop_id,
             schema_variant_id,
-            None,
-            None,
+            Some(*tags_map_prop.id()),
+            Some(*tags_map_item_prop.id()),
         )
         .await?;
 
@@ -758,174 +941,6 @@ impl MigrationDriver {
                 "AutoRecovery",
                 PropKind::String,
                 Some(*maintenance_options_resource_prop.id()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Create Domain Props
-
-        // Prop: /root/domain/ImageId
-        let image_id_prop = self
-            .create_prop(
-                ctx,
-                "ImageId",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(AMI_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            ValidationKind::Builtin(Validation::StringHasPrefix {
-                value: None,
-                expected: "ami-".to_string(),
-            }),
-            *image_id_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let expected_instance_types: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
-        let instance_types_option_list: Vec<SelectWidgetOption> = expected_instance_types
-            .iter()
-            .map(|instance_type| SelectWidgetOption {
-                label: instance_type.to_string(),
-                value: instance_type.to_string(),
-            })
-            .collect();
-        let instance_types_option_list_json = serde_json::to_value(instance_types_option_list)?;
-
-        // Prop: /root/domain/InstanceType
-        let instance_type_prop = self
-            .create_prop(
-                ctx,
-                "InstanceType",
-                PropKind::String,
-                Some((WidgetKind::ComboBox, Some(instance_types_option_list_json))),
-                Some(root_prop.domain_prop_id),
-                Some(EC2_INSTANCE_TYPES_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            ValidationKind::Builtin(Validation::StringInStringArray {
-                value: None,
-                expected: expected_instance_types,
-                display_expected: false,
-            }),
-            *instance_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        // Prop: /root/domain/KeyName
-        let key_name_prop = self
-            .create_prop(
-                ctx,
-                "KeyName",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/SecurityGroupIds
-        let security_groups_prop = self
-            .create_prop(
-                ctx,
-                "SecurityGroupIds",
-                PropKind::Array,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/SecurityGroupIds/SecurityGroupId
-        let _security_group_id_prop = self
-            .create_prop(
-                ctx,
-                "Security Group ID",
-                PropKind::String,
-                None,
-                Some(*security_groups_prop.id()),
-                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/tags
-        let tags_map_prop = self
-            .create_prop(
-                ctx,
-                "tags",
-                PropKind::Map,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/tags/tag
-        let tags_map_item_prop = self
-            .create_prop(
-                ctx,
-                "tag",
-                PropKind::String,
-                None,
-                Some(*tags_map_prop.id()),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/UserData
-        let user_data_prop = self
-            .create_prop(
-                ctx,
-                "UserData",
-                PropKind::String,
-                Some((WidgetKind::TextArea, None)),
-                Some(root_prop.domain_prop_id),
-                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/awsResourceType
-        let mut aws_resource_type_prop = self
-            .create_prop(
-                ctx,
-                "awsResourceType",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-        aws_resource_type_prop.set_hidden(ctx, true).await?;
-
-        // Prop: /root/domain/region
-        let region_prop = self
-            .create_prop(
-                ctx,
-                "region",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(AWS_REGIONS_DOCS_URL.to_string()),
                 schema_variant_id,
             )
             .await?;

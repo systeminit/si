@@ -7,37 +7,18 @@ async function refresh(component: Input): Promise<Output> {
     };
   }
 
-  const ruleId = resource.SecurityGroupRuleId;
+  const ruleIds: number[] = resource.SecurityGroupRules.map(x => x.SecurityGroupRuleId);
+
   const child = await siExec.waitUntilEnd("aws", [
     "ec2",
     "describe-security-group-rules",
     "--security-group-rule-ids",
-    resource.SecurityGroupRuleId,
+    ...ruleIds,
     "--region",
     component.properties.domain.region,
   ]);
 
-  if (child.stderr.includes("InvalidSecurityGroupRuleId.NotFound")) {
-    console.log(`Security Group Rule ID: ${ruleId}`);
-    console.error(child.stderr);
-    return {
-      status: "error",
-      message: `Security Group Rule not found (InvalidSecurityGroupRuleId.NotFound)`,
-    }
-  }
-
-  if (child.stderr.includes("InvalidSecurityGroupRuleId.Malformed")) {
-    console.log(`Security Group Rule ID: ${ruleId}`);
-    console.error(child.stderr);
-    return {
-      status: "error",
-      payload: resource,
-      message: "Security Group Rule Id is invalid (InvalidSecurityGroupRuleId.Malformed)",
-    }
-  }
-
   if (child.exitCode !== 0) {
-    console.log(`Security Group Rule ID: ${ruleId}`);
     console.error(child.stderr);
     return {
       status: "error",
@@ -46,10 +27,12 @@ async function refresh(component: Input): Promise<Output> {
     }
   }
 
-  const rule = JSON.parse(child.stdout).SecurityGroupRules[0];
-  if (!rule.IsEgress) {
-    return { status: "error", message: "Incorrect egress rule found" };
-  }
+  const rules = JSON.parse(child.stdout);
+  rules.SecurityGroupRules.forEach((x, i) => {
+    if (!x.isEgress) {
+      return { status: "error", message: `expected Security Group Rule ID ${x.SecurityGroupRuleId} to be an egress rule but is ingress` };
+    }
+  })
 
-  return { payload: rule, status: "ok" };
+  return { payload: rules, status: "ok" };
 }

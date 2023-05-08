@@ -3,9 +3,9 @@
   "arguments": [],
   "response_type": "Command",
   "hidden": false,
-  "display_name": "si:awsIngressDeleteCommand",
+  "display_name": "si:awsEgressDeleteCommand",
   "description": null,
   "link": null,
-  "code_file": "awsIngressDeleteCommand.ts",
+  "code_file": "awsEgressDeleteCommand.ts",
   "code_entrypoint": "deleteResource"
 }

@@ -152,7 +152,7 @@ impl MigrationDriver {
 
         // Create Resource Prop Tree
 
-        // Prop: /resource/value/KeyPairId
+        // Prop: /resource_value/KeyPairId
         let _key_pair_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -163,7 +163,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/KeyFingerprint
+        // Prop: /resource_value/KeyFingerprint
         let _key_pair_fingerprint_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -174,7 +174,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/KeyName
+        // Prop: /resource_value/KeyName
         let mut key_pair_name_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -188,7 +188,7 @@ impl MigrationDriver {
             .set_refers_to_prop_id(ctx, Some(*key_name_prop.id()))
             .await?;
 
-        // Prop: /resource/value/KeyType
+        // Prop: /resource_value/KeyType
         let mut key_pair_type_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -211,7 +211,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Prop: /resource/value/CreateTime
+        // Prop: /resource_value/CreateTime
         let _key_pair_create_time_resource_prop = self
             .create_hidden_prop(
                 ctx,

@@ -25,5 +25,5 @@ async function create(component: Input): Promise<Output> {
     }
   }
 
-  return { payload: JSON.parse(child.stdout).SecurityGroupRules[0], status: "ok" };
+  return { payload: JSON.parse(child.stdout), status: "ok" };
 }

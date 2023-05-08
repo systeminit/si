@@ -1,23 +1,8 @@
 async function deleteResource(component: Input): Promise<Output> {
     const resource = component.properties.resource?.payload;
 
-    if (resource.SecurityGroupRuleId === undefined) {
-        console.error("unable to find a valid SecurityGroupRuleID");
-        return {
-            status: "error",
-            payload: resource,
-            message: `Unable to delete Egress Rule, unable to find a valid SecurityGroupRuleId`,
-        }
-    }
-
-    if (resource.GroupId === undefined) {
-        console.error("unable to find a valid GroupID");
-        return {
-            status: "error",
-            payload: resource,
-            message: `Unable to delete Egress Rule, unable to find a valid GroupID`,
-        }
-    }
+    const ruleIds: number[] = resource.SecurityGroupRules.map(x => x.SecurityGroupRuleId);
+    const groupId = resource.SecurityGroupRules[0].GroupId;
 
     const child = await siExec.waitUntilEnd("aws", [
         "ec2",
@@ -25,9 +10,9 @@ async function deleteResource(component: Input): Promise<Output> {
         "--region",
         component.properties.domain.region,
         "--security-group-rule-ids",
-        resource.SecurityGroupRuleId,
+        ...ruleIds,
         "--group-id",
-        resource.GroupId,
+        groupId,
     ]);
 
     if (child.exitCode !== 0) {

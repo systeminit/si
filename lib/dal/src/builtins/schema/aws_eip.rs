@@ -111,7 +111,7 @@ impl MigrationDriver {
 
         // Create Resource Prop Tree
 
-        // Prop: /resource/value/Domain
+        // Prop: /resource_value/Domain
         let _eip_domain_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -122,7 +122,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/PublicIpv4Pool
+        // Prop: /resource_value/PublicIpv4Pool
         let _eip_public_ipv4_pool_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -133,7 +133,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/InstanceId
+        // Prop: /resource_value/InstanceId
         let _eip_instance_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -144,7 +144,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/NetworkInterfaceId
+        // Prop: /resource_value/NetworkInterfaceId
         let _eip_network_interface_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -155,7 +155,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/AssociationId
+        // Prop: /resource_value/AssociationId
         let _eip_association_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -166,7 +166,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/NetworkInterfaceOwnerId
+        // Prop: /resource_value/NetworkInterfaceOwnerId
         let _eip_network_interface_owner_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -177,7 +177,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/PublicIp
+        // Prop: /resource_value/PublicIp
         let _eip_public_ip_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -188,7 +188,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/AllocationId
+        // Prop: /resource_value/AllocationId
         let _eip_allocation_id_resource_prop = self
             .create_hidden_prop(
                 ctx,
@@ -199,7 +199,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Prop: /resource/value/PrivateIpAddress
+        // Prop: /resource_value/PrivateIpAddress
         let _eip_private_ip_address_resource_prop = self
             .create_hidden_prop(
                 ctx,

@@ -54,14 +54,6 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Create Resource Prop Tree
-        self.create_aws_security_group_rule_prop_tree(
-            ctx,
-            root_prop.resource_value_prop_id,
-            schema_variant_id,
-        )
-        .await?;
-
         // Prop Creation
         let group_id_prop = self
             .create_prop(
@@ -99,7 +91,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _protocol_prop = self
+        let protocol_prop = self
             .create_prop(
                 ctx,
                 "IpProtocol",
@@ -129,7 +121,7 @@ impl MigrationDriver {
         // )
         // .await?;
 
-        let _to_port_prop = self
+        let to_port_prop = self
             .create_prop(
                 ctx,
                 "ToPort",
@@ -155,7 +147,7 @@ impl MigrationDriver {
         // )
         // .await?;
         //
-        let _from_port_prop = self
+        let from_port_prop = self
             .create_prop(
                 ctx,
                 "FromPort",
@@ -181,7 +173,7 @@ impl MigrationDriver {
         // )
         // .await?;
         //
-        let _cidr_prop = self
+        let cidr_prop = self
             .create_prop(
                 ctx,
                 "CidrIp",
@@ -251,6 +243,45 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+
+        // Create Resource Props
+
+        let mut security_group_rules_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "SecurityGroupRules",
+                PropKind::Array,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        security_group_rules_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*ip_permissions_prop.id()))
+            .await?;
+
+        let security_group_rule_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "SecurityGroupRule",
+                PropKind::Object,
+                Some(*security_group_rules_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_security_group_rule_prop_tree(
+            ctx,
+            *security_group_rule_resource_prop.id(),
+            schema_variant_id,
+            Some(*group_id_prop.id()),
+            Some(*protocol_prop.id()),
+            Some(*to_port_prop.id()),
+            Some(*from_port_prop.id()),
+            Some(*cidr_prop.id()),
+            Some(*tags_map_prop.id()),
+            Some(*tags_map_item_prop.id()),
+        )
+        .await?;
 
         let identity_func_item = self
             .get_func_item("si:identity")
