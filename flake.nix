@@ -73,6 +73,7 @@
             pkg-config
             postgresql_14
             protobuf
+            openssh
             (rustToolchain.override {
               # This really should be augmenting the extensions, instead of
               # completely overriding them, but since we're not setting up
