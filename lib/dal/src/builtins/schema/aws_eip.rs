@@ -54,6 +54,61 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
+        // Create Domain Prop Tree
+
+        // Prop: /root/domain/tags
+        let tags_map_prop = self
+            .create_prop(
+                ctx,
+                "tags",
+                PropKind::Map,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/tags/tag
+        let tags_map_item_prop = self
+            .create_prop(
+                ctx,
+                "tag",
+                PropKind::String,
+                None,
+                Some(*tags_map_prop.id()),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /root/domain/awsResourceType
+        let mut aws_resource_type_prop = self
+            .create_prop(
+                ctx,
+                "awsResourceType",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+                schema_variant_id,
+            )
+            .await?;
+        aws_resource_type_prop.set_hidden(ctx, true).await?;
+
+        // Prop: /root/domain/region
+        let region_prop = self
+            .create_prop(
+                ctx,
+                "region",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
+                schema_variant_id,
+            )
+            .await?;
+
         // Create Resource Prop Tree
 
         // Prop: /resource/value/Domain
@@ -155,60 +210,14 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Create Domain Prop Tree
-
-        // Prop: /root/domain/tags
-        let tags_map_prop = self
-            .create_prop(
-                ctx,
-                "tags",
-                PropKind::Map,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/tags/tag
-        let tags_map_item_prop = self
-            .create_prop(
-                ctx,
-                "tag",
-                PropKind::String,
-                None,
-                Some(*tags_map_prop.id()),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /root/domain/awsResourceType
-        let mut aws_resource_type_prop = self
-            .create_prop(
-                ctx,
-                "awsResourceType",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                None,
-                schema_variant_id,
-            )
-            .await?;
-        aws_resource_type_prop.set_hidden(ctx, true).await?;
-
-        // Prop: /root/domain/region
-        let region_prop = self
-            .create_prop(
-                ctx,
-                "region",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(AWS_REGIONS_DOCS_URL.to_string()),
-                schema_variant_id,
-            )
-            .await?;
+        self.create_aws_tags_prop_tree(
+            ctx,
+            root_prop.resource_value_prop_id,
+            schema_variant_id,
+            Some(*tags_map_prop.id()),
+            Some(*tags_map_item_prop.id()),
+        )
+        .await?;
 
         // Add code generation
         let (code_generation_func_id, code_generation_func_argument_id) = self

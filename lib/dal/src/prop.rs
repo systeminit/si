@@ -163,6 +163,9 @@ pub struct Prop {
     path: String,
     /// The [`SchemaVariant`](crate::SchemaVariant) whose tree we (the [`Prop`]) reside in.
     schema_variant_id: SchemaVariantId,
+    /// Props can be connected to eachother to signify that they should contain the same value
+    /// This is useful for diffing the resource with the domain, to suggest actions if the real world changes
+    refers_to_prop_id: Option<PropId>,
 }
 
 impl_standard_model! {
@@ -220,6 +223,7 @@ impl Prop {
     standard_model_accessor!(widget_options, Option<Value>, PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
+    standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
     standard_model_accessor_ro!(path, String);
 
     // TODO(nick): replace this table with a foreign key relationship.

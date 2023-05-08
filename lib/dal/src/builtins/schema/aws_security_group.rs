@@ -57,135 +57,6 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Create Resource Prop Tree
-
-        // Prop: /resource/value/GroupName
-        let _sg_group_name_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "GroupName",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/GroupId
-        let _sg_group_id_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "GroupId",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/OwnerId
-        let _sg_owner_id_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "OwnerId",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/VpcId
-        let _sg_vpc_id_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "VpcId",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/GroupName
-        let _sg_group_name_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "GroupName",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/Description
-        let _sg_description_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "Description",
-                PropKind::String,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        self.create_aws_tags_prop_tree(ctx, root_prop.resource_value_prop_id, schema_variant_id)
-            .await?;
-
-        // Prop: /resource/value/IpPermissions
-        let sg_ip_permissions_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "IpPermissions",
-                PropKind::Array,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/IpPermission
-        let sg_ip_permission_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "IpPermission",
-                PropKind::Object,
-                Some(*sg_ip_permissions_resource_prop.id()),
-                schema_variant_id,
-            )
-            .await?;
-
-        self.create_aws_ip_permission_prop_tree(
-            ctx,
-            *sg_ip_permission_resource_prop.id(),
-            schema_variant_id,
-        )
-        .await?;
-
-        // Prop: /resource/value/IpPermissionsEgress
-        let sg_ip_permissions_egress_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "IpPermissionsEgress",
-                PropKind::Array,
-                Some(root_prop.resource_value_prop_id),
-                schema_variant_id,
-            )
-            .await?;
-
-        // Prop: /resource/value/IpPermissionsgress
-        let sg_ip_permission_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "IpPermissionsgress",
-                PropKind::Object,
-                Some(*sg_ip_permissions_egress_resource_prop.id()),
-                schema_variant_id,
-            )
-            .await?;
-
-        self.create_aws_ip_permission_prop_tree(
-            ctx,
-            *sg_ip_permission_resource_prop.id(),
-            schema_variant_id,
-        )
-        .await?;
-
         // Create Domain Prop Tree
 
         let description_prop = self
@@ -236,7 +107,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _vpc_id_prop = self
+        let vpc_id_prop = self
             .create_prop(
                 ctx,
                 "VpcId",
@@ -296,6 +167,139 @@ impl MigrationDriver {
             )
             .await?;
         aws_resource_type_prop.set_hidden(ctx, true).await?;
+
+        // Create Resource Prop Tree
+
+        // Prop: /resource/value/GroupName
+        let mut sg_group_name_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupName",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_group_name_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*group_name_prop.id()))
+            .await?;
+
+        // Prop: /resource/value/GroupId
+        let _sg_group_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/OwnerId
+        let _sg_owner_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "OwnerId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/VpcId
+        let mut sg_vpc_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "VpcId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_vpc_id_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*vpc_id_prop.id()))
+            .await?;
+
+        // Prop: /resource/value/Description
+        let mut sg_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_description_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*description_prop.id()))
+            .await?;
+
+        self.create_aws_tags_prop_tree(
+            ctx,
+            root_prop.resource_value_prop_id,
+            schema_variant_id,
+            None,
+            None,
+        )
+        .await?;
+
+        // Prop: /resource/value/IpPermissions
+        let sg_ip_permissions_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissions",
+                PropKind::Array,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/IpPermission
+        let sg_ip_permission_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermission",
+                PropKind::Object,
+                Some(*sg_ip_permissions_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_ip_permission_prop_tree(
+            ctx,
+            *sg_ip_permission_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        // Prop: /resource/value/IpPermissionsEgress
+        let sg_ip_permissions_egress_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissionsEgress",
+                PropKind::Array,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource/value/IpPermissionEgress
+        let sg_ip_permission_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissionEgress",
+                PropKind::Object,
+                Some(*sg_ip_permissions_egress_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_ip_permission_prop_tree(
+            ctx,
+            *sg_ip_permission_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
 
         // Socket Creation
         let identity_func_item = self
@@ -778,10 +782,20 @@ impl MigrationDriver {
             )
             .await?;
 
+        let _security_group_rule_cidr_ipv4_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "CidrIpv4",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
         let _security_group_rule_description_resource_prop = self
             .create_hidden_prop(
                 ctx,
-                "CidrIpv6",
+                "Description",
                 PropKind::String,
                 Some(prop_id),
                 schema_variant_id,

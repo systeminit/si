@@ -782,9 +782,11 @@ impl MigrationDriver {
         ctx: &DalContext,
         prop_id: PropId,
         schema_variant_id: SchemaVariantId,
+        domain_tags_prop_id: Option<PropId>,
+        domain_tag_prop_id: Option<PropId>,
     ) -> BuiltinsResult<()> {
         // Prop: /resource/value/tags
-        let key_pair_tags_resource_prop = self
+        let mut key_pair_tags_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "Tags",
@@ -793,6 +795,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if domain_tags_prop_id.is_some() {
+            key_pair_tags_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tags_prop_id)
+                .await?;
+        }
 
         let key_pair_tag_resource_prop = self
             .create_hidden_prop(
@@ -804,7 +811,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _tag_key_resource_prop = self
+        let mut tag_key_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "Key",
@@ -813,8 +820,13 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if domain_tag_prop_id.is_some() {
+            tag_key_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tag_prop_id)
+                .await?;
+        }
 
-        let _tag_value_resource_prop = self
+        let mut tag_value_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "Value",
@@ -823,6 +835,11 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
+        if domain_tag_prop_id.is_some() {
+            tag_value_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tag_prop_id)
+                .await?;
+        }
 
         Ok(())
     }

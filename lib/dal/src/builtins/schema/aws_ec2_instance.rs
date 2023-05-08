@@ -493,8 +493,14 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_aws_tags_prop_tree(ctx, root_prop.resource_value_prop_id, schema_variant_id)
-            .await?;
+        self.create_aws_tags_prop_tree(
+            ctx,
+            root_prop.resource_value_prop_id,
+            schema_variant_id,
+            None,
+            None,
+        )
+        .await?;
 
         let _virtualization_type_resource_prop = self
             .create_hidden_prop(
