@@ -36,6 +36,7 @@ pub struct PropTreeNode {
     pub hidden: bool,
     pub widget_kind: WidgetKind,
     pub widget_options: Option<serde_json::Value>,
+    pub doc_link: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -107,6 +108,7 @@ impl PropTree {
                 hidden: prop.hidden(),
                 widget_kind: *prop.widget_kind(),
                 widget_options: prop.widget_options().cloned(),
+                doc_link: prop.doc_link().map(|l| l.to_owned()),
             };
 
             // The ordering of the query ensures parent nodes will always come before their children

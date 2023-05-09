@@ -1,6 +1,7 @@
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use url::Url;
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
 
@@ -57,6 +58,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
@@ -68,6 +70,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
@@ -79,6 +82,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
@@ -91,6 +95,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Array {
@@ -103,6 +108,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
@@ -115,6 +121,7 @@ pub enum PropSpec {
         widget_kind: Option<PropSpecWidgetKind>,
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
+        doc_link: Option<Url>,
     },
 }
 
@@ -146,6 +153,7 @@ pub struct PropSpecBuilder {
     inputs: Vec<AttrFuncInputSpec>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
+    doc_link: Option<Url>,
     hidden: bool,
 }
 
@@ -223,6 +231,20 @@ impl PropSpecBuilder {
         self
     }
 
+    pub fn doc_link(&mut self, value: impl Into<Url>) -> &mut Self {
+        self.doc_link = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn try_doc_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted: Url = value.try_into()?;
+        Ok(self.doc_link(converted))
+    }
+
     /// Builds a new `Prop`.
     ///
     /// # Errors
@@ -242,6 +264,7 @@ impl PropSpecBuilder {
         let widget_kind = self.widget_kind;
         let widget_options = self.widget_options.to_owned();
         let hidden = self.hidden;
+        let doc_link = self.doc_link.to_owned();
 
         Ok(match self.kind {
             Some(kind) => match kind {
@@ -262,6 +285,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
                 PropSpecKind::Number => PropSpec::Number {
                     name,
@@ -283,6 +307,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
                     name,
@@ -304,6 +329,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
                 PropSpecKind::Map => PropSpec::Map {
                     name,
@@ -321,6 +347,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,
@@ -337,6 +364,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
                 PropSpecKind::Object => PropSpec::Object {
                     name,
@@ -348,6 +376,7 @@ impl PropSpecBuilder {
                     widget_kind,
                     widget_options,
                     hidden: Some(hidden),
+                    doc_link,
                 },
             },
             None => {

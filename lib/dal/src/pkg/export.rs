@@ -740,6 +740,10 @@ async fn set_variant_spec_prop_data(
             .widget_kind(tree_node.widget_kind)
             .widget_options(tree_node.widget_options);
 
+        if let Some(doc_link) = tree_node.doc_link {
+            builder.try_doc_link(doc_link.as_str())?;
+        }
+
         traversal_stack.push(TraversalStackEntry {
             builder,
             prop_id,

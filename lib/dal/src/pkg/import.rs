@@ -927,6 +927,19 @@ async fn create_prop(
     )
     .await?;
 
+    prop.set_doc_link(
+        ctx.ctx,
+        match &spec {
+            SiPkgProp::String { doc_link, .. }
+            | SiPkgProp::Number { doc_link, .. }
+            | SiPkgProp::Boolean { doc_link, .. }
+            | SiPkgProp::Map { doc_link, .. }
+            | SiPkgProp::Array { doc_link, .. }
+            | SiPkgProp::Object { doc_link, .. } => doc_link.as_ref().map(|l| l.to_string()),
+        },
+    )
+    .await?;
+
     let prop_id = *prop.id();
 
     // Both attribute functions and default values have to be set *after* the schema variant is
