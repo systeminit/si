@@ -104,6 +104,7 @@ impl SchemaVariantSpecBuilder {
             widget_kind: Some(PropSpecWidgetKind::Header),
             widget_options: None,
             hidden: Some(false),
+            doc_link: None,
         }
     }
 
@@ -118,6 +119,7 @@ impl SchemaVariantSpecBuilder {
             widget_kind: Some(PropSpecWidgetKind::Header),
             widget_options: None,
             hidden: Some(true),
+            doc_link: None,
         }
     }
 

@@ -1,5 +1,6 @@
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
+use url::Url;
 
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgValidation, Source};
 
@@ -17,6 +18,7 @@ pub enum SiPkgProp<'a> {
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
         hidden: bool,
+        doc_link: Option<Url>,
         hash: Hash,
         source: Source<'a>,
     },
@@ -26,6 +28,7 @@ pub enum SiPkgProp<'a> {
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
         hash: Hash,
         source: Source<'a>,
@@ -36,6 +39,7 @@ pub enum SiPkgProp<'a> {
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
         hash: Hash,
         source: Source<'a>,
@@ -46,6 +50,7 @@ pub enum SiPkgProp<'a> {
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
         hash: Hash,
         source: Source<'a>,
@@ -56,6 +61,7 @@ pub enum SiPkgProp<'a> {
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
         hash: Hash,
         source: Source<'a>,
@@ -66,6 +72,7 @@ pub enum SiPkgProp<'a> {
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
         hash: Hash,
         source: Source<'a>,
@@ -140,6 +147,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::String {
                 name,
                 default_value,
@@ -147,6 +156,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
                 hash,
                 source,
             },
@@ -157,6 +168,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::Number {
                 name,
                 default_value,
@@ -164,6 +177,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
                 hash,
                 source,
             },
@@ -174,6 +189,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::Boolean {
                 name,
                 default_value,
@@ -181,6 +198,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
                 hash,
                 source,
             },
@@ -191,6 +210,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::Map {
                 name,
                 default_value,
@@ -198,6 +219,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
                 hash,
                 source,
             },
@@ -208,6 +231,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::Array {
                 name,
                 default_value,
@@ -215,6 +240,7 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
                 hash,
                 source,
             },
@@ -225,6 +251,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
             } => Self::Object {
                 name,
                 default_value,
@@ -232,6 +260,8 @@ impl<'a> SiPkgProp<'a> {
                 widget_kind,
                 widget_options,
                 hidden,
+
+                doc_link,
                 hash,
                 source,
             },

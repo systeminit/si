@@ -3,6 +3,8 @@ use std::{
     str::FromStr,
 };
 
+use url::Url;
+
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
     NodeWithChildren, ReadBytes, WriteBytes,
@@ -19,6 +21,7 @@ const KEY_DEFAULT_VALUE_STR: &str = "default_value";
 const KEY_WIDGET_KIND_STR: &str = "widget_kind";
 const KEY_WIDGET_OPTIONS_STR: &str = "widget_options";
 const KEY_HIDDEN_STR: &str = "hidden";
+const KEY_DOC_LINK_STR: &str = "doc_link";
 
 const PROP_TY_STRING: &str = "string";
 const PROP_TY_INTEGER: &str = "integer";
@@ -36,6 +39,7 @@ pub enum PropNode {
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
         hidden: bool,
+        doc_link: Option<Url>,
     },
     Integer {
         name: String,
@@ -44,6 +48,7 @@ pub enum PropNode {
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
         hidden: bool,
+        doc_link: Option<Url>,
     },
     Boolean {
         name: String,
@@ -51,6 +56,7 @@ pub enum PropNode {
         default_value: Option<bool>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
     },
     Map {
@@ -59,6 +65,7 @@ pub enum PropNode {
         default_value: Option<serde_json::Value>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
     },
     Array {
@@ -67,6 +74,7 @@ pub enum PropNode {
         default_value: Option<serde_json::Value>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
     },
     Object {
@@ -75,6 +83,7 @@ pub enum PropNode {
         default_value: Option<serde_json::Value>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
+        doc_link: Option<Url>,
         hidden: bool,
     },
 }
@@ -193,6 +202,21 @@ impl WriteBytes for PropNode {
             },
         )?;
 
+        write_key_value_line(
+            writer,
+            KEY_DOC_LINK_STR,
+            match &self {
+                Self::String { doc_link, .. }
+                | Self::Integer { doc_link, .. }
+                | Self::Boolean { doc_link, .. }
+                | Self::Map { doc_link, .. }
+                | Self::Array { doc_link, .. }
+                | Self::Object { doc_link, .. } => {
+                    doc_link.as_ref().map(|l| l.as_str()).unwrap_or("")
+                }
+            },
+        )?;
+
         Ok(())
     }
 }
@@ -228,9 +252,15 @@ impl ReadBytes for PropNode {
         } else {
             serde_json::from_str(&widget_options_str).map_err(GraphError::parse)?
         };
-
         let hidden = bool::from_str(&read_key_value_line(reader, KEY_HIDDEN_STR)?)
             .map_err(GraphError::parse)?;
+
+        let doc_link_str = read_key_value_line(reader, KEY_DOC_LINK_STR)?;
+        let doc_link = if doc_link_str.is_empty() {
+            None
+        } else {
+            Some(Url::parse(&doc_link_str).map_err(GraphError::parse)?)
+        };
 
         let node = match kind_str.as_str() {
             PROP_TY_STRING => Self::String {
@@ -251,6 +281,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             PROP_TY_INTEGER => Self::Integer {
                 name,
@@ -270,6 +301,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             PROP_TY_BOOLEAN => Self::Boolean {
                 name,
@@ -289,6 +321,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             PROP_TY_MAP => Self::Map {
                 name,
@@ -297,6 +330,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             PROP_TY_ARRAY => Self::Array {
                 name,
@@ -305,6 +339,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             PROP_TY_OBJECT => Self::Object {
                 name,
@@ -313,6 +348,7 @@ impl ReadBytes for PropNode {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             },
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
@@ -339,6 +375,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::String {
@@ -348,6 +385,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -367,6 +405,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Integer {
@@ -376,6 +415,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -395,6 +435,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Boolean {
@@ -404,6 +445,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -424,6 +466,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Map {
@@ -433,6 +476,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
@@ -455,6 +499,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Array {
@@ -464,6 +509,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
@@ -486,6 +532,7 @@ impl NodeChild for PropSpec {
                 widget_kind,
                 widget_options,
                 hidden,
+                doc_link,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Object {
@@ -495,6 +542,7 @@ impl NodeChild for PropSpec {
                     widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
                     widget_options: widget_options.to_owned(),
                     hidden: hidden.unwrap_or(false),
+                    doc_link: doc_link.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(entries.clone()))
