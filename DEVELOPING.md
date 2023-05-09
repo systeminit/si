@@ -6,82 +6,22 @@ information.
 
 ## Table of Contents
 
-- [Supported Developer Environments](#supported-developer-environments)
-- [Quickstart](#quickstart)
+- [Additional Notes on Environment Setup and Running the Stack](#additional-notes-on-environment-setup-and-running-the-stack)
 - [Learning About SI Concepts](#learning-about-si-concepts)
 - [Repository Structure](#repository-structure)
 - [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
 
-## Supported Developer Environments
+## Additional Notes on Environment Setup and Running the Stack
 
-| Environment | `x84_64 (amd64)` | `aarch64 (arm64)` |
-|-------------|------------------|-------------------|
-| Arch Linux  | ✅               | 🚫                |
-| Fedora      | ✅               | 🚫                |
-| macOS       | ✅               | ✅                |
-| Pop!_OS     | ✅               | 🚫                |
-| Ubuntu      | ✅               | 🚫                |
-| WSL2        | ✅               | 🚫                |
+Before navigating this section, see the instructions in the root [README](./README.md).
 
-We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
-If unsure, the following tools are recommended to help manage your toolchains:
-
-* [**rustup**](https://rustup.rs) 🦀: Rust, `cargo`, etc.
-* [**volta**](https://volta.sh) ⚡: `node`, `npm`, etc.
-
-### Preferred Environment Not Listed
-
-If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
-
-1. It's been added to the (mostly) idempotent [bootstrap script](./scripts/bootstrap.sh)
-2. The aforementioned script has been tested and remains (mostly) idempotent
-3. Running the **Quickstart** steps below is successful and the UI is fully functional
-
-_Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this
-repository.
-If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
-If you are no longer using the environment, and you are the sole maintainer of the environment, you must remove it from
-the bootstrapper and the table above.
-
-### Nix Flake
-
-If you prefer to avoid mutating your local environment, we have a `nix` [flake](./flake.nix) available, with [flake
-support enabled](https://nixos.wiki/wiki/Flakes).
-
-To get started, ensure you have `nix` and `docker` installed.
-For the former, you can use [Zero to Nix's installation guide](https://zero-to-nix.com/start/install) if you are unsure
-where to start.
-
-Enter a `nix` environment with the following command:
-
-```shell
-nix develop
-```
-
-To run a "one-off" command, the following command is available:
-
-```shell
-# template
-nix develop --command <command>
-
-# examples
-nix develop --command make prepare down
-nix develop --command make build//bin/veritech
-```
-
-#### Direnv
+#### Note on Using Direnv
 
 [Direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv) can automatically set up
-your shell so you don't need to enter a subshell with `nix develop`, or prefix all commands with
+your shell, which means you don't need to enter a subshell with `nix develop`, or prefix all commands with
 `nix develop --command`. There are also plugins to integrate direnv with common editors.
 
-Example `.envrc`:
-
-```text
-use flake . --impure
-```
-
-Editor plugin support:
+**Editor plugin support:**
 
 - CLion: [Direnv integration](https://plugins.jetbrains.com/plugin/15285-direnv-integration),
   [Better Direnv](https://plugins.jetbrains.com/plugin/19275-better-direnv)
@@ -89,64 +29,7 @@ Editor plugin support:
 - (Neo)Vim: [direnv.vim](https://github.com/direnv/direnv.vim)
 - Visual Studio Code: [direnv](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
-### Notes on aarch64 (arm64)
-
-Few SI dependencies rely on using an `x86_64 (amd64)` host.
-Fortunately, a compatibility layer, such as [Rosetta 2 on macOS](https://support.apple.com/en-us/HT211861) should
-suffice during builds.
-You can install Rosetta 2 on macOS by executing the following:
-
-```bash
-softwareupdate --install-rosetta
-```
-
-Despite the above, if any dependency can be made to work on both `aarch64 (arm64)` and `x86_64 (amd64)`, we should
-attempt to do so.
-Not only is flexibility between architectures useful for local development, but it may also be useful in CI and/or
-production.
-
-## Quickstart
-
-The steps outlined in this guide can be used interchangeably, modified slightly, etc. depending on your
-preferences and use cases.
-However, for first time users, we recommend following this guide "as-is".
-
-### Bootstrapping Your Environment (1/5)
-
-First, ensure that Docker is installed on your machine and the `docker` executable is in your `PATH`. Then, for either
-running SI locally or developing SI, execute the following script:
-
-```bash
-./scripts/bootstrap.sh
-```
-
-The bootstrapper is (mostly) idempotent, so feel free to run it as many times as you like!
-However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
-
-### Checking Permissions and Authentication (2/5)
-
-We need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/)
-and that the corresponding account can pull images from
-our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
-Please reach out internally if your account cannot pull images from the private SI repositories.
-
-You should also configure your aws cli to use the SI account:
-
-```bash
-aws configure
-```
-
-passing the following responses to each prompt:
-
-- AWS Access Key ID: The `Access Key` field on
-  this [1password entry](https://start.1password.com/open/i?a=6FRDDOEI5JBKHJJAMQIKAEFWD4&v=y5uwcpkwsqeppqg4cwkxnnpwdm&i=mw3mygbdcd66pgn4hgkroicssi&h=systeminitiativeinc.1password.com)
-- AWS Secret Access Key:  The `Secret Key` field on the
-  same [1password entry](https://start.1password.com/open/i?a=6FRDDOEI5JBKHJJAMQIKAEFWD4&v=y5uwcpkwsqeppqg4cwkxnnpwdm&i=mw3mygbdcd66pgn4hgkroicssi&h=systeminitiativeinc.1password.com)
-  as above
-- Default region name: `us-east-2`
-- Default output format: Leave empty
-
-### Checking for Potential Service Conflicts (3/5)
+### Troubleshooting Potential Service Conflicts
 
 SI uses external services in conjunction with its native components.
 These external services are deployed via [`docker compose`](https://docs.docker.com/compose/) and are configured to stick to their default settings as
@@ -162,87 +45,20 @@ Potentially conflicting services include, but are not limited to, the following:
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being
 run.
 
-### Running the SI Stack (4/5)
+### How Will I Know That Each Component Is Ready?
 
-With all dependencies installed and required binaries in `PATH`, we are ready to go!
-In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
+For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the
+webserver has bound to a port and is ready to receive messages.
+This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence
+changes) and will vary from component to component.
 
-```bash
-make prepare
-```
+### Using CLion Run Configurations Instead of Terminal Panes
 
-If you would like to skip pulling potentially newers Docker images before running the supporting services, then set `SI_SKIP_PULL` to a non-empty value, for example:
+This repository contains CLion run configurations for most of these targets, in addition to a `Run SI` compound target
+for running all the targets at once. They should be listed on the run menu automatically and are called
+`Prepare`, `Run [SDF | Veritech | Pinga | Web]` and `Teardown` (which is related to the next topic).
 
-```bash
-make prepare SI_SKIP_PULL=true
-```
-
-This will ensure that our database is running, and our NATS server is running.
-
-Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
-If it is not ready, `sdf` database migration will fail.
-
-Once the database is ready, we start running the "homemade" components of our stack.
-
-> **Before We Start: How Will I Know That Each Component Is Ready?**
->
-> For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the
-> webserver has bound to a port and is ready to receive messages.
-> This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence
-> changes) and will vary from component to component.
-
-First, we run `veritech`.
-
-```bash
-make run//bin/veritech
-```
-
-In another terminal pane, run `pinga`.
-
-```bash
-make run//bin/pinga
-```
-
-In another terminal pane, run `council`.
-
-```bash
-make run//bin/council
-```
-
-In another terminal pane, run `sdf`.
-
-```bash
-make run//bin/sdf
-```
-
-In a final terminal pane, execute the following command:
-
-```bash
-make run//app/web
-```
-
-This will run the web application, which you can access by navigating to http://localhost:8080.
-Now, you have SI running!
-
-
-> **Using CLion Run Configurations Instead of Terminal Panes**
->
-> This repository contains CLion run configurations for most of these targets, in addition to a `Run SI` compound target
-> for running all the targets at once. They should be listed on the run menu automatically and are called
-> `Prepare`, `Run [SDF | Veritech | Pinga | Web]` and `Teardown` (which is related to the next topic).
->
-> Using them you should be able to run the whole stack via CLion's Run tool window instead of using multiple shells!
-
-### Tearing Down the SI Stack (5/5)
-
-You can tear down SI and its external services by stopping the active `make` targets above and executing the following
-in the repository root:
-
-```bash
-make down
-```
-
-The above target will not only stop all running containers, but will remove them as well.
+Using them you should be able to run the whole stack via CLion's Run tool window instead of using multiple shells!
 
 ## Learning About SI Concepts
 
@@ -255,12 +71,6 @@ You can generate and open the Rust documentation locally via the following comma
 ```bash
 cargo doc --no-deps --document-private-items --open
 ```
-
-> If you have `nix` installed, you can open SI documentation without needing to install Rust or other dependencies.
->
-> ```shell
-> nix develop --command cargo doc --no-deps --document-private-items --open
-> ```
 
 Moreover, there are resources in [docs](./docs), [designs](./designs), our Miro boards, and our Figma projects that
 may prove useful as well.
@@ -417,6 +227,13 @@ front ends, GUI, or other desktop applications.
 [npm]: https://docs.npmjs.com/cli
 
 ## Preparing Changes and Running Tests
+
+We highly recommend following the [Convential Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) format when committing changes.
+Our prefixes are derived from the official specification as well as the those found in [commitlint](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional), based on [Angular's commit conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md).
+When in doubt, use `feat`, `fix`, or `chore`!
+
+Moreover, please sign your commits using `git commit -s`.
+You can amend an existing commit with `git commit -s --amend`, if needed.
 
 Please see [the relevant document](./docs/dev/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.
 

@@ -6,64 +6,54 @@ hideWorkspaceLink: true
 ## Run a development instance of System Initiative
 
 First things first - let’s set you up with a System Initiative development environment. You will need to check the
-source code out from GitHub, ensure your system has the right toolchains installed, start our ancillary services in
-Docker containers, and finally, compile and execute the various System Initiative services.
+source code out from GitHub, ensure your system has `nix` installed with its environment set up fully, start our
+ancillary services in  Docker containers, and finally, compile and execute the various System Initiative services.
 
 *Note - If you’re running this in a VM, you’ll want to run through this all as a non-root user with sudo access. On a
 personal machine, this will likely be the case already.*
 
-### Check out the source code
-
-The [System Initiative software is hosted on GitHub](https://github.com/systeminit/si). Open a terminal window, decide
-what directory you want to put the source code in, and check the source code out with:
-
-```shell
-$ git clone https://github.com/systeminit/si.git
-```
-
-Once git has finished checking out your code, the rest of these steps take place within the directory you just checked out.
-
-```shell
-$ cd si
-```
-
-We will refer to this as the `si directory` for the rest of the tutorial.
-
-### Install development dependencies
+### Choose a supported platform
 
 To run a development build of System Initiative and complete this tutorial, you will need to have our development
-dependencies installed. _This section will install software on your computer and mutate your running environment!_
+dependencies installed.
+Let's start by choosing a compatible platform.
 
 The following platforms are supported:
 
-| Architecture | Operating System                                 |
-|--------------|--------------------------------------------------|
-| x86_64       | Arch Linux, Fedora, macOS, Pop!_OS, Ubuntu, WSL2 |
-| arm64        | macOS                                            |
+| Architecture    | Operating System                                                                           |
+|-----------------|--------------------------------------------------------------------------------------------|
+| x86_64 (amd64)  | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
+| aarch64 (arm64) | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
 
-If you are running MacOS, you will need [homebrew](https://brew.sh/) installed, along with Rosetta 2 (you can install it
-with `softwareupdate --install-rosetta`).
+ **Platform Notes:**
+ - Using macOS `aarch64 (arm64)` requires on Rosetta 2 (install it with `softwareupdate --install-rosetta`)
+ - [NixOS](https://nixos.org/) will not likely work at this time (though, this may be desired in the future)
+ - [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or configured to work with `nix`
+ - Linux with MUSL instead of GNU *might* work, but it is untested
 
-First, you must ensure you have the `rust` and `node` toolchains installed and available in your `PATH`. We recommend
-you install rust via [rustup](https://rustup.rs/):
+### Install development dependencies
 
-```shell
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
+Once a platform is chosen, we can install the dependencies for using the flake.
+_This section will install software on your computer and mutate your running environment!_
 
-For Node, we recommend managing your toolchain with [volta](https://volta.sh/):
+- `nix` with flakes enabled
+- `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
+- (optional, but recommended) [`direnv`](https://direnv.net) version `>= 2.30` hooked into your shell
 
-```shell
-curl https://get.volta.sh | bash
-```
+For `nix`, we highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
+official installer; one reason being that the former will enable flakes by default.
 
-You can now install all the necessary software from within the si directory with:
+For `docker`, the Docker Desktop version corresponding to your native architecture should be used on macOS.
+WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
+Native Linux or Linux VM users might be able to use `podman` a drop in replacement for `docker`, though this is untested.
 
-```shell
-$ ./scripts/bootstrap.sh
-```
+For `direnv`, we recommend using it for both ease of running commands and editor integration.
+You can install it with [your package manager of choice](https://direnv.net/docs/installation.html), but at least
+version `2.30.x` must be used for the flake integration to work properly.
+If you're unsure which installation method to use or your package manager does not provide a compatible version, you
+can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 
-This will ensure you have (at least) the following installed:
+With `nix` and `docker` set up, you will have (at least) the following available:
 
 * automake
 * make
@@ -82,6 +72,15 @@ This will ensure you have (at least) the following installed:
 
 Along with any necessary compiler and development toolchains.
 
+### How to run commands
+
+_For the remainder of the tutorial, all commands need to be run from the `nix` environment._
+
+If `direnv` is installed and [hooked into your shell](https://direnv.net/docs/hook.html), you can `cd` into
+the repository and `nix` will boostrap the environment for you using the flake.
+Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
+execute a command, or use the environment in whatever way your prefer.
+
 ### Configure dependencies
 
 System Initiative will interact with AWS through the AWS CLI and inspect containers via Docker Hub. To configure your
@@ -97,6 +96,23 @@ rate limited, you should authenticate:
 ```shell
 $ docker login
 ```
+
+### Check out the source code
+
+The [System Initiative software is hosted on GitHub](https://github.com/systeminit/si). Open a terminal window, decide
+what directory you want to put the source code in, and check the source code out with:
+
+```shell
+$ git clone https://github.com/systeminit/si.git
+```
+
+Once git has finished checking out your code, the rest of these steps take place within the directory you just checked out.
+
+```shell
+$ cd si
+```
+
+We will refer to this as the `si directory` for the rest of the tutorial.
 
 ### Run System Initiative
 
