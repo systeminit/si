@@ -28,10 +28,10 @@ RUN set -eux; \
 RUN addgroup pganalyze \
     && adduser --gecos "" --disabled-password pganalyze --ingroup pganalyze
 
-COPY component/postgres/multiple-database-support.sh /docker-entrypoint-initdb.d/
-COPY component/postgres/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
-COPY component/postgres/pganalyze-collector.conf.sample /etc/pganalyze-collector.conf.sample
-COPY component/postgres/postgresql-additions.conf /etc/postgresql-additions.conf
+COPY multiple-database-support.sh /docker-entrypoint-initdb.d/
+COPY entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
+COPY pganalyze-collector.conf.sample /etc/pganalyze-collector.conf.sample
+COPY postgresql-additions.conf /etc/postgresql-additions.conf
 
 RUN chmod +x /usr/local/bin/entrypoint-wrapper.sh \
     && mkdir -p /etc/postgresql \
