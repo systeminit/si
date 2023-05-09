@@ -1,0 +1,16 @@
+rust_library(
+    name = "cyclone-core",
+    edition = "2021",
+    deps = [
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:base64",
+        "//third-party/rust:nix",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:sodiumoxide",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

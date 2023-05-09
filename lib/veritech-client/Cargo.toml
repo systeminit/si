@@ -5,25 +5,23 @@ edition = "2021"
 rust-version = "1.64"
 publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 cyclone-core = { path = "../../lib/cyclone-core" }
-futures = { version = "0.3.17" }
+futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-serde = "1.0.123"
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.2.0", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
-base64 = "0.21"
-indoc = "2.0"
-test-log = { version = "0.2.7", default-features = false, features = ["trace"] }
-tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }
-uuid = { version = "1.1.2", features = ["serde", "v4"] }
+base64 = { workspace = true }
+indoc = { workspace = true }
+test-log = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
 veritech-server = { path = "../../lib/veritech-server" }

@@ -1,0 +1,8 @@
+rust_library(
+    name = "veritech-core",
+    edition = "2021",
+    deps = [
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

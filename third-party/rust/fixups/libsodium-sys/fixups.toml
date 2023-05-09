@@ -1,0 +1,12 @@
+[[buildscript]]
+[buildscript.cxx_library]
+name = "libsodium"
+srcs = ["libsodium/src/**/*.c"]
+headers = ["libsodium/src/**/*.h"]
+include_paths = [
+  "libsodium/src/libsodium/include",
+  "libsodium/src/libsodium/include/sodium",
+]
+fixup_include_paths = [
+  "include",
+]

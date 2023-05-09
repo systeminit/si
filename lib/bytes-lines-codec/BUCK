@@ -1,0 +1,11 @@
+rust_library(
+    name = "bytes-lines-codec",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:bytes",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

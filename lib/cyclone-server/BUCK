@@ -1,0 +1,35 @@
+rust_library(
+    name = "cyclone-server",
+    edition = "2021",
+    deps = [
+        "//lib/bytes-lines-codec:bytes-lines-codec",
+        "//lib/cyclone-core:cyclone-core",
+        "//lib/si-settings:si-settings",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:async-trait",
+        "//third-party/rust:axum",
+        "//third-party/rust:base64",
+        "//third-party/rust:chrono",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:futures",
+        "//third-party/rust:hyper",
+        "//third-party/rust:pin-project-lite",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:sodiumoxide",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-serde",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tower",
+        "//third-party/rust:tower-http",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "dev.decryption.key",
+    src = "src/dev.decryption.key",
+    visibility = ["PUBLIC"],
+)

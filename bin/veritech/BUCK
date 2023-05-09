@@ -1,0 +1,18 @@
+rust_binary(
+    name = "veritech",
+    edition = "2021",
+    deps = [
+        "//lib/veritech-server:veritech-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    resources = {
+        "cyclone": "//bin/cyclone:cyclone",
+        "lang-js": "//bin/lang-js:build-package",
+        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+    },
+    visibility = ["PUBLIC"],
+)

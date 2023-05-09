@@ -5,12 +5,12 @@ edition = "2021"
 rust-version = "1.64"
 
 [dependencies]
-bytes = "1.1.0"
-tokio-util = { version = "0.7.1", features = ["codec"] }
-tracing = "0.1.29"
+bytes = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
-futures = "0.3.17"
-serde = { version = "1.0.130", features = ["derive"] }
-tokio = { version = "1.12.0", features = ["full"] }
-tokio-serde = { version = "0.8.0", features = ["json"] }
+futures = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tokio-serde = { workspace = true }

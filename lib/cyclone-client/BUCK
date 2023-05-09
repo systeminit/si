@@ -1,0 +1,21 @@
+rust_library(
+    name = "cyclone-client",
+    edition = "2021",
+    deps = [
+        "//lib/cyclone-core:cyclone-core",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:async-trait",
+        "//third-party/rust:futures",
+        "//third-party/rust:futures-lite",
+        "//third-party/rust:http",
+        "//third-party/rust:hyper",
+        "//third-party/rust:hyperlocal",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-tungstenite",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)
