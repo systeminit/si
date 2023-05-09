@@ -11,6 +11,8 @@ import { getUserById } from './users.service';
 
 export const SI_COOKIE_NAME = "si-auth";
 
+export type AuthProviders = 'google' | 'github' | 'password';
+
 // TODO: figure out the shape of the JWT and what data we want
 
 // Auth tokens used for communication between the user's browser and this auth api
@@ -57,7 +59,16 @@ function wipeAuthCookie(ctx: Koa.Context) {
 
 export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext> = async (ctx, next) => {
   const authToken = ctx.cookies.get(SI_COOKIE_NAME);
-  if (!authToken) return next();
+  if (!authToken) {
+    // special auth handling only used in tests
+    if (process.env.NODE_ENV === 'test' && ctx.headers['spoof-auth']) {
+      const user = await getUserById(ctx.headers['spoof-auth'] as string);
+      if (!user) throw new Error('spoof auth user does not exist');
+      ctx.state.authUser = user;
+    }
+
+    return next();
+  }
 
   const decoded = await tryCatch(() => {
     return decodeAuthToken(authToken);
@@ -66,7 +77,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
 
     // clear the cookie and return an error
     wipeAuthCookie(ctx);
-    throw new ApiError('Forbidden', 'AuthTokenCorrupt', 'Invalid auth token');
+    throw new ApiError('Unauthorized', 'AuthTokenCorrupt', 'Invalid auth token');
   });
 
   // console.log(decoded);
@@ -74,7 +85,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   // make sure cookie is valid - not sure if this can happen...
   if (!decoded) {
     wipeAuthCookie(ctx);
-    throw new ApiError('Forbidden', 'AuthTokenCorrupt', 'Invalid auth token');
+    throw new ApiError('Unauthorized', 'AuthTokenCorrupt', 'Invalid auth token');
   }
   // TODO: deal with various other errors, logout on all devices, etc...
 

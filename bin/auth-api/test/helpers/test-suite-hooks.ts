@@ -1,6 +1,6 @@
 import chai from 'chai';
 import chaiSubset from 'chai-subset';
-import chalk from 'chalk';
+// import chalk from 'chalk';
 import nock from 'nock';
 import { cleanupInMemoryCache } from '../../src/lib/cache';
 import { prisma } from '../../src/main';
@@ -18,7 +18,8 @@ export async function testSuiteBefore() {
   await prisma.$connect();
   await routesLoaded;
 
-  // TODO: do we want to reset the test db between each suite?
+  // TODO: might want to reset the test db between each suite?
+  // (meaning truncate all tables)
 
   // console.log(chalk.blue('testSuiteBefore complete'));
 }

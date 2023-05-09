@@ -1,7 +1,7 @@
 ARG BUILDER_IMAGE=cache
 ARG NODE_VERSION=18.16.0
 ARG NGINX_VERSION=1.21.4
-ARG PNPM_VERSION=8.2.0
+ARG PNPM_VERSION=8.5.0
 
 ###########################################################################
 # Cache Stage

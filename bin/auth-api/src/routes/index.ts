@@ -4,7 +4,7 @@ import { createDeferredPromise } from "@si/ts-lib";
 import { getThisDirname } from "../lib/this-file-path";
 import { CustomAppContext, CustomAppState } from "../custom-state";
 
-const __dirname2 = getThisDirname(import.meta.url);
+const __dirname = getThisDirname(import.meta.url);
 
 // we initialize and export the router immediately
 // but we'll add routes to it here and in each routes file
@@ -29,13 +29,13 @@ export const routesLoaded = routesLoadedDefer.promise;
 
 // automatically load all *.routes.ts files in this directory
 // (need .js for when the files are built)
-const routeFilePaths = globSync(`${__dirname2}/**/*.routes.{js,ts}`);
+const routeFilePaths = globSync(`${__dirname}/**/*.routes.{js,ts}`);
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async function loadRoutes() {
   for (const routeFilePath of routeFilePaths) {
     // NOTE this is async, but in practice it's fine
     // if we see problems, we can switch over to importing manually...
-    await import(routeFilePath.replace(__dirname2, "./"));
+    await import(routeFilePath.replace(__dirname, "./"));
   }
   routesLoadedDefer.resolve();
 }());

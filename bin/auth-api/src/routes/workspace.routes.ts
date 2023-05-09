@@ -54,6 +54,8 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
   const workspace = await handleWorkspaceIdParam(ctx);
   // TODO: update workspace name and other settings...
   ctx.body = workspace;
+
+  throw new ApiError('NotImplemented', 'Not yet implemented');
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
@@ -78,7 +80,7 @@ router.post("/complete-auth-connect", async (ctx) => {
   }));
 
   const connectPayload = await getCache(`auth:connect:${reqBody.code}`, true);
-  if (!connectPayload) throw new ApiError('Forbidden', 'Invalid authentication code');
+  if (!connectPayload) throw new ApiError('Conflict', 'Invalid authentication code');
 
   const workspace = await getWorkspaceById(connectPayload.workspaceId);
   if (!workspace) throw new ApiError('Conflict', 'Workspace no longer exists');
