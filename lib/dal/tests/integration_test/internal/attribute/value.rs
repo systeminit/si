@@ -62,7 +62,6 @@ async fn update_for_context_simple(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
-                "domain": {},
             }
         ],
         ComponentView::new(ctx, *component.id())
@@ -228,7 +227,6 @@ async fn insert_for_context_simple(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await
@@ -388,7 +386,6 @@ async fn update_for_context_object(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
-                "domain": {},
             }
         ],
         component_view.properties,
@@ -604,7 +601,6 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await

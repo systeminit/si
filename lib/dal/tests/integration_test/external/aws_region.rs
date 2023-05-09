@@ -200,16 +200,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag
@@ -295,16 +287,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag
@@ -366,16 +350,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag
@@ -474,16 +450,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag
@@ -569,16 +537,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag
@@ -640,16 +600,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 },
             },
             "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_bag

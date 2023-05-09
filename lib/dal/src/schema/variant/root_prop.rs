@@ -8,10 +8,11 @@ use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::property_editor::schema::WidgetKind;
 use crate::validation::Validation;
 use crate::{
+    builtins::schema::MigrationDriver,
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
-    AttributeContext, AttributeValue, AttributeValueError, DalContext, Func, FuncError, Prop,
-    PropId, PropKind, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
-    ValidationPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
+    BuiltinsError, DalContext, Func, FuncError, InternalProvider, Prop, PropId, PropKind, SchemaId,
+    SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
 
 pub mod component_type;
@@ -121,8 +122,7 @@ impl SchemaVariant {
         // FIXME(nick): we rely on ULID ordering for now, so the si prop tree creation has to come
         // before the domain prop tree creation. Once index maps for objects are added, this
         // can be moved back to its original location with the other prop tree creation methods.
-        let (si_prop_id, si_child_name_prop_id) =
-            Self::setup_si(ctx, root_prop_id, schema_id, self.id).await?;
+        let si_prop_id = Self::setup_si(ctx, root_prop_id, schema_id, self.id).await?;
 
         let domain_prop = Prop::new(
             ctx,
@@ -135,7 +135,7 @@ impl SchemaVariant {
         .await?;
 
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id, self.id).await?;
-        let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self.id).await?;
+        let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self).await?;
         let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id, self.id).await?;
         let confirmation_prop_id = Self::setup_confirmation(ctx, root_prop_id, self.id).await?;
@@ -144,74 +144,6 @@ impl SchemaVariant {
         // Now that the structure is set up, we can populate default
         // AttributePrototypes & AttributeValues to be updated appropriately below.
         SchemaVariant::create_default_prototypes_and_values(ctx, self.id).await?;
-
-        // Initialize the root object.
-        let root_context = AttributeContext::builder()
-            .set_prop_id(root_prop_id)
-            .to_context()?;
-        let (_, root_value_id) = AttributeValue::update_for_context(
-            ctx,
-            *AttributeValue::find_for_context(ctx, root_context.into())
-                .await?
-                .ok_or(AttributeValueError::Missing)?
-                .id(),
-            None,
-            root_context,
-            Some(serde_json::json![{}]),
-            None,
-        )
-        .await?;
-
-        // Initialize the si object.
-        let si_context = AttributeContext::builder()
-            .set_prop_id(si_prop_id)
-            .to_context()?;
-        let (_, si_value_id) = AttributeValue::update_for_context(
-            ctx,
-            *AttributeValue::find_for_context(ctx, si_context.into())
-                .await?
-                .ok_or(AttributeValueError::Missing)?
-                .id(),
-            Some(root_value_id),
-            si_context,
-            Some(serde_json::json![{}]),
-            None,
-        )
-        .await?;
-
-        // Initialize the si name value.
-        let si_name_context = AttributeContext::builder()
-            .set_prop_id(si_child_name_prop_id)
-            .to_context()?;
-        let (_, _) = AttributeValue::update_for_context(
-            ctx,
-            *AttributeValue::find_for_context(ctx, si_name_context.into())
-                .await?
-                .ok_or(AttributeValueError::Missing)?
-                .id(),
-            Some(si_value_id),
-            si_name_context,
-            None,
-            None,
-        )
-        .await?;
-
-        // Initialize the domain object.
-        let domain_context = AttributeContext::builder()
-            .set_prop_id(*domain_prop.id())
-            .to_context()?;
-        let (_, _) = AttributeValue::update_for_context(
-            ctx,
-            *AttributeValue::find_for_context(ctx, domain_context.into())
-                .await?
-                .ok_or(AttributeValueError::Missing)?
-                .id(),
-            Some(root_value_id),
-            domain_context,
-            Some(serde_json::json![{}]),
-            None,
-        )
-        .await?;
 
         Ok(RootProp {
             prop_id: root_prop_id,
@@ -291,7 +223,7 @@ impl SchemaVariant {
         root_prop_id: PropId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<(PropId, PropId)> {
+    ) -> SchemaVariantResult<PropId> {
         let si_prop = Prop::new(
             ctx,
             "si",
@@ -302,7 +234,7 @@ impl SchemaVariant {
         )
         .await?;
         let si_prop_id = *si_prop.id();
-        let si_name_prop = Prop::new(
+        let _si_name_prop = Prop::new(
             ctx,
             "name",
             PropKind::String,
@@ -372,15 +304,16 @@ impl SchemaVariant {
         )
         .await?;
 
-        Ok((si_prop_id, *si_name_prop.id()))
+        Ok(si_prop_id)
     }
 
     async fn setup_resource_value(
         ctx: &DalContext,
         root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
+        schema_variant: &mut SchemaVariant,
     ) -> SchemaVariantResult<PropId> {
-        let mut resource_value_payload_prop = Prop::new(
+        let schema_variant_id = *schema_variant.id();
+        let mut resource_value_prop = Prop::new(
             ctx,
             "resource_value",
             PropKind::Object,
@@ -389,9 +322,65 @@ impl SchemaVariant {
             Some(root_prop_id),
         )
         .await?;
-        resource_value_payload_prop.set_hidden(ctx, true).await?;
+        resource_value_prop.set_hidden(ctx, true).await?;
 
-        Ok(*resource_value_payload_prop.id())
+        SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id()).await?;
+        SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;
+
+        {
+            // Translation func
+            let (func_id, func_argument_id) =
+                MigrationDriver::find_func_and_single_argument_by_names_raw(
+                    ctx,
+                    "si:resourcePayloadToValue",
+                    "payload",
+                )
+                .await
+                .map_err(Box::new)?;
+
+            let source = {
+                let prop = SchemaVariant::find_prop_in_tree(
+                    ctx,
+                    schema_variant_id,
+                    &["root", "resource", "payload"],
+                )
+                .await?;
+
+                InternalProvider::find_for_prop(ctx, *prop.id())
+                    .await?
+                    .ok_or_else(|| {
+                        Box::new(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                            *prop.id(),
+                        ))
+                    })?
+            };
+
+            let target = {
+                let mut prototype = AttributeValue::find_for_context(
+                    ctx,
+                    AttributeReadContext::default_with_prop(*resource_value_prop.id()),
+                )
+                .await?
+                .ok_or(AttributeValueError::Missing)?
+                .attribute_prototype(ctx)
+                .await?
+                .ok_or(AttributeValueError::MissingAttributePrototype)?;
+
+                prototype.set_func_id(ctx, func_id).await?;
+
+                prototype
+            };
+
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *target.id(),
+                func_argument_id,
+                *source.id(),
+            )
+            .await?;
+        }
+
+        Ok(*resource_value_prop.id())
     }
 
     async fn setup_resource(

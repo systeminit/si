@@ -378,7 +378,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -389,7 +388,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {}
         }], // expected
         noctua_component_view.properties // actual
     );
@@ -418,7 +416,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                payload: Some(serde_json::json!["quantum"]),
+                payload: Some(serde_json::json![{ "quantum": true }]),
                 logs: Default::default(),
                 message: Default::default(),
                 last_synced: Default::default(),
@@ -446,12 +444,12 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
             "resource": {
                 "logs": [],
-                "payload": "quantum",
+                "payload": { "quantum": true },
                 "status": "ok",
-            }
+            },
+            "resource_value": {}
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -465,10 +463,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {
                 "u12a": {
                     "logs": [],
-                    "payload": "quantum",
+                    "payload": { "quantum": true },
                     "status": "ok",
                 }
-            }
+            },
         }], // expected
         noctua_component_view.properties // actual
     );
@@ -494,12 +492,12 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
             "resource": {
                 "logs": [],
-                "payload": "quantum",
+                "payload": { "quantum": true },
                 "status": "ok",
-            }
+            },
+            "resource_value": {}
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -513,10 +511,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             "domain": {
                 "u12a": {
                     "logs": [],
-                    "payload": "quantum",
+                    "payload": { "quantum": true },
                     "status": "ok",
                 }
-            }
+            },
         }], // expected
         noctua_component_view.properties // actual
     );

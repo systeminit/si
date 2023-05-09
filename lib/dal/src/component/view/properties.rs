@@ -17,7 +17,8 @@ use crate::ComponentView;
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct ComponentViewProperties {
     si: serde_json::Value,
-    domain: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    domain: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     resource: Option<ResourceProperties>,
     #[serde(skip_serializing_if = "Option::is_none")]

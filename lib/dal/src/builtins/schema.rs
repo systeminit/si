@@ -269,7 +269,7 @@ pub async fn migrate_for_tests(
 /// A _private_ item containing useful metadata alongside a [`FuncId`](crate::Func). This is used by
 /// the [`MigrationDriver`].
 #[derive(Copy, Clone, Debug)]
-struct FuncCacheItem {
+pub struct FuncCacheItem {
     pub func_id: FuncId,
     pub func_binding_id: FuncBindingId,
     pub func_binding_return_value_id: FuncBindingReturnValueId,
@@ -279,7 +279,7 @@ struct FuncCacheItem {
 /// This _private_ driver providing caches and helper methods for efficiently creating builtin
 /// [`Schemas`](crate::Schema).
 #[derive(Default)]
-struct MigrationDriver {
+pub struct MigrationDriver {
     pub func_item_cache: HashMap<String, FuncCacheItem>,
     pub func_id_cache: HashMap<String, FuncId>,
 }
@@ -605,6 +605,14 @@ impl MigrationDriver {
     /// the name for each, respectively.
     pub async fn find_func_and_single_argument_by_names(
         &self,
+        ctx: &DalContext,
+        func_name: &str,
+        func_argument_name: &str,
+    ) -> BuiltinsResult<(FuncId, FuncArgumentId)> {
+        Self::find_func_and_single_argument_by_names_raw(ctx, func_name, func_argument_name).await
+    }
+
+    pub async fn find_func_and_single_argument_by_names_raw(
         ctx: &DalContext,
         func_name: &str,
         func_argument_name: &str,

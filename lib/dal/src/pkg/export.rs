@@ -703,7 +703,7 @@ async fn set_variant_spec_prop_data(
             if matches!(prop_root, SchemaVariantSpecPropRoot::Domain) {
                 return Err(PkgError::prop_tree_invalid("domain prop not found"));
             } else {
-                warn!("/root/resource/value prop not found, if value prop PR has merged, this should be an error not a warning.");
+                warn!("/root/resource_value prop not found, if value prop PR has merged, this should be an error not a warning.");
                 return Ok(());
             }
         }

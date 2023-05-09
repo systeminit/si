@@ -25,7 +25,7 @@ use crate::{
 
 // Private builtins modules.
 mod func;
-mod schema;
+pub mod schema;
 mod workflow;
 
 // Expose the "persist" function for creating and editing builtin funcs while in dev mode.

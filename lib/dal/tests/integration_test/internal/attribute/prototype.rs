@@ -424,7 +424,6 @@ async fn remove_component_specific(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
-                "domain": {}
             }
         ],
         component_view.properties,

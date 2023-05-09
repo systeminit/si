@@ -1343,9 +1343,11 @@ DECLARE
     field_context                      jsonb;
     field_value                        jsonb;
     invalid_object_keys                text[];
+    invalid_object_key                 text;
     map_key                            text;
     object_field_prop_id               ident;
     object_field_prop_name             text;
+    object_field_prop_kind             text;
     object_keys                        text[];
     parent_attribute_value             attribute_values%ROWTYPE;
     parent_prop                        props%ROWTYPE;
@@ -1412,11 +1414,14 @@ BEGIN
         -- Can't use `IF NOT FOUND` because `array_agg` will always be `FOUND`, even if it is still
         -- `NULL` because it didn't aggregate anything.
         IF invalid_object_keys IS NOT NULL THEN
-            RAISE 'attribute_value_populate_nested_values_v1: Invalid object value fields(%) for Prop(%), Tenancy(%), Visibility(%)',
-                  invalid_object_keys,
-                  parent_prop.id,
-                  this_tenancy,
-                  this_visibility;
+	    -- We used to RAISE an error here, but populating /root/resource_value from /root/resource/payload
+	    -- gets annoying if we don't ignore extra values, because it requires a custom function that builds
+	    -- the custom /root/resource_value instead of a generic one that just deserializes the payload
+	    FOREACH invalid_object_key IN ARRAY invalid_object_keys
+	    LOOP
+		RAISE WARNING 'Unable to find child Prop(name = %) for Parent PropId(%)', invalid_object_key, parent_prop.id;
+		unprocessed_value := unprocessed_value - invalid_object_key;
+	    END LOOP;
         END IF;
 
         SELECT id
@@ -1441,8 +1446,8 @@ BEGIN
             unset_func_id
         );
 
-        FOR object_field_prop_id, object_field_prop_name IN
-            SELECT DISTINCT ON (props.id) props.id, props.name
+        FOR object_field_prop_id, object_field_prop_name, object_field_prop_kind IN
+            SELECT DISTINCT ON (props.id) props.id, props.name, props.kind
             FROM props_v1(this_tenancy, this_visibility) as props
             INNER JOIN prop_belongs_to_prop_v1(this_tenancy, this_visibility) as pbtp
                 ON pbtp.belongs_to_id = parent_prop.id
@@ -1450,10 +1455,13 @@ BEGIN
         LOOP
             field_value := jsonb_extract_path(unprocessed_value, object_field_prop_name);
             IF field_value IS NULL THEN
-                -- The object we were given didn't include this field, so we shouldn't do anything with it, and
-                -- should move on to the next field to try. If it had been explicitly set to our `Unset` value,
-                -- then `jsonb_extract_path(...)` would return a JSON null, as the object key would exist.
-                CONTINUE;
+		IF object_field_prop_kind = 'object' THEN
+		    field_value := '{}'::jsonb;
+		ELSIF object_field_prop_kind = 'map' THEN
+		    field_value := '{}'::jsonb;
+		ELSIF object_field_prop_kind = 'array' THEN
+		    field_value := '[]'::jsonb;
+		END IF;
             END IF;
 
             field_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', object_field_prop_id);

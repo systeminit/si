@@ -491,7 +491,7 @@ fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
 }",
         FuncBackendResponseType::Command => "interface Output {
     status: 'ok' | 'warning' | 'error';
-    value?: unknown;
+    payload?: { [key: string]: unknown } | null;
     message?: string;
 }",
         FuncBackendResponseType::Json => "type Output = any;",
