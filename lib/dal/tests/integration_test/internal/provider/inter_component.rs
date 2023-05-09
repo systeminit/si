@@ -44,7 +44,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -120,7 +119,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -224,7 +222,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -268,7 +265,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -687,7 +683,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
-                "domain": {},
             }
         ],
         ComponentView::new(ctx, *source_component.id())
@@ -716,7 +711,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
-                "domain": {},
             }
         ],
         ComponentView::new(ctx, *destination_component.id())

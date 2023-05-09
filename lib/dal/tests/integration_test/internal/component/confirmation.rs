@@ -75,7 +75,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
-            }
+            },
         }], // expected
         component_view.properties // actual
     );
@@ -86,7 +86,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             ctx,
             CommandRunResult {
                 status: ResourceStatus::Ok,
-                payload: Some(serde_json::json!["poop"]),
+                payload: Some(serde_json::json![{ "poop": true }]),
                 message: None,
                 logs: vec![],
                 last_synced: Default::default(),
@@ -118,14 +118,15 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
             "resource": {
                 "logs": [],
                 "status": "ok",
-                "payload": "poop"
+                "payload": { "poop": true },
             },
             "confirmation": {
                 "test:confirmationStarfield": {
                     "success": true,
                     "recommendedActions": []
                 }
-            }
+            },
+            "resource_value": {}
         }], // expected
         component_view.properties // actual
     );
@@ -174,7 +175,8 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
-            }
+            },
+            "resource_value": {},
         }], // expected
         component_view.properties // actual
     );
@@ -260,13 +262,12 @@ async fn list_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
             "confirmation": {
                 "test:confirmationStarfield": {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
-            }
+            },
         }], // expected
         component_view.properties // actual
     );
@@ -321,7 +322,6 @@ async fn list_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
             "resource": {
                 "logs": [],
                 "status": "ok"
@@ -331,7 +331,7 @@ async fn list_confirmations(mut octx: DalContext) {
                     "success": true,
                     "recommendedActions": []
                 }
-            }
+            },
         }], // expected
         ComponentViewProperties::try_from(component_view)
             .expect("could not create component view properties")
@@ -403,7 +403,6 @@ async fn list_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
-            "domain": {},
             "resource": {
                 "logs": [],
                 "status": "ok"
@@ -413,7 +412,8 @@ async fn list_confirmations(mut octx: DalContext) {
                     "success": false,
                     "recommendedActions": ["create"]
                 }
-            }
+            },
+            "resource_value": {},
         }], // expected
         component_view.properties // actual
     );

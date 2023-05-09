@@ -1,9 +1,7 @@
 async function deleteResource(component: Input): Promise<Output> {
   const resource = component.properties.resource?.payload;
 
-  const instances = Array.isArray(resource) ? resource : [resource];
-  const instanceIds = instances.flatMap((i) => i.Instances).map((i) => i.InstanceId).filter((id) => !!id);
-  if (!instanceIds || instanceIds.length === 0) return {
+  if (!resource.InstanceId) return {
     status: "error",
     payload: resource,
     message: "No EC2 instance id found"
@@ -16,7 +14,7 @@ async function deleteResource(component: Input): Promise<Output> {
     "--region",
     component.properties.domain.region,
     "--instance-ids",
-    ...instanceIds,
+    resource.InstanceId,
   ]);
 
   if (child.exitCode !== 0) {

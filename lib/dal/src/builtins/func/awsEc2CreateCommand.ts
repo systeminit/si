@@ -25,5 +25,5 @@ async function create(component: Input): Promise<Output> {
     }
   }
 
-  return { payload: JSON.parse(child.stdout), status: "ok" };
+  return { payload: JSON.parse(child.stdout).Instances[0], status: "ok" };
 }

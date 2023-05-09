@@ -269,7 +269,7 @@ pub async fn migrate_for_tests(
 /// A _private_ item containing useful metadata alongside a [`FuncId`](crate::Func). This is used by
 /// the [`MigrationDriver`].
 #[derive(Copy, Clone, Debug)]
-struct FuncCacheItem {
+pub struct FuncCacheItem {
     pub func_id: FuncId,
     pub func_binding_id: FuncBindingId,
     pub func_binding_return_value_id: FuncBindingReturnValueId,
@@ -279,7 +279,7 @@ struct FuncCacheItem {
 /// This _private_ driver providing caches and helper methods for efficiently creating builtin
 /// [`Schemas`](crate::Schema).
 #[derive(Default)]
-struct MigrationDriver {
+pub struct MigrationDriver {
     pub func_item_cache: HashMap<String, FuncCacheItem>,
     pub func_id_cache: HashMap<String, FuncId>,
 }
@@ -525,6 +525,30 @@ impl MigrationDriver {
         }
     }
 
+    /// Creates a [`Prop`](crate::Prop) and marks it as hidden.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_hidden_prop(
+        &self,
+        ctx: &DalContext,
+        prop_name: &str,
+        prop_kind: PropKind,
+        parent_prop_id: Option<PropId>,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<Prop> {
+        let mut prop = Prop::new(
+            ctx,
+            prop_name,
+            prop_kind,
+            None,
+            schema_variant_id,
+            parent_prop_id,
+        )
+        .await?;
+        prop.set_hidden(ctx, true).await?;
+
+        Ok(prop)
+    }
+
     /// Creates a [`Prop`](crate::Prop) with some common settings.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_prop(
@@ -549,6 +573,7 @@ impl MigrationDriver {
         if doc_link.is_some() {
             prop.set_doc_link(ctx, doc_link).await?;
         }
+
         Ok(prop)
     }
 
@@ -580,6 +605,14 @@ impl MigrationDriver {
     /// the name for each, respectively.
     pub async fn find_func_and_single_argument_by_names(
         &self,
+        ctx: &DalContext,
+        func_name: &str,
+        func_argument_name: &str,
+    ) -> BuiltinsResult<(FuncId, FuncArgumentId)> {
+        Self::find_func_and_single_argument_by_names_raw(ctx, func_name, func_argument_name).await
+    }
+
+    pub async fn find_func_and_single_argument_by_names_raw(
         ctx: &DalContext,
         func_name: &str,
         func_argument_name: &str,
@@ -748,6 +781,73 @@ impl MigrationDriver {
             context,
         )
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_aws_tags_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+        domain_tags_prop_id: Option<PropId>,
+        domain_tag_prop_id: Option<PropId>,
+    ) -> BuiltinsResult<()> {
+        // Prop: /resource_value/tags
+        let mut key_pair_tags_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Tags",
+                PropKind::Array,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if domain_tags_prop_id.is_some() {
+            key_pair_tags_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tags_prop_id)
+                .await?;
+        }
+
+        let key_pair_tag_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Tag",
+                PropKind::Object,
+                Some(*key_pair_tags_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        let mut tag_key_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Key",
+                PropKind::String,
+                Some(*key_pair_tag_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+        if domain_tag_prop_id.is_some() {
+            tag_key_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tag_prop_id)
+                .await?;
+        }
+
+        let mut tag_value_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Value",
+                PropKind::String,
+                Some(*key_pair_tag_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+        if domain_tag_prop_id.is_some() {
+            tag_value_resource_prop
+                .set_refers_to_prop_id(ctx, domain_tag_prop_id)
+                .await?;
+        }
 
         Ok(())
     }

@@ -7,9 +7,7 @@ async function refresh(component: Input): Promise<Output> {
     };
   }
 
-  const instances = Array.isArray(resource) ? resource : [resource];
-  const instanceIds = instances.flatMap((i) => i.Instances).map((i) => i.InstanceId).filter((id) => !!id);
-  if (!instanceIds || instanceIds.length === 0) return {
+  if (!resource.InstanceId) return {
     status: "error",
     payload: resource,
     message: "No EC2 instance id found"
@@ -19,13 +17,13 @@ async function refresh(component: Input): Promise<Output> {
     "ec2",
     "describe-instances",
     "--instance-ids",
-    ...instanceIds,
+    resource.InstanceId,
     "--region",
     component.properties.domain.region,
   ]);
 
   if (child.stderr.includes("InvalidInstance.NotFound")) {
-    console.log(`Instance Ids: ${instanceIds}`);
+    console.log(`Instance Id: ${resource.InstanceId}`);
     console.error(child.stderr);
     return {
       status: "error",
@@ -34,7 +32,7 @@ async function refresh(component: Input): Promise<Output> {
   }
 
   if (child.stderr.includes("InvalidInstanceID.Malformed")) {
-    console.log(`Instance Ids: ${instanceIds}`);
+    console.log(`Instance Id: ${resource.InstanceId}`);
     console.error(child.stderr);
     return {
       status: "error",
@@ -44,7 +42,7 @@ async function refresh(component: Input): Promise<Output> {
   }
 
   if (child.exitCode !== 0) {
-    console.log(`Instance Ids: ${instanceIds}`);
+    console.log(`Instance Id: ${resource.InstanceId}`);
     console.error(child.stderr);
     return {
       status: "error",
@@ -55,8 +53,8 @@ async function refresh(component: Input): Promise<Output> {
 
   const object = JSON.parse(child.stdout);
 
-  if (!object.Reservations || object.Reservations.length === 0) {
-    console.log(`Instance Ids: ${instanceIds}`);
+  if (!object.Reservations || object.Reservations.length === 0 || !object.Reservations[0].Instances || object.Reservations[0].Instances.length === 0) {
+    console.log(`Instance Id: ${resource.InstanceId}`);
     console.error(child.stdout);
     return {
       status: "error",
@@ -64,21 +62,16 @@ async function refresh(component: Input): Promise<Output> {
     }
   }
 
+  let instance = object.Reservations[0].Instances[0];
   let status: "ok" | "warning" | "error" = "ok";
   let message;
-  for (const reservation of object.Reservations) {
-    for (const instance of reservation.Instances) {
-      if (["terminated", "shutting-down", "stopped", "stopping"].includes(instance.State.Name)) {
-        status = "error";
-        message = `Instance not running, state: ${instance.State.Name}`;
-        break;
-      } else if (instance.State.Name === "pending") {
-        status = "warning";
-        message = `Instance not running, state: ${instance.State.Name}`;
-        break;
-      }
-    }
+  if (["terminated", "shutting-down", "stopped", "stopping"].includes(instance.State.Name)) {
+    status = "error";
+    message = `Instance not running, state: ${instance.State.Name}`;
+  } else if (instance.State.Name === "pending") {
+    status = "warning";
+    message = `Instance not running, state: ${instance.State.Name}`;
   }
 
-  return { payload: object.Reservations, status, message };
+  return { payload: instance, status, message };
 }

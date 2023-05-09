@@ -15,7 +15,7 @@ mod args;
 
 type JobProcessor = sdf_server::NatsProcessor;
 
-const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 10;
 
 fn main() -> Result<()> {
     let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);

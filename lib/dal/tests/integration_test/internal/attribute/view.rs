@@ -58,14 +58,8 @@ async fn schema_variant_specific(ctx: &DalContext) {
     .expect("could not create attribute view");
 
     assert_eq!(
-        serde_json::json![
-            {
-                "domain": {},
-
-                "si": {}
-            }
-        ], // expected
-        view.value().clone(), // actual
+        serde_json::json![null], // expected
+        view.value().clone(),    // actual
     );
 
     let domain_attribute_value = AttributeValue::find_for_context(
@@ -123,8 +117,6 @@ async fn schema_variant_specific(ctx: &DalContext) {
                 "domain": {
                     "name": "toddhoward"
                 },
-
-                "si": {}
             }
         ], // expected
         view.value().clone(), // actual

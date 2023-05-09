@@ -528,7 +528,7 @@ async fn create_schema_variant(
             .await?;
 
             let (rv_attr_funcs, rv_default_values) = match schema_variant
-                .find_prop(ctx, &["root", "resource", "value"])
+                .find_prop(ctx, &["root", "resource_value"])
                 .await
             {
                 Ok(resource_value_prop) => {
@@ -544,7 +544,7 @@ async fn create_schema_variant(
                     .await?
                 }
                 Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
-                    warn!("Cannot find /root/resource/value prop, so skipping creating props under the resource value. If the /root/resource/value pr has been merged, this should be an error!");
+                    warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
                     (vec![], vec![])
                 }
                 Err(err) => Err(err)?,

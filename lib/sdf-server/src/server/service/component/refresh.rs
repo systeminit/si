@@ -6,7 +6,7 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
+use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
@@ -33,28 +33,49 @@ pub async fn refresh(
 ) -> ComponentResult<Json<RefreshResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // If a component does not exist on head, we should just consider it "refreshed" right away.
-    if let Some(component_id) = request.component_id {
-        if Component::get_by_id(&ctx, &component_id).await?.is_none() {
-            WsEvent::resource_refreshed(&ctx, component_id)
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
-            ctx.commit().await?;
+    let component_id = request.component_id;
+    let result = ctx
+        .run_with_deleted_visibility(|ctx| async move {
+            // If a component does not exist on head, we should just consider it "refreshed" right away.
+            if let Some(component_id) = component_id {
+                let bailout =
+                    if let Some(component) = Component::get_by_id(&ctx, &component_id).await? {
+                        component.visibility().deleted_at.is_some() && !component.needs_destroy()
+                    } else {
+                        false
+                    };
 
-            return Ok(Json(RefreshResponse { success: true }));
-        }
+                if bailout {
+                    WsEvent::resource_refreshed(&ctx, component_id)
+                        .await?
+                        .publish_on_commit(&ctx)
+                        .await?;
+                    ctx.commit().await?;
+
+                    return Ok::<_, ComponentError>(Some(Json(RefreshResponse { success: true })));
+                }
+            }
+            Ok(None)
+        })
+        .await?;
+
+    if let Some(result) = result {
+        return Ok(result);
     }
 
     let component_ids = if let Some(component_id) = request.component_id {
         vec![component_id]
     } else {
-        Component::list(&ctx)
-            .await?
-            .into_iter()
-            .filter(|c| c.visibility().deleted_at.is_none() || c.needs_destroy())
-            .map(|c| *c.id())
-            .collect()
+        ctx.run_with_deleted_visibility(|ctx| async move {
+            let component_ids = Component::list(&ctx)
+                .await?
+                .into_iter()
+                .filter(|c| c.visibility().deleted_at.is_none() || c.needs_destroy())
+                .map(|c| *c.id())
+                .collect();
+            Ok::<_, ComponentError>(component_ids)
+        })
+        .await?
     };
 
     track(

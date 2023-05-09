@@ -115,12 +115,8 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
                 "protected": false
             },
             "code": {
-                "test:codeGeneration": {
-                    "code": "",
-                    "format": "json"
-                }
+                "test:codeGeneration": {}
             },
-            "domain": {},
         }], // expected
         component_view.properties // actual
     );
@@ -134,7 +130,6 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {}
         }], // expected
         component_view_properties
             .drop_code()

@@ -100,7 +100,7 @@ impl MigrationDriver {
             )
             .await?;
             let code = "async function create() {
-                return { payload: \"poop\", status: \"ok\" };
+                return { payload: { \"poop\": true }, status: \"ok\" };
             }";
             command_func.set_code_plaintext(ctx, Some(code)).await?;
             command_func.set_handler(ctx, Some("create")).await?;
@@ -160,7 +160,7 @@ impl MigrationDriver {
             )
             .await?;
             let code = "async function refresh(component: Input): Promise<Output> {
-              return { payload: \"poop\", status: \"ok\" };
+              return { payload: { \"poop\": true }, status: \"ok\" };
             }";
             refresh_func.set_code_plaintext(ctx, Some(code)).await?;
             refresh_func.set_handler(ctx, Some("refresh")).await?;

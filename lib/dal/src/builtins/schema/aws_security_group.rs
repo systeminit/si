@@ -8,7 +8,7 @@ use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
     action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation, FuncDescription,
-    FuncDescriptionContents,
+    FuncDescriptionContents, PropId, SchemaVariantId,
 };
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
@@ -57,7 +57,8 @@ impl MigrationDriver {
         };
         let schema_variant_id = *schema_variant.id();
 
-        // Prop Creation
+        // Create Domain Prop Tree
+
         let description_prop = self
             .create_prop(
                 ctx,
@@ -106,7 +107,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let _vpc_id_prop = self
+        let vpc_id_prop = self
             .create_prop(
                 ctx,
                 "VpcId",
@@ -166,6 +167,139 @@ impl MigrationDriver {
             )
             .await?;
         aws_resource_type_prop.set_hidden(ctx, true).await?;
+
+        // Create Resource Prop Tree
+
+        // Prop: /resource_value/GroupName
+        let mut sg_group_name_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupName",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_group_name_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*group_name_prop.id()))
+            .await?;
+
+        // Prop: /resource_value/GroupId
+        let _sg_group_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource_value/OwnerId
+        let _sg_owner_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "OwnerId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource_value/VpcId
+        let mut sg_vpc_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "VpcId",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_vpc_id_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*vpc_id_prop.id()))
+            .await?;
+
+        // Prop: /resource_value/Description
+        let mut sg_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        sg_description_resource_prop
+            .set_refers_to_prop_id(ctx, Some(*description_prop.id()))
+            .await?;
+
+        self.create_aws_tags_prop_tree(
+            ctx,
+            root_prop.resource_value_prop_id,
+            schema_variant_id,
+            None,
+            None,
+        )
+        .await?;
+
+        // Prop: /resource_value/IpPermissions
+        let sg_ip_permissions_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissions",
+                PropKind::Array,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource_value/IpPermission
+        let sg_ip_permission_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermission",
+                PropKind::Object,
+                Some(*sg_ip_permissions_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_ip_permission_prop_tree(
+            ctx,
+            *sg_ip_permission_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        // Prop: /resource_value/IpPermissionsEgress
+        let sg_ip_permissions_egress_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissionsEgress",
+                PropKind::Array,
+                Some(root_prop.resource_value_prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        // Prop: /resource_value/IpPermissionEgress
+        let sg_ip_permission_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpPermissionEgress",
+                PropKind::Object,
+                Some(*sg_ip_permissions_egress_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_ip_permission_prop_tree(
+            ctx,
+            *sg_ip_permission_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
 
         // Socket Creation
         let identity_func_item = self
@@ -569,6 +703,308 @@ impl MigrationDriver {
         )
         .await?;
 
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn create_aws_security_group_rule_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+        group_id_prop_id: Option<PropId>,
+        ip_protocol_prop_id: Option<PropId>,
+        to_port_prop_id: Option<PropId>,
+        from_port_prop_id: Option<PropId>,
+        cidr_ip_prop_id: Option<PropId>,
+        tags_array_prop_id: Option<PropId>,
+        tag_item_prop_id: Option<PropId>,
+    ) -> BuiltinsResult<()> {
+        let _security_group_rule_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "SecurityGroupRuleId",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let mut security_group_rule_group_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupId",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if group_id_prop_id.is_some() {
+            security_group_rule_group_id_resource_prop
+                .set_refers_to_prop_id(ctx, group_id_prop_id)
+                .await?;
+        }
+
+        let _security_group_rule_group_owner_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "GroupOwnerId",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let mut security_group_rule_ip_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpProtocol",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if ip_protocol_prop_id.is_some() {
+            security_group_rule_ip_protocol_resource_prop
+                .set_refers_to_prop_id(ctx, ip_protocol_prop_id)
+                .await?;
+        }
+
+        let mut security_group_rule_from_port_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "FromPort",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if from_port_prop_id.is_some() {
+            security_group_rule_from_port_resource_prop
+                .set_refers_to_prop_id(ctx, from_port_prop_id)
+                .await?;
+        }
+
+        let mut security_group_rule_to_port_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "ToPort",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if to_port_prop_id.is_some() {
+            security_group_rule_to_port_resource_prop
+                .set_refers_to_prop_id(ctx, to_port_prop_id)
+                .await?;
+        }
+
+        let _security_group_rule_cidr_ipv6_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "CidrIpv6",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let mut security_group_rule_cidr_ipv4_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "CidrIpv4",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+        if cidr_ip_prop_id.is_some() {
+            security_group_rule_cidr_ipv4_resource_prop
+                .set_refers_to_prop_id(ctx, cidr_ip_prop_id)
+                .await?;
+        }
+
+        let _security_group_rule_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_aws_tags_prop_tree(
+            ctx,
+            prop_id,
+            schema_variant_id,
+            tags_array_prop_id,
+            tag_item_prop_id,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_aws_ip_permission_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let _ip_perm_from_port_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "FromPort",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_perm_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpProtocol",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_perm_to_port_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "ToPort",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let ip_ranges_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpRanges",
+                PropKind::Array,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let ip_range_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "IpRange",
+                PropKind::Object,
+                Some(*ip_ranges_protocol_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_ip_range_prop_tree(
+            ctx,
+            *ip_range_protocol_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let ipv6_ranges_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Ipv6Ranges",
+                PropKind::Array,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let ipv6_range_protocol_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Ipv6Range",
+                PropKind::Object,
+                Some(*ipv6_ranges_protocol_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        self.create_ip_range_prop_tree(
+            ctx,
+            *ipv6_range_protocol_resource_prop.id(),
+            schema_variant_id,
+        )
+        .await?;
+
+        let prefix_list_ids_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "PrefixListIds",
+                PropKind::Array,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let prefix_list_id_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "PrefixListId",
+                PropKind::Object,
+                Some(*prefix_list_ids_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        let _prefix_list_id_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                Some(*prefix_list_id_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        let _prefix_list_id_id_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "PrefixListId",
+                PropKind::String,
+                Some(*prefix_list_id_resource_prop.id()),
+                schema_variant_id,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn create_ip_range_prop_tree(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let _ip_range_description_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
+
+        let _ip_range_cidr_ip_resource_prop = self
+            .create_hidden_prop(
+                ctx,
+                "CidrIp",
+                PropKind::String,
+                Some(prop_id),
+                schema_variant_id,
+            )
+            .await?;
         Ok(())
     }
 }

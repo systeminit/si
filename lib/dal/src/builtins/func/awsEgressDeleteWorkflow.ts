@@ -1,10 +1,10 @@
 async function deleteResource(arg: Input): Promise<Output> {
   return {
-    name: "si:awsIngressDeleteWorkflow",
+    name: "si:awsEgressDeleteWorkflow",
     kind: "conditional",
     steps: [
       {
-        command: "si:awsIngressDeleteCommand",
+        command: "si:awsEgressDeleteCommand",
         args: [arg],
       },
     ],
