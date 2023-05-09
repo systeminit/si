@@ -15,7 +15,7 @@ use dal::{
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_posthog_rs::{PosthogClient, PosthogConfig};
+use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -63,7 +63,7 @@ pub enum ServerError {
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
     #[error(transparent)]
-    Posthog(#[from] si_posthog_rs::PosthogError),
+    Posthog(#[from] si_posthog::PosthogError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -186,7 +186,7 @@ impl Server<(), ()> {
     }
 
     pub async fn start_posthog(config: &PosthogConfig) -> Result<PosthogClient> {
-        let (posthog_client, posthog_sender) = si_posthog_rs::from_config(config)?;
+        let (posthog_client, posthog_sender) = si_posthog::from_config(config)?;
 
         drop(tokio::spawn(posthog_sender.run()));
 
@@ -214,15 +214,10 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
-    pub async fn load_jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
-        // FIXME(fnichol): further extract decision into args & config, even if driven via env var
-        let public_key_string = match option_env!("LOCAL_AUTH_STACK") {
-            Some(_) => include_str!("../../../../config/keys/dev.jwt_signing_public_key.pem"),
-            None => include_str!("../../../../config/keys/prod.jwt_signing_public_key.pem"),
-        };
-        let public_key = JwtPublicSigningKey::from_key_string(public_key_string).await?;
-
-        Ok(public_key)
+    pub async fn load_jwt_public_signing_key(
+        path: impl AsRef<Path>,
+    ) -> Result<JwtPublicSigningKey> {
+        Ok(JwtPublicSigningKey::load(path).await?)
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]

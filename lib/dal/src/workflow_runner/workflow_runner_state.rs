@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 
 use crate::standard_model::option_object_from_row;

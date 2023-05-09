@@ -4,7 +4,7 @@ use chrono::Utc;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::ResourceStatus;

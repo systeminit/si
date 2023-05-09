@@ -1,0 +1,14 @@
+export_file(
+    name = "dev.jwt_signing_private_key.pem",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "dev.jwt_signing_public_key.pem",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "prod.jwt_signing_public_key.pem",
+    visibility = ["PUBLIC"],
+)

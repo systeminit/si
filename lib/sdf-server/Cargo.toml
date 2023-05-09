@@ -6,45 +6,43 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-async-trait = "0.1.51"
-axum = { version = "0.6.12", features = ["macros", "ws"] }
-axum-macros = { version = "0.3", optional = true } # enable: cargo build --features axum-macro
-base64 = "0.21"
-chrono = { version = "0.4.19", features = ["serde"] }
-convert_case = "0.6.0"
+async-trait = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+convert_case = { workspace = true }
 dal = { path = "../dal" }
-derive_builder = { version = "0.12" }
-futures = { version = "0.3.17" }
-hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
-names = { version = "0.14.0", default-features = false }
-nix = { version = "0.26" }
-pathdiff = "0.2.1"
-rand = "0.8"
+derive_builder = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
+names = { workspace = true }
+nix = { workspace = true }
+pathdiff = { workspace = true }
+rand = { workspace = true }
 reqwest = { workspace = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
-serde_with = "2.0.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-pkg = { path = "../../lib/si-pkg"}
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
-si-posthog-rs = { path = "../../lib/si-posthog-rs" }
-sodiumoxide = "0.2.7"
-strum = "0.24.0"
-strum_macros = "0.24.0"
+si-posthog = { path = "../../lib/si-posthog-rs" }
+sodiumoxide = { workspace = true }
+strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
-tokio-tungstenite = "0.18"
-tower = { version = "0.4.10" }
-tower-http = { version = "0.4", features = ["cors", "trace"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [build-dependencies]
-thiserror = { version = "1.0" }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
-pretty_assertions_sorted = "1.1.2"
-serde_url_params = "0.2.1"
+pretty_assertions_sorted = { workspace = true }
+serde_url_params = { workspace = true }

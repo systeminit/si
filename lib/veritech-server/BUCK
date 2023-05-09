@@ -1,5 +1,3 @@
-load("@prelude//rust:cargo_buildscript.bzl", "buildscript_run")
-
 rust_library(
     name = "veritech-server",
     edition = "2021",

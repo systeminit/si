@@ -1,7 +1,7 @@
 use derive_builder::Builder;
 use object_tree::Hash;
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::SpecError;

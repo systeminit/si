@@ -6,7 +6,7 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId, SchemaId,
     SchemaVariantId, StandardModel, Tenancy, Timestamp, Visibility,
 };
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 const LIST_FOR_KIND_AND_HASH: &str =
     include_str!("../queries/installed_pkg/list_asset_for_kind_and_hash.sql");

@@ -19,44 +19,73 @@ path = "top/main.rs"
 # List of packages to be imported, with version constraints, features and all
 # options Cargo supports.
 [dependencies]
+async-recursion = "1.0.4"
 async-trait = "0.1.68"
 axum = { version = "0.6.18", features = ["macros", "ws"] }
 base64 = "0.21.0"
+blake3 = "1.3.3"
 bytes = "1.4.0"
 chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 config = { version = "0.13.3", default-features = false, features = ["toml"]}
+convert_case = "0.6.0"
 crossbeam-channel = "0.5.8"
 deadpool = { version = "0.9.5", features = ["rt_tokio_1"] }
+deadpool-postgres = "0.10.5"
 derive_builder = "0.12.0"
+derive_more = "0.99.17"
+diff = "0.1.13"
 directories = "5.0.1"
+dyn-clone = "1.0.11"
 futures = "0.3.28"
 futures-lite = "1.13.0"
+hex = "0.4.3"
 http = "0.2.9"
 hyper = { version = "0.14.26", features = ["client", "http1", "runtime", "server"] }
 hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] }
+iftree = "1.0.4"
 indoc = "2.0.1"
+itertools = "0.10.5"
+jwt-simple = "0.11.5"
+lazy_static = "1.4.0"
+names = { version = "0.14.0", default-features = false }
 nats = { version = "0.24.0" }
 nix = "0.26.2"
 nkeys = "0.2.0"
+num_cpus = "1.15.0"
+once_cell = "1.17.1"
 opentelemetry = { version = "~0.18.0", features = ["rt-tokio", "trace"] } # pinned, pending new release of tracing-opentelemetry, 0.18
 opentelemetry-otlp = "~0.11.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
 opentelemetry-semantic-conventions = "~0.10.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
+ouroboros = "0.15.6"
+paste = "1.0.12"
 pathdiff = "0.2.1"
-reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json"] }
+petgraph = { version = "0.6.3", features = ["serde-1"] }
 pin-project-lite = "0.2.9"
+postgres-types = { version = "0.2.5", features = ["derive"] }
+pretty_assertions_sorted = "1.2.1"
+rand = "0.8.5"
+refinery = { version = "0.8.9", features = ["tokio-postgres"] }
+regex = "1.8.1"
+reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1.0.160", features = ["derive", "rc"] }
+serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }
 serde_toml = { version = "0.7.3", package = "toml" }
+serde_url_params = "0.2.1"
 serde_with = "3.0.0"
 serde_yaml = "0.9.21"
 sodiumoxide = "0.2.7"
+strum = { version = "0.24.1", features = ["derive"] }
+tar = "0.4.38"
 tempfile = "3.5.0"
 test-log = { version = "0.2.11", default-features = false, features = ["trace"] }
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["full"] }
+tokio-postgres = { version = "0.7.8", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-serde = { version = "0.8.0", features = ["json"] }
+tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.18.0"
 tokio-util = { version = "0.7.8", features = ["codec"] }
@@ -66,7 +95,10 @@ tracing = { version = "0.1" }
 tracing-opentelemetry = "0.18.0"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "std"] }
 ulid = { version = "1.0.0", features = ["serde"] }
+url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.3.2", features = ["serde", "v4"] }
+vfs = "0.9.0"
+vfs-tar = { version = "0.4.0", features = ["mmap"] }
 
 # Local patches - typically Git references
 [patch.crates-io]

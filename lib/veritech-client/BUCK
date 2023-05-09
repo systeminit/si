@@ -1,0 +1,18 @@
+rust_library(
+    name = "veritech-client",
+    edition = "2021",
+    deps = [
+        "//lib/cyclone-core:cyclone-core",
+        "//lib/nats-subscriber:nats-subscriber",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//lib/veritech-core:veritech-core",
+        "//third-party/rust:futures",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

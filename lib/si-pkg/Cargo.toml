@@ -4,18 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = { version = "0.4.23", features = ["serde"] }
-derive_builder = "0.12.0"
+chrono = { workspace = true }
+derive_builder = { workspace = true }
 object-tree = { path = "../../lib/object-tree" }
-petgraph = { version = "0.6.2", features = ["serde-1"] }
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.93"
-strum = { version = "0.24.1", features = ["derive"] }
-strum_macros = "0.24.3"
-thiserror = "1.0.38"
-tokio = "1.25.0"
-url = { version = "2.3.1", features = ["serde"] }
+petgraph = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
-serde_json = "1.0.93"
-tokio = { version = "1.25.0", features = ["rt", "macros", "full"] }
+serde_json = { workspace = true }

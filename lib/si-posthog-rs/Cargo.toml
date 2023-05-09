@@ -1,15 +1,15 @@
 [package]
-name = "si-posthog-rs"
+name = "si-posthog"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.64"
 publish = false
 
 [dependencies]
-derive_builder = "0.12.0"
+derive_builder = { workspace = true }
 reqwest = { workspace = true }
-serde = { version = "1.0.123", features = ["rc", "derive"] }
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-thiserror = { version = "1.0.24" }
-tokio = { version = "1", features = ["full"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }

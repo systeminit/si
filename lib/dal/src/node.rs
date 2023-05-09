@@ -63,10 +63,10 @@ pk!(NodeId);
     Clone,
     PartialEq,
     Eq,
-    strum_macros::Display,
-    strum_macros::EnumString,
-    strum_macros::AsRefStr,
-    strum_macros::EnumIter,
+    strum::Display,
+    strum::EnumString,
+    strum::AsRefStr,
+    strum::EnumIter,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

@@ -1,14 +1,8 @@
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-
 use base64::engine::general_purpose;
 use base64::Engine;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::BuiltinsError::SerdeJson;
 use crate::{
     func::argument::{FuncArgument, FuncArgumentKind},
     BuiltinsError, BuiltinsResult, CommandPrototype, CommandPrototypeContext, DalContext, Func,
@@ -23,8 +17,6 @@ struct FunctionMetadataArgument {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct FunctionMetadata {
-    #[serde(skip)]
-    name: String,
     kind: FuncBackendKind,
     arguments: Option<Vec<FunctionMetadataArgument>>,
     response_type: FuncBackendResponseType,
@@ -34,54 +26,6 @@ struct FunctionMetadata {
     link: Option<String>,
     code_file: Option<String>,
     code_entrypoint: Option<String>,
-}
-
-impl FunctionMetadata {
-    pub async fn from_func(ctx: &DalContext, f: &Func) -> Self {
-        let func_name_regex = Regex::new(r"si:(?P<name>.*)").unwrap();
-        let func_name = func_name_regex
-            .captures(f.name())
-            .unwrap()
-            .name("name")
-            .unwrap()
-            .as_str();
-
-        let extension = match f.backend_kind() {
-            FuncBackendKind::JsAttribute
-            | FuncBackendKind::JsWorkflow
-            | FuncBackendKind::JsCommand => Some("ts"),
-
-            _ => None,
-        };
-
-        let code_file = extension.map(|e| format!("{func_name}.{e}"));
-
-        let arguments = Some(
-            FuncArgument::list_for_func(ctx, *f.id())
-                .await
-                .expect("could not list function arguments")
-                .iter()
-                .map(|arg| FunctionMetadataArgument {
-                    name: arg.name().to_string(),
-                    kind: *arg.kind(),
-                })
-                .collect(),
-        );
-
-        FunctionMetadata {
-            arguments,
-            name: func_name.to_string(),
-            kind: *f.backend_kind(),
-            response_type: *f.backend_response_type(),
-            hidden: Some(f.hidden()),
-            // TODO Convert FunctionMetadata fields to use &str and remove these maps
-            display_name: f.display_name().map(|s| s.to_string()),
-            description: f.description().map(|s| s.to_string()),
-            link: f.link().map(|s| s.to_string()),
-            code_file,
-            code_entrypoint: f.handler().map(|s| s.to_string()),
-        }
-    }
 }
 
 /// We want the src/builtins/func/** files to be available at run time inside of the Docker container
@@ -314,29 +258,4 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     }
 
     Ok(())
-}
-
-/// A private constant representing "/si/lib/dal".
-const CARGO_MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
-
-pub async fn persist(ctx: &DalContext, func: &Func) -> BuiltinsResult<()> {
-    let new_metadata: FunctionMetadata = FunctionMetadata::from_func(ctx, func).await;
-
-    let mut base_path = PathBuf::from(CARGO_MANIFEST_DIR);
-    base_path.push("src/builtins/func");
-
-    if let Some(code_path) = new_metadata.code_file.as_ref() {
-        let mut code_file_path = base_path.clone();
-        code_file_path.push(code_path);
-
-        let mut code_file = File::create(code_file_path)?;
-
-        code_file.write_all(func.code_plaintext()?.unwrap().as_bytes())?;
-    }
-
-    let mut metadata_path = base_path.clone();
-    metadata_path.push(format!("{}.json", new_metadata.name));
-    let metadata_file = File::create(metadata_path)?;
-
-    serde_json::to_writer_pretty(metadata_file, &new_metadata).map_err(SerdeJson)
 }

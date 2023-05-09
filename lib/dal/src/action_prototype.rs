@@ -1,7 +1,7 @@
 use std::default::Default;
 
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display};
+use strum::{AsRefStr, Display};
 use thiserror::Error;
 
 use si_data_nats::NatsError;

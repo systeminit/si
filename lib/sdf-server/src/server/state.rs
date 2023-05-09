@@ -57,29 +57,29 @@ impl AppState {
 }
 
 #[derive(Clone, Debug, FromRef)]
-pub struct PosthogClient(si_posthog_rs::PosthogClient);
+pub struct PosthogClient(si_posthog::PosthogClient);
 
 impl PosthogClient {
-    pub fn into_inner(self) -> si_posthog_rs::PosthogClient {
+    pub fn into_inner(self) -> si_posthog::PosthogClient {
         self.into()
     }
 }
 
 impl Deref for PosthogClient {
-    type Target = si_posthog_rs::PosthogClient;
+    type Target = si_posthog::PosthogClient;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl From<si_posthog_rs::PosthogClient> for PosthogClient {
-    fn from(value: si_posthog_rs::PosthogClient) -> Self {
+impl From<si_posthog::PosthogClient> for PosthogClient {
+    fn from(value: si_posthog::PosthogClient) -> Self {
         Self(value)
     }
 }
 
-impl From<PosthogClient> for si_posthog_rs::PosthogClient {
+impl From<PosthogClient> for si_posthog::PosthogClient {
     fn from(value: PosthogClient) -> Self {
         value.0
     }
