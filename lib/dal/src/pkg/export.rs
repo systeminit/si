@@ -127,7 +127,6 @@ fn build_func_spec(func: &Func, args: &[FuncArgument]) -> PkgResult<FuncSpec> {
     )?);
 
     func_spec_builder.backend_kind(FuncSpecBackendKind::try_from(*func.backend_kind())?);
-
     func_spec_builder.hidden(func.hidden());
 
     for arg in args {
@@ -739,6 +738,10 @@ async fn set_variant_spec_prop_data(
             .hidden(tree_node.hidden)
             .widget_kind(tree_node.widget_kind)
             .widget_options(tree_node.widget_options);
+
+        if let Some(doc_link) = tree_node.doc_link {
+            builder.try_doc_link(doc_link.as_str())?;
+        }
 
         traversal_stack.push(TraversalStackEntry {
             builder,

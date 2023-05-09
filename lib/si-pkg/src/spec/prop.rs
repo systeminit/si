@@ -1,6 +1,7 @@
 use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use url::Url;
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
 
@@ -32,6 +33,16 @@ pub enum PropSpecWidgetKind {
     TextArea,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PropSpecSharedInfo {
+    pub name: String,
+    pub func_unique_id: Option<FuncUniqueId>,
+    pub widget_kind: Option<PropSpecWidgetKind>,
+    pub widget_options: Option<serde_json::Value>,
+    pub doc_link: Option<Url>,
+    pub hidden: bool,
+}
+
 impl From<&PropSpec> for PropSpecWidgetKind {
     fn from(node: &PropSpec) -> Self {
         match node {
@@ -49,72 +60,48 @@ impl From<&PropSpec> for PropSpecWidgetKind {
 pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     String {
-        name: String,
         default_value: Option<String>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
     #[serde(rename_all = "camelCase")]
     Number {
-        name: String,
         default_value: Option<i64>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
-        name: String,
         default_value: Option<bool>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
     #[serde(rename_all = "camelCase")]
     Map {
-        name: String,
         default_value: Option<serde_json::Value>,
         type_prop: Box<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
     #[serde(rename_all = "camelCase")]
     Array {
-        name: String,
         default_value: Option<serde_json::Value>,
         type_prop: Box<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
     #[serde(rename_all = "camelCase")]
     Object {
-        name: String,
         default_value: Option<serde_json::Value>,
         entries: Vec<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
+        info: PropSpecSharedInfo,
     },
 }
 
@@ -147,6 +134,7 @@ pub struct PropSpecBuilder {
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
     hidden: bool,
+    doc_link: Option<Url>,
 }
 
 impl PropSpecBuilder {
@@ -223,6 +211,20 @@ impl PropSpecBuilder {
         self
     }
 
+    pub fn doc_link(&mut self, value: impl Into<Url>) -> &mut Self {
+        self.doc_link = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn try_doc_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted: Url = value.try_into()?;
+        Ok(self.doc_link(converted))
+    }
+
     /// Builds a new `Prop`.
     ///
     /// # Errors
@@ -242,11 +244,20 @@ impl PropSpecBuilder {
         let widget_kind = self.widget_kind;
         let widget_options = self.widget_options.to_owned();
         let hidden = self.hidden;
+        let doc_link = self.doc_link.to_owned();
+
+        let info = PropSpecSharedInfo {
+            name,
+            widget_options,
+            widget_kind,
+            hidden,
+            doc_link,
+            func_unique_id,
+        };
 
         Ok(match self.kind {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
-                    name,
                     default_value: match &self.default_value {
                         Some(serde_json::Value::String(s)) => Some(s.to_owned()),
                         Some(_) => {
@@ -257,14 +268,10 @@ impl PropSpecBuilder {
                         None => None,
                     },
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
                 PropSpecKind::Number => PropSpec::Number {
-                    name,
                     default_value: match &self.default_value {
                         Some(value) => {
                             if value.is_i64() {
@@ -278,14 +285,10 @@ impl PropSpecBuilder {
                         None => None,
                     },
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
-                    name,
                     default_value: match &self.default_value {
                         Some(value) => {
                             if value.is_boolean() {
@@ -299,14 +302,10 @@ impl PropSpecBuilder {
                         None => None,
                     },
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
                 PropSpecKind::Map => PropSpec::Map {
-                    name,
                     // TODO: Validate these types
                     default_value: self.default_value.to_owned(),
                     type_prop: match self.type_prop {
@@ -316,14 +315,10 @@ impl PropSpecBuilder {
                         }
                     },
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
                 PropSpecKind::Array => PropSpec::Array {
-                    name,
                     default_value: self.default_value.to_owned(),
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
@@ -332,22 +327,15 @@ impl PropSpecBuilder {
                         }
                     },
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
                 PropSpecKind::Object => PropSpec::Object {
-                    name,
                     default_value: self.default_value.to_owned(),
                     entries: self.entries.clone(),
                     validations: Some(validations),
-                    func_unique_id,
                     inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
+                    info,
                 },
             },
             None => {

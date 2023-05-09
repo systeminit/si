@@ -415,64 +415,24 @@ async fn create_prop_stack(
     }
 
     match &spec {
-        SiPkgProp::String {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Map {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Array {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Number {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Object {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Boolean {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        } => {
-            builder.name(name);
-            builder.hidden(*hidden);
-            builder.widget_kind(*widget_kind);
+        SiPkgProp::String { info, .. }
+        | SiPkgProp::Map { info, .. }
+        | SiPkgProp::Array { info, .. }
+        | SiPkgProp::Number { info, .. }
+        | SiPkgProp::Object { info, .. }
+        | SiPkgProp::Boolean { info, .. } => {
+            builder.name(&info.name);
+            builder.hidden(info.hidden);
+            if let Some(widget_kind) = &info.widget_kind {
+                builder.widget_kind(*widget_kind);
+            }
 
-            if let Some(widget_options) = widget_options {
+            if let Some(widget_options) = &info.widget_options {
                 builder.widget_options(widget_options.to_owned());
             }
 
-            if let Some(func_unique_id) = func_unique_id {
-                builder.func_unique_id(*func_unique_id);
+            if let Some(func_unique_id) = info.func_unique_id {
+                builder.func_unique_id(func_unique_id);
                 for input in spec.inputs()? {
                     builder.input(AttrFuncInputSpec::try_from(input)?);
                 }

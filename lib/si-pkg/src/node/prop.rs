@@ -1,14 +1,14 @@
-use std::{
-    io::{BufRead, Write},
-    str::FromStr,
-};
-
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
     NodeWithChildren, ReadBytes, WriteBytes,
 };
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
+use url::Url;
 
-use crate::{FuncUniqueId, PropSpec, PropSpecWidgetKind};
+use crate::{FuncUniqueId, PropSpec, PropSpecSharedInfo, PropSpecWidgetKind};
 
 use super::{prop_child::PropChild, PkgNode};
 
@@ -19,6 +19,7 @@ const KEY_DEFAULT_VALUE_STR: &str = "default_value";
 const KEY_WIDGET_KIND_STR: &str = "widget_kind";
 const KEY_WIDGET_OPTIONS_STR: &str = "widget_options";
 const KEY_HIDDEN_STR: &str = "hidden";
+const KEY_DOC_LINK_STR: &str = "doc_link";
 
 const PROP_TY_STRING: &str = "string";
 const PROP_TY_INTEGER: &str = "integer";
@@ -30,52 +31,28 @@ const PROP_TY_OBJECT: &str = "object";
 #[derive(Clone, Debug)]
 pub enum PropNode {
     String {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<String>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
     Integer {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<i64>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
     Boolean {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<bool>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
     Map {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<serde_json::Value>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
     Array {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<serde_json::Value>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
     Object {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
+        info: PropSpecSharedInfo,
         default_value: Option<serde_json::Value>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
     },
 }
 
@@ -90,17 +67,28 @@ impl PropNode {
             Self::Object { .. } => PROP_TY_OBJECT,
         }
     }
+
+    fn info(&self) -> &PropSpecSharedInfo {
+        match self {
+            Self::String { info, .. }
+            | Self::Integer { info, .. }
+            | Self::Boolean { info, .. }
+            | Self::Map { info, .. }
+            | Self::Array { info, .. }
+            | Self::Object { info, .. } => &info,
+        }
+    }
 }
 
 impl NameStr for PropNode {
     fn name(&self) -> &str {
         match self {
-            Self::String { name, .. }
-            | Self::Integer { name, .. }
-            | Self::Boolean { name, .. }
-            | Self::Map { name, .. }
-            | Self::Array { name, .. }
-            | Self::Object { name, .. } => name,
+            Self::String { info, .. }
+            | Self::Integer { info, .. }
+            | Self::Boolean { info, .. }
+            | Self::Map { info, .. }
+            | Self::Array { info, .. }
+            | Self::Object { info, .. } => &info.name,
         }
     }
 }
@@ -110,14 +98,7 @@ impl WriteBytes for PropNode {
         write_key_value_line(writer, KEY_KIND_STR, self.kind_str())?;
         write_key_value_line(writer, KEY_NAME_STR, self.name())?;
 
-        let func_unique_id = match &self {
-            Self::String { func_unique_id, .. }
-            | Self::Integer { func_unique_id, .. }
-            | Self::Boolean { func_unique_id, .. }
-            | Self::Map { func_unique_id, .. }
-            | Self::Array { func_unique_id, .. }
-            | Self::Object { func_unique_id, .. } => func_unique_id,
-        };
+        let func_unique_id = self.info().func_unique_id;
         write_key_value_line(
             writer,
             KEY_FUNC_UNIQUE_ID_STR,
@@ -154,43 +135,31 @@ impl WriteBytes for PropNode {
         write_key_value_line(
             writer,
             KEY_WIDGET_KIND_STR,
-            match &self {
-                Self::String { widget_kind, .. }
-                | Self::Integer { widget_kind, .. }
-                | Self::Boolean { widget_kind, .. }
-                | Self::Map { widget_kind, .. }
-                | Self::Array { widget_kind, .. }
-                | Self::Object { widget_kind, .. } => widget_kind,
+            match self.info().widget_kind {
+                Some(widget_kind) => widget_kind.to_string(),
+                None => "".to_string(),
             },
         )?;
 
         write_key_value_line(
             writer,
             KEY_WIDGET_OPTIONS_STR,
-            match &self {
-                Self::String { widget_options, .. }
-                | Self::Integer { widget_options, .. }
-                | Self::Boolean { widget_options, .. }
-                | Self::Map { widget_options, .. }
-                | Self::Array { widget_options, .. }
-                | Self::Object { widget_options, .. } => match widget_options {
-                    Some(options) => serde_json::to_string(options).map_err(GraphError::parse)?,
-                    None => "".to_string(),
-                },
+            match &self.info().widget_options {
+                Some(options) => serde_json::to_string(options).map_err(GraphError::parse)?,
+                None => "".to_string(),
             },
         )?;
 
+        write_key_value_line(writer, KEY_HIDDEN_STR, self.info().hidden)?;
+
         write_key_value_line(
             writer,
-            KEY_HIDDEN_STR,
-            match &self {
-                Self::String { hidden, .. }
-                | Self::Integer { hidden, .. }
-                | Self::Boolean { hidden, .. }
-                | Self::Map { hidden, .. }
-                | Self::Array { hidden, .. }
-                | Self::Object { hidden, .. } => hidden,
-            },
+            KEY_DOC_LINK_STR,
+            self.info()
+                .doc_link
+                .as_ref()
+                .map(|l| l.as_str())
+                .unwrap_or(""),
         )?;
 
         Ok(())
@@ -232,9 +201,24 @@ impl ReadBytes for PropNode {
         let hidden = bool::from_str(&read_key_value_line(reader, KEY_HIDDEN_STR)?)
             .map_err(GraphError::parse)?;
 
+        let doc_link_str = read_key_value_line(reader, KEY_DOC_LINK_STR)?;
+        let doc_link = if doc_link_str.is_empty() {
+            None
+        } else {
+            Some(Url::parse(&doc_link_str).map_err(GraphError::parse)?)
+        };
+
+        let info = PropSpecSharedInfo {
+            name,
+            func_unique_id,
+            widget_kind: Some(widget_kind),
+            widget_options,
+            hidden,
+            doc_link,
+        };
+
         let node = match kind_str.as_str() {
             PROP_TY_STRING => Self::String {
-                name,
                 default_value: match default_value_json {
                     None => None,
                     Some(value) => {
@@ -247,13 +231,9 @@ impl ReadBytes for PropNode {
                         }
                     }
                 },
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             PROP_TY_INTEGER => Self::Integer {
-                name,
                 default_value: match default_value_json {
                     None => None,
                     Some(value) => {
@@ -266,13 +246,9 @@ impl ReadBytes for PropNode {
                         }
                     }
                 },
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             PROP_TY_BOOLEAN => Self::Boolean {
-                name,
                 default_value: match default_value_json {
                     None => None,
                     Some(value) => {
@@ -285,34 +261,19 @@ impl ReadBytes for PropNode {
                         }
                     }
                 },
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             PROP_TY_MAP => Self::Map {
-                name,
                 default_value: default_value_json,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             PROP_TY_ARRAY => Self::Array {
-                name,
                 default_value: default_value_json,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             PROP_TY_OBJECT => Self::Object {
-                name,
                 default_value: default_value_json,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             },
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
@@ -331,23 +292,15 @@ impl NodeChild for PropSpec {
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
             Self::String {
-                name,
                 default_value,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::String {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -359,23 +312,15 @@ impl NodeChild for PropSpec {
                 ],
             ),
             Self::Number {
-                name,
                 default_value,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Integer {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -387,23 +332,15 @@ impl NodeChild for PropSpec {
                 ],
             ),
             Self::Boolean {
-                name,
                 default_value,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Boolean {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Validations(
@@ -415,24 +352,16 @@ impl NodeChild for PropSpec {
                 ],
             ),
             Self::Map {
-                name,
                 default_value,
                 type_prop,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Map {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
@@ -446,24 +375,16 @@ impl NodeChild for PropSpec {
                 ],
             ),
             Self::Array {
-                name,
                 default_value,
                 type_prop,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Array {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
@@ -477,24 +398,16 @@ impl NodeChild for PropSpec {
                 ],
             ),
             Self::Object {
-                name,
                 default_value,
                 entries,
                 validations,
-                func_unique_id,
                 inputs,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Object {
-                    name: name.to_string(),
                     default_value: default_value.to_owned(),
-                    func_unique_id: *func_unique_id,
-                    widget_kind: widget_kind.unwrap_or(PropSpecWidgetKind::from(self)),
-                    widget_options: widget_options.to_owned(),
-                    hidden: hidden.unwrap_or(false),
+                    info: info.to_owned(),
                 }),
                 vec![
                     Box::new(PropChild::Props(entries.clone()))

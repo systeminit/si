@@ -5,68 +5,44 @@ use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgValidation, Source};
 
 use crate::{
     node::{PkgNode, PropChildNode, PropNode},
-    FuncUniqueId, PropSpecWidgetKind,
+    FuncUniqueId, PropSpecSharedInfo,
 };
 
 #[derive(Clone, Debug)]
 pub enum SiPkgProp<'a> {
     String {
-        name: String,
         default_value: Option<String>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
     Number {
-        name: String,
         default_value: Option<i64>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
     Boolean {
-        name: String,
         default_value: Option<bool>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
     Map {
-        name: String,
         default_value: Option<serde_json::Value>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
     Array {
-        name: String,
         default_value: Option<serde_json::Value>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
     Object {
-        name: String,
         default_value: Option<serde_json::Value>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
+        info: PropSpecSharedInfo,
         hash: Hash,
         source: Source<'a>,
     },
@@ -134,130 +110,79 @@ impl<'a> SiPkgProp<'a> {
 
         Ok(match prop_node {
             PropNode::String {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::String {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
             PropNode::Integer {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::Number {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
             PropNode::Boolean {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::Boolean {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
             PropNode::Map {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::Map {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
             PropNode::Array {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::Array {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
             PropNode::Object {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
             } => Self::Object {
-                name,
                 default_value,
-                func_unique_id,
-                widget_kind,
-                widget_options,
-                hidden,
+                info,
                 hash,
                 source,
             },
         })
     }
 
-    pub fn func_unique_id(&self) -> Option<FuncUniqueId> {
+    pub fn info(&self) -> &PropSpecSharedInfo {
         match self {
-            Self::String { func_unique_id, .. }
-            | Self::Number { func_unique_id, .. }
-            | Self::Boolean { func_unique_id, .. }
-            | Self::Map { func_unique_id, .. }
-            | Self::Array { func_unique_id, .. }
-            | Self::Object { func_unique_id, .. } => *func_unique_id,
+            Self::String { info, .. }
+            | Self::Number { info, .. }
+            | Self::Boolean { info, .. }
+            | Self::Map { info, .. }
+            | Self::Array { info, .. }
+            | Self::Object { info, .. } => &info,
         }
     }
 
+    pub fn func_unique_id(&self) -> Option<FuncUniqueId> {
+        self.info().func_unique_id
+    }
+
     pub fn name(&self) -> &str {
-        match self {
-            Self::String { name, .. }
-            | Self::Number { name, .. }
-            | Self::Boolean { name, .. }
-            | Self::Map { name, .. }
-            | Self::Array { name, .. }
-            | Self::Object { name, .. } => name,
-        }
+        &self.info().name
     }
 
     pub fn hash(&self) -> Hash {

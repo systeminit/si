@@ -4,8 +4,8 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
-    SiPropFuncSpec, SocketSpec, SpecError, WorkflowSpec,
+    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecSharedInfo,
+    PropSpecWidgetKind, SiPropFuncSpec, SocketSpec, SpecError, WorkflowSpec,
 };
 
 #[derive(
@@ -97,13 +97,16 @@ impl SchemaVariantSpecBuilder {
         PropSpec::Object {
             validations: None,
             default_value: None,
-            name: "domain".to_string(),
             entries: vec![],
-            func_unique_id: None,
             inputs: None,
-            widget_kind: Some(PropSpecWidgetKind::Header),
-            widget_options: None,
-            hidden: Some(false),
+            info: PropSpecSharedInfo {
+                name: "domain".into(),
+                func_unique_id: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: false,
+                doc_link: None,
+            },
         }
     }
 
@@ -111,13 +114,16 @@ impl SchemaVariantSpecBuilder {
         PropSpec::Object {
             validations: None,
             default_value: None,
-            name: "value".to_string(),
             entries: vec![],
-            func_unique_id: None,
             inputs: None,
-            widget_kind: Some(PropSpecWidgetKind::Header),
-            widget_options: None,
-            hidden: Some(true),
+            info: PropSpecSharedInfo {
+                name: "resource_value".into(),
+                func_unique_id: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: false,
+                doc_link: None,
+            },
         }
     }
 

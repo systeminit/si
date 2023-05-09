@@ -876,54 +876,20 @@ async fn create_prop(
             SiPkgProp::Array { .. } => PropKind::Array,
             SiPkgProp::Object { .. } => PropKind::Object,
         },
-        match &spec {
-            SiPkgProp::String {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Number {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Boolean {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Map {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Array {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Object {
-                widget_kind,
-                widget_options,
-                ..
-            } => Some((widget_kind.into(), widget_options.to_owned())),
-        },
+        spec.info()
+            .widget_kind
+            .as_ref()
+            .map(|widget_kind| (widget_kind.into(), spec.info().widget_options.to_owned())),
         ctx.schema_variant_id,
         parent_prop_id,
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
 
-    prop.set_hidden(
+    prop.set_hidden(ctx.ctx, spec.info().hidden).await?;
+    prop.set_doc_link(
         ctx.ctx,
-        match &spec {
-            SiPkgProp::String { hidden, .. }
-            | SiPkgProp::Number { hidden, .. }
-            | SiPkgProp::Boolean { hidden, .. }
-            | SiPkgProp::Map { hidden, .. }
-            | SiPkgProp::Array { hidden, .. }
-            | SiPkgProp::Object { hidden, .. } => *hidden,
-        },
+        spec.info().doc_link.as_ref().map(|l| l.to_string()),
     )
     .await?;
 
