@@ -15,17 +15,18 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       message: `AMI ${component.properties.domain.ImageId} not found in region ${component.properties.domain.region} (InvalidAMIID.NotFound)`,
-    }
+    };
   }
-  
+
   if (child.stderr.includes("InvalidAMIID.Malformed")) {
     console.log(`AMI Id: ${component.properties.domain.ImageId}`);
     console.error(child.stderr);
     return {
       status: "error",
       payload: component.properties.resource?.payload,
-      message: "AMI ${component.properties.domain.ImageId} is invalid (InvalidAMIID.Malformed)",
-    }
+      message:
+        "AMI ${component.properties.domain.ImageId} is invalid (InvalidAMIID.Malformed)",
+    };
   }
 
   if (child.exitCode !== 0) {
@@ -35,7 +36,7 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: component.properties.resource?.payload,
       message: `AWS CLI 2 "aws ec2 describe-images" returned non zero exit code (${child.exitCode})`,
-    }
+    };
   }
 
   const images = (JSON.parse(child.stdout) || {})["Images"];
@@ -46,7 +47,7 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: component.properties.resource?.payload,
       message: `AMI ${component.properties.domain.ImageId} not found in region ${component.properties.domain.region}`,
-    }
+    };
   }
 
   return { payload: images[0], status: "ok" };

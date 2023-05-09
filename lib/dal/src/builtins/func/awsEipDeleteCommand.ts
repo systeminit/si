@@ -21,4 +21,4 @@ async function deleteResource(component: Input): Promise<Output> {
 
   return { payload: null, status: "ok" };
 }
-``
+``;

@@ -1,8 +1,8 @@
 async function generateAwsKeyPairJSON(input: Input): Promise<Output> {
   // Initialize the input JSON.
   const object = {
-    "KeyName": input.domain.KeyName,
-    "KeyType": input.domain.KeyType,
+    KeyName: input.domain.KeyName,
+    KeyType: input.domain.KeyType,
   };
 
   // Normalize tags to be in the weird Map-like structure AWS uses (array of { Key: string, Value: string } where Key is unique
@@ -10,20 +10,22 @@ async function generateAwsKeyPairJSON(input: Input): Promise<Output> {
   if (input.domain.tags) {
     for (const [key, value] of Object.entries(input.domain.tags)) {
       tags.push({
-        "Key": key,
-        "Value": value,
+        Key: key,
+        Value: value,
       });
     }
     if (tags.length > 0) {
-      object["TagSpecifications"] = [{
-        "ResourceType": input.domain.awsResourceType,
-        "Tags": tags
-      }];
+      object["TagSpecifications"] = [
+        {
+          ResourceType: input.domain.awsResourceType,
+          Tags: tags,
+        },
+      ];
     }
   }
 
   return {
     format: "json",
-    code: JSON.stringify(object, null, '\t'),
+    code: JSON.stringify(object, null, "\t"),
   };
 }

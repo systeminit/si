@@ -3,7 +3,7 @@ async function refresh(component: Input): Promise<Output> {
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
-      message: component.properties.resource?.message
+      message: component.properties.resource?.message,
     };
   }
 
@@ -22,7 +22,7 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       message: `Security Group not found (InvalidGroup.NotFound)`,
-    }
+    };
   }
 
   if (child.stderr.includes("InvalidGroupId.Malformed")) {
@@ -32,7 +32,7 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: resource,
       message: "Security Group Id is invalid (InvalidGroupId.Malformed)",
-    }
+    };
   }
 
   if (child.exitCode !== 0) {
@@ -42,7 +42,7 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: resource,
       message: `AWS CLI 2 "aws ec2 describe-security-groups" returned non zero exit code (${child.exitCode})`,
-    }
+    };
   }
 
   const object = JSON.parse(child.stdout);
@@ -53,8 +53,9 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       payload: resource,
-      message: "Security Group not found in payload returned by AWS, but it should be there",
-    }
+      message:
+        "Security Group not found in payload returned by AWS, but it should be there",
+    };
   }
 
   return { payload: object.SecurityGroups[0], status: "ok" };

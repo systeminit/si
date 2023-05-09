@@ -3,15 +3,15 @@ async function qualification(input: Input): Promise<Output> {
   if (!code) {
     return {
       result: "failure",
-      message: "component doesn't have JSON representation"
-    }
+      message: "component doesn't have JSON representation",
+    };
   }
 
   if (!input.domain?.region) {
     return {
       result: "failure",
-      message: "component doesn't have a region set"
-    }
+      message: "component doesn't have a region set",
+    };
   }
 
   // Now, dry-run creation of the ingress
@@ -22,20 +22,21 @@ async function qualification(input: Input): Promise<Output> {
     input.domain.region,
     "--dry-run",
     "--cli-input-json",
-    code
+    code,
   ]);
 
   // We have to use `includes` instead of `startsWith` because the line can start with a line feed char
-  const success = child.stderr.includes('An error occurred (DryRunOperation)');
+  const success = child.stderr.includes("An error occurred (DryRunOperation)");
   if (success && !input.domain?.GroupId) {
     return {
       result: "warning",
-      message: "GroupId must be set. If a Security Group is connected to this component the id will be automatically set when the fix flow creates the security group after merging this change-set",
+      message:
+        "GroupId must be set. If a Security Group is connected to this component the id will be automatically set when the fix flow creates the security group after merging this change-set",
     };
   }
 
   return {
     result: success ? "success" : "failure",
-    message: success ? 'component qualified' : child.stderr,
-  }
+    message: success ? "component qualified" : child.stderr,
+  };
 }

@@ -3,7 +3,7 @@ async function refresh(component: Input): Promise<Output> {
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
-      message: component.properties.resource?.message
+      message: component.properties.resource?.message,
     };
   }
 
@@ -22,7 +22,7 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       message: `Key Pair not found (InvalidKeyPair.NotFound)`,
-    }
+    };
   }
 
   if (child.stderr.includes("InvalidParameterValue")) {
@@ -32,7 +32,7 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: resource,
       message: "Key Pair Id is invalid (InvalidParameterValue)",
-    }
+    };
   }
 
   if (child.exitCode !== 0) {
@@ -42,7 +42,7 @@ async function refresh(component: Input): Promise<Output> {
       payload: resource,
       status: "error",
       message: `AWS CLI 2 "aws ec2 describe-key-pairs" returned non zero exit code (${child.exitCode})`,
-    }
+    };
   }
 
   const object = JSON.parse(child.stdout);
@@ -53,8 +53,9 @@ async function refresh(component: Input): Promise<Output> {
     return {
       status: "error",
       payload: resource,
-      message: "Key Pair not found in payload returned by AWS, but it should be there",
-    }
+      message:
+        "Key Pair not found in payload returned by AWS, but it should be there",
+    };
   }
 
   const keyPair = object.KeyPairs[0];
