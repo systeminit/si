@@ -461,27 +461,6 @@ importers:
         specifier: workspace:*
         version: link:../../lib/telemetry-application-rs
 
-  bin/gen-var-defs:
-    dependencies:
-      dal:
-        specifier: workspace:*
-        version: link:../../lib/dal
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../../lib/si-data-nats
-      si-data-pg:
-        specifier: workspace:*
-        version: link:../../lib/si-data-pg
-      si-settings:
-        specifier: workspace:*
-        version: link:../../lib/si-settings
-      telemetry-application:
-        specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
-      veritech-client:
-        specifier: workspace:*
-        version: link:../../lib/veritech-client
-
   bin/lang-js:
     dependencies:
       '@typescript/vfs':

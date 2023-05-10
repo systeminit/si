@@ -1,9 +1,0 @@
-{
-  "name": "Elastic IP",
-  "menuName": "Elastic IP",
-  "category": "AWS",
-  "color": "#ff9900",
-  "componentKind": "standard",
-  "link": null,
-  "description": null
-}

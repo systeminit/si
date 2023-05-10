@@ -6,7 +6,6 @@ resolver = "2"
 members = [
     "bin/council",
     "bin/cyclone",
-    "bin/gen-var-defs",
     "bin/pinga",
     "bin/sdf",
     "bin/veritech",

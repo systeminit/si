@@ -39,7 +39,6 @@ LOCAL_PG := $(shell test $$(uname -m) = "arm64" && test $$(uname) = "Darwin" && 
 COMPONENTS = \
 	app/web \
 	bin/cyclone \
-	bin/gen-var-defs \
 	bin/lang-js \
 	bin/pinga \
 	bin/council \

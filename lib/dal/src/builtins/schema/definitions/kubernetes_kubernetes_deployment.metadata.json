@@ -1,9 +1,0 @@
-{
-  "name": "Kubernetes Deployment",
-  "menuName": "Deployment",
-  "category": "Kubernetes",
-  "color": "#30ba78",
-  "componentKind": "standard",
-  "link": "https://v1-22.docs.kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/",
-  "description": null
-}
