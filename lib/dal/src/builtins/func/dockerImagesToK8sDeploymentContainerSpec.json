@@ -1,5 +1,5 @@
 {
-  "kind": "Json",
+  "kind": "JsAttribute",
   "response_type": "Array",
   "code_file": "dockerImagesToK8sDeploymentContainerSpec.ts",
   "code_entrypoint": "dockerImagesToK8sDeploymentContainerSpec",

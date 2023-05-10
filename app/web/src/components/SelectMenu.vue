@@ -25,7 +25,7 @@
         >
           <ListboxOption
             v-for="option in options"
-            :key="option.value"
+            :key="`${option.value}`"
             v-slot="{ active, selected }"
             :value="option"
             as="template"
@@ -78,7 +78,7 @@ import { Icon } from "@si/vue-lib/design-system";
 
 export interface Option {
   label: string;
-  value: string | number;
+  value: string | number | object;
 }
 
 const emit = defineEmits(["update:modelValue", "change"]);

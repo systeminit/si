@@ -55,6 +55,7 @@ pub enum WorkflowPrototypeError {
 pub type WorkflowPrototypeResult<T> = Result<T, WorkflowPrototypeError>;
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/workflow_prototype_find_for_context.sql");
+const FIND_FOR_FUNC: &str = include_str!("./queries/workflow_prototype_find_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowPrototypeContext {
@@ -280,6 +281,19 @@ impl WorkflowPrototype {
             .await?;
 
         Ok(resolver)
+    }
+
+    pub async fn find_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> WorkflowPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(FIND_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -39,7 +39,8 @@ export interface AttributePrototypeArgumentView {
 export interface AttributePrototypeView {
   id: string;
   componentId?: string;
-  propId: string;
+  propId?: string;
+  externalProviderId?: string;
   prototypeArguments: AttributePrototypeArgumentView[];
 }
 
@@ -62,6 +63,12 @@ export interface InputSourceSocket {
   name: string;
 }
 
+export interface OutputSocket {
+  schemaVariantId: string;
+  externalProviderId: string;
+  name: string;
+}
+
 export interface InputSourceProp {
   propId: string;
   kind: PropKind;
@@ -80,3 +87,15 @@ export interface CreateFuncAttributeOptions {
   schemaId: string;
   currentFuncId: string;
 }
+
+export interface OutputLocationProp {
+  label: string;
+  propId: string;
+}
+
+export interface OutputLocationOutputSocket {
+  label: string;
+  externalProviderId: string;
+}
+
+export type OutputLocation = OutputLocationProp | OutputLocationOutputSocket;

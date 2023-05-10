@@ -16,11 +16,13 @@ use dal::{
     schema::variant::SchemaVariantError,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
-    Prop, PropError, PropId, PropKind, PrototypeListForFuncError, SchemaVariantId, StandardModel,
+    AttributeValueError, CommandPrototype, CommandPrototypeError, ComponentError, ComponentId,
+    DalContext, ExternalProviderId, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
+    PropKind, PrototypeListForFuncError, SchemaId, SchemaVariantId, StandardModel,
     StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationPrototypeId, WsEventError,
+    ValidationPrototypeError, ValidationPrototypeId, WorkflowPrototype, WorkflowPrototypeError,
+    WorkflowPrototypeId, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -107,8 +109,8 @@ pub enum FuncError {
     FuncArgumentAlreadyExists,
     #[error("func argument not found")]
     FuncArgNotFound,
-    #[error("attribute prototype {0} has no prop_id")]
-    AttributePrototypeMissingPropId(AttributePrototypeId),
+    #[error("attribute prototype {0} has no PropId or ExternalProviderId")]
+    AttributePrototypeMissingPropIdOrExternalProviderId(AttributePrototypeId),
     #[error("attribute prototype {0} schema_variant is missing")]
     AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
     #[error("attribute prototype {0} schema is missing")]
@@ -141,6 +143,10 @@ pub enum FuncError {
     FuncExecutionFailedNoPrototypes,
     #[error("Could not find schema variant for prop {0}")]
     SchemaVariantNotFoundForProp(PropId),
+    #[error(transparent)]
+    CommandPrototype(#[from] CommandPrototypeError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -153,15 +159,17 @@ impl_default_error_into_response!(FuncError);
 pub enum FuncVariant {
     Attribute,
     CodeGeneration,
-    Confirmation,
     Command,
+    Confirmation,
     Qualification,
     Validation,
+    Workflow,
 }
 
 impl From<FuncVariant> for FuncBackendKind {
     fn from(value: FuncVariant) -> Self {
         match value {
+            FuncVariant::Workflow => FuncBackendKind::JsWorkflow,
             FuncVariant::Command => FuncBackendKind::JsCommand,
             FuncVariant::Validation => FuncBackendKind::Validation,
             FuncVariant::Attribute
@@ -185,6 +193,7 @@ impl TryFrom<&Func> for FuncVariant {
             },
             (FuncBackendKind::JsCommand, _) => Ok(FuncVariant::Command),
             (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
+            (FuncBackendKind::JsWorkflow, _) => Ok(FuncVariant::Workflow),
             _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
         }
     }
@@ -203,23 +212,25 @@ pub struct AttributePrototypeArgumentView {
 pub struct AttributePrototypeView {
     id: AttributePrototypeId,
     component_id: Option<ComponentId>,
-    prop_id: PropId,
+    prop_id: Option<PropId>,
+    external_provider_id: Option<ExternalProviderId>,
     prototype_arguments: Vec<AttributePrototypeArgumentView>,
 }
 
 impl AttributePrototypeView {
     pub fn to_attribute_context(&self) -> FuncResult<AttributeContext> {
-        Ok(match self.component_id {
-            // Attribute contexts which set the defaults for a schema variant, have *only* the prop
-            // set on the context
-            None | Some(ComponentId::NONE) => AttributeContextBuilder::new()
-                .set_prop_id(self.prop_id)
-                .to_context()?,
-            Some(component_id) => AttributeContextBuilder::new()
-                .set_prop_id(self.prop_id)
-                .set_component_id(component_id)
-                .to_context()?,
-        })
+        let mut builder = AttributeContextBuilder::new();
+        if let Some(component_id) = self.component_id {
+            builder.set_component_id(component_id);
+        }
+        if let Some(prop_id) = self.prop_id {
+            builder.set_prop_id(prop_id);
+        }
+        if let Some(external_provider_id) = self.external_provider_id {
+            builder.set_external_provider_id(external_provider_id);
+        }
+
+        Ok(builder.to_context()?)
     }
 }
 
@@ -232,10 +243,31 @@ pub struct ValidationPrototypeView {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowPrototypeView {
+    id: WorkflowPrototypeId,
+    component_id: ComponentId,
+    schema_variant_id: SchemaVariantId,
+    title: String,
+    description: Option<String>,
+    link: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
-    Qualification {
+    Attribute {
+        prototypes: Vec<AttributePrototypeView>,
+        arguments: Vec<FuncArgumentView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Command {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        component_ids: Vec<ComponentId>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Confirmation {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
@@ -245,18 +277,17 @@ pub enum FuncAssociations {
         component_ids: Vec<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
-    Attribute {
-        prototypes: Vec<AttributePrototypeView>,
-        arguments: Vec<FuncArgumentView>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Confirmation {
+    Qualification {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
     Validation {
         prototypes: Vec<ValidationPrototypeView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Workflow {
+        prototypes: Vec<WorkflowPrototypeView>,
     },
 }
 
@@ -288,10 +319,20 @@ async fn prototype_view_for_attribute_prototype(
     proto: &AttributePrototype,
 ) -> FuncResult<AttributePrototypeView> {
     let prop_id = if proto.context.prop_id().is_some() {
-        proto.context.prop_id()
+        Some(proto.context.prop_id())
     } else {
-        return Err(FuncError::AttributePrototypeMissingPropId(*proto.id()));
+        None
     };
+
+    let external_provider_id = if proto.context.external_provider_id().is_some() {
+        Some(proto.context.external_provider_id())
+    } else {
+        None
+    };
+
+    if prop_id.is_none() && external_provider_id.is_none() {
+        return Err(FuncError::AttributePrototypeMissingPropIdOrExternalProviderId(*proto.id()));
+    }
 
     let component_id = if proto.context.component_id().is_some() {
         Some(proto.context.component_id())
@@ -318,8 +359,27 @@ async fn prototype_view_for_attribute_prototype(
         id: *proto.id(),
         prop_id,
         component_id,
+        external_provider_id,
         prototype_arguments,
     })
+}
+
+async fn command_protoytypes_into_schema_variants_and_components(
+    ctx: &DalContext,
+    func_id: FuncId,
+) -> FuncResult<(Vec<SchemaVariantId>, Vec<ComponentId>)> {
+    let mut variant_ids = vec![];
+    let mut component_ids = vec![];
+
+    for proto in CommandPrototype::find_for_func(ctx, func_id).await? {
+        if proto.component_id().is_none() && proto.schema_variant_id().is_some() {
+            variant_ids.push(proto.schema_variant_id());
+        } else if proto.component_id().is_some() {
+            component_ids.push(proto.component_id());
+        }
+    }
+
+    Ok((variant_ids, component_ids))
 }
 
 async fn attribute_prototypes_into_schema_variants_and_components(
@@ -408,8 +468,15 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             (associations, input_type)
         }
         FuncBackendKind::JsCommand => {
-            let input_type = compile_command_types();
-            (None, input_type)
+            let (schema_variant_ids, component_ids) =
+                command_protoytypes_into_schema_variants_and_components(ctx, *func.id()).await?;
+
+            let associations = Some(dbg!(FuncAssociations::Command {
+                schema_variant_ids,
+                component_ids,
+            }));
+
+            (associations, compile_command_types())
         }
         FuncBackendKind::JsValidation => {
             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
@@ -426,6 +493,24 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                     .collect(),
             });
             (associations, input_type)
+        }
+        FuncBackendKind::JsWorkflow => {
+            let protos = WorkflowPrototype::find_for_func(ctx, *func.id()).await?;
+            let assocations = Some(FuncAssociations::Workflow {
+                prototypes: protos
+                    .iter()
+                    .map(|proto| WorkflowPrototypeView {
+                        id: *proto.id(),
+                        component_id: proto.context().component_id(),
+                        schema_variant_id: proto.context().schema_variant_id(),
+                        title: proto.title().to_owned(),
+                        description: proto.description().map(|desc| desc.to_owned()),
+                        link: proto.link().map(|link| link.to_owned()),
+                    })
+                    .collect(),
+            });
+
+            (assocations, String::new())
         }
 
         _ => (None, String::new()),
@@ -491,7 +576,7 @@ fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
 }",
         FuncBackendResponseType::Command => "interface Output {
     status: 'ok' | 'warning' | 'error';
-    value?: unknown;
+    payload?: unknown;
     message?: string;
 }",
         FuncBackendResponseType::Json => "type Output = any;",

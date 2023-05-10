@@ -104,7 +104,7 @@ const prototypeViews = computed(() => {
       schemaVariantOptions.value.find(
         (sv) => sv.value === proto.schemaVariantId,
       )?.label ?? "none";
-    const propName = propIdToSourceName.value[proto.propId] ?? "none";
+    const propName = propIdToSourceName.value?.(proto.propId) ?? "none";
 
     return {
       schemaVariantName,

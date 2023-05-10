@@ -26,7 +26,7 @@
       <ul v-else class="list-disc list-inside flex flex-col">
         <li
           v-for="option in modelValue"
-          :key="option.value"
+          :key="`${option.value}`"
           class="flex items-center text-sm pb-2 pl-4"
         >
           <div class="pr-2" role="decoration">•</div>

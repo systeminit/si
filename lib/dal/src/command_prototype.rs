@@ -11,8 +11,10 @@ use crate::{
     Timestamp, TransactionsError, Visibility,
 };
 
-const FIND_FOR_FUNC: &str = include_str!("queries/command_prototype_find_for_func.sql");
-const FIND_FOR_CONTEXT: &str = include_str!("queries/command_prototype_find_for_context.sql");
+const FIND_FOR_FUNC: &str = include_str!("queries/command_prototype/find_for_func.sql");
+const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
+    include_str!("queries/command_prototype/find_for_func_and_schema_variant.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("queries/command_prototype/find_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum CommandPrototypeError {
@@ -136,6 +138,20 @@ impl CommandPrototype {
     );
     standard_model_accessor!(component_id, Pk(ComponentId), CommandPrototypeResult);
 
+    pub async fn find_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> CommandPrototypeResult<Vec<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(FIND_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
+            .await?;
+
+        Ok(standard_model::objects_from_rows(row)?)
+    }
+
     pub async fn find_for_func_and_schema_variant(
         ctx: &DalContext,
         func_id: FuncId,
@@ -146,7 +162,7 @@ impl CommandPrototype {
             .await?
             .pg()
             .query_opt(
-                FIND_FOR_FUNC,
+                FIND_FOR_FUNC_AND_SCHEMA_VARIANT,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
