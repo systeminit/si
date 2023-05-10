@@ -158,9 +158,17 @@ async fn save_attr_func_prototypes(
             {
                 Some(existing_proto) => (existing_proto, false),
                 None => {
-                    let default_value_context = AttributeContextBuilder::new()
-                        .set_prop_id(proto_view.prop_id)
-                        .to_context()?;
+                    let mut context_builder = AttributeContextBuilder::new();
+
+                    if let Some(prop_id) = proto_view.prop_id {
+                        context_builder.set_prop_id(prop_id);
+                    }
+
+                    if let Some(external_provider_id) = proto_view.external_provider_id {
+                        context_builder.set_external_provider_id(external_provider_id);
+                    }
+
+                    let default_value_context = context_builder.to_context()?;
 
                     (
                         AttributePrototype::find_for_context_and_key(
@@ -271,7 +279,16 @@ async fn attribute_view_for_leaf_func(
     let mut prototype_view = AttributePrototypeView {
         id: AttributePrototypeId::NONE,
         component_id,
-        prop_id: existing_proto.context.prop_id(),
+        prop_id: if existing_proto.context.prop_id().is_some() {
+            Some(existing_proto.context.prop_id())
+        } else {
+            None
+        },
+        external_provider_id: if existing_proto.context.external_provider_id().is_some() {
+            Some(existing_proto.context.external_provider_id())
+        } else {
+            None
+        },
         prototype_arguments: vec![],
     };
 

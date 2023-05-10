@@ -1,5 +1,5 @@
 {
-  "kind": "Json",
+  "kind": "JsAttribute",
   "response_type": "String",
   "code_file": "awsAmiImageIdFromApi.ts",
   "code_entrypoint": "extract",
