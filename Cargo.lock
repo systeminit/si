@@ -1520,29 +1520,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gen-var-defs"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "clap",
- "color-eyre",
- "convert_case 0.6.0",
- "dal",
- "derive_builder",
- "futures",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-data-pg",
- "si-settings",
- "telemetry-application",
- "thiserror",
- "tokio",
- "uuid",
- "veritech-client",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

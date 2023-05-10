@@ -1,9 +1,0 @@
-{
-  "name": "Docker Image",
-  "menuName": "Image",
-  "category": "Docker",
-  "color": "#4695e7",
-  "componentKind": "standard",
-  "link": null,
-  "description": null
-}

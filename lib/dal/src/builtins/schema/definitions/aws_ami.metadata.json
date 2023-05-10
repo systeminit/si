@@ -1,9 +1,0 @@
-{
-  "name": "AMI",
-  "menuName": "AMI",
-  "category": "AWS",
-  "color": "#ff9900",
-  "componentKind": "standard",
-  "link": null,
-  "description": null
-}
