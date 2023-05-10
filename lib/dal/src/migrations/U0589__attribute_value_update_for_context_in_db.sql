@@ -2145,8 +2145,8 @@ DECLARE
     child_attribute_context            jsonb;
     unset_child_attribute_context      jsonb;
     child_prop                         props%ROWTYPE;
-    child_prop_info                    jsonb;
-    child_props                        jsonb[];
+    child_prop_info                    av_insert_for_context_raw_child_prop_record_v1;
+    child_props                        av_insert_for_context_raw_child_prop_record_v1[];
     inserted_attribute_context         jsonb;
     key                                text;
     new_child_props                    av_insert_for_context_raw_child_prop_record_v1[];
@@ -2260,7 +2260,7 @@ BEGIN
     -- Create unset AttributePrototypes & AttributeValues for child Props up until (inclusive) we reach an
     -- Array/Map.
     IF child_prop.kind = 'object' THEN
-        SELECT array_agg(to_jsonb(cp.*))
+        SELECT array_agg(cp)
         INTO child_props
         FROM (
             SELECT DISTINCT ON (id) attribute_value.id AS parent_attribute_value_id,
@@ -2282,7 +2282,7 @@ BEGIN
 
         WHILE child_props IS NOT NULL LOOP
             FOREACH child_prop_info IN ARRAY child_props LOOP
-                child_prop := jsonb_populate_record(NULL::props, child_prop_info -> 'prop_json');
+                child_prop := jsonb_populate_record(NULL::props, child_prop_info.prop_json);
                 unset_child_attribute_context := child_attribute_context || jsonb_build_object('attribute_context_prop_id', child_prop.id);
                 prop_attribute_value := jsonb_populate_record(NULL::attribute_values,
                                                               attribute_value_new_v1(this_tenancy,
@@ -2296,7 +2296,7 @@ BEGIN
                     this_tenancy,
                     this_visibility,
                     prop_attribute_value.id,
-                    (child_prop_info ->> 'parent_attribute_value_id')::ident
+                    child_prop_info.parent_attribute_value_id
                 );
                 -- XXX: The Rust code was originally using `child_prop_info.parent_attribute_value_id` as BOTH
                 -- OF the last two arguments here, then setting prop_attribute_value's AttributePrototype to be
@@ -2309,29 +2309,21 @@ BEGIN
                                                                         unset_func_id,
                                                                         unset_child_attribute_context,
                                                                         NULL,
-                                                                        (child_prop_info ->> 'parent_attribute_value_id')::ident,
+                                                                        child_prop_info.parent_attribute_value_id,
                                                                         prop_attribute_value.id);
 
                 IF child_prop.kind = 'object' THEN
-                    SELECT array_agg(*)
+                    SELECT array_agg(ocp)
                     INTO object_child_props
                     FROM (
                         SELECT DISTINCT ON (id) prop_attribute_value.id AS parent_attribute_value_id,
                                                 to_jsonb(props.*) AS prop_json
-                        FROM props
+                        FROM props_v1(this_tenancy, this_visibility) as props
                         INNER JOIN (
                             SELECT DISTINCT ON (object_id) object_id AS child_prop_id
-                            FROM prop_belongs_to_prop
-                            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
-                                  AND belongs_to_id = child_prop.id
-                            ORDER BY object_id,
-                                     visibility_change_set_pk DESC,
-                                     visibility_deleted_at DESC
+                            FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility) as prop_belongs_to_prop
+                            WHERE belongs_to_id = child_prop.id
                         ) AS pbtp ON pbtp.child_prop_id = props.id
-                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-                        ORDER BY id,
-                                 visibility_change_set_pk DESC,
-                                 visibility_deleted_at DESC NULLS FIRST
                     ) AS ocp;
 
                     new_child_props := array_cat(new_child_props, object_child_props);
