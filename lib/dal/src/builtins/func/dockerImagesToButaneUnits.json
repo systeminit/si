@@ -1,5 +1,5 @@
 {
-  "kind": "Json",
+  "kind": "JsAttribute",
   "response_type": "Array",
   "code_file": "dockerImagesToButaneUnits.ts",
   "code_entrypoint": "dockerImagesToButaneUnits",

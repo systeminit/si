@@ -146,6 +146,7 @@ pub async fn create_func(
         FuncVariant::Qualification => {
             create_attribute_func(&ctx, FuncVariant::Qualification).await?
         }
+        _ => unimplemented!(),
     };
 
     let func_variant = (&func).try_into()?;

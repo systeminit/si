@@ -2,8 +2,8 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    prop_tree::PropTree, InternalProvider, InternalProviderId, PropId, PropKind, SchemaVariantId,
-    StandardModel, Visibility,
+    prop_tree::PropTree, ExternalProvider, ExternalProviderId, InternalProvider,
+    InternalProviderId, PropId, PropKind, SchemaVariantId, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -13,6 +13,14 @@ use std::collections::VecDeque;
 pub struct InputSourceSocket {
     pub schema_variant_id: SchemaVariantId,
     pub internal_provider_id: InternalProviderId,
+    pub name: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputSocket {
+    pub schema_variant_id: SchemaVariantId,
+    pub external_provider_id: ExternalProviderId,
     pub name: String,
 }
 
@@ -37,7 +45,8 @@ pub struct ListInputSourcesRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListInputSourcesResponse {
-    pub sockets: Vec<InputSourceSocket>,
+    pub input_sockets: Vec<InputSourceSocket>,
+    pub output_sockets: Vec<OutputSocket>,
     pub props: Vec<InputSourceProp>,
 }
 
@@ -83,17 +92,31 @@ pub async fn list_input_sources(
 ) -> FuncResult<Json<ListInputSourcesResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let sockets = InternalProvider::list_for_input_sockets(&ctx)
+    let input_sockets = InternalProvider::list_for_input_sockets(&ctx)
         .await?
         .iter()
         .map(|ip| InputSourceSocket {
-            internal_provider_id: ip.id().to_owned(),
-            schema_variant_id: ip.schema_variant_id().to_owned(),
+            internal_provider_id: *ip.id(),
+            schema_variant_id: *ip.schema_variant_id(),
             name: ip.name().to_owned(),
         })
         .collect();
 
-    let props = prop_tree_to_list(&PropTree::new(&ctx, false, None).await?);
+    let output_sockets = ExternalProvider::list(&ctx)
+        .await?
+        .iter()
+        .map(|ep| OutputSocket {
+            external_provider_id: *ep.id(),
+            schema_variant_id: *ep.schema_variant_id(),
+            name: ep.name().to_owned(),
+        })
+        .collect();
 
-    Ok(Json(ListInputSourcesResponse { sockets, props }))
+    let props = prop_tree_to_list(&PropTree::new(&ctx, true, None).await?);
+
+    Ok(Json(ListInputSourcesResponse {
+        input_sockets,
+        output_sockets,
+        props,
+    }))
 }

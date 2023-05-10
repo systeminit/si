@@ -226,8 +226,20 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 .to_string_lossy()
         );
 
-        let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
-        if !existing_func.is_empty() {
+        let mut existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+        if let Some(mut existing_func) = existing_func.pop() {
+            if *existing_func.backend_kind() != func_metadata.kind {
+                info!(
+                    "updating backend kind for {:?} from {:?} to {:?}",
+                    &func_name,
+                    *existing_func.backend_kind(),
+                    func_metadata.kind
+                );
+                existing_func
+                    .set_backend_kind(ctx, func_metadata.kind)
+                    .await?;
+            }
+
             warn!("skipping {:?}: func already exists", &func_name);
             continue;
         }

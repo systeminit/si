@@ -25,7 +25,9 @@
         <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
           Output location:
         </h1>
-        <h2 class="pb-2 text-sm">{{ proto.prop }}</h2>
+        <h2 class="pb-2 text-sm">
+          {{ proto.outputLocation?.label ?? "no output location set" }}
+        </h2>
 
         <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
           Expected Function Arguments:
@@ -88,11 +90,11 @@ import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
 const {
-  propIdToSourceName,
-  providerIdToSourceName,
+  internalProviderIdToSourceName,
   schemaVariantOptions,
   componentOptions,
-  propForId,
+  schemaVariantIdForAttributePrototype,
+  outputLocationForAttributePrototype,
 } = storeToRefs(funcStore);
 
 const props = defineProps<{
@@ -179,7 +181,7 @@ const funcArgumentsIdMap =
 
 const prototypeView = computed(() => {
   return associations.value.prototypes.map((proto) => {
-    const schemaVariantId = propForId.value?.(proto.propId)?.schemaVariantId;
+    const schemaVariantId = schemaVariantIdForAttributePrototype.value?.(proto);
     const schemaVariant =
       schemaVariantOptions.value.find((sv) => sv.value === schemaVariantId)
         ?.label ?? "none";
@@ -187,12 +189,14 @@ const prototypeView = computed(() => {
     const component =
       componentOptions.value.find((c) => c.value === proto.componentId)
         ?.label ?? "all";
-    const prop = propIdToSourceName.value[proto.propId] ?? "none";
+
+    const outputLocation = outputLocationForAttributePrototype.value?.(proto);
 
     const args = proto.prototypeArguments.map((arg) => ({
       name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
       prop: arg.internalProviderId
-        ? providerIdToSourceName.value[arg.internalProviderId] ?? "none"
+        ? internalProviderIdToSourceName.value?.(arg.internalProviderId) ??
+          "none"
         : "none",
     }));
 
@@ -200,7 +204,7 @@ const prototypeView = computed(() => {
       id: proto.id,
       schemaVariant,
       component,
-      prop,
+      outputLocation,
       args,
     };
   });

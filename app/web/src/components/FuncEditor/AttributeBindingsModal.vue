@@ -60,9 +60,9 @@ import { inject, watch, computed, toRef, ref, Ref, PropType } from "vue";
 import { storeToRefs } from "pinia";
 import { Modal } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { AttributePrototypeView } from "@/store/func/types";
+import { AttributePrototypeView, OutputLocation } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore, OutputLocationOption } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 function nilId(): string {
@@ -77,8 +77,8 @@ const {
   schemaVariantOptions,
   inputSourceSockets,
   inputSourceProps,
-  propsAsOptionsForSchemaVariant,
-  propForId,
+  schemaVariantIdForAttributePrototype,
+  outputLocationOptionsForSchemaVariant,
 } = storeToRefs(funcStore);
 
 const props = defineProps({
@@ -114,13 +114,13 @@ const allComponentsOption = {
 const noneVariant = { label: "select schema variant", value: nilId() };
 const noneOutputLocation = {
   label: "select place to store output",
-  value: nilId(),
+  value: { label: "", propId: nilId() },
 };
 const noneSource = { label: "select source", value: nilId() };
 
 const selectedVariant = ref<Option>(noneVariant);
 const selectedComponent = ref<Option>(allComponentsOption);
-const selectedOutputLocation = ref<Option>(noneOutputLocation);
+const selectedOutputLocation = ref<OutputLocationOption>(noneOutputLocation);
 const editableBindings = ref<EditingBinding[]>([]);
 
 const funcArgumentsIdMap =
@@ -130,7 +130,14 @@ const editedPrototype = computed(() => ({
   id: props.prototype?.id ?? nilId(),
   schemaVariantId: selectedVariant.value.value as string,
   componentId: selectedComponent.value.value as string,
-  propId: selectedOutputLocation.value.value as string,
+  propId:
+    "propId" in selectedOutputLocation.value.value
+      ? selectedOutputLocation.value.value.propId
+      : undefined,
+  externalProviderId:
+    "externalProviderId" in selectedOutputLocation.value.value
+      ? selectedOutputLocation.value.value.externalProviderId
+      : undefined,
   prototypeArguments: editableBindings.value.map(
     ({ id, funcArgumentId, binding }) => ({
       id: id ?? nilId(),
@@ -155,8 +162,10 @@ const filteredComponentOptions = computed<Option[]>(() =>
   ),
 );
 
-const outputLocationOptions = computed<Option[]>(() =>
-  propsAsOptionsForSchemaVariant.value(
+const outputLocationOptions = computed<
+  { label: string; value: OutputLocation }[]
+>(() =>
+  outputLocationOptionsForSchemaVariant.value(
     typeof selectedVariant.value.value === "string"
       ? selectedVariant.value.value
       : nilId(),
@@ -174,7 +183,7 @@ const inputSourceOptions = computed<Option[]>(() => {
           socket.internalProviderId,
       )
       .map((socket) => ({
-        label: `Socket: ${socket.name}`,
+        label: `Input Socket: ${socket.name}`,
         // internalProviderId will never be undefined given the condition above but the Typescript compiler
         // is not quite smart enough to figure that out.
         value: socket.internalProviderId ?? nilId(),
@@ -187,7 +196,9 @@ const inputSourceOptions = computed<Option[]>(() => {
           (selectedVariantId === nilId() ||
             selectedVariantId === prop.schemaVariantId) &&
           prop.internalProviderId &&
-          prop.propId !== selectedOutputLocation.value.value,
+          ("propId" in selectedOutputLocation.value.value
+            ? prop.propId !== selectedOutputLocation.value.value.propId
+            : true),
       )
       .map((prop) => ({
         label: `Attribute: ${prop.path}${prop.name}`,
@@ -252,9 +263,14 @@ watch(
 watch(
   () => props.open,
   () => {
-    const schemaVariantId = propForId.value?.(
-      prototype.value?.propId,
-    )?.schemaVariantId;
+    if (!prototype.value) {
+      return;
+    }
+
+    const schemaVariantId = schemaVariantIdForAttributePrototype.value?.(
+      prototype.value,
+    );
+
     selectedVariant.value =
       schemaVariantOptions?.value.find((sv) => sv.value === schemaVariantId) ??
       noneVariant;
@@ -264,7 +280,12 @@ watch(
       ) ?? allComponentsOption;
     selectedOutputLocation.value =
       outputLocationOptions.value.find(
-        (loc) => loc.value === prototype.value?.propId,
+        (loc) =>
+          ("propId" in loc.value &&
+            loc.value.propId === prototype.value?.propId) ||
+          ("externalProviderId" in loc.value &&
+            loc.value.externalProviderId ===
+              prototype.value?.externalProviderId),
       ) ?? noneOutputLocation;
 
     editableBindings.value =
