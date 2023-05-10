@@ -17,13 +17,13 @@ async function deleteResource(component: Input): Promise<Output> {
         status: "error",
         payload: resource,
         message: `Unable to delete Security Group while it is in use: ${child.exitCode}`,
-      }
+      };
     } else {
       return {
         status: "error",
         payload: resource,
         message: `Unable to delete Security Group, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
-      }
+      };
     }
   }
 

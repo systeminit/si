@@ -3,15 +3,15 @@ async function qualification(input: Input): Promise<Output> {
   if (!code) {
     return {
       result: "failure",
-      message: "component doesn't have JSON representation"
-    }
+      message: "component doesn't have JSON representation",
+    };
   }
 
   if (!input.domain.region) {
     return {
       result: "failure",
-      message: "component doesn't have a region set"
-    }
+      message: "component doesn't have a region set",
+    };
   }
 
   const dryRunStatus = await siExec.waitUntilEnd("aws", [
@@ -21,23 +21,28 @@ async function qualification(input: Input): Promise<Output> {
     input.domain.region,
     "--dry-run",
     "--cli-input-json",
-    code
+    code,
   ]);
 
   console.log(dryRunStatus.stderr);
 
-  if (dryRunStatus.stderr.includes("An error occurred (InvalidKeyPair.NotFound)")) {
+  if (
+    dryRunStatus.stderr.includes("An error occurred (InvalidKeyPair.NotFound)")
+  ) {
     return {
       result: "warning",
-      message: "Key Pair must exist. It will be created by the fix flow after merging this change-set"
+      message:
+        "Key Pair must exist. It will be created by the fix flow after merging this change-set",
     };
   }
 
   // We have to use `includes` instead of `startsWith` because the line can start with a line feed char
-  const success = dryRunStatus.stderr.includes('An error occurred (DryRunOperation)');
+  const success = dryRunStatus.stderr.includes(
+    "An error occurred (DryRunOperation)",
+  );
 
   return {
     result: success ? "success" : "failure",
-    message: success ? 'component qualified' : dryRunStatus.shortMessage
-  }
+    message: success ? "component qualified" : dryRunStatus.shortMessage,
+  };
 }

@@ -4,7 +4,7 @@ async function create(component: Input): Promise<Output> {
       status: "error",
       message: "Resource already exists",
       payload: component.properties.resource.payload,
-    }
+    };
   }
 
   // Now, create the ec2
@@ -22,7 +22,7 @@ async function create(component: Input): Promise<Output> {
     return {
       status: "error",
       message: `Unable to create EC2 instance, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
-    }
+    };
   }
 
   return { payload: JSON.parse(child.stdout).Instances[0], status: "ok" };

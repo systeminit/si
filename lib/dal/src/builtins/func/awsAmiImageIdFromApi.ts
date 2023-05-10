@@ -4,12 +4,12 @@ async function extract(input: Input): Promise<Output> {
   }
 
   if (!input.code) {
-    return ""
+    return "";
   }
 
   const code = input.code?.["si:generateAwsAmiJSON"]?.code;
   if (!code) {
-    return ""
+    return "";
   }
   // Ensure we have filters (an ami id or filters are set)
   const filters = JSON.parse(code)?.Filters ?? [];
@@ -26,18 +26,21 @@ async function extract(input: Input): Promise<Output> {
     "reverse(sort_by(Images, &CreationDate))",
     "--cli-input-json",
     code,
-  ])
+  ]);
 
   if (imageResponse.exitCode !== 0) {
-    console.log("error returned from AWS API")
-    return ""
+    console.log("error returned from AWS API");
+    return "";
   }
 
-  const images = JSON.parse(imageResponse.stdout)
-  if (images.length === 1 || (images.length > 1 && input.domain.UseMostRecent)) {
-    return images[0].ImageId
+  const images = JSON.parse(imageResponse.stdout);
+  if (
+    images.length === 1 ||
+    (images.length > 1 && input.domain.UseMostRecent)
+  ) {
+    return images[0].ImageId;
   }
 
-  console.log("Unable to find a suitable ImageID")
+  console.log("Unable to find a suitable ImageID");
   return "";
 }

@@ -24,6 +24,6 @@ async function generateAwsEipJSON(input: Input): Promise<Output> {
 
   return {
     format: "json",
-    code: JSON.stringify(object, null, "\t")
+    code: JSON.stringify(object, null, "\t"),
   };
 }

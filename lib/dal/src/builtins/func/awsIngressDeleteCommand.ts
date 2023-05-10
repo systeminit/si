@@ -1,7 +1,9 @@
 async function deleteResource(component: Input): Promise<Output> {
   const resource = component.properties.resource?.payload;
 
-  const ruleIds: number[] = resource.SecurityGroupRules.map(x => x.SecurityGroupRuleId);
+  const ruleIds: number[] = resource.SecurityGroupRules.map(
+    (x) => x.SecurityGroupRuleId,
+  );
   const groupId = resource.SecurityGroupRules[0].GroupId;
 
   // Now, delete the ingress
@@ -22,7 +24,7 @@ async function deleteResource(component: Input): Promise<Output> {
       status: "error",
       payload: resource,
       message: `Unable to delete Ingress Rule, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
-    }
+    };
   }
 
   return { payload: null, status: "ok" };

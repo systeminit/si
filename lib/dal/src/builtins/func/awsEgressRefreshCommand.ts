@@ -3,11 +3,13 @@ async function refresh(component: Input): Promise<Output> {
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "ok",
-      message: component.properties.resource?.message
+      message: component.properties.resource?.message,
     };
   }
 
-  const ruleIds: number[] = resource.SecurityGroupRules.map(x => x.SecurityGroupRuleId);
+  const ruleIds: number[] = resource.SecurityGroupRules.map(
+    (x) => x.SecurityGroupRuleId,
+  );
 
   const child = await siExec.waitUntilEnd("aws", [
     "ec2",
@@ -24,15 +26,18 @@ async function refresh(component: Input): Promise<Output> {
       status: "error",
       payload: resource,
       message: `AWS CLI 2 "aws ec2 describe-security-group-rules" returned non zero exit code (${child.exitCode})`,
-    }
+    };
   }
 
   const rules = JSON.parse(child.stdout);
   rules.SecurityGroupRules.forEach((x, i) => {
     if (!x.isEgress) {
-      return { status: "error", message: `expected Security Group Rule ID ${x.SecurityGroupRuleId} to be an egress rule but is ingress` };
+      return {
+        status: "error",
+        message: `expected Security Group Rule ID ${x.SecurityGroupRuleId} to be an egress rule but is ingress`,
+      };
     }
-  })
+  });
 
   return { payload: rules, status: "ok" };
 }

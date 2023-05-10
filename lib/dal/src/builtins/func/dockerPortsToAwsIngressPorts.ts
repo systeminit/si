@@ -1,12 +1,12 @@
 async function dockerPortsToAwsIngressPorts(input: Input): Promise<Output> {
   const dockerPortToObj = (entry) => {
-    const [port, protocol] = entry.split('/');
+    const [port, protocol] = entry.split("/");
     return {
       IpProtocol: protocol,
       ToPort: port,
       FromPort: port,
-      CidrIp: '0.0.0.0/0',
-    }
+      CidrIp: "0.0.0.0/0",
+    };
   };
 
   // NOTE(victor): This looks a bit weird, but it's because of the way the system passes in arguments on sockets
@@ -14,9 +14,9 @@ async function dockerPortsToAwsIngressPorts(input: Input): Promise<Output> {
   // for each connected port. There are examples for each payload on comments below the code
   return input?.ExposedPorts?.flatMap((entry) => {
     if (Array.isArray(entry)) {
-      return entry.map(dockerPortToObj)
+      return entry.map(dockerPortToObj);
     } else {
-      return dockerPortToObj(entry)
+      return dockerPortToObj(entry);
     }
   });
 }
