@@ -2,6 +2,7 @@ rust_library(
     name = "sdf-server",
     edition = "2021",
     deps = [
+        "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",

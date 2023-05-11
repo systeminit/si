@@ -70,6 +70,12 @@ A-si-discord-bot:
 #
 # System Initiative libs (i.e. crates/packages/libraries)
 #
+A-buck2-resources:
+  - lib/A-buck2-resources/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-bytes-lines-codec:
   - lib/bytes-lines-codec/**/*
   - .cargo/**/*

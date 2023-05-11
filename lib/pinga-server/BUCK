@@ -2,6 +2,7 @@ rust_library(
     name = "pinga-server",
     edition = "2021",
     deps = [
+        "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",

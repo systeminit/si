@@ -1,10 +1,10 @@
 use std::{
-    collections::HashMap,
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
     time::Duration,
 };
 
+use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
@@ -344,9 +344,7 @@ fn default_enable_endpoint() -> bool {
     true
 }
 
-fn detect_and_configure_development_spec(
-    cyclone: CycloneConfig,
-) -> std::result::Result<CycloneSpec, ConfigError> {
+fn detect_and_configure_development_spec(cyclone: CycloneConfig) -> Result<CycloneSpec> {
     if std::env::var("BUCK_RUN_BUILD_ID").is_ok() {
         buck2_development_cyclone_spec(cyclone)
     } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
@@ -356,29 +354,24 @@ fn detect_and_configure_development_spec(
     }
 }
 
-fn buck2_development_cyclone_spec(
-    mut cyclone: CycloneConfig,
-) -> std::result::Result<CycloneSpec, ConfigError> {
-    let resources = Buck2Resources::read()?;
+fn buck2_development_cyclone_spec(mut cyclone: CycloneConfig) -> Result<CycloneSpec> {
+    let resources = Buck2Resources::read().map_err(ConfigError::cyclone_spec_build)?;
 
     let cyclone_cmd_path = resources
-        .get("bin/veritech/cyclone")?
-        .canonicalize()
-        .expect("failed to canonicalize local dev build of a `cyclone` binary")
+        .get("bin/veritech/cyclone")
+        .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
     let cyclone_decryption_key_path = resources
-        .get("bin/veritech/dev.decryption.key")?
-        .canonicalize()
-        .expect("failed to canonicalize local dev build of a `cyclone` binary")
+        .get("bin/veritech/dev.decryption.key")
+        .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
     let lang_server_cmd_path = resources
-        .get("bin/veritech/lang-js")?
+        .get("bin/veritech/lang-js")
+        .map_err(ConfigError::cyclone_spec_build)?
         // TODO(fnichol): tweak build rule to produce binary as its output
         .join("lang-js")
-        .canonicalize()
-        .expect("failed to canonicalize local dev build of a `lang-js` binary")
         .to_string_lossy()
         .to_string();
 
@@ -396,10 +389,7 @@ fn buck2_development_cyclone_spec(
     cyclone.try_into()
 }
 
-fn cargo_development_cyclone_spec(
-    dir: String,
-    mut cyclone: CycloneConfig,
-) -> std::result::Result<CycloneSpec, ConfigError> {
+fn cargo_development_cyclone_spec(dir: String, mut cyclone: CycloneConfig) -> Result<CycloneSpec> {
     let cyclone_cmd_path = Path::new(&dir)
         .join("../../target/debug/cyclone")
         .canonicalize()
@@ -433,108 +423,4 @@ fn cargo_development_cyclone_spec(
     cyclone.set_lang_server_cmd_path(lang_server_cmd_path);
 
     cyclone.try_into()
-}
-
-// TODO(fnichol): extract Buck2 resource code into small common crate
-#[derive(Debug, Error)]
-enum Buck2ResourcesError {
-    #[error("failed canonicalize path: `{path}`")]
-    Canonicalize {
-        source: std::io::Error,
-        path: PathBuf,
-    },
-    #[error("Failed to look up our own executable path")]
-    NoCurrentExe { source: std::io::Error },
-    #[error("Executable doesn't have a filename: `{executable_path}`")]
-    NoFileName { executable_path: PathBuf },
-    #[error("Failed to find parent directory of executable: `{executable_path}`")]
-    NoParentDir { executable_path: PathBuf },
-    #[error("No resource named `{name}` found in manifest file: `{manifest_path}`")]
-    NoSuchResource {
-        name: String,
-        manifest_path: PathBuf,
-    },
-    #[error("Failed to parse manifest file: `{manifest_path}`")]
-    ParsingFailed {
-        manifest_path: PathBuf,
-        source: serde_json::Error,
-    },
-    #[error("Failed to read manifest file: `{manifest_path}`")]
-    ReadFailed {
-        manifest_path: PathBuf,
-        source: std::io::Error,
-    },
-}
-
-// TODO(fnichol): extract Buck2 resource code into small common crate
-struct Buck2Resources {
-    inner: HashMap<String, PathBuf>,
-    parent_dir: PathBuf,
-    manifest_path: PathBuf,
-}
-
-impl Buck2Resources {
-    fn read() -> std::result::Result<Self, ConfigError> {
-        let executable_path = std::env::current_exe().map_err(|source| {
-            ConfigError::cyclone_spec_build(Buck2ResourcesError::NoCurrentExe { source })
-        })?;
-        let parent_dir = match executable_path.parent() {
-            Some(p) => p,
-            None => {
-                return Err(ConfigError::cyclone_spec_build(
-                    Buck2ResourcesError::NoParentDir { executable_path },
-                ))
-            }
-        };
-        let file_name = match executable_path.file_name() {
-            Some(f) => f,
-            None => {
-                return Err(ConfigError::cyclone_spec_build(
-                    Buck2ResourcesError::NoFileName { executable_path },
-                ))
-            }
-        };
-        let manifest_path =
-            parent_dir.join(format!("{}.resources.json", file_name.to_string_lossy()));
-        let manifest_string = match std::fs::read_to_string(&manifest_path) {
-            Ok(s) => s,
-            Err(source) => {
-                return Err(ConfigError::cyclone_spec_build(
-                    Buck2ResourcesError::ReadFailed {
-                        manifest_path,
-                        source,
-                    },
-                ))
-            }
-        };
-        let inner: HashMap<String, PathBuf> =
-            serde_json::from_str(&manifest_string).map_err(|source| {
-                ConfigError::cyclone_spec_build(Buck2ResourcesError::ParsingFailed {
-                    manifest_path: manifest_path.clone(),
-                    source,
-                })
-            })?;
-
-        Ok(Self {
-            inner,
-            parent_dir: parent_dir.to_path_buf(),
-            manifest_path,
-        })
-    }
-
-    fn get(&self, name: impl AsRef<str>) -> std::result::Result<PathBuf, ConfigError> {
-        let rel_path = self.inner.get(name.as_ref()).ok_or_else(|| {
-            ConfigError::cyclone_spec_build(Buck2ResourcesError::NoSuchResource {
-                name: name.as_ref().to_string(),
-                manifest_path: self.manifest_path.clone(),
-            })
-        })?;
-
-        let path = self.parent_dir.join(rel_path);
-        let path = path.canonicalize().map_err(|source| {
-            ConfigError::cyclone_spec_build(Buck2ResourcesError::Canonicalize { source, path })
-        })?;
-
-        Ok(path)
-    }
 }

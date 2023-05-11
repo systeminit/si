@@ -45,9 +45,10 @@ COMPONENTS = \
 	bin/sdf \
 	bin/veritech \
 	bin/si-discord-bot \
-	lib/council-server \
+	lib/buck2-resources \
 	lib/bytes-lines-codec \
 	lib/config-file \
+	lib/council-server \
 	lib/cyclone-client \
 	lib/cyclone-core \
 	lib/cyclone-server \
@@ -226,6 +227,8 @@ test//bin/cyclone//RTESTDEPS: test//lib/veritech-server
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone-server
 
 test//bin/pinga//RTESTDEPS: test//lib/pinga-server
+
+test//lib/buck2-resources//RTESTDEPS: build//lib/cyclone-server build//lib/pinga-server build//lib/sdf-server
 
 test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone-server
 
