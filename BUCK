@@ -30,6 +30,11 @@ alias(
     actual = "//component/deploy:down",
 )
 
+alias(
+    name = "web",
+    actual = "//app/web:dev",
+)
+
 pnpm_install(
     name = "pnpm-install",
     srcs = [
