@@ -16,6 +16,7 @@ use dal_test::{
 use strum::IntoEnumIterator;
 
 mod description;
+mod reconciliation;
 
 #[test]
 async fn new(ctx: &DalContext) {

@@ -56,6 +56,7 @@ pub enum FuncSpecBackendKind {
     JsAttribute,
     JsCommand,
     Json,
+    JsReconciliation,
     JsValidation,
     JsWorkflow,
 }
@@ -74,6 +75,7 @@ pub enum FuncSpecBackendResponseType {
     Map,
     Object,
     Qualification,
+    Reconciliation,
     String,
     Validation,
     Workflow,

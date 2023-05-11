@@ -17,6 +17,7 @@ pub mod identity;
 pub mod integer;
 pub mod js_attribute;
 pub mod js_command;
+pub mod js_reconciliation;
 pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
@@ -47,6 +48,8 @@ pub enum FuncBackendError {
     SendError,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("unable to decode ulid")]
+    Ulid(#[from] ulid::DecodeError),
     #[error("veritech client error: {0}")]
     VeritechClient(#[from] veritech_client::ClientError),
 }
@@ -76,6 +79,7 @@ pub enum FuncBackendKind {
     JsAttribute,
     JsCommand,
     Json,
+    JsReconciliation,
     JsValidation,
     JsWorkflow,
     Map,
@@ -112,6 +116,7 @@ pub enum FuncBackendResponseType {
     Map,
     Object,
     Qualification,
+    Reconciliation,
     String,
     Unset,
     Validation,
@@ -136,6 +141,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Validation => FuncBackendResponseType::Validation,
             ResolverFunctionResponseType::Command => FuncBackendResponseType::Command,
             ResolverFunctionResponseType::Workflow => FuncBackendResponseType::Workflow,
+            ResolverFunctionResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
         }
     }
 }
@@ -157,6 +163,7 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
             FuncBackendResponseType::Validation => ResolverFunctionResponseType::Validation,
             FuncBackendResponseType::Command => ResolverFunctionResponseType::Command,
+            FuncBackendResponseType::Reconciliation => ResolverFunctionResponseType::Reconciliation,
             FuncBackendResponseType::Workflow => ResolverFunctionResponseType::Workflow,
         }
     }

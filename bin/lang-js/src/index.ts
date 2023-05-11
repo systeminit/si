@@ -3,12 +3,13 @@
 import fs from "fs";
 import { Command } from "commander";
 import Debug from "debug";
-import { failureExecution, FunctionKind, function_kinds } from "./function";
+import { failureExecution, FunctionKind, functionKinds } from "./function";
 import { makeConsole } from "./sandbox/console";
 import { executeResolverFunction } from "./resolver_function";
 import { executeWorkflowResolve } from "./workflow_resolve";
 import { executeCommandRun } from "./command_run";
 import { executeValidation } from "./validation";
+import { executeReconciliation } from "./reconciliation";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -32,7 +33,7 @@ async function main() {
     .version("0.0.1")
     .argument(
       "<kind>",
-      `kind of function to be executed [values: ${function_kinds().join(", ")}]`
+      `kind of function to be executed [values: ${functionKinds().join(", ")}]`
     )
     .action((kind_arg) => {
       if (Object.values(FunctionKind).includes(kind_arg)) {
@@ -81,6 +82,9 @@ async function main() {
         break;
       case FunctionKind.Validation:
         await executeValidation(request);
+        break;
+      case FunctionKind.Reconciliation:
+        await executeReconciliation(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

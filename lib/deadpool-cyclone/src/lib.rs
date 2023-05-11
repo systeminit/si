@@ -27,8 +27,9 @@ pub use cyclone_client::{
 pub use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ComponentView, FunctionResult,
     FunctionResultFailure, FunctionResultFailureError, OutputStream, ProgressMessage,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceStatus, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceStatus, ValidationRequest, ValidationResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 /// [`Instance`] implementations.

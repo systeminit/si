@@ -80,6 +80,14 @@ pub(crate) struct Args {
     #[arg(long, group = "command_run")]
     pub(crate) disable_command_run: bool,
 
+    /// Enables reconciliation endpoint.
+    #[arg(long, group = "reconciliation")]
+    pub(crate) enable_reconciliation: bool,
+
+    /// Disables reconciliation endpoint.
+    #[arg(long, group = "reconciliation")]
+    pub(crate) disable_reconciliation: bool,
+
     /// Enables configuration endpoint.
     #[arg(long, group = "configuration")]
     pub(crate) enable_configuration: bool,
