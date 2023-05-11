@@ -4,6 +4,7 @@ rust_library(
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:derive_builder",
+        "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

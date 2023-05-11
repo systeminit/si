@@ -10009,6 +10009,37 @@ cargo.rust_library(
 )
 
 alias(
+    name = "remain",
+    actual = ":remain-0.2.8",
+    visibility = ["PUBLIC"],
+)
+
+cargo.rust_library(
+    name = "remain-0.2.8",
+    srcs = [
+        "vendor/remain-0.2.8/src/atom.rs",
+        "vendor/remain-0.2.8/src/check.rs",
+        "vendor/remain-0.2.8/src/compare.rs",
+        "vendor/remain-0.2.8/src/emit.rs",
+        "vendor/remain-0.2.8/src/format.rs",
+        "vendor/remain-0.2.8/src/lib.rs",
+        "vendor/remain-0.2.8/src/parse.rs",
+        "vendor/remain-0.2.8/src/visit.rs",
+    ],
+    crate = "remain",
+    crate_root = "vendor/remain-0.2.8/src/lib.rs",
+    edition = "2018",
+    proc_macro = True,
+    rustc_flags = ["--cap-lints=allow"],
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.56",
+        ":quote-1.0.27",
+        ":syn-2.0.15",
+    ],
+)
+
+alias(
     name = "reqwest",
     actual = ":reqwest-0.11.17",
     visibility = ["PUBLIC"],
@@ -13429,6 +13460,7 @@ cargo.rust_binary(
         ":rand-0.8.5",
         ":refinery-0.8.9",
         ":regex-1.8.1",
+        ":remain-0.2.8",
         ":reqwest-0.11.17",
         ":serde-1.0.162",
         ":serde-aux-4.2.0",

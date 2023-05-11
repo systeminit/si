@@ -3,6 +3,7 @@ rust_library(
     edition = "2021",
     deps = [
         "//lib/config-file:config-file",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_with",
         "//third-party/rust:thiserror",

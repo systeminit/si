@@ -68,6 +68,7 @@ pretty_assertions_sorted = "1.2.1"
 rand = "0.8.5"
 refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
+remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"

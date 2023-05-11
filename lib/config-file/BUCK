@@ -13,6 +13,7 @@ rust_library(
         "//third-party/rust:config",
         "//third-party/rust:directories",
         "//third-party/rust:pathdiff",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:thiserror",
         "//third-party/rust:tracing",

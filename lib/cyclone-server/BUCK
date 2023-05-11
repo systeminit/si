@@ -14,6 +14,7 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:hyper",
         "//third-party/rust:pin-project-lite",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:sodiumoxide",

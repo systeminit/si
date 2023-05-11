@@ -4,6 +4,7 @@ rust_library(
     deps = [
         "//third-party/rust:blake3",
         "//third-party/rust:petgraph",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:strum",
         "//third-party/rust:tar",
