@@ -214,7 +214,7 @@ build() {
   if [[ "$push" == "true" ]]; then
     args+=(--push)
   fi
-  args+=("$@" ../..)
+  args+=("$@" .)
 
   export BUILDKIT_PROGRESS=plain
 

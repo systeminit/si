@@ -1,0 +1,29 @@
+export_file(
+    name = "docker-compose.yml",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "docker-compose.local-postgres.yml",
+    visibility = ["PUBLIC"],
+)
+
+sh_binary(
+    name = "prepare",
+    main = "scripts/prepare.sh",
+    resources = [
+        ":docker-compose.yml",
+        ":docker-compose.local-postgres.yml",
+        "//component/postgres:postgres"
+    ],
+    visibility = ["PUBLIC"],
+)
+
+sh_binary(
+    name = "down",
+    main = "scripts/down.sh",
+    resources = [
+        ":docker-compose.yml",
+    ],
+    visibility = ["PUBLIC"],
+)

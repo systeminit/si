@@ -20,6 +20,16 @@ alias(
     actual = "//bin/veritech:veritech",
 )
 
+alias(
+    name = "prepare",
+    actual = "//component/deploy:prepare",
+)
+
+alias(
+    name = "down",
+    actual = "//component/deploy:down",
+)
+
 pnpm_install(
     name = "pnpm-install",
     srcs = [
