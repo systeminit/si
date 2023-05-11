@@ -8,6 +8,15 @@ export_file(
 )
 
 pnpm_task_library(
+    name = "build-lint",
+    command = "lint",
+    srcs = glob(["src/**/*", "tsconfig.json"]),
+    deps = ["//:pnpm-install"],
+    path = "app/web",
+    visibility = ["PUBLIC"],
+)
+
+pnpm_task_library(
     name = "build",
     command = "build",
     srcs = glob(["src/**/*.ts", "tsconfig.json"]),
@@ -15,51 +24,42 @@ pnpm_task_library(
         "//:pnpm-install",
         ":build-lint"
     ],
-    path = "bin/lang-js",
+    path = "app/web",
     outs = ["dist"],
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_library(
-    name = "build-lint",
-    command = "lint",
-    srcs = glob(["src/**/*.ts", "tsconfig.json"]),
-    deps = ["//:pnpm-install"],
-    path = "bin/lang-js",
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_library(
-    name = "build-package",
-    command = "package:nobuild",
-    deps = [":build"],
-    path = "bin/lang-js",
-    outs = ["target/lang-js"],
     visibility = ["PUBLIC"],
 )
 
 pnpm_task_binary(
     name = "lint",
     command = "lint",
-    srcs = glob(["src/**/*.ts"]),
-    path = "bin/lang-js",
+    srcs = glob(["src/**/*"]),
+    path = "app/web",
     deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
 
 pnpm_task_binary(
-    name = "package",
-    command = "package:nobuild",
-    deps = [":build"],
-    path = "bin/lang-js",
+    name = "lint-fix",
+    command = "lint-fix",
+    srcs = glob(["src/**/*"]),
+    path = "app/web",
+    deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
 
 pnpm_task_binary(
-    name = "run",
-    command = "start:nobuild",
-    deps = [":build"],
-    path = "bin/lang-js",
+    name = "dev",
+    command = "dev",
+    srcs = glob(["src/**/*"]),
+    path = "app/web",
+    deps = ["//:pnpm-install"],
+    visibility = ["PUBLIC"],
+)
+
+pnpm_task_binary(
+    name = "clean",
+    command = "clean",
+    path = "app/web",
     visibility = ["PUBLIC"],
 )
 
@@ -67,6 +67,6 @@ pnpm_task_test(
     name = "test",
     command = "test",
     deps = [":build"],
-    path = "bin/lang-js",
+    path = "app/web",
     visibility = ["PUBLIC"],
 )

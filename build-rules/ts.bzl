@@ -21,13 +21,13 @@ pnpm_install = rule(impl = pnpm_install_impl, attrs = {
 def pnpm_task_library_impl(ctx: "context") -> ["provider"]:
     script = ctx.actions.write("pnpm-run.sh", """#!/bin/bash
 set -euxo pipefail
-ROOTPATH=$PWD
+ROOTPATH=$(git rev-parse --show-toplevel)
 NPM_PACKAGE_PATH=$1
 NPM_RUN_COMMAND=$2
 BUCK_OUT_DIRECTORY=$3
 OUTPUT_PATHS=$4
 mkdir -p $BUCK_OUT_DIRECTORY
-pushd $NPM_PACKAGE_PATH
+pushd $ROOTPATH/$NPM_PACKAGE_PATH
 pnpm run $NPM_RUN_COMMAND | tee $ROOTPATH/$3/command-output.txt
 if [ ! -z "$OUTPUT_PATHS" ]; then
   cp -r $OUTPUT_PATHS $ROOTPATH/$3
@@ -53,10 +53,10 @@ pnpm_task_library = rule(impl = pnpm_task_library_impl, attrs = {
 def pnpm_task_binary_impl(ctx: "context") -> ["provider"]:
     script = ctx.actions.write("pnpm-run.sh", """#!/bin/bash
 set -euxo pipefail
-ROOTPATH=$PWD
+ROOTPATH=$(git rev-parse --show-toplevel)
 NPM_PACKAGE_PATH=$1
 NPM_RUN_COMMAND=$2
-pushd $NPM_PACKAGE_PATH
+pushd $ROOTPATH/$NPM_PACKAGE_PATH
 pnpm run $NPM_RUN_COMMAND 
 popd
 """, is_executable = True);
@@ -75,10 +75,10 @@ pnpm_task_binary = rule(impl = pnpm_task_binary_impl, attrs = {
 def pnpm_task_test_impl(ctx: "context") -> ["provider"]:
     script = ctx.actions.write("pnpm-run.sh", """#!/bin/bash
 set -euxo pipefail
-ROOTPATH=$PWD
+ROOTPATH=$(git rev-parse --show-toplevel)
 NPM_PACKAGE_PATH=$1
 NPM_RUN_COMMAND=$2
-pushd $NPM_PACKAGE_PATH
+pushd $ROOTPATH/$NPM_PACKAGE_PATH
 pnpm run $NPM_RUN_COMMAND 
 popd
 """, is_executable = True);
