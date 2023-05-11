@@ -12893,6 +12893,31 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "stream-cancel",
+    actual = ":stream-cancel-0.8.1",
+    visibility = ["PUBLIC"],
+)
+
+cargo.rust_library(
+    name = "stream-cancel-0.8.1",
+    srcs = [
+        "vendor/stream-cancel-0.8.1/src/combinator.rs",
+        "vendor/stream-cancel-0.8.1/src/lib.rs",
+        "vendor/stream-cancel-0.8.1/src/wrapper.rs",
+    ],
+    crate = "stream_cancel",
+    crate_root = "vendor/stream-cancel-0.8.1/src/lib.rs",
+    edition = "2018",
+    rustc_flags = ["--cap-lints=allow"],
+    visibility = [],
+    deps = [
+        ":futures-core-0.3.28",
+        ":pin-project-1.0.12",
+        ":tokio-1.28.0",
+    ],
+)
+
 cargo.rust_library(
     name = "stringprep-0.1.2",
     srcs = [
@@ -13412,6 +13437,7 @@ cargo.rust_binary(
         ":serde_with-3.0.0",
         ":serde_yaml-0.9.21",
         ":sodiumoxide-0.2.7",
+        ":stream-cancel-0.8.1",
         ":strum-0.24.1",
         ":tar-0.4.38",
         ":tempfile-3.5.0",
