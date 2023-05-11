@@ -20,32 +20,33 @@ use crate::{
 use crate::{DalContext, TransactionsError};
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ValidationResolverError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
+    #[error("component error: {0}")]
+    Component(String),
+    #[error("component not found: {0}")]
+    ComponentNotFound(ComponentId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("invalid prop id")]
+    InvalidPropId,
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("schema not found")]
+    SchemaNotFound,
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
-    #[error("component error: {0}")]
-    Component(String),
-    #[error("invalid prop id")]
-    InvalidPropId,
-    #[error("component not found: {0}")]
-    ComponentNotFound(ComponentId),
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
-    #[error("schema not found")]
-    SchemaNotFound,
 }
 
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;

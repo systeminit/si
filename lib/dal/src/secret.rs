@@ -25,6 +25,7 @@ use crate::{
 };
 
 /// Error type for Secrets.
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
     #[error("error when decrypting crypted secret")]
@@ -319,6 +320,7 @@ impl fmt::Debug for DecryptedSecret {
 }
 
 /// The version of encryption used to encrypt a secret.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
@@ -336,6 +338,7 @@ impl Default for SecretVersion {
 }
 
 /// The algorithm used to encrypt a secret.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
@@ -353,6 +356,7 @@ impl Default for SecretAlgorithm {
 }
 
 /// The object type of a secret.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
@@ -364,20 +368,21 @@ pub enum SecretObjectType {
 }
 
 /// The kind of a secret.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SecretKind {
-    /// A Docker Hub credential
-    DockerHub,
     /// An AWS access key
     AwsAccessKey,
-    /// A Helm repository credential
-    HelmRepo,
     /// An Azure service principal
     AzureServicePrincipal,
+    /// A Docker Hub credential
+    DockerHub,
+    /// A Helm repository credential
+    HelmRepo,
 }
 
 fn encode_crypted(crypted: &[u8]) -> String {

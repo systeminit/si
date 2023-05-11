@@ -19,30 +19,31 @@ const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name
 const FIND_FOR_CONTEXT_AND_WORKFLOW_PROTOTYPE: &str =
     include_str!("./queries/action_prototype_find_for_context_and_workflow_prototype.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ActionPrototypeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("component not found: {0}")]
-    ComponentNotFound(ComponentId),
     #[error("component error: {0}")]
     Component(String),
+    #[error("component not found: {0}")]
+    ComponentNotFound(ComponentId),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("not found with name {0}")]
+    NotFoundByName(String),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]
     SchemaVariantNotFound,
-    #[error("not found with name {0}")]
-    NotFoundByName(String),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("workflow prototype {0} not found")]
     WorkflowPrototypeNotFound(WorkflowPrototypeId),
 }
@@ -57,18 +58,19 @@ pub struct ActionPrototypeContext {
 }
 
 /// Describes how an [`Action`](ActionPrototype) affects the world.
+#[remain::sorted]
 #[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy, Hash)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ActionKind {
     /// The [`action`](ActionPrototype) creates a new "resource".
     Create,
-    /// The [`action`](ActionPrototype) that refreshes an existing "resource".
-    Refresh,
-    /// The [`action`](ActionPrototype) is "internal only" or has multiple effects.
-    Other,
     /// The [`action`](ActionPrototype) destroys an existing "resource".
     Destroy,
+    /// The [`action`](ActionPrototype) is "internal only" or has multiple effects.
+    Other,
+    /// The [`action`](ActionPrototype) that refreshes an existing "resource".
+    Refresh,
 }
 
 impl From<ActionSpecKind> for ActionKind {
@@ -179,6 +181,7 @@ pub struct ActionPrototype {
     visibility: Visibility,
 }
 
+#[remain::sorted]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ActionPrototypeContextField {
     Component(ComponentId),

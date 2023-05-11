@@ -17,27 +17,27 @@ use crate::{PropKind, TransactionsError, ValidationPrototypeContext};
 
 pub mod context;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ValidationPrototypeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-
     #[error("prop for validation prototype context is not of primitive prop kind, found: {0:?}")]
     ContextPropKindIsNotPrimitive(PropKind),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
     #[error("for builder {0:?}, the following fields must be set: {1:?}")]
     PrerequisteFieldsUnset(ValidationPrototypeContextBuilder, Vec<&'static str>),
     #[error("prop not found by id: {0}")]
     PropNotFound(PropId),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;

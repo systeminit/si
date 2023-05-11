@@ -18,16 +18,17 @@ use super::{
     FuncId,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncExecutionError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
@@ -39,16 +40,17 @@ pub type FuncExecutionResult<T> = Result<T, FuncExecutionError>;
 pk!(FuncExecutionPk);
 
 // Are these the right states? -- Adam
+#[remain::sorted]
 #[derive(
     Deserialize, Serialize, Debug, Clone, PartialEq, Eq, strum::EnumString, strum::Display, Copy,
 )]
 pub enum FuncExecutionState {
     Create,
     Dispatch,
-    Start,
-    Run,
-    Success,
     Failure,
+    Run,
+    Start,
+    Success,
 }
 
 /// [`FuncExecutions`](Self) record that a [`function`](crate::Func) has executed alongside all the

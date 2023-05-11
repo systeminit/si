@@ -30,25 +30,17 @@ const PROP_TY_MAP: &str = "map";
 const PROP_TY_ARRAY: &str = "array";
 const PROP_TY_OBJECT: &str = "object";
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum PropNode {
-    String {
+    Array {
         name: String,
         func_unique_id: Option<FuncUniqueId>,
-        default_value: Option<String>,
+        default_value: Option<serde_json::Value>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
-        hidden: bool,
         doc_link: Option<Url>,
-    },
-    Integer {
-        name: String,
-        func_unique_id: Option<FuncUniqueId>,
-        default_value: Option<i64>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
         hidden: bool,
-        doc_link: Option<Url>,
     },
     Boolean {
         name: String,
@@ -59,16 +51,16 @@ pub enum PropNode {
         doc_link: Option<Url>,
         hidden: bool,
     },
-    Map {
+    Integer {
         name: String,
         func_unique_id: Option<FuncUniqueId>,
-        default_value: Option<serde_json::Value>,
+        default_value: Option<i64>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
-        doc_link: Option<Url>,
         hidden: bool,
+        doc_link: Option<Url>,
     },
-    Array {
+    Map {
         name: String,
         func_unique_id: Option<FuncUniqueId>,
         default_value: Option<serde_json::Value>,
@@ -85,6 +77,15 @@ pub enum PropNode {
         widget_options: Option<serde_json::Value>,
         doc_link: Option<Url>,
         hidden: bool,
+    },
+    String {
+        name: String,
+        func_unique_id: Option<FuncUniqueId>,
+        default_value: Option<String>,
+        widget_kind: PropSpecWidgetKind,
+        widget_options: Option<serde_json::Value>,
+        hidden: bool,
+        doc_link: Option<Url>,
     },
 }
 

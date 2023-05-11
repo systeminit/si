@@ -8,6 +8,7 @@ mod canonical_file;
 
 pub use canonical_file::{safe_canonically_join, CanonicalFile, CanonicalFileError};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SettingsError {
     #[error(transparent)]

@@ -5,6 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncWriteExt};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CycloneKeyPairError {
     #[error("io error: {0}")]

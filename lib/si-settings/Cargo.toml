@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }

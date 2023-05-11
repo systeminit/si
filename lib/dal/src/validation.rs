@@ -5,7 +5,7 @@
 //! A ["qualification"](crate::qualification) is a check performed on the shape formed by
 //! multiple "fields" in a tree (abstractly defined here, usually corresponding to a
 //! [`SchemaVariant`](crate::SchemaVariant).
-//!     
+//!
 //! In instances where there is a dependency on information from more than that single "field",
 //! then a ["qualification"](crate::qualification) is used instead of a "validation".
 
@@ -33,6 +33,7 @@ pub struct ValidationError {
     pub link: Option<String>,
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ValidationConstructorError {
     #[error("invalid value kind; expected {0}, but found {1}")]
@@ -45,6 +46,7 @@ pub type ValidationConstructorResult<T> = Result<T, ValidationConstructorError>;
 /// minimum, every variant has a field named "value" (or similar) to represent the incoming
 /// value to "validate". When creating a validation for the first time, the "value" (or similar)
 /// field is usually set to `None`.
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Validation {
     /// Validate that the "value" integer is between the lower and upper bound integers.
@@ -77,12 +79,12 @@ pub enum Validation {
         /// set this field to `true`.
         display_expected: bool,
     },
-    /// Validate that the "value" string is a valid [IpAddr](std::net::IpAddr).
-    StringIsValidIpAddr { value: Option<String> },
     /// Validate that the "value" string is a Hex Color.
     StringIsHexColor { value: Option<String> },
     /// Validate that the "value" string is not empty
     StringIsNotEmpty { value: Option<String> },
+    /// Validate that the "value" string is a valid [IpAddr](std::net::IpAddr).
+    StringIsValidIpAddr { value: Option<String> },
 }
 
 impl Validation {
@@ -159,16 +161,17 @@ impl Validation {
     }
 }
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ValidationErrorKind {
     IntegerNotInBetweenTwoIntegers,
-    InvalidIpAddr,
     InvalidHexString,
+    InvalidIpAddr,
+    JsValidation,
     StringDoesNotEqual,
     StringDoesNotHavePrefix,
     StringNotInStringArray,
     ValueMustBePresent,
-    JsValidation,
 }
 
 impl ValidationErrorKind {
@@ -186,6 +189,8 @@ impl ValidationErrorKind {
     }
 }
 
+#[remain::sorted]
+#[derive(Debug)]
 pub enum ValidationKind {
     Builtin(Validation),
     Custom(FuncId),

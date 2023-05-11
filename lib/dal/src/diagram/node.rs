@@ -11,6 +11,7 @@ use crate::{
     DiagramError, HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
 };
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -27,11 +28,12 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SocketDirection {
+    Bidirectional,
     Input,
     Output,
-    Bidirectional,
 }
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,

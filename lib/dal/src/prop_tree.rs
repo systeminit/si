@@ -8,14 +8,15 @@ use thiserror::Error;
 const PROP_TREE_FOR_ALL_SCHEMA_VARIANTS: &str =
     include_str!("queries/prop/tree_for_all_schema_variants.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropTreeError {
     #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }

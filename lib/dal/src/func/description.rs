@@ -26,6 +26,7 @@ const LIST_FOR_SCHEMA_VARIANT: &str =
 
 /// The contents of a [`FuncDescription`], which differ based on the [`Func's`](crate::Func)
 /// [`FuncBackendResponseType`](crate::FuncBackendResponseType).
+#[remain::sorted]
 #[derive(
     Deserialize, Serialize, Debug, Display, AsRefStr, PartialEq, Eq, EnumIter, EnumString, Clone,
 )]

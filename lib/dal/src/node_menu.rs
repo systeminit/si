@@ -13,20 +13,21 @@ use crate::DalContext;
 use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum NodeMenuError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("standard model: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
-    #[error("cannot find menu entry; path does not exist: {0}")]
-    PathDoesNotExist(String),
     #[error("cannot get inner category for non category menu item")]
     NoInnerCategory,
+    #[error("cannot find menu entry; path does not exist: {0}")]
+    PathDoesNotExist(String),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type NodeMenuResult<T> = Result<T, NodeMenuError>;
@@ -71,6 +72,7 @@ impl Item {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum MenuItem {

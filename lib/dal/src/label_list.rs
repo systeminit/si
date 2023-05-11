@@ -8,12 +8,13 @@ use si_data_pg::{PgError, PgRow};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum LabelListError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type LabelListResult<T> = Result<T, LabelListError>;

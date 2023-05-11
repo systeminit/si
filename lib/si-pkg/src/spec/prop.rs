@@ -5,6 +5,7 @@ use url::Url;
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -45,25 +46,15 @@ impl From<&PropSpec> for PropSpecWidgetKind {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
-    String {
+    Array {
         name: String,
-        default_value: Option<String>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Number {
-        name: String,
-        default_value: Option<i64>,
+        default_value: Option<serde_json::Value>,
+        type_prop: Box<PropSpec>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
@@ -98,10 +89,9 @@ pub enum PropSpec {
         doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
-    Array {
+    Number {
         name: String,
-        default_value: Option<serde_json::Value>,
-        type_prop: Box<PropSpec>,
+        default_value: Option<i64>,
         validations: Option<Vec<ValidationSpec>>,
         func_unique_id: Option<FuncUniqueId>,
         inputs: Option<Vec<AttrFuncInputSpec>>,
@@ -123,6 +113,18 @@ pub enum PropSpec {
         hidden: Option<bool>,
         doc_link: Option<Url>,
     },
+    #[serde(rename_all = "camelCase")]
+    String {
+        name: String,
+        default_value: Option<String>,
+        validations: Option<Vec<ValidationSpec>>,
+        func_unique_id: Option<FuncUniqueId>,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
+        widget_kind: Option<PropSpecWidgetKind>,
+        widget_options: Option<serde_json::Value>,
+        hidden: Option<bool>,
+        doc_link: Option<Url>,
+    },
 }
 
 impl PropSpec {
@@ -131,14 +133,15 @@ impl PropSpec {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum PropSpecKind {
-    String,
-    Number,
+    Array,
     Boolean,
     Map,
-    Array,
+    Number,
     Object,
+    String,
 }
 
 #[derive(Clone, Debug, Default)]

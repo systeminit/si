@@ -17,6 +17,7 @@ const FIND_FOR_WORKFLOW_RUNNER: &str =
 
 /// The [`WorkflowRunnerStatus`] represents a _terminating_ state for a
 /// [`WorkflowRunner`](crate::workflow_runner::WorkflowRunner).
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -33,18 +34,18 @@ const FIND_FOR_WORKFLOW_RUNNER: &str =
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum WorkflowRunnerStatus {
-    /// All steps executed via [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())
-    /// were successful.
-    Success,
+    /// No steps have been executed yet (currently, performed by executing
+    /// [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())).
+    Created,
     /// At least one step executed via [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())
     /// was not successful.
     Failure,
     /// At least one step executed via [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())
     /// is still in progress.
     Running,
-    /// No steps have been executed yet (currently, performed by executing
-    /// [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())).
-    Created,
+    /// All steps executed via [`WorkflowRunner::run()`](crate::workflow_runner::WorkflowRunner::run())
+    /// were successful.
+    Success,
 }
 
 pk!(WorkflowRunnerStatePk);

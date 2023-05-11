@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 base64 = { workspace = true }
 nix = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 sodiumoxide = { workspace = true }

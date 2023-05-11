@@ -19,18 +19,21 @@ use crate::{DalContext, Edge, SchemaError, TransactionsError};
 const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum NodeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
+    #[error("component is None")]
+    ComponentIsNone,
+    #[error("edge error: {0}")]
+    Edge(String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("could not find node with ID: {0}")]
+    NotFound(NodeId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("cannot find schema id to generate node template")]
@@ -39,14 +42,12 @@ pub enum NodeError {
     SchemaMissingDefaultVariant,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("component is None")]
-    ComponentIsNone,
-    #[error("could not find node with ID: {0}")]
-    NotFound(NodeId),
-    #[error("edge error: {0}")]
-    Edge(String),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -55,6 +56,7 @@ pk!(NodePk);
 pk!(NodeId);
 
 /// The kind of a given [`Node`](Node) that corresponds to the [`DiagramKind`](crate::DiagramKind).
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,

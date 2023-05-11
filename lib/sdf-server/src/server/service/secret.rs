@@ -14,8 +14,13 @@ pub mod create_secret;
 pub mod get_public_key;
 pub mod list_secrets;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SecretError {
+    #[error(transparent)]
+    ContextTransactions(#[from] TransactionsError),
+    #[error(transparent)]
+    KeyPairError(#[from] KeyPairError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
@@ -25,15 +30,11 @@ pub enum SecretError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
-    KeyPairError(#[from] KeyPairError),
-    #[error(transparent)]
-    ContextTransactions(#[from] TransactionsError),
+    User(#[from] UserError),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
-    #[error(transparent)]
-    User(#[from] UserError),
 }
 
 pub type SecretResult<T> = std::result::Result<T, SecretError>;

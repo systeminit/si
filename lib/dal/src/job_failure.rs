@@ -8,16 +8,17 @@ use crate::{
     StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobFailureError {
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
+    Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type JobFailureResult<T, E = JobFailureError> = Result<T, E>;

@@ -29,78 +29,79 @@ mod restore_component;
 pub mod restore_connection;
 pub mod set_node_position;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
-    InternalProvider(#[from] InternalProviderError),
-    #[error(transparent)]
-    Edge(#[from] EdgeError),
-    #[error("dal schema error: {0}")]
-    DalSchema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
-    #[error("schema not found")]
-    SchemaNotFound,
-    #[error("socket not found")]
-    SocketNotFound,
-    #[error("frame socket not found for schema variant id: {0}")]
-    FrameSocketNotFound(SchemaVariantId),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error("dal schema error: {0}")]
+    DalSchema(#[from] DalSchemaError),
+    #[error("dal diagram error: {0}")]
+    DiagramError(#[from] DalDiagramError),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("node not found: {0}")]
-    NodeNotFound(NodeId),
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
-    #[error("node menu error: {0}")]
-    NodeMenu(#[from] NodeMenuError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] DalExternalProviderError),
     #[error("external provider not found for socket id: {0}")]
     ExternalProviderNotFoundForSocket(SocketId),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
     #[error("frame internal provider not found for schema variant id: {0}")]
     FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
-    #[error("invalid request")]
-    InvalidRequest,
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
-    #[error("dal diagram error: {0}")]
-    DiagramError(#[from] DalDiagramError),
-    #[error("not authorized")]
-    NotAuthorized,
-    #[error("invalid system")]
-    InvalidSystem,
-    #[error("parent node not found {0}")]
-    ParentNodeNotFound(NodeId),
-    #[error("invalid parent node kind {0:?}")]
-    InvalidParentNode(NodeKind),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    #[error("frame socket not found for schema variant id: {0}")]
+    FrameSocketNotFound(SchemaVariantId),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("internal provider not found for socket id: {0}")]
+    InternalProviderNotFoundForSocket(SocketId),
     #[error("invalid component type ({0:?}) for frame")]
     InvalidComponentTypeForFrame(ComponentType),
+    #[error("invalid parent node kind {0:?}")]
+    InvalidParentNode(NodeKind),
+    #[error("invalid request")]
+    InvalidRequest,
+    #[error("invalid system")]
+    InvalidSystem,
+    #[error(transparent)]
+    Nats(#[from] si_data_nats::NatsError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("node menu error: {0}")]
+    NodeMenu(#[from] NodeMenuError),
+    #[error("node not found: {0}")]
+    NodeNotFound(NodeId),
+    #[error("not authorized")]
+    NotAuthorized,
+    #[error("parent node not found {0}")]
+    ParentNodeNotFound(NodeId),
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema not found")]
+    SchemaNotFound,
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("socket not found")]
+    SocketNotFound,
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;

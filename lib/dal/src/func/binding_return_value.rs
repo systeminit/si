@@ -16,18 +16,23 @@ use crate::{
     Visibility,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingReturnValueError {
     #[error("func binding error: {0}")]
     FuncBinding(String),
     #[error("function execution error: {0}")]
     FuncExecution(#[from] FuncExecutionError),
+    #[error("func not found by id: {0}")]
+    FuncNotFound(FuncId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("missing func binding return value")]
     Missing,
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("not found: {0}")]
+    NotFound(FuncBindingReturnValueId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
@@ -36,10 +41,6 @@ pub enum FuncBindingReturnValueError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("not found: {0}")]
-    NotFound(FuncBindingReturnValueId),
-    #[error("func not found by id: {0}")]
-    FuncNotFound(FuncId),
 }
 
 pub type FuncBindingReturnValueResult<T> = Result<T, FuncBindingReturnValueError>;

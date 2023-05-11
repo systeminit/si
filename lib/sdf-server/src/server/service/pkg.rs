@@ -24,49 +24,50 @@ pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PkgError {
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error("IO Error: {0}")]
-    IoError(#[from] std::io::Error),
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("could not publish websocket event: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("No packages path provided")]
-    NoPackagesPath,
     #[error("Could not canononicalize path: {0}")]
     Canononicalize(#[from] CanonicalFileError),
-    #[error("Package could not be found: {0}")]
-    PackageNotFound(String),
-    #[error("Package with that name already installed: {0}")]
-    PackageAlreadyInstalled(String),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error(transparent)]
+    DalPkg(#[from] DalPkgError),
     // add error for matching hash
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
-    #[error(transparent)]
-    SiPkg(#[from] SiPkgError),
-    #[error(transparent)]
-    DalPkg(#[from] DalPkgError),
-    #[error("That package already exists: {0}")]
-    PackageAlreadyOnDisk(String),
     #[error("Invalid pacakge file name: {0}")]
     InvalidPackageFileName(String),
+    #[error("IO Error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("No packages path provided")]
+    NoPackagesPath,
+    #[error("Package with that name already installed: {0}")]
+    PackageAlreadyInstalled(String),
+    #[error("That package already exists: {0}")]
+    PackageAlreadyOnDisk(String),
     #[error("No schema variants added to package export")]
     PackageExportEmpty,
     #[error("Package name required")]
     PackageNameEmpty,
+    #[error("Package could not be found: {0}")]
+    PackageNotFound(String),
     #[error("Package version required")]
     PackageVersionEmpty,
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;

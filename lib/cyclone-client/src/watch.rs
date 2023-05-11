@@ -22,16 +22,17 @@ pub fn watch<T>(stream: WebSocketStream<T>, ping_wait_timeout: Duration) -> Watc
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WatchError {
+    #[error("timeout while waiting to read next message")]
+    Timeout(#[from] time::error::Elapsed),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("failed to close websocket")]
     WSClose(#[source] tokio_tungstenite::tungstenite::Error),
     #[error("failed to read websocket message")]
     WSReadIO(#[source] tokio_tungstenite::tungstenite::Error),
-    #[error("timeout while waiting to read next message")]
-    Timeout(#[from] time::error::Elapsed),
 }
 
 type Result<T> = std::result::Result<T, WatchError>;

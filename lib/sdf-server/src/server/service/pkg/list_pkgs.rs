@@ -26,6 +26,7 @@ pub struct PkgView {
     hash: Option<String>,
 }
 
+#[remain::sorted]
 enum PackageMapEntry {
     InstalledPkg(InstalledPkg),
     UninstalledPkg,

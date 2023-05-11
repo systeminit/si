@@ -8,6 +8,7 @@ use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 /// of the domain tree (which varies for each variant). Currently these are the props under the
 /// /root/si Object and also some props in the resource Object that are also invariant across
 /// schema variants but which can have custom functions
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -23,8 +24,8 @@ use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 )]
 #[serde(rename_all = "camelCase")]
 pub enum SiPropFuncSpecKind {
-    Name,
     Color,
+    Name,
     ResourcePayload,
 }
 

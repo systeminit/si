@@ -92,16 +92,17 @@ impl TryFrom<PkgSpecBuilder> for PkgSpec {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SpecError {
+    #[error("Can't convert {0} to LeafInputLocation")]
+    LeafInputLocationConversionError(String),
     /// Uninitialized field
     #[error("{0} must be initialized")]
     UninitializedField(&'static str),
     /// Custom validation error
     #[error("{0}")]
     ValidationError(String),
-    #[error("Can't convert {0} to LeafInputLocation")]
-    LeafInputLocationConversionError(String),
 }
 
 impl From<UninitializedFieldError> for SpecError {

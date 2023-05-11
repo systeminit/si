@@ -19,6 +19,7 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("config builder")]
@@ -206,6 +207,7 @@ impl TryFrom<ConfigFile> for Config {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IncomingStream {
     HTTPSocket(SocketAddr),

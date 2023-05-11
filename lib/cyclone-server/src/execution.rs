@@ -50,6 +50,7 @@ pub fn new<Request, LangServerSuccess, Success>(
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ExecutionError {
     #[error("failed to consume the {0} stream for the child process")]
@@ -58,16 +59,20 @@ pub enum ExecutionError {
     ChildRecvIO(#[source] io::Error),
     #[error("failed to send child process message")]
     ChildSendIO(#[source] io::Error),
-    #[error("failed to spawn child process; program={0}")]
-    ChildSpawn(#[source] io::Error, PathBuf),
     #[error(transparent)]
     ChildShutdown(#[from] ShutdownError),
+    #[error("failed to spawn child process; program={0}")]
+    ChildSpawn(#[source] io::Error, PathBuf),
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] DecryptionKeyError),
     #[error("send timeout")]
     SendTimeout(#[source] tokio::time::error::Elapsed),
+    #[error("unexpected websocket message type: {0:?}")]
+    UnexpectedMessageType(WebSocketMessage),
     #[error("failed to close websocket")]
     WSClose(#[source] axum::Error),
     #[error("failed to receive websocket message--stream is closed")]
@@ -76,10 +81,6 @@ pub enum ExecutionError {
     WSRecvIO(#[source] axum::Error),
     #[error("failed to send websocket message")]
     WSSendIO(#[source] axum::Error),
-    #[error("unexpected websocket message type: {0:?}")]
-    UnexpectedMessageType(WebSocketMessage),
-    #[error("key pair error: {0}")]
-    KeyPair(#[from] DecryptionKeyError),
 }
 
 type Result<T> = std::result::Result<T, ExecutionError>;
@@ -403,6 +404,7 @@ where
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "protocol", rename_all = "camelCase")]
 pub enum LangServerMessage<Success> {
@@ -433,11 +435,12 @@ impl From<LangServerOutput> for OutputStream {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "status", rename_all = "camelCase")]
 pub enum LangServerResult<Success> {
-    Success(Success),
     Failure(LangServerFailure),
+    Success(Success),
 }
 
 impl<LangServerSuccess, Success> From<LangServerResult<LangServerSuccess>>

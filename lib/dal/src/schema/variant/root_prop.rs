@@ -19,22 +19,23 @@ pub mod component_type;
 
 /// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of
 /// [`RootProp`](RootProp). Not all children will be of the same [`PropKind`](crate::PropKind).
+#[remain::sorted]
 #[derive(AsRefStr, EnumIter, EnumString, EnumDisplay)]
 pub enum RootPropChild {
-    /// Corresponds to the "/root/si" subtree.
-    Si,
-    /// Corresponds to the "/root/domain" subtree.
-    Domain,
-    /// Corresponds to the "/root/resource" subtree.
-    Resource,
     /// Corresponds to the "/root/code" subtree.
     Code,
-    /// Corresponds to the "/root/qualification" subtree.
-    Qualification,
     /// Corresponds to the "/root/confirmation" subtree.
     Confirmation,
     /// Corresponds to the "/root/deleted_at" subtree.
     DeletedAt,
+    /// Corresponds to the "/root/domain" subtree.
+    Domain,
+    /// Corresponds to the "/root/qualification" subtree.
+    Qualification,
+    /// Corresponds to the "/root/resource" subtree.
+    Resource,
+    /// Corresponds to the "/root/si" subtree.
+    Si,
 }
 
 impl RootPropChild {
@@ -53,16 +54,17 @@ impl RootPropChild {
 
 /// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of "/root/si".
 /// These [`Props`](crate::Prop) are available for _every_ [`SchemaVariant`](crate::SchemaVariant).
+#[remain::sorted]
 #[derive(Debug)]
 pub enum SiPropChild {
+    /// Corresponds to the "/root/si/Color" [`Prop`](crate::Prop).
+    Color,
     /// Corresponds to the "/root/si/name" [`Prop`](crate::Prop).
     Name,
     /// Corresponds to the "/root/si/protected" [`Prop`](crate::Prop).
     Protected,
     /// Corresponds to the "/root/si/type" [`Prop`](crate::Prop).
     Type,
-    /// Corresponds to the "/root/si/Color" [`Prop`](crate::Prop).
-    Color,
 }
 
 impl SiPropChild {

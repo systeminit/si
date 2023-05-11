@@ -8,14 +8,9 @@ use crate::{
     AttrFuncInputSpec, AttrFuncInputSpecKind,
 };
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum SiPkgAttrFuncInput<'a> {
-    Prop {
-        name: String,
-        prop_path: String,
-        hash: Hash,
-        source: Source<'a>,
-    },
     InputSocket {
         name: String,
         socket_name: String,
@@ -28,14 +23,21 @@ pub enum SiPkgAttrFuncInput<'a> {
         hash: Hash,
         source: Source<'a>,
     },
+    Prop {
+        name: String,
+        prop_path: String,
+        hash: Hash,
+        source: Source<'a>,
+    },
 }
 
 // We want a version of this free of the restrictive lifetime on Source for the prop visitor
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum SiPkgAttrFuncInputView {
-    Prop { name: String, prop_path: String },
     InputSocket { name: String, socket_name: String },
     OutputSocket { name: String, socket_name: String },
+    Prop { name: String, prop_path: String },
 }
 
 impl<'a> From<SiPkgAttrFuncInput<'a>> for SiPkgAttrFuncInputView {

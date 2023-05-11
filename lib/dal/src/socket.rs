@@ -24,23 +24,23 @@ const FIND_FOR_INTERNAL_PROVIDER: &str =
 const FIND_FOR_EXTERNAL_PROVIDER: &str =
     include_str!("queries/socket/find_for_external_provider.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SocketError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-
     /// Propagate a [`SchemaVariantError`](crate::SchemaVariantError) wrapped as a string.
     #[error("schema variant error: {0}")]
     SchemaVariant(String),
     /// Could not find the [`SchemaVariant`](crate::SchemaVariant) by id.
     #[error("schema variant not found by id: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type SocketResult<T> = Result<T, SocketError>;
@@ -49,6 +49,7 @@ pk!(SocketPk);
 pk!(SocketId);
 
 /// Dictates the kind of behavior possible for a [`Socket`](Socket).
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -76,6 +77,7 @@ pub enum SocketKind {
     Standalone,
 }
 
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
 )]
@@ -107,6 +109,7 @@ impl From<SocketSpecArity> for SocketArity {
 impl ToLabelList for SocketArity {}
 
 /// Dictates the kind of [`Edges`](crate::Edge) that can be created for a [`Socket`](Socket).
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
 )]

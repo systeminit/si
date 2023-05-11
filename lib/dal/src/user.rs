@@ -12,26 +12,27 @@ use crate::{
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum UserError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("failed to join long lived async task; bug!")]
     Join(#[from] JoinError),
     #[error(transparent)]
     JwtKey(#[from] JwtKeyError),
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error("no workspace in tenancy")]
-    NoWorkspaceInTenancy,
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
     #[error("user not found in tenancy: {0} {1:?}")]
     NotFoundInTenancy(UserPk, Tenancy),
+    #[error("no workspace in tenancy")]
+    NoWorkspaceInTenancy,
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type UserResult<T> = Result<T, UserError>;

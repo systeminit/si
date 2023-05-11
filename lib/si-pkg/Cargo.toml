@@ -8,6 +8,7 @@ chrono = { workspace = true }
 derive_builder = { workspace = true }
 object-tree = { path = "../../lib/object-tree" }
 petgraph = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }

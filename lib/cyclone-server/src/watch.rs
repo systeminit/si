@@ -14,6 +14,7 @@ pub fn run(keepalive_tx: mpsc::Sender<()>, timeout: Duration) -> WatchRun {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WatchError {
     #[error("failed to send server keepalive")]

@@ -18,20 +18,21 @@ use crate::{Component, ComponentError, DalContext, WsEventResult};
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
     LabelList(#[from] LabelListError),
+    #[error(transparent)]
+    Nats(#[from] NatsError),
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
@@ -42,13 +43,14 @@ pub enum ChangeSetError {
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq)]
 pub enum ChangeSetStatus {
-    Open,
-    Closed,
     Abandoned,
     Applied,
+    Closed,
     Failed,
+    Open,
 }
 
 pk!(ChangeSetPk);

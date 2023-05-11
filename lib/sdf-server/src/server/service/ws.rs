@@ -7,14 +7,15 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WsError {
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub mod workspace_updates;

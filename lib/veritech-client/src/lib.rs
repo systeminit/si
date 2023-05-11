@@ -19,6 +19,7 @@ pub use cyclone_core::{
 };
 use si_data_nats::NatsClient;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ClientError {
     #[error("failed to serialize json message")]
@@ -27,12 +28,12 @@ pub enum ClientError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("no function result from cyclone; bug!")]
     NoResult,
-    #[error(transparent)]
-    Subscriber(#[from] SubscriberError),
-    #[error("root connection closed")]
-    RootConnectionClosed,
     #[error("unable to publish message: {0:?}")]
     PublishingFailed(si_data_nats::Message),
+    #[error("root connection closed")]
+    RootConnectionClosed,
+    #[error(transparent)]
+    Subscriber(#[from] SubscriberError),
 }
 
 pub type ClientResult<T> = Result<T, ClientError>;

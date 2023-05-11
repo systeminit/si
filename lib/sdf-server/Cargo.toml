@@ -20,13 +20,14 @@ names = { workspace = true }
 nix = { workspace = true }
 pathdiff = { workspace = true }
 rand = { workspace = true }
+remain = "0.2.8"
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
-si-pkg = { path = "../../lib/si-pkg"}
+si-pkg = { path = "../../lib/si-pkg" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-posthog = { path = "../../lib/si-posthog-rs" }

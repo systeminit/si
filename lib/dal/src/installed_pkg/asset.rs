@@ -18,6 +18,7 @@ pk!(InstalledPkgAssetPk);
 pk!(InstalledPkgAssetId);
 pk!(InstalledPkgAssetAssetId);
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -34,9 +35,9 @@ pk!(InstalledPkgAssetAssetId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum InstalledPkgAssetKind {
+    Func,
     Schema,
     SchemaVariant,
-    Func,
 }
 
 /// An `InstalledPkgAsset` is a record of the installation of a package asset. It tracks the
@@ -59,9 +60,16 @@ pub struct InstalledPkgAsset {
 }
 
 // Could simplify all this with macros if we end up adding more kinds
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum InstalledPkgAssetTyped {
+    Func {
+        installed_pkg_asset_id: InstalledPkgAssetId,
+        installed_pkg_id: InstalledPkgId,
+        id: FuncId,
+        hash: String,
+    },
     Schema {
         installed_pkg_asset_id: InstalledPkgAssetId,
         installed_pkg_id: InstalledPkgId,
@@ -72,12 +80,6 @@ pub enum InstalledPkgAssetTyped {
         installed_pkg_asset_id: InstalledPkgAssetId,
         installed_pkg_id: InstalledPkgId,
         id: SchemaVariantId,
-        hash: String,
-    },
-    Func {
-        installed_pkg_asset_id: InstalledPkgAssetId,
-        installed_pkg_id: InstalledPkgId,
-        id: FuncId,
         hash: String,
     },
 }

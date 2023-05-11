@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 derive_builder = { workspace = true }
+remain = "0.2.8"
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

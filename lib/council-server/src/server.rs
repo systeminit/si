@@ -237,21 +237,21 @@ impl Server {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::Error),
     #[error(transparent)]
     Config(#[from] config::ConfigError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
-
+    #[error(transparent)]
+    Nats(#[from] si_data_nats::Error),
+    #[error("Job reported finishing processing, but we expected a different job to be processing")]
+    ShouldNotBeProcessingByJob,
     #[error("Unexpected JobId")]
     UnexpectedJobId,
     #[error("Unknown NodeId")]
     UnknownNodeId,
-    #[error("Job reported finishing processing, but we expected a different job to be processing")]
-    ShouldNotBeProcessingByJob,
 }
 
 #[instrument(level = "info")]

@@ -15,6 +15,7 @@ deadpool = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 nix = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }

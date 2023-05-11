@@ -50,6 +50,7 @@ const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
 const LIST_ROOT_SI_CHILD_PROPS: &str =
     include_str!("../queries/schema_variant/list_root_si_child_props.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
     #[error("attribute context builder error: {0}")]
@@ -60,102 +61,99 @@ pub enum SchemaVariantError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    /// Not parent [`AttributeValue`](crate::AttributeValue) was found for the specified
+    /// [`AttributeValueId`](crate::AttributeValue).
+    #[error("no parent found for attribute value: {0}")]
+    AttributeValueDoesNotHaveParent(AttributeValueId),
+    /// An [`AttributeValue`](crate::AttributeValue) could not be found for the specified
+    /// [`AttributeReadContext`](crate::AttributeReadContext).
+    #[error("attribute value not found for attribute read context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error(transparent)]
+    Builtins(#[from] Box<BuiltinsError>),
     #[error(transparent)]
     Component(#[from] Box<ComponentError>),
+    #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("can neither provide children nor entry for primitive with name: ({0})")]
+    FoundChildrenAndEntryForPrimitive(String),
+    #[error("cannot provide children for array with name: ({0})")]
+    FoundChildrenForArray(String),
+    #[error("cannot provide children for primitive with name: ({0})")]
+    FoundChildrenForPrimitive(String),
+    #[error("cannot provide entry for object with name: ({0})")]
+    FoundEntryForObject(String),
+    #[error("cannot provide entry for primitive with name: ({0})")]
+    FoundEntryForPrimitive(String),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func binding return value not found {0}")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("must provide valid schema variant, found unset schema variant id")]
+    InvalidSchemaVariant,
+    #[error("leaf function response type ({0}) must match leaf kind ({0})")]
+    LeafFunctionMismatch(FuncBackendResponseType, LeafKind),
+    #[error("leaf function ({0}) must be JsAttribute")]
+    LeafFunctionMustBeJsAttribute(FuncId),
+    #[error("link not found in doc links map for doc link ref: {0}")]
+    LinkNotFoundForDocLinkRef(String),
+    #[error("must provide children for object with name: ({0})")]
+    MissingChildrenForObject(String),
+    #[error("must provide entry for array with name: ({0})")]
+    MissingEntryForArray(String),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
     #[error("Schema is missing for SchemaVariant {0}")]
     MissingSchema(SchemaVariantId),
+    #[error("cannot use doc link and doc link ref for prop definition name: ({0})")]
+    MultipleDocLinksProvided(String),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("schema variant not found: {0}")]
     NotFound(SchemaVariantId),
+    #[error("parent prop not found for prop id: {0}")]
+    ParentPropNotFound(PropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error(transparent)]
-    Builtins(#[from] Box<BuiltinsError>),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    /// This variant indicates that a [`Prop`](crate::Prop) or [`PropId`](crate::Prop) was not
+    /// found. However, it does not _describe_ the attempt to locate the object in question. The
+    /// "json pointer" piece is purely meant to help describe the location.
+    #[error("prop not found corresponding to the following json pointer: {0}")]
+    PropNotFound(&'static str),
+    #[error("cannot find prop at path {1} for SchemaVariant {0} and Visibility {2:?}")]
+    PropNotFoundAtPath(SchemaVariantId, String, Visibility),
+    #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
+    PropNotFoundInCache(String, PropId),
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
+    #[error("schema variant definition error")]
+    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
     #[error("std error: {0}")]
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("must provide valid schema variant, found unset schema variant id")]
-    InvalidSchemaVariant,
-    #[error("parent prop not found for prop id: {0}")]
-    ParentPropNotFound(PropId),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("func binding return value not found {0}")]
-    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
-    #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
-
-    // Errors related to definitions.
-    #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
-    PropNotFoundInCache(String, PropId),
-    #[error("cannot use doc link and doc link ref for prop definition name: ({0})")]
-    MultipleDocLinksProvided(String),
-    #[error("link not found in doc links map for doc link ref: {0}")]
-    LinkNotFoundForDocLinkRef(String),
-    #[error("cannot provide entry for object with name: ({0})")]
-    FoundEntryForObject(String),
-    #[error("must provide children for object with name: ({0})")]
-    MissingChildrenForObject(String),
-    #[error("cannot provide children for array with name: ({0})")]
-    FoundChildrenForArray(String),
-    #[error("must provide entry for array with name: ({0})")]
-    MissingEntryForArray(String),
-    #[error("cannot provide children for primitive with name: ({0})")]
-    FoundChildrenForPrimitive(String),
-    #[error("cannot provide entry for primitive with name: ({0})")]
-    FoundEntryForPrimitive(String),
-    #[error("can neither provide children nor entry for primitive with name: ({0})")]
-    FoundChildrenAndEntryForPrimitive(String),
-    #[error("leaf function response type ({0}) must match leaf kind ({0})")]
-    LeafFunctionMismatch(FuncBackendResponseType, LeafKind),
-    #[error("leaf function ({0}) must be JsAttribute")]
-    LeafFunctionMustBeJsAttribute(FuncId),
-
-    /// This variant indicates that a [`Prop`](crate::Prop) or [`PropId`](crate::Prop) was not
-    /// found. However, it does not _describe_ the attempt to locate the object in question. The
-    /// "json pointer" piece is purely meant to help describe the location.
-    #[error("prop not found corresponding to the following json pointer: {0}")]
-    PropNotFound(&'static str),
-    /// An [`AttributeValue`](crate::AttributeValue) could not be found for the specified
-    /// [`AttributeReadContext`](crate::AttributeReadContext).
-    #[error("attribute value not found for attribute read context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
-    /// Not parent [`AttributeValue`](crate::AttributeValue) was found for the specified
-    /// [`AttributeValueId`](crate::AttributeValue).
-    #[error("no parent found for attribute value: {0}")]
-    AttributeValueDoesNotHaveParent(AttributeValueId),
-    #[error("schema variant definition error")]
-    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
-    #[error("cannot find prop at path {1} for SchemaVariant {0} and Visibility {2:?}")]
-    PropNotFoundAtPath(SchemaVariantId, String, Visibility),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;

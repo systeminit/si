@@ -28,6 +28,7 @@ const LIST_FOR_SCHEMA_VARIANT: &str =
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
     include_str!("../queries/external_provider/list_from_internal_provider_use.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ExternalProviderError {
     #[error("attribute context error: {0}")]
@@ -36,27 +37,26 @@ pub enum ExternalProviderError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("unexpected: attribute prototype field is empty")]
+    EmptyAttributePrototype,
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("not found for id: {0}")]
+    NotFound(ExternalProviderId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("schema id mismatch: {0} (self) and {1} (provided)")]
+    SchemaMismatch(SchemaId, SchemaId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(String),
+    #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
+    SchemaVariantMismatch(SchemaVariantId, SchemaVariantId),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-
-    #[error("unexpected: attribute prototype field is empty")]
-    EmptyAttributePrototype,
-    #[error("not found for id: {0}")]
-    NotFound(ExternalProviderId),
-    #[error("schema id mismatch: {0} (self) and {1} (provided)")]
-    SchemaMismatch(SchemaId, SchemaId),
-    #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
-    SchemaVariantMismatch(SchemaVariantId, SchemaVariantId),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(String),
 }
 
 pub type ExternalProviderResult<T> = Result<T, ExternalProviderError>;

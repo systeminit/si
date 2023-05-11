@@ -89,14 +89,9 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
 const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context_and_root.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    Council(#[from] council_server::client::Error),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]
@@ -113,6 +108,10 @@ pub enum AttributeValueError {
     Component(String),
     #[error("component not found for id: {0}")]
     ComponentNotFound(ComponentId),
+    #[error("component not found by id: {0}")]
+    ComponentNotFoundById(ComponentId),
+    #[error(transparent)]
+    Council(#[from] council_server::client::Error),
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("external provider error: {0}")]
@@ -123,6 +122,12 @@ pub enum AttributeValueError {
     FoundDuplicateForProviderContext(AttributeValueId, AttributeContext),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("function result failure: kind={kind}, message={message}, backend={backend}")]
+    FuncBackendResultFailure {
+        kind: String,
+        message: String,
+        backend: String,
+    },
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]
@@ -137,10 +142,10 @@ pub enum AttributeValueError {
     InternalProvider(String),
     #[error("internal provider not found by id: {0}")]
     InternalProviderNotFound(InternalProviderId),
-    #[error("invalid prop value; expected {0} but got {1}")]
-    InvalidPropValue(String, serde_json::Value),
     #[error("found invalid object value fields not found in corresponding prop: {0:?}")]
     InvalidObjectValueFields(Vec<String>),
+    #[error("invalid prop value; expected {0} but got {1}")]
+    InvalidPropValue(String, serde_json::Value),
     #[error("json pointer missing for attribute view {0:?} {1:?}")]
     JsonPointerMissing(AttributeValueId, HashMap<AttributeValueId, String>),
     #[error("missing attribute value")]
@@ -151,6 +156,8 @@ pub enum AttributeValueError {
     MissingAttributePrototype,
     #[error("expected prop id {0} to have a child")]
     MissingChildProp(PropId),
+    #[error("component missing in context: {0:?}")]
+    MissingComponentInReadContext(AttributeReadContext),
     #[error("missing attribute value with id: {0}")]
     MissingForId(AttributeValueId),
     #[error("func not found: {0}")]
@@ -181,18 +188,26 @@ pub enum AttributeValueError {
     ParentNotFound(AttributeValueId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("Prop not found: {0}")]
     PropNotFound(PropId),
+    #[error("schema missing in context")]
+    SchemaMissing,
     #[error("schema not found for component id: {0}")]
     SchemaNotFoundForComponent(ComponentId),
+    #[error("schema variant missing in context")]
+    SchemaVariantMissing,
     #[error("schema variant not found for component id: {0}")]
     SchemaVariantNotFoundForComponent(ComponentId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
     #[error("Unable to create parent AttributeValue: {0}")]
     UnableToCreateParent(String),
     #[error("the root prop id stack cannot be empty while work queue is not empty")]
@@ -205,22 +220,8 @@ pub enum AttributeValueError {
     ValueAsMap,
     #[error("JSON value failed to parse as an object")]
     ValueAsObject,
-    #[error("component missing in context: {0:?}")]
-    MissingComponentInReadContext(AttributeReadContext),
-    #[error("component not found by id: {0}")]
-    ComponentNotFoundById(ComponentId),
-    #[error("schema variant missing in context")]
-    SchemaVariantMissing,
-    #[error("schema missing in context")]
-    SchemaMissing,
     #[error("ws event publishing error")]
     WsEvent(#[from] WsEventError),
-    #[error("function result failure: kind={kind}, message={message}, backend={backend}")]
-    FuncBackendResultFailure {
-        kind: String,
-        message: String,
-        backend: String,
-    },
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;

@@ -8,18 +8,19 @@ pub fn execute<T>(stream: WebSocketStream<T>) -> PingExecution<T> {
     PingExecution { stream }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum PingExecutionError {
     #[error("unexpected websocket message after pong was sent: {0}")]
     MessageAfterPong(WebSocketMessage),
-    #[error("websocket stream is closed, but pong was not sent")]
-    WSClosedBeforePong,
-    #[error("failed to read websocket message")]
-    WSReadIO(#[source] tokio_tungstenite::tungstenite::Error),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("unexpected text message other than pong: {0}")]
     UnexpectedText(String),
+    #[error("websocket stream is closed, but pong was not sent")]
+    WSClosedBeforePong,
+    #[error("failed to read websocket message")]
+    WSReadIO(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
 type Result<T> = std::result::Result<T, PingExecutionError>;

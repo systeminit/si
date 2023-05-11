@@ -39,6 +39,7 @@ pub struct OutputStream {
 /// A `ProgressMessage` is a way to track and follow how an execution is progressing. Such messages
 /// can be produced up until a result is generated.
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ProgressMessage {
     /// A heartbeat message.
@@ -50,14 +51,15 @@ pub enum ProgressMessage {
     OutputStream(OutputStream),
 }
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Message<R> {
-    Start,
+    Fail(Fail),
     Finish,
     Heartbeat,
-    Fail(Fail),
     OutputStream(OutputStream),
     Result(FunctionResult<R>),
+    Start,
 }
 
 impl<R> Message<R> {
@@ -86,10 +88,11 @@ where
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum FunctionResult<S> {
-    Success(S),
     Failure(FunctionResultFailure),
+    Success(S),
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]

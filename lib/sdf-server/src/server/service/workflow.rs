@@ -21,44 +21,45 @@ mod info;
 mod list;
 mod resolve;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkflowError {
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    Workflow(#[from] dal::WorkflowError),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
+    Component(#[from] ComponentError),
+    #[error("component name not found")]
+    ComponentNameNotFound(ComponentId),
+    #[error("component not found")]
+    ComponentNotFound(ComponentId),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-    #[error("prototype not found {0}")]
-    PrototypeNotFound(WorkflowPrototypeId),
-    #[error("function not found {0}")]
-    FuncNotFound(FuncId),
     #[error("function binding not found {0}")]
     FuncBindingNotFound(FuncBindingId),
     #[error(transparent)]
-    WorkflowPrototype(#[from] WorkflowPrototypeError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
-    #[error("component not found")]
-    ComponentNotFound(ComponentId),
-    #[error("component name not found")]
-    ComponentNameNotFound(ComponentId),
-    #[error("schema not found")]
-    SchemaNotFound(SchemaId),
-    #[error("schema variant not found")]
-    SchemaVariantNotFound(SchemaVariantId),
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("function not found {0}")]
+    FuncNotFound(FuncId),
+    #[error("prototype not found {0}")]
+    PrototypeNotFound(WorkflowPrototypeId),
     #[error("runner not found")]
     RunnerNotFound(WorkflowRunnerId),
     #[error("runner state not found for runner id: {0}")]
     RunnerStateNotFound(WorkflowRunnerId),
+    #[error("schema not found")]
+    SchemaNotFound(SchemaId),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound(SchemaVariantId),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    Workflow(#[from] dal::WorkflowError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
 }
 
 pub type WorkflowResult<T> = std::result::Result<T, WorkflowError>;

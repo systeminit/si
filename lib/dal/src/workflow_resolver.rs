@@ -16,26 +16,27 @@ use crate::{
     WorkflowPrototypeId, WorkflowTree,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkflowResolverError {
+    #[error("func binding not found {0}")]
+    FuncBindingNotFound(FuncBindingId),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("workflow not resolved yet")]
+    NotResolved(WorkflowResolverId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("workflow not resolved yet")]
-    NotResolved(WorkflowResolverId),
-    #[error("func binding not found {0}")]
-    FuncBindingNotFound(FuncBindingId),
 }
 
 pub type WorkflowResolverResult<T> = Result<T, WorkflowResolverError>;

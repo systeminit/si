@@ -15,17 +15,19 @@ const CATEGORY_TYPE_FUNCS: &str = "funcs";
 
 const KEY_KIND_STR: &str = "kind";
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PackageCategory {
-    Schemas(Vec<SchemaSpec>),
     Funcs(Vec<FuncSpec>),
+    Schemas(Vec<SchemaSpec>),
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum CategoryNode {
-    Schemas,
     Funcs,
+    Schemas,
 }
 
 impl CategoryNode {

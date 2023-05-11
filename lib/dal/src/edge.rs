@@ -31,70 +31,71 @@ const LIST_FOR_COMPONENT: &str = include_str!("queries/edge/list_for_component.s
 const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
 const FIND_DELETED_EQUIVALENT: &str = include_str!("queries/edge/find_deleted_equivalent.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum EdgeError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
-
-    #[error("component error: {0}")]
-    Component(String),
-    #[error("attribute value not found")]
-    AttributeValueNotFound,
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
+    #[error("component error: {0}")]
+    Component(String),
+    #[error("cannot find component for node id: {0}")]
+    ComponentNotFoundForNode(NodeId),
     #[error("edge not found for id: {0}")]
     EdgeNotFound(EdgeId),
-    #[error("cannot restore non deleted edge with id: {0}")]
-    RestoringNonDeletedEdge(EdgeId),
-    #[error("cannot restore edge ({0}) to deleted node: {1}")]
-    RestoringAnEdgeToDeletedNode(EdgeId, NodeId),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("external provider not found for id: {0}")]
     ExternalProviderNotFound(ExternalProviderId),
     #[error("external provider not found for socket id: {0}")]
     ExternalProviderNotFoundForSocket(SocketId),
     #[error("implicit internal provider cannot be used for inter component connection: {0}")]
     FoundImplicitInternalProvider(InternalProviderId),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for id: {0}")]
     InternalProviderNotFound(InternalProviderId),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
     #[error("cannot find node id: {0}")]
     NodeNotFound(NodeId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("cannot restore edge ({0}) to deleted node: {1}")]
+    RestoringAnEdgeToDeletedNode(EdgeId, NodeId),
+    #[error("cannot restore non deleted edge with id: {0}")]
+    RestoringNonDeletedEdge(EdgeId),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("cannot find socket id: {0}")]
     SocketNotFound(SocketId),
-    #[error("cannot find component for node id: {0}")]
-    ComponentNotFoundForNode(NodeId),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
 
 /// Used to dictate what [`EdgeKinds`](EdgeKind) can be for the head and tail of an [`Edges`](Edge).
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Display, EnumString, AsRefStr)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -105,6 +106,7 @@ pub enum VertexObjectKind {
 
 /// The kind of an [`Edge`](Edge). This provides the ability to categorize [`Edges`](Edge)
 /// and create [`EdgeKind`](Self)-specific graphs.
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

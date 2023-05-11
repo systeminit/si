@@ -57,6 +57,7 @@ const FIND_FOR_CONTEXT_NULL_KEY: &str =
 const FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT: &str =
     include_str!("../queries/attribute_prototype/find_for_func_as_variant_and_component.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
     #[error("attribute resolver context builder error: {0}")]
@@ -65,14 +66,22 @@ pub enum AttributePrototypeError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("unable to construct component view for attribute function execution")]
+    ComponentView,
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("cannot hard delete prototype from changeset if corresponding prototype does not exist on head or if the prototype does not represent an element of a map or array")]
+    HardDeletePrototypeWithNoHeadPrototypeOrKey(AttributePrototypeId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
+    #[error("cannot remove prototype with a least-specific context: {0}")]
+    LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
+    #[error("cannot remove value with a least-specific context: {0}")]
+    LeastSpecificContextValueRemovalNotAllowed(AttributeValueId),
     #[error("AttributePrototype is missing")]
     Missing,
     #[error("func not found: {0}")]
@@ -102,14 +111,6 @@ pub enum AttributePrototypeError {
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("cannot remove prototype with a least-specific context: {0}")]
-    LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
-    #[error("cannot remove value with a least-specific context: {0}")]
-    LeastSpecificContextValueRemovalNotAllowed(AttributeValueId),
-    #[error("unable to construct component view for attribute function execution")]
-    ComponentView,
-    #[error("cannot hard delete prototype from changeset if corresponding prototype does not exist on head or if the prototype does not represent an element of a map or array")]
-    HardDeletePrototypeWithNoHeadPrototypeOrKey(AttributePrototypeId),
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;

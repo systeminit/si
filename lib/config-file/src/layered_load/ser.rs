@@ -20,18 +20,19 @@ where
     Ok(serializer.into_inner())
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SerializerError {
-    #[error("current array is empty, cannot insert into array")]
-    NoArray,
-    #[error("{0}")]
-    Message(String),
-    #[error("current key is empty, cannot insert into map")]
-    KeyEmpty,
     #[error("cannot convert integer--will under/overflow")]
     Int(#[from] TryFromIntError),
+    #[error("current key is empty, cannot insert into map")]
+    KeyEmpty,
     #[error("key must be a string")]
     KeyMustBeAString,
+    #[error("{0}")]
+    Message(String),
+    #[error("current array is empty, cannot insert into array")]
+    NoArray,
 }
 
 type Result<T> = std::result::Result<T, SerializerError>;

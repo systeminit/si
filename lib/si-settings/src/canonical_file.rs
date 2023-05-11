@@ -9,6 +9,7 @@ use std::{
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum CanonicalFileError {
     #[error("failed to canonicalize: {1}")]

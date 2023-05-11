@@ -37,14 +37,11 @@ use crate::{
     spec::{FuncSpec, PkgSpec, SchemaVariantSpecPropRoot, SpecError},
 };
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SiPkgError {
     #[error("Package missing required category: {0}")]
     CategoryNotFound(&'static str),
-    #[error("could not find pkg node root prop {0} for variant with hash={1}")]
-    PropRootNotFound(SchemaVariantSpecPropRoot, Hash),
-    #[error("found multiple pkg node domain props for variant with hash={0}")]
-    PropRootMultipleFound(SchemaVariantSpecPropRoot, Hash),
     #[error(transparent)]
     Fs(#[from] FsError),
     #[error(transparent)]
@@ -53,20 +50,24 @@ pub enum SiPkgError {
     NodeWithHashNotFound(Hash),
     #[error("node not found with name={0}")]
     NodeWithNameNotFound(String),
+    #[error("found multiple pkg node domain props for variant with hash={0}")]
+    PropRootMultipleFound(SchemaVariantSpecPropRoot, Hash),
+    #[error("could not find pkg node root prop {0} for variant with hash={1}")]
+    PropRootNotFound(SchemaVariantSpecPropRoot, Hash),
+    #[error("SiPkg prop tree is invalid: {0}")]
+    PropTreeInvalid(String),
+    #[error("Schema Variant missing required child: {0}")]
+    SchemaVariantChildNotFound(&'static str),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Spec(#[from] SpecError),
     #[error("unexpected pkg node type; expected={0}, actual={1}")]
     UnexpectedPkgNodeType(&'static str, &'static str),
-    #[error("error while visiting prop: {0}")]
-    VisitProp(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-    #[error("Schema Variant missing required child: {0}")]
-    SchemaVariantChildNotFound(&'static str),
     #[error("Validation spec missing required field: {0}")]
     ValidationMissingField(String),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("SiPkg prop tree is invalid: {0}")]
-    PropTreeInvalid(String),
+    #[error("error while visiting prop: {0}")]
+    VisitProp(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
 impl SiPkgError {

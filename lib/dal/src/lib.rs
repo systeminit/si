@@ -185,6 +185,7 @@ pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId}
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InitializationError {
     #[error("failed to initialize sodium oxide")]
@@ -207,6 +208,7 @@ mod embedded {
 
 const NAME_CHARSET: &[u8] = b"0123456789";
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ModelError {
     #[error("builtins error: {0}")]
@@ -320,6 +322,7 @@ pub fn generate_name() -> String {
     format!("si-{unique_id}")
 }
 
+#[remain::sorted]
 #[derive(
     Clone,
     Debug,

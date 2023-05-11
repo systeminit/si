@@ -26,46 +26,47 @@ pub mod get_summary;
 //pub mod get_code;
 //pub mod set_code;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum QualificationError {
-    #[error("base64 decode error: {0}")]
-    Base64Decode(#[from] base64::DecodeError),
-    #[error("utf8 error: {0}")]
-    Utf8(#[from] FromUtf8Error),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("serde error: {0}")]
-    Serde(#[from] serde_json::Error),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    #[error("base64 decode error: {0}")]
+    Base64Decode(#[from] base64::DecodeError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error("func not found")]
-    FuncNotFound,
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
-    #[error("func code not found: {0}")]
-    FuncCodeNotFound(FuncId),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
-    #[error("schema not found: {0}")]
-    SchemaNotFound(SchemaId),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func code not found: {0}")]
+    FuncCodeNotFound(FuncId),
+    #[error("func not found")]
+    FuncNotFound,
+    #[error(transparent)]
+    Nats(#[from] si_data_nats::NatsError),
     #[error("not writable")]
     NotWritable,
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
     #[error("qualification summary error: {0}")]
     QualificationSummaryError(#[from] QualificationSummaryError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema not found: {0}")]
+    SchemaNotFound(SchemaId),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error("serde error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error("utf8 error: {0}")]
+    Utf8(#[from] FromUtf8Error),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

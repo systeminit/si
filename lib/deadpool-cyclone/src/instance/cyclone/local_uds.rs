@@ -32,17 +32,18 @@ use tracing::{debug, trace, warn};
 use crate::instance::{Instance, Spec, SpecBuilder};
 
 /// Error type for [`LocalUdsInstance`].
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum LocalUdsInstanceError {
     /// Spec builder error.
     #[error(transparent)]
     Builder(#[from] LocalUdsInstanceSpecBuilderError),
-    /// Failed to spawn a child process.
-    #[error("failed to spawn cyclone child process")]
-    ChildSpawn(#[source] io::Error),
     /// Error when waiting for child process to shutdown.
     #[error(transparent)]
     ChildShutdown(#[from] ShutdownError),
+    /// Failed to spawn a child process.
+    #[error("failed to spawn cyclone child process")]
+    ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
     #[error(transparent)]
     Client(#[from] ClientError),
@@ -419,15 +420,16 @@ impl LocalUdsInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a local Unix domain socket.
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum LocalUdsSocketStrategy {
+    /// Use the given path as the socket location.
+    Custom(PathBuf),
     /// Randomly assign a socket from a temp file.
     Random,
     /// Randomly assign a socket from a temp file in the given parent directory.
     RandomIn(PathBuf),
-    /// Use the given path as the socket location.
-    Custom(PathBuf),
 }
 
 impl Default for LocalUdsSocketStrategy {

@@ -17,24 +17,25 @@ mod key_pair_box_secret_key_serde;
 const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/public_key_get_current.sql");
 const KEY_PAIR_GET_BY_PK: &str = include_str!("queries/key_pair_get_by_pk.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum KeyPairError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error(transparent)]
-    Workspace(#[from] Box<WorkspaceError>),
-    #[error("no current key pair found when one was expected")]
-    NoCurrentKeyPair,
     #[error("Invalid workspace: {0}")]
     InvalidWorkspace(WorkspacePk),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("no current key pair found when one was expected")]
+    NoCurrentKeyPair,
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    Workspace(#[from] Box<WorkspaceError>),
 }
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;

@@ -16,19 +16,21 @@ const PROP_CHILD_TYPE_ATTR_FUNC_INPUTS: &str = "attr_func_inputs";
 
 const KEY_KIND_STR: &str = "kind";
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropChild {
+    AttrFuncInputs(Vec<AttrFuncInputSpec>),
     Props(Vec<PropSpec>),
     Validations(Vec<ValidationSpec>),
-    AttrFuncInputs(Vec<AttrFuncInputSpec>),
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum PropChildNode {
+    AttrFuncInputs,
     Props,
     Validations,
-    AttrFuncInputs,
 }
 
 impl PropChildNode {

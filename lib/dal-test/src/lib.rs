@@ -126,11 +126,12 @@ impl Default for Config {
     }
 }
 
+#[remain::sorted]
 #[allow(clippy::large_enum_variant)]
 enum ContextBuilderState {
-    Uninitialized,
     Created(TestContextBuilder),
     Errored(Cow<'static, str>),
+    Uninitialized,
 }
 
 impl ContextBuilderState {

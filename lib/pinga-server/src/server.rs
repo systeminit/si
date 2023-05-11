@@ -30,16 +30,17 @@ use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyErro
 
 use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("error when loading encryption key: {0}")]
+    EncryptionKey(#[from] EncryptionKeyError),
     #[error(transparent)]
     Initialization(#[from] InitializationError),
     #[error(transparent)]
     JobConsumer(#[from] JobConsumerError),
     #[error(transparent)]
     JobFailure(#[from] Box<JobFailureError>),
-    #[error("error when loading encryption key: {0}")]
-    EncryptionKey(#[from] EncryptionKeyError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -245,6 +246,7 @@ impl PingaShutdownHandle {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {
     Handle,

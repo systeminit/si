@@ -21,6 +21,7 @@ use crate::{
     UdsIncomingStream, UdsIncomingStreamError,
 };
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error(transparent)]
@@ -199,6 +200,7 @@ fn prepare_graceful_shutdown(
     Ok(graceful_shutdown_rx)
 }
 
+#[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {
     LimitRequest,

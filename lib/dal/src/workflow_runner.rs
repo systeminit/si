@@ -21,22 +21,31 @@ use crate::{DalContext, FuncError};
 
 pub mod workflow_runner_state;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkflowRunnerError {
     #[error(transparent)]
-    WsEvent(#[from] WsEventError),
+    Component(#[from] Box<ComponentError>),
+    #[error("component {0} not found")]
+    ComponentNotFound(ComponentId),
     #[error(transparent)]
-    HistoryEvent(#[from] HistoryEventError),
+    Func(#[from] FuncError),
     #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Workflow(#[from] WorkflowError),
+    FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     FuncExecution(#[from] FuncExecutionError),
     #[error(transparent)]
-    Component(#[from] Box<ComponentError>),
+    HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("missing workflow {0}")]
+    MissingWorkflow(String),
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error("prototype not found {0}")]
+    PrototypeNotFound(WorkflowPrototypeId),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -44,22 +53,13 @@ pub enum WorkflowRunnerError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    WorkflowResolver(#[from] WorkflowResolverError),
+    Workflow(#[from] WorkflowError),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
     #[error(transparent)]
-    FuncBinding(#[from] FuncBindingError),
+    WorkflowResolver(#[from] WorkflowResolverError),
     #[error(transparent)]
-    InternalProvider(#[from] InternalProviderError),
-    #[error(transparent)]
-    Func(#[from] FuncError),
-
-    #[error("prototype not found {0}")]
-    PrototypeNotFound(WorkflowPrototypeId),
-    #[error("missing workflow {0}")]
-    MissingWorkflow(String),
-    #[error("component {0} not found")]
-    ComponentNotFound(ComponentId),
+    WsEvent(#[from] WsEventError),
 }
 
 pub type WorkflowRunnerResult<T> = Result<T, WorkflowRunnerError>;

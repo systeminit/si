@@ -4,6 +4,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::SpecError;
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -19,17 +20,18 @@ use super::SpecError;
 )]
 #[serde(rename_all = "camelCase")]
 pub enum AttrFuncInputSpecKind {
-    Prop,
     InputSocket,
     OutputSocket,
+    Prop,
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum AttrFuncInputSpec {
-    Prop { name: String, prop_path: String },
     InputSocket { name: String, socket_name: String },
     OutputSocket { name: String, socket_name: String },
+    Prop { name: String, prop_path: String },
 }
 
 #[derive(Clone, Debug, Default)]

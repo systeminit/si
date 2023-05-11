@@ -8,6 +8,7 @@ use derive_builder::Builder;
 use si_settings::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("config builder")]
@@ -124,6 +125,7 @@ impl ConfigBuilder {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IncomingStream {
     HTTPSocket(SocketAddr),

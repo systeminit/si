@@ -20,24 +20,25 @@ pub mod get_stats;
 pub mod list_open_change_sets;
 pub mod update_selected_change_set;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
+    #[error(transparent)]
+    ChangeSet(#[from] DalChangeSetError),
+    #[error("change set not found")]
+    ChangeSetNotFound,
+    #[error(transparent)]
+    ChangeStatusError(#[from] ChangeStatusError),
+    #[error(transparent)]
+    Component(#[from] DalComponentError),
+    #[error(transparent)]
+    ContextError(#[from] TransactionsError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ChangeSet(#[from] DalChangeSetError),
-    #[error(transparent)]
-    Component(#[from] DalComponentError),
-    #[error(transparent)]
-    ContextError(#[from] TransactionsError),
-    #[error("change set not found")]
-    ChangeSetNotFound,
-    #[error(transparent)]
-    ChangeStatusError(#[from] ChangeStatusError),
 }
 
 pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;

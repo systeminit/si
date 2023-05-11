@@ -21,28 +21,29 @@ pub mod get_variant_def;
 pub mod list_variant_defs;
 pub mod save_variant_def;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error("error creating schema variant from definition: {0}")]
+    CouldNotCreateSchemaVariantFromDefinition(String),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error("could not publish websocket event: {0}")]
-    WsEvent(#[from] WsEventError),
+    SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
-    SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),
-    #[error("error creating schema variant from definition: {0}")]
-    CouldNotCreateSchemaVariantFromDefinition(String),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;

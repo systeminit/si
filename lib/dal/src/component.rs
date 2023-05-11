@@ -51,140 +51,138 @@ pub mod view;
 
 pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ComponentError {
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error(transparent)]
     AttributePrototype(#[from] AttributePrototypeError),
+    /// Found an [`AttributePrototypeArgumentError`](crate::AttributePrototypeArgumentError).
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("cannot update the resource tree when in a change set")]
+    CannotUpdateResourceTreeInChangeSet,
     #[error(transparent)]
     CodeView(#[from] CodeViewError),
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
+    /// No "protected" boolean was found for the appropriate
+    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
+    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
+    #[error("component protection is none for component ({0}) and attribute value ({1}")]
+    ComponentProtectionIsNone(ComponentId, AttributeValueId),
+    /// No [`ComponentType`](crate::ComponentType) was found for the appropriate
+    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
+    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
+    #[error("component type is none for component ({0}) and attribute value ({1})")]
+    ComponentTypeIsNone(ComponentId, AttributeValueId),
+    #[error(transparent)]
+    ComponentView(#[from] ComponentViewError),
+    #[error("confirmation view error: {0}")]
+    ConfirmationView(String),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
-    #[error("fix resolver error: {0}")]
-    FixResolver(#[from] FixResolverError),
+    /// Found an [`ExternalProviderError`](crate::ExternalProviderError).
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("fix error: {0}")]
     Fix(#[from] Box<FixError>),
     #[error("fix not found for id: {0}")]
     FixNotFound(FixId),
+    #[error("fix resolver error: {0}")]
+    FixResolver(#[from] FixResolverError),
+    #[error("found child attribute value of a map without a key: {0}")]
+    FoundMapEntryWithoutKey(AttributeValueId),
     #[error("unable to delete frame due to attached components")]
     FrameHasAttachedComponents,
-    #[error("component marked as protected: {0}")]
-    ComponentProtected(ComponentId),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
-    #[error(transparent)]
-    ActionPrototype(#[from] ActionPrototypeError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error("validation error: {0}")]
-    Validation(#[from] ValidationConstructorError),
-    #[error(transparent)]
-    ComponentView(#[from] ComponentViewError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("node error: {0}")]
-    NodeError(#[from] NodeError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("qualification error: {0}")]
-    Qualification(#[from] QualificationError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-
-    #[error("attribute value not found for context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func binding return value: {0} not found")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    /// No "protected" boolean was found for the appropriate
+    #[error("component({0}) can't be restored because it's inside a deleted frame ({1})")]
+    InsideDeletedFrame(ComponentId, ComponentId),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("invalid context(s) provided for diff")]
     InvalidContextForDiff,
     #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]
     InvalidFuncBackendKindForValidations(FuncBackendKind),
     #[error("attribute value does not have a prototype: {0}")]
     MissingAttributePrototype(AttributeValueId),
-    #[error("node not found for component: {0}")]
-    NodeNotFoundForComponent(ComponentId),
     #[error("attribute prototype does not have a function: {0}")]
     MissingAttributePrototypeFunction(AttributePrototypeId),
-    #[error("/root/si/name is unset for component {0}")]
-    NameIsUnset(ComponentId),
-    #[error("component not found: {0}")]
-    NotFound(ComponentId),
-    #[error("no schema variant for component {0}")]
-    NoSchemaVariant(ComponentId),
-    #[error("no schema for component {0}")]
-    NoSchema(ComponentId),
-    #[error("func binding return value: {0} not found")]
-    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
-    #[error("found child attribute value of a map without a key: {0}")]
-    FoundMapEntryWithoutKey(AttributeValueId),
-    #[error("schema variant has not been finalized at least once: {0}")]
-    SchemaVariantNotFinalized(SchemaVariantId),
-    #[error("cannot update the resource tree when in a change set")]
-    CannotUpdateResourceTreeInChangeSet,
     #[error("no func binding return value for leaf entry name: {0}")]
     MissingFuncBindingReturnValueIdForLeafEntryName(String),
-    #[error("confirmation view error: {0}")]
-    ConfirmationView(String),
-
-    /// Found an [`AttributePrototypeArgumentError`](crate::AttributePrototypeArgumentError).
-    #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    /// Found an [`ExternalProviderError`](crate::ExternalProviderError).
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
-
+    #[error("/root/si/name is unset for component {0}")]
+    NameIsUnset(ComponentId),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("node error: {0}")]
+    NodeError(#[from] NodeError),
+    #[error("node not found for component: {0}")]
+    NodeNotFoundForComponent(ComponentId),
+    #[error("no schema for component {0}")]
+    NoSchema(ComponentId),
+    #[error("no schema variant for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("component not found: {0}")]
+    NotFound(ComponentId),
     /// A parent [`AttributeValue`](crate::AttributeValue) was not found for the specified
     /// [`AttributeValueId`](crate::AttributeValue).
     #[error("parent attribute value not found for attribute value: {0}")]
     ParentAttributeValueNotFound(AttributeValueId),
-    /// No [`ComponentType`](crate::ComponentType) was found for the appropriate
-    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
-    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
-    #[error("component type is none for component ({0}) and attribute value ({1})")]
-    ComponentTypeIsNone(ComponentId, AttributeValueId),
-    /// No "protected" boolean was found for the appropriate
-    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
-    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
-    #[error("component protection is none for component ({0}) and attribute value ({1}")]
-    ComponentProtectionIsNone(ComponentId, AttributeValueId),
-    /// No "protected" boolean was found for the appropriate
-    #[error("component({0}) can't be restored because it's inside a deleted frame ({1})")]
-    InsideDeletedFrame(ComponentId, ComponentId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
     #[error("qualification result for {0} on component {1} has no value")]
     QualificationResultEmpty(String, ComponentId),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant has not been finalized at least once: {0}")]
+    SchemaVariantNotFinalized(SchemaVariantId),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationConstructorError),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("validation resolver error: {0}")]
+    ValidationResolver(#[from] ValidationResolverError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -209,6 +207,7 @@ const COMPONENT_STATUS_UPDATE_BY_PK: &str =
 pk!(ComponentPk);
 pk!(ComponentId);
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -225,8 +224,8 @@ pk!(ComponentId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ComponentKind {
-    Standard,
     Credential,
+    Standard,
 }
 
 impl Default for ComponentKind {

@@ -105,6 +105,7 @@ const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
 const LIST_FOR_INPUT_SOCKETS: &str =
     include_str!("../queries/internal_provider/list_for_input_sockets_for_all_schema_variants.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InternalProviderError {
     #[error("attribute context error: {0}")]
@@ -113,41 +114,26 @@ pub enum InternalProviderError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype not found for id: {0}")]
+    AttributePrototypeNotFound(AttributePrototypeId),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("could not find attribute value for attribute context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeContext),
     #[error("component error: {0}")]
     Component(String),
     #[error("component not found by id: {0}")]
     ComponentNotFound(ComponentId),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(String),
-    #[error("serde_json error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
-
-    #[error("attribute prototype not found for id: {0}")]
-    AttributePrototypeNotFound(AttributePrototypeId),
-    #[error("could not find attribute value for attribute context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeContext),
     #[error("unexpected: attribute prototype field is empty")]
     EmptyAttributePrototype,
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("func not found for id: {0}")]
     FuncNotFound(FuncId),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("not allowed to perform implicit emit as an explicit internal provider")]
     ImplicitEmitForExplicitProviderNotAllowed,
     #[error("missing func")]
@@ -158,14 +144,28 @@ pub enum InternalProviderError {
     NotFound(InternalProviderId),
     #[error("internal provider not found for prop id: {0}")]
     NotFoundForProp(PropId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]
     SchemaMismatch(SchemaId, SchemaId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(String),
     #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
     SchemaVariantMismatch(SchemaVariantId, SchemaVariantId),
+    #[error("serde_json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type InternalProviderResult<T> = Result<T, InternalProviderError>;

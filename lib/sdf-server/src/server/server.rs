@@ -30,8 +30,17 @@ use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyErro
 use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("cyclone public key already set")]
+    CyclonePublicKeyAlreadySet,
+    #[error("cyclone public key error: {0}")]
+    CyclonePublicKeyErr(#[from] CycloneKeyPairError),
+    #[error(transparent)]
+    DalInitialization(#[from] dal::InitializationError),
+    #[error("error when loading encryption key: {0}")]
+    EncryptionKey(#[from] EncryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("error initializing the server")]
@@ -43,27 +52,19 @@ pub enum ServerError {
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
-    StatusReceiver(#[from] StatusReceiverError),
-    #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    Posthog(#[from] si_posthog::PosthogError),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
+    StatusReceiver(#[from] StatusReceiverError),
+    #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
-    #[error("cyclone public key error: {0}")]
-    CyclonePublicKeyErr(#[from] CycloneKeyPairError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
-    #[error("cyclone public key already set")]
-    CyclonePublicKeyAlreadySet,
-    #[error("error when loading encryption key: {0}")]
-    EncryptionKey(#[from] EncryptionKeyError),
-    #[error(transparent)]
-    DalInitialization(#[from] dal::InitializationError),
-    #[error(transparent)]
-    Posthog(#[from] si_posthog::PosthogError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -421,5 +422,6 @@ fn prepare_graceful_shutdown(
     Ok(graceful_shutdown_rx)
 }
 
+#[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}

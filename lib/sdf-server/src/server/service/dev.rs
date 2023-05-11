@@ -19,29 +19,30 @@ use crate::server::state::AppState;
 use crate::service::dev::author_single_schema_with_default_variant::author_single_schema_with_default_variant;
 use crate::service::func;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 #[allow(clippy::large_enum_variant)]
 pub enum DevError {
+    #[error(transparent)]
+    Builtin(#[from] dal::BuiltinsError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error(transparent)]
+    Func(#[from] dal::FuncError),
+    #[error("Function not found")]
+    FuncNotFound,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
-    #[error("Function not found")]
-    FuncNotFound,
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error("could not publish websocket event: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error(transparent)]
-    Func(#[from] dal::FuncError),
-    #[error(transparent)]
     SdfFunc(#[from] func::FuncError),
     #[error(transparent)]
-    Builtin(#[from] dal::BuiltinsError),
+    StandardModel(#[from] StandardModelError),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type DevResult<T> = Result<T, DevError>;

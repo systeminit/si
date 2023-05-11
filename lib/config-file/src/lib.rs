@@ -19,6 +19,7 @@ pub use simple_load::{load, load_or_default};
 #[cfg(feature = "load-async")]
 pub use simple_load::{load_async, load_or_default_async};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigFileError {
     #[cfg(feature = "config")]
@@ -62,15 +63,16 @@ impl From<Infallible> for ConfigFileError {
 
 pub type Result<T> = std::result::Result<T, ConfigFileError>;
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug)]
 pub enum FileFormat {
-    #[cfg(feature = "toml")]
-    Toml,
+    Custom(&'static str),
     #[cfg(feature = "json")]
     Json,
+    #[cfg(feature = "toml")]
+    Toml,
     #[cfg(feature = "yaml")]
     Yaml,
-    Custom(&'static str),
 }
 
 impl FileFormat {

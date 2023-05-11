@@ -11,28 +11,30 @@ use thiserror::Error;
 
 use crate::{DalContext, HistoryEvent, HistoryEventError, Timestamp, Visibility};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StandardModelError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats error")]
-    Nats(#[from] NatsError),
-    #[error("{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
-    ModelMissing(String, String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
+    ModelMissing(String, String),
+    #[error("nats error")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
     #[error("user not found: {0}")]
     UserNotFound(UserPk),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;
 
+#[remain::sorted]
 #[derive(AsRefStr, Debug, Eq, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum TypeHint {
@@ -41,12 +43,12 @@ pub enum TypeHint {
     BpChar,
     Bytea,
     Char,
+    Ident,
     Integer,
     Json,
     JsonB,
     SmallInt,
     Text,
-    Ident,
     #[strum(serialize = "timestamp with time zone")]
     TimestampWithTimeZone,
 }

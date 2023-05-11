@@ -16,6 +16,7 @@ derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
 pin-project-lite = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-settings = { path = "../../lib/si-settings" }

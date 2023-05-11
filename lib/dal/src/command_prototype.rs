@@ -16,16 +16,17 @@ const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
     include_str!("queries/command_prototype/find_for_func_and_schema_variant.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("queries/command_prototype/find_for_context.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CommandPrototypeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]

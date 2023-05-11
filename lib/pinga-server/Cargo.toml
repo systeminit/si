@@ -11,6 +11,7 @@ dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }

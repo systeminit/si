@@ -22,25 +22,25 @@ const FIND_FOR_PROVIDERS_AND_COMPONENTS: &str = include_str!(
     "../../queries/attribute_prototype_argument/find_for_providers_and_components.sql"
 );
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
+    #[error("cannot update set field to become unset: {0}")]
+    CannotFlipSetFieldToUnset(&'static str),
+    #[error("cannot update unset field to become set: {0}")]
+    CannotFlipUnsetFieldToSet(&'static str),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("required value fields must be set, found at least one unset required value field")]
+    RequiredValueFieldsUnset,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-
-    #[error("cannot update set field to become unset: {0}")]
-    CannotFlipSetFieldToUnset(&'static str),
-    #[error("cannot update unset field to become set: {0}")]
-    CannotFlipUnsetFieldToSet(&'static str),
-    #[error("required value fields must be set, found at least one unset required value field")]
-    RequiredValueFieldsUnset,
 }
 
 pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;

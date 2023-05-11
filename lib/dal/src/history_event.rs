@@ -9,24 +9,26 @@ use telemetry::prelude::*;
 
 use crate::{pk, DalContext, Timestamp, UserPk};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum HistoryEventError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy)]
 pub enum HistoryActor {
-    User(UserPk),
     SystemInit,
+    User(UserPk),
 }
 
 impl HistoryActor {

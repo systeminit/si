@@ -35,6 +35,7 @@ pub struct QualificationSummary {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum QualificationSummaryError {
     #[error(transparent)]
@@ -111,6 +112,7 @@ impl QualificationSummary {
     }
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum QualificationError {
     #[error("function binding return value error: {0}")]
@@ -228,6 +230,7 @@ impl QualificationView {
     }
 }
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -245,11 +248,11 @@ impl QualificationView {
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum QualificationSubCheckStatus {
-    Success,
-    Warning,
     Failure,
+    Success,
     #[default]
     Unknown,
+    Warning,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]

@@ -6,6 +6,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum EncryptionKeyError {
     #[error("failed to load key from bytes")]
