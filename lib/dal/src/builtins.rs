@@ -28,9 +28,6 @@ mod func;
 pub mod schema;
 mod workflow;
 
-// Expose the "persist" function for creating and editing builtin funcs while in dev mode.
-pub use func::persist as func_persist;
-
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
     #[error("attribute context builder error: {0}")]

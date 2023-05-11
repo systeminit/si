@@ -1,6 +1,6 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 

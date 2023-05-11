@@ -1,0 +1,26 @@
+rust_binary(
+    name = "sdf",
+    edition = "2021",
+    deps = [
+        "//lib/sdf-server:sdf-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    resources = {
+        "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
+        "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
+        "dev.jwt_secret_key.bin": ":dev.jwt_secret_key.bin",
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "pkgs_path": "//pkgs:pkgs",
+    },
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "dev.jwt_secret_key.bin",
+    src = "src/dev.jwt_secret_key.bin",
+    visibility = ["PUBLIC"],
+)

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display};
+use strum::{AsRefStr, Display};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

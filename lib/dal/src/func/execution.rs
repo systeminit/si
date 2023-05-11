@@ -40,15 +40,7 @@ pk!(FuncExecutionPk);
 
 // Are these the right states? -- Adam
 #[derive(
-    Deserialize,
-    Serialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    strum_macros::EnumString,
-    strum_macros::Display,
-    Copy,
+    Deserialize, Serialize, Debug, Clone, PartialEq, Eq, strum::EnumString, strum::Display, Copy,
 )]
 pub enum FuncExecutionState {
     Create,

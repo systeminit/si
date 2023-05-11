@@ -1,0 +1,21 @@
+rust_library(
+    name = "si-data-pg",
+    edition = "2021",
+    deps = [
+        "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:bytes",
+        "//third-party/rust:deadpool",
+        "//third-party/rust:deadpool-postgres",
+        "//third-party/rust:futures",
+        "//third-party/rust:num_cpus",
+        "//third-party/rust:ouroboros",
+        "//third-party/rust:refinery",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-postgres",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

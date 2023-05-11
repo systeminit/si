@@ -33,3 +33,9 @@ export_file(
     src = "src/dev.decryption.key",
     visibility = ["PUBLIC"],
 )
+
+export_file(
+    name = "dev.encryption.key",
+    src = "src/dev.encryption.key",
+    visibility = ["PUBLIC"],
+)

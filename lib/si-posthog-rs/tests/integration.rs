@@ -3,7 +3,7 @@ use tokio::test;
 
 #[test(flavor = "multi_thread", worker_threads = 5)]
 async fn full_send_event() {
-    let (client, sender) = si_posthog_rs::new()
+    let (client, sender) = si_posthog::new()
         .api_endpoint("https://e.systeminit.com")
         .api_key("phc_SoQak5PP054RdTumd69bOz7JhM0ekkxxTXEQsbn3Zg9")
         .build()

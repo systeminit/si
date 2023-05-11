@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::DevResult;
 
-const CURRENT_GIT_SHA: &str = env!("SI_CURRENT_GIT_SHA");
+const CURRENT_GIT_SHA: &str = "unset-git-sha";
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -1,0 +1,6 @@
+filegroup(
+    name = "pkgs",
+    srcs = glob(["**/*"]),
+    copy = False,
+    visibility = ["PUBLIC"],
+)

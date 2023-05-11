@@ -1,7 +1,7 @@
 //! This module contains (and is oriented around) the [`RootProp`]. This object is not persisted
 //! to the database.
 
-use strum_macros::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
+use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
 use crate::func::backend::validation::FuncBackendValidationArgs;

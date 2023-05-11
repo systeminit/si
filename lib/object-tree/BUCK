@@ -1,0 +1,18 @@
+rust_library(
+    name = "object-tree",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:blake3",
+        "//third-party/rust:petgraph",
+        "//third-party/rust:serde",
+        "//third-party/rust:strum",
+        "//third-party/rust:tar",
+        "//third-party/rust:tempfile",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:vfs",
+        "//third-party/rust:vfs-tar",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)

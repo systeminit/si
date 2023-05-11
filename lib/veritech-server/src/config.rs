@@ -435,8 +435,14 @@ fn cargo_development_cyclone_spec(
     cyclone.try_into()
 }
 
+// TODO(fnichol): extract Buck2 resource code into small common crate
 #[derive(Debug, Error)]
 enum Buck2ResourcesError {
+    #[error("failed canonicalize path: `{path}`")]
+    Canonicalize {
+        source: std::io::Error,
+        path: PathBuf,
+    },
     #[error("Failed to look up our own executable path")]
     NoCurrentExe { source: std::io::Error },
     #[error("Executable doesn't have a filename: `{executable_path}`")]
@@ -460,6 +466,7 @@ enum Buck2ResourcesError {
     },
 }
 
+// TODO(fnichol): extract Buck2 resource code into small common crate
 struct Buck2Resources {
     inner: HashMap<String, PathBuf>,
     parent_dir: PathBuf,
@@ -523,6 +530,11 @@ impl Buck2Resources {
             })
         })?;
 
-        Ok(self.parent_dir.join(rel_path))
+        let path = self.parent_dir.join(rel_path);
+        let path = path.canonicalize().map_err(|source| {
+            ConfigError::cyclone_spec_build(Buck2ResourcesError::Canonicalize { source, path })
+        })?;
+
+        Ok(path)
     }
 }

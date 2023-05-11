@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::num::{ParseFloatError, ParseIntError};
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::debug;
 use thiserror::Error;
 

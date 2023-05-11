@@ -6,6 +6,11 @@ alias(
 )
 
 alias(
+    name = "sdf",
+    actual = "//bin/sdf:sdf",
+)
+
+alias(
     name = "veritech",
     actual = "//bin/veritech:veritech",
 )

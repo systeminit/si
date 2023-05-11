@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use si_data_pg::{PgError, PgRow};
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 

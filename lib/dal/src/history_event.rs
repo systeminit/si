@@ -1,6 +1,6 @@
 use crate::{Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
-use strum_macros::Display as StrumDisplay;
+use strum::Display as StrumDisplay;
 use thiserror::Error;
 
 use si_data_nats::NatsError;

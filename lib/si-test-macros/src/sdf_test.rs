@@ -316,7 +316,7 @@ impl SdfTestFnSetupExpander {
         let var = Ident::new("posthog_client", Span::call_site());
         self.code_extend(quote! {
             let #var = {
-                let (client, sender) = ::si_posthog_rs::new()
+                let (client, sender) = ::si_posthog::new()
                     .api_endpoint("http://localhost:9999")
                     .api_key("not-a-key")
                     .enabled(false)

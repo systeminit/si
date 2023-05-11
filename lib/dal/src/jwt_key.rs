@@ -140,8 +140,18 @@ pub struct JwtPublicSigningKey {
 
 impl JwtPublicSigningKey {
     #[instrument(level = "debug", skip_all)]
-    pub async fn from_key_string(public_key_string: impl Into<String>) -> JwtKeyResult<Self> {
-        let public_key_string = public_key_string.into();
+    pub async fn load(path: impl AsRef<Path>) -> JwtKeyResult<Self> {
+        trace!(
+            path = path.as_ref().to_string_lossy().as_ref(),
+            "loading jwt public signing key"
+        );
+        let mut file = fs::File::open(path).await?;
+        Self::from_reader(Pin::new(&mut file)).await
+    }
+
+    async fn from_reader(mut reader: Pin<&mut impl AsyncRead>) -> JwtKeyResult<Self> {
+        let mut public_key_string = String::new();
+        reader.read_to_string(&mut public_key_string).await?;
 
         let inner = tokio::task::spawn_blocking(move || {
             RS256PublicKey::from_pem(&public_key_string)
