@@ -4,6 +4,7 @@ rust_library(
     deps = [
         "//third-party/rust:async-trait",
         "//third-party/rust:opentelemetry",
+        "//third-party/rust:remain",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",

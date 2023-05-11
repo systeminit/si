@@ -30,6 +30,7 @@ const UPDATE_DATA: &str = include_str!("queries/status_update/update_data.sql");
 const MARK_FINISHED: &str = include_str!("queries/status_update/mark_finished.sql");
 
 /// A possible error that can be returned when working with a [`StatusUpdate`].
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StatusUpdateError {
     /// When an attribute value metadata entry is not found
@@ -347,19 +348,20 @@ impl StatusUpdate {
 }
 
 /// The state of a status update message.
+#[remain::sorted]
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum StatusMessageState {
-    /// A status update has started
-    StatusStarted,
+    /// A message which has newly completed entries
+    Completed,
     /// A message which has newly queued entries
     Queued,
     /// A message which has newly running entries
     Running,
-    /// A message which has newly completed entries
-    Completed,
     /// A status update has finished
     StatusFinished,
+    /// A status update has started
+    StatusStarted,
 }
 
 /// A status message which encapsulates a new status for some subset of entries.
@@ -372,6 +374,7 @@ pub struct StatusMessage {
 }
 
 /// A representation of the kind of attribute value that is being processed.
+#[remain::sorted]
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Copy, Hash)]
 #[serde(rename_all = "camelCase", tag = "kind", content = "id")]
 enum AttributeValueKind {
@@ -379,14 +382,14 @@ enum AttributeValueKind {
     Attribute(PropId),
     /// Represents a value resulting from a code generation function
     CodeGen,
-    /// Represents a value resulting from a qualification function
-    Qualification,
-    /// Represents a value that is internal to a component
-    Internal,
     /// Represents a value used as an input socket with associated `SocketId`
     InputSocket(SocketId),
+    /// Represents a value that is internal to a component
+    Internal,
     /// Represents a value used as an output socket with associated `SocketId`
     OutputSocket(SocketId),
+    /// Represents a value resulting from a qualification function
+    Qualification,
 }
 
 /// A computed set of metadata relating to an [`AttributeValue`].
@@ -413,6 +416,7 @@ impl AttributeValueMetadata {
 }
 
 /// A possible error that can be returned when working with a [`StatusUpdater`].
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum StatusUpdaterError {
     /// When an attribute value metadata fails to be created
@@ -421,27 +425,27 @@ pub enum StatusUpdaterError {
     /// When a component's status fails to update
     #[error("component error {0}")]
     Component(#[from] ComponentError),
+    /// Generic error in status updater
+    #[error("status update error: {0}")]
+    GenericError(String),
+    /// When an attrbute value violates invariants
+    #[error("attrbute value violates invariants; attribute_value_id={0}")]
+    MalformedAttributeValue(AttributeValueId),
+    /// When a [NATS](https://nats.io) error is encountered
+    #[error("nats error: {0}")]
+    NatsError(#[from] si_data_nats::Error),
     /// When a realtime update fails to send
     #[error("error publishing realtime update {0}")]
     PublishRealtime(#[from] WsEventError),
+    /// When a JSON serialize/deserialize error is returned
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     /// When a status update error is returned
     #[error(transparent)]
     StatusUpdate(#[from] StatusUpdateError),
     /// When there are unprocessed values remaining once an update has completed
     #[error("unprocessed values remain upon completion: {0:?}")]
     UnprocessedValuesRemaining(Vec<AttributeValueId>),
-    /// Generic error in status updater
-    #[error("status update error: {0}")]
-    GenericError(String),
-    /// When a JSON serialize/deserialize error is returned
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    /// When a [NATS](https://nats.io) error is encountered
-    #[error("nats error: {0}")]
-    NatsError(#[from] si_data_nats::Error),
-    /// When an attrbute value violates invariants
-    #[error("attrbute value violates invariants; attribute_value_id={0}")]
-    MalformedAttributeValue(AttributeValueId),
 }
 
 impl StatusUpdaterError {

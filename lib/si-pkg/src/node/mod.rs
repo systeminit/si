@@ -65,12 +65,13 @@ const NODE_KIND_WORKFLOW: &str = "workflow";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum PkgNode {
     Action(ActionNode),
-    CommandFunc(CommandFuncNode),
     AttrFuncInput(AttrFuncInputNode),
     Category(CategoryNode),
+    CommandFunc(CommandFuncNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
     FuncDescription(FuncDescriptionNode),
@@ -81,8 +82,8 @@ pub enum PkgNode {
     Schema(SchemaNode),
     SchemaVariant(SchemaVariantNode),
     SchemaVariantChild(SchemaVariantChildNode),
-    Socket(SocketNode),
     SiPropFunc(SiPropFuncNode),
+    Socket(SocketNode),
     Validation(ValidationNode),
     Workflow(WorkflowNode),
 }

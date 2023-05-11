@@ -10,16 +10,17 @@ use crate::{
 mod nats_processor;
 pub use nats_processor::NatsProcessor;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
+    #[error("Error processing blocking job: {0}")]
+    BlockingJob(#[from] BlockingJobError),
+    #[error(transparent)]
+    JobProducer(#[from] JobProducerError),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error(transparent)]
-    JobProducer(#[from] JobProducerError),
-    #[error("Error processing blocking job: {0}")]
-    BlockingJob(#[from] BlockingJobError),
 }
 
 pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;

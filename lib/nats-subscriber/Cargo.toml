@@ -8,6 +8,7 @@ publish = false
 futures = { workspace = true }
 futures-lite = { workspace = true }
 pin-project-lite = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }

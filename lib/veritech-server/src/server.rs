@@ -19,8 +19,11 @@ use tokio::{
 
 use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, PublisherError};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ServerError {
+    #[error(transparent)]
+    CommandRun(#[from] deadpool_cyclone::ExecutionError<CommandRunResultSuccess>),
     #[error(transparent)]
     Cyclone(#[from] deadpool_cyclone::ClientError),
     #[error("cyclone pool error")]
@@ -31,25 +34,22 @@ pub enum ServerError {
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("error connecting to nats")]
     NatsConnect(#[source] si_data_nats::NatsError),
-    #[error(transparent)]
-    Publisher(#[from] PublisherError),
-    #[error("failed to setup signal handler")]
-    Signal(#[source] io::Error),
-    #[error("wrong cyclone spec type for {0} spec: {1:?}")]
-    WrongCycloneSpec(&'static str, CycloneSpec),
-    #[error(transparent)]
-    Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error("no reply mailbox found")]
     NoReplyMailboxFound,
-
+    #[error(transparent)]
+    Publisher(#[from] PublisherError),
+    #[error(transparent)]
+    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
+    #[error("failed to setup signal handler")]
+    Signal(#[source] io::Error),
+    #[error(transparent)]
+    Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error(transparent)]
     Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
     #[error(transparent)]
     WorkflowResolve(#[from] deadpool_cyclone::ExecutionError<WorkflowResolveResultSuccess>),
-    #[error(transparent)]
-    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
-    #[error(transparent)]
-    CommandRun(#[from] deadpool_cyclone::ExecutionError<CommandRunResultSuccess>),
+    #[error("wrong cyclone spec type for {0} spec: {1:?}")]
+    WrongCycloneSpec(&'static str, CycloneSpec),
 }
 
 type ServerResult<T> = Result<T, ServerError>;
@@ -751,6 +751,7 @@ pub fn timestamp() -> u64 {
     u64::try_from(std::cmp::max(Utc::now().timestamp(), 0)).expect("timestamp not be negative")
 }
 
+#[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {
     Handle,

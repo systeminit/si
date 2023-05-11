@@ -20,6 +20,7 @@ use thiserror::Error;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error(transparent)]
@@ -50,10 +51,11 @@ pub struct Config {
     cyclone_spec: CycloneSpec,
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CycloneSpec {
-    LocalUds(LocalUdsInstanceSpec),
     LocalHttp(LocalHttpInstanceSpec),
+    LocalUds(LocalUdsInstanceSpec),
 }
 
 impl StandardConfig for Config {
@@ -99,6 +101,7 @@ impl Config {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CycloneStream {
     HttpSocket(SocketAddr),
@@ -126,10 +129,11 @@ impl CycloneStream {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind")]
 pub enum CycloneConfig {
-    LocalUds {
+    LocalHttp {
         #[serde(default = "default_cyclone_cmd_path")]
         cyclone_cmd_path: String,
         #[serde(default = "default_cyclone_decryption_key_path")]
@@ -137,7 +141,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
         #[serde(default)]
-        socket_strategy: LocalUdsSocketStrategy,
+        socket_strategy: LocalHttpSocketStrategy,
         #[serde(default)]
         watch_timeout: Option<Duration>,
         #[serde(default = "default_limit_requests")]
@@ -151,7 +155,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_enable_endpoint")]
         command: bool,
     },
-    LocalHttp {
+    LocalUds {
         #[serde(default = "default_cyclone_cmd_path")]
         cyclone_cmd_path: String,
         #[serde(default = "default_cyclone_decryption_key_path")]
@@ -159,7 +163,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_lang_server_cmd_path")]
         lang_server_cmd_path: String,
         #[serde(default)]
-        socket_strategy: LocalHttpSocketStrategy,
+        socket_strategy: LocalUdsSocketStrategy,
         #[serde(default)]
         watch_timeout: Option<Duration>,
         #[serde(default = "default_limit_requests")]

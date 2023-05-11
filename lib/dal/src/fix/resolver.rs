@@ -12,12 +12,13 @@ use crate::{
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FixResolverError {
     #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
+    Pg(#[from] PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

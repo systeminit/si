@@ -29,6 +29,7 @@ rust_library(
         "//third-party/rust:rand",
         "//third-party/rust:refinery",
         "//third-party/rust:regex",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde-aux",
         "//third-party/rust:serde_json",

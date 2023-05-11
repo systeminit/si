@@ -28,59 +28,63 @@ pub mod refresh;
 pub mod set_type;
 pub mod update_property_editor_value;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("attribute context builder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
+    #[error("change status error: {0}")]
+    ChangeStatus(#[from] ChangeStatusError),
     #[error("component error: {0}")]
     Component(#[from] DalComponentError),
     #[error("component name not found")]
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]
     ComponentNotFound(ComponentId),
-    #[error("prop not found for id: {0}")]
-    PropNotFound(PropId),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
-    #[error("invalid request")]
-    InvalidRequest,
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
-    #[error("serde json error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-
-    #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
-    #[error("attribute context builder error: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("identity func not found")]
     IdentityFuncNotFound,
-    #[error("attribute value not found")]
-    AttributeValueNotFound,
-    #[error("attribute prototype not found")]
-    AttributePrototypeNotFound,
-    #[error("change status error: {0}")]
-    ChangeStatus(#[from] ChangeStatusError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("invalid request")]
+    InvalidRequest,
+    #[error("invalid visibility")]
+    InvalidVisibility,
+    #[error(transparent)]
+    Nats(#[from] si_data_nats::NatsError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error("property editor error: {0}")]
+    PropertyEditor(#[from] PropertyEditorError),
+    #[error("prop not found for id: {0}")]
+    PropNotFound(PropId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]
     SchemaVariantNotFound,
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("system id is required: ident_nil_v1() was provided")]
@@ -89,10 +93,6 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
-    #[error("invalid visibility")]
-    InvalidVisibility,
-    #[error("property editor error: {0}")]
-    PropertyEditor(#[from] PropertyEditorError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

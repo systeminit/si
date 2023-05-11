@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum TimestampError {}
 

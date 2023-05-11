@@ -62,10 +62,11 @@ impl SpanExt for tracing::Span {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug)]
 pub enum UpdateOpenTelemetry {
-    Enable,
     Disable,
+    Enable,
 }
 
 /// A telemetry client trait which can update tracing verbosity, toggle OpenTelemetry services,
@@ -232,6 +233,7 @@ impl TelemetryLevel for NoopClient {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("custom tracing level has no verbosity")]
@@ -242,13 +244,14 @@ pub enum ClientError {
     UpdateTracingLevel(#[from] mpsc::error::SendError<TracingLevel>),
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum TracingLevel {
+    Custom(String),
     Verbosity {
         verbosity: Verbosity,
         app_modules: Option<Vec<Cow<'static, str>>>,
     },
-    Custom(String),
 }
 
 impl TracingLevel {
@@ -271,14 +274,15 @@ impl TracingLevel {
     }
 }
 
+#[remain::sorted]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 #[allow(clippy::enum_variant_names)]
 pub enum Verbosity {
-    InfoAll,
     DebugAppAndInfoAll,
-    TraceAppAndInfoAll,
-    TraceAppAndDebugAll,
+    InfoAll,
     TraceAll,
+    TraceAppAndDebugAll,
+    TraceAppAndInfoAll,
 }
 
 impl Verbosity {

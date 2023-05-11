@@ -15,53 +15,56 @@ use crate::{
     StandardModelError, TransactionsError, WorkspacePk,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WsEventError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("no workspace in tenancy")]
     NoWorkspaceInTenancy,
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
     ChangeSetCanceled(ChangeSetPk),
+    ChangeSetCreated(ChangeSetPk),
     ChangeSetWritten(ChangeSetPk),
-    ComponentCreated(ComponentCreatedPayload),
-    SchemaCreated(SchemaPk),
-    ResourceRefreshed(ResourceRefreshedPayload),
-    ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     CheckedQualifications(QualificationCheckPayload),
-    CommandOutput(CommandOutput),
     CodeGenerated(CodeGeneratedPayload),
+    CommandOutput(CommandOutput),
+    ComponentCreated(ComponentCreatedPayload),
+    ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
+    ResourceRefreshed(ResourceRefreshedPayload),
+    SchemaCreated(SchemaPk),
     StatusUpdate(StatusMessage),
 }
 
+#[remain::sorted]
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Copy, Hash)]
 #[serde(rename_all = "camelCase", tag = "kind", content = "id")]
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    Qualification,
-    Internal,
     InputSocket(SocketId),
+    Internal,
     OutputSocket(SocketId),
+    Qualification,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]

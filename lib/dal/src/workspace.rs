@@ -13,24 +13,25 @@ use crate::{
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
 const WORKSPACE_FIND_BY_NAME: &str = include_str!("queries/workspace/find_by_name.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
     #[error(transparent)]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
     KeyPair(#[from] KeyPairError),
+    #[error(transparent)]
+    Nats(#[from] NatsError),
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error(transparent)]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;

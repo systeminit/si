@@ -16,40 +16,41 @@ pub use properties::ComponentViewProperties;
 
 type ComponentViewResult<T> = Result<T, ComponentViewError>;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ComponentViewError {
     #[error(transparent)]
-    UlidDecode(#[from] ulid::DecodeError),
+    AttributeValue(#[from] AttributeValueError),
+    #[error("component error: {0}")]
+    Component(String),
+    #[error("func binding return value not found {0}")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
-    #[error(transparent)]
-    Secret(#[from] SecretError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    AttributeValue(#[from] AttributeValueError),
+    #[error("json pointer not found: {1:?} at {0}")]
+    JSONPointerNotFound(serde_json::Value, String),
+    #[error("no attribute value found for context {0:?}")]
+    NoAttributeValue(AttributeReadContext),
+    #[error("no internal provider for prop {0}")]
+    NoInternalProvider(PropId),
+    #[error("no root prop found for schema variant {0}")]
+    NoRootProp(SchemaVariantId),
+    #[error("schema variant not found for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("component not found {0}")]
+    NotFound(ComponentId),
     #[error(transparent)]
     Prop(#[from] PropError),
     #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
+    Secret(#[from] SecretError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
-    #[error("json pointer not found: {1:?} at {0}")]
-    JSONPointerNotFound(serde_json::Value, String),
-    #[error("component not found {0}")]
-    NotFound(ComponentId),
-    #[error("schema variant not found for component {0}")]
-    NoSchemaVariant(ComponentId),
-    #[error("no root prop found for schema variant {0}")]
-    NoRootProp(SchemaVariantId),
-    #[error("func binding return value not found {0}")]
-    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
-    #[error("no internal provider for prop {0}")]
-    NoInternalProvider(PropId),
-    #[error("no attribute value found for context {0:?}")]
-    NoAttributeValue(AttributeReadContext),
-    #[error("component error: {0}")]
-    Component(String),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

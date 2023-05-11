@@ -28,14 +28,15 @@ const STATUS_RECEIVER_REQUEST_SUBJECT: &str = "dependentValuesUpdateStatus.reque
 /// The queue name for [NATS](https://nats.io).
 const STATUS_RECEIVER_QUEUE_NAME: &str = "dependentValuesUpdateStatus";
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StatusReceiverError {
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
-    PgPool(#[from] PgPoolError),
-    #[error(transparent)]
     Pg(#[from] PgError),
+    #[error(transparent)]
+    PgPool(#[from] PgPoolError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

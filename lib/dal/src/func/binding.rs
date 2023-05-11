@@ -40,34 +40,13 @@ use super::{
     FuncId,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingError {
-    #[error("unable to retrieve func for func binding: {0:?}")]
-    FuncNotFound(FuncBindingPk),
-    #[error("unable to retrieve func for func binding: {0:?}")]
-    JsFuncNotFound(FuncBindingPk),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func backend error: {0}")]
     FuncBackend(#[from] FuncBackendError),
-    #[error("func backend return value error: {0}")]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("func binding not found: {0}")]
-    NotFound(FuncBindingId),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("func execution tracking error: {0}")]
-    FuncExecutionError(#[from] FuncExecutionError),
     #[error(
         "function execution result failure: kind={kind}, message={message}, backend={backend}"
     )]
@@ -76,6 +55,28 @@ pub enum FuncBindingError {
         message: String,
         backend: String,
     },
+    #[error("func backend return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func execution tracking error: {0}")]
+    FuncExecutionError(#[from] FuncExecutionError),
+    #[error("unable to retrieve func for func binding: {0:?}")]
+    FuncNotFound(FuncBindingPk),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("unable to retrieve func for func binding: {0:?}")]
+    JsFuncNotFound(FuncBindingPk),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("func binding not found: {0}")]
+    NotFound(FuncBindingId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;

@@ -8,12 +8,13 @@ use serde::Serialize;
 use si_pkg::SchemaVariantSpecComponentType;
 
 /// The possible values of "/root/si/type".
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum ComponentType {
+    AggregationFrame,
     Component,
     ConfigurationFrame,
-    AggregationFrame,
 }
 
 impl From<SchemaVariantSpecComponentType> for ComponentType {

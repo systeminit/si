@@ -15,6 +15,7 @@ use ulid::Ulid;
 
 const DEFAULT_CONCURRENCY_LIMIT: usize = 50;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("config builder")]

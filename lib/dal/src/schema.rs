@@ -26,6 +26,7 @@ pub use variant::{SchemaVariant, SchemaVariantId};
 pub mod ui_menu;
 pub mod variant;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaError {
     #[error("AttributeContextBuilder error: {0}")]
@@ -62,20 +63,20 @@ pub enum SchemaError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema ui menu not found: {0}")]
+    SchemaUiMenuNotFound(SchemaUiMenuId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("schema ui menu not found: {0}")]
-    SchemaUiMenuNotFound(SchemaUiMenuId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("schema variant error: {0}")]
-    Variant(#[from] SchemaVariantError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("schema variant error: {0}")]
+    Variant(#[from] SchemaVariantError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

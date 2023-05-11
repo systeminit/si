@@ -19,24 +19,26 @@ const LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS: &str =
 const FIND_BY_NAME_FOR_FUNC: &str =
     include_str!("../queries/func_argument/find_by_name_for_func.sql");
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncArgumentError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] si_data_pg::PgError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data_pg::PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
 
 type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
 
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -53,13 +55,13 @@ type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
     FromSql,
 )]
 pub enum FuncArgumentKind {
+    Any,
     Array,
     Boolean,
     Integer,
+    Map,
     Object,
     String,
-    Map,
-    Any,
 }
 
 impl From<PropKind> for FuncArgumentKind {

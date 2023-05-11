@@ -11,6 +11,7 @@ use crate::server::state::AppState;
 
 pub mod list_active_statuses;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StatusError {
     #[error(transparent)]

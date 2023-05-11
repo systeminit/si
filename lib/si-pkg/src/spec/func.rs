@@ -6,6 +6,7 @@ use url::Url;
 
 use super::SpecError;
 
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -21,13 +22,13 @@ use super::SpecError;
 )]
 #[serde(rename_all = "camelCase")]
 pub enum FuncArgumentKind {
+    Any,
     Array,
     Boolean,
     Integer,
+    Map,
     Object,
     String,
-    Map,
-    Any,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
@@ -48,32 +49,34 @@ impl FuncArgumentSpec {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendKind {
     JsAttribute,
-    JsWorkflow,
     JsCommand,
-    JsValidation,
     Json,
+    JsValidation,
+    JsWorkflow,
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendResponseType {
     Array,
     Boolean,
+    CodeGeneration,
+    Command,
+    Confirmation,
     Integer,
+    Json,
     Map,
     Object,
     Qualification,
-    CodeGeneration,
-    Confirmation,
     String,
-    Json,
     Validation,
     Workflow,
-    Command,
 }
 
 pub type FuncUniqueId = Hash;

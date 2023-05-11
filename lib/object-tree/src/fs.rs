@@ -22,6 +22,7 @@ use crate::{
 const ROOT_DIRS: &[&str] = &["refs", "objects"];
 
 /// An error that can be returned when working with a file system reader or writer.
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FsError {
     /// When a file fails to be created
@@ -63,6 +64,7 @@ pub enum FsError {
 }
 
 /// Reads an [`ObjectTree`] from a file system.
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum TreeFileSystemReader {
     /// A reader rooted in a physical file system
@@ -216,6 +218,7 @@ impl TreeFileSystemReader {
 }
 
 /// Writes and [`ObjectTree`] to a file system.
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum TreeFileSystemWriter {
     /// A writer rooted in a physical file system

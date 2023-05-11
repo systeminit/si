@@ -60,6 +60,7 @@ pub type Connection<S> = managed::Object<Manager<S>>;
 pub type RecycleResult<T> = managed::RecycleResult<ManagerError<T>>;
 
 /// Error type for [`Manager<S>`].
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagerError<T> {
     /// An Instance error.

@@ -24,75 +24,77 @@ use crate::{
 pub mod connection;
 pub mod node;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {
+    #[error("attribute context error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
     #[error("change status error: {0}")]
     ChangeStatus(#[from] ChangeStatusError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
     #[error("component status not found for component: {0}")]
     ComponentStatusNotFound(ComponentId),
+    #[error("deletion timestamp not found")]
+    DeletionTimeStamp,
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("edge not found")]
+    EdgeNotFound,
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("external provider not found for socket id: {0}")]
     ExternalProviderNotFoundForSocket(SocketId),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
-    #[error(transparent)]
-    ParseInt(#[from] ParseIntError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("node not found")]
+    NodeNotFound,
+    #[error("no node positions found for node ({0}) and kind ({1})")]
+    NoNodePositionsFound(NodeId, NodeKind),
     #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
+    #[error(transparent)]
+    ParseInt(#[from] ParseIntError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("position not found")]
     PositionNotFound,
-    #[error("node not found")]
-    NodeNotFound,
-    #[error("edge not found")]
-    EdgeNotFound,
-    #[error("socket not found")]
-    SocketNotFound,
-    #[error("attribute prototype not found")]
-    AttributePrototypeNotFound,
-    #[error("attribute value not found")]
-    AttributeValueNotFound,
-    #[error("deletion timestamp not found")]
-    DeletionTimeStamp,
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
-    #[error("attribute context error: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("no node positions found for node ({0}) and kind ({1})")]
-    NoNodePositionsFound(NodeId, NodeKind),
+    #[error("socket not found")]
+    SocketNotFound,
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
 
 /// The kinds of [`Diagrams`](Diagram) available to choose between for rendering.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]

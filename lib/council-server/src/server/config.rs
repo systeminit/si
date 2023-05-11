@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
+#[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error(transparent)]

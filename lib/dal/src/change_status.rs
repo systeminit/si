@@ -18,6 +18,7 @@ const LIST_DELETED_COMPONENTS: &str =
     include_str!("queries/change_status/list_deleted_components.sql");
 const LIST_DELETED_EDGES: &str = include_str!("queries/change_status/edges_list_deleted.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeStatusError {
     #[error("pg error: {0}")]
@@ -31,6 +32,7 @@ pub enum ChangeStatusError {
 pub type ChangeStatusResult<T> = Result<T, ChangeStatusError>;
 
 /// An enum representing the change_status of an entity in the [`ChangeSet`](crate::ChangeSet).
+#[remain::sorted]
 #[derive(
     Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy, Display, EnumString, AsRefStr,
 )]

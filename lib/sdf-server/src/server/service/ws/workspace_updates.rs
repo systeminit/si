@@ -88,6 +88,7 @@ mod workspace_updates {
         WorkspaceUpdates { nats, workspace_pk }
     }
 
+    #[remain::sorted]
     #[derive(Debug, Error)]
     pub enum WorkspaceUpdatesError {
         #[error("error processing nats message from subscription")]

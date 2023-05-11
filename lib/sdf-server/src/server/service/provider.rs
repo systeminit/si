@@ -10,10 +10,15 @@ use crate::server::state::AppState;
 
 pub mod list_all_providers;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ProviderError {
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
@@ -22,11 +27,6 @@ pub enum ProviderError {
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
 }
 
 pub type ProviderResult<T> = std::result::Result<T, ProviderError>;

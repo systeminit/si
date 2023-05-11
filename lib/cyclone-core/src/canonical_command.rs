@@ -9,6 +9,7 @@ use std::{
 
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum CanonicalCommandError {
     #[error("failed to canonicalize: {1}")]

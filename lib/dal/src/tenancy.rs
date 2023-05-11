@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::WorkspacePk;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum TenancyError {
     #[error("pg error: {0}")]

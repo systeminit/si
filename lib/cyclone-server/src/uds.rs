@@ -11,6 +11,7 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum UdsIncomingStreamError {
     #[error("failed to bind to unix domain socket: {1}")]

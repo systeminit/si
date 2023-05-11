@@ -4,6 +4,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::{FuncUniqueId, SpecError};
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -20,10 +21,11 @@ use super::{FuncUniqueId, SpecError};
 #[serde(rename_all = "camelCase")]
 pub enum LeafKind {
     CodeGeneration,
-    Qualification,
     Confirmation,
+    Qualification,
 }
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,

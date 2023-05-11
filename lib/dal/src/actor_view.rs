@@ -10,20 +10,21 @@ use serde::{Deserialize, Serialize};
 use crate::{DalContext, HistoryActor, StandardModelError, User, UserPk};
 
 /// The actor entitiy that initiates an activitiy--this could represent be a person, service, etc.
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ActorView {
+    /// Represents a system-generated activity
+    System {
+        /// A display label
+        #[serde(default = "ActorView::system_label")]
+        label: String,
+    },
     /// Represents a human by their [`UserPk`]
     User {
         /// A user's ID
         pk: UserPk,
         /// A display label
-        label: String,
-    },
-    /// Represents a system-generated activity
-    System {
-        /// A display label
-        #[serde(default = "ActorView::system_label")]
         label: String,
     },
 }

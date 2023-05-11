@@ -6,12 +6,13 @@ use ulid::Ulid;
 
 use super::consumer::{JobConsumerCustomPayload, JobConsumerMetadata, JobInfo};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobProducerError {
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type JobProducerResult<T> = Result<T, JobProducerError>;
@@ -24,14 +25,15 @@ pub trait JobProducer: std::fmt::Debug + Send + JobConsumerMetadata {
 
 pub type BlockingJobResult = Result<(), BlockingJobError>;
 
+#[remain::sorted]
 #[derive(Error, Clone, Debug, Serialize, Deserialize)]
 pub enum BlockingJobError {
-    #[error("A nats error occurred: {0}")]
-    Nats(String),
     #[error("Error during job execution: {0}")]
     JobExecution(String),
     #[error("JobProducer error: {0}")]
     JobProducer(String),
+    #[error("A nats error occurred: {0}")]
+    Nats(String),
     #[error("serde error: {0}")]
     Serde(String),
     #[error("A transactions error occurred: {0}")]

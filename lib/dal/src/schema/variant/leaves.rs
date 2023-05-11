@@ -20,17 +20,18 @@ use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind}
 /// [`object`](crate::PropKind::Object) entries. Each entry must leverage the same kind of
 /// [`Func`](crate::Func) within the same [`map`](crate::PropKind::Map). The kind of
 /// [`Func`](crate::Func) allowed corresponds to the [`LeafKind`].
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, EnumIter)]
 pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).
     CodeGeneration,
-    /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
-    /// qualification [`Funcs`](crate::Func).
-    Qualification,
     /// This variant corresponds to the "/root/confirmation" subtree whose leaves leverage
     /// confirmation [`Funcs`](crate::Func).
     Confirmation,
+    /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
+    /// qualification [`Funcs`](crate::Func).
+    Qualification,
 }
 
 impl From<PkgLeafKind> for LeafKind {
@@ -59,16 +60,17 @@ impl From<LeafKind> for PkgLeafKind {
 /// _Note: not all [`children`](crate::RootPropChild) of [`RootProp`](crate::RootProp) can be used
 /// as "inputs" in order to prevent cycles. This enum provides an approved subset of those
 /// children_.
+#[remain::sorted]
 #[derive(Clone, Copy, Debug)]
 pub enum LeafInputLocation {
     /// The input location corresponding to "/root/code".
     Code,
+    /// The input location corresponding to "/root/deleted_at"
+    DeletedAt,
     /// The input location corresponding to "/root/domain".
     Domain,
     /// The input location corresponding to "/root/resource".
     Resource,
-    /// The input location corresponding to "/root/deleted_at"
-    DeletedAt,
 }
 
 // We only want to allow converting an input location into a root prop child and root the other

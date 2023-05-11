@@ -6,20 +6,21 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PrototypeListForFuncError {
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
 }
 
 pub type PrototypeListForFuncResult<T> = Result<T, PrototypeListForFuncError>;

@@ -11,16 +11,17 @@ use tokio::{sync::broadcast, time};
 
 use crate::{standard_model, Component, ServicesContext, StandardModelError, TransactionsError};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    PgPool(#[from] PgPoolError),
+    Nats(#[from] NatsError),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
-    Nats(#[from] NatsError),
+    PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModelError(#[from] StandardModelError),
     #[error(transparent)]

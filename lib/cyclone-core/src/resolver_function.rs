@@ -21,25 +21,26 @@ pub struct ResolverFunctionComponent {
     // TODO: add widget data here (for example select's options)
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 // Should be kept in sync with dal::func::backend::FuncBackendResponseType
 pub enum ResolverFunctionResponseType {
     Array,
     Boolean,
+    CodeGeneration,
+    Command,
+    Confirmation,
     Identity,
     Integer,
+    Json,
     Map,
     Object,
     Qualification,
-    CodeGeneration,
-    Confirmation,
     String,
     #[default]
     Unset,
-    Json,
     Validation,
     Workflow,
-    Command,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

@@ -584,6 +584,7 @@ dependencies = [
  "config",
  "directories",
  "pathdiff",
+ "remain",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -659,6 +660,7 @@ version = "0.1.0"
 dependencies = [
  "derive_builder",
  "futures",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",
@@ -816,6 +818,7 @@ dependencies = [
  "http",
  "hyper",
  "hyperlocal",
+ "remain",
  "serde",
  "serde_json",
  "sodiumoxide",
@@ -835,6 +838,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.21.0",
  "nix",
+ "remain",
  "serde",
  "serde_json",
  "sodiumoxide",
@@ -857,6 +861,7 @@ dependencies = [
  "futures",
  "hyper",
  "pin-project-lite",
+ "remain",
  "serde",
  "serde_json",
  "si-settings",
@@ -899,6 +904,7 @@ dependencies = [
  "rand",
  "refinery",
  "regex",
+ "remain",
  "serde",
  "serde-aux",
  "serde_json",
@@ -929,6 +935,7 @@ dependencies = [
  "lazy_static",
  "names",
  "pinga-server",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",
@@ -1071,6 +1078,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nix",
+ "remain",
  "serde",
  "serde_json",
  "tempfile",
@@ -2209,6 +2217,7 @@ dependencies = [
  "futures",
  "futures-lite",
  "pin-project-lite",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",
@@ -2360,6 +2369,7 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "petgraph",
+ "remain",
  "serde",
  "strum",
  "tar",
@@ -2716,6 +2726,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",
@@ -3110,6 +3121,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5996294f19bd3aae0453a862ad728f60e6600695733dd5df01da90c54363a3c"
 
 [[package]]
+name = "remain"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e13cca257d068dd3a390d04b2c3009a3fad2ee5048dfa8f239d048372810470c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.15",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.11.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3377,6 +3399,7 @@ dependencies = [
  "pathdiff",
  "pretty_assertions_sorted",
  "rand",
+ "remain",
  "reqwest",
  "serde",
  "serde_json",
@@ -3638,6 +3661,7 @@ dependencies = [
  "futures",
  "nats",
  "nkeys",
+ "remain",
  "serde",
  "serde_json",
  "telemetry",
@@ -3658,6 +3682,7 @@ dependencies = [
  "num_cpus",
  "ouroboros",
  "refinery",
+ "remain",
  "serde",
  "si-std",
  "telemetry",
@@ -3674,6 +3699,7 @@ dependencies = [
  "derive_builder",
  "object-tree",
  "petgraph",
+ "remain",
  "serde",
  "serde_json",
  "strum",
@@ -3687,6 +3713,7 @@ name = "si-posthog"
 version = "0.1.0"
 dependencies = [
  "derive_builder",
+ "remain",
  "reqwest",
  "serde",
  "serde_json",
@@ -3700,6 +3727,7 @@ name = "si-settings"
 version = "0.1.0"
 dependencies = [
  "config-file",
+ "remain",
  "serde",
  "serde_with",
  "thiserror",
@@ -3971,6 +3999,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "opentelemetry",
+ "remain",
  "thiserror",
  "tokio",
  "tracing",
@@ -3983,6 +4012,7 @@ dependencies = [
  "derive_builder",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
+ "remain",
  "telemetry",
  "thiserror",
  "tokio",
@@ -4650,6 +4680,7 @@ dependencies = [
  "futures",
  "indoc",
  "nats-subscriber",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",
@@ -4678,6 +4709,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "remain",
  "serde",
  "serde_json",
  "si-data-nats",

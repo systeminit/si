@@ -9,22 +9,12 @@ use crate::{
     FuncUniqueId, PropSpecWidgetKind,
 };
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum SiPkgProp<'a> {
-    String {
+    Array {
         name: String,
-        default_value: Option<String>,
-        func_unique_id: Option<FuncUniqueId>,
-        widget_kind: PropSpecWidgetKind,
-        widget_options: Option<serde_json::Value>,
-        hidden: bool,
-        doc_link: Option<Url>,
-        hash: Hash,
-        source: Source<'a>,
-    },
-    Number {
-        name: String,
-        default_value: Option<i64>,
+        default_value: Option<serde_json::Value>,
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
@@ -55,9 +45,9 @@ pub enum SiPkgProp<'a> {
         hash: Hash,
         source: Source<'a>,
     },
-    Array {
+    Number {
         name: String,
-        default_value: Option<serde_json::Value>,
+        default_value: Option<i64>,
         func_unique_id: Option<FuncUniqueId>,
         widget_kind: PropSpecWidgetKind,
         widget_options: Option<serde_json::Value>,
@@ -74,6 +64,17 @@ pub enum SiPkgProp<'a> {
         widget_options: Option<serde_json::Value>,
         doc_link: Option<Url>,
         hidden: bool,
+        hash: Hash,
+        source: Source<'a>,
+    },
+    String {
+        name: String,
+        default_value: Option<String>,
+        func_unique_id: Option<FuncUniqueId>,
+        widget_kind: PropSpecWidgetKind,
+        widget_options: Option<serde_json::Value>,
+        hidden: bool,
+        doc_link: Option<Url>,
         hash: Hash,
         source: Source<'a>,
     },

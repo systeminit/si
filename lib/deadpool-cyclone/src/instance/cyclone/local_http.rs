@@ -31,17 +31,18 @@ use tracing::{debug, trace, warn};
 use crate::instance::{Instance, Spec, SpecBuilder};
 
 /// Error type for [`LocalHttpInstance`].
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum LocalHttpInstanceError {
     /// Spec builder error.
     #[error(transparent)]
     Builder(#[from] LocalHttpInstanceSpecBuilderError),
-    /// Failed to spawn a child process.
-    #[error("failed to spawn cyclone child process")]
-    ChildSpawn(#[source] io::Error),
     /// Error when waiting for child process to shutdown.
     #[error(transparent)]
     ChildShutdown(#[from] ShutdownError),
+    /// Failed to spawn a child process.
+    #[error("failed to spawn cyclone child process")]
+    ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
     #[error(transparent)]
     Client(#[from] ClientError),
@@ -405,13 +406,14 @@ impl LocalHttpInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a TCP socket.
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum LocalHttpSocketStrategy {
-    /// Randomly assign a port.
-    Random,
     /// Use the given port.
     Custom(u16),
+    /// Randomly assign a port.
+    Random,
 }
 
 impl Default for LocalHttpSocketStrategy {

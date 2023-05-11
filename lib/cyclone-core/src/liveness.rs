@@ -6,6 +6,7 @@ use thiserror::Error;
 #[error("failed to parse '{0}' into LivenessStatus")]
 pub struct LivenessStatusParseError(String);
 
+#[remain::sorted]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum LivenessStatus {
     Ok,

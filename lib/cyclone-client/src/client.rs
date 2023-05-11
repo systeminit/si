@@ -35,12 +35,13 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::{execution, ping, watch, Execution, PingExecution, Watch};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("cannot create client uri")]
     ClientUri(#[source] http::Error),
-    #[error("client is not healthy")]
-    Unhealthy(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("failed to connect")]
+    Connect(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("invalid liveness status")]
     InvalidLivenessStatus(#[from] LivenessStatusParseError),
     #[error("invalid readiness status")]
@@ -67,10 +68,10 @@ pub enum ClientError {
     SocketAddrResolve(#[source] std::io::Error),
     #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(StatusCode),
+    #[error("client is not healthy")]
+    Unhealthy(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("failed to decode as a UTF8 string")]
     Utf8Decode(#[from] std::str::Utf8Error),
-    #[error("failed to connect")]
-    Connect(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("failed to establish a websocket connection")]
     WebsocketConnection(#[source] tokio_tungstenite::tungstenite::Error),
 }

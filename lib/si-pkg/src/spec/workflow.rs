@@ -24,6 +24,7 @@ impl WorkflowSpec {
     }
 }
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -40,9 +41,9 @@ impl WorkflowSpec {
 #[serde(rename_all = "camelCase")]
 pub enum ActionSpecKind {
     Create,
-    Refresh,
-    Other,
     Destroy,
+    Other,
+    Refresh,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

@@ -21,6 +21,7 @@ use crate::{
 use crate::{Component, ComponentId};
 
 #[allow(missing_docs)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ConfirmationViewError {
     #[error("ActionPrototypeError: {0}")]
@@ -267,13 +268,14 @@ impl ConfirmationView {
 }
 
 #[allow(missing_docs)]
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ConfirmationStatus {
     Failure,
-    Success,
     // FIXME(nick,paulo,paul,wendy): probably remove this once the fix flow is working again.
     NeverStarted,
+    Success,
 }
 
 /// A [`RecommendationView`] is assembled the result of a "confirmation" and enables users to run

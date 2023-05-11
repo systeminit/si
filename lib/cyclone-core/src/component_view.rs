@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum ComponentKind {
-    Standard,
     Credential,
+    Standard,
 }
 
 impl Default for ComponentKind {

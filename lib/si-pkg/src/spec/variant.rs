@@ -8,6 +8,7 @@ use super::{
     SiPropFuncSpec, SocketSpec, SpecError, WorkflowSpec,
 };
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -24,12 +25,13 @@ use super::{
 )]
 #[serde(rename_all = "camelCase")]
 pub enum SchemaVariantSpecComponentType {
+    AggregationFrame,
     #[default]
     Component,
     ConfigurationFrame,
-    AggregationFrame,
 }
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,

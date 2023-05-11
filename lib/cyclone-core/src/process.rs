@@ -9,6 +9,7 @@ pub use nix::sys::signal::Signal;
 
 const CHILD_WAIT_TIMEOUT_SECS: Duration = Duration::from_secs(10);
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ShutdownError {
     #[error("failed to wait on child process")]

@@ -12,20 +12,21 @@ pub mod create_schema;
 pub mod get_schema;
 pub mod list_schemas;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SchemaError {
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("schema error: {0}")]
     Schema(#[from] DalSchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
     #[error("wsevent error: {0}")]
     WsEvent(#[from] WsEventError),
 }

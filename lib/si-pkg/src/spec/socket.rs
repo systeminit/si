@@ -4,6 +4,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
 
+#[remain::sorted]
 #[derive(
     Debug,
     Serialize,
@@ -23,6 +24,7 @@ pub enum SocketSpecKind {
     Output,
 }
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,

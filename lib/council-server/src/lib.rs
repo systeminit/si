@@ -52,34 +52,36 @@ impl std::fmt::Debug for Id {
 
 pub type Graph = HashMap<Id, Vec<Id>>;
 
+#[remain::sorted]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "kind")]
 pub enum Request {
+    Bye {
+        change_set_id: Id,
+    },
     CreateValues,
+    ProcessedValue {
+        change_set_id: Id,
+        node_id: Id,
+    },
     ValueCreationDone,
     ValueDependencyGraph {
         change_set_id: Id,
         dependency_graph: Graph,
     },
-    ProcessedValue {
-        change_set_id: Id,
-        node_id: Id,
-    },
     ValueProcessingFailed {
         change_set_id: Id,
         node_id: Id,
     },
-    Bye {
-        change_set_id: Id,
-    },
 }
 
+#[remain::sorted]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "kind")]
 pub enum Response {
-    OkToCreate,
-    OkToProcess { node_ids: Vec<Id> },
     BeenProcessed { node_id: Id },
     Failed { node_id: Id },
+    OkToCreate,
+    OkToProcess { node_ids: Vec<Id> },
     Shutdown,
 }

@@ -5,24 +5,25 @@ use crate::{
 use std::future::Future;
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PrototypeContextError {
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     Func(#[from] FuncError),
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("func {0} not found")]
     FuncNotFound(FuncId),
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
 }
 
 pub type PrototypeContextResult<T> = Result<T, PrototypeContextError>;
@@ -68,6 +69,7 @@ where
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PrototypeContextField {
     Component(ComponentId),

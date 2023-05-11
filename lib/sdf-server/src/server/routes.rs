@@ -73,6 +73,7 @@ pub fn dev_routes(router: Router<AppState>) -> Router<AppState> {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]

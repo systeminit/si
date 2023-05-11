@@ -18,24 +18,47 @@ use crate::{
     StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
+    #[error("action named {0} not found for component {1}")]
+    ActionNotFound(String, ComponentId),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("arg {0:?} not found at index {1}")]
+    ArgNotFound(JobInfo, usize),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
+    #[error("Error blocking on job: {0}")]
+    BlockingJob(#[from] BlockingJobError),
     #[error(transparent)]
     Component(#[from] ComponentError),
+    #[error("component {0} not found")]
+    ComponentNotFound(ComponentId),
+    #[error(transparent)]
+    Council(#[from] council_server::client::Error),
+    #[error("Protocol error with council: {0}")]
+    CouncilProtocol(String),
     #[error(transparent)]
     Fix(#[from] FixError),
-    #[error("missing fix execution batch for id: {0}")]
-    MissingFixBatch(FixBatchId),
+    #[error(transparent)]
+    FixResolver(#[from] FixResolverError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]
     Io(#[from] ::std::io::Error),
+    #[error("missing fix execution batch for id: {0}")]
+    MissingFixBatch(FixBatchId),
     #[error(transparent)]
-    TokioTask(#[from] JoinError),
+    Nats(#[from] NatsError),
+    #[error("nats is unavailable")]
+    NatsUnavailable,
+    #[error("no schema found for component {0}")]
+    NoSchemaFound(ComponentId),
+    #[error("no schema variant found for component {0}")]
+    NoSchemaVariantFound(ComponentId),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
@@ -43,39 +66,17 @@ pub enum JobConsumerError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
+    StatusUpdaterError(#[from] StatusUpdaterError),
+    #[error(transparent)]
+    TokioTask(#[from] JoinError),
+    #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error(transparent)]
-    Council(#[from] council_server::client::Error),
-    #[error("Protocol error with council: {0}")]
-    CouncilProtocol(String),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    UlidDecode(#[from] ulid::DecodeError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
-    FixResolver(#[from] FixResolverError),
-    #[error(transparent)]
     WsEvent(#[from] WsEventError),
-    #[error(transparent)]
-    UlidDecode(#[from] ulid::DecodeError),
-    #[error("component {0} not found")]
-    ComponentNotFound(ComponentId),
-    #[error("no schema found for component {0}")]
-    NoSchemaFound(ComponentId),
-    #[error("no schema variant found for component {0}")]
-    NoSchemaVariantFound(ComponentId),
-    #[error("action named {0} not found for component {1}")]
-    ActionNotFound(String, ComponentId),
-    #[error(transparent)]
-    StatusUpdaterError(#[from] StatusUpdaterError),
-    #[error("arg {0:?} not found at index {1}")]
-    ArgNotFound(JobInfo, usize),
-    #[error("nats is unavailable")]
-    NatsUnavailable,
-    #[error("Error blocking on job: {0}")]
-    BlockingJob(#[from] BlockingJobError),
 }
 
 impl From<JobConsumerError> for std::io::Error {

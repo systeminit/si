@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 blake3 = { workspace = true }
 petgraph = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 strum = { workspace = true }
 tar = { workspace = true }

@@ -17,11 +17,12 @@ const KEY_NAME_STR: &str = "name";
 const KEY_PROP_PATH_STR: &str = "prop_path";
 const KEY_SOCKET_NAME_STR: &str = "socket_name";
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum AttrFuncInputNode {
-    Prop { name: String, prop_path: String },
     InputSocket { name: String, socket_name: String },
     OutputSocket { name: String, socket_name: String },
+    Prop { name: String, prop_path: String },
 }
 
 impl NameStr for AttrFuncInputNode {

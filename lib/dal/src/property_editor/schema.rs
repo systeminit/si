@@ -100,15 +100,16 @@ impl PropertyEditorProp {
     }
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropKind {
     Array,
     Boolean,
     Integer,
+    Map,
     Object,
     String,
-    Map,
 }
 
 impl From<&PropKind> for PropertyEditorPropKind {
@@ -125,23 +126,25 @@ impl From<&PropKind> for PropertyEditorPropKind {
 }
 
 // TODO(nick,theo,wendy): consider passing "widget options" to _all_ widgets.
+#[remain::sorted]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PropertyEditorPropWidgetKind {
     Array,
     Checkbox,
+    Color,
+    ComboBox { options: Option<Value> },
     Header,
     Map,
     SecretSelect { options: LabelList<SecretId> },
     Select { options: Option<Value> },
-    ComboBox { options: Option<Value> },
-    Color,
     Text,
     TextArea,
 }
 
 // NOTE(nick): this was from the old edit fields code, but it's interesting that we have multiple
 // widget kind enums? Not important to look at right now, though.
+#[remain::sorted]
 #[derive(
     AsRefStr, Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Display, EnumString, Copy,
 )]
@@ -150,18 +153,18 @@ pub enum PropertyEditorPropWidgetKind {
 pub enum WidgetKind {
     Array,
     Checkbox,
-    Header,
-    Map,
-    SecretSelect,
-    Text,
-    TextArea,
     Color,
-    /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
-    /// [`PropKinds`](crate::PropKind).
-    Select,
     /// Provides a text input with auto-completion for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
     ComboBox,
+    Header,
+    Map,
+    SecretSelect,
+    /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
+    /// [`PropKinds`](crate::PropKind).
+    Select,
+    Text,
+    TextArea,
 }
 
 impl From<WidgetKind> for PropSpecWidgetKind {

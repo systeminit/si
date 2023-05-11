@@ -4,6 +4,7 @@ use si_data_nats::NatsClient;
 use thiserror::Error;
 use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PublisherError {
     #[error("failed to serialize json message")]

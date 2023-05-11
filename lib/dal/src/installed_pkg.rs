@@ -13,30 +13,31 @@ use crate::{
 pub mod asset;
 pub use asset::*;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InstalledPkgError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
-    #[error("error decoding ulid: {0}")]
-    UlidDecode(#[from] ulid::DecodeError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("Installed package asset {0} was expected to be {1} but was {2}")]
     InstalledPkgKindMismatch(
         InstalledPkgAssetId,
         InstalledPkgAssetKind,
         InstalledPkgAssetKind,
     ),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("error decoding ulid: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
 }
 
 pub type InstalledPkgResult<T> = Result<T, InstalledPkgError>;

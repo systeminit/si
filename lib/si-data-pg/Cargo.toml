@@ -13,6 +13,7 @@ futures = { workspace = true }
 num_cpus = { workspace = true }
 ouroboros = { workspace = true }
 refinery = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }

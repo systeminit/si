@@ -24,6 +24,7 @@ const VAL_VERSION_STR: &str = "1";
 pub const NL: &str = "\n";
 
 /// An error that can be returned when working with tree and graph types.
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum GraphError {
     /// When parsing a serialized node representation and a valid version was found
@@ -140,6 +141,7 @@ pub trait NameStr {
 /// Whether a `Node` (or a node-related type) is a leaf or a tree.
 ///
 /// A *leaf* is a node which contains no children and a *tree* is a node which contains children.
+#[remain::sorted]
 #[derive(AsRefStr, Debug, Clone, Copy, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[strum(serialize_all = "camelCase")]
 pub enum NodeKind {

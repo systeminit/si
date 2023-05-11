@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::tasks::status_receiver::{StatusReceiverRequest, STATUS_RECEIVER_REQUEST_SUBJECT};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StatusReceiverClientError {
     #[error("failed to serialize json message")]

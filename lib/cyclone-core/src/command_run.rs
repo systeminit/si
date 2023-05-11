@@ -9,12 +9,13 @@ pub struct CommandRunRequest {
     pub args: serde_json::Value,
 }
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum ResourceStatus {
+    Error,
     Ok,
     Warning,
-    Error,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

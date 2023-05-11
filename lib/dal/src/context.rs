@@ -97,10 +97,11 @@ impl ServicesContext {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug)]
 enum ConnectionState {
-    Invalid,
     Connections(Connections),
+    Invalid,
     Transactions(Transactions),
 }
 
@@ -669,6 +670,7 @@ impl DalContextBuilder {
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum TransactionsError {
     #[error(transparent)]

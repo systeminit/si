@@ -6,6 +6,7 @@ use thiserror::Error;
 #[error("failed to parse '{0}' into ReadinessStatus")]
 pub struct ReadinessStatusParseError(String);
 
+#[remain::sorted]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum ReadinessStatus {
     Ready,

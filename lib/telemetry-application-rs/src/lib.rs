@@ -38,6 +38,7 @@ use tracing_subscriber::{
 pub use telemetry::{prelude, tracing};
 pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]

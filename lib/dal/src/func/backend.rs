@@ -24,34 +24,36 @@ pub mod object;
 pub mod string;
 pub mod validation;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBackendError {
-    #[error("invalid data - expected a valid array entry value, got: {0}")]
-    InvalidArrayEntryData(serde_json::Value),
     #[error("expected same array entry prop kinds - expected {0}, found: {1}")]
     DifferingArrayEntryPropKinds(PropKind, PropKind),
-    #[error("result failure: kind={kind}, message={message}, backend={backend}")]
-    ResultFailure {
-        kind: String,
-        message: String,
-        backend: String,
-    },
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("veritech client error: {0}")]
-    VeritechClient(#[from] veritech_client::ClientError),
-    #[error("send error")]
-    SendError,
     #[error("dispatch func missing code_base64 {0}")]
     DispatchMissingBase64(FuncId),
     #[error("dispatch func missing handler {0}")]
     DispatchMissingHandler(FuncId),
     #[error("function result command run error: {0:?}")]
     FunctionResultCommandRun(FunctionResult<CommandRunResultSuccess>),
+    #[error("invalid data - expected a valid array entry value, got: {0}")]
+    InvalidArrayEntryData(serde_json::Value),
+    #[error("result failure: kind={kind}, message={message}, backend={backend}")]
+    ResultFailure {
+        kind: String,
+        message: String,
+        backend: String,
+    },
+    #[error("send error")]
+    SendError,
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("veritech client error: {0}")]
+    VeritechClient(#[from] veritech_client::ClientError),
 }
 
 pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
 
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -72,17 +74,18 @@ pub enum FuncBackendKind {
     Identity,
     Integer,
     JsAttribute,
-    JsWorkflow,
     JsCommand,
+    Json,
     JsValidation,
+    JsWorkflow,
     Map,
     Object,
     String,
     Unset,
-    Json,
     Validation,
 }
 
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -99,20 +102,20 @@ pub enum FuncBackendKind {
 pub enum FuncBackendResponseType {
     Array,
     Boolean,
+    CodeGeneration,
+    Command,
+    Confirmation,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
     Integer,
+    Json,
     Map,
     Object,
     Qualification,
-    CodeGeneration,
-    Confirmation,
     String,
     Unset,
-    Json,
     Validation,
     Workflow,
-    Command,
 }
 
 impl From<ResolverFunctionResponseType> for FuncBackendResponseType {

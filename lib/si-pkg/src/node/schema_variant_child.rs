@@ -24,6 +24,7 @@ const VARIANT_CHILD_TYPE_WORKFLOWS: &str = "workflows";
 
 const KEY_KIND_STR: &str = "kind";
 
+#[remain::sorted]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SchemaVariantChild {
@@ -37,6 +38,7 @@ pub enum SchemaVariantChild {
     Workflows(Vec<WorkflowSpec>),
 }
 
+#[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum SchemaVariantChildNode {
     CommandFuncs,

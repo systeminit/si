@@ -29,6 +29,7 @@ postgres-types = { workspace = true }
 rand = { workspace = true }
 refinery = { workspace = true }
 regex = { workspace = true }
+remain = "0.2.8"
 serde = { workspace = true }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }

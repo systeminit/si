@@ -18,30 +18,31 @@ use crate::{
 };
 use crate::{SchemaError, SchemaId, TransactionsError};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("error decoding code_base64: {0}")]
-    Decode(#[from] base64::DecodeError),
-    #[error("{0} is not a valid hex color string")]
-    InvalidHexColor(String),
     #[error("Could not check for default variant: {0}")]
     CouldNotCheckForDefaultVariant(String),
     #[error("Could not get ui menu for schema: {0}")]
     CouldNotGetUiMenu(SchemaId),
+    #[error("error decoding code_base64: {0}")]
+    Decode(#[from] base64::DecodeError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("{0} is not a valid hex color string")]
+    InvalidHexColor(String),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
     #[error(transparent)]
     SchemaVariant(#[from] Box<SchemaVariantError>),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;

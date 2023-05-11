@@ -36,117 +36,117 @@ pub mod revert_func;
 pub mod save_and_exec;
 pub mod save_func;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
-    Func(#[from] dal::FuncError),
-    #[error("could not publish websocket event: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
+    #[error("attribute context error: {0}")]
+    AttributeContext(#[from] AttributeContextError),
+    #[error("attribute context builder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
-    #[error("attribute context builder error: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("attribute context error: {0}")]
-    AttributeContext(#[from] AttributeContextError),
-    #[error("func binding return value error: {0}")]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("prop tree error: {0}")]
-    PropTree(#[from] PropTreeError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
-    #[error("prototype context error: {0}")]
-    PrototypeContext(#[from] PrototypeContextError),
-    #[error("prototype list for func error: {0}")]
-    PrototypeListForFunc(#[from] PrototypeListForFuncError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
-
-    #[error("Function not found")]
-    FuncNotFound,
-    #[error("Function is read-only")]
-    NotWritable,
-    #[error("Missing required options for creating a function")]
-    MissingOptions,
-    #[error("Cannot create that type of function")]
-    FuncNotSupported,
-    #[error("attribute value missing")]
-    AttributeValueMissing,
     #[error("attribute prototype missing")]
     AttributePrototypeMissing,
-    #[error("prop for value not found")]
-    PropNotFound,
-    #[error("func binding return value not found")]
-    FuncBindingReturnValueMissing,
-    #[error("func is not revertible")]
-    FuncNotRevertible,
-    #[error("func argument already exists for that name")]
-    FuncArgumentAlreadyExists,
-    #[error("func argument not found")]
-    FuncArgNotFound,
-    #[error("attribute prototype {0} has no PropId or ExternalProviderId")]
-    AttributePrototypeMissingPropIdOrExternalProviderId(AttributePrototypeId),
-    #[error("attribute prototype {0} schema_variant is missing")]
-    AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
-    #[error("attribute prototype {0} schema is missing")]
-    AttributePrototypeMissingSchema(AttributePrototypeId),
-    #[error("attribute prototype {0} is missing its prop {1}")]
-    AttributePrototypeMissingProp(AttributePrototypeId, PropId),
     #[error("attribute prototype {0} is missing argument {1}")]
     AttributePrototypeMissingArgument(AttributePrototypeId, AttributePrototypeArgumentId),
     #[error("attribute prototype argument {0} is internal provider id")]
     AttributePrototypeMissingInternalProviderId(AttributePrototypeArgumentId),
-    #[error("func argument {0} missing attribute prototype argument for prototype {1}")]
-    FuncArgumentMissingPrototypeArgument(FuncArgumentId, AttributePrototypeId),
-    #[error("validation prototype {0} schema_variant is missing")]
-    ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
-    #[error("validation prototype schema is missing")]
-    ValidationPrototypeMissingSchema,
+    #[error("attribute prototype {0} is missing its prop {1}")]
+    AttributePrototypeMissingProp(AttributePrototypeId, PropId),
+    #[error("attribute prototype {0} has no PropId or ExternalProviderId")]
+    AttributePrototypeMissingPropIdOrExternalProviderId(AttributePrototypeId),
+    #[error("attribute prototype {0} schema is missing")]
+    AttributePrototypeMissingSchema(AttributePrototypeId),
+    #[error("attribute prototype {0} schema_variant is missing")]
+    AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value missing")]
+    AttributeValueMissing,
+    #[error(transparent)]
+    CommandPrototype(#[from] CommandPrototypeError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("component missing schema variant")]
     ComponentMissingSchemaVariant(ComponentId),
-    #[error("schema variant missing schema")]
-    SchemaVariantMissingSchema(SchemaVariantId),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error(transparent)]
+    Func(#[from] dal::FuncError),
+    #[error("func argument not found")]
+    FuncArgNotFound,
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument already exists for that name")]
+    FuncArgumentAlreadyExists,
+    #[error("func argument {0} missing attribute prototype argument for prototype {1}")]
+    FuncArgumentMissingPrototypeArgument(FuncArgumentId, AttributePrototypeId),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func binding return value not found")]
+    FuncBindingReturnValueMissing,
     #[error("func {0} cannot be converted to frontend variant")]
     FuncCannotBeTurnedIntoVariant(FuncId),
-    #[error("unexpected func variant ({0:?}) creating attribute func")]
-    UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
     #[error("cannot bind func to different prop kinds")]
     FuncDestinationPropKindMismatch,
     #[error("Function execution failed: {0}")]
     FuncExecutionFailed(String),
     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
     FuncExecutionFailedNoPrototypes,
+    #[error("Function not found")]
+    FuncNotFound,
+    #[error("func is not revertible")]
+    FuncNotRevertible,
+    #[error("Cannot create that type of function")]
+    FuncNotSupported,
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("Missing required options for creating a function")]
+    MissingOptions,
+    #[error("Function is read-only")]
+    NotWritable,
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("prop for value not found")]
+    PropNotFound,
+    #[error("prop tree error: {0}")]
+    PropTree(#[from] PropTreeError),
+    #[error("prototype context error: {0}")]
+    PrototypeContext(#[from] PrototypeContextError),
+    #[error("prototype list for func error: {0}")]
+    PrototypeListForFunc(#[from] PrototypeListForFuncError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant missing schema")]
+    SchemaVariantMissingSchema(SchemaVariantId),
     #[error("Could not find schema variant for prop {0}")]
     SchemaVariantNotFoundForProp(PropId),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
-    CommandPrototype(#[from] CommandPrototypeError),
+    StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
+    #[error("unexpected func variant ({0:?}) creating attribute func")]
+    UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("validation prototype schema is missing")]
+    ValidationPrototypeMissingSchema,
+    #[error("validation prototype {0} schema_variant is missing")]
+    ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -155,6 +155,7 @@ impl_default_error_into_response!(FuncError);
 
 // Variants don't map 1:1 onto FuncBackendKind, since some JsAttribute functions
 // are a special case (Qualification, CodeGeneration etc)
+#[remain::sorted]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FuncVariant {
     Attribute,
@@ -253,6 +254,7 @@ pub struct WorkflowPrototypeView {
     link: Option<String>,
 }
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
@@ -262,17 +264,17 @@ pub enum FuncAssociations {
         arguments: Vec<FuncArgumentView>,
     },
     #[serde(rename_all = "camelCase")]
+    CodeGeneration {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        component_ids: Vec<ComponentId>,
+    },
+    #[serde(rename_all = "camelCase")]
     Command {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
     Confirmation {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        component_ids: Vec<ComponentId>,
-    },
-    #[serde(rename_all = "camelCase")]
-    CodeGeneration {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },

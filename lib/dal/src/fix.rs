@@ -26,6 +26,7 @@ pub mod batch;
 pub mod resolver;
 
 /// The completion status of a [`Fix`] or [`FixBatch`](crate::FixBatch).
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -73,33 +74,11 @@ impl TryFrom<WorkflowRunnerStatus> for FixCompletionStatus {
     }
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FixError {
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
-    #[error(transparent)]
-    FixResolver(#[from] FixResolverError),
-    #[error(transparent)]
-    Func(#[from] FuncError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error(transparent)]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error(transparent)]
-    Pg(#[from] PgError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
-    #[error(transparent)]
-    Schema(#[from] SchemaError),
-
     #[error("cannot stamp batch or fix as started since it already finished")]
     AlreadyFinished,
     #[error("cannot stamp batch or fix as started since it already started")]
@@ -108,22 +87,44 @@ pub enum FixError {
     BatchAlreadyFinished(FixId, FixBatchId),
     #[error("cannot set batch for {0}: fix batch ({1}) already started")]
     BatchAlreadyStarted(FixId, FixBatchId),
+    #[error(transparent)]
+    Component(#[from] ComponentError),
     #[error("completion status is empty")]
     EmptyCompletionStatus,
+    #[error(transparent)]
+    FixResolver(#[from] FixResolverError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error(transparent)]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("workflow runner status {0} cannot be converted to fix completion status")]
     IncompatibleWorkflowRunnerStatus(WorkflowRunnerStatus),
     #[error("missing finished timestamp for fix: {0}")]
     MissingFinishedTimestampForFix(FixId),
-    #[error("missing started timestamp for fix: {0}")]
-    MissingStartedTimestampForFix(FixId),
     #[error("fix not found for id: {0}")]
     MissingFix(FixId),
     #[error("fix batch not found for id: {0}")]
     MissingFixBatch(FixBatchId),
+    #[error("missing started timestamp for fix: {0}")]
+    MissingStartedTimestampForFix(FixId),
     #[error("no fixes in batch: fix batch is empty")]
     NoFixesInBatch(FixBatchId),
     #[error("cannot stamp batch or fix as finished since it has not yet been started")]
     NotYetStarted,
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
 }
 
 pub type FixResult<T> = Result<T, FixError>;

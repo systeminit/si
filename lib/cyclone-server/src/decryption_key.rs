@@ -6,6 +6,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DecryptionKeyError {
     #[error("base64 decode error: {0}")]

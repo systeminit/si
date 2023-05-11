@@ -14,42 +14,43 @@ use crate::{
     WorkflowError, WorkflowResolver, WorkflowResolverError, WorkflowView, WsEvent, WsEventError,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkflowPrototypeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
-    #[error(transparent)]
-    Workflow(#[from] WorkflowError),
-    #[error(transparent)]
-    WorkflowResolver(#[from] WorkflowResolverError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
-    #[error(transparent)]
-    WsEvent(#[from] WsEventError),
-    #[error("component error: {0}")]
-    Component(String),
+    #[error("func not found {0}")]
+    FuncNotFound(FuncId),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("schema doesnt match, prototype = {0}, component = {1}")]
+    SchemaDoesntMatch(WorkflowPrototypeId, ComponentId),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]
     SchemaVariantNotFound,
-    #[error("func not found {0}")]
-    FuncNotFound(FuncId),
-    #[error("schema doesnt match, prototype = {0}, component = {1}")]
-    SchemaDoesntMatch(WorkflowPrototypeId, ComponentId),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    Workflow(#[from] WorkflowError),
+    #[error(transparent)]
+    WorkflowResolver(#[from] WorkflowResolverError),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type WorkflowPrototypeResult<T> = Result<T, WorkflowPrototypeError>;

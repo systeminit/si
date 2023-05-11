@@ -28,8 +28,11 @@ mod func;
 pub mod schema;
 mod workflow;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
@@ -42,6 +45,16 @@ pub enum BuiltinsError {
     AttributeValueNotFound(AttributeValueId),
     #[error("attribute value not found for attribute read context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("builtin {0} missing func argument {1}")]
+    BuiltinMissingFuncArgument(String, String),
+    #[error("explicit internal provider not found by name: {0}")]
+    ExplicitInternalProviderNotFound(String),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("external provider not found by name: {0}")]
+    ExternalProviderNotFound(String),
+    #[error("Filesystem IO error: {0}")]
+    FilesystemIO(#[from] std::io::Error),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -50,10 +63,12 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("json error {1} at file {0}")]
+    FuncJson(String, serde_json::Error),
+    #[error("Func Metadata error: {0}")]
+    FuncMetadata(String),
     #[error("func not found in migration cache {0}")]
     FuncNotFoundInMigrationCache(&'static str),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
     #[error("implicit internal provider not found for prop: {0}")]
     ImplicitInternalProviderNotFoundForProp(PropId),
     #[error("internal provider error: {0}")]
@@ -66,46 +81,32 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("prop cache not found: {0}")]
+    PropCacheNotFound(SchemaVariantId),
     #[error("prop not bound by id: {0}")]
     PropNotFound(PropId),
-    #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    #[error("Regex parsing error: {0}")]
+    Regex(#[from] regex::Error),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant definition error")]
+    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("json error {1} at file {0}")]
-    FuncJson(String, serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
     SerdeJsonErrorForFunc(String, serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("Filesystem IO error: {0}")]
-    FilesystemIO(#[from] std::io::Error),
-    #[error("Regex parsing error: {0}")]
-    Regex(#[from] regex::Error),
-    #[error(transparent)]
-    WorkflowPrototype(#[from] WorkflowPrototypeError),
-    #[error("Func Metadata error: {0}")]
-    FuncMetadata(String),
-    #[error("builtin {0} missing func argument {1}")]
-    BuiltinMissingFuncArgument(String, String),
-    #[error("prop cache not found: {0}")]
-    PropCacheNotFound(SchemaVariantId),
-    #[error("explicit internal provider not found by name: {0}")]
-    ExplicitInternalProviderNotFound(String),
-    #[error("external provider not found by name: {0}")]
-    ExternalProviderNotFound(String),
-    #[error("schema variant definition error")]
-    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     #[error("error creating new transactions")]
     Transactions(#[from] TransactionsError),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
@@ -113,6 +114,7 @@ pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 /// This enum drives what builtin [`Schemas`](crate::Schema) to migrate for tests.
 ///
 /// This enum _should not_ be used outside of tests!
+#[remain::sorted]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SelectedTestBuiltinSchemas {
     /// Migrate everything (default behavior).

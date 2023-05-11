@@ -6,9 +6,13 @@ use object_tree::Hash;
 
 use super::SpecError;
 
+#[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ValidationSpec {
+    CustomValidation {
+        func_unique_id: Hash,
+    },
     IntegerIsBetweenTwoIntegers {
         lower_bound: i64,
         upper_bound: i64,
@@ -24,12 +28,9 @@ pub enum ValidationSpec {
         expected: Vec<String>,
         display_expected: bool,
     },
-    StringIsValidIpAddr,
     StringIsHexColor,
     StringIsNotEmpty,
-    CustomValidation {
-        func_unique_id: Hash,
-    },
+    StringIsValidIpAddr,
 }
 
 impl ValidationSpec {
@@ -38,19 +39,20 @@ impl ValidationSpec {
     }
 }
 
+#[remain::sorted]
 #[derive(
     Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumString, Display, Serialize, Deserialize,
 )]
 pub enum ValidationSpecKind {
+    CustomValidation,
     IntegerIsBetweenTwoIntegers,
     IntegerIsNotEmpty,
     StringEquals,
     StringHasPrefix,
     StringInStringArray,
-    StringIsValidIpAddr,
     StringIsHexColor,
     StringIsNotEmpty,
-    CustomValidation,
+    StringIsValidIpAddr,
 }
 
 #[derive(Clone, Debug, Default)]

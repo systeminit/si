@@ -22,6 +22,7 @@ use thiserror::Error;
 pub use crate::builder::SubscriptionBuilder;
 
 #[allow(missing_docs)]
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SubscriberError {
     #[error("failed to deserialize json message")]
@@ -34,10 +35,10 @@ pub enum SubscriberError {
     NatsSubscribe(#[source] NatsError),
     #[error("failed to unsubscribe from nats subscription")]
     NatsUnsubscribe(#[source] NatsError),
-    #[error("the nats subscription closed before seeing a final message (expected key: {0})")]
-    UnexpectedNatsSubscriptionClosed(String),
     #[error("no return mailbox specified; bug! message data: {0:?}")]
     NoReplyMailbox(Vec<u8>),
+    #[error("the nats subscription closed before seeing a final message (expected key: {0})")]
+    UnexpectedNatsSubscriptionClosed(String),
 }
 
 type SubscriberResult<T> = Result<T, SubscriberError>;

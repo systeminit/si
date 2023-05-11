@@ -207,19 +207,20 @@ struct AttrFuncInfo {
     inputs: Vec<SiPkgAttrFuncInputView>,
 }
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 enum DefaultValueInfo {
-    String {
+    Boolean {
         prop_id: PropId,
-        default_value: String,
+        default_value: bool,
     },
     Number {
         prop_id: PropId,
         default_value: i64,
     },
-    Boolean {
+    String {
         prop_id: PropId,
-        default_value: bool,
+        default_value: String,
     },
 }
 

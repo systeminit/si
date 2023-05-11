@@ -11,6 +11,7 @@ rust_library(
         "//third-party/rust:num_cpus",
         "//third-party/rust:ouroboros",
         "//third-party/rust:refinery",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",

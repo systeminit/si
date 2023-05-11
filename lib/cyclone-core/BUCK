@@ -5,6 +5,7 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",
         "//third-party/rust:nix",
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:sodiumoxide",

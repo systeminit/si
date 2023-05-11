@@ -41,6 +41,7 @@ const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 const TEST_QUERY: &str = "SELECT 1";
 
+#[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
     #[error(transparent)]
@@ -53,28 +54,29 @@ pub enum PgError {
     TxnRollbackNotExclusive(usize),
 }
 
+#[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum PgPoolError {
-    #[error("pg pool config error: {0}")]
-    DeadpoolConfig(#[from] ConfigError),
-    #[error("pg pool error: {0}")]
-    PoolError(#[from] PoolError),
     #[error("creating pg pool error: {0}")]
     CreatePoolError(#[from] CreatePoolError),
+    #[error("pg pool config error: {0}")]
+    DeadpoolConfig(#[from] ConfigError),
     #[error("tokio pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("pg pool error: {0}")]
+    PoolError(#[from] PoolError),
     #[error("migration error: {0}")]
     Refinery(#[from] refinery::Error),
-    #[error("tokio pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("tokio task join error: {0}")]
-    TokioJoin(#[from] tokio::task::JoinError),
     #[error("failed to resolve pg hostname")]
     ResolveHostname(std::io::Error),
     #[error("resolved hostname returned no entries")]
     ResolveHostnameNoEntries,
     #[error("test connection query returned incorrect result; expected={0}, got={1}")]
     TestConnectionResult(i32, i32),
+    #[error("tokio task join error: {0}")]
+    TokioJoin(#[from] tokio::task::JoinError),
+    #[error("tokio pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
 }
 
 pub type PgPoolResult<T> = Result<T, PgPoolError>;

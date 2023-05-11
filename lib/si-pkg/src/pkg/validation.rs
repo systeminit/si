@@ -5,8 +5,14 @@ use super::{PkgResult, SiPkgError, Source};
 
 use crate::{node::PkgNode, ValidationSpec, ValidationSpecKind};
 
+#[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum SiPkgValidation<'a> {
+    CustomValidation {
+        func_unique_id: Hash,
+        hash: Hash,
+        source: Source<'a>,
+    },
     IntegerIsBetweenTwoIntegers {
         lower_bound: i64,
         upper_bound: i64,
@@ -33,10 +39,6 @@ pub enum SiPkgValidation<'a> {
         hash: Hash,
         source: Source<'a>,
     },
-    StringIsValidIpAddr {
-        hash: Hash,
-        source: Source<'a>,
-    },
     StringIsHexColor {
         hash: Hash,
         source: Source<'a>,
@@ -45,8 +47,7 @@ pub enum SiPkgValidation<'a> {
         hash: Hash,
         source: Source<'a>,
     },
-    CustomValidation {
-        func_unique_id: Hash,
+    StringIsValidIpAddr {
         hash: Hash,
         source: Source<'a>,
     },

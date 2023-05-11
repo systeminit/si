@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CodeViewError {
     #[error("no code language found for string: {0}")]
@@ -10,6 +11,7 @@ pub enum CodeViewError {
 
 pub type CodeViewResult<T> = Result<T, CodeViewError>;
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, Display, AsRefStr, PartialEq, Eq, Copy)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

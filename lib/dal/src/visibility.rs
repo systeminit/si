@@ -8,6 +8,7 @@ use thiserror::Error;
 use crate::ChangeSetPk;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum VisibilityError {
     #[error("pg error: {0}")]

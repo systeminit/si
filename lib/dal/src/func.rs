@@ -42,18 +42,9 @@ pub fn is_intrinsic(name: &str) -> bool {
     INTRINSIC_FUNC_NAMES.contains(&name)
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]
@@ -62,25 +53,33 @@ pub enum FuncError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(String),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-
-    #[error("could not find func by id: {0}")]
-    NotFound(FuncId),
-    #[error("could not find func by name: {0}")]
-    NotFoundByName(String),
-    #[error("contents ({0}) response type does not match func response type: {1}")]
-    ResponseTypeMismatch(FuncDescriptionContents, FuncBackendResponseType),
-
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     /// Could not find [`FuncArgument`](crate::FuncArgument) corresponding to the identity [`Func`].
     #[error("identity func argument not found")]
     IdentityFuncArgumentNotFound,
     /// Could not find the identity [`Func`].
     #[error("identity func not found")]
     IdentityFuncNotFound,
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("could not find func by id: {0}")]
+    NotFound(FuncId),
+    #[error("could not find func by name: {0}")]
+    NotFoundByName(String),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("contents ({0}) response type does not match func response type: {1}")]
+    ResponseTypeMismatch(FuncDescriptionContents, FuncBackendResponseType),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
     /// When attempting to find the identity [`Func`], there were too many [`Funcs`](Func) returned.
     #[error("too many funcs found when looking for identity func")]
     TooManyFuncsFoundForIdentity,
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

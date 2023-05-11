@@ -5,6 +5,7 @@ use telemetry::prelude::*;
 
 use crate::{Graph, Id, Request, Response};
 
+#[remain::sorted]
 #[derive(Debug)]
 pub enum State {
     Continue,
@@ -199,12 +200,13 @@ impl Client {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
     #[error("no listener available for message that was just sent")]
     NoListenerAvailable,
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }

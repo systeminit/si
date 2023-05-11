@@ -22,10 +22,9 @@ const JWT_KEY_EXISTS: &str = include_str!("queries/jwt_key/exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
     include_str!("queries/jwt_key/get_latest_private_key.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JwtKeyError {
-    #[error(transparent)]
-    UlidDecode(#[from] ulid::DecodeError),
     #[error("bad nonce bytes")]
     BadNonce,
     #[error("failed to decode base64 string: {0}")]
@@ -50,12 +49,14 @@ pub enum JwtKeyError {
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
     #[error("{0}")]
     TaskJoin(#[from] JoinError),
     #[error("failed to convert into PEM format")]
     ToPem,
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("failed to build string from utf8: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
     #[error("failure to verify token: {0}")]

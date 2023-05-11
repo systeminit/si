@@ -27,6 +27,7 @@ pub fn execute<T, Request, Success>(
     }
 }
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ExecutionError<Success> {
     #[error("closing execution stream without a result")]

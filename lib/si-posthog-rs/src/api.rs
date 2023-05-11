@@ -2,10 +2,11 @@ use serde::Serialize;
 
 use crate::error::{PosthogError, PosthogResult};
 
+#[remain::sorted]
 #[derive(Debug, Serialize)]
 pub enum PosthogMessage {
-    Event(PosthogApiEvent),
     Disable,
+    Event(PosthogApiEvent),
 }
 
 #[derive(Debug, Serialize)]

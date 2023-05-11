@@ -19,37 +19,37 @@ pub mod confirmations;
 pub mod list;
 pub mod run;
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FixError {
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
     Component(#[from] ComponentError),
-    #[error(transparent)]
-    FixResolver(#[from] FixResolverError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("component {0} not found")]
+    ComponentNotFound(ComponentId),
     #[error(transparent)]
     DalFix(#[from] DalFixError),
     #[error(transparent)]
     DalSchema(#[from] DalSchemaError),
     #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
+    FixResolver(#[from] FixResolverError),
     #[error(transparent)]
-    User(#[from] UserError),
-    #[error("component {0} not found")]
-    ComponentNotFound(ComponentId),
-
-    #[error("no schema found for component {0}")]
-    NoSchemaForComponent(ComponentId),
-    #[error("no schema variant found for component {0}")]
-    NoSchemaVariantForComponent(ComponentId),
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("invalid user {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
+    #[error("no schema found for component {0}")]
+    NoSchemaForComponent(ComponentId),
+    #[error("no schema variant found for component {0}")]
+    NoSchemaVariantForComponent(ComponentId),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    User(#[from] UserError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
 }
 
 pub type FixResult<T> = std::result::Result<T, FixError>;

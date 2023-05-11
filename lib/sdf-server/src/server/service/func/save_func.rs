@@ -133,9 +133,10 @@ async fn save_attr_func_proto_arguments(
 /// value using a builtin value function, like `si:setString`, etc.
 ///
 /// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
+#[remain::sorted]
 enum RemovedPrototypeOp {
-    Reset,
     Delete,
+    Reset,
 }
 
 async fn save_attr_func_prototypes(

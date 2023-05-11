@@ -10,6 +10,7 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum CreateFuncOptions {

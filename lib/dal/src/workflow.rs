@@ -16,32 +16,34 @@ use crate::{
     WsEventError, WsEventResult, WsPayload,
 };
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkflowError {
+    #[error("command not prepared {0}")]
+    CommandNotPrepared(FuncBindingId),
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
+    FuncBinding(#[from] FuncBindingError),
+    #[error("missing command {0}")]
+    MissingCommand(String),
+    #[error("missing workflow {0}")]
+    MissingWorkflow(String),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
-    WsEvent(#[from] WsEventError),
+    Serde(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-    #[error(transparent)]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("missing workflow {0}")]
-    MissingWorkflow(String),
-    #[error("missing command {0}")]
-    MissingCommand(String),
-    #[error("command not prepared {0}")]
-    CommandNotPrepared(FuncBindingId),
+    Transactions(#[from] TransactionsError),
     #[error("unset func binding {0}")]
     UnsetFuncBinding(FuncBindingId),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
 
+#[remain::sorted]
 #[derive(
     Deserialize,
     Serialize,
@@ -63,16 +65,17 @@ pub enum WorkflowKind {
     Parallel,
 }
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum WorkflowStep {
-    Workflow {
-        workflow: String,
+    Command {
+        command: String,
         #[serde(default)]
         args: serde_json::Value,
     },
-    Command {
-        command: String,
+    Workflow {
+        workflow: String,
         #[serde(default)]
         args: serde_json::Value,
     },
@@ -201,11 +204,12 @@ impl WorkflowView {
     }
 }
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum WorkflowTreeStep {
-    Workflow(WorkflowTree),
     Command { func_binding: FuncBinding },
+    Workflow(WorkflowTree),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -423,14 +427,15 @@ impl WorkflowTree {
     }
 }
 
+#[remain::sorted]
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged, rename_all = "camelCase")]
 pub enum WorkflowTreeStepView {
-    Workflow(WorkflowTreeView),
     Command {
         command: String,
         args: serde_json::Value,
     },
+    Workflow(WorkflowTreeView),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

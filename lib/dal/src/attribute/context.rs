@@ -35,6 +35,7 @@ pub use read::AttributeReadContext;
 
 /// Indicates which least specific field for an [`AttributeContext`] is specified and contains the
 /// field's value.
+#[remain::sorted]
 #[derive(Debug)]
 pub enum AttributeContextLeastSpecificFieldKind {
     ExternalProvider(ExternalProviderId),
@@ -42,6 +43,7 @@ pub enum AttributeContextLeastSpecificFieldKind {
     Prop(PropId),
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributeContextError {
     #[error("attribute context builder error: {0}")]
@@ -255,14 +257,15 @@ impl AttributeContext {
     }
 }
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributeContextBuilderError {
-    #[error("for builder {0:?}, the following fields must be set: {1:?}")]
-    PrerequisteFieldsUnset(AttributeContextBuilder, Vec<&'static str>),
     #[error(
         "cannot specify more than one field at the lowest level in the order of precedence: {0:?}"
     )]
     MultipleLeastSpecificFieldsSpecified(AttributeContextBuilder),
+    #[error("for builder {0:?}, the following fields must be set: {1:?}")]
+    PrerequisteFieldsUnset(AttributeContextBuilder, Vec<&'static str>),
 }
 
 pub type AttributeContextBuilderResult<T> = Result<T, AttributeContextBuilderError>;

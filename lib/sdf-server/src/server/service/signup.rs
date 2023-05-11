@@ -13,24 +13,25 @@ use dal::{
 pub mod create_account;
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SignupError {
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("invalid signup secret")]
     InvalidSignupSecret,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
-    #[error("StandardModel error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("Schema error: {0}")]
-    Schema(#[from] SchemaError),
     #[error("Node error: {0}")]
     Node(#[from] NodeError),
+    #[error(transparent)]
+    Pg(#[from] si_data_pg::PgError),
+    #[error("Schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("StandardModel error: {0}")]
+    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
 }

@@ -36,6 +36,7 @@ const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.s
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
 const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql");
 
+#[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropError {
     #[error("AttributeContext error: {0}")]
@@ -60,19 +61,18 @@ pub enum PropError {
     NotFound(PropId, Visibility),
     #[error("prop not found at path: {0} {1:?}")]
     NotFoundAtPath(String, Visibility),
+    #[error("parent prop kind is not \"Object\", which is required for setting default values on props (found {0})")]
+    ParentPropIsNotObjectForPropWithDefaultValue(PropKind),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("unable to set default value for non scalar prop type")]
+    SetDefaultForNonScalar(PropKind),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("unable to set default value for non scalar prop type")]
-    SetDefaultForNonScalar(PropKind),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-
-    #[error("parent prop kind is not \"Object\", which is required for setting default values on props (found {0})")]
-    ParentPropIsNotObjectForPropWithDefaultValue(PropKind),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -80,6 +80,7 @@ pub type PropResult<T> = Result<T, PropError>;
 pk!(PropPk);
 pk!(PropId);
 
+#[remain::sorted]
 #[derive(
     AsRefStr,
     Clone,
@@ -99,9 +100,9 @@ pub enum PropKind {
     Array,
     Boolean,
     Integer,
+    Map,
     Object,
     String,
-    Map,
 }
 
 impl ToLabelList for PropKind {}
