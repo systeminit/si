@@ -35,6 +35,16 @@ alias(
     actual = "//app/web:dev",
 )
 
+alias(
+    name = "auth-portal",
+    actual = "//app/auth-portal:dev",
+)
+
+alias(
+    name = "auth-api",
+    actual = "//bin/auth-api:dev",
+)
+
 pnpm_install(
     name = "pnpm-install",
     srcs = [
