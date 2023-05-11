@@ -1,0 +1,12 @@
+rust_library(
+    name = "buck2-resources",
+    edition = "2021",
+    deps = [
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+    visibility = ["PUBLIC"],
+)

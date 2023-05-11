@@ -9,6 +9,7 @@ members = [
     "bin/pinga",
     "bin/sdf",
     "bin/veritech",
+    "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
     "lib/cyclone-client",

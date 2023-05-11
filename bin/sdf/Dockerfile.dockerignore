@@ -19,6 +19,7 @@
 !bin/sdf
 !bin/pinga
 !bin/veritech
+!lib/buck2-resources
 !lib/bytes-lines-codec
 !lib/config-file
 !lib/council-server

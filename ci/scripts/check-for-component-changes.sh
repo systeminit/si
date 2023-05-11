@@ -17,6 +17,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   .cargo/**
   Cargo.*
   bin/sdf/**
+  lib/buck2-resources/**
   lib/config-file/**
   lib/dal/**
   lib/dal-test/**
@@ -37,6 +38,7 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   .cargo/**
   Cargo.*
   bin/veritech/**
+  lib/buck2-resources/**
   lib/config-file/**
   lib/cyclone-core/**
   lib/cyclone-server/**
@@ -56,10 +58,13 @@ WEB_PATHS=".github/workflows/promote-web.yml
 PINGA_PATHS="${SDF_PATHS}
   .github/workflows/promote-pinga.yml
   bin/pinga/**
+  lib/buck2-resources/**
   lib/pinga-server/**"
 COUNCIL_PATHS="${SDF_PATHS}
   .github/workflows/promote-council.yml
-  bin/council/**"
+  bin/council/**
+  lib/buck2-resources/**
+  lib/council-server/**"
 
 NATS_CHANGES=false
 OTELCOL_CHANGES=false

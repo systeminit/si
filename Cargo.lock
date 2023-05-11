@@ -388,6 +388,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "buck2-resources"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2703,6 +2711,7 @@ dependencies = [
 name = "pinga-server"
 version = "0.1.0"
 dependencies = [
+ "buck2-resources",
  "dal",
  "derive_builder",
  "futures",
@@ -3355,6 +3364,7 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.21.0",
+ "buck2-resources",
  "chrono",
  "convert_case 0.6.0",
  "dal",
@@ -4662,6 +4672,7 @@ version = "0.1.0"
 name = "veritech-server"
 version = "0.1.0"
 dependencies = [
+ "buck2-resources",
  "chrono",
  "deadpool-cyclone",
  "derive_builder",
