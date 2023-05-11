@@ -77,6 +77,7 @@ serde_url_params = "0.2.1"
 serde_with = "3.0.0"
 serde_yaml = "0.9.21"
 sodiumoxide = "0.2.7"
+stream-cancel = "0.8.1"
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
 tempfile = "3.5.0"

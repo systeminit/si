@@ -6,6 +6,11 @@ alias(
 )
 
 alias(
+    name = "pinga",
+    actual = "//bin/pinga:pinga",
+)
+
+alias(
     name = "sdf",
     actual = "//bin/sdf:sdf",
 )

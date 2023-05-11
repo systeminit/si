@@ -1,0 +1,16 @@
+rust_binary(
+    name = "pinga",
+    edition = "2021",
+    deps = [
+        "//lib/pinga-server:pinga-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    resources = {
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+    },
+    visibility = ["PUBLIC"],
+)
