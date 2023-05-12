@@ -75,6 +75,12 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         router =
             router.merge(Router::new().route("/command", get(handlers::ws_execute_command_run)));
     }
+    if config.enable_reconciliation() {
+        debug!("enabling reconciliation endpoint");
+        router = router.merge(
+            Router::new().route("/reconciliation", get(handlers::ws_execute_reconciliation)),
+        );
+    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 

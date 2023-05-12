@@ -45,6 +45,12 @@ const workflowResolveSandbox = {};
 
 const validationSandbox = {};
 
+function reconciliationSandbox(executionId: string): Sandbox {
+  return {
+    siExec: makeExec(executionId),
+  };
+}
+
 function commandRunSandbox(executionId: string): Sandbox {
   return {
     siExec: makeExec(executionId),
@@ -75,6 +81,11 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...validationSandbox,
+      };
+    case FunctionKind.Reconciliation:
+      return {
+        ...commonSandbox(executionId),
+        ...reconciliationSandbox,
       };
     default:
       throw new UnknownSandboxKind(kind);

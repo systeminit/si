@@ -73,6 +73,8 @@ pub enum FuncError {
     ComponentMissingSchemaVariant(ComponentId),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error("editing reconciliation functions is not implemented")]
+    EditingReconciliationFuncsNotImplemented,
     #[error(transparent)]
     Func(#[from] dal::FuncError),
     #[error("func argument not found")]
@@ -163,6 +165,7 @@ pub enum FuncVariant {
     Command,
     Confirmation,
     Qualification,
+    Reconciliation,
     Validation,
     Workflow,
 }
@@ -172,6 +175,7 @@ impl From<FuncVariant> for FuncBackendKind {
         match value {
             FuncVariant::Workflow => FuncBackendKind::JsWorkflow,
             FuncVariant::Command => FuncBackendKind::JsCommand,
+            FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
             FuncVariant::Validation => FuncBackendKind::Validation,
             FuncVariant::Attribute
             | FuncVariant::CodeGeneration
@@ -193,6 +197,7 @@ impl TryFrom<&Func> for FuncVariant {
                 _ => Ok(FuncVariant::Attribute),
             },
             (FuncBackendKind::JsCommand, _) => Ok(FuncVariant::Command),
+            (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
             (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
             (FuncBackendKind::JsWorkflow, _) => Ok(FuncVariant::Workflow),
             _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
@@ -480,6 +485,9 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
             (associations, compile_command_types())
         }
+        FuncBackendKind::JsReconciliation => {
+            return Err(FuncError::EditingReconciliationFuncsNotImplemented)
+        }
         FuncBackendKind::JsValidation => {
             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
             let input_type = compile_validation_types(ctx, &protos).await?;
@@ -567,6 +575,11 @@ fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
         FuncBackendResponseType::Validation => "interface Output {
   valid: boolean;
   message: string;
+}",
+        FuncBackendResponseType::Reconciliation => "interface Output {
+  updates: { [key: string]: unknown };
+  actions: string[];
+  message: string | null;
 }",
         // Actual Workflow Kinds are 'conditional' | 'exceptional' | 'parallel'
         // But we don't actually properly use/support/test the other ones

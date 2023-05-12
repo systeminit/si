@@ -17,6 +17,7 @@ use crate::{
         integer::FuncBackendInteger,
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
         js_command::FuncBackendJsCommand,
+        js_reconciliation::FuncBackendJsReconciliation,
         js_validation::FuncBackendJsValidation,
         js_workflow::FuncBackendJsWorkflow,
         map::FuncBackendMap,
@@ -234,6 +235,9 @@ impl FuncBinding {
             FuncBackendKind::JsCommand => {
                 FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await
             }
+            FuncBackendKind::JsReconciliation => {
+                FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args).await
+            }
             // NOTE: Adding JsAttribute here is a *hack*. We need separate backends for the json transformation
             // NOTE: functions and the JsAttribute functions. Probably neither of them should take a ComponentView
             FuncBackendKind::Json | FuncBackendKind::JsAttribute => {
@@ -344,6 +348,7 @@ impl FuncBinding {
             FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand
+            | FuncBackendKind::JsReconciliation
             | FuncBackendKind::JsValidation
             | FuncBackendKind::Json => {
                 execution

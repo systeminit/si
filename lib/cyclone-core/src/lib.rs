@@ -19,6 +19,7 @@ mod liveness;
 pub mod process;
 mod progress;
 mod readiness;
+mod reconciliation;
 mod resolver_function;
 mod sensitive_container;
 mod validation;
@@ -34,6 +35,7 @@ pub use progress::{
     ProgressMessage,
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
+pub use reconciliation::{ReconciliationRequest, ReconciliationResultSuccess};
 pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
     ResolverFunctionResultSuccess,

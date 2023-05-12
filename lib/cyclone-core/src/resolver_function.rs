@@ -36,6 +36,7 @@ pub enum ResolverFunctionResponseType {
     Map,
     Object,
     Qualification,
+    Reconciliation,
     String,
     #[default]
     Unset,

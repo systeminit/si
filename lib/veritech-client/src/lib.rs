@@ -5,17 +5,18 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
-    nats_command_run_subject, nats_resolver_function_subject, nats_subject,
-    nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
+    nats_command_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
+    nats_subject, nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
     reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
 };
 
 pub use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
-    EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
-    ResolverFunctionResultSuccess, ResourceStatus, SensitiveContainer, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
+    ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use si_data_nats::NatsClient;
 
@@ -160,6 +161,35 @@ impl Client {
         request: &CommandRunRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.nats_subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_reconciliation", skip_all)]
+    pub async fn execute_reconciliation(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ReconciliationRequest,
+    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
+        self.execute_request(
+            nats_reconciliation_subject(self.nats_subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_reconciliation_with_subject", skip_all)]
+    pub async fn execute_reconciliation_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ReconciliationRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<ReconciliationResultSuccess>> {
         self.execute_request(
             nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,

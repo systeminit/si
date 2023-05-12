@@ -11,9 +11,9 @@ use std::{
 use async_trait::async_trait;
 use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, LivenessStatus, LivenessStatusParseError,
-    ReadinessStatus, ReadinessStatusParseError, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest, ReconciliationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use http::{
     request::Builder,
@@ -147,6 +147,14 @@ where
         &mut self,
         request: CommandRunRequest,
     ) -> result::Result<Execution<Strm, CommandRunRequest, CommandRunResultSuccess>, ClientError>;
+
+    async fn execute_reconciliation(
+        &mut self,
+        request: ReconciliationRequest,
+    ) -> result::Result<
+        Execution<Strm, ReconciliationRequest, ReconciliationResultSuccess>,
+        ClientError,
+    >;
 
     async fn execute_validation(
         &mut self,
@@ -285,6 +293,17 @@ where
     ) -> result::Result<Execution<Strm, CommandRunRequest, CommandRunResultSuccess>, ClientError>
     {
         let stream = self.websocket_stream("/execute/command").await?;
+        Ok(execution::execute(stream, request))
+    }
+
+    async fn execute_reconciliation(
+        &mut self,
+        request: ReconciliationRequest,
+    ) -> result::Result<
+        Execution<Strm, ReconciliationRequest, ReconciliationResultSuccess>,
+        ClientError,
+    > {
+        let stream = self.websocket_stream("/execute/reconciliation").await?;
         Ok(execution::execute(stream, request))
     }
 
@@ -1214,6 +1233,155 @@ mod tests {
         // Start the protocol
         let mut progress = client
             .execute_command_run(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(_success) => {
+                // TODO(fnichol): assert some result data
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn http_execute_reconciliation() {
+        let (_, key) = gen_keys();
+        let mut builder = Config::builder();
+        let mut client =
+            http_client_for_running_server(builder.enable_reconciliation(true), key).await;
+
+        let req = ReconciliationRequest {
+            execution_id: "1234".to_string(),
+            handler: "workit".to_string(),
+            args: Default::default(),
+            code_base64: base64_encode(
+                r#"function workit() {
+                    console.log('first');
+                    console.log('second');
+                    return { updates: { "myid": true }, actions: ["run"] };
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_reconciliation(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            }
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(_success) => {
+                // TODO(fnichol): assert some result data
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_reconciliation() {
+        let (_, key) = gen_keys();
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_reconciliation(true), &tmp_socket, key)
+                .await;
+
+        let req = ReconciliationRequest {
+            execution_id: "1234".to_string(),
+            handler: "workit".to_string(),
+            args: Default::default(),
+            code_base64: base64_encode(
+                r#"function workit() {
+                    console.log('first');
+                    console.log('second');
+                    return { updates: { "myid": true }, actions: ["run"] };
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_reconciliation(req)
             .await
             .expect("failed to establish websocket stream")
             .start()

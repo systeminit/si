@@ -15,6 +15,7 @@ const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfuncti
 const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
 const NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT: &str = "veritech.fn.workflowresolve";
 const NATS_COMMAND_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.commandrun";
+const NATS_CONCILIATION_DEFAULT_SUBJECT: &str = "veritech.fn.reconciliation";
 
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
@@ -40,6 +41,10 @@ pub fn nats_workflow_resolve_subject(prefix: Option<&str>) -> String {
 
 pub fn nats_command_run_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_COMMAND_RUN_DEFAULT_SUBJECT)
+}
+
+pub fn nats_reconciliation_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_CONCILIATION_DEFAULT_SUBJECT)
 }
 
 pub fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {

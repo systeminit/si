@@ -2,9 +2,9 @@ use chrono::Utc;
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
     CycloneClient, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Manager,
-    Pool, ProgressMessage, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    Pool, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
@@ -38,6 +38,8 @@ pub enum ServerError {
     NoReplyMailboxFound,
     #[error(transparent)]
     Publisher(#[from] PublisherError),
+    #[error(transparent)]
+    Reconciliation(#[from] deadpool_cyclone::ExecutionError<ReconciliationResultSuccess>),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
     #[error("failed to setup signal handler")]
@@ -155,6 +157,12 @@ impl Server {
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_command_run_requests_task(
+                self.nats.clone(),
+                self.subject_prefix.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
+            process_reconciliation_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -665,6 +673,121 @@ async fn command_run_request(
 
     let mut progress = client
         .execute_command_run(cyclone_request)
+        .await?
+        .start()
+        .await?;
+
+    while let Some(msg) = progress.next().await {
+        match msg {
+            Ok(ProgressMessage::OutputStream(output)) => {
+                publisher.publish_output(&output).await?;
+            }
+            Ok(ProgressMessage::Heartbeat) => {
+                trace!("received heartbeat message");
+            }
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
+            }
+        }
+    }
+    publisher.finalize_output().await?;
+
+    let function_result = progress.finish().await?;
+    publisher.publish_result(&function_result).await?;
+
+    Ok(())
+}
+
+async fn process_reconciliation_requests_task(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
+) {
+    if let Err(err) =
+        process_reconciliation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
+            .await
+    {
+        warn!(error = ?err, "processing reconciliation requests failed");
+    }
+}
+
+async fn process_reconciliation_requests(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
+) -> ServerResult<()> {
+    let mut requests = FunctionSubscriber::reconciliation(&nats, subject_prefix.as_deref()).await?;
+
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process reconciliation requests task received shutdown");
+                break;
+            }
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(reconciliation_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next reconciliation request had error");
+                    }
+                    None => {
+                        trace!("reconciliation requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
+            }
+        }
+    }
+
+    // Unsubscribe from subscription
+    requests.unsubscribe().await?;
+
+    Ok(())
+}
+
+async fn reconciliation_request_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<ReconciliationRequest>,
+) {
+    if let Err(err) = reconciliation_request(nats, cyclone_pool, request).await {
+        warn!(error = ?err, "reconciliation execution failed");
+    }
+}
+
+async fn reconciliation_request(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<ReconciliationRequest>,
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+
+    let mut progress = client
+        .execute_reconciliation(cyclone_request)
         .await?
         .start()
         .await?;

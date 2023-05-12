@@ -163,6 +163,7 @@ impl TryFrom<FuncBackendKind> for FuncSpecBackendKind {
         Ok(match value {
             FuncBackendKind::JsAttribute => FuncSpecBackendKind::JsAttribute,
             FuncBackendKind::JsCommand => FuncSpecBackendKind::JsCommand,
+            FuncBackendKind::JsReconciliation => FuncSpecBackendKind::JsReconciliation,
             FuncBackendKind::Json => FuncSpecBackendKind::Json,
             FuncBackendKind::JsValidation => FuncSpecBackendKind::JsValidation,
             FuncBackendKind::JsWorkflow => FuncSpecBackendKind::JsWorkflow,
@@ -176,6 +177,7 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
         match value {
             FuncSpecBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
             FuncSpecBackendKind::JsCommand => FuncBackendKind::JsCommand,
+            FuncSpecBackendKind::JsReconciliation => FuncBackendKind::JsReconciliation,
             FuncSpecBackendKind::Json => FuncBackendKind::Json,
             FuncSpecBackendKind::JsValidation => FuncBackendKind::JsValidation,
             FuncSpecBackendKind::JsWorkflow => FuncBackendKind::JsWorkflow,
@@ -214,6 +216,7 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
             FuncSpecBackendResponseType::Boolean => FuncBackendResponseType::Boolean,
             FuncSpecBackendResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
             FuncSpecBackendResponseType::Command => FuncBackendResponseType::Command,
+            FuncSpecBackendResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
             FuncSpecBackendResponseType::Confirmation => FuncBackendResponseType::Confirmation,
             FuncSpecBackendResponseType::Integer => FuncBackendResponseType::Integer,
             FuncSpecBackendResponseType::Json => FuncBackendResponseType::Json,
