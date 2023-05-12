@@ -33,7 +33,7 @@ layered-yaml = ["layered", "yaml", "config/yaml"]
 config = { workspace = true, optional = true }
 directories = { workspace = true }
 pathdiff = { workspace = true }
-remain = "0.2.8"
+remain = { workspace = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_toml = { package = "toml", version = "0.7", optional = true }
