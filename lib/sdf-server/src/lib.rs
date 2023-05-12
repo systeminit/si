@@ -14,7 +14,8 @@
 
 mod server;
 pub use server::{
-    build_service, job_processor::JobProcessorClientCloser, job_processor::JobProcessorConnector,
-    service, Config, ConfigError, ConfigFile, IncomingStream, JobQueueProcessor, JwtSecretKey,
-    MigrationMode, NatsProcessor, Server, StandardConfig, StandardConfigFile,
+    build_service, detect_and_configure_development, job_processor::JobProcessorClientCloser,
+    job_processor::JobProcessorConnector, service, Config, ConfigError, ConfigFile, IncomingStream,
+    JobQueueProcessor, JwtSecretKey, MigrationMode, NatsProcessor, Server, StandardConfig,
+    StandardConfigFile,
 };

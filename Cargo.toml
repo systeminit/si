@@ -84,6 +84,8 @@ petgraph = { version = "0.6.3", features = ["serde-1"] }
 pin-project-lite = "0.2.9"
 postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
+proc-macro2 = "1.0.56"
+quote = "1.0.27"
 rand = "0.8.5"
 refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
@@ -99,6 +101,7 @@ serde_yaml = "0.9.21"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.1"
 strum = { version = "0.24.1", features = ["derive"] }
+syn = { version = "2.0.15", features = ["full", "extra-traits"] }
 tar = "0.4.38"
 tempfile = "3.5.0"
 test-log = { version = "0.2.11", default-features = false, features = ["trace"] }

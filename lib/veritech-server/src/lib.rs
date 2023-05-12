@@ -5,8 +5,8 @@ mod subscriber;
 
 pub use crate::{
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, CycloneSpec, CycloneStream, StandardConfig,
-        StandardConfigFile,
+        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
+        CycloneSpec, CycloneStream, StandardConfig, StandardConfigFile,
     },
     server::{Server, ServerError, VeritechShutdownHandle},
 };

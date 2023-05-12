@@ -6,26 +6,28 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-color-eyre = { version = "0.6.1" }
+buck2-resources = { path = "../../lib/buck2-resources" }
+color-eyre = { workspace = true }
+council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
-lazy_static = "1.4.0"
-names = { version = "0.14.0", default-features = false }
+jwt-simple = { workspace = true }
+lazy_static = { workspace = true }
+names = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
 remain = { workspace = true }
-serde = { version = "1.0.123", features = ["rc", "derive"] }
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
+sdf-server = { path = "../../lib/sdf-server" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
-sodiumoxide = "0.2.6"
+sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-tempfile = "3.2.0"
-thiserror = "1.0.24"
-tokio = { version = "1.2.0", features = ["full"] }
-tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
-uuid = { version = "1.1.2", features = ["serde", "v4"] }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
-council-server = { path = "../../lib/council-server" }
-jwt-simple = "0.11.0"

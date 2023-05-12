@@ -1,4 +1,5 @@
 use std::{
+    env,
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
@@ -148,23 +149,23 @@ impl ConfigBuilder {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default)]
-    pg: PgPoolConfig,
+    pub pg: PgPoolConfig,
     #[serde(default)]
-    nats: NatsConfig,
+    pub nats: NatsConfig,
     #[serde(default)]
-    migration_mode: MigrationMode,
+    pub migration_mode: MigrationMode,
     #[serde(default = "default_jwt_signing_public_key_path")]
-    jwt_signing_public_key_path: String,
+    pub jwt_signing_public_key_path: String,
     #[serde(default = "default_jwt_secret_key_path")]
-    jwt_secret_key_path: String,
+    pub jwt_secret_key_path: String,
     #[serde(default = "default_cyclone_encryption_key_path")]
-    cyclone_encryption_key_path: String,
+    pub cyclone_encryption_key_path: String,
     #[serde(default = "default_signup_secret")]
-    signup_secret: SensitiveString,
+    pub signup_secret: SensitiveString,
     #[serde(default = "default_pkgs_path")]
-    pkgs_path: String,
+    pub pkgs_path: String,
     #[serde(default)]
-    posthog: PosthogConfig,
+    pub posthog: PosthogConfig,
 }
 
 impl Default for ConfigFile {
@@ -256,10 +257,10 @@ fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
 
-fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
-    if std::env::var("BUCK_RUN_BUILD_ID").is_ok() {
+pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         cargo_development(dir, config)
     } else {
         Ok(())
@@ -269,30 +270,30 @@ fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
-    let jwt_signing_public_key_path = match std::env::var("LOCAL_AUTH_STACK") {
+    let jwt_signing_public_key_path = match env::var("LOCAL_AUTH_STACK") {
         Ok(_) => resources
-            .get("bin/sdf/dev.jwt_signing_public_key.pem")
+            .get_ends_with("dev.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
             .to_string_lossy()
             .to_string(),
         Err(_) => resources
-            .get("bin/sdf/prod.jwt_signing_public_key.pem")
+            .get_ends_with("prod.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
             .to_string_lossy()
             .to_string(),
     };
     let jwt_secret_key_path = resources
-        .get("bin/sdf/dev.jwt_secret_key.bin")
+        .get_ends_with("dev.jwt_secret_key.bin")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
     let cyclone_encryption_key_path = resources
-        .get("bin/sdf/dev.encryption.key")
+        .get_ends_with("dev.encryption.key")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
     let pkgs_path = resources
-        .get("bin/sdf/pkgs_path")
+        .get_ends_with("pkgs_path")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
@@ -314,7 +315,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 }
 
 fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
-    let jwt_signing_public_key_path = match std::env::var("LOCAL_AUTH_STACK") {
+    let jwt_signing_public_key_path = match env::var("LOCAL_AUTH_STACK") {
         Ok(_) => Path::new(&dir)
             .join("../../config/keys/dev.jwt_signing_public_key.pem")
             .to_string_lossy()

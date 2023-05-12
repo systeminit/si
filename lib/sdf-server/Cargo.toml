@@ -41,9 +41,6 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 
-[build-dependencies]
-thiserror = { workspace = true }
-
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
 pretty_assertions_sorted = { workspace = true }

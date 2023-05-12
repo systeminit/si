@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -149,10 +149,10 @@ fn default_concurrency_limit() -> usize {
     DEFAULT_CONCURRENCY_LIMIT
 }
 
-fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
-    if std::env::var("BUCK_RUN_BUILD_ID").is_ok() {
+pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         cargo_development(dir, config)
     } else {
         Ok(())
@@ -163,7 +163,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
     let cyclone_encryption_key_path = resources
-        .get("bin/pinga/dev.encryption.key")
+        .get_ends_with("dev.encryption.key")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
