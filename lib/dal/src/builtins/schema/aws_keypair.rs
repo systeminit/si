@@ -189,7 +189,7 @@ impl MigrationDriver {
             .await?;
 
         // Prop: /resource_value/KeyType
-        let mut key_pair_type_resource_prop = self
+        let mut _key_pair_type_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "KeyType",
@@ -198,9 +198,9 @@ impl MigrationDriver {
                 schema_variant_id,
             )
             .await?;
-        key_pair_type_resource_prop
-            .set_refers_to_prop_id(ctx, Some(*key_type_prop.id()))
-            .await?;
+        // key_pair_type_resource_prop
+        //     .set_refers_to_prop_id(ctx, Some(*key_type_prop.id()))
+        //     .await?;
 
         self.create_aws_tags_prop_tree(
             ctx,
