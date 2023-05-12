@@ -1,4 +1,4 @@
-load("//build-rules/ts.bzl", "pnpm_task_library", "pnpm_task_binary", "pnpm_task_test")
+load("//build-rules/ts.bzl", "pnpm_task_library", "pnpm_task_binary")
 
 export_file(
     name = "package.json",
@@ -19,7 +19,7 @@ pnpm_task_library(
     command = "lint",
     srcs = glob(["src/**/*", "tsconfig.json"]),
     deps = ["//:pnpm-install"],
-    path = "app/web",
+    path = "bin/auth-api",
     visibility = ["PUBLIC"],
 )
 
@@ -31,7 +31,7 @@ pnpm_task_library(
         "//:pnpm-install",
         ":build-lint"
     ],
-    path = "app/web",
+    path = "bin/auth-api",
     outs = ["dist"],
     visibility = ["PUBLIC"],
 )
@@ -40,7 +40,16 @@ pnpm_task_binary(
     name = "lint",
     command = "lint",
     srcs = glob(["src/**/*"]),
-    path = "app/web",
+    path = "bin/auth-api",
+    deps = ["//:pnpm-install"],
+    visibility = ["PUBLIC"],
+)
+
+pnpm_task_binary(
+    name = "lint-strict",
+    command = "lint:strict",
+    srcs = glob(["src/**/*"]),
+    path = "bin/auth-api",
     deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
@@ -49,7 +58,7 @@ pnpm_task_binary(
     name = "lint-fix",
     command = "lint:fix",
     srcs = glob(["src/**/*"]),
-    path = "app/web",
+    path = "bin/auth-api",
     deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
@@ -58,22 +67,16 @@ pnpm_task_binary(
     name = "dev",
     command = "dev",
     srcs = glob(["src/**/*"]),
-    path = "app/web",
+    path = "bin/auth-api",
     deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
 
 pnpm_task_binary(
-    name = "clean",
-    command = "clean",
-    path = "app/web",
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_test(
-    name = "test",
-    command = "test",
-    deps = [":build"],
-    path = "app/web",
+    name = "db-reset",
+    command = "db:reset",
+    srcs = glob(["src/**/*"]),
+    path = "bin/auth-api",
+    deps = ["//:pnpm-install"],
     visibility = ["PUBLIC"],
 )
