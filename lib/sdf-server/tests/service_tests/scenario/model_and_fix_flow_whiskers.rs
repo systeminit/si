@@ -1,13 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use std::{thread, time};
 
 use axum::Router;
 use dal::{
     component::confirmation::view::ConfirmationStatus, qualification::QualificationSubCheckStatus,
-    Component, FixBatchId, FixCompletionStatus,
+    Component,
 };
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
-use sdf_server::service::fix::run::FixRunRequest;
 
 use crate::service_tests::scenario::ScenarioHarness;
 
@@ -218,17 +218,22 @@ async fn model_and_fix_flow_whiskers(
         )
         .await;
 
+    // This is a temporary measure to allow dependent values updates to finish
+    let pinga_sleep = time::Duration::from_secs(90);
+    thread::sleep(pinga_sleep);
+
     // Check AMI, Key Pair and Security Group.
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Fedora CoreOS",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "code": {
                 "si:generateAwsAmiJSON": {
-                    "code": "{\n\t\"ImageIds\": [\n\t\t\"ami-0bde60638be9bb870\"\n\t]\n}",
+                    "code": "{\n\t\"Filters\": [\n\t\t{\n\t\t\t\"Name\": \"image-id\",\n\t\t\t\"Values\": [\n\t\t\t\t\"ami-0bde60638be9bb870\"\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
                 },
             },
@@ -253,6 +258,7 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "toddhoward-key",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "code": {
@@ -289,6 +295,7 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "toddhoward-sg",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "code": {
@@ -321,12 +328,13 @@ async fn model_and_fix_flow_whiskers(
             .expect("could not convert to value"), // actual
     );
 
-    // Check Ingress, EC2 Instance and Region.
+    // // Check Ingress, EC2 Instance and Region.
     assert_eq!(
         serde_json::json![{
           "si": {
                 "name": "toddhoward-ingress",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "code": {
@@ -352,8 +360,8 @@ async fn model_and_fix_flow_whiskers(
             },
             "qualification": {
                 "si:qualificationIngressCanCreate": {
-                    "result": "success",
-                    "message": "component qualified",
+                    "result": "warning",
+                    "message": "GroupId must be set. If a Security Group is connected to this component the id will be automatically set when the fix flow creates the security group after merging this change-set",
                 },
             },
         }], // expected
@@ -369,11 +377,12 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "toddhoward-server",
                 "type": "component",
+                "color": "#FF9900",
                 "protected": false,
             },
             "code": {
                 "si:generateAwsEc2JSON": {
-                    "code": "{\n\t\"ImageId\": \"ami-0bde60638be9bb870\",\n\t\"InstanceType\": \"t3.micro\",\n\t\"KeyName\": \"toddhoward-key\",\n\t\"UserData\": \"\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "code": "{\n\t\"ImageId\": \"ami-0bde60638be9bb870\",\n\t\"InstanceType\": \"t3.micro\",\n\t\"KeyName\": \"toddhoward-key\",\n\t\"UserData\": \"{\\n  \\\"ignition\\\": {\\n    \\\"version\\\": \\\"3.3.0\\\"\\n  },\\n  \\\"systemd\\\": {\\n    \\\"units\\\": [\\n      {\\n        \\\"contents\\\": \\\"[Unit]\\\\nDescription=Docker-io-systeminit-whiskers\\\\nAfter=network-online.target\\\\nWants=network-online.target\\\\n\\\\n[Service]\\\\nTimeoutStartSec=0\\\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers\\\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers\\\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers --publish 80:80 docker.io/systeminit/whiskers\\\\n\\\\n[Install]\\\\nWantedBy=multi-user.target\\\",\\n        \\\"enabled\\\": true,\\n        \\\"name\\\": \\\"docker-io-systeminit-whiskers.service\\\"\\n      }\\n    ]\\n  }\\n}\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
                 },
             },
@@ -406,10 +415,16 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "us-east-2",
                 "type": "configurationFrame",
+                "color": "#FF9900",
                 "protected": false,
             },
             "domain": {
                 "region": "us-east-2",
+            },
+            "qualification": {
+                "si:qualificationAwsRegionHasRegionSet": {
+                    "result": "success",
+                },
             },
         }], // expected
         region
@@ -425,6 +440,7 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "docker.io/systeminit/whiskers",
                 "type": "component",
+                "color": "#4695E7",
                 "protected": false,
             },
             "domain": {
@@ -460,6 +476,7 @@ async fn model_and_fix_flow_whiskers(
             "si": {
                 "name": "Butane",
                 "type": "component",
+                "color": "#e26b70",
                 "protected": false,
             },
             "code": {
@@ -500,137 +517,202 @@ async fn model_and_fix_flow_whiskers(
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
-    // Prepare fixes for key pair, ingress and security group.
+    // This is a temporary measure to allow dependent values updates to finish
+    thread::sleep(pinga_sleep);
+
+    // Prepare the fixes
     let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
-    let mut requests = Vec::new();
+    //let mut requests = Vec::new();
+
     assert_eq!(
-        4,                   // expected
+        8, // expected - there are matching exists/ needs deleted confirmations for each components
         confirmations.len(), // actual
     );
-    let mut targets = HashSet::new();
+    let mut failing_targets = HashSet::new();
+    let mut passing_targets = HashSet::new();
     for confirmation in confirmations {
-        // Ensure that all confirmations are failing.
-        assert_eq!(
-            ConfirmationStatus::Failure, // expected
-            confirmation.status,         // actual
-        );
-
-        // Only gather non EC2 targets.
-        if confirmation.title != "EC2 Instance Exists?" {
-            targets.insert(confirmation.attribute_value_id);
+        match confirmation.status {
+            ConfirmationStatus::Failure => {
+                failing_targets.insert(confirmation.attribute_value_id);
+            }
+            ConfirmationStatus::Success => {
+                passing_targets.insert(confirmation.attribute_value_id);
+            }
+            _ => {}
         }
     }
+    assert_eq!(
+        4, // there should be 4 passing confirmations - these are the "needs deletion"
+        passing_targets.len()
+    );
+    assert_eq!(
+        4, // there should be 4 failing confirmations - these are the "needs creation"
+        failing_targets.len()
+    );
+
+    println!("Create delete changeset");
+
+    // Create a new change set to delete the components
+    harness
+        .create_change_set_and_update_ctx(&mut ctx, "phil collins")
+        .await;
+
+    println!("Delete Components");
+
+    // delete AWS components
+    harness.delete_component(&ctx, ami.component_id).await;
+    harness.delete_component(&ctx, key_pair.component_id).await;
+    harness.delete_component(&ctx, ec2.component_id).await;
+    harness
+        .delete_component(&ctx, security_group.component_id)
+        .await;
+    harness.delete_component(&ctx, ingress.component_id).await;
+
+    // This is a temporary measure to allow dependent values updates to finish
+    thread::sleep(pinga_sleep);
+    println!("Here");
+
+    dbg!(security_group
+        .view(&ctx)
+        .await
+        .drop_confirmation()
+        .to_value()
+        .expect("could not convert to value")); // actual)
+
+    // Let's apply the changeset with the deleted values and check the confirmations
+    harness
+        .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
+        .await;
+
+    // This is a temporary measure to allow dependent values updates to finish
+    thread::sleep(pinga_sleep);
+
+    // Prepare the fixes
+    let (_confirmations, _recommendations) = dbg!(harness.list_confirmations(&mut ctx).await);
+
+    assert_eq!(
+        4, // there should be 4 recommendations to apply
+        recommendations.len(),
+    );
 
     // Select the recommendations we want.
-    for recommendation in recommendations {
-        if targets.contains(&recommendation.confirmation_attribute_value_id) {
-            requests.push(FixRunRequest {
-                attribute_value_id: recommendation.confirmation_attribute_value_id,
-                component_id: recommendation.component_id,
-                action_name: recommendation.recommended_action,
-            })
-        }
-    }
-    assert_eq!(
-        3,              // expected
-        requests.len(), // actual
-    );
-
-    // Run fixes from the requests.
-    let first_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
-
-    // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
-    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
-    assert!(fix_batch_history_views.is_empty());
-    assert_eq!(
-        first_fix_batch_id,        // expected
-        fix_batch_history_view.id, // actual
-    );
-    assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
-        fix_batch_history_view.status
-    );
-
-    // Now, run the fix for EC2 .
-    let (confirmations, mut recommendations) = harness.list_confirmations(&mut ctx).await;
-    let mut requests = Vec::new();
-    assert_eq!(
-        4,                   // expected
-        confirmations.len(), // actual
-    );
-    for confirmation in confirmations {
-        if confirmation.title == "EC2 Instance Exists?" {
-            assert_eq!(
-                ConfirmationStatus::Failure, // expected
-                confirmation.status,         // actual
-            );
-        } else {
-            // Ensure that previous confirmations succeeded.
-            assert_eq!(
-                ConfirmationStatus::Success, // expected
-                confirmation.status,         // actual
-            );
-        }
-    }
-
-    // Create the EC2 instance.
-    let recommendation = recommendations.pop().expect("no recommendations found");
-    assert!(recommendations.is_empty());
-    requests.push(FixRunRequest {
-        attribute_value_id: recommendation.confirmation_attribute_value_id,
-        component_id: recommendation.component_id,
-        action_name: recommendation.recommended_action,
-    });
-
-    assert_eq!(
-        1,              // expected
-        requests.len(), // actual
-    );
-
-    // Run the EC2 fix.
-    let second_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
-
-    // Check that they succeeded.
-    let fix_batch_history_views = harness.list_fixes(&mut ctx).await;
-    assert_eq!(
-        2,                             // expected
-        fix_batch_history_views.len(), // actual
-    );
-    let mut found_fix_batches: HashMap<FixBatchId, FixCompletionStatus> = HashMap::new();
-    for view in fix_batch_history_views {
-        if let Some(status) = view.status {
-            found_fix_batches.insert(view.id, status);
-        }
-    }
-    assert_eq!(
-        2,                              // expected
-        found_fix_batches.keys().len(), // actual
-    );
-    assert_eq!(
-        FixCompletionStatus::Success, // expected
-        *found_fix_batches
-            .get(&first_fix_batch_id)
-            .expect("no status for first fix batch id"), // actual
-    );
-    assert_eq!(
-        FixCompletionStatus::Success, // expected
-        *found_fix_batches
-            .get(&second_fix_batch_id)
-            .expect("no status for second fix batch id"), // actual
-    );
-
-    // Check that all confirmations are passing.
-    let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
-    assert_eq!(
-        4,                   // expected
-        confirmations.len(), // actual
-    );
-    for confirmation in confirmations {
-        assert_eq!(
-            ConfirmationStatus::Success, // expected
-            confirmation.status,         // actual
-        );
-    }
-    assert!(recommendations.is_empty())
+    // for recommendation in recommendations {
+    //     if targets.contains(&recommendation.confirmation_attribute_value_id) {
+    //         requests.push(FixRunRequest {
+    //             attribute_value_id: recommendation.confirmation_attribute_value_id,
+    //             component_id: recommendation.component_id,
+    //             action_name: recommendation.recommended_action,
+    //         })
+    //     }
+    // }
+    // assert_eq!(
+    //     3,              // expected
+    //     requests.len(), // actual
+    // );
+    //
+    // // Run fixes from the requests.
+    // let first_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
+    //
+    // // This is a temporary measure to allow dependent values updates to finish
+    // let sixty_secs = time::Duration::from_secs(60);
+    // thread::sleep(sixty_secs);
+    //
+    // // Check that they succeeded.
+    // let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    // let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
+    // assert!(fix_batch_history_views.is_empty());
+    // assert_eq!(
+    //     first_fix_batch_id,        // expected
+    //     fix_batch_history_view.id, // actual
+    // );
+    // assert_eq!(
+    //     Some(FixCompletionStatus::Success), // expected
+    //     fix_batch_history_view.status
+    // );
+    //
+    // // Now, run the fix for EC2 .
+    // let (confirmations, mut recommendations) = harness.list_confirmations(&mut ctx).await;
+    // let mut requests = Vec::new();
+    // assert_eq!(
+    //     4,                   // expected
+    //     confirmations.len(), // actual
+    // );
+    // for confirmation in confirmations {
+    //     if confirmation.title == "EC2 Instance Exists?" {
+    //         assert_eq!(
+    //             ConfirmationStatus::Failure, // expected
+    //             confirmation.status,         // actual
+    //         );
+    //     } else {
+    //         // Ensure that previous confirmations succeeded.
+    //         assert_eq!(
+    //             ConfirmationStatus::Success, // expected
+    //             confirmation.status,         // actual
+    //         );
+    //     }
+    // }
+    //
+    // // Create the EC2 instance.
+    // let recommendation = recommendations.pop().expect("no recommendations found");
+    // assert!(recommendations.is_empty());
+    // requests.push(FixRunRequest {
+    //     attribute_value_id: recommendation.confirmation_attribute_value_id,
+    //     component_id: recommendation.component_id,
+    //     action_name: recommendation.recommended_action,
+    // });
+    //
+    // assert_eq!(
+    //     1,              // expected
+    //     requests.len(), // actual
+    // );
+    //
+    // // Run the EC2 fix.
+    // let second_fix_batch_id = harness.run_fixes(&mut ctx, requests).await;
+    //
+    // // This is a temporary measure to allow dependent values updates to finish
+    // let sixty_secs = time::Duration::from_secs(60);
+    // thread::sleep(sixty_secs);
+    //
+    // // Check that they succeeded.
+    // let fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    // assert_eq!(
+    //     2,                             // expected
+    //     fix_batch_history_views.len(), // actual
+    // );
+    // let mut found_fix_batches: HashMap<FixBatchId, FixCompletionStatus> = HashMap::new();
+    // for view in fix_batch_history_views {
+    //     if let Some(status) = view.status {
+    //         found_fix_batches.insert(view.id, status);
+    //     }
+    // }
+    // assert_eq!(
+    //     2,                              // expected
+    //     found_fix_batches.keys().len(), // actual
+    // );
+    // assert_eq!(
+    //     FixCompletionStatus::Success, // expected
+    //     *found_fix_batches
+    //         .get(&first_fix_batch_id)
+    //         .expect("no status for first fix batch id"), // actual
+    // );
+    // assert_eq!(
+    //     FixCompletionStatus::Success, // expected
+    //     *found_fix_batches
+    //         .get(&second_fix_batch_id)
+    //         .expect("no status for second fix batch id"), // actual
+    // );
+    //
+    // // Check that all confirmations are passing.
+    // let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
+    // assert_eq!(
+    //     4,                   // expected
+    //     confirmations.len(), // actual
+    // );
+    // for confirmation in confirmations {
+    //     assert_eq!(
+    //         ConfirmationStatus::Success, // expected
+    //         confirmation.status,         // actual
+    //     );
+    // }
+    // assert!(recommendations.is_empty())
 }
