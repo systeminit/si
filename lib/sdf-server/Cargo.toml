@@ -20,7 +20,7 @@ names = { workspace = true }
 nix = { workspace = true }
 pathdiff = { workspace = true }
 rand = { workspace = true }
-remain = "0.2.8"
+remain = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
