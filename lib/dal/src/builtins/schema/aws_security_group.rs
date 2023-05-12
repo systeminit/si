@@ -183,6 +183,7 @@ impl MigrationDriver {
         sg_group_name_resource_prop
             .set_refers_to_prop_id(ctx, Some(*group_name_prop.id()))
             .await?;
+        sg_group_name_resource_prop.set_default_diff(ctx).await?;
 
         // Prop: /resource_value/GroupId
         let _sg_group_id_resource_prop = self
@@ -219,6 +220,7 @@ impl MigrationDriver {
         sg_vpc_id_resource_prop
             .set_refers_to_prop_id(ctx, Some(*vpc_id_prop.id()))
             .await?;
+        sg_vpc_id_resource_prop.set_default_diff(ctx).await?;
 
         // Prop: /resource_value/Description
         let mut sg_description_resource_prop = self
@@ -233,6 +235,7 @@ impl MigrationDriver {
         sg_description_resource_prop
             .set_refers_to_prop_id(ctx, Some(*description_prop.id()))
             .await?;
+        sg_description_resource_prop.set_default_diff(ctx).await?;
 
         self.create_aws_tags_prop_tree(
             ctx,
@@ -743,6 +746,9 @@ impl MigrationDriver {
             security_group_rule_group_id_resource_prop
                 .set_refers_to_prop_id(ctx, group_id_prop_id)
                 .await?;
+            security_group_rule_group_id_resource_prop
+                .set_default_diff(ctx)
+                .await?;
         }
 
         let _security_group_rule_group_owner_id_resource_prop = self
@@ -768,6 +774,9 @@ impl MigrationDriver {
             security_group_rule_ip_protocol_resource_prop
                 .set_refers_to_prop_id(ctx, ip_protocol_prop_id)
                 .await?;
+            security_group_rule_ip_protocol_resource_prop
+                .set_default_diff(ctx)
+                .await?;
         }
 
         let mut security_group_rule_from_port_resource_prop = self
@@ -783,6 +792,9 @@ impl MigrationDriver {
             security_group_rule_from_port_resource_prop
                 .set_refers_to_prop_id(ctx, from_port_prop_id)
                 .await?;
+            security_group_rule_from_port_resource_prop
+                .set_default_diff(ctx)
+                .await?;
         }
 
         let mut security_group_rule_to_port_resource_prop = self
@@ -797,6 +809,9 @@ impl MigrationDriver {
         if to_port_prop_id.is_some() {
             security_group_rule_to_port_resource_prop
                 .set_refers_to_prop_id(ctx, to_port_prop_id)
+                .await?;
+            security_group_rule_to_port_resource_prop
+                .set_default_diff(ctx)
                 .await?;
         }
 
@@ -822,6 +837,9 @@ impl MigrationDriver {
         if cidr_ip_prop_id.is_some() {
             security_group_rule_cidr_ipv4_resource_prop
                 .set_refers_to_prop_id(ctx, cidr_ip_prop_id)
+                .await?;
+            security_group_rule_cidr_ipv4_resource_prop
+                .set_default_diff(ctx)
                 .await?;
         }
 

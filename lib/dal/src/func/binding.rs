@@ -13,6 +13,7 @@ use crate::{
     func::backend::{
         array::FuncBackendArray,
         boolean::FuncBackendBoolean,
+        diff::FuncBackendDiff,
         identity::FuncBackendIdentity,
         integer::FuncBackendInteger,
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
@@ -261,6 +262,7 @@ impl FuncBinding {
             FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
             FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
             FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
+            FuncBackendKind::Diff => FuncBackendDiff::create_and_execute(&self.args).await,
             FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await,
             FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await,
             FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await,
@@ -339,6 +341,7 @@ impl FuncBinding {
             FuncBackendKind::Array
             | FuncBackendKind::Boolean
             | FuncBackendKind::Identity
+            | FuncBackendKind::Diff
             | FuncBackendKind::Integer
             | FuncBackendKind::Map
             | FuncBackendKind::Object

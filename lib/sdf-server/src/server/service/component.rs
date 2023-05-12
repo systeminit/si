@@ -9,7 +9,7 @@ use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
-    FuncBindingError, InternalProviderError, PropId, SchemaError as DalSchemaError,
+    FuncBindingError, FuncError, InternalProviderError, PropId, SchemaError as DalSchemaError,
     StandardModelError, TransactionsError, WsEventError,
 };
 use thiserror::Error;
@@ -58,6 +58,8 @@ pub enum ComponentError {
     Diagram(#[from] DiagramError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("identity func not found")]

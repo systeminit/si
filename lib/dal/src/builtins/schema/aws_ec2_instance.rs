@@ -259,6 +259,7 @@ impl MigrationDriver {
         image_id_resource_prop
             .set_refers_to_prop_id(ctx, Some(*image_id_prop.id()))
             .await?;
+        image_id_resource_prop.set_default_diff(ctx).await?;
 
         let _instance_id_resource_prop = self
             .create_hidden_prop(
@@ -282,6 +283,7 @@ impl MigrationDriver {
         instance_type_resource_prop
             .set_refers_to_prop_id(ctx, Some(instance_type_prop.id()))
             .await?;
+        instance_type_resource_prop.set_default_diff(ctx).await?;
 
         let mut key_name_resource_prop = self
             .create_hidden_prop(
@@ -295,6 +297,7 @@ impl MigrationDriver {
         key_name_resource_prop
             .set_refers_to_prop_id(ctx, Some(*key_name_prop.id()))
             .await?;
+        key_name_resource_prop.set_default_diff(ctx).await?;
 
         let _launch_time_resource_prop = self
             .create_hidden_prop(
@@ -664,6 +667,9 @@ impl MigrationDriver {
             .await?;
         security_groups_group_id_resource_prop
             .set_refers_to_prop_id(ctx, Some(*security_group_id_prop.id()))
+            .await?;
+        security_groups_group_id_resource_prop
+            .set_default_diff(ctx)
             .await?;
 
         let _source_dest_check_resource_prop = self

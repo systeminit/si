@@ -807,6 +807,13 @@ impl MigrationDriver {
             key_pair_tags_resource_prop
                 .set_refers_to_prop_id(ctx, domain_tags_prop_id)
                 .await?;
+            let func = Func::find_by_attr(ctx, "name", &"si:diffAwsMap")
+                .await?
+                .pop()
+                .ok_or(FuncError::NotFoundByName("si:diffAwsMap".to_owned()))?;
+            key_pair_tags_resource_prop
+                .set_diff_func_id(ctx, Some(*func.id()))
+                .await?;
         }
 
         let key_pair_tag_resource_prop = self

@@ -1,0 +1,20 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "first",
+      "kind": "Any"
+    },
+    {
+      "name": "second",
+      "kind": "Any"
+    }
+  ],
+  "response_type": "Boolean",
+  "hidden": false,
+  "display_name": "si:diffAwsMap",
+  "description": null,
+  "link": null,
+  "code_file": "diffAwsMap.ts",
+  "code_entrypoint": "diff"
+}

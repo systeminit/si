@@ -223,6 +223,9 @@ impl MigrationDriver {
         eip_network_border_group_resource_prop
             .set_refers_to_prop_id(ctx, Some(*region_prop.id()))
             .await?;
+        eip_network_border_group_resource_prop
+            .set_default_diff(ctx)
+            .await?;
 
         self.create_aws_tags_prop_tree(
             ctx,
