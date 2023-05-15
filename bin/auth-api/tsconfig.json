@@ -1,19 +1,15 @@
 {
   "extends": "@si/tsconfig/tsconfig.node.json",
   "ts-node": {
-    "transpileOnly": true,
-    "transpiler": "ts-node/transpilers/swc",
-    "files": true,
-    "compilerOptions": {
-      "module": "esnext",
-      "isolatedModules": false
-    }
+    "swc": true,
   },
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "./"
   },
   "include": [
-    "**/*.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "node_modules/@si/ts-lib/**/*.ts"
   ],
 }

@@ -97,7 +97,14 @@ COPY ./config ./config
 
 # # ENV NODE_ENV=production
 COPY --from=builder /app/bin/auth-api/pruned .
-COPY --from=builder /app/bin/auth-api/dist ./dist
+COPY --from=builder /app/bin/auth-api/dist/src ./dist
+
+# have to deal with our @si/ts-lib code which exports raw typescript but has been built by this build process
+# this is a bit messy, but have tried lots of other solutions to get it running and failed
+# move built js files from dist folder into node_modules
+COPY --from=builder /app/bin/auth-api/dist/node_modules/@si/ts-lib ./node_modules/@si/ts-lib
+# update package.json to point to the js files instead of ts
+RUN sed -i.bak "s/\.ts/\.js/g" ./node_modules/@si/ts-lib/package.json
 
 # have to re-run, as it seems the prune call wipes the generated prisma client...
 # TODO figure out the best way to avoid this

@@ -9,7 +9,7 @@ import chalk from 'chalk';
 import cors from '@koa/cors';
 
 import { PrismaClient } from "@prisma/client";
-import { router } from "./routes";
+import { router, routesLoaded } from "./routes";
 import { ApiError, errorHandlingMiddleware } from "./lib/api-error";
 import { httpRequestLoggingMiddleware } from "./lib/request-logger";
 import { loadAuthMiddleware } from "./services/auth.service";
@@ -18,9 +18,9 @@ import { CustomAppContext, CustomAppState } from "./custom-state";
 
 import './lib/posthog';
 
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
-const app = new Koa<CustomAppState, CustomAppContext>();
+export const app = new Koa<CustomAppState, CustomAppContext>();
 
 app.proxy = true;
 
@@ -37,21 +37,19 @@ app.use(router.routes());
 
 // catch-all middelware after routes handles no route match (404)
 app.use((_ctx, _next) => {
-  throw new ApiError("NotFound", "URL not found");
+  throw new ApiError("NotFound", "NoMatchingURL", "No matching URL found");
 });
 
-async function boot() {
+if (process.env.NODE_ENV !== 'test') {
   // not strictly necessary, but this way we fail right away if we can't connect to db
-  await prisma.$connect();
-  app.listen(process.env.PORT);
-  console.log(chalk.green.bold(`Auth API listening on port ${process.env.PORT}`));
-}
-
-boot()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (err) => {
+  try {
+    await prisma.$connect();
+    await routesLoaded;
+    app.listen(process.env.PORT);
+    console.log(chalk.green.bold(`Auth API listening on port ${process.env.PORT}`));
+    // await prisma.$disconnect();
+  } catch (err) {
     console.log('ERROR!', err);
     await prisma.$disconnect();
-  });
+  }
+}

@@ -67,3 +67,16 @@ export async function deleteCacheKey(key: string) {
     }
   }
 }
+
+export function cleanupInMemoryCache() {
+  if (REDIS_ENABLED) return;
+
+  Object.keys(expireTimeouts).forEach((key) => {
+    clearTimeout(expireTimeouts[key]);
+    delete expireTimeouts[key];
+  });
+
+  Object.keys(inMemoryCache).forEach((key) => {
+    delete inMemoryCache[key];
+  });
+}

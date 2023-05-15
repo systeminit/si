@@ -3,7 +3,7 @@ ARG RUST_VERSION=1.57.0
 
 ARG BUILDER_LANG_JS_IMAGE=cache_lang_js
 ARG NODE_VERSION=18.16.0
-ARG PNPM_VERSION=8.2.0
+ARG PNPM_VERSION=8.5.0
 
 ###########################################################################
 # Cache Stage

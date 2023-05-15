@@ -34,7 +34,7 @@ async function handleUserIdParam(ctx: CustomRouteContext) {
   // eventually we may have SI admins able to edit everyone
   // or org admins able to edit people within their org...
   if (ctx.state.authUser.id !== ctx.params.userId) {
-    throw new ApiError('Unauthorized', "You can only edit your own info");
+    throw new ApiError('Forbidden', "You can only edit your own info");
   }
 
   // we always have the user loaded already since you can only access yourself
@@ -101,6 +101,6 @@ router.post("/tos-agreement", async (ctx) => {
   if (userAgreedVersion && userAgreedVersion > reqBody.tosVersionId) {
     throw new ApiError('Conflict', 'Cannot agree to earlier version of TOS');
   }
-  const agreemenet = await saveTosAgreement(ctx.state.authUser, reqBody.tosVersionId, ctx.state.clientIp);
-  ctx.body = agreemenet;
+  const agreement = await saveTosAgreement(ctx.state.authUser, reqBody.tosVersionId, ctx.state.clientIp);
+  ctx.body = agreement;
 });

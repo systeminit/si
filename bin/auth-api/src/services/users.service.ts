@@ -57,7 +57,7 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     firstName: auth0UserData.given_name,
     lastName: auth0UserData.family_name,
     // need to confirm email will always be present with our chosen auth providers
-    email: auth0UserData.email!,
+    email: auth0UserData.email,
     emailVerified: auth0UserData.email_verified || false,
     pictureUrl: auth0UserData.picture,
 
