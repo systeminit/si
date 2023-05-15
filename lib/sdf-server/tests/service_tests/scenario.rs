@@ -21,6 +21,7 @@ use dal::{
     FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket, StandardModel,
     Visibility,
 };
+use names::{Generator, Name};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
 use sdf_server::service::dev::{AuthorSingleSchemaRequest, AuthorSingleSchemaResponse};
 use sdf_server::service::diagram::delete_component::{
@@ -121,6 +122,10 @@ impl ScenarioHarness {
             auth_token,
             schemas,
         }
+    }
+
+    pub fn generate_fake_name() -> String {
+        Generator::with_naming(Name::Numbered).next().unwrap()
     }
 
     /// Add [`Schemas`](dal::Schema) to the [`harness`](Self) that were not added in [`Self::new`].
