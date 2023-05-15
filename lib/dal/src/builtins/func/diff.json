@@ -1,0 +1,11 @@
+{
+  "kind": "Diff",
+  "response_type": "Boolean",
+  "arguments": [{
+    "name": "first" ,
+    "kind": "Any"
+  }, {
+    "name": "second" ,
+    "kind": "Any"
+  }]
+}

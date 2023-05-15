@@ -187,6 +187,7 @@ impl MigrationDriver {
         key_pair_name_resource_prop
             .set_refers_to_prop_id(ctx, Some(*key_name_prop.id()))
             .await?;
+        key_pair_name_resource_prop.set_default_diff(ctx).await?;
 
         // Prop: /resource_value/KeyType
         let mut _key_pair_type_resource_prop = self

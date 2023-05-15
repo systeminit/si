@@ -23,8 +23,8 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
     standard_model_has_many, AttributeContext, AttributeContextBuilder,
     AttributeContextBuilderError, AttributePrototypeError, AttributeReadContext, DalContext, Func,
-    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    FuncError, FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
@@ -45,8 +45,12 @@ pub enum PropError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("default diff function not found")]
+    DefaultDiffFunctionNotFound,
     #[error("expected child prop not found with name {0}")]
     ExpectedChildNotFound(String),
+    #[error("Func error: {0}")]
+    Func(#[from] FuncError),
     #[error("FuncBinding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]
@@ -167,6 +171,8 @@ pub struct Prop {
     /// Props can be connected to eachother to signify that they should contain the same value
     /// This is useful for diffing the resource with the domain, to suggest actions if the real world changes
     refers_to_prop_id: Option<PropId>,
+    /// Connected props may need a custom diff function
+    diff_func_id: Option<FuncId>,
 }
 
 impl_standard_model! {
@@ -225,6 +231,7 @@ impl Prop {
     standard_model_accessor!(doc_link, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
     standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
+    standard_model_accessor!(diff_func_id, Option<Pk(FuncId)>, PropResult);
     standard_model_accessor_ro!(path, String);
 
     // TODO(nick): replace this table with a foreign key relationship.
@@ -456,5 +463,13 @@ impl Prop {
             }
             _ => Err(PropError::SetDefaultForNonScalar(*self.kind())),
         }
+    }
+
+    pub async fn set_default_diff(&mut self, ctx: &DalContext) -> PropResult<()> {
+        let func = Func::find_by_attr(ctx, "name", &"si:diff")
+            .await?
+            .pop()
+            .ok_or(PropError::DefaultDiffFunctionNotFound)?;
+        self.set_diff_func_id(ctx, Some(*func.id())).await
     }
 }

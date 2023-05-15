@@ -13,6 +13,7 @@ use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, Standar
 
 pub mod array;
 pub mod boolean;
+pub mod diff;
 pub mod identity;
 pub mod integer;
 pub mod js_attribute;
@@ -73,6 +74,8 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
 pub enum FuncBackendKind {
     Array,
     Boolean,
+    /// Comparison between two JSON values
+    Diff,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
     Integer,

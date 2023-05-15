@@ -2,11 +2,13 @@ use axum::{extract::Query, Json};
 use dal::prop::PROP_PATH_SEPARATOR;
 use dal::{
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId,
-    FuncBindingReturnValue, Prop, PropKind, StandardModel, Visibility,
+    ExternalProviderId, Func, FuncBinding, FuncBindingReturnValue, FuncError, InternalProvider,
+    InternalProviderError, Prop, PropId, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use telemetry::prelude::*;
 
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -64,15 +66,27 @@ pub async fn get_diff(
     for prop in props {
         let (domain_prop_id, resource_prop_id) = match prop.refers_to_prop_id() {
             None => continue,
-            Some(prop_id) => (prop_id, prop.id()),
+            Some(prop_id) => (*prop_id, *prop.id()),
+        };
+
+        let (domain_internal_provider_id, resource_internal_provider_id) = {
+            let domain = *InternalProvider::find_for_prop(ctx, domain_prop_id)
+                .await?
+                .ok_or(InternalProviderError::NotFoundForProp(domain_prop_id))?
+                .id();
+            let resource = *InternalProvider::find_for_prop(ctx, resource_prop_id)
+                .await?
+                .ok_or(InternalProviderError::NotFoundForProp(resource_prop_id))?
+                .id();
+            (domain, resource)
         };
 
         let resource_prop_av = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
-                prop_id: Some(*resource_prop_id),
-                internal_provider_id: None,
-                external_provider_id: None,
+                prop_id: Some(PropId::NONE),
+                internal_provider_id: Some(resource_internal_provider_id),
+                external_provider_id: Some(ExternalProviderId::NONE),
                 component_id: Some(*component.id()),
             },
         )
@@ -89,9 +103,9 @@ pub async fn get_diff(
         let domain_prop_av = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
-                prop_id: Some(*domain_prop_id),
-                internal_provider_id: None,
-                external_provider_id: None,
+                prop_id: Some(PropId::NONE),
+                internal_provider_id: Some(domain_internal_provider_id),
+                external_provider_id: Some(ExternalProviderId::NONE),
                 component_id: Some(*component.id()),
             },
         )
@@ -103,24 +117,37 @@ pub async fn get_diff(
                 .await?
                 .and_then(|v| v.value().cloned());
 
-        let is_equal = match prop.kind() {
-            PropKind::Array | PropKind::Object | PropKind::Map => continue,
-            PropKind::Boolean | PropKind::Integer | PropKind::String => {
-                maybe_domain_value == maybe_resource_value
-            }
-        };
+        if let Some(func_id) = prop.diff_func_id() {
+            let func = Func::get_by_id(ctx, func_id)
+                .await?
+                .ok_or(FuncError::NotFound(*func_id))?;
+            let func_binding = FuncBinding::new(
+                ctx,
+                serde_json::json!({
+                    "first": maybe_domain_value,
+                    "second": maybe_resource_value,
+                }),
+                *func.id(),
+                *func.backend_kind(),
+            )
+            .await?;
+            let func_binding_return_value = func_binding.execute(ctx).await?;
 
-        if !is_equal {
-            diff_tree.insert(
-                prop.path().clone().replace(PROP_PATH_SEPARATOR, "/"),
-                ResourceDomainDiff {
-                    resource: maybe_resource_value,
-                    domain: ResourceDomainDiffDomain {
-                        id: *domain_prop_av.id(),
-                        value: maybe_domain_value,
+            // TODO: Should we treat unset as equal or not?
+            if func_binding_return_value.value() != Some(&serde_json::Value::Bool(false)) {
+                diff_tree.insert(
+                    prop.path().clone().replace(PROP_PATH_SEPARATOR, "/"),
+                    ResourceDomainDiff {
+                        resource: maybe_resource_value,
+                        domain: ResourceDomainDiffDomain {
+                            id: *domain_prop_av.id(),
+                            value: maybe_domain_value,
+                        },
                     },
-                },
-            );
+                );
+            }
+        } else {
+            warn!("Prop {} does not have diff functions set, therefore can't be diffed with prop {domain_prop_id:?}", prop.path());
         }
     }
 
