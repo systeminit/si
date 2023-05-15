@@ -1,15 +1,24 @@
 async function diff(input: Input): Promise<Output> {
+  const normalizedResponse = {
+    diff: true,
+    newValue: input.second.reduce((acc, { Key, Value }) => ({ ...acc, [Key]: Value }), {}),
+  };
+
   if (Object.values(input.first).length !== input.second.length) {
-    return true;
+    return normalizedResponse;
   }
 
   const keys = new Set(Object.keys(input.first));
   for (const row of input.second) {
     if (input.first[row.Key] !== row.Value) {
-      return true;
+      return normalizedResponse;
     }
     keys.delete(row.Key);
   }
   
-  return keys.size !== 0;
+  if (keys.size !== 0) {
+    return normalizedResponse;
+  } else {
+    return { diff: false };
+  }
 }

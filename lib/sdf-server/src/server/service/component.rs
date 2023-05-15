@@ -9,8 +9,8 @@ use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
-    FuncBindingError, FuncError, InternalProviderError, PropId, SchemaError as DalSchemaError,
-    StandardModelError, TransactionsError, WsEventError,
+    FuncBindingError, FuncError, InternalProviderError, PropId, ReconciliationPrototypeError,
+    SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -80,6 +80,8 @@ pub enum ComponentError {
     PropertyEditor(#[from] PropertyEditorError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
+    #[error("reconciliation prototype: {0}")]
+    ReconciliationPrototype(#[from] ReconciliationPrototypeError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]

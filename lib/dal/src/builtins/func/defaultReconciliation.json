@@ -1,0 +1,7 @@
+{
+  "kind": "JsReconciliation",
+  "response_type": "Reconciliation",
+  "code_file": "defaultReconciliation.ts",
+  "code_entrypoint": "reconciliation",
+  "arguments": []
+}

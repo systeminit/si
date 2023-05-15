@@ -49,6 +49,7 @@ pub mod prototype_context;
 pub mod prototype_list_for_func;
 pub mod provider;
 pub mod qualification;
+pub mod reconciliation_prototype;
 pub mod schema;
 pub mod secret;
 pub mod socket;
@@ -142,6 +143,10 @@ pub use prototype_list_for_func::{
 pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};
+pub use reconciliation_prototype::{
+    ReconciliationPrototype, ReconciliationPrototypeContext, ReconciliationPrototypeError,
+    ReconciliationPrototypeId,
+};
 pub use schema::variant::leaves::LeafInput;
 pub use schema::variant::leaves::LeafInputLocation;
 pub use schema::variant::leaves::LeafKind;

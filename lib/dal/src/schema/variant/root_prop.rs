@@ -11,8 +11,9 @@ use crate::{
     builtins::schema::MigrationDriver,
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, DalContext, Func, FuncError, InternalProvider, Prop, PropId, PropKind, SchemaId,
-    SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    BuiltinsError, DalContext, Func, FuncError, InternalProvider, Prop, PropId, PropKind,
+    ReconciliationPrototype, ReconciliationPrototypeContext, SchemaId, SchemaVariant,
+    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
 
 pub mod component_type;
@@ -325,6 +326,21 @@ impl SchemaVariant {
         )
         .await?;
         resource_value_prop.set_hidden(ctx, true).await?;
+
+        let reconciliation_func: Func =
+            Func::find_by_attr(ctx, "name", &"si:defaultReconciliation")
+                .await?
+                .pop()
+                .ok_or(FuncError::NotFoundByName(
+                    "si:defaultREconciliation".to_owned(),
+                ))?;
+        ReconciliationPrototype::upsert(
+            ctx,
+            *reconciliation_func.id(),
+            "Reconciliation",
+            ReconciliationPrototypeContext::new(*schema_variant.id()),
+        )
+        .await?;
 
         SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id()).await?;
         SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;

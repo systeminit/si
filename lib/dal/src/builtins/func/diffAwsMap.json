@@ -10,7 +10,7 @@
       "kind": "Any"
     }
   ],
-  "response_type": "Boolean",
+  "response_type": "Object",
   "hidden": false,
   "display_name": "si:diffAwsMap",
   "description": null,

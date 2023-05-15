@@ -81,7 +81,7 @@ async function execute(
         executionId,
         error: {
           kind: "ReconciliationFieldWrongType",
-          message: 'The updates field type must be either an object',
+          message: 'The updates field type must be an object',
         },
       };
     }
@@ -93,7 +93,7 @@ async function execute(
         executionId,
         error: {
           kind: "ReconciliationFieldWrongType",
-          message: 'The actions field type must be undefined when status is "ok"',
+          message: 'The actions field type must be an array of strings',
         },
       };
     }

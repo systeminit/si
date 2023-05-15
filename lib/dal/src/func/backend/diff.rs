@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendDiffArgs {
-    pub first: Option<serde_json::Value>,
-    pub second: Option<serde_json::Value>,
+    pub first: serde_json::Value,
+    pub second: serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -24,7 +24,10 @@ impl FuncBackend for FuncBackendDiff {
     async fn inline(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        let diff = serde_json::json!(self.args.first != self.args.second);
+        let diff = serde_json::json!({
+            "diff": self.args.first != self.args.second,
+            "newValue": self.args.second
+        });
         Ok((Some(diff.clone()), Some(diff)))
     }
 }
