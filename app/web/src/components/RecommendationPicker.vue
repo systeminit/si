@@ -100,21 +100,21 @@
           >
             <li
               v-for="recommendation in recommendations"
-              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
+              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
             >
               <RecommendationSprite
-                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
+                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
                 :recommendation="recommendation"
                 :selected="
                   recommendationSelection[
-                    `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
+                    `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
                   ]
                 "
                 :icon-delay-after-exec="2500"
                 @toggle="
                   (c) => {
                     recommendationSelection[
-                      `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
+                      `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
                     ] = c;
                   }
                 "
@@ -164,7 +164,7 @@ import RecommendationSprite from "@/components/RecommendationSprite.vue";
 const selectAll = (checked: boolean) => {
   for (const recommendation of recommendations.value) {
     recommendationSelection[
-      `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
+      `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
     ] = checked;
   }
 };
@@ -191,7 +191,7 @@ const genericRecommendations = computed(() =>
 );
 
 const destructionRecommendations = computed(() =>
-  recommendations.value.filter((r) => r.actionKind === "destroy"),
+  recommendations.value.filter((r) => r.actionKind === "delete"),
 );
 
 const recommendationSelection: Record<string, boolean> = reactive({});
@@ -199,7 +199,7 @@ const selectedRecommendations = computed(() => {
   return recommendations.value.filter((recommendation) => {
     return (
       recommendationSelection[
-        `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
+        `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
       ] && !recommendation.hasRunningFix
     );
   });

@@ -467,7 +467,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     let mut canoe_from_second_func = Func::new(
         ctx,
         "test:canoeFromSecond",
-        FuncBackendKind::Json,
+        FuncBackendKind::JsAttribute,
         FuncBackendResponseType::String,
     )
     .await

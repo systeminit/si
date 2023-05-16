@@ -52,8 +52,8 @@ pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
 pub static DEFAULT_CONFIRMATION_HANDLER: &str = "confirm";
 pub static DEFAULT_CONFIRMATION_CODE: &str = include_str!("./defaults/confirmation.ts");
-pub static DEFAULT_COMMAND_HANDLER: &str = "command";
-pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/command.ts");
+pub static DEFAULT_COMMAND_HANDLER: &str = "action";
+pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/action.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
 
@@ -74,12 +74,12 @@ async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
     Ok(func)
 }
 
-async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
+async fn create_action_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
         generate_name(),
-        FuncBackendKind::JsCommand,
-        FuncBackendResponseType::Command,
+        FuncBackendKind::JsAction,
+        FuncBackendResponseType::Action,
     )
     .await?;
 
@@ -142,7 +142,7 @@ pub async fn create_func(
             create_attribute_func(&ctx, FuncVariant::CodeGeneration).await?
         }
         FuncVariant::Confirmation => create_attribute_func(&ctx, FuncVariant::Confirmation).await?,
-        FuncVariant::Command => create_command_func(&ctx).await?,
+        FuncVariant::Action => create_action_func(&ctx).await?,
         FuncVariant::Validation => create_validation_func(&ctx).await?,
         FuncVariant::Qualification => {
             create_attribute_func(&ctx, FuncVariant::Qualification).await?

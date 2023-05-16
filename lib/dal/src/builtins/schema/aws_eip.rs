@@ -7,15 +7,13 @@ use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::SchemaVariant;
 use crate::{
-    action_prototype::ActionKind,
-    schema::variant::leaves::{LeafInput, LeafInputLocation},
-    FuncDescriptionContents,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
+    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, StandardModel,
 };
 use crate::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
-    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind, SchemaError,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    schema::variant::leaves::{LeafInput, LeafInputLocation},
+    FuncDescriptionContents,
 };
 
 // Documentation URL(s)
@@ -400,26 +398,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        let workflow_func_name = "si:awsEipCreateWorkflow";
-        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
-        let title = "Create Elastic IP";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
         // Add confirmations.
         let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
@@ -466,65 +444,8 @@ impl MigrationDriver {
             .await?;
 
         // Add delete confirmations.
-        self.add_deletion_confirmation_and_workflow(
-            ctx,
-            name,
-            &schema_variant,
-            Some("AWS"),
-            "si:awsEipDeleteWorkflow",
-        )
-        .await?;
-
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "create",
-            ActionKind::Create,
-            context,
-        )
-        .await?;
-
-        let eip_refresh_workflow_func_name = "si:awsEipRefreshWorkflow";
-        let eip_refresh_workflow_func =
-            Func::find_by_attr(ctx, "name", &eip_refresh_workflow_func_name)
-                .await?
-                .pop()
-                .ok_or_else(|| {
-                    SchemaError::FuncNotFound(eip_refresh_workflow_func_name.to_owned())
-                })?;
-        let title = "Refresh Elastic IP Resource";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *eip_refresh_workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "refresh",
-            ActionKind::Refresh,
-            context,
-        )
-        .await?;
+        self.add_deletion_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
 
         Ok(())
     }

@@ -69,9 +69,8 @@
         {
           "name": "v0",
           "siPropFuncs": [],
-          "workflows": [],
           "sockets": [],
-          "commandFuncs": [],
+          "actionFuncs": [],
           "componentType": "component",
           "funcDescriptions": [],
           "leafFunctions": [
@@ -106,7 +105,7 @@
                 "validations": [{
                   "kind": "integerIsBetweenTwoIntegers",
                   "upper_bound": 31337,
-                  "lower_bound": 2600 
+                  "lower_bound": 2600
                 }]
               },
               {

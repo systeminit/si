@@ -8,7 +8,7 @@ use crate::{
     builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ActionKind,
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, AttributeValueError, BuiltinsError, Func, FuncArgument, FuncBackendKind,
-    FuncBackendResponseType, InternalProvider, WorkflowPrototype, WorkflowPrototypeContext,
+    FuncBackendResponseType, InternalProvider,
 };
 use crate::{BuiltinsResult, DalContext, SchemaVariant, StandardModel};
 
@@ -92,60 +92,23 @@ impl MigrationDriver {
 
         // Add create command, workflow and action.
         {
-            let mut command_func = Func::new(
+            let mut action_func = Func::new(
                 ctx,
-                "test:createCommandStarfield",
-                FuncBackendKind::JsCommand,
-                FuncBackendResponseType::Command,
+                "test:createActionStarfield",
+                FuncBackendKind::JsAction,
+                FuncBackendResponseType::Action,
             )
             .await?;
             let code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
             }";
-            command_func.set_code_plaintext(ctx, Some(code)).await?;
-            command_func.set_handler(ctx, Some("create")).await?;
-            let mut workflow_func = Func::new(
-                ctx,
-                "test:createWorkflowStarfield",
-                FuncBackendKind::JsWorkflow,
-                FuncBackendResponseType::Workflow,
-            )
-            .await?;
-            let code = "async function create() {
-              return {
-                name: \"test:createWorkflowStarfield\",
-                kind: \"conditional\",
-                steps: [
-                  {
-                    command: \"test:createCommandStarfield\",
-                  },
-                ],
-              };
-            }";
-            workflow_func.set_code_plaintext(ctx, Some(code)).await?;
-            workflow_func.set_handler(ctx, Some("create")).await?;
-            let workflow_prototype = WorkflowPrototype::new(
-                ctx,
-                *workflow_func.id(),
-                serde_json::Value::Null,
-                WorkflowPrototypeContext {
-                    schema_id: *schema.id(),
-                    schema_variant_id: *schema_variant.id(),
-                    ..Default::default()
-                },
-                "Create Starfield",
-            )
-            .await?;
+            action_func.set_code_plaintext(ctx, Some(code)).await?;
+            action_func.set_handler(ctx, Some("create")).await?;
             ActionPrototype::new(
                 ctx,
-                *workflow_prototype.id(),
-                "create",
+                *action_func.id(),
                 ActionKind::Create,
-                ActionPrototypeContext {
-                    schema_id: *schema.id(),
-                    schema_variant_id,
-                    ..Default::default()
-                },
+                ActionPrototypeContext { schema_variant_id },
             )
             .await?;
         }
@@ -154,9 +117,9 @@ impl MigrationDriver {
         {
             let mut refresh_func = Func::new(
                 ctx,
-                "test:refreshCommandStarfield",
-                FuncBackendKind::JsCommand,
-                FuncBackendResponseType::Command,
+                "test:refreshActionStarfield",
+                FuncBackendKind::JsAction,
+                FuncBackendResponseType::Action,
             )
             .await?;
             let code = "async function refresh(component: Input): Promise<Output> {
@@ -164,49 +127,11 @@ impl MigrationDriver {
             }";
             refresh_func.set_code_plaintext(ctx, Some(code)).await?;
             refresh_func.set_handler(ctx, Some("refresh")).await?;
-            let mut workflow_func = Func::new(
-                ctx,
-                "test:refreshWorkflowStarfield",
-                FuncBackendKind::JsWorkflow,
-                FuncBackendResponseType::Workflow,
-            )
-            .await?;
-            let code = "async function refresh(arg: Input): Promise<Output> {
-              return {
-                name: \"test:refreshWorkflowStarfield\",
-                kind: \"conditional\",
-                steps: [
-                  {
-                    command: \"test:refreshCommandStarfield\",
-                    args: [arg],
-                  },
-                ],
-              };
-            }";
-            workflow_func.set_code_plaintext(ctx, Some(code)).await?;
-            workflow_func.set_handler(ctx, Some("refresh")).await?;
-            let workflow_prototype = WorkflowPrototype::new(
-                ctx,
-                *workflow_func.id(),
-                serde_json::Value::Null,
-                WorkflowPrototypeContext {
-                    schema_id: *schema.id(),
-                    schema_variant_id: *schema_variant.id(),
-                    ..Default::default()
-                },
-                "Refresh Starfield",
-            )
-            .await?;
             ActionPrototype::new(
                 ctx,
-                *workflow_prototype.id(),
-                "refresh",
-                ActionKind::Create,
-                ActionPrototypeContext {
-                    schema_id: *schema.id(),
-                    schema_variant_id,
-                    ..Default::default()
-                },
+                *refresh_func.id(),
+                ActionKind::Refresh,
+                ActionPrototypeContext { schema_variant_id },
             )
             .await?;
         }
@@ -215,7 +140,7 @@ impl MigrationDriver {
         let mut transformation_func = Func::new(
             ctx,
             "test:falloutEntriesToGalaxies",
-            FuncBackendKind::Json,
+            FuncBackendKind::JsAttribute,
             FuncBackendResponseType::Array,
         )
         .await?;

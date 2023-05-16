@@ -21,10 +21,10 @@ use crate::{
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, CommandPrototypeError, ExternalProviderError, ExternalProviderId,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, InternalProviderError,
-    InternalProviderId, PropError, PropId, SchemaError, SchemaId, SchemaVariantError,
-    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    AttributeValueError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
+    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
+    StandardModelError, ValidationPrototypeError,
 };
 
 #[remain::sorted]
@@ -52,8 +52,6 @@ pub enum PkgError {
     ),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
-    #[error(transparent)]
-    CommandPrototype(#[from] CommandPrototypeError),
     #[error("Cannot find Socket for explicit InternalProvider {0}")]
     ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error(transparent)]
@@ -140,8 +138,6 @@ pub enum PkgError {
     UrlParse(#[from] ParseError),
     #[error("Validation creation error: {0}")]
     Validation(#[from] ValidationPrototypeError),
-    #[error("Workflow creation error: {0}")]
-    Workflow(#[from] WorkflowPrototypeError),
 }
 
 impl PkgError {
@@ -162,11 +158,9 @@ impl TryFrom<FuncBackendKind> for FuncSpecBackendKind {
     fn try_from(value: FuncBackendKind) -> Result<Self, Self::Error> {
         Ok(match value {
             FuncBackendKind::JsAttribute => FuncSpecBackendKind::JsAttribute,
-            FuncBackendKind::JsCommand => FuncSpecBackendKind::JsCommand,
             FuncBackendKind::JsReconciliation => FuncSpecBackendKind::JsReconciliation,
-            FuncBackendKind::Json => FuncSpecBackendKind::Json,
+            FuncBackendKind::JsAction => FuncSpecBackendKind::JsAction,
             FuncBackendKind::JsValidation => FuncSpecBackendKind::JsValidation,
-            FuncBackendKind::JsWorkflow => FuncSpecBackendKind::JsWorkflow,
             _ => return Err(PkgError::InvalidFuncBackendKind(value)),
         })
     }
@@ -176,11 +170,9 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
     fn from(value: FuncSpecBackendKind) -> Self {
         match value {
             FuncSpecBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
-            FuncSpecBackendKind::JsCommand => FuncBackendKind::JsCommand,
             FuncSpecBackendKind::JsReconciliation => FuncBackendKind::JsReconciliation,
-            FuncSpecBackendKind::Json => FuncBackendKind::Json,
+            FuncSpecBackendKind::JsAction => FuncBackendKind::JsAction,
             FuncSpecBackendKind::JsValidation => FuncBackendKind::JsValidation,
-            FuncSpecBackendKind::JsWorkflow => FuncBackendKind::JsWorkflow,
         }
     }
 }
@@ -190,10 +182,10 @@ impl TryFrom<FuncBackendResponseType> for FuncSpecBackendResponseType {
 
     fn try_from(value: FuncBackendResponseType) -> Result<Self, Self::Error> {
         Ok(match value {
+            FuncBackendResponseType::Action => FuncSpecBackendResponseType::Action,
             FuncBackendResponseType::Array => FuncSpecBackendResponseType::Array,
             FuncBackendResponseType::Boolean => FuncSpecBackendResponseType::Boolean,
             FuncBackendResponseType::CodeGeneration => FuncSpecBackendResponseType::CodeGeneration,
-            FuncBackendResponseType::Command => FuncSpecBackendResponseType::Command,
             FuncBackendResponseType::Confirmation => FuncSpecBackendResponseType::Confirmation,
             FuncBackendResponseType::Integer => FuncSpecBackendResponseType::Integer,
             FuncBackendResponseType::Json => FuncSpecBackendResponseType::Json,
@@ -202,7 +194,6 @@ impl TryFrom<FuncBackendResponseType> for FuncSpecBackendResponseType {
             FuncBackendResponseType::Qualification => FuncSpecBackendResponseType::Qualification,
             FuncBackendResponseType::String => FuncSpecBackendResponseType::String,
             FuncBackendResponseType::Validation => FuncSpecBackendResponseType::Validation,
-            FuncBackendResponseType::Workflow => FuncSpecBackendResponseType::Workflow,
 
             _ => return Err(PkgError::InvalidFuncBackendResponseType(value)),
         })
@@ -212,10 +203,10 @@ impl TryFrom<FuncBackendResponseType> for FuncSpecBackendResponseType {
 impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
     fn from(value: FuncSpecBackendResponseType) -> Self {
         match value {
+            FuncSpecBackendResponseType::Action => FuncBackendResponseType::Action,
             FuncSpecBackendResponseType::Array => FuncBackendResponseType::Array,
             FuncSpecBackendResponseType::Boolean => FuncBackendResponseType::Boolean,
             FuncSpecBackendResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
-            FuncSpecBackendResponseType::Command => FuncBackendResponseType::Command,
             FuncSpecBackendResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
             FuncSpecBackendResponseType::Confirmation => FuncBackendResponseType::Confirmation,
             FuncSpecBackendResponseType::Integer => FuncBackendResponseType::Integer,
@@ -225,7 +216,6 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
             FuncSpecBackendResponseType::Qualification => FuncBackendResponseType::Qualification,
             FuncSpecBackendResponseType::String => FuncBackendResponseType::String,
             FuncSpecBackendResponseType::Validation => FuncBackendResponseType::Validation,
-            FuncSpecBackendResponseType::Workflow => FuncBackendResponseType::Workflow,
         }
     }
 }

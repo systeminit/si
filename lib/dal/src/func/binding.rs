@@ -16,11 +16,10 @@ use crate::{
         diff::FuncBackendDiff,
         identity::FuncBackendIdentity,
         integer::FuncBackendInteger,
+        js_action::FuncBackendJsAction,
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-        js_command::FuncBackendJsCommand,
         js_reconciliation::FuncBackendJsReconciliation,
         js_validation::FuncBackendJsValidation,
-        js_workflow::FuncBackendJsWorkflow,
         map::FuncBackendMap,
         object::FuncBackendObject,
         string::FuncBackendString,
@@ -230,18 +229,13 @@ impl FuncBinding {
             FuncBackendKind::JsValidation => {
                 FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await
             }
-            FuncBackendKind::JsWorkflow => {
-                FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await
-            }
-            FuncBackendKind::JsCommand => {
-                FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await
+            FuncBackendKind::JsAction => {
+                FuncBackendJsAction::create_and_execute(context, &func, &self.args).await
             }
             FuncBackendKind::JsReconciliation => {
                 FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args).await
             }
-            // NOTE: Adding JsAttribute here is a *hack*. We need separate backends for the json transformation
-            // NOTE: functions and the JsAttribute functions. Probably neither of them should take a ComponentView
-            FuncBackendKind::Json | FuncBackendKind::JsAttribute => {
+            FuncBackendKind::JsAttribute => {
                 let args = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
                         data: veritech_client::ComponentView {
@@ -349,11 +343,9 @@ impl FuncBinding {
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => {}
             FuncBackendKind::JsAttribute
-            | FuncBackendKind::JsWorkflow
-            | FuncBackendKind::JsCommand
             | FuncBackendKind::JsReconciliation
-            | FuncBackendKind::JsValidation
-            | FuncBackendKind::Json => {
+            | FuncBackendKind::JsAction
+            | FuncBackendKind::JsValidation => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
                     .await?;

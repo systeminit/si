@@ -14,8 +14,8 @@ use object_tree::{
 use petgraph::prelude::*;
 use thiserror::Error;
 
+mod action_func;
 mod attr_func_input;
-mod command_func;
 mod func;
 mod func_description;
 mod leaf_function;
@@ -25,11 +25,10 @@ mod si_prop_func;
 mod socket;
 mod validation;
 mod variant;
-mod workflow;
 
 pub use {
-    attr_func_input::*, command_func::*, func::*, func_description::*, leaf_function::*, prop::*,
-    schema::*, si_prop_func::*, socket::*, validation::*, variant::*, workflow::*,
+    action_func::*, attr_func_input::*, func::*, func_description::*, leaf_function::*, prop::*,
+    schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
 };
 
 use crate::{

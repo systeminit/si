@@ -45,11 +45,7 @@
           <div class="pr-2" role="decoration">•</div>
           {{ schemaVariantsById?.[svId]?.schemaName }}
           <div class="ml-auto">
-            <VButton
-              label=""
-              icon="trash"
-              @click="removeSchemaVariant(svId)"
-            />
+            <VButton label="" icon="trash" @click="removeSchemaVariant(svId)" />
           </div>
         </li>
       </ul>

@@ -1,6 +1,0 @@
-{
-  "kind": "JsWorkflow",
-  "response_type": "Workflow",
-  "code_file": "awsIngressDeleteWorkflow.ts",
-  "code_entrypoint": "deleteResource"
-}

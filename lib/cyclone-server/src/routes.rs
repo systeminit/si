@@ -65,15 +65,10 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         router =
             router.merge(Router::new().route("/validation", get(handlers::ws_execute_validation)));
     }
-    if config.enable_workflow_resolve() {
-        debug!("enabling workflow resolve endpoint");
-        router = router
-            .merge(Router::new().route("/workflow", get(handlers::ws_execute_workflow_resolve)));
-    }
-    if config.enable_command_run() {
+    if config.enable_action_run() {
         debug!("enabling command run endpoint");
         router =
-            router.merge(Router::new().route("/command", get(handlers::ws_execute_command_run)));
+            router.merge(Router::new().route("/command", get(handlers::ws_execute_action_run)));
     }
     if config.enable_reconciliation() {
         debug!("enabling reconciliation endpoint");

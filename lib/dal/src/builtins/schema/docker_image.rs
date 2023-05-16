@@ -7,8 +7,7 @@ use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInpu
 use crate::{
     component::ComponentKind, socket::SocketArity, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
-    DalContext, ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError,
-    SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    DalContext, ExternalProvider, InternalProvider, Prop, PropKind, SchemaVariant, StandardModel,
 };
 
 impl MigrationDriver {
@@ -218,47 +217,6 @@ impl MigrationDriver {
             *exposed_props_implicit_internal_provider.id(),
         )
         .await?;
-
-        let workflow_func_name = "si:dockerImageRefreshWorkflow";
-        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
-        let title = "Refresh Docker Image";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let _workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        // TODO(paulo): restore this when the following PR is merged: https://github.com/systeminit/si/pull/1876
-        // It gives us the ability to check if the fix flow has been run
-        // Which allows us to identify if a resource has actually been created in real-life, or if
-        // we are just passively monitoring it, like with AMI, Docker Image and Region
-        // By doing that we can avoid setting needs_destroy for passive components
-        /*
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "refresh",
-            ActionKind::Refresh,
-            context,
-        )
-        .await?;
-        */
 
         Ok(())
     }

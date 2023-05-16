@@ -4,8 +4,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    CommandFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
-    SiPropFuncSpec, SocketSpec, SpecError, WorkflowSpec,
+    ActionFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
+    SiPropFuncSpec, SocketSpec, SpecError,
 };
 
 #[remain::sorted]
@@ -70,17 +70,14 @@ pub struct SchemaVariantSpec {
     #[builder(private, default = "Self::default_resource_value()")]
     pub resource_value: PropSpec,
 
-    #[builder(setter(each(name = "command_func"), into), default)]
-    pub command_funcs: Vec<CommandFuncSpec>,
+    #[builder(setter(each(name = "action_func"), into), default)]
+    pub action_funcs: Vec<ActionFuncSpec>,
 
     #[builder(setter(each(name = "leaf_function"), into), default)]
     pub leaf_functions: Vec<LeafFunctionSpec>,
 
     #[builder(setter(each(name = "func_description"), into), default)]
     pub func_descriptions: Vec<FuncDescriptionSpec>,
-
-    #[builder(setter(each(name = "workflow"), into), default)]
-    pub workflows: Vec<WorkflowSpec>,
 
     #[builder(setter(each(name = "socket"), into), default)]
     pub sockets: Vec<SocketSpec>,

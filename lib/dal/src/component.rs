@@ -34,8 +34,8 @@ use crate::{
     FuncBackendKind, FuncError, HistoryActor, HistoryEventError, InternalProvider,
     InternalProviderId, Node, NodeError, PropError, PropId, RootPropChild, Schema, SchemaError,
     SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkflowRunnerError,
-    WorkspaceError, WsEvent, WsEventResult, WsPayload,
+    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkspaceError, WsEvent,
+    WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -177,8 +177,6 @@ pub enum ComponentError {
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationResolverError),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("ws event error: {0}")]

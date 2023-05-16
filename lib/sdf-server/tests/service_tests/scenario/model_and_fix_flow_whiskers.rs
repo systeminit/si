@@ -4,7 +4,7 @@ use std::{thread, time};
 use axum::Router;
 use dal::{
     component::confirmation::view::ConfirmationStatus, qualification::QualificationSubCheckStatus,
-    Component, FixCompletionStatus,
+    ActionKind, Component, FixCompletionStatus,
 };
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
@@ -565,7 +565,7 @@ async fn model_and_fix_flow_whiskers(
             fix_requests.push(FixRunRequest {
                 attribute_value_id: recommendation.confirmation_attribute_value_id,
                 component_id: recommendation.component_id,
-                action_name: recommendation.recommended_action,
+                action_prototype_id: recommendation.action_prototype_id,
             })
         }
     }
@@ -656,18 +656,18 @@ async fn model_and_fix_flow_whiskers(
 
     // Select the recommendations we want.
     for delete_recommendation in delete_recommendations {
-        if delete_recommendation.recommended_action == "delete" {
+        if delete_recommendation.action_kind == ActionKind::Delete {
             if delete_recommendation.name == "Delete Security Group" {
                 delete_sg_requests.push(FixRunRequest {
                     attribute_value_id: delete_recommendation.confirmation_attribute_value_id,
                     component_id: delete_recommendation.component_id,
-                    action_name: delete_recommendation.recommended_action,
+                    action_prototype_id: delete_recommendation.action_prototype_id,
                 })
             } else {
                 delete_requests.push(FixRunRequest {
                     attribute_value_id: delete_recommendation.confirmation_attribute_value_id,
                     component_id: delete_recommendation.component_id,
-                    action_name: delete_recommendation.recommended_action,
+                    action_prototype_id: delete_recommendation.action_prototype_id,
                 })
             }
         }

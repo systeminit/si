@@ -1,6 +1,6 @@
 use cyclone_core::{
-    CommandRunRequest, ComponentKind, ComponentView, ReconciliationRequest,
-    ResolverFunctionRequest, SensitiveString, ValidationRequest, WorkflowResolveRequest,
+    ActionRunRequest, ComponentKind, ComponentView, ReconciliationRequest, ResolverFunctionRequest,
+    SensitiveString, ValidationRequest,
 };
 use serde_json::Value;
 
@@ -178,7 +178,7 @@ impl DecryptRequest for ResolverFunctionRequest {
     }
 }
 
-impl ListSecrets for WorkflowResolveRequest {
+impl ListSecrets for ActionRunRequest {
     fn list_secrets(
         &self,
         _key: &DecryptionKey,
@@ -188,28 +188,7 @@ impl ListSecrets for WorkflowResolveRequest {
     }
 }
 
-impl DecryptRequest for WorkflowResolveRequest {
-    fn decrypt_request(
-        self,
-        _key: &DecryptionKey,
-    ) -> Result<serde_json::Value, DecryptionKeyError> {
-        let value = serde_json::to_value(&self)?;
-        // TODO(fnichol): we'll need to process the request with decrypted secrets
-        Ok(value)
-    }
-}
-
-impl ListSecrets for CommandRunRequest {
-    fn list_secrets(
-        &self,
-        _key: &DecryptionKey,
-    ) -> Result<Vec<SensitiveString>, DecryptionKeyError> {
-        // TODO(fnichol): we'll need to populate/consume secrets here shortly
-        Ok(vec![])
-    }
-}
-
-impl DecryptRequest for CommandRunRequest {
+impl DecryptRequest for ActionRunRequest {
     fn decrypt_request(
         self,
         _key: &DecryptionKey,

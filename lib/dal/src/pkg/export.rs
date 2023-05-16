@@ -7,13 +7,12 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
 use si_pkg::{
-    ActionSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, CommandFuncSpec, FuncArgumentSpec,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec,
     FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
     LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
     PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
     SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
     SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
-    WorkflowSpec,
 };
 
 use crate::{
@@ -22,12 +21,11 @@ use crate::{
     socket::SocketKind,
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, CommandPrototype,
-    CommandPrototypeContext, ComponentType, DalContext, ExternalProvider, ExternalProviderId, Func,
-    FuncDescription, FuncId, InternalProvider, InternalProviderId, LeafKind, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
-    StandardModel, StandardModelError, ValidationPrototype, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
+    ExternalProvider, ExternalProviderId, Func, FuncDescription, FuncId, InternalProvider,
+    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, Socket, StandardModel, StandardModelError,
+    ValidationPrototype,
 };
 
 use super::{PkgError, PkgResult};
@@ -97,7 +95,7 @@ fn build_intrinsic_func_spec(name: &str) -> PkgResult<FuncSpec> {
         .handler(name)
         .code_base64("")
         .response_type(FuncSpecBackendResponseType::Json)
-        .backend_kind(FuncSpecBackendKind::Json)
+        .backend_kind(FuncSpecBackendKind::JsAttribute)
         .hidden(false)
         .build()?)
 }
@@ -155,7 +153,7 @@ async fn build_schema_spec(
     schema_spec_builder.ui_hidden(schema.ui_hidden());
     set_schema_spec_category_data(ctx, &schema, &mut schema_spec_builder).await?;
 
-    let variant_spec = build_variant_spec(ctx, &schema, variant, func_specs).await?;
+    let variant_spec = build_variant_spec(ctx, variant, func_specs).await?;
     schema_spec_builder.variant(variant_spec);
 
     let schema_spec = schema_spec_builder.build()?;
@@ -213,57 +211,6 @@ async fn build_leaf_function_specs(
                     .build()?,
             );
         }
-    }
-
-    Ok(specs)
-}
-
-async fn build_workflow_specs(
-    ctx: &DalContext,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    func_specs: &FuncSpecMap,
-) -> PkgResult<Vec<WorkflowSpec>> {
-    let mut specs = vec![];
-
-    for workflow_prototype in WorkflowPrototype::find_for_context(
-        ctx,
-        WorkflowPrototypeContext {
-            schema_id,
-            schema_variant_id,
-            ..Default::default()
-        },
-    )
-    .await?
-    {
-        let func_spec = func_specs
-            .get(&workflow_prototype.func_id())
-            .ok_or(PkgError::MissingExportedFunc(workflow_prototype.func_id()))?;
-
-        let mut workflow_builder = WorkflowSpec::builder();
-        workflow_builder.title(workflow_prototype.title());
-        workflow_builder.func_unique_id(func_spec.unique_id);
-
-        for action_prototype in ActionPrototype::find_for_context_and_workflow_prototype(
-            ctx,
-            ActionPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
-            *workflow_prototype.id(),
-        )
-        .await?
-        {
-            let action_spec = ActionSpec::builder()
-                .name(action_prototype.name())
-                .kind(action_prototype.kind())
-                .build()?;
-
-            workflow_builder.action(action_spec);
-        }
-
-        specs.push(workflow_builder.build()?);
     }
 
     Ok(specs)
@@ -475,29 +422,24 @@ async fn get_component_type(
     })
 }
 
-async fn build_command_func_specs(
+async fn build_action_func_specs(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
     func_specs: &FuncSpecMap,
-) -> PkgResult<Vec<CommandFuncSpec>> {
+) -> PkgResult<Vec<ActionFuncSpec>> {
     let mut specs = vec![];
 
-    let command_prototypes = CommandPrototype::find_for_context(
-        ctx,
-        CommandPrototypeContext {
-            schema_variant_id,
-            ..Default::default()
-        },
-    )
-    .await?;
+    let action_prototypes =
+        ActionPrototype::find_for_context(ctx, ActionPrototypeContext { schema_variant_id })
+            .await?;
 
-    for command_proto in command_prototypes {
+    for action_proto in action_prototypes {
         let func_spec = func_specs
-            .get(&command_proto.func_id())
-            .ok_or(PkgError::MissingExportedFunc(command_proto.func_id()))?;
+            .get(&action_proto.func_id())
+            .ok_or(PkgError::MissingExportedFunc(action_proto.func_id()))?;
 
         specs.push(
-            CommandFuncSpec::builder()
+            ActionFuncSpec::builder()
                 .func_unique_id(func_spec.unique_id)
                 .build()?,
         )
@@ -544,7 +486,6 @@ async fn build_si_prop_func_specs(
 
 async fn build_variant_spec(
     ctx: &DalContext,
-    schema: &Schema,
     variant: SchemaVariant,
     func_specs: &FuncSpecMap,
 ) -> PkgResult<SchemaVariantSpec> {
@@ -590,13 +531,6 @@ async fn build_variant_spec(
             variant_spec_builder.func_description(func_desc_spec);
         });
 
-    build_workflow_specs(ctx, *schema.id(), *variant.id(), func_specs)
-        .await?
-        .drain(..)
-        .for_each(|workflow_spec| {
-            variant_spec_builder.workflow(workflow_spec);
-        });
-
     build_socket_specs(ctx, *variant.id(), func_specs)
         .await?
         .drain(..)
@@ -604,11 +538,11 @@ async fn build_variant_spec(
             variant_spec_builder.socket(socket_spec);
         });
 
-    build_command_func_specs(ctx, *variant.id(), func_specs)
+    build_action_func_specs(ctx, *variant.id(), func_specs)
         .await?
         .drain(..)
-        .for_each(|command_func_spec| {
-            variant_spec_builder.command_func(command_func_spec);
+        .for_each(|action_func_spec| {
+            variant_spec_builder.action_func(action_func_spec);
         });
 
     build_si_prop_func_specs(ctx, &variant, func_specs)

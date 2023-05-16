@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Delete Elastic IP",
+  "description": null,
+  "link": null,
+  "code_file": "awsEipDeleteAction.ts",
+  "code_entrypoint": "deleteResource"
+}

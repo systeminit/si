@@ -1,7 +1,0 @@
-{
-  "kind": "JsWorkflow",
-  "response_type": "Workflow",
-  "hidden": true,
-  "code_file": "poemWorkflow.ts",
-  "code_entrypoint": "poem"
-}

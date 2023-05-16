@@ -20,13 +20,11 @@ use crate::{
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     DalContext, ExternalProviderId, FuncError, InternalProviderId, PropError, PropId, SchemaError,
     SchemaVariantId, StandardModelError, TransactionsError, ValidationPrototypeError,
-    WorkflowPrototypeError,
 };
 
 // Private builtins modules.
 mod func;
 pub mod schema;
-mod workflow;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -105,8 +103,6 @@ pub enum BuiltinsError {
     Transactions(#[from] TransactionsError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error(transparent)]
-    WorkflowPrototype(#[from] WorkflowPrototypeError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
@@ -130,8 +126,8 @@ pub enum SelectedTestBuiltinSchemas {
 /// Migrate all "builtins" in a definitive order.
 ///
 /// 1. [`Funcs`](crate::Func)
-/// 1. [`WorkflowPrototypes`](crate::workflow_prototype::WorkflowPrototype)
 /// 1. [`Schemas`](crate::Schema)
+/// 1. ['ActionPrototypes'](crate::ActionPrototype)
 pub async fn migrate(
     ctx: &DalContext,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
@@ -139,17 +135,14 @@ pub async fn migrate(
     info!("migrating functions");
     func::migrate(ctx).await?;
 
-    info!("migrating workflows");
-    workflow::migrate(ctx).await?;
-
     match selected_test_builtin_schemas {
         Some(found_selected_test_builtin_schemas) => {
             schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas).await?;
         }
         None => {
             schema::migrate_for_production(ctx).await?;
-
-            func::migrate_command_prototypes(ctx).await?;
+            info!("migrating action prototypes");
+            func::migrate_action_prototypes(ctx).await?;
         }
     }
 

@@ -1,6 +1,0 @@
-{
-  "kind": "JsWorkflow",
-  "response_type": "Workflow",
-  "code_file": "awsEipRefreshWorkflow.ts",
-  "code_entrypoint": "refresh"
-}

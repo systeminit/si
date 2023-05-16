@@ -6,18 +6,23 @@ use thiserror::Error;
 
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use si_pkg::ActionSpecKind;
+use si_pkg::ActionFuncSpecKind;
 use telemetry::prelude::*;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility, WorkflowPrototype, WorkflowPrototypeId,
+    component::view::ComponentViewError, func::backend::js_action::ActionRunResult,
+    impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentId,
+    ComponentView, DalContext, FuncBinding, FuncBindingError, FuncBindingReturnValueError, FuncId,
+    HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility, WsEvent, WsEventError,
 };
 
-const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
-const FIND_FOR_CONTEXT_AND_WORKFLOW_PROTOTYPE: &str =
-    include_str!("./queries/action_prototype_find_for_context_and_workflow_prototype.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
+const FIND_FOR_CONTEXT_AND_KIND: &str =
+    include_str!("./queries/action_prototype/find_for_context_and_kind.sql");
+const FIND_FOR_FUNC: &str = include_str!("./queries/action_prototype/find_for_func.sql");
+const FIND_FOR_FUNC_KIND_CONTEXT: &str =
+    include_str!("./queries/action_prototype/find_for_func_kind_context.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -26,12 +31,20 @@ pub enum ActionPrototypeError {
     Component(String),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
+    #[error(transparent)]
+    ComponentView(#[from] ComponentViewError),
+    #[error(transparent)]
+    FuncBinding(#[from] FuncBindingError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("action Func {0} not found for ActionPrototype {1}")]
+    FuncNotFound(FuncId, ActionPrototypeId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error("not found with name {0}")]
-    NotFoundByName(String),
+    #[error("not found with kind {0} for context {1:?}")]
+    NotFoundByKindAndContext(ActionKind, ActionPrototypeContext),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("schema not found")]
@@ -44,16 +57,14 @@ pub enum ActionPrototypeError {
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("workflow prototype {0} not found")]
-    WorkflowPrototypeNotFound(WorkflowPrototypeId),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Copy)]
 pub struct ActionPrototypeContext {
-    pub component_id: ComponentId,
-    pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
 }
 
@@ -65,32 +76,32 @@ pub struct ActionPrototypeContext {
 pub enum ActionKind {
     /// The [`action`](ActionPrototype) creates a new "resource".
     Create,
-    /// The [`action`](ActionPrototype) destroys an existing "resource".
-    Destroy,
+    /// The [`action`](ActionPrototype) deletes an existing "resource".
+    Delete,
     /// The [`action`](ActionPrototype) is "internal only" or has multiple effects.
     Other,
     /// The [`action`](ActionPrototype) that refreshes an existing "resource".
     Refresh,
 }
 
-impl From<ActionSpecKind> for ActionKind {
-    fn from(value: ActionSpecKind) -> Self {
+impl From<ActionFuncSpecKind> for ActionKind {
+    fn from(value: ActionFuncSpecKind) -> Self {
         match value {
-            ActionSpecKind::Create => ActionKind::Create,
-            ActionSpecKind::Refresh => ActionKind::Refresh,
-            ActionSpecKind::Other => ActionKind::Other,
-            ActionSpecKind::Destroy => ActionKind::Destroy,
+            ActionFuncSpecKind::Create => ActionKind::Create,
+            ActionFuncSpecKind::Refresh => ActionKind::Refresh,
+            ActionFuncSpecKind::Other => ActionKind::Other,
+            ActionFuncSpecKind::Delete => ActionKind::Delete,
         }
     }
 }
 
-impl From<&ActionKind> for ActionSpecKind {
+impl From<&ActionKind> for ActionFuncSpecKind {
     fn from(value: &ActionKind) -> Self {
         match value {
-            ActionKind::Create => ActionSpecKind::Create,
-            ActionKind::Refresh => ActionSpecKind::Refresh,
-            ActionKind::Other => ActionSpecKind::Other,
-            ActionKind::Destroy => ActionSpecKind::Destroy,
+            ActionKind::Create => ActionFuncSpecKind::Create,
+            ActionKind::Refresh => ActionFuncSpecKind::Refresh,
+            ActionKind::Other => ActionFuncSpecKind::Other,
+            ActionKind::Delete => ActionFuncSpecKind::Delete,
         }
     }
 }
@@ -105,48 +116,16 @@ impl Default for ActionPrototypeContext {
 impl ActionPrototypeContext {
     pub fn new() -> Self {
         Self {
-            component_id: ComponentId::NONE,
-            schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
         }
     }
 
     pub fn new_for_context_field(context_field: ActionPrototypeContextField) -> Self {
         match context_field {
-            ActionPrototypeContextField::Schema(schema_id) => ActionPrototypeContext {
-                component_id: ComponentId::NONE,
-                schema_id,
-                schema_variant_id: SchemaVariantId::NONE,
-            },
             ActionPrototypeContextField::SchemaVariant(schema_variant_id) => {
-                ActionPrototypeContext {
-                    component_id: ComponentId::NONE,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id,
-                }
+                ActionPrototypeContext { schema_variant_id }
             }
-            ActionPrototypeContextField::Component(component_id) => ActionPrototypeContext {
-                component_id,
-                schema_id: SchemaId::NONE,
-                schema_variant_id: SchemaVariantId::NONE,
-            },
         }
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
     }
 
     pub fn schema_variant_id(&self) -> SchemaVariantId {
@@ -167,11 +146,8 @@ pk!(ActionPrototypeId);
 pub struct ActionPrototype {
     pk: ActionPrototypePk,
     id: ActionPrototypeId,
-    workflow_prototype_id: WorkflowPrototypeId,
-    name: String,
+    func_id: FuncId,
     kind: ActionKind,
-    component_id: ComponentId,
-    schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -184,21 +160,7 @@ pub struct ActionPrototype {
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ActionPrototypeContextField {
-    Component(ComponentId),
-    Schema(SchemaId),
     SchemaVariant(SchemaVariantId),
-}
-
-impl From<ComponentId> for ActionPrototypeContextField {
-    fn from(component_id: ComponentId) -> Self {
-        ActionPrototypeContextField::Component(component_id)
-    }
-}
-
-impl From<SchemaId> for ActionPrototypeContextField {
-    fn from(schema_id: SchemaId) -> Self {
-        ActionPrototypeContextField::Schema(schema_id)
-    }
 }
 
 impl From<SchemaVariantId> for ActionPrototypeContextField {
@@ -221,8 +183,7 @@ impl ActionPrototype {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
-        workflow_prototype_id: WorkflowPrototypeId,
-        name: &str,
+        func_id: FuncId,
         kind: ActionKind,
         context: ActionPrototypeContext,
     ) -> ActionPrototypeResult<Self> {
@@ -231,15 +192,12 @@ impl ActionPrototype {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &workflow_prototype_id,
-                    &name,
+                    &func_id,
                     &kind.as_ref(),
-                    &context.component_id(),
-                    &context.schema_id(),
                     &context.schema_variant_id(),
                 ],
             )
@@ -248,88 +206,160 @@ impl ActionPrototype {
         Ok(object)
     }
 
-    pub async fn find_for_context_and_workflow_prototype(
+    pub async fn find_for_context(
         ctx: &DalContext,
         context: ActionPrototypeContext,
-        workflow_prototype_id: WorkflowPrototypeId,
     ) -> ActionPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                FIND_FOR_CONTEXT_AND_WORKFLOW_PROTOTYPE,
+                FIND_FOR_CONTEXT,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &context.component_id,
-                    &context.schema_variant_id,
-                    &context.schema_id,
-                    &workflow_prototype_id,
+                    &context.schema_variant_id(),
                 ],
             )
             .await?;
+
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    pub async fn find_by_name(
+    pub async fn find_for_context_and_kind(
         ctx: &DalContext,
-        name: &str,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) -> ActionPrototypeResult<Option<Self>> {
+        kind: ActionKind,
+        context: ActionPrototypeContext,
+    ) -> ActionPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
-            .query_opt(
-                FIND_BY_NAME,
+            .query(
+                FIND_FOR_CONTEXT_AND_KIND,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &name,
-                    &schema_variant_id,
-                    &schema_id,
+                    &kind.as_ref(),
+                    &context.schema_variant_id(),
                 ],
             )
             .await?;
-        let object = standard_model::option_object_from_row(rows)?;
-        Ok(object)
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    pub async fn workflow_prototype(
-        &self,
+    pub async fn find_for_func(
         ctx: &DalContext,
-    ) -> ActionPrototypeResult<WorkflowPrototype> {
-        WorkflowPrototype::get_by_id(ctx, &self.workflow_prototype_id)
+        func_id: FuncId,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
             .await?
-            .ok_or(ActionPrototypeError::WorkflowPrototypeNotFound(
-                self.workflow_prototype_id,
-            ))
+            .pg()
+            .query(FIND_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    standard_model_accessor!(
-        workflow_prototype_id,
-        Pk(WorkflowPrototypeId),
-        ActionPrototypeResult
-    );
-    standard_model_accessor!(schema_id, Pk(SchemaId), ActionPrototypeResult);
+    pub async fn find_for_func_kind_context(
+        ctx: &DalContext,
+        func_id: FuncId,
+        kind: ActionKind,
+        context: ActionPrototypeContext,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_FOR_FUNC_KIND_CONTEXT,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &func_id,
+                    &kind.as_ref(),
+                    &context.schema_variant_id(),
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
     standard_model_accessor!(
         schema_variant_id,
         Pk(SchemaVariantId),
         ActionPrototypeResult
     );
-    standard_model_accessor!(component_id, Pk(ComponentId), ActionPrototypeResult);
-
-    standard_model_accessor!(name, String, ActionPrototypeResult);
+    standard_model_accessor!(func_id, Pk(FuncId), ActionPrototypeResult);
     standard_model_accessor!(kind, Enum(ActionKind), ActionPrototypeResult);
 
     pub fn context(&self) -> ActionPrototypeContext {
         let mut context = ActionPrototypeContext::new();
-        context.set_component_id(self.component_id);
-        context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
 
         context
+    }
+
+    pub async fn run(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        trigger_dependent_values_update: bool,
+    ) -> ActionPrototypeResult<Option<ActionRunResult>> {
+        let component_view = ComponentView::new(ctx, component_id).await?;
+        let (_, return_value) = FuncBinding::create_and_execute(
+            ctx,
+            serde_json::to_value(component_view)?,
+            self.func_id(),
+        )
+        .await?;
+
+        let mut logs = vec![];
+        for stream_part in return_value
+            .get_output_stream(ctx)
+            .await?
+            .unwrap_or_default()
+        {
+            logs.push(stream_part);
+        }
+
+        logs.sort_by_key(|log| log.timestamp);
+
+        Ok(match return_value.value() {
+            Some(value) => {
+                let mut run_result: ActionRunResult = serde_json::from_value(value.clone())?;
+                run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
+
+                let deleted_ctx = &ctx.clone_with_delete_visibility();
+                let mut component = Component::get_by_id(deleted_ctx, &component_id)
+                    .await?
+                    .ok_or(ActionPrototypeError::ComponentNotFound(component_id))?;
+
+                if component.needs_destroy() && run_result.payload.is_none() {
+                    component
+                        .set_needs_destroy(deleted_ctx, false)
+                        .await
+                        .map_err(|e| ActionPrototypeError::Component(e.to_string()))?;
+                }
+
+                if component
+                    .set_resource(ctx, run_result.clone(), trigger_dependent_values_update)
+                    .await
+                    .map_err(|e| ActionPrototypeError::Component(e.to_string()))?
+                {
+                    WsEvent::resource_refreshed(ctx, *component.id())
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
+                }
+
+                Some(run_result)
+            }
+            None => None,
+        })
     }
 }

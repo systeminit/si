@@ -1,7 +1,0 @@
-{
-  "kind": "JsCommand",
-  "response_type": "Command",
-  "hidden": true,
-  "code_file": "failCommand.ts",
-  "code_entrypoint": "fail"
-}

@@ -102,7 +102,7 @@
                   <StatusIndicatorIcon type="fix" :status="fix.status" />
                   <div class="flex flex-col">
                     <div class="font-bold pl-xs">
-                      {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
+                      {{ `${formatTitle(fix.actionKind)} ${fix.schemaName}` }}
                     </div>
                   </div>
                 </template>
@@ -124,7 +124,9 @@
                             :health="fix.resource.status"
                             :message="
                               [
-                                `${formatTitle(fix.action)} ${fix.schemaName}`,
+                                `${formatTitle(fix.actionKind)} ${
+                                  fix.schemaName
+                                }`,
                                 fix.resource.message ?? '',
                               ].filter((f) => f.length > 0)
                             "
@@ -140,7 +142,7 @@
                         :health="fix.resource.status"
                         :message="
                           [
-                            `${formatTitle(fix.action)} ${fix.schemaName}`,
+                            `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
                             fix.resource.message ?? '',
                           ].filter((f) => f.length > 0)
                         "
@@ -158,7 +160,7 @@
                         :health="fix.resource.status"
                         :message="
                           [
-                            `${formatTitle(fix.action)} ${fix.schemaName}`,
+                            `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
                             fix.resource.message ?? '',
                           ].filter((f) => f.length > 0)
                         "

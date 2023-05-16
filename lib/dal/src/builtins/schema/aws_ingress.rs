@@ -6,15 +6,11 @@ use crate::schema::variant::leaves::LeafInput;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::{
-    action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation, FuncDescription,
-    FuncDescriptionContents,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
+    Func, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
 };
-use crate::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
-    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, DalContext, Func, InternalProvider, PropKind, SchemaError, SchemaVariant,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
-};
+use crate::{schema::variant::leaves::LeafInputLocation, FuncDescription, FuncDescriptionContents};
 
 // Documentation URL(s)
 const EC2_TAG_DOCS_URL: &str =
@@ -33,7 +29,7 @@ impl MigrationDriver {
         node_color: &str,
     ) -> BuiltinsResult<()> {
         let name = "Ingress";
-        let (schema, mut schema_variant, root_prop, _, _, _) = match self
+        let (_schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
@@ -542,26 +538,6 @@ impl MigrationDriver {
             .await?;
         }
 
-        let workflow_func_name = "si:awsIngressCreateWorkflow";
-        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
-        let title = "Create Ingress";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
         // Add confirmations.
         let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
@@ -607,65 +583,8 @@ impl MigrationDriver {
         )
             .await?;
 
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "create",
-            ActionKind::Create,
-            context,
-        )
-        .await?;
-
-        let ingress_refresh_workflow_func_name = "si:awsIngressRefreshWorkflow";
-        let ingress_refresh_workflow_func =
-            Func::find_by_attr(ctx, "name", &ingress_refresh_workflow_func_name)
-                .await?
-                .pop()
-                .ok_or_else(|| {
-                    SchemaError::FuncNotFound(ingress_refresh_workflow_func_name.to_owned())
-                })?;
-        let title = "Refresh Ingress's Resource";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *ingress_refresh_workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "refresh",
-            ActionKind::Refresh,
-            context,
-        )
-        .await?;
-
-        self.add_deletion_confirmation_and_workflow(
-            ctx,
-            name,
-            &schema_variant,
-            Some("AWS"),
-            "si:awsIngressDeleteWorkflow",
-        )
-        .await?;
+        self.add_deletion_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
 
         Ok(())
     }

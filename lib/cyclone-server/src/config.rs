@@ -35,10 +35,7 @@ pub struct Config {
     enable_resolver: bool,
 
     #[builder(default = "true")]
-    enable_workflow_resolve: bool,
-
-    #[builder(default = "true")]
-    enable_command_run: bool,
+    enable_action_run: bool,
 
     #[builder(default = "true")]
     enable_reconciliation: bool,
@@ -81,16 +78,10 @@ impl Config {
         self.enable_resolver
     }
 
-    /// Gets a reference to the config's enable workflow resolve.
+    /// Gets a reference to the config's enable action run.
     #[must_use]
-    pub fn enable_workflow_resolve(&self) -> bool {
-        self.enable_workflow_resolve
-    }
-
-    /// Gets a reference to the config's enable command run.
-    #[must_use]
-    pub fn enable_command_run(&self) -> bool {
-        self.enable_command_run
+    pub fn enable_action_run(&self) -> bool {
+        self.enable_action_run
     }
 
     /// Gets a reference to the config's enable reconciliation.

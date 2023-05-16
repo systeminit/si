@@ -7,15 +7,11 @@ use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
-    action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation, FuncDescription,
-    FuncDescriptionContents, PropId, SchemaVariantId,
-};
-use crate::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
-    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsResult, DalContext, ExternalProvider, Func, FuncBinding,
-    InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    schema::variant::leaves::LeafInputLocation, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    FuncBinding, FuncDescription, FuncDescriptionContents, InternalProvider, PropId, PropKind,
+    SchemaError, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 // Documentation URL(s)
@@ -584,26 +580,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        let workflow_func_name = "si:awsSecurityGroupCreateWorkflow";
-        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
-        let title = "Create Security Group";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
         // Add confirmations.
         let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
@@ -649,62 +625,8 @@ impl MigrationDriver {
         )
             .await?;
 
-        self.add_deletion_confirmation_and_workflow(
-            ctx,
-            name,
-            &schema_variant,
-            Some("AWS"),
-            "si:awsSecurityGroupDeleteWorkflow",
-        )
-        .await?;
-
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "create",
-            ActionKind::Create,
-            context,
-        )
-        .await?;
-
-        let workflow_func_name = "si:awsSecurityGroupRefreshWorkflow";
-        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
-        let title = "Refresh Security Group's Resource";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            "refresh",
-            ActionKind::Refresh,
-            context,
-        )
-        .await?;
+        self.add_deletion_confirmation(ctx, name, &schema_variant, Some("AWS"))
+            .await?;
 
         Ok(())
     }

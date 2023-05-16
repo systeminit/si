@@ -23,7 +23,6 @@ pub mod builtins;
 pub mod change_set;
 pub mod change_status;
 pub mod code_view;
-pub mod command_prototype;
 pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
@@ -63,10 +62,6 @@ pub mod timestamp;
 pub mod user;
 pub mod validation;
 pub mod visibility;
-pub mod workflow;
-pub mod workflow_prototype;
-pub mod workflow_resolver;
-pub mod workflow_runner;
 pub mod workspace;
 pub mod ws_event;
 
@@ -95,9 +90,6 @@ pub use attribute::{
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
-pub use command_prototype::{
-    CommandPrototype, CommandPrototypeContext, CommandPrototypeError, CommandPrototypeId,
-};
 pub use component::{
     resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
     ComponentError, ComponentId, ComponentView, ComponentViewProperties,
@@ -175,18 +167,6 @@ pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
 pub use visibility::{Visibility, VisibilityError};
-pub use workflow::{
-    WorkflowError, WorkflowKind, WorkflowResult, WorkflowStep, WorkflowTree, WorkflowTreeStep,
-    WorkflowView,
-};
-pub use workflow_prototype::{
-    WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeError, WorkflowPrototypeId,
-};
-pub use workflow_resolver::{WorkflowResolver, WorkflowResolverError, WorkflowResolverId};
-pub use workflow_runner::workflow_runner_state::{
-    WorkflowRunnerState, WorkflowRunnerStateId, WorkflowRunnerStatus,
-};
-pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 

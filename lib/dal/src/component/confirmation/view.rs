@@ -13,10 +13,10 @@ use crate::action_prototype::ActionKind;
 use crate::component::confirmation::{ConfirmationEntry, ConfirmationMetadataCache};
 use crate::fix::FixHistoryView;
 use crate::{
-    ActionPrototype, ActionPrototypeError, AttributeValueId, ComponentError, DalContext, Fix,
-    FixResolver, FixResolverError, FuncBindingReturnValue, FuncBindingReturnValueError,
-    FuncDescription, FuncDescriptionContents, FuncError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError,
+    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
+    AttributeValueId, ComponentError, DalContext, Fix, FixResolver, FixResolverError, Func,
+    FuncBindingReturnValue, FuncBindingReturnValueError, FuncDescription, FuncDescriptionContents,
+    FuncError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
 };
 use crate::{Component, ComponentId};
 
@@ -199,10 +199,15 @@ impl ConfirmationView {
         let mut recommendations = Vec::new();
 
         for action in &entry.recommended_actions {
+            let context = ActionPrototypeContext { schema_variant_id };
+
             let action_prototype =
-                ActionPrototype::find_by_name(ctx, action, schema_id, schema_variant_id)
+                ActionPrototype::find_for_context_and_kind(ctx, *action, context)
                     .await?
-                    .ok_or_else(|| ActionPrototypeError::NotFoundByName(action.clone()))?;
+                    .pop()
+                    .ok_or_else(|| {
+                        ActionPrototypeError::NotFoundByKindAndContext(*action, context)
+                    })?;
 
             // Find the last fix ran. If a fix has never been ran before for this
             // recommendation (i.e. no fix resolver), that is fine!
@@ -227,20 +232,29 @@ impl ConfirmationView {
                 None => None,
             };
 
-            let workflow_prototype = action_prototype.workflow_prototype(ctx).await?;
             let recommendation_action_kind = action_prototype.kind().to_owned();
+
+            let action_func = Func::get_by_id(ctx, &action_prototype.func_id())
+                .await?
+                .ok_or(ActionPrototypeError::FuncNotFound(
+                    action_prototype.func_id(),
+                    *action_prototype.id(),
+                ))?;
+
+            let recommendation_name = action_func.display_name().unwrap_or(action_func.name());
 
             recommendations.push(RecommendationView {
                 confirmation_attribute_value_id: *found_attribute_value_id,
                 component_id,
                 component_name: Component::find_name(ctx, component_id).await?,
                 provider: maybe_provider.clone(),
-                name: workflow_prototype.title().to_owned(),
-                recommended_action: action_prototype.name().to_owned(),
+                name: recommendation_name.to_owned(),
                 action_kind: recommendation_action_kind,
+                action_prototype_id: *action_prototype.id(),
                 last_fix: maybe_last_fix,
                 has_running_fix: running_fixes.iter().any(|r| {
-                    r.component_id() == component_id && r.action() == action_prototype.name()
+                    *r.component_id() == component_id
+                        && r.action_prototype_id() == action_prototype.id()
                 }),
             });
         }
@@ -298,12 +312,14 @@ pub struct RecommendationView {
 
     /// The title of a [recommendation](Self). An example: "Create EC2 Instance".
     pub name: String,
-    /// Maps to the name of an [`ActionPrototype`](crate::ActionPrototype). An example: "create".
-    pub recommended_action: String,
     /// The [`kind`](crate::action_prototype::ActionKind) of
     /// [`ActionPrototype`](crate::ActionPrototype) that the recommended
     /// [action](crate::ActionPrototype) corresponds to.
     pub action_kind: ActionKind,
+
+    /// The [`ActionPrototype`](crate::ActionPrototype) that the recommendation suggests we run
+    /// (the function to run for this fix)
+    pub action_prototype_id: ActionPrototypeId,
 
     /// Indicates if an associated [`Fix`](crate::Fix) is in-flight for the [`RecommendationView`].
     /// The running [`Fix`] may also be (or will become) the "last_fix".

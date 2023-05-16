@@ -135,7 +135,7 @@ async fn model_and_fix_flow_aws_key_pair(
             vec![FixRunRequest {
                 attribute_value_id: recommendation.confirmation_attribute_value_id,
                 component_id: recommendation.component_id,
-                action_name: recommendation.recommended_action,
+                action_prototype_id: recommendation.action_prototype_id,
             }],
         )
         .await;

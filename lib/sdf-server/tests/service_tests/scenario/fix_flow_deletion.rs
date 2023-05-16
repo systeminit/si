@@ -2,9 +2,8 @@ use std::collections::HashSet;
 
 use axum::Router;
 use dal::{
-    action_prototype::ActionKind,
     component::confirmation::view::{ConfirmationStatus, RecommendationView},
-    ComponentId, FixCompletionStatus,
+    ActionKind, ComponentId, FixCompletionStatus,
 };
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
@@ -141,7 +140,7 @@ async fn fix_flow_deletion(
         fix_requests.push(FixRunRequest {
             attribute_value_id: recommendation.confirmation_attribute_value_id,
             component_id: recommendation.component_id,
-            action_name: recommendation.recommended_action,
+            action_prototype_id: recommendation.action_prototype_id,
         });
     }
     assert_eq!(
@@ -269,23 +268,23 @@ async fn fix_flow_deletion(
     let expected = vec![
         RecommendationMetadata {
             component_id: leo.component_id,
-            action_kind: ActionKind::Destroy,
+            action_kind: ActionKind::Delete,
         },
         RecommendationMetadata {
             component_id: chronicle.component_id,
-            action_kind: ActionKind::Destroy,
+            action_kind: ActionKind::Delete,
         },
         RecommendationMetadata {
             component_id: boaster.component_id,
-            action_kind: ActionKind::Destroy,
+            action_kind: ActionKind::Delete,
         },
         RecommendationMetadata {
             component_id: alfajer.component_id,
-            action_kind: ActionKind::Destroy,
+            action_kind: ActionKind::Delete,
         },
         RecommendationMetadata {
             component_id: derke.component_id,
-            action_kind: ActionKind::Destroy,
+            action_kind: ActionKind::Delete,
         },
     ];
     assert_eq!(
@@ -321,13 +320,13 @@ async fn fix_flow_deletion(
     let mut fix_requests = Vec::new();
     for recommendation in recommendations {
         assert_eq!(
-            ActionKind::Destroy,        // expected
+            ActionKind::Delete,         // expected
             recommendation.action_kind  // actual
         );
         fix_requests.push(FixRunRequest {
             attribute_value_id: recommendation.confirmation_attribute_value_id,
             component_id: recommendation.component_id,
-            action_name: recommendation.recommended_action,
+            action_prototype_id: recommendation.action_prototype_id,
         });
     }
     assert_eq!(

@@ -11,10 +11,9 @@ use cyclone_client::{
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ReconciliationRequest,
+    ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    ValidationRequest, ValidationResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -171,33 +170,16 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
         result
     }
 
-    async fn execute_workflow_resolve(
+    async fn execute_action_run(
         &mut self,
-        request: WorkflowResolveRequest,
-    ) -> result::Result<
-        Execution<TcpStream, WorkflowResolveRequest, WorkflowResolveResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_workflow_resolve(request).await;
-        self.count_request();
-
-        result
-    }
-
-    async fn execute_command_run(
-        &mut self,
-        request: CommandRunRequest,
-    ) -> result::Result<Execution<TcpStream, CommandRunRequest, CommandRunResultSuccess>, ClientError>
+        request: ActionRunRequest,
+    ) -> result::Result<Execution<TcpStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_command_run(request).await;
+        let result = self.client.execute_action_run(request).await;
         self.count_request();
 
         result
@@ -286,13 +268,9 @@ pub struct LocalHttpInstanceSpec {
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
 
-    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_workflow"), default = "false")]
-    workflow: bool,
-
-    /// Enables the `command` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_command"), default = "false")]
-    command: bool,
+    /// Enables the `action` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_action"), default = "false")]
+    action: bool,
 }
 
 #[async_trait]
@@ -371,11 +349,8 @@ impl LocalHttpInstanceSpec {
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
-        if self.workflow {
-            cmd.arg("--enable-workflow");
-        }
-        if self.command {
-            cmd.arg("--enable-command-run");
+        if self.action {
+            cmd.arg("--enable-action-run");
         }
 
         cmd
@@ -407,19 +382,14 @@ impl LocalHttpInstanceSpecBuilder {
         self._resolver(true)
     }
 
-    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
-    pub fn workflow(&mut self) -> &mut Self {
-        self._workflow(true)
-    }
-
-    /// Enables the `command` execution endpoint for a spawned Cyclone server.
-    pub fn command(&mut self) -> &mut Self {
-        self._command(true)
+    /// Enables the `action` execution endpoint for a spawned Cyclone server.
+    pub fn action(&mut self) -> &mut Self {
+        self._action(true)
     }
 
     /// Enables all available endpoints for a spawned Cyclone server
     pub fn all_endpoints(&mut self) -> &mut Self {
-        self.command().resolver().workflow()
+        self.action().resolver()
     }
 }
 

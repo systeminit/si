@@ -1,7 +1,7 @@
 export enum FunctionKind {
+  ActionRun = "actionRun",
   ResolverFunction = "resolverfunction",
   WorkflowResolve = "workflowResolve",
-  CommandRun = "commandRun",
   Validation = "validation",
   Reconciliation = "reconciliation",
 }
@@ -9,8 +9,7 @@ export enum FunctionKind {
 export function functionKinds(): Array<string> {
   return [
     FunctionKind.ResolverFunction,
-    FunctionKind.WorkflowResolve,
-    FunctionKind.CommandRun,
+    FunctionKind.ActionRun,
     FunctionKind.Validation,
     FunctionKind.Reconciliation,
   ];

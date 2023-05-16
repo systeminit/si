@@ -13,10 +13,9 @@ use axum::{
     response::IntoResponse,
 };
 use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, LivenessStatus, Message, ReadinessStatus,
+    ActionRunRequest, ActionRunResultSuccess, LivenessStatus, Message, ReadinessStatus,
     ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionRequest,
     ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
@@ -27,9 +26,8 @@ use crate::{
     execution::{self, Execution},
     request::{DecryptRequest, ListSecrets},
     result::{
-        LangServerCommandRunResultSuccess, LangServerReconciliationResultSuccess,
+        LangServerActionRunResultSuccess, LangServerReconciliationResultSuccess,
         LangServerResolverFunctionResultSuccess, LangServerValidationResultSuccess,
-        LangServerWorkflowResolveResultSuccess,
     },
     state::{DecryptionKey, LangServerPath, TelemetryLevel, WatchKeepalive},
     watch,
@@ -136,7 +134,7 @@ pub async fn ws_execute_validation(
 }
 
 #[allow(clippy::unused_async)]
-pub async fn ws_execute_workflow_resolve(
+pub async fn ws_execute_action_run(
     wsu: WebSocketUpgrade,
     State(lang_server_path): State<LangServerPath>,
     State(key): State<DecryptionKey>,
@@ -145,43 +143,16 @@ pub async fn ws_execute_workflow_resolve(
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
-        let request: PhantomData<WorkflowResolveRequest> = PhantomData;
-        let lang_server_success: PhantomData<LangServerWorkflowResolveResultSuccess> = PhantomData;
-        let success: PhantomData<WorkflowResolveResultSuccess> = PhantomData;
+        let request: PhantomData<ActionRunRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerActionRunResultSuccess> = PhantomData;
+        let success: PhantomData<ActionRunResultSuccess> = PhantomData;
         handle_socket(
             socket,
             lang_server_path,
             telemetry_level.is_debug_or_lower(),
             key.into(),
             limit_request_guard,
-            "workflowResolve".to_owned(),
-            request,
-            lang_server_success,
-            success,
-        )
-    })
-}
-
-#[allow(clippy::unused_async)]
-pub async fn ws_execute_command_run(
-    wsu: WebSocketUpgrade,
-    State(lang_server_path): State<LangServerPath>,
-    State(key): State<DecryptionKey>,
-    State(telemetry_level): State<TelemetryLevel>,
-    limit_request_guard: LimitRequestGuard,
-) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    wsu.on_upgrade(move |socket| {
-        let request: PhantomData<CommandRunRequest> = PhantomData;
-        let lang_server_success: PhantomData<LangServerCommandRunResultSuccess> = PhantomData;
-        let success: PhantomData<CommandRunResultSuccess> = PhantomData;
-        handle_socket(
-            socket,
-            lang_server_path,
-            telemetry_level.is_debug_or_lower(),
-            key.into(),
-            limit_request_guard,
-            "commandRun".to_owned(),
+            "actionRun".to_owned(),
             request,
             lang_server_success,
             success,

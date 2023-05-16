@@ -116,7 +116,7 @@
         <div class="py-xs text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Recommendation:</div>
-            <div>{{ recommendation.recommendedAction }}</div>
+            <div>{{ recommendation.actionKind }}</div>
           </div>
         </div>
       </div>

@@ -11,15 +11,15 @@ use crate::{
         },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext,
-    DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver,
-    RootPropChild, StandardModel, Visibility, WsEvent,
+    AccessBuilder, ActionPrototype, ActionPrototypeId, AttributeValueId, Component, ComponentId,
+    DalContext, DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId,
+    FixResolver, RootPropChild, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FixItem {
     pub id: FixId,
-    pub action: String,
+    pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
     pub attribute_value_id: AttributeValueId,
 }
@@ -144,55 +144,41 @@ impl JobConsumer for FixesJob {
         let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
             .await?
             .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
-        let schema_variant =
-            component
-                .schema_variant(ctx)
-                .await?
-                .ok_or(JobConsumerError::NoSchemaVariantFound(
-                    fix_item.component_id,
-                ))?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(JobConsumerError::NoSchemaFound(fix_item.component_id))?;
-        let action = ActionPrototype::find_by_name(
-            ctx,
-            &fix_item.action,
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?
-        .ok_or_else(|| {
-            JobConsumerError::ActionNotFound(fix_item.action.clone(), fix_item.component_id)
-        })?;
-        let workflow_prototype_id = action.workflow_prototype_id();
 
-        // Run the fix (via the action's workflow prototype).
+        let action = ActionPrototype::get_by_id(ctx, &fix_item.action_prototype_id)
+            .await?
+            .ok_or_else(|| {
+                JobConsumerError::ActionPrototypeNotFound(fix_item.action_prototype_id)
+            })?;
+
+        // Run the fix (via the action prototype).
         let mut fix = Fix::get_by_id(ctx, &fix_item.id)
             .await?
             .ok_or(FixError::MissingFix(fix_item.id))?;
-        let run_id = rand::random();
-        let resources = fix.run(ctx, run_id, workflow_prototype_id).await?;
+        let resource = fix.run(ctx, &action).await?;
         let completion_status: FixCompletionStatus = *fix
             .completion_status()
             .ok_or(FixError::EmptyCompletionStatus)?;
 
-        // Upsert the relevant fix resolver.
+        // Upsert the fix resolver.
         FixResolver::upsert(
             ctx,
-            workflow_prototype_id,
+            *action.id(),
             fix_item.attribute_value_id,
             Some(matches!(completion_status, FixCompletionStatus::Success)),
             *fix.id(),
         )
         .await?;
 
-        let logs: Vec<_> = resources
-            .iter()
-            .flat_map(|r| &r.logs)
-            .flat_map(|l| l.split('\n'))
-            .map(|l| l.to_owned())
-            .collect();
+        let logs: Vec<_> = match resource {
+            Some(r) => r
+                .logs
+                .iter()
+                .flat_map(|l| l.split('\n'))
+                .map(|l| l.to_owned())
+                .collect(),
+            None => vec![],
+        };
 
         let attribute_value = Component::root_prop_child_attribute_value_for_component(
             ctx,
@@ -220,7 +206,7 @@ impl JobConsumer for FixesJob {
             *fix.id(),
             self.batch_id,
             fix_item.attribute_value_id,
-            fix_item.action.clone(),
+            *action.kind(),
             completion_status,
             logs,
         )

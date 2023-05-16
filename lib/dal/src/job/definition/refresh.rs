@@ -11,7 +11,8 @@ use crate::{
         },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentId, DalContext, StandardModel, Visibility, WsEvent,
+    AccessBuilder, ActionKind, Component, ComponentId, DalContext, StandardModel, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -110,7 +111,7 @@ impl JobConsumer for RefreshJob {
             let component = Component::get_by_id(ctx, component_id)
                 .await?
                 .ok_or(JobConsumerError::ComponentNotFound(*component_id))?;
-            component.act(ctx, "refresh").await?;
+            component.act(ctx, ActionKind::Refresh).await?;
 
             WsEvent::resource_refreshed(ctx, *component.id())
                 .await?

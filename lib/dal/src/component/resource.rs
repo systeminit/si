@@ -11,15 +11,15 @@ use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
 use crate::{
-    func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
-    ComponentError, ComponentId, DalContext, SchemaVariant, StandardModel, WorkflowRunner,
-    WsPayload,
+    func::backend::js_action::ActionRunResult, ActionKind, ActionPrototype, ActionPrototypeContext,
+    AttributeReadContext, Component, ComponentError, ComponentId, DalContext, SchemaVariant,
+    StandardModel, WsPayload,
 };
 use crate::{RootPropChild, WsEventResult};
 
 impl Component {
     /// Calls [`Self::resource_by_id`] using the [`ComponentId`](Component) off [`Component`].
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<CommandRunResult> {
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<ActionRunResult> {
         Self::resource_by_id(ctx, self.id).await
     }
 
@@ -27,7 +27,7 @@ impl Component {
     pub async fn resource_by_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<CommandRunResult> {
+    ) -> ComponentResult<ActionRunResult> {
         let attribute_value = Self::resource_attribute_value_by_id(ctx, component_id).await?;
 
         let func_binding_return_value =
@@ -54,7 +54,7 @@ impl Component {
                     "status": "ok",
                 })
             });
-        let result = CommandRunResult::deserialize(&value)?;
+        let result = ActionRunResult::deserialize(&value)?;
         Ok(result)
     }
 
@@ -92,7 +92,7 @@ impl Component {
     pub async fn set_resource(
         &self,
         ctx: &DalContext,
-        result: CommandRunResult,
+        result: ActionRunResult,
         trigger_dependent_values_update: bool,
     ) -> ComponentResult<bool> {
         let ctx = &ctx.clone_without_deleted_visibility();
@@ -146,31 +146,28 @@ impl Component {
         Ok(true)
     }
 
-    pub async fn act(&self, ctx: &DalContext, action_name: &str) -> ComponentResult<()> {
+    pub async fn act(&self, ctx: &DalContext, action: ActionKind) -> ComponentResult<()> {
         let schema_variant = self
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let action = match ActionPrototype::find_by_name(
+
+        let action = match ActionPrototype::find_for_context_and_kind(
             ctx,
-            action_name,
-            *schema.id(),
-            *schema_variant.id(),
+            action,
+            ActionPrototypeContext {
+                schema_variant_id: *schema_variant.id(),
+            },
         )
         .await?
+        .pop()
         {
             Some(action) => action,
             None => return Ok(()),
         };
 
-        let prototype = action.workflow_prototype(ctx).await?;
-        let run_id: usize = rand::random();
-        let (_runner, _state, _func_binding_return_values, _resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
+        action.run(ctx, *self.id(), true).await?;
+
         Ok(())
     }
 }
@@ -186,7 +183,7 @@ pub struct ResourceView {
 }
 
 impl ResourceView {
-    pub fn new(result: CommandRunResult) -> Self {
+    pub fn new(result: ActionRunResult) -> Self {
         Self {
             data: result.payload,
             message: result.message,

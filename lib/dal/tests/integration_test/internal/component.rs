@@ -2,7 +2,7 @@ use dal::edge::EdgeKind;
 use dal::schema::variant::root_prop::SiPropChild;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
+    func::backend::js_action::ActionRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
     ComponentView, Connection, DalContext, Edge, ExternalProvider, InternalProvider, Prop, PropId,
     PropKind, SchemaVariant, Socket, SocketArity, StandardModel, Visibility,
@@ -414,7 +414,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
     ekwb_component
         .set_resource(
             ctx,
-            CommandRunResult {
+            ActionRunResult {
                 status: ResourceStatus::Ok,
                 payload: Some(serde_json::json![{ "quantum": true }]),
                 logs: Default::default(),

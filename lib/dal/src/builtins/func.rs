@@ -5,8 +5,8 @@ use telemetry::prelude::*;
 
 use crate::{
     func::argument::{FuncArgument, FuncArgumentKind},
-    BuiltinsError, BuiltinsResult, CommandPrototype, CommandPrototypeContext, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
+    ActionKind, ActionPrototype, ActionPrototypeContext, BuiltinsError, BuiltinsResult, DalContext,
+    Func, FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -48,57 +48,82 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
             .collect()
     });
 
-// This is a transitional function that creates the necessary command prototypes during
+// This is a transitional function that creates the necessary action prototypes during
 // migration so that we have the correct data for the initial SI package.
-pub async fn migrate_command_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
+pub async fn migrate_action_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
     let command_functions = vec![
-        "si:awsAmiRefreshCommand",
-        "si:awsEc2CreateCommand",
-        "si:awsEc2DeleteCommand",
-        "si:awsEc2RefreshCommand",
-        "si:awsEgressCreateCommand",
-        "si:awsEgressRefreshCommand",
-        "si:awsEgressDeleteCommand",
-        "si:awsIngressCreateCommand",
-        "si:awsIngressRefreshCommand",
-        "si:awsIngressDeleteCommand",
-        "si:awsEipCreateCommand",
-        "si:awsEipDeleteCommand",
-        "si:awsEipRefreshCommand",
-        "si:awsKeyPairCreateCommand",
-        "si:awsKeyPairDeleteCommand",
-        "si:awsKeyPairRefreshCommand",
-        "si:awsSecurityGroupCreateCommand",
-        "si:awsSecurityGroupDeleteCommand",
-        "si:awsSecurityGroupRefreshCommand",
-        "si:awsRegionRefreshCommand",
-        "si:dockerImageRefreshCommand",
+        "si:awsAmiRefreshAction",
+        "si:awsEc2CreateAction",
+        "si:awsEc2DeleteAction",
+        "si:awsEc2RefreshAction",
+        "si:awsEgressCreateAction",
+        "si:awsEgressRefreshAction",
+        "si:awsEgressDeleteAction",
+        "si:awsIngressCreateAction",
+        "si:awsIngressRefreshAction",
+        "si:awsIngressDeleteAction",
+        "si:awsEipCreateAction",
+        "si:awsEipDeleteAction",
+        "si:awsEipRefreshAction",
+        "si:awsKeyPairCreateAction",
+        "si:awsKeyPairDeleteAction",
+        "si:awsKeyPairRefreshAction",
+        "si:awsSecurityGroupCreateAction",
+        "si:awsSecurityGroupDeleteAction",
+        "si:awsSecurityGroupRefreshAction",
+        "si:awsRegionRefreshAction",
+        "si:dockerImageRefreshAction",
     ];
 
     for func_name in command_functions {
         let schema_name = match func_name {
-            "si:awsEc2DeleteCommand" | "si:awsEc2CreateCommand" | "si:awsEc2RefreshCommand" => {
+            "si:awsEc2DeleteAction" | "si:awsEc2CreateAction" | "si:awsEc2RefreshAction" => {
                 "EC2 Instance"
             }
-            "si:awsSecurityGroupRefreshCommand"
-            | "si:awsSecurityGroupCreateCommand"
-            | "si:awsSecurityGroupDeleteCommand" => "Security Group",
-            "si:awsEgressCreateCommand"
-            | "si:awsEgressRefreshCommand"
-            | "si:awsEgressDeleteCommand" => "Egress",
-            "si:awsEipCreateCommand" | "si:awsEipDeleteCommand" | "si:awsEipRefreshCommand" => {
+            "si:awsSecurityGroupRefreshAction"
+            | "si:awsSecurityGroupCreateAction"
+            | "si:awsSecurityGroupDeleteAction" => "Security Group",
+            "si:awsEgressCreateAction"
+            | "si:awsEgressRefreshAction"
+            | "si:awsEgressDeleteAction" => "Egress",
+            "si:awsEipCreateAction" | "si:awsEipDeleteAction" | "si:awsEipRefreshAction" => {
                 "Elastic IP"
             }
-            "si:awsAmiRefreshCommand" => "AMI",
-            "si:awsIngressDeleteCommand"
-            | "si:awsIngressRefreshCommand"
-            | "si:awsIngressCreateCommand" => "Ingress",
-            "si:awsRegionRefreshCommand" => "Region",
-            "si:awsKeyPairCreateCommand"
-            | "si:awsKeyPairRefreshCommand"
-            | "si:awsKeyPairDeleteCommand" => "Key Pair",
-            "si:dockerImageRefreshCommand" => "Docker Image",
+            "si:awsAmiRefreshAction" => "AMI",
+            "si:awsIngressDeleteAction"
+            | "si:awsIngressRefreshAction"
+            | "si:awsIngressCreateAction" => "Ingress",
+            "si:awsRegionRefreshAction" => "Region",
+            "si:awsKeyPairCreateAction"
+            | "si:awsKeyPairRefreshAction"
+            | "si:awsKeyPairDeleteAction" => "Key Pair",
+            "si:dockerImageRefreshAction" => "Docker Image",
             _ => unreachable!("that string is not in my list!"),
+        };
+
+        let action_kind = match func_name {
+            "si:awsAmiRefreshAction"
+            | "si:awsEc2RefreshAction"
+            | "si:awsEgressRefreshAction"
+            | "si:awsEipRefreshAction"
+            | "si:awsIngressRefreshAction"
+            | "si:awsRegionRefreshAction"
+            | "si:awsSecurityGroupRefreshAction"
+            | "si:dockerImageRefreshAction"
+            | "si:awsKeyPairRefreshAction" => ActionKind::Refresh,
+            "si:awsEc2CreateAction"
+            | "si:awsEgressCreateAction"
+            | "si:awsEipCreateAction"
+            | "si:awsIngressCreateAction"
+            | "si:awsKeyPairCreateAction"
+            | "si:awsSecurityGroupCreateAction" => ActionKind::Create,
+            "si:awsEc2DeleteAction"
+            | "si:awsEgressDeleteAction"
+            | "si:awsEipDeleteAction"
+            | "si:awsIngressDeleteAction"
+            | "si:awsKeyPairDeleteAction"
+            | "si:awsSecurityGroupDeleteAction" => ActionKind::Delete,
+            _ => unreachable!("that string is not in my list :("),
         };
 
         let schema = Schema::find_by_attr(ctx, "name", &schema_name)
@@ -112,27 +137,20 @@ pub async fn migrate_command_prototypes(ctx: &DalContext) -> BuiltinsResult<()> 
             .await?
             .expect("cannot find builtin command function");
 
-        if CommandPrototype::find_for_func_and_schema_variant(
-            ctx,
-            *func.id(),
-            *default_variant.id(),
-        )
-        .await
-        .expect("able to search for the command prototype")
-        .is_none()
-        {
-            info!("migrating command prototype for {}", func.name());
+        let context = ActionPrototypeContext {
+            schema_variant_id: *default_variant.id(),
+        };
 
-            CommandPrototype::new(
-                ctx,
-                *func.id(),
-                CommandPrototypeContext {
-                    schema_variant_id: *default_variant.id(),
-                    ..Default::default()
-                },
-            )
+        if ActionPrototype::find_for_func_kind_context(ctx, *func.id(), action_kind, context)
             .await
-            .expect("could not create command prototype");
+            .expect("able to search for the action prototype")
+            .is_empty()
+        {
+            info!("migrating action prototype for {}", func.name());
+
+            ActionPrototype::new(ctx, *func.id(), action_kind, context)
+                .await
+                .expect("could not create action prototype");
         }
     }
 

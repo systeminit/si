@@ -12,10 +12,10 @@ use ulid::Ulid;
 
 use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
-    job::producer::BlockingJobError, status::StatusUpdaterError,
-    workflow_runner::WorkflowRunnerError, AccessBuilder, ActionPrototypeError, AttributeValueError,
-    ComponentError, ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError,
-    StandardModelError, TransactionsError, Visibility, WsEventError,
+    job::producer::BlockingJobError, status::StatusUpdaterError, AccessBuilder,
+    ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError, ComponentId,
+    DalContext, DalContextBuilder, FixBatchId, FixResolverError, StandardModelError,
+    TransactionsError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
@@ -25,6 +25,8 @@ pub enum JobConsumerError {
     ActionNotFound(String, ComponentId),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("ActionProtoype {0} not found")]
+    ActionPrototypeNotFound(ActionPrototypeId),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
     #[error(transparent)]
@@ -73,8 +75,6 @@ pub enum JobConsumerError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }

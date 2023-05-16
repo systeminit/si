@@ -719,14 +719,14 @@ async fn find_by_attr_in(ctx: &mut DalContext) {
         ctx,
         "funcs",
         "backend_kind",
-        &[&"JsWorkflow".to_string(), &"JsAttribute".to_string()],
+        &[&"JsAction".to_string(), &"JsAttribute".to_string()],
     )
     .await
     .expect("cannot find objects by backend_kind in slice");
 
     let mut func_one = create_func(ctx).await;
     func_one
-        .set_backend_kind(ctx, FuncBackendKind::JsWorkflow)
+        .set_backend_kind(ctx, FuncBackendKind::JsAction)
         .await
         .expect("cannot set func backend kind");
 
@@ -741,7 +741,7 @@ async fn find_by_attr_in(ctx: &mut DalContext) {
         "funcs",
         "backend_kind",
         &[
-            &FuncBackendKind::JsWorkflow.as_ref().to_string(),
+            &FuncBackendKind::JsAction.as_ref().to_string(),
             &FuncBackendKind::JsAttribute.as_ref().to_string(),
         ],
     )

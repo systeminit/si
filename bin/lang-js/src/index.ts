@@ -6,8 +6,7 @@ import Debug from "debug";
 import { failureExecution, FunctionKind, functionKinds } from "./function";
 import { makeConsole } from "./sandbox/console";
 import { executeResolverFunction } from "./resolver_function";
-import { executeWorkflowResolve } from "./workflow_resolve";
-import { executeCommandRun } from "./command_run";
+import { executeActionRun } from "./action_run";
 import { executeValidation } from "./validation";
 import { executeReconciliation } from "./reconciliation";
 
@@ -15,7 +14,7 @@ const debug = Debug("langJs");
 const STDIN_FD = 0;
 
 function onError(
-  errorFn: (...args: unknown[]) => void, 
+  errorFn: (...args: unknown[]) => void,
   err: Error,
   executionId: string,
 ) {
@@ -61,7 +60,7 @@ async function main() {
     // Now we have the executionId, so update our console.error() impl
     errorFn = makeConsole(executionId).error;
 
-    // Async errors inside of VM2 have to be caught here, they escape the try/catch wrapping the vm.run call 
+    // Async errors inside of VM2 have to be caught here, they escape the try/catch wrapping the vm.run call
     process.on("uncaughtException", (err) => {
       onError(errorFn, err, executionId);
     });
@@ -74,11 +73,8 @@ async function main() {
       case FunctionKind.ResolverFunction:
         await executeResolverFunction(request);
         break;
-      case FunctionKind.WorkflowResolve:
-        await executeWorkflowResolve(request);
-        break;
-      case FunctionKind.CommandRun:
-        await executeCommandRun(request);
+      case FunctionKind.ActionRun:
+        await executeActionRun(request);
         break;
       case FunctionKind.Validation:
         await executeValidation(request);

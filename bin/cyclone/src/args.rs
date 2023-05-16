@@ -64,21 +64,13 @@ pub(crate) struct Args {
     #[arg(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
-    /// Enables workflow endpoint.
-    #[arg(long, group = "workflow")]
-    pub(crate) enable_workflow: bool,
-
-    /// Disables workflow endpoint.
-    #[arg(long, group = "workflow")]
-    pub(crate) disable_workflow: bool,
-
     /// Enables command run endpoint.
-    #[arg(long, group = "command_run")]
-    pub(crate) enable_command_run: bool,
+    #[arg(long, group = "action_run")]
+    pub(crate) enable_action_run: bool,
 
     /// Disables command run endpoint.
-    #[arg(long, group = "command_run")]
-    pub(crate) disable_command_run: bool,
+    #[arg(long, group = "action_run")]
+    pub(crate) disable_action_run: bool,
 
     /// Enables reconciliation endpoint.
     #[arg(long, group = "reconciliation")]

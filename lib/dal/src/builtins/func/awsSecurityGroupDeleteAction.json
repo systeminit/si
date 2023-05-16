@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Delete Security Group",
+  "description": null,
+  "link": null,
+  "code_file": "awsSecurityGroupDeleteAction.ts",
+  "code_entrypoint": "deleteResource"
+}

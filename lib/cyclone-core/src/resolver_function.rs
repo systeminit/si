@@ -25,10 +25,10 @@ pub struct ResolverFunctionComponent {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 // Should be kept in sync with dal::func::backend::FuncBackendResponseType
 pub enum ResolverFunctionResponseType {
+    Action,
     Array,
     Boolean,
     CodeGeneration,
-    Command,
     Confirmation,
     Identity,
     Integer,
@@ -41,7 +41,6 @@ pub enum ResolverFunctionResponseType {
     #[default]
     Unset,
     Validation,
-    Workflow,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

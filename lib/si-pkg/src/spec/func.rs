@@ -53,22 +53,20 @@ impl FuncArgumentSpec {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendKind {
+    JsAction,
     JsAttribute,
-    JsCommand,
-    Json,
     JsReconciliation,
     JsValidation,
-    JsWorkflow,
 }
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendResponseType {
+    Action,
     Array,
     Boolean,
     CodeGeneration,
-    Command,
     Confirmation,
     Integer,
     Json,
@@ -78,7 +76,6 @@ pub enum FuncSpecBackendResponseType {
     Reconciliation,
     String,
     Validation,
-    Workflow,
 }
 
 pub type FuncUniqueId = Hash;
@@ -157,13 +154,13 @@ impl FuncSpecBuilder {
         );
         bytes.extend(
             self.backend_kind
-                .unwrap_or(FuncSpecBackendKind::Json)
+                .unwrap_or(FuncSpecBackendKind::JsAttribute)
                 .to_string()
                 .as_bytes(),
         );
         bytes.extend(
             self.response_type
-                .unwrap_or(FuncSpecBackendResponseType::Json)
+                .unwrap_or(FuncSpecBackendResponseType::Object)
                 .to_string()
                 .as_bytes(),
         );

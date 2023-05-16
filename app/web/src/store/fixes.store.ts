@@ -18,7 +18,7 @@ export type FixStatus =
   | "running"
   | "error"
   | "unstarted";
-export type ActionKind = "create" | "refresh" | "other" | "destroy";
+export type ActionKind = "create" | "delete" | "other" | "refresh";
 
 // TODO(nick,paulo,paul,wendy): get rid of never started.
 export type ConfirmationStatus =
@@ -49,7 +49,7 @@ export type Recommendation = {
   componentId: ComponentId;
   componentName: string;
   name: string;
-  recommendedAction: string;
+  actionPrototypeId: string; // TODO add type
   provider: string;
   actionKind: ActionKind;
   hasRunningFix: boolean;
@@ -60,7 +60,7 @@ export type FixId = string;
 export type Fix = {
   id: FixId;
   status: FixStatus;
-  action: string;
+  actionKind: string;
   schemaName: string;
   componentName: string;
   componentId: ComponentId;
@@ -263,7 +263,7 @@ export const useFixesStore = () => {
               list: recommendations.map((r) => ({
                 attributeValueId: r.confirmationAttributeValueId,
                 componentId: r.componentId,
-                actionName: r.recommendedAction,
+                actionPrototypeId: r.actionPrototypeId,
               })),
               visibility_change_set_pk: nilId(),
             },

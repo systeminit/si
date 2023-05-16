@@ -1,6 +1,0 @@
-{
-  "kind": "JsWorkflow",
-  "response_type": "Workflow",
-  "code_file": "finalizingWorkflow.ts",
-  "code_entrypoint": "finalizing"
-}

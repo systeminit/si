@@ -1,11 +1,10 @@
 export enum FuncVariant {
   Attribute = "Attribute",
   CodeGeneration = "CodeGeneration",
-  Command = "Command",
+  Action = "Action",
   Confirmation = "Confirmation",
   Qualification = "Qualification",
   Validation = "Validation",
-  Workflow = "Workflow",
 }
 
 export const CUSTOMIZABLE_FUNC_TYPES = {
@@ -21,9 +20,9 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
     pluralLabel: "Confirmations",
     singularLabel: "Confirmation",
   },
-  [FuncVariant.Command]: {
-    pluralLabel: "Commands",
-    singularLabel: "Command",
+  [FuncVariant.Action]: {
+    pluralLabel: "Actions",
+    singularLabel: "Action",
   },
   [FuncVariant.Qualification]: {
     pluralLabel: "Qualifications",
@@ -32,10 +31,6 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
   [FuncVariant.Validation]: {
     pluralLabel: "Validations",
     singularLabel: "Validation",
-  },
-  [FuncVariant.Workflow]: {
-    pluralLabel: "Worfklows",
-    singularLabel: "Workflow",
   },
 };
 

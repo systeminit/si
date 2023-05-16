@@ -10,7 +10,6 @@ use crate::{
     fix::{batch::FixBatchReturn, FixReturn},
     qualification::QualificationCheckPayload,
     status::StatusMessage,
-    workflow::CommandOutput,
     AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
@@ -45,7 +44,6 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     CheckedQualifications(QualificationCheckPayload),
     CodeGenerated(CodeGeneratedPayload),
-    CommandOutput(CommandOutput),
     ComponentCreated(ComponentCreatedPayload),
     ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     FixBatchReturn(FixBatchReturn),

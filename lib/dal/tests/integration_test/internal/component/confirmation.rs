@@ -1,9 +1,9 @@
-use dal::func::backend::js_command::CommandRunResult;
+use dal::func::backend::js_action::ActionRunResult;
 use dal::job::definition::{FixItem, FixesJob};
 
 use dal::{
-    component::confirmation::view::ConfirmationStatus, generate_name, ChangeSet, ChangeSetStatus,
-    Component, ComponentView, ComponentViewProperties, DalContext, Fix, FixBatch,
+    component::confirmation::view::ConfirmationStatus, generate_name, ActionKind, ChangeSet,
+    ChangeSetStatus, Component, ComponentView, ComponentViewProperties, DalContext, Fix, FixBatch,
     FixCompletionStatus, Schema, StandardModel, Visibility,
 };
 use dal_test::test;
@@ -84,7 +84,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
     component
         .set_resource(
             ctx,
-            CommandRunResult {
+            ActionRunResult {
                 status: ResourceStatus::Ok,
                 payload: Some(serde_json::json![{ "poop": true }]),
                 message: None,
@@ -135,7 +135,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
     component
         .set_resource(
             ctx,
-            CommandRunResult {
+            ActionRunResult {
                 status: ResourceStatus::Ok,
                 payload: None,
                 message: None,
@@ -237,8 +237,8 @@ async fn list_confirmations(mut octx: DalContext) {
     // Check that there is only one recommendation and that it looks as expected.
     assert!(recommendations.is_empty());
     assert_eq!(
-        "create",                           // expected
-        &recommendation.recommended_action  // actual
+        ActionKind::Create,         // expected
+        recommendation.action_kind  // actual
     );
     assert_eq!(
         false,                          // expected
@@ -281,7 +281,7 @@ async fn list_confirmations(mut octx: DalContext) {
         *batch.id(),
         recommendation.confirmation_attribute_value_id,
         recommendation.component_id,
-        &recommendation.recommended_action,
+        recommendation.action_prototype_id,
     )
     .await
     .expect("could not create fix");
@@ -289,7 +289,7 @@ async fn list_confirmations(mut octx: DalContext) {
         id: *fix.id(),
         attribute_value_id: recommendation.confirmation_attribute_value_id,
         component_id: recommendation.component_id,
-        action: recommendation.recommended_action,
+        action_prototype_id: recommendation.action_prototype_id,
     }];
     ctx.enqueue_job(FixesJob::new(ctx, fixes, *batch.id()))
         .await
@@ -345,7 +345,7 @@ async fn list_confirmations(mut octx: DalContext) {
     component
         .set_resource(
             ctx,
-            CommandRunResult {
+            ActionRunResult {
                 status: ResourceStatus::Ok,
                 payload: None,
                 message: None,
@@ -374,8 +374,8 @@ async fn list_confirmations(mut octx: DalContext) {
     // Check that there is only one recommendation and that it looks as expected.
     assert!(recommendations.is_empty());
     assert_eq!(
-        "create",                           // expected
-        &recommendation.recommended_action  // actual
+        ActionKind::Create,         // expected
+        recommendation.action_kind  // actual
     );
     assert_eq!(
         false,                          // expected
