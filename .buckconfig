@@ -14,4 +14,4 @@ buck = none
 target_platform_detector_spec = target:root//...->prelude//platforms:default
 
 [project]
-ignore = .git, third-party/rust/.cargo/**/BUCK, third-party/rust/vendor/**/BUCK
+ignore = .git, target, third-party/rust/.cargo/**/BUCK, third-party/rust/vendor/**/BUCK
