@@ -1666,22 +1666,12 @@ impl MigrationDriver {
             )
             .await?;
 
-        let p_ip_addresses_resource_prop = self
-            .create_hidden_prop(
-                ctx,
-                "PrivateIpAddress",
-                PropKind::Object,
-                Some(*private_ip_addresses_resource_prop.id()),
-                schema_variant_id,
-            )
-            .await?;
-
         let p_ip_address_resource_prop = self
             .create_hidden_prop(
                 ctx,
                 "PrivateIpAddress",
                 PropKind::Object,
-                Some(*p_ip_addresses_resource_prop.id()),
+                Some(*private_ip_addresses_resource_prop.id()),
                 schema_variant_id,
             )
             .await?;

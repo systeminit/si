@@ -32,7 +32,7 @@ async fn run(ctx: &DalContext) {
       if (diff === undefined) continue;
 
       // Updates domain to fit the new resource
-      updates[diff.domain.id] = diff.resource;
+      updates[diff.domain.id] = diff.normalizedResource;
 
       // Provides hot patch
       actions.add(value);
@@ -43,7 +43,7 @@ async fn run(ctx: &DalContext) {
     // Everything else can't be hot-patched, so let's delete + create
     for (const value of Object.values(arg)) {
       // Updates domain to fit the new resource
-      updates[value.domain.id] = value.resource;
+      updates[value.domain.id] = value.normalizedResource;
 
       // Overrides hot-patch actions as this will fix everything, it's just expensive
       actions = ['delete', 'create'];
@@ -64,11 +64,13 @@ async fn run(ctx: &DalContext) {
         serde_json::json!({
             "/root/domain/region": {
                 "domain": { "id": region_ulid.to_string(), "value": "us-east-2" },
-                "resource": "us-east-1"
+                "resource": "us-east-1",
+                "normalizedResource": "us-east-1",
             },
             "/root/domain/value": {
                 "domain": { "id": value_ulid.to_string(), "value": 1 },
                 "resource": 2,
+                "normalizedResource": 2,
             },
         }),
         *func.id(),

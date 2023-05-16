@@ -31,8 +31,9 @@ use crate::{
     AttributeValueId, BuiltinsError, Component, ComponentError, ComponentId, DalContext,
     ExternalProvider, ExternalProviderError, Func, FuncBackendResponseType, FuncBindingReturnValue,
     FuncError, FuncId, HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind,
-    RootPropChild, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, ValidationPrototypeError, Visibility, WsEventError,
+    ReconciliationPrototypeError, RootPropChild, Schema, SchemaId, SocketArity, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
+    Visibility, WsEventError,
 };
 
 use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
@@ -136,6 +137,8 @@ pub enum SchemaVariantError {
     PropNotFoundAtPath(SchemaVariantId, String, Visibility),
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
     PropNotFoundInCache(String, PropId),
+    #[error("reconciliation prototype: {0}")]
+    ReconciliationPrototype(#[from] ReconciliationPrototypeError),
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
     #[error("schema variant definition error")]

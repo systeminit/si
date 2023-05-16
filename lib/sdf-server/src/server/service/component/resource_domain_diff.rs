@@ -1,12 +1,14 @@
 use axum::{extract::Query, Json};
+use dal::func::backend::js_reconciliation::{
+    ReconciliationDiff, ReconciliationDiffDomain, ReconciliationResult,
+};
 use dal::prop::PROP_PATH_SEPARATOR;
 use dal::{
-    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId,
-    ExternalProviderId, Func, FuncBinding, FuncBindingReturnValue, FuncError, InternalProvider,
-    InternalProviderError, Prop, PropId, StandardModel, Visibility,
+    AttributeReadContext, AttributeValue, AttributeView, Component, ComponentId,
+    ExternalProviderId, Func, FuncBinding, FuncError, InternalProviderId, Prop,
+    ReconciliationPrototype, ReconciliationPrototypeContext, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
@@ -22,21 +24,19 @@ pub struct GetResourceDomainDiffRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceDomainDiffDomain {
-    id: AttributeValueId,
-    value: Option<Value>,
+pub struct GetResourceDomainDiffResponse {
+    diff: HashMap<String, ReconciliationDiff>,
+    reconciliation: Option<ReconciliationResult>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceDomainDiff {
-    pub resource: Option<Value>,
-    pub domain: ResourceDomainDiffDomain,
+struct DiffValue {
+    diff: bool,
+    new_value: Option<serde_json::Value>,
 }
-
-pub type GetResourceDomainDiffResponse = HashMap<String, ResourceDomainDiff>;
 
 pub async fn get_diff(
     HandlerContext(builder): HandlerContext,
@@ -56,12 +56,12 @@ pub async fn get_diff(
 
     // Check if resource prop has been filled yet
     if component.resource(ctx).await?.payload.is_none() {
-        return Ok(Json(HashMap::new()));
+        return Ok(Json(GetResourceDomainDiffResponse::default()));
     }
 
     let props = Prop::find_by_attr(ctx, "schema_variant_id", schema_variant.id()).await?;
 
-    let mut diff_tree = HashMap::new();
+    let mut diff = HashMap::new();
 
     for prop in props {
         let (domain_prop_id, resource_prop_id) = match prop.refers_to_prop_id() {
@@ -69,53 +69,39 @@ pub async fn get_diff(
             Some(prop_id) => (*prop_id, *prop.id()),
         };
 
-        let (domain_internal_provider_id, resource_internal_provider_id) = {
-            let domain = *InternalProvider::find_for_prop(ctx, domain_prop_id)
-                .await?
-                .ok_or(InternalProviderError::NotFoundForProp(domain_prop_id))?
-                .id();
-            let resource = *InternalProvider::find_for_prop(ctx, resource_prop_id)
-                .await?
-                .ok_or(InternalProviderError::NotFoundForProp(resource_prop_id))?
-                .id();
-            (domain, resource)
+        let context = AttributeReadContext {
+            prop_id: Some(resource_prop_id),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(*component.id()),
+        };
+        let resource_prop_av = AttributeValue::find_for_context(ctx, context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFound)?;
+
+        let view_context = AttributeReadContext {
+            prop_id: None,
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(*component.id()),
         };
 
-        let resource_prop_av = AttributeValue::find_for_context(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(PropId::NONE),
-                internal_provider_id: Some(resource_internal_provider_id),
-                external_provider_id: Some(ExternalProviderId::NONE),
-                component_id: Some(*component.id()),
-            },
-        )
-        .await?
-        .ok_or(ComponentError::AttributeValueNotFound)?;
+        let resource_prop_view =
+            AttributeView::new(ctx, view_context, Some(*resource_prop_av.id())).await?;
 
-        let maybe_resource_value = FuncBindingReturnValue::get_by_id(
-            ctx,
-            &resource_prop_av.func_binding_return_value_id(),
-        )
-        .await?
-        .and_then(|v| v.value().cloned());
+        let context = AttributeReadContext {
+            prop_id: Some(domain_prop_id),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(*component.id()),
+        };
 
-        let domain_prop_av = AttributeValue::find_for_context(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(PropId::NONE),
-                internal_provider_id: Some(domain_internal_provider_id),
-                external_provider_id: Some(ExternalProviderId::NONE),
-                component_id: Some(*component.id()),
-            },
-        )
-        .await?
-        .ok_or(ComponentError::AttributeValueNotFound)?;
+        let domain_prop_av = AttributeValue::find_for_context(ctx, context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFound)?;
 
-        let maybe_domain_value =
-            FuncBindingReturnValue::get_by_id(ctx, &domain_prop_av.func_binding_return_value_id())
-                .await?
-                .and_then(|v| v.value().cloned());
+        let domain_prop_view =
+            AttributeView::new(ctx, view_context, Some(*domain_prop_av.id())).await?;
 
         if let Some(func_id) = prop.diff_func_id() {
             let func = Func::get_by_id(ctx, func_id)
@@ -124,24 +110,32 @@ pub async fn get_diff(
             let func_binding = FuncBinding::new(
                 ctx,
                 serde_json::json!({
-                    "first": maybe_domain_value,
-                    "second": maybe_resource_value,
+                    "first": domain_prop_view.value(),
+                    "second": resource_prop_view.value(),
                 }),
                 *func.id(),
                 *func.backend_kind(),
             )
             .await?;
-            let func_binding_return_value = func_binding.execute(ctx).await?;
+            let diff_value = func_binding
+                .execute(ctx)
+                .await?
+                .value()
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+
+            let diff_value = DiffValue::deserialize(&diff_value)?;
 
             // TODO: Should we treat unset as equal or not?
-            if func_binding_return_value.value() != Some(&serde_json::Value::Bool(false)) {
-                diff_tree.insert(
+            if diff_value.diff {
+                diff.insert(
                     prop.path().clone().replace(PROP_PATH_SEPARATOR, "/"),
-                    ResourceDomainDiff {
-                        resource: maybe_resource_value,
-                        domain: ResourceDomainDiffDomain {
+                    ReconciliationDiff {
+                        normalized_resource: diff_value.new_value,
+                        resource: resource_prop_view.value().clone(),
+                        domain: ReconciliationDiffDomain {
                             id: *domain_prop_av.id(),
-                            value: maybe_domain_value,
+                            value: domain_prop_view.value().clone(),
                         },
                     },
                 );
@@ -151,5 +145,41 @@ pub async fn get_diff(
         }
     }
 
-    Ok(Json(diff_tree))
+    let context = ReconciliationPrototypeContext {
+        component_id: *component.id(),
+        schema_variant_id: *schema_variant.id(),
+    };
+    let reconciliation = if let Some(reconciliation_prototype) =
+        ReconciliationPrototype::find_for_context(ctx, context).await?
+    {
+        let func = reconciliation_prototype.func(ctx).await?;
+        let func_binding = FuncBinding::new(
+            ctx,
+            serde_json::to_value(&diff)?,
+            *func.id(),
+            *func.backend_kind(),
+        )
+        .await?;
+        let func_binding_return_value = func_binding.execute(ctx).await?;
+        let reconciliation = ReconciliationResult::deserialize(
+            func_binding_return_value
+                .value()
+                .unwrap_or(&serde_json::Value::Null),
+        )?;
+        Some(reconciliation)
+    } else {
+        warn!(
+            "No reconciliation prototype found for component {} of schema variant {}",
+            component.id(),
+            schema_variant.id()
+        );
+        None
+    };
+
+    ctx.commit().await?;
+
+    Ok(Json(GetResourceDomainDiffResponse {
+        diff,
+        reconciliation,
+    }))
 }

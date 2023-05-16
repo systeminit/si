@@ -7,8 +7,23 @@ use veritech_client::{FunctionResult, ReconciliationRequest, ReconciliationResul
 use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 use crate::AttributeValueId;
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReconciliationDiffDomain {
+    pub id: AttributeValueId,
+    pub value: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReconciliationDiff {
+    pub normalized_resource: Option<serde_json::Value>,
+    pub resource: serde_json::Value,
+    pub domain: ReconciliationDiffDomain,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct FuncBackendJsReconciliationArgs(serde_json::Value);
+pub struct FuncBackendJsReconciliationArgs(HashMap<String, ReconciliationDiff>);
 
 #[derive(Debug)]
 pub struct FuncBackendJsReconciliation {
