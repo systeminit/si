@@ -9,8 +9,7 @@ use crate::{
     builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ActionKind,
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, AttributeValueError, BuiltinsError, ExternalProvider, Func, FuncArgument,
-    FuncBackendKind, FuncBackendResponseType, InternalProvider, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    FuncBackendKind, FuncBackendResponseType, InternalProvider,
 };
 use crate::{BuiltinsResult, DalContext, SchemaVariant, StandardModel};
 
@@ -91,63 +90,25 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Create command and workflow funcs for our workflow and action prototypes.
-        let mut command_func = Func::new(
+        // Create action and workflow funcs for our workflow and action prototypes.
+        let mut action_func = Func::new(
             ctx,
-            "test:createCommandFallout",
-            FuncBackendKind::JsCommand,
-            FuncBackendResponseType::Command,
+            "test:createActionFallout",
+            FuncBackendKind::JsAction,
+            FuncBackendResponseType::Action,
         )
         .await?;
         let code = "async function create() {
             return { payload: \"poop\", status: \"ok\" };
         }";
-        command_func.set_code_plaintext(ctx, Some(code)).await?;
-        command_func.set_handler(ctx, Some("create")).await?;
-        let mut workflow_func = Func::new(
-            ctx,
-            "test:createWorkflowFallout",
-            FuncBackendKind::JsWorkflow,
-            FuncBackendResponseType::Workflow,
-        )
-        .await?;
-        let code = "async function create() {
-          return {
-            name: \"test:createWorkflowFallout\",
-            kind: \"conditional\",
-            steps: [
-              {
-                command: \"test:createCommandFallout\",
-              },
-            ],
-          };
-        }";
-        workflow_func.set_code_plaintext(ctx, Some(code)).await?;
-        workflow_func.set_handler(ctx, Some("create")).await?;
+        action_func.set_code_plaintext(ctx, Some(code)).await?;
+        action_func.set_handler(ctx, Some("create")).await?;
 
-        // Create workflow and action prototypes.
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            WorkflowPrototypeContext {
-                schema_id: *schema.id(),
-                schema_variant_id: *schema_variant.id(),
-                ..Default::default()
-            },
-            "Create Fallout",
-        )
-        .await?;
         ActionPrototype::new(
             ctx,
-            *workflow_prototype.id(),
-            "create",
+            *action_func.id(),
             ActionKind::Create,
-            ActionPrototypeContext {
-                schema_id: *schema.id(),
-                schema_variant_id,
-                ..Default::default()
-            },
+            ActionPrototypeContext { schema_variant_id },
         )
         .await?;
 

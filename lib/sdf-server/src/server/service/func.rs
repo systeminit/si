@@ -14,15 +14,14 @@ use dal::{
     prop_tree::PropTreeError,
     prototype_context::PrototypeContextError,
     schema::variant::SchemaVariantError,
-    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
-    AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, CommandPrototype, CommandPrototypeError, ComponentError, ComponentId,
-    DalContext, ExternalProviderId, Func, FuncBackendKind, FuncBackendResponseType,
+    ActionKind, ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextError,
+    AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ComponentError,
+    ComponentId, DalContext, ExternalProviderId, Func, FuncBackendKind, FuncBackendResponseType,
     FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
     PropKind, PrototypeListForFuncError, SchemaVariantId, StandardModel, StandardModelError,
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationPrototypeId, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WsEventError,
+    ValidationPrototypeId, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -39,6 +38,8 @@ pub mod save_func;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("attribute context builder error: {0}")]
@@ -65,8 +66,6 @@ pub enum FuncError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value missing")]
     AttributeValueMissing,
-    #[error(transparent)]
-    CommandPrototype(#[from] CommandPrototypeError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component missing schema variant")]
@@ -145,8 +144,6 @@ pub enum FuncError {
     ValidationPrototypeMissingSchema,
     #[error("validation prototype {0} schema_variant is missing")]
     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
-    #[error(transparent)]
-    WorkflowPrototype(#[from] WorkflowPrototypeError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -160,22 +157,20 @@ impl_default_error_into_response!(FuncError);
 #[remain::sorted]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FuncVariant {
+    Action,
     Attribute,
     CodeGeneration,
-    Command,
     Confirmation,
     Qualification,
     Reconciliation,
     Validation,
-    Workflow,
 }
 
 impl From<FuncVariant> for FuncBackendKind {
     fn from(value: FuncVariant) -> Self {
         match value {
-            FuncVariant::Workflow => FuncBackendKind::JsWorkflow,
-            FuncVariant::Command => FuncBackendKind::JsCommand,
             FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
+            FuncVariant::Action => FuncBackendKind::JsAction,
             FuncVariant::Validation => FuncBackendKind::Validation,
             FuncVariant::Attribute
             | FuncVariant::CodeGeneration
@@ -196,10 +191,9 @@ impl TryFrom<&Func> for FuncVariant {
                 FuncBackendResponseType::Confirmation => Ok(FuncVariant::Confirmation),
                 _ => Ok(FuncVariant::Attribute),
             },
-            (FuncBackendKind::JsCommand, _) => Ok(FuncVariant::Command),
             (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
+            (FuncBackendKind::JsAction, _) => Ok(FuncVariant::Action),
             (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
-            (FuncBackendKind::JsWorkflow, _) => Ok(FuncVariant::Workflow),
             _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
         }
     }
@@ -248,21 +242,15 @@ pub struct ValidationPrototypeView {
     prop_id: PropId,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkflowPrototypeView {
-    id: WorkflowPrototypeId,
-    component_id: ComponentId,
-    schema_variant_id: SchemaVariantId,
-    title: String,
-    description: Option<String>,
-    link: Option<String>,
-}
-
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
+    #[serde(rename_all = "camelCase")]
+    Action {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        kind: ActionKind,
+    },
     #[serde(rename_all = "camelCase")]
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
@@ -270,11 +258,6 @@ pub enum FuncAssociations {
     },
     #[serde(rename_all = "camelCase")]
     CodeGeneration {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        component_ids: Vec<ComponentId>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Command {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
@@ -291,10 +274,6 @@ pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Validation {
         prototypes: Vec<ValidationPrototypeView>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Workflow {
-        prototypes: Vec<WorkflowPrototypeView>,
     },
 }
 
@@ -371,22 +350,21 @@ async fn prototype_view_for_attribute_prototype(
     })
 }
 
-async fn command_protoytypes_into_schema_variants_and_components(
+async fn action_prototypes_into_schema_variants_and_components(
     ctx: &DalContext,
     func_id: FuncId,
-) -> FuncResult<(Vec<SchemaVariantId>, Vec<ComponentId>)> {
+) -> FuncResult<(Vec<SchemaVariantId>, Option<ActionKind>)> {
     let mut variant_ids = vec![];
-    let mut component_ids = vec![];
+    let mut action_kind: Option<ActionKind> = None;
 
-    for proto in CommandPrototype::find_for_func(ctx, func_id).await? {
-        if proto.component_id().is_none() && proto.schema_variant_id().is_some() {
+    for proto in ActionPrototype::find_for_func(ctx, func_id).await? {
+        action_kind = Some(*proto.kind());
+        if proto.schema_variant_id().is_some() {
             variant_ids.push(proto.schema_variant_id());
-        } else if proto.component_id().is_some() {
-            component_ids.push(proto.component_id());
         }
     }
 
-    Ok((variant_ids, component_ids))
+    Ok((variant_ids, action_kind))
 }
 
 async fn attribute_prototypes_into_schema_variants_and_components(
@@ -474,16 +452,16 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             };
             (associations, input_type)
         }
-        FuncBackendKind::JsCommand => {
-            let (schema_variant_ids, component_ids) =
-                command_protoytypes_into_schema_variants_and_components(ctx, *func.id()).await?;
+        FuncBackendKind::JsAction => {
+            let (schema_variant_ids, action_kind) =
+                action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
 
-            let associations = Some(dbg!(FuncAssociations::Command {
+            let associations = Some(dbg!(FuncAssociations::Action {
                 schema_variant_ids,
-                component_ids,
+                kind: action_kind.unwrap_or(ActionKind::Other)
             }));
 
-            (associations, compile_command_types())
+            (associations, compile_action_types())
         }
         FuncBackendKind::JsReconciliation => {
             return Err(FuncError::EditingReconciliationFuncsNotImplemented)
@@ -503,24 +481,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                     .collect(),
             });
             (associations, input_type)
-        }
-        FuncBackendKind::JsWorkflow => {
-            let protos = WorkflowPrototype::find_for_func(ctx, *func.id()).await?;
-            let assocations = Some(FuncAssociations::Workflow {
-                prototypes: protos
-                    .iter()
-                    .map(|proto| WorkflowPrototypeView {
-                        id: *proto.id(),
-                        component_id: proto.context().component_id(),
-                        schema_variant_id: proto.context().schema_variant_id(),
-                        title: proto.title().to_owned(),
-                        description: proto.description().map(|desc| desc.to_owned()),
-                        link: proto.link().map(|link| link.to_owned()),
-                    })
-                    .collect(),
-            });
-
-            (assocations, String::new())
         }
 
         _ => (None, String::new()),
@@ -560,40 +520,45 @@ fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
         FuncBackendResponseType::Boolean => "type Output = boolean | null;",
         FuncBackendResponseType::String => "type Output = string | null;",
         FuncBackendResponseType::Integer => "type Output = number | null;",
-        FuncBackendResponseType::Qualification => "interface Output {
+        FuncBackendResponseType::Qualification => {
+            "interface Output {
   result: 'success' | 'warning' | 'failure';
   message?: string;
-}",
-        FuncBackendResponseType::Confirmation => "interface Output {
+}"
+        }
+        FuncBackendResponseType::Confirmation => {
+            "type ActionKind = 'create' | 'destroy' | 'other' | 'refresh';
+interface Output {
   success: boolean;
-  recommendedActions: string[];
-}",
-        FuncBackendResponseType::CodeGeneration => "interface Output {
+  recommendedActions: ActionKind[];
+}"
+        }
+        FuncBackendResponseType::CodeGeneration => {
+            "interface Output {
   format: string;
   code: string;
-}",
-        FuncBackendResponseType::Validation => "interface Output {
+}"
+        }
+        FuncBackendResponseType::Validation => {
+            "interface Output {
   valid: boolean;
   message: string;
-}",
-        FuncBackendResponseType::Reconciliation => "interface Output {
+}"
+        }
+        FuncBackendResponseType::Reconciliation => {
+            "interface Output {
   updates: { [key: string]: unknown };
   actions: string[];
   message: string | null;
-}",
-        // Actual Workflow Kinds are 'conditional' | 'exceptional' | 'parallel'
-        // But we don't actually properly use/support/test the other ones
-        // There i
-        FuncBackendResponseType::Workflow => "interface Output {
-  name: string;
-  kind: 'conditional';
-  steps: Array<{ workflow: string; args: unknown | null; } | { command: string; args: unknown | null; }>;
-}",
-        FuncBackendResponseType::Command => "interface Output {
+}"
+        }
+        FuncBackendResponseType::Action => {
+            "interface Output {
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
     message?: string;
-}",
+}"
+        }
         FuncBackendResponseType::Json => "type Output = any;",
         // Note: there is no ts function returning those
         FuncBackendResponseType::Identity => "interface Output extends Input {}",
@@ -664,7 +629,7 @@ fn compile_argument_types(arguments: &[FuncArgument]) -> String {
 //
 // TODO: build properties types from prop tree
 // Note: ComponentKind::Credential is unused and the implementation is broken, so let's ignore it for now
-fn compile_command_types() -> String {
+fn compile_action_types() -> String {
     "interface Input {
     kind: 'standard';
     properties: any;

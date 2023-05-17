@@ -4,19 +4,19 @@ use serde::{de::DeserializeOwned, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
+
 use veritech_core::{
-    nats_command_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
-    nats_subject, nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
-    reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY,
+    nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
+    nats_subject, nats_validation_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+    FINAL_MESSAGE_HEADER_KEY,
 };
 
 pub use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
+    ActionRunRequest, ActionRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
     EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
     ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
 };
 use si_data_nats::NatsClient;
 
@@ -111,56 +111,27 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_workflow_resolve", skip_all)]
-    pub async fn execute_workflow_resolve(
+    #[instrument(name = "client.execute_action_run", skip_all)]
+    pub async fn execute_action_run(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
-        request: &WorkflowResolveRequest,
-    ) -> ClientResult<FunctionResult<WorkflowResolveResultSuccess>> {
+        request: &ActionRunRequest,
+    ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
         self.execute_request(
-            nats_workflow_resolve_subject(self.nats_subject_prefix()),
+            nats_action_run_subject(self.nats_subject_prefix()),
             output_tx,
             request,
         )
         .await
     }
 
-    #[instrument(name = "client.execute_workflow_resolve_with_subject", skip_all)]
-    pub async fn execute_workflow_resolve_with_subject(
+    #[instrument(name = "client.execute_action_run_with_subject", skip_all)]
+    pub async fn execute_action_run_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
-        request: &WorkflowResolveRequest,
+        request: &ActionRunRequest,
         subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<WorkflowResolveResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.nats_subject_prefix(), subject_suffix),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_command_run", skip_all)]
-    pub async fn execute_command_run(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &CommandRunRequest,
-    ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
-        self.execute_request(
-            nats_command_run_subject(self.nats_subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_command_run_with_subject", skip_all)]
-    pub async fn execute_command_run_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &CommandRunRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
+    ) -> ClientResult<FunctionResult<ActionRunResultSuccess>> {
         self.execute_request(
             nats_subject(self.nats_subject_prefix(), subject_suffix),
             output_tx,
@@ -588,44 +559,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "31337");
                 assert!(success.valid);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {failure:?}")
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn executes_simple_workflow_resolve() {
-        let prefix = nats_prefix();
-        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
-        let client = client(prefix).await;
-
-        // Not going to check output here--we aren't emitting anything
-        let (tx, mut rx) = mpsc::channel(64);
-        tokio::spawn(async move {
-            while let Some(output) = rx.recv().await {
-                info!("output: {:?}", output)
-            }
-        });
-
-        let request = WorkflowResolveRequest {
-            execution_id: "112233".to_string(),
-            handler: "workItOut".to_string(),
-            // TODO(fnichol): rewrite this function once we settle on contract
-            code_base64: base64_encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
-            args: Default::default(),
-        };
-
-        let result = client
-            .execute_workflow_resolve(tx, &request)
-            .await
-            .expect("failed to execute workflow resolve");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "112233");
-                // TODO(fnichol): add more assertions as we add fields
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {failure:?}")

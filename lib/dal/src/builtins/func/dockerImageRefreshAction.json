@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Refresh Docker Image Resource",
+  "description": null,
+  "link": null,
+  "code_file": "dockerImageRefreshAction.ts",
+  "code_entrypoint": "refresh"
+}

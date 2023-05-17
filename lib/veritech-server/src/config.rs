@@ -151,9 +151,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_enable_endpoint")]
         resolver: bool,
         #[serde(default = "default_enable_endpoint")]
-        workflow: bool,
-        #[serde(default = "default_enable_endpoint")]
-        command: bool,
+        action: bool,
     },
     LocalUds {
         #[serde(default = "default_cyclone_cmd_path")]
@@ -173,9 +171,7 @@ pub enum CycloneConfig {
         #[serde(default = "default_enable_endpoint")]
         resolver: bool,
         #[serde(default = "default_enable_endpoint")]
-        workflow: bool,
-        #[serde(default = "default_enable_endpoint")]
-        command: bool,
+        action: bool,
     },
 }
 
@@ -229,8 +225,7 @@ impl Default for CycloneConfig {
             limit_requets: default_limit_requests(),
             ping: default_enable_endpoint(),
             resolver: default_enable_endpoint(),
-            workflow: default_enable_endpoint(),
-            command: default_enable_endpoint(),
+            action: default_enable_endpoint(),
         }
     }
 }
@@ -249,8 +244,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 limit_requets,
                 ping,
                 resolver,
-                workflow,
-                command,
+                action,
             } => {
                 let mut builder = LocalUdsInstance::spec();
                 builder
@@ -271,11 +265,8 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 if resolver {
                     builder.resolver();
                 }
-                if workflow {
-                    builder.workflow();
-                }
-                if command {
-                    builder.command();
+                if action {
+                    builder.action();
                 }
 
                 Ok(Self::LocalUds(
@@ -291,8 +282,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 limit_requets,
                 ping,
                 resolver,
-                workflow,
-                command,
+                action,
             } => {
                 let mut builder = LocalHttpInstance::spec();
                 builder
@@ -313,11 +303,8 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 if resolver {
                     builder.resolver();
                 }
-                if workflow {
-                    builder.workflow();
-                }
-                if command {
-                    builder.command();
+                if action {
+                    builder.action();
                 }
 
                 Ok(Self::LocalHttp(

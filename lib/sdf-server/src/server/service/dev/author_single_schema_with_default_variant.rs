@@ -8,7 +8,7 @@ use dal::{
     ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncArgument,
     FuncBackendKind, FuncBackendResponseType, FuncBinding, InternalProvider, LeafInput,
     LeafInputLocation, LeafKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    StandardModel,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 /// a "recommendation" with [`ActionKind::Create`](ActionKind::Create).
 pub const CREATE_CONFIRMATION_NAME: &str = "dev:createConfirmation";
 /// The name of the ["confirmation"](dal::FuncBackendResponseType::Confirmation) that could return
-/// a "recommendation" with [`ActionKind::Destroy`](ActionKind::Destroy).
+/// a "recommendation" with [`ActionKind::Delete`](ActionKind::Delete).
 pub const DELETE_CONFIRMATION_NAME: &str = "dev:deleteConfirmation";
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -125,10 +125,10 @@ impl AuthoringHelper {
             .await
             .expect("cannot set default schema variant");
 
-        // Add the create and destroy actions and confirmations.
-        Self::add_create_action_and_confirmation(ctx, *schema.id(), *schema_variant.id()).await;
-        Self::add_destroy_action_and_confirmation(ctx, *schema.id(), *schema_variant.id()).await;
-        Self::add_refresh_workflow(ctx, *schema.id(), *schema_variant.id()).await;
+        // Add the create and delete actions and confirmations.
+        Self::add_create_action_and_confirmation(ctx, *schema_variant.id()).await;
+        Self::add_delete_action_and_confirmation(ctx, *schema_variant.id()).await;
+        Self::add_refresh_action(ctx, *schema_variant.id()).await;
 
         // Finalize the schema variant and create the component.
         schema_variant
@@ -143,80 +143,34 @@ impl AuthoringHelper {
     /// corresponding "confirmation" [`leaf`](dal::schema::variant::leaves).
     async fn add_create_action_and_confirmation(
         ctx: &DalContext,
-        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) {
-        let mut command_func = Func::new(
+        let mut action_func = Func::new(
             ctx,
-            "dev:createCommand",
-            FuncBackendKind::JsCommand,
-            FuncBackendResponseType::Command,
+            "dev:createAction",
+            FuncBackendKind::JsAction,
+            FuncBackendResponseType::Action,
         )
         .await
         .expect("could not create func");
         let code = "async function create() {
           return { value: \"poop\", status: \"ok\" };
         }";
-        command_func
+        action_func
             .set_code_plaintext(ctx, Some(code))
             .await
             .expect("set code");
-        command_func
-            .set_handler(ctx, Some("create"))
-            .await
-            .expect("set handler");
-        let mut workflow_func = Func::new(
-            ctx,
-            "dev:createWorkflow",
-            FuncBackendKind::JsWorkflow,
-            FuncBackendResponseType::Workflow,
-        )
-        .await
-        .expect("could not create func");
-        let code = "async function create() {
-          return {
-            name: \"dev:createWorkflow\",
-            kind: \"conditional\",
-            steps: [
-              {
-                command: \"dev:createCommand\",
-              },
-            ],
-          };
-        }";
-        workflow_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        workflow_func
+        action_func
             .set_handler(ctx, Some("create"))
             .await
             .expect("set handler");
 
-        // Create workflow and action prototypes.
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            WorkflowPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
-            "create",
-        )
-        .await
-        .expect("could not create workflow prototype");
+        // Create action prototypes.
         ActionPrototype::new(
             ctx,
-            *workflow_prototype.id(),
-            "create",
+            *action_func.id(),
             ActionKind::Create,
-            ActionPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
+            ActionPrototypeContext { schema_variant_id },
         )
         .await
         .expect("unable to create action prototype");
@@ -277,84 +231,38 @@ impl AuthoringHelper {
         .expect("could not add leaf");
     }
 
-    /// Create a [`Destroy`](dal::ActionKind::Destroy) [`action`](dal::ActionPrototype) and
+    /// Create a [`Delete`](dal::ActionKind::Delete) [`action`](dal::ActionPrototype) and
     /// corresponding "confirmation" [`leaf`](dal::schema::variant::leaves).
-    async fn add_destroy_action_and_confirmation(
+    async fn add_delete_action_and_confirmation(
         ctx: &DalContext,
-        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) {
-        let mut command_func = Func::new(
+        let mut action_func = Func::new(
             ctx,
-            "dev:destroyCommand",
-            FuncBackendKind::JsCommand,
-            FuncBackendResponseType::Command,
+            "dev:deleteAction",
+            FuncBackendKind::JsAction,
+            FuncBackendResponseType::Action,
         )
         .await
         .expect("could not create func");
-        let code = "async function destroy() {
+        let code = "async function delete() {
           return { value: null, status: \"ok\" };
         }";
-        command_func
+        action_func
             .set_code_plaintext(ctx, Some(code))
             .await
             .expect("set code");
-        command_func
-            .set_handler(ctx, Some("destroy"))
-            .await
-            .expect("set handler");
-        let mut workflow_func = Func::new(
-            ctx,
-            "dev:destroyWorkflow",
-            FuncBackendKind::JsWorkflow,
-            FuncBackendResponseType::Workflow,
-        )
-        .await
-        .expect("could not create func");
-        let code = "async function destroy() {
-          return {
-            name: \"dev:destroyWorkflow\",
-            kind: \"conditional\",
-            steps: [
-              {
-                command: \"dev:destroyCommand\",
-              },
-            ],
-          };
-        }";
-        workflow_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        workflow_func
-            .set_handler(ctx, Some("destroy"))
+        action_func
+            .set_handler(ctx, Some("delete"))
             .await
             .expect("set handler");
 
-        // Create workflow and action prototypes.
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            WorkflowPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
-            "destroy",
-        )
-        .await
-        .expect("could not create workflow prototype");
+        // Create action prototypes.
         ActionPrototype::new(
             ctx,
-            *workflow_prototype.id(),
-            "destroy",
-            ActionKind::Destroy,
-            ActionPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
+            *action_func.id(),
+            ActionKind::Delete,
+            ActionPrototypeContext { schema_variant_id },
         )
         .await
         .expect("unable to create action prototype");
@@ -373,7 +281,7 @@ impl AuthoringHelper {
             if (input.resource?.value && input.deleted_at) {
                 return {
                     success: false,
-                    recommendedActions: [\"destroy\"]
+                    recommendedActions: [\"delete\"]
                 }
             }
             return {
@@ -432,84 +340,33 @@ impl AuthoringHelper {
         .expect("could not add leaf");
     }
 
-    /// Create a "refresh" [workflow](dal::WorkflowPrototype) and [`action`](dal::ActionPrototype).
-    async fn add_refresh_workflow(
-        ctx: &DalContext,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) {
-        let mut command_func = Func::new(
+    /// Create a "refresh" [`action`](dal::ActionPrototype).
+    async fn add_refresh_action(ctx: &DalContext, schema_variant_id: SchemaVariantId) {
+        let mut action_func = Func::new(
             ctx,
-            "dev:refreshCommand",
-            FuncBackendKind::JsCommand,
-            FuncBackendResponseType::Command,
+            "dev:refreshAction",
+            FuncBackendKind::JsAction,
+            FuncBackendResponseType::Action,
         )
         .await
         .expect("could not create func");
         let code = "async function refresh() {
           return { status: \"ok\" };
         }";
-        command_func
+        action_func
             .set_code_plaintext(ctx, Some(code))
             .await
             .expect("set code");
-        command_func
+        action_func
             .set_handler(ctx, Some("refresh"))
             .await
             .expect("set handler");
 
-        let mut workflow_func = Func::new(
-            ctx,
-            "dev:refreshWorkflow",
-            FuncBackendKind::JsWorkflow,
-            FuncBackendResponseType::Workflow,
-        )
-        .await
-        .expect("could not create func");
-        let code = "async function refresh() {
-          return {
-            name: \"dev:refreshWorkflow\",
-            kind: \"conditional\",
-            steps: [
-              {
-                command: \"dev:refreshCommand\",
-              },
-            ],
-          };
-        }";
-        workflow_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        workflow_func
-            .set_handler(ctx, Some("refresh"))
-            .await
-            .expect("set handler");
-
-        // Create the workflow and action prototype.
-        let workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *workflow_func.id(),
-            serde_json::Value::Null,
-            WorkflowPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
-            "refresh",
-        )
-        .await
-        .expect("could not create workflow prototype");
         ActionPrototype::new(
             ctx,
-            *workflow_prototype.id(),
-            "refresh",
+            *action_func.id(),
             ActionKind::Refresh,
-            ActionPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
+            ActionPrototypeContext { schema_variant_id },
         )
         .await
         .expect("unable to create action prototype");

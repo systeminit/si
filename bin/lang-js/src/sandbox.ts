@@ -41,8 +41,6 @@ function resolverFunctionSandbox(executionId: string): Sandbox {
   };
 }
 
-const workflowResolveSandbox = {};
-
 const validationSandbox = {};
 
 function reconciliationSandbox(executionId: string): Sandbox {
@@ -67,12 +65,7 @@ export function createSandbox(
         ...commonSandbox(executionId),
         ...resolverFunctionSandbox(executionId),
       };
-    case FunctionKind.WorkflowResolve:
-      return {
-        ...commonSandbox(executionId),
-        ...workflowResolveSandbox,
-      };
-    case FunctionKind.CommandRun:
+    case FunctionKind.ActionRun:
       return {
         ...commonSandbox(executionId),
         ...commandRunSandbox(executionId),

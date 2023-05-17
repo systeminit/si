@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Create Ingress",
+  "description": null,
+  "link": null,
+  "code_file": "awsIngressCreateAction.ts",
+  "code_entrypoint": "create"
+}

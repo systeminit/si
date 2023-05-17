@@ -5,7 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{
-    Client as VeritechClient, CommandRunResultSuccess, FunctionResult, OutputStream,
+    ActionRunResultSuccess, Client as VeritechClient, FunctionResult, OutputStream,
     ResolverFunctionResponseType,
 };
 
@@ -16,11 +16,10 @@ pub mod boolean;
 pub mod diff;
 pub mod identity;
 pub mod integer;
+pub mod js_action;
 pub mod js_attribute;
-pub mod js_command;
 pub mod js_reconciliation;
 pub mod js_validation;
-pub mod js_workflow;
 pub mod map;
 pub mod object;
 pub mod string;
@@ -35,8 +34,8 @@ pub enum FuncBackendError {
     DispatchMissingBase64(FuncId),
     #[error("dispatch func missing handler {0}")]
     DispatchMissingHandler(FuncId),
-    #[error("function result command run error: {0:?}")]
-    FunctionResultCommandRun(FunctionResult<CommandRunResultSuccess>),
+    #[error("function result action run error: {0:?}")]
+    FunctionResultActionRun(FunctionResult<ActionRunResultSuccess>),
     #[error("invalid data - expected a valid array entry value, got: {0}")]
     InvalidArrayEntryData(serde_json::Value),
     #[error("result failure: kind={kind}, message={message}, backend={backend}")]
@@ -79,12 +78,10 @@ pub enum FuncBackendKind {
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
     Integer,
+    JsAction,
     JsAttribute,
-    JsCommand,
-    Json,
     JsReconciliation,
     JsValidation,
-    JsWorkflow,
     Map,
     Object,
     String,
@@ -107,10 +104,10 @@ pub enum FuncBackendKind {
     Copy,
 )]
 pub enum FuncBackendResponseType {
+    Action,
     Array,
     Boolean,
     CodeGeneration,
-    Command,
     Confirmation,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
@@ -123,12 +120,12 @@ pub enum FuncBackendResponseType {
     String,
     Unset,
     Validation,
-    Workflow,
 }
 
 impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
     fn from(value: ResolverFunctionResponseType) -> Self {
         match value {
+            ResolverFunctionResponseType::Action => FuncBackendResponseType::Action,
             ResolverFunctionResponseType::Array => FuncBackendResponseType::Array,
             ResolverFunctionResponseType::Boolean => FuncBackendResponseType::Boolean,
             ResolverFunctionResponseType::Identity => FuncBackendResponseType::Identity,
@@ -142,8 +139,6 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
             ResolverFunctionResponseType::Validation => FuncBackendResponseType::Validation,
-            ResolverFunctionResponseType::Command => FuncBackendResponseType::Command,
-            ResolverFunctionResponseType::Workflow => FuncBackendResponseType::Workflow,
             ResolverFunctionResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
         }
     }
@@ -152,6 +147,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
 impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
     fn from(value: FuncBackendResponseType) -> Self {
         match value {
+            FuncBackendResponseType::Action => ResolverFunctionResponseType::Action,
             FuncBackendResponseType::Array => ResolverFunctionResponseType::Array,
             FuncBackendResponseType::Boolean => ResolverFunctionResponseType::Boolean,
             FuncBackendResponseType::Integer => ResolverFunctionResponseType::Integer,
@@ -165,9 +161,7 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
             FuncBackendResponseType::Validation => ResolverFunctionResponseType::Validation,
-            FuncBackendResponseType::Command => ResolverFunctionResponseType::Command,
             FuncBackendResponseType::Reconciliation => ResolverFunctionResponseType::Reconciliation,
-            FuncBackendResponseType::Workflow => ResolverFunctionResponseType::Workflow,
         }
     }
 }

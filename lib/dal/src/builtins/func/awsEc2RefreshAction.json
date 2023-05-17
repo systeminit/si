@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Refresh EC2 Instance's Resource",
+  "description": null,
+  "link": null,
+  "code_file": "awsEc2RefreshAction.ts",
+  "code_entrypoint": "refresh"
+}

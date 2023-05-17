@@ -3,7 +3,6 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
-use crate::action_prototype::ActionKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::definition::{
@@ -16,12 +15,11 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     validation::{create_validation, ValidationKind},
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
-    FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
-    InternalProviderId, LeafInput, LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema,
-    SchemaError, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
-    SelectedTestBuiltinSchemas, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
+    BuiltinsResult, DalContext, ExternalProvider, Func, FuncDescription, FuncDescriptionContents,
+    FuncError, FuncId, InternalProvider, InternalProviderId, LeafInput, LeafInputLocation,
+    LeafKind, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, SchemaVariant,
+    SchemaVariantId, SelectedTestBuiltinSchemas, StandardModel,
 };
 
 mod aws_ami;
@@ -663,13 +661,12 @@ impl MigrationDriver {
         Ok(())
     }
 
-    pub async fn add_deletion_confirmation_and_workflow(
+    pub async fn add_deletion_confirmation(
         &self,
         ctx: &DalContext,
         name: &str,
         schema_variant: &SchemaVariant,
         provider: Option<&str>,
-        delete_workflow_func_name: &str,
     ) -> BuiltinsResult<()> {
         // Confirmation
         let delete_confirmation_func_name = "si:confirmationResourceNeedsDeletion";
@@ -739,46 +736,6 @@ impl MigrationDriver {
                 ),
                 provider: provider.map(String::from),
             },
-        )
-        .await?;
-
-        // Workflow
-        let schema = schema_variant
-            .schema(ctx)
-            .await?
-            .ok_or_else(|| SchemaVariantError::MissingSchema(*schema_variant.id()))?;
-
-        let delete_workflow_func = Func::find_by_attr(ctx, "name", &delete_workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(delete_workflow_func_name.to_owned()))?;
-        let title = format!("Delete {name}");
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let delete_workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *delete_workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        let name = "delete";
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *delete_workflow_prototype.id(),
-            name,
-            ActionKind::Destroy,
-            context,
         )
         .await?;
 

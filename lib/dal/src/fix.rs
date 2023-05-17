@@ -7,20 +7,19 @@ use si_data_pg::PgError;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::ResourceStatus;
 
 use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::schema::SchemaUiMenu;
 use crate::{
-    func::backend::js_command::CommandRunResult, impl_standard_model, pk, standard_model,
-    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    ActionPrototypeError, AttributeValueId, Component, ComponentError, ComponentId, DalContext,
-    FixResolverError, FuncError, HistoryEventError, ResourceView, SchemaError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
-    WorkflowRunnerId, WorkflowRunnerStatus, WsEvent, WsPayload,
+    func::backend::js_action::ActionRunResult, impl_standard_model, pk, standard_model,
+    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionKind,
+    ActionPrototype, ActionPrototypeError, ActionPrototypeId, AttributeValueId, Component,
+    ComponentError, ComponentId, DalContext, FixBatch, FixResolverError, FuncError,
+    HistoryEventError, ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
-use crate::{FixBatch, TransactionsError, WorkflowRunner, WsEventResult};
+use veritech_client::ResourceStatus;
 
 pub mod batch;
 pub mod resolver;
@@ -58,21 +57,8 @@ pub enum FixCompletionStatus {
     Unstarted,
 }
 
-impl TryFrom<WorkflowRunnerStatus> for FixCompletionStatus {
-    type Error = FixError;
-
-    fn try_from(
-        status: WorkflowRunnerStatus,
-    ) -> Result<Self, <FixCompletionStatus as TryFrom<WorkflowRunnerStatus>>::Error> {
-        if let WorkflowRunnerStatus::Success = status {
-            Ok(Self::Success)
-        } else if let WorkflowRunnerStatus::Failure = status {
-            Ok(Self::Failure)
-        } else {
-            Err(FixError::IncompatibleWorkflowRunnerStatus(status))
-        }
-    }
-}
+// a type alias for satisfying the standard model macros
+type JsonValue = serde_json::Value;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -99,8 +85,8 @@ pub enum FixError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("workflow runner status {0} cannot be converted to fix completion status")]
-    IncompatibleWorkflowRunnerStatus(WorkflowRunnerStatus),
+    #[error("action run status cannot be converted to fix completion status")]
+    IncompatibleActionRunStatus,
     #[error("missing finished timestamp for fix: {0}")]
     MissingFinishedTimestampForFix(FixId),
     #[error("fix not found for id: {0}")]
@@ -124,7 +110,7 @@ pub enum FixError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
+    WsEvent(#[from] WsEventError),
 }
 
 pub type FixResult<T> = Result<T, FixError>;
@@ -149,10 +135,14 @@ pub struct Fix {
     attribute_value_id: AttributeValueId,
     /// The [`Component`](crate::Component) being fixed.
     component_id: ComponentId,
-    /// The [`WorkflowRunner`](crate::WorkflowRunner) that got executed.
-    workflow_runner_id: Option<WorkflowRunnerId>,
-    /// The name of the [`ActionPrototype`](crate::action_prototype::ActionPrototype) used.
-    action: String,
+    /// The [`ActionPrototype`](crate::action_prototype::ActionPrototype) that runs the action for
+    /// this fix.
+    action_prototype_id: ActionPrototypeId,
+
+    action_kind: ActionKind,
+
+    // The resource returned by this fix (if any)
+    resource: Option<JsonValue>,
 
     // TODO(nick): convert to Option<DateTime<Utc>> once standard model accessor can accommodate both
     // Option<T<U>> and can handle "timestamp with time zone <--> DateTime<Utc>".
@@ -187,7 +177,7 @@ impl Fix {
         fix_batch_id: FixBatchId,
         attribute_value_id: AttributeValueId,
         component_id: ComponentId,
-        action: &str,
+        action_prototype_id: ActionPrototypeId,
     ) -> FixResult<Self> {
         let row = ctx
             .txns()
@@ -200,7 +190,7 @@ impl Fix {
                     ctx.visibility(),
                     &attribute_value_id,
                     &component_id,
-                    &action,
+                    &action_prototype_id,
                 ],
             )
             .await?;
@@ -209,14 +199,10 @@ impl Fix {
         Ok(object)
     }
 
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
+    standard_model_accessor_ro!(component_id, ComponentId);
     standard_model_accessor_ro!(attribute_value_id, AttributeValueId);
-
-    standard_model_accessor!(workflow_runner_id, Option<Pk(WorkflowRunnerId)>, FixResult);
-    standard_model_accessor!(action, String, FixResult);
+    standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
+    standard_model_accessor_ro!(action_kind, ActionKind);
     standard_model_accessor!(started_at, Option<String>, FixResult);
     standard_model_accessor!(finished_at, Option<String>, FixResult);
     standard_model_accessor!(
@@ -225,6 +211,7 @@ impl Fix {
         FixResult
     );
     standard_model_accessor!(completion_message, Option<String>, FixResult);
+    standard_model_accessor!(resource, OptionJson<JsonValue>, FixResult);
 
     standard_model_belongs_to!(
         lookup_fn: fix_batch,
@@ -257,45 +244,57 @@ impl Fix {
     pub async fn run(
         &mut self,
         ctx: &DalContext,
-        run_id: usize,
-        action_workflow_prototype_id: WorkflowPrototypeId,
-    ) -> FixResult<Vec<CommandRunResult>> {
+        action_prototype: &ActionPrototype,
+    ) -> FixResult<Option<ActionRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
-        let runner_result = WorkflowRunner::run_without_triggering_dependent_values_update(
-            ctx,
-            run_id,
-            action_workflow_prototype_id,
-            self.component_id,
-        )
-        .await;
 
-        // Evaluate the workflow result.
-        match runner_result {
-            Ok(post_run_data) => {
-                let (runner, runner_state, _func_binding_return_values, resources) = post_run_data;
-                self.set_workflow_runner_id(ctx, Some(runner.id())).await?;
+        Ok(
+            match action_prototype.run(ctx, self.component_id, false).await {
+                Ok(Some(run_result)) => {
+                    let completion_status = match run_result.status {
+                        ResourceStatus::Ok | ResourceStatus::Warning => {
+                            FixCompletionStatus::Success
+                        }
+                        ResourceStatus::Error => FixCompletionStatus::Failure,
+                    };
 
-                // Set the run as completed. Record the error message if it exists.
-                let completion_status: FixCompletionStatus = runner_state.status().try_into()?;
-                self.stamp_finished(
-                    ctx,
-                    completion_status,
-                    runner_state.error_message().map(|s| s.to_string()),
-                )
-                .await?;
-
-                Ok(resources)
-            }
-            Err(e) => {
-                error!("Unable to run fix: {e}");
-                // If the workflow had an error, we can record an error completion status with
-                // the error as a message.
-                self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{e:?}")))
+                    self.stamp_finished(
+                        ctx,
+                        completion_status,
+                        run_result.message.clone(),
+                        Some(run_result.clone()),
+                    )
                     .await?;
-                Ok(Vec::new())
-            }
-        }
+
+                    Some(run_result)
+                }
+                Ok(None) => {
+                    error!("Fix did not return a value!");
+                    self.stamp_finished(
+                        ctx,
+                        FixCompletionStatus::Error,
+                        Some("Fix did not return a value".into()),
+                        None,
+                    )
+                    .await?;
+
+                    None
+                }
+                Err(e) => {
+                    error!("Unable to run fix: {e}");
+                    self.stamp_finished(
+                        ctx,
+                        FixCompletionStatus::Error,
+                        Some(format!("{e:?}")),
+                        None,
+                    )
+                    .await?;
+
+                    None
+                }
+            },
+        )
     }
 
     /// A safe wrapper around setting completion-related columns.
@@ -304,6 +303,7 @@ impl Fix {
         ctx: &DalContext,
         completion_status: FixCompletionStatus,
         completion_message: Option<String>,
+        resource: Option<ActionRunResult>,
     ) -> FixResult<()> {
         if self.started_at.is_some() {
             self.set_finished_at(ctx, Some(Utc::now().to_rfc3339()))
@@ -313,6 +313,12 @@ impl Fix {
             if completion_message.is_some() {
                 self.set_completion_message(ctx, completion_message).await?;
             }
+            let resource_value = match resource {
+                Some(resource) => Some(serde_json::to_value(resource)?),
+                None => None,
+            };
+            self.set_resource(ctx, resource_value).await?;
+
             Ok(())
         } else {
             Err(FixError::NotYetStarted)
@@ -332,44 +338,29 @@ impl Fix {
         }
     }
 
-    pub async fn workflow_runner(&self, ctx: &DalContext) -> FixResult<Option<WorkflowRunner>> {
-        match &self.workflow_runner_id {
-            Some(id) => Ok(WorkflowRunner::get_by_id(ctx, id).await?),
-            None => Ok(None),
-        }
-    }
-
     /// Generates a [`FixHistoryView`] based on [`self`](Fix).
     pub async fn history_view(
         &self,
         ctx: &DalContext,
         batch_timed_out: bool,
     ) -> FixResult<Option<FixHistoryView>> {
-        // Technically WorkflowRunner returns a vec of resources, but we only handle one resource at a time
-        // It's a technical debt we haven't tackled yet, so let's assume it's only one resource
-        let maybe_resource = self
-            .workflow_runner(ctx)
-            .await?
-            .map(|r| Ok::<_, WorkflowRunnerError>(r.resources()?.pop()))
-            .transpose()?
-            .flatten();
-
-        let resource = if let Some(resource) = maybe_resource {
-            Some(resource)
-        } else if batch_timed_out {
-            Some(CommandRunResult {
-                status: ResourceStatus::Error,
-                payload: None,
-                message: Some("Execution timed-out".to_owned()),
-                // TODO: add proper logs here
-                logs: vec![],
-                last_synced: None,
-            })
-        } else {
-            // If a fix hasn't finished we don't show it in the front-end
-            None
+        let resource: Option<ActionRunResult> = match self.resource() {
+            Some(resource) => Some(serde_json::from_value(resource.clone())?),
+            None => {
+                if batch_timed_out {
+                    Some(ActionRunResult {
+                        status: ResourceStatus::Error,
+                        payload: None,
+                        message: Some("Execution timed-out".to_owned()),
+                        // TODO: add proper logs here
+                        logs: vec![],
+                        last_synced: None,
+                    })
+                } else {
+                    None
+                }
+            }
         };
-
         // Gather component-related information, even if the component has been deleted.
         let (component_name, schema_name, category) =
             Self::component_details_for_history_view(ctx, self.component_id).await?;
@@ -383,7 +374,7 @@ impl Fix {
                     .copied()
                     .unwrap_or(FixCompletionStatus::Failure)
             },
-            action: self.action().to_owned(),
+            action_kind: *self.action_kind(),
             schema_name,
             attribute_value_id: *self.attribute_value_id(),
             component_name,
@@ -432,7 +423,7 @@ impl Fix {
 pub struct FixHistoryView {
     id: FixId,
     status: FixCompletionStatus,
-    action: String,
+    action_kind: ActionKind,
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
@@ -455,7 +446,7 @@ pub struct FixReturn {
     id: FixId,
     batch_id: FixBatchId,
     attribute_value_id: AttributeValueId,
-    action: String,
+    action: ActionKind,
     status: FixCompletionStatus,
     output: Vec<String>,
 }
@@ -466,7 +457,7 @@ impl WsEvent {
         id: FixId,
         batch_id: FixBatchId,
         attribute_value_id: AttributeValueId,
-        action: String,
+        action: ActionKind,
         status: FixCompletionStatus,
         output: Vec<String>,
     ) -> WsEventResult<Self> {

@@ -47,7 +47,6 @@ pub fn routes(state: AppState) -> Router {
             "/api/variant_def",
             crate::server::service::variant_definition::routes(),
         )
-        .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).

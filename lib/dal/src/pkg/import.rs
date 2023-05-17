@@ -3,9 +3,9 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    FuncUniqueId, SchemaVariantSpecPropRoot, SiPkg, SiPkgAttrFuncInputView, SiPkgCommandFunc,
+    FuncUniqueId, SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView,
     SiPkgError, SiPkgFunc, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SiPkgWorkflow, SocketSpecKind,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SocketSpecKind,
 };
 
 use crate::{
@@ -18,11 +18,10 @@ use crate::{
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, CommandPrototype, CommandPrototypeContext, DalContext,
-    ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncDescription,
-    FuncDescriptionContents, FuncError, FuncId, InternalProvider, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    AttributeValue, AttributeValueError, DalContext, ExternalProvider, ExternalProviderId, Func,
+    FuncArgument, FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
+    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -386,73 +385,26 @@ async fn create_socket(
     Ok(())
 }
 
-async fn create_command_func(
+async fn create_action_func(
     ctx: &DalContext,
-    command_func_spec: SiPkgCommandFunc<'_>,
+    action_func_spec: SiPkgActionFunc<'_>,
     schema_variant_id: SchemaVariantId,
     func_map: &FuncMap,
 ) -> PkgResult<()> {
     let func =
         func_map
-            .get(&command_func_spec.func_unique_id())
+            .get(&action_func_spec.func_unique_id())
             .ok_or(PkgError::MissingFuncUniqueId(
-                command_func_spec.func_unique_id().to_string(),
+                action_func_spec.func_unique_id().to_string(),
             ))?;
 
-    CommandPrototype::new(
+    ActionPrototype::new(
         ctx,
         *func.id(),
-        CommandPrototypeContext {
-            schema_variant_id,
-            ..Default::default()
-        },
+        action_func_spec.kind().into(),
+        ActionPrototypeContext { schema_variant_id },
     )
     .await?;
-
-    Ok(())
-}
-
-async fn create_workflow(
-    ctx: &DalContext,
-    workflow_spec: SiPkgWorkflow<'_>,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    func_map: &FuncMap,
-) -> PkgResult<()> {
-    let func =
-        func_map
-            .get(&workflow_spec.func_unique_id())
-            .ok_or(PkgError::MissingFuncUniqueId(
-                workflow_spec.func_unique_id().to_string(),
-            ))?;
-
-    let workflow_proto = WorkflowPrototype::new(
-        ctx,
-        *func.id(),
-        serde_json::Value::Null,
-        WorkflowPrototypeContext {
-            schema_id,
-            schema_variant_id,
-            ..Default::default()
-        },
-        workflow_spec.title(),
-    )
-    .await?;
-
-    for action_spec in workflow_spec.actions()? {
-        ActionPrototype::new(
-            ctx,
-            *workflow_proto.id(),
-            action_spec.name(),
-            action_spec.kind().into(),
-            ActionPrototypeContext {
-                schema_id,
-                schema_variant_id,
-                ..Default::default()
-            },
-        )
-        .await?;
-    }
 
     Ok(())
 }
@@ -555,8 +507,8 @@ async fn create_schema_variant(
                 .finalize(ctx, Some(variant_spec.component_type().into()))
                 .await?;
 
-            for command_func in variant_spec.command_funcs()? {
-                create_command_func(ctx, command_func, *schema_variant.id(), func_map).await?;
+            for action_func in variant_spec.action_funcs()? {
+                create_action_func(ctx, action_func, *schema_variant.id(), func_map).await?;
             }
 
             for leaf_func in variant_spec.leaf_functions()? {
@@ -565,11 +517,6 @@ async fn create_schema_variant(
 
             for func_description in variant_spec.func_descriptions()? {
                 create_func_description(ctx, func_description, *schema_variant.id(), func_map)
-                    .await?;
-            }
-
-            for workflow in variant_spec.workflows()? {
-                create_workflow(ctx, workflow, *schema.id(), *schema_variant.id(), func_map)
                     .await?;
             }
 

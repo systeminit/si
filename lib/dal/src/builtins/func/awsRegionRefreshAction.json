@@ -1,0 +1,11 @@
+{
+  "kind": "JsAction",
+  "arguments": [],
+  "response_type": "Action",
+  "hidden": false,
+  "display_name": "Refresh Region's Resource",
+  "description": null,
+  "link": null,
+  "code_file": "awsRegionRefreshAction.ts",
+  "code_entrypoint": "refresh"
+}

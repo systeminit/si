@@ -1,6 +1,0 @@
-{
-  "kind": "JsWorkflow",
-  "response_type": "Workflow",
-  "code_file": "awsIngressRefreshWorkflow.ts",
-  "code_entrypoint": "refresh"
-}

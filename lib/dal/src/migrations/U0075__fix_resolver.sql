@@ -7,7 +7,7 @@ CREATE TABLE fix_resolvers
     visibility_deleted_at    timestamp with time zone,
     created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    workflow_prototype_id    ident                    NOT NULL,
+    action_prototype_id      ident                    NOT NULL,
     attribute_value_id       ident                    NOT NULL,
     success                  bool,
     last_fix_id              ident                    NOT NULL
@@ -25,7 +25,7 @@ VALUES ('fix_resolvers', 'model', 'fix_resolver', 'Fix Resolver');
 CREATE OR REPLACE FUNCTION fix_resolver_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_workflow_prototype_id ident,
+    this_action_prototype_id ident,
     this_attribute_value_id ident,
     this_success bool,
     this_last_fix_id ident,
@@ -41,13 +41,13 @@ BEGIN
 
     INSERT INTO fix_resolvers (tenancy_workspace_pk,
                                visibility_change_set_pk,
-                               workflow_prototype_id,
+                               action_prototype_id,
                                attribute_value_id,
                                success,
                                last_fix_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
-            this_workflow_prototype_id,
+            this_action_prototype_id,
             this_attribute_value_id,
             this_success,
             this_last_fix_id)

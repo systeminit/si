@@ -24,21 +24,12 @@
 * An operation has input(s) and an output.
 * Operations can be applied to components.
 * The execution of an operation can be triggered by the user as needed.
-* The execution of operations can be orchestrated as a workflow.
 * An operation is represented as a node.
 
 ### Action
 * Actions are performed by the user.
 * Actions are performed on objects via an interface (web or cli)
 * Manually triggering the execution of an operation on a component would be an action.
-* Manually triggering a workflow would be an action
-
-### Workflow
-* A workflow is a collection of operations applied to component(s).
-* A workflow can be triggered by hand as needed.
-* A workflow can be part of another workflow.
-* Workflow are used to automate operations.
-* A workflow is represented as a graph.
 
 ### Graph
 * A graph is a collection of nodes.

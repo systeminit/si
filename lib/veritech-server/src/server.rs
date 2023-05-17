@@ -1,10 +1,10 @@
 use chrono::Utc;
 use deadpool_cyclone::{
-    instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
+    instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest, ActionRunResultSuccess,
     CycloneClient, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Manager,
     Pool, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
     ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ValidationResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
@@ -23,7 +23,7 @@ use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, Publishe
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error(transparent)]
-    CommandRun(#[from] deadpool_cyclone::ExecutionError<CommandRunResultSuccess>),
+    ActionRun(#[from] deadpool_cyclone::ExecutionError<ActionRunResultSuccess>),
     #[error(transparent)]
     Cyclone(#[from] deadpool_cyclone::ClientError),
     #[error("cyclone pool error")]
@@ -48,8 +48,6 @@ pub enum ServerError {
     Subscriber(#[from] nats_subscriber::SubscriberError),
     #[error(transparent)]
     Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
-    #[error(transparent)]
-    WorkflowResolve(#[from] deadpool_cyclone::ExecutionError<WorkflowResolveResultSuccess>),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, CycloneSpec),
 }
@@ -150,13 +148,7 @@ impl Server {
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
-            process_workflow_resolve_requests_task(
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_command_run_requests_task(
+            process_action_run_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -189,7 +181,7 @@ impl VeritechShutdownHandle {
     }
 }
 
-// NOTE(fnichol): resolver function, workflow, command are parallel and extremely similar, so there
+// NOTE(fnichol): resolver function, action are parallel and extremely similar, so there
 // is a lurking "unifying" refactor here. It felt like waiting until the third time adding one of
 // these would do the trick, and as a result the first 2 impls are here and not split apart into
 // their own modules.
@@ -469,148 +461,32 @@ async fn validation_request(
     Ok(())
 }
 
-async fn process_workflow_resolve_requests_task(
+async fn process_action_run_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) =
-        process_workflow_resolve_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
-            .await
-    {
-        warn!(error = ?err, "processing workflow resolve requests failed");
-    }
-}
-
-async fn process_workflow_resolve_requests(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> ServerResult<()> {
-    let mut requests =
-        FunctionSubscriber::workflow_resolve(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process workflow resolve requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(workflow_resolve_request_task(
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next workflow resolve request had error");
-                    }
-                    None => {
-                        trace!("workflow resolve requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
-
-    Ok(())
-}
-
-async fn workflow_resolve_request_task(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<WorkflowResolveRequest>,
-) {
-    if let Err(err) = workflow_resolve_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "workflow resolve execution failed");
-    }
-}
-
-async fn workflow_resolve_request(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<WorkflowResolveRequest>,
-) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
-    let mut progress = client
-        .execute_workflow_resolve(cyclone_request)
-        .await?
-        .start()
-        .await?;
-
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
-            }
-        }
-    }
-    publisher.finalize_output().await?;
-
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
-
-    Ok(())
-}
-
-async fn process_command_run_requests_task(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) =
-        process_command_run_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
-            .await
+        process_action_run_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
     {
         warn!(error = ?err, "processing command run requests failed");
     }
 }
 
-async fn process_command_run_requests(
+async fn process_action_run_requests(
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> ServerResult<()> {
-    let mut requests = FunctionSubscriber::command_run(&nats, subject_prefix.as_deref()).await?;
+    let mut requests = FunctionSubscriber::action_run(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
             // Got a broadcasted shutdown message
             _ = shutdown_broadcast_rx.recv() => {
-                trace!("process command_run requests task received shutdown");
+                trace!("process action_run requests task received shutdown");
                 break;
             }
             // Got the next message on from the subscriber
@@ -618,7 +494,7 @@ async fn process_command_run_requests(
                 match request {
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
-                        tokio::spawn(command_run_request_task(
+                        tokio::spawn(action_run_request_task(
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -647,20 +523,20 @@ async fn process_command_run_requests(
     Ok(())
 }
 
-async fn command_run_request_task(
+async fn action_run_request_task(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<CommandRunRequest>,
+    request: Request<ActionRunRequest>,
 ) {
-    if let Err(err) = command_run_request(nats, cyclone_pool, request).await {
+    if let Err(err) = action_run_request(nats, cyclone_pool, request).await {
         warn!(error = ?err, "command run execution failed");
     }
 }
 
-async fn command_run_request(
+async fn action_run_request(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<CommandRunRequest>,
+    request: Request<ActionRunRequest>,
 ) -> ServerResult<()> {
     let (cyclone_request, reply_mailbox) = request.into_parts();
     let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
@@ -672,7 +548,7 @@ async fn command_run_request(
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
 
     let mut progress = client
-        .execute_command_run(cyclone_request)
+        .execute_action_run(cyclone_request)
         .await?
         .start()
         .await?;

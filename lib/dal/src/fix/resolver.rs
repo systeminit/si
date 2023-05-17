@@ -8,8 +8,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ActionPrototypeId,
+    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[remain::sorted]
@@ -45,9 +45,8 @@ pub struct FixResolver {
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
-
     /// The "fix" to run.
-    workflow_prototype_id: WorkflowPrototypeId,
+    action_prototype_id: ActionPrototypeId,
     /// Corresponds to the [`AttributeValue`](crate::AttributeValue) corresponding to the
     attribute_value_id: AttributeValueId,
     /// The ternary state of a "fix" execution.
@@ -71,7 +70,7 @@ impl FixResolver {
     #[instrument(skip_all)]
     async fn new(
         ctx: &DalContext,
-        workflow_prototype_id: WorkflowPrototypeId,
+        action_prototype_id: ActionPrototypeId,
         attribute_value_id: AttributeValueId,
         success: Option<bool>,
         last_fix_id: FixId,
@@ -85,7 +84,7 @@ impl FixResolver {
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &workflow_prototype_id,
+                    &action_prototype_id,
                     &attribute_value_id,
                     &success,
                     &last_fix_id,
@@ -118,7 +117,7 @@ impl FixResolver {
     /// Find or create a new [`resolver`](Self) based on the information provided.
     pub async fn upsert(
         ctx: &DalContext,
-        workflow_prototype_id: WorkflowPrototypeId,
+        action_prototype_id: ActionPrototypeId,
         attribute_value_id: AttributeValueId,
         success: Option<bool>,
         last_fix_id: FixId,
@@ -127,7 +126,7 @@ impl FixResolver {
             Self::find_for_confirmation_attribute_value(ctx, attribute_value_id).await?
         {
             resolver
-                .set_workflow_prototype_id(ctx, workflow_prototype_id)
+                .set_action_prototype_id(ctx, action_prototype_id)
                 .await?;
             resolver.set_success(ctx, success).await?;
             resolver.set_last_fix_id(ctx, last_fix_id).await?;
@@ -135,7 +134,7 @@ impl FixResolver {
         } else {
             Ok(Self::new(
                 ctx,
-                workflow_prototype_id,
+                action_prototype_id,
                 attribute_value_id,
                 success,
                 last_fix_id,
@@ -145,8 +144,8 @@ impl FixResolver {
     }
 
     standard_model_accessor!(
-        workflow_prototype_id,
-        Pk(WorkflowPrototypeId),
+        action_prototype_id,
+        Pk(ActionPrototypeId),
         FixResolverResult
     );
     standard_model_accessor!(attribute_value_id, Pk(AttributeValueId), FixResolverResult);

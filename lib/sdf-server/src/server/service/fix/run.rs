@@ -7,8 +7,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    AttributeValueId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel, User,
-    Visibility,
+    ActionPrototypeId, AttributeValueId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor,
+    StandardModel, User, Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -16,7 +16,7 @@ use dal::{
 pub struct FixRunRequest {
     pub attribute_value_id: AttributeValueId,
     pub component_id: ComponentId,
-    pub action_name: String,
+    pub action_prototype_id: ActionPrototypeId,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -51,20 +51,22 @@ pub async fn run(
     };
     let batch = FixBatch::new(&ctx, user.email()).await?;
     let mut fixes = Vec::with_capacity(request.list.len());
+
     for fix_run_request in request.list {
         let fix = Fix::new(
             &ctx,
             *batch.id(),
             fix_run_request.attribute_value_id,
             fix_run_request.component_id,
-            &fix_run_request.action_name,
+            fix_run_request.action_prototype_id,
         )
         .await?;
+
         fixes.push(FixItem {
             id: *fix.id(),
             attribute_value_id: fix_run_request.attribute_value_id,
             component_id: fix_run_request.component_id,
-            action: fix_run_request.action_name,
+            action_prototype_id: fix_run_request.action_prototype_id,
         });
     }
 

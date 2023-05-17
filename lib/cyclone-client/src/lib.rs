@@ -5,10 +5,9 @@ mod watch;
 
 pub use client::{Client, ClientError, CycloneClient, HttpClient, UdsClient};
 pub use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, EncryptionKey, EncryptionKeyError, LivenessStatus,
+    ActionRunRequest, ActionRunResultSuccess, EncryptionKey, EncryptionKeyError, LivenessStatus,
     LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 pub use execution::{Execution, ExecutionError};
 pub use hyper::client::connect::Connection;

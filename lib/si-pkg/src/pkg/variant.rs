@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgCommandFunc, SiPkgError, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp,
-    SiPkgSiPropFunc, SiPkgSocket, SiPkgWorkflow, Source,
+    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp,
+    SiPkgSiPropFunc, SiPkgSocket, Source,
 };
 
 use crate::{
@@ -110,16 +110,15 @@ impl<'a> SiPkgSchemaVariant<'a> {
         SchemaVariantChildNode::FuncDescriptions,
         SiPkgFuncDescription
     );
-    impl_variant_children_from_graph!(workflows, SchemaVariantChildNode::Workflows, SiPkgWorkflow);
     impl_variant_children_from_graph!(
         leaf_functions,
         SchemaVariantChildNode::LeafFunctions,
         SiPkgLeafFunction
     );
     impl_variant_children_from_graph!(
-        command_funcs,
-        SchemaVariantChildNode::CommandFuncs,
-        SiPkgCommandFunc
+        action_funcs,
+        SchemaVariantChildNode::ActionFuncs,
+        SiPkgActionFunc
     );
     impl_variant_children_from_graph!(
         si_prop_funcs,
@@ -331,8 +330,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
             builder.color(color);
         }
 
-        for command_func in self.command_funcs()? {
-            builder.command_func(command_func.try_into()?);
+        for action_func in self.action_funcs()? {
+            builder.action_func(action_func.try_into()?);
         }
 
         for func_description in self.func_descriptions()? {
@@ -341,10 +340,6 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
         for socket in self.sockets()? {
             builder.socket(socket.try_into()?);
-        }
-
-        for workflow in self.workflows()? {
-            builder.workflow(workflow.try_into()?);
         }
 
         for si_prop_func in self.si_prop_funcs()? {

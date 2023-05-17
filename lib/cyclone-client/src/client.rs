@@ -10,10 +10,10 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, LivenessStatus, LivenessStatusParseError,
+    ActionRunRequest, ActionRunResultSuccess, LivenessStatus, LivenessStatusParseError,
     ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest, ReconciliationResultSuccess,
     ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ValidationResultSuccess,
 };
 use http::{
     request::Builder,
@@ -135,18 +135,10 @@ where
         ClientError,
     >;
 
-    async fn execute_workflow_resolve(
+    async fn execute_action_run(
         &mut self,
-        request: WorkflowResolveRequest,
-    ) -> result::Result<
-        Execution<Strm, WorkflowResolveRequest, WorkflowResolveResultSuccess>,
-        ClientError,
-    >;
-
-    async fn execute_command_run(
-        &mut self,
-        request: CommandRunRequest,
-    ) -> result::Result<Execution<Strm, CommandRunRequest, CommandRunResultSuccess>, ClientError>;
+        request: ActionRunRequest,
+    ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>;
 
     async fn execute_reconciliation(
         &mut self,
@@ -276,21 +268,10 @@ where
         Ok(execution::execute(stream, request))
     }
 
-    async fn execute_workflow_resolve(
+    async fn execute_action_run(
         &mut self,
-        request: WorkflowResolveRequest,
-    ) -> result::Result<
-        Execution<Strm, WorkflowResolveRequest, WorkflowResolveResultSuccess>,
-        ClientError,
-    > {
-        let stream = self.websocket_stream("/execute/workflow").await?;
-        Ok(execution::execute(stream, request))
-    }
-
-    async fn execute_command_run(
-        &mut self,
-        request: CommandRunRequest,
-    ) -> result::Result<Execution<Strm, CommandRunRequest, CommandRunResultSuccess>, ClientError>
+        request: ActionRunRequest,
+    ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
         let stream = self.websocket_stream("/execute/command").await?;
         Ok(execution::execute(stream, request))
@@ -988,162 +969,12 @@ mod tests {
     }
 
     #[test(tokio::test)]
-    async fn http_execute_workflow_resolve() {
+    async fn http_execute_action_run() {
         let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_workflow_resolve(true), key).await;
+        let mut client = http_client_for_running_server(builder.enable_action_run(true), key).await;
 
-        let req = WorkflowResolveRequest {
-            execution_id: "1234".to_string(),
-            handler: "workit".to_string(),
-            args: Default::default(),
-            code_base64: base64_encode(
-                r#"function workit() {
-                    console.log('first');
-                    console.log('second');
-                    return { name: 'name', kind: 'conditional', steps: [] };
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_workflow_resolve(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "first");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "second");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
-            }
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    assert!(true);
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
-            };
-        }
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(_success) => {
-                // TODO(fnichol): assert some result data
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={failure:?}")
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn uds_execute_workflow_resolve() {
-        let (_, key) = gen_keys();
-        let tmp_socket = rand_uds();
-        let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.enable_workflow_resolve(true), &tmp_socket, key)
-                .await;
-
-        let req = WorkflowResolveRequest {
-            execution_id: "1234".to_string(),
-            handler: "workit".to_string(),
-            args: Default::default(),
-            code_base64: base64_encode(
-                r#"function workit() {
-                    console.log('first');
-                    console.log('second');
-                    return { name: 'name', kind: 'conditional', steps: [] };
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_workflow_resolve(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "first");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "second");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    assert!(true);
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
-            };
-        }
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(_success) => {
-                // TODO(fnichol): assert some result data
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={failure:?}")
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn http_execute_command_run() {
-        let (_, key) = gen_keys();
-        let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_command_run(true), key).await;
-
-        let req = CommandRunRequest {
+        let req = ActionRunRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
@@ -1158,7 +989,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_command_run(req)
+            .execute_action_run(req)
             .await
             .expect("failed to establish websocket stream")
             .start()
@@ -1210,14 +1041,14 @@ mod tests {
     }
 
     #[test(tokio::test)]
-    async fn uds_execute_command_run() {
+    async fn uds_execute_action_run() {
         let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_command_run(true), &tmp_socket, key).await;
+            uds_client_for_running_server(builder.enable_action_run(true), &tmp_socket, key).await;
 
-        let req = CommandRunRequest {
+        let req = ActionRunRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             args: Default::default(),
@@ -1232,7 +1063,7 @@ mod tests {
 
         // Start the protocol
         let mut progress = client
-            .execute_command_run(req)
+            .execute_action_run(req)
             .await
             .expect("failed to establish websocket stream")
             .start()

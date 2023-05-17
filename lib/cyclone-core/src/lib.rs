@@ -11,8 +11,8 @@
     clippy::module_name_repetitions
 )]
 
+mod action_run;
 mod canonical_command;
-mod command_run;
 mod component_view;
 mod encryption_key;
 mod liveness;
@@ -23,10 +23,9 @@ mod reconciliation;
 mod resolver_function;
 mod sensitive_container;
 mod validation;
-mod workflow_resolve;
 
+pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
-pub use command_run::{CommandRunRequest, CommandRunResultSuccess, ResourceStatus};
 pub use component_view::{ComponentKind, ComponentView};
 pub use encryption_key::{EncryptionKey, EncryptionKeyError};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
@@ -42,4 +41,3 @@ pub use resolver_function::{
 };
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
 pub use validation::{ValidationRequest, ValidationResultSuccess};
-pub use workflow_resolve::{WorkflowResolveRequest, WorkflowResolveResultSuccess};

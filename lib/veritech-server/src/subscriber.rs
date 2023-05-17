@@ -1,13 +1,12 @@
 use deadpool_cyclone::{
-    CommandRunRequest, ReconciliationRequest, ResolverFunctionRequest, ValidationRequest,
-    WorkflowResolveRequest,
+    ActionRunRequest, ReconciliationRequest, ResolverFunctionRequest, ValidationRequest,
 };
 use nats_subscriber::Subscription;
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use veritech_core::{
-    nats_command_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
-    nats_validation_subject, nats_workflow_resolve_subject,
+    nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
+    nats_validation_subject,
 };
 
 type Result<T> = std::result::Result<T, nats_subscriber::SubscriberError>;
@@ -47,33 +46,17 @@ impl FunctionSubscriber {
             .await
     }
 
-    pub async fn workflow_resolve(
+    pub async fn action_run(
         nats: &NatsClient,
         subject_prefix: Option<&str>,
-    ) -> Result<Subscription<WorkflowResolveRequest>> {
-        let subject = nats_workflow_resolve_subject(subject_prefix);
-        debug!(
-            messaging.destination = &subject.as_str(),
-            "subscribing for workflow resolve requests"
-        );
-        Subscription::create(subject)
-            .queue_name("workflow")
-            .check_for_reply_mailbox()
-            .start(nats)
-            .await
-    }
-
-    pub async fn command_run(
-        nats: &NatsClient,
-        subject_prefix: Option<&str>,
-    ) -> Result<Subscription<CommandRunRequest>> {
-        let subject = nats_command_run_subject(subject_prefix);
+    ) -> Result<Subscription<ActionRunRequest>> {
+        let subject = nats_action_run_subject(subject_prefix);
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for command run requests"
         );
         Subscription::create(subject)
-            .queue_name("command")
+            .queue_name("action")
             .check_for_reply_mailbox()
             .start(nats)
             .await

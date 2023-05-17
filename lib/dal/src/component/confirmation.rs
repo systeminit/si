@@ -35,7 +35,7 @@ type ConfirmationMetadataCache =
 pub struct ConfirmationEntry {
     pub success: Option<bool>,
     #[serde(default)]
-    pub recommended_actions: Vec<String>,
+    pub recommended_actions: Vec<ActionKind>,
 }
 
 impl Component {
@@ -93,7 +93,7 @@ impl Component {
                 .await?;
 
         // Prepare to sort confirmations and recommendations.
-        let mut destroy_recommendations = Vec::new();
+        let mut delete_recommendations = Vec::new();
         let mut create_recommendations = Vec::new();
         let mut other_recommendations = Vec::new();
         let mut confirmations = Vec::new();
@@ -126,8 +126,8 @@ impl Component {
                     ActionKind::Other => {
                         other_recommendations.push(recommendation_component_specific)
                     }
-                    ActionKind::Destroy => {
-                        destroy_recommendations.push(recommendation_component_specific)
+                    ActionKind::Delete => {
+                        delete_recommendations.push(recommendation_component_specific)
                     }
                 }
             }
@@ -138,11 +138,11 @@ impl Component {
         }
 
         // We need to invert the order of the delete recommendations before we create the final
-        // recommendations list. The final recommendations are in the following order: destroy,
+        // recommendations list. The final recommendations are in the following order: delete,
         // create, and other based on a topological sort of the nodes.
         let mut recommendations = Vec::new();
-        destroy_recommendations.reverse();
-        recommendations.extend(destroy_recommendations);
+        delete_recommendations.reverse();
+        recommendations.extend(delete_recommendations);
         recommendations.extend(create_recommendations);
         recommendations.extend(other_recommendations);
 

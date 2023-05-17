@@ -10,7 +10,7 @@ use dal::fix::FixError as DalFixError;
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
     ComponentError, ComponentId, FixResolverError, FuncBindingReturnValueError, StandardModelError,
-    TransactionsError, UserError, UserPk, WorkflowRunnerError,
+    TransactionsError, UserError, UserPk,
 };
 
 use crate::server::state::AppState;
@@ -48,8 +48,6 @@ pub enum FixError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
-    #[error(transparent)]
-    WorkflowRunner(#[from] WorkflowRunnerError),
 }
 
 pub type FixResult<T> = std::result::Result<T, FixError>;

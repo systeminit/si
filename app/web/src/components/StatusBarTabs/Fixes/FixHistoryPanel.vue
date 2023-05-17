@@ -66,19 +66,19 @@
             :class="
               fix.attributeValueId ===
                 selectedFix?.confirmationAttributeValueId &&
-              fix.action === selectedFix?.actionName
+              fix.actionKind === selectedFix?.actionKind
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
             class="p-xs h-12 cursor-pointer flex flex-row items-center"
-            @click="selectFix(fix.attributeValueId, fix.action)"
+            @click="selectFix(fix.attributeValueId, fix.actionKind)"
           >
             <StatusIndicatorIcon
               type="resource"
               :status="fix.resource?.status ?? 'unknown'"
             />
             <div class="font-bold pl-xs line-clamp-2">
-              {{ `${formatTitle(fix.action)} ${fix.schemaName}` }}
+              {{ `${formatTitle(fix.actionKind)} ${fix.schemaName}` }}
             </div>
           </div>
         </div>
@@ -104,7 +104,7 @@
             <div class="grow flex flex-col pl-xs">
               <div class="font-bold">
                 {{
-                  `${formatTitle(selectedFixInfo.action)} ${
+                  `${formatTitle(selectedFixInfo.actionKind)} ${
                     selectedFixInfo.schemaName
                   }`
                 }}
@@ -127,7 +127,7 @@
                 :health="selectedFixInfo.resource.status"
                 :message="
                   [
-                    `${formatTitle(selectedFixInfo.action)} ${
+                    `${formatTitle(selectedFixInfo.actionKind)} ${
                       selectedFixInfo.schemaName
                     }`,
                     selectedFixInfo.resource.message ?? '',
@@ -173,7 +173,7 @@ export interface SortOption {
 }
 interface SelectedFix {
   confirmationAttributeValueId: string;
-  actionName: string;
+  actionKind: string;
 }
 
 const sortOptions: SortOption[] = [
@@ -189,11 +189,11 @@ const selectFixBatch = (id: string) => {
 };
 const selectFix = (
   confirmationAttributeValueId: string,
-  actionName: string,
+  actionKind: string,
 ) => {
   selectedFix.value = {
     confirmationAttributeValueId,
-    actionName,
+    actionKind,
   };
 };
 const fixesStore = useFixesStore();
@@ -219,7 +219,7 @@ const selectedFixInfo = computed(() => {
       (fix) =>
         fix.attributeValueId ===
           selectedFix.value?.confirmationAttributeValueId &&
-        fix.action === selectedFix.value?.actionName,
+        fix.actionKind === selectedFix.value?.actionKind,
     );
   }
   return null;
