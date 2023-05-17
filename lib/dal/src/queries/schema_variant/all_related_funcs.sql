@@ -61,5 +61,4 @@ UNION ALL
           JOIN funcs_v1($1, $2) funcs
               ON funcs.id = action_prototypes.func_id
   WHERE action_prototypes.schema_variant_id = $3
-    AND action_prototypes.component_id = ident_nil_v1()
     AND funcs.code_sha256 != '0')

@@ -440,6 +440,7 @@ async fn build_action_func_specs(
 
         specs.push(
             ActionFuncSpec::builder()
+                .kind(action_proto.kind())
                 .func_unique_id(func_spec.unique_id)
                 .build()?,
         )
