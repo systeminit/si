@@ -11,7 +11,6 @@ use super::server::ShutdownSource;
 pub struct AppState {
     services_context: ServicesContext,
     signup_secret: SignupSecret,
-    jwt_secret_key: JwtSecretKey,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
@@ -26,7 +25,6 @@ impl AppState {
     pub fn new(
         services_context: impl Into<ServicesContext>,
         signup_secret: impl Into<SignupSecret>,
-        jwt_secret_key: impl Into<JwtSecretKey>,
         jwt_public_signing_key: impl Into<JwtPublicSigningKey>,
         posthog_client: impl Into<PosthogClient>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
@@ -35,7 +33,6 @@ impl AppState {
         Self {
             services_context: services_context.into(),
             signup_secret: signup_secret.into(),
-            jwt_secret_key: jwt_secret_key.into(),
             jwt_public_signing_key: jwt_public_signing_key.into(),
             posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
@@ -123,29 +120,6 @@ where
 {
     fn from(value: S) -> Self {
         Self(Arc::new(value.into()))
-    }
-}
-
-#[derive(Clone, Debug, FromRef)]
-pub struct JwtSecretKey(Arc<dal::JwtSecretKey>);
-
-impl Deref for JwtSecretKey {
-    type Target = dal::JwtSecretKey;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<JwtSecretKey> for Arc<dal::JwtSecretKey> {
-    fn from(value: JwtSecretKey) -> Self {
-        value.0
-    }
-}
-
-impl From<dal::JwtSecretKey> for JwtSecretKey {
-    fn from(value: dal::JwtSecretKey) -> Self {
-        Self(Arc::new(value))
     }
 }
 

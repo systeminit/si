@@ -1,6 +1,6 @@
 pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
-    IncomingStream, JwtSecretKey, StandardConfig, StandardConfigFile,
+    IncomingStream, StandardConfig, StandardConfigFile,
 };
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor};
 pub use routes::{routes, AppError};

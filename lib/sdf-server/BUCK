@@ -75,7 +75,6 @@ rust_test(
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
-        "dev.jwt_secret_key.bin": "//bin/sdf:dev.jwt_secret_key.bin",
         "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "jwt_private_key": "//lib/dal-test:jwt-private-key",

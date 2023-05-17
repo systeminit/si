@@ -4,7 +4,6 @@ set -euxo pipefail
 
 echo "::group::Checking for required artifacts"
 [[ -f "$REPOPATH/target/debug/sdf" ]]
-[[ -f "$REPOPATH/bin/sdf/src/dev.jwt_secret_key.bin" ]]
 [[ -f "$REPOPATH/lib/cyclone-server/src/dev.encryption.key" ]]
 [[ -f "$REPOPATH/target/debug/veritech" ]]
 [[ -f "$REPOPATH/target/debug/cyclone" ]]

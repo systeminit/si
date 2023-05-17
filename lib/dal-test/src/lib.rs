@@ -12,17 +12,16 @@ use buck2_resources::Buck2Resources;
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, JwtPublicSigningKey, JwtSecretKey, ServicesContext,
+    DalContext, JwtPublicSigningKey, ServicesContext,
 };
+use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
 use si_data_nats::{NatsClient, NatsConfig};
-use si_data_pg::PgPool;
+use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
 use telemetry::prelude::*;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
-use tokio::sync::Mutex;
+use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use uuid::Uuid;
 use veritech_client::EncryptionKey;
 use veritech_server::StandardConfig;
@@ -80,41 +79,37 @@ pub struct AuthToken(pub String);
 /// A referrence to an authentication token, used when making SDF API requests
 pub struct AuthTokenRef<'a>(pub &'a str);
 
-#[derive(Clone, Debug)]
-struct JwtKeysConfig {
-    jwt_public_key_path: String,
-    jwt_private_key_path: String,
-    jwt_signing_private_key_path: String,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Builder, Clone, Debug)]
 pub struct Config {
-    inner: sdf_server::ConfigFile,
-    jwt_keys: JwtKeysConfig,
+    #[builder(default = "PgPoolConfig::default()")]
+    pg: PgPoolConfig,
+    #[builder(default = "NatsConfig::default()")]
+    nats: NatsConfig,
+    cyclone_encryption_key_path: String,
+    jwt_signing_public_key_path: String,
+    jwt_signing_private_key_path: String,
 }
 
 impl Config {
     fn create_default() -> Result<Self> {
-        let mut config_file = sdf_server::ConfigFile::default();
-        sdf_server::detect_and_configure_development(&mut config_file)?;
+        let mut config = {
+            let mut builder = ConfigBuilder::default();
+            detect_and_configure_testing(&mut builder)?;
+            builder.build()?
+        };
 
         if let Ok(value) = env::var(ENV_VAR_NATS_URL) {
-            config_file.nats.url = value;
+            config.nats.url = value;
         }
 
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
-            config_file.pg.hostname = value;
+            config.pg.hostname = value;
         }
-        config_file.pg.dbname =
+        config.pg.dbname =
             env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| DEFAULT_PG_DBNAME.to_string());
-        config_file.pg.pool_max_size *= 32;
+        config.pg.pool_max_size *= 32;
 
-        let jwt_keys = jwt_keys_config()?;
-
-        Ok(Self {
-            inner: config_file,
-            jwt_keys,
-        })
+        Ok(config)
     }
 }
 
@@ -155,8 +150,6 @@ pub struct TestContext {
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
-    /// A key used to decrypt the JWT signing key from the database.
-    jwt_secret_key: JwtSecretKey,
 }
 
 impl TestContext {
@@ -231,12 +224,7 @@ impl TestContext {
 
     /// Gets a reference to the NATS configuration.
     pub fn nats_config(&self) -> &NatsConfig {
-        &self.config.inner.nats
-    }
-
-    /// Gets a reference to the JWT secret key.
-    pub fn jwt_secret_key(&self) -> &JwtSecretKey {
-        &self.jwt_secret_key
+        &self.config.nats
     }
 }
 
@@ -252,30 +240,26 @@ struct TestContextBuilder {
     config: Config,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
-    /// A key used to decrypt the JWT signing key from the database.
-    jwt_secret_key: JwtSecretKey,
 }
 
 impl TestContextBuilder {
     /// Creates a new builder.
     async fn create(config: Config) -> Result<Self> {
         let encryption_key = Arc::new(
-            EncryptionKey::load(&config.inner.cyclone_encryption_key_path)
+            EncryptionKey::load(&config.cyclone_encryption_key_path)
                 .await
                 .wrap_err("failed to load EncryptionKey")?,
         );
-        let jwt_secret_key = JwtSecretKey::default();
 
         Ok(Self {
             config,
             encryption_key,
-            jwt_secret_key,
         })
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling for global setup.
     async fn build_for_global(&self) -> Result<TestContext> {
-        let pg_pool = PgPool::new(&self.config.inner.pg)
+        let pg_pool = PgPool::new(&self.config.pg)
             .await
             .wrap_err("failed to create global setup PgPool")?;
 
@@ -292,11 +276,11 @@ impl TestContextBuilder {
     async fn build_inner(&self, pg_pool: PgPool) -> Result<TestContext> {
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
         // without leaking it to other tests.
-        let mut nats_config = self.config.inner.nats.clone();
+        let mut nats_config = self.config.nats.clone();
         let nats_subject_prefix = random_identifier_string();
         nats_config.subject_prefix = Some(nats_subject_prefix.clone());
         let mut config = self.config.clone();
-        config.inner.nats.subject_prefix = Some(nats_subject_prefix);
+        config.nats.subject_prefix = Some(nats_subject_prefix);
 
         let nats_conn = NatsClient::new(&nats_config)
             .await
@@ -310,13 +294,12 @@ impl TestContextBuilder {
             nats_conn,
             job_processor,
             encryption_key: self.encryption_key.clone(),
-            jwt_secret_key: self.jwt_secret_key.clone(),
         })
     }
 
     async fn create_test_specific_db_with_pg_pool(&self) -> Result<PgPool> {
         // Connect to the 'postgres' database so we can copy our migrated template test database
-        let mut new_pg_pool_config = self.config.inner.pg.clone();
+        let mut new_pg_pool_config = self.config.pg.clone();
         new_pg_pool_config.dbname = "postgres".to_string();
         let new_pg_pool = PgPool::new(&new_pg_pool_config)
             .await
@@ -328,10 +311,10 @@ impl TestContextBuilder {
 
         // Create new database from template
         let db_name_suffix = random_identifier_string();
-        let dbname = format!("{}_{}", self.config.inner.pg.dbname, db_name_suffix);
+        let dbname = format!("{}_{}", self.config.pg.dbname, db_name_suffix);
         let query = format!(
             "CREATE DATABASE {dbname} WITH TEMPLATE {} OWNER {};",
-            self.config.inner.pg.dbname, self.config.inner.pg.user,
+            self.config.pg.dbname, self.config.pg.user,
         );
         let db_exists_check = db_conn
             .query_opt(
@@ -371,14 +354,14 @@ pub fn random_identifier_string() -> String {
 
 // Returns a JWT public signing key, used to verify claims
 pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
-    let key = JwtPublicSigningKey::load(&CONFIG.inner.jwt_signing_public_key_path).await?;
+    let key = JwtPublicSigningKey::load(&CONFIG.jwt_signing_public_key_path).await?;
 
     Ok(key)
 }
 
 // Returns a JWT private signing key, used to sign claims
 pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
-    let key_path = CONFIG.jwt_keys.jwt_signing_private_key_path.as_str();
+    let key_path = CONFIG.jwt_signing_private_key_path.as_str();
     let key_str = {
         let mut file = File::open(key_path)
             .await
@@ -464,7 +447,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let services_ctx = test_context.create_services_context().await;
 
     // Create a dedicated Council server with a unique subject prefix for each test
-    let council_server = council_server(test_context.config.inner.nats.clone()).await?;
+    let council_server = council_server(test_context.config.nats.clone()).await?;
     let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
     let (subscription_started_tx, mut subscription_started_rx) = tokio::sync::watch::channel(());
     tokio::spawn(async move {
@@ -483,8 +466,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
-    let veritech_server =
-        veritech_server_for_uds_cyclone(test_context.config.inner.nats.clone()).await?;
+    let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
     tokio::spawn(veritech_server.run());
 
@@ -511,32 +493,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     dal::migrate(services_ctx.pg_pool())
         .await
         .wrap_err("failed to migrate database")?;
-
-    // Setup the JWT-signing key in the database
-    {
-        info!("creating jwt key in database");
-        let mut pg_conn = services_ctx
-            .pg_pool()
-            .get()
-            .await
-            .wrap_err("failed to get pg connection")?;
-        let pg_txn = pg_conn
-            .transaction()
-            .await
-            .wrap_err("failed to start pg transaction")?;
-        dal::create_jwt_key_if_missing(
-            &pg_txn,
-            test_context_builer.config.jwt_keys.jwt_public_key_path,
-            test_context_builer.config.jwt_keys.jwt_private_key_path,
-            &test_context.jwt_secret_key.key,
-        )
-        .await
-        .wrap_err("failed to create jwt key")?;
-        pg_txn
-            .commit()
-            .await
-            .wrap_err("failed to commit jwt key insertion txn")?;
-    }
 
     // Check if the user would like to skip migrating schemas. This is helpful for boosting
     // performance when running integration tests that do not rely on builtin schemas.
@@ -626,28 +582,25 @@ async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
-fn jwt_keys_config() -> Result<JwtKeysConfig> {
+fn detect_and_configure_testing(builder: &mut ConfigBuilder) -> Result<()> {
     if std::env::var("BUCK_BUILD_ID").is_ok() {
-        jwt_keys_config_for_buck2()
+        detect_and_configure_testing_for_buck2(builder)
     } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        jwt_keys_config_for_cargo(dir)
+        detect_and_configure_testing_for_cargo(dir, builder)
     } else {
-        for (var, val) in std::env::vars() {
-            println!("--- ENVVAR: {var}='{val}'");
-        }
         unimplemented!("tests must be run either with Cargo or Buck2");
     }
 }
 
-fn jwt_keys_config_for_buck2() -> Result<JwtKeysConfig> {
+fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result<()> {
     let resources = Buck2Resources::read()?;
 
-    let jwt_public_key_path = resources
-        .get_ends_with("jwt_public_key")?
+    let cyclone_encryption_key_path = resources
+        .get_ends_with("dev.encryption.key")?
         .to_string_lossy()
         .to_string();
-    let jwt_private_key_path = resources
-        .get_ends_with("jwt_private_key")?
+    let jwt_signing_public_key_path = resources
+        .get_ends_with("dev.jwt_signing_public_key.pem")?
         .to_string_lossy()
         .to_string();
     let jwt_signing_private_key_path = resources
@@ -655,20 +608,27 @@ fn jwt_keys_config_for_buck2() -> Result<JwtKeysConfig> {
         .to_string_lossy()
         .to_string();
 
-    Ok(JwtKeysConfig {
-        jwt_public_key_path,
-        jwt_private_key_path,
-        jwt_signing_private_key_path,
-    })
+    warn!(
+        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
+        jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        "detected development run",
+    );
+
+    builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
+    builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
+    builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+
+    Ok(())
 }
 
-fn jwt_keys_config_for_cargo(dir: String) -> Result<JwtKeysConfig> {
-    let jwt_public_key_path = Path::new(&dir)
-        .join("config/public.pem")
+fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuilder) -> Result<()> {
+    let cyclone_encryption_key_path = Path::new(&dir)
+        .join("../../lib/cyclone-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
-    let jwt_private_key_path = Path::new(&dir)
-        .join("config/private.pem")
+    let jwt_signing_public_key_path = Path::new(&dir)
+        .join("../../config/keys/dev.jwt_signing_public_key.pem")
         .to_string_lossy()
         .to_string();
     let jwt_signing_private_key_path = Path::new(&dir)
@@ -676,9 +636,16 @@ fn jwt_keys_config_for_cargo(dir: String) -> Result<JwtKeysConfig> {
         .to_string_lossy()
         .to_string();
 
-    Ok(JwtKeysConfig {
-        jwt_public_key_path,
-        jwt_private_key_path,
-        jwt_signing_private_key_path,
-    })
+    warn!(
+        cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
+        jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        "detected development run",
+    );
+
+    builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
+    builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
+    builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+
+    Ok(())
 }

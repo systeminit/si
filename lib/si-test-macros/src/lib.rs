@@ -164,8 +164,6 @@ fn path_as_string(path: &Path) -> String {
 /// * `ctx: &DalContext`: a reference to the the default DAL context
 /// * `ctx: &mut DalContext`: a mutable reference to the the default DAL context
 /// * `builder: &DalContextBuilder`: a reference to the builder to create DAL context objects
-/// * `jwt_secret_key: &JwtSecretKey`: a reference to the key used to decrypt the JWT signing key
-///    from the database.
 /// * `services_ctx: &ServicesContext`: a reference to a services context object, used to create
 ///    DAL contexts
 /// * `nw: &WorkspaceSignup`: a reference to the full "new-workspace" data structure,
@@ -342,8 +340,6 @@ pub fn dal_test(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// * `ctx: &DalContext`: a reference to the the default DAL context
 /// * `ctx: &mut DalContext`: a mutable reference to the the default DAL context
 /// * `builder: &DalContextBuilder`: a reference to the builder to create DAL context objects
-/// * `jwt_secret_key: &JwtSecretKey`: a reference to the key used to decrypt the JWT signing key
-///    from the database.
 /// * `services_ctx: &ServicesContext`: a reference to a services context object, used to create
 ///    DAL contexts
 /// * `nw: &WorkspaceSignup`: a reference to the full "new-workspace" data structure,

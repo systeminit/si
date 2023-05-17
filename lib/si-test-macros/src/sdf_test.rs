@@ -156,11 +156,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> SdfTestFnSetup {
                                     let var = var.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
                                 }
-                                "JwtSecretKey" => {
-                                    let var = expander.setup_jwt_secret_key();
-                                    let var = var.as_ref();
-                                    expander.push_arg(parse_quote! {#var});
-                                }
                                 "ServicesContext" => {
                                     let var = expander.setup_services_context();
                                     let var = var.as_ref();
@@ -215,7 +210,6 @@ struct SdfTestFnSetupExpander {
     args: Punctuated<Expr, Comma>,
 
     test_context: Option<Arc<Ident>>,
-    jwt_secret_key: Option<Arc<Ident>>,
     nats_subject_prefix: Option<Arc<Ident>>,
     council_server: Option<Arc<Ident>>,
     start_council_server: Option<()>,
@@ -248,7 +242,6 @@ impl SdfTestFnSetupExpander {
             code: TokenStream::new(),
             args: Punctuated::new(),
             test_context: None,
-            jwt_secret_key: None,
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
@@ -338,8 +331,6 @@ impl SdfTestFnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let jwt_secret_key = self.setup_jwt_secret_key();
-        let jwt_secret_key = jwt_secret_key.as_ref();
         let jwt_public_signing_key = self.setup_jwt_public_signing_key();
         let jwt_public_signing_key = jwt_public_signing_key.as_ref();
         let signup_secret = self.setup_signup_secret();
@@ -353,7 +344,6 @@ impl SdfTestFnSetupExpander {
                 let s_ctx = #test_context.create_services_context().await;
                 let (service, _, _) = ::sdf_server::build_service(
                     s_ctx,
-                    #jwt_secret_key.clone(),
                     #jwt_public_signing_key.clone(),
                     #signup_secret.clone(),
                     #posthog_client,
@@ -423,14 +413,6 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
 
     fn set_test_context(&mut self, value: Option<Arc<Ident>>) {
         self.test_context = value;
-    }
-
-    fn jwt_secret_key(&self) -> Option<&Arc<Ident>> {
-        self.jwt_secret_key.as_ref()
-    }
-
-    fn set_jwt_secret_key(&mut self, value: Option<Arc<Ident>>) {
-        self.jwt_secret_key = value;
     }
 
     fn nats_subject_prefix(&self) -> Option<&Arc<Ident>> {

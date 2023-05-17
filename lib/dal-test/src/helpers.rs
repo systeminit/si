@@ -5,8 +5,8 @@ use dal::{
         binding::FuncBindingId,
         binding_return_value::FuncBindingReturnValueId,
     },
-    ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, StandardModel,
-    User, UserClaim, UserPk, Visibility, Workspace, WorkspaceSignup,
+    ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor, StandardModel, User, UserClaim,
+    UserPk, Visibility, Workspace, WorkspaceSignup,
 };
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
@@ -20,7 +20,7 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn create_jwt(claim: UserClaim) -> String {
+pub async fn create_auth_token(claim: UserClaim) -> String {
     let key_pair = jwt_private_signing_key()
         .await
         .expect("failed to load jwt private signing key");
@@ -32,10 +32,7 @@ pub async fn create_jwt(claim: UserClaim) -> String {
     key_pair.sign(claim).expect("unable to sign jwt")
 }
 
-pub async fn workspace_signup(
-    ctx: &DalContext,
-    _jwt_secret_key: &JwtSecretKey,
-) -> Result<(WorkspaceSignup, String)> {
+pub async fn workspace_signup(ctx: &DalContext) -> Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
     let mut ctx = ctx.clone_with_head();
@@ -47,7 +44,7 @@ pub async fn workspace_signup(
     let nw = Workspace::signup(&mut ctx, &workspace_name, &user_name, &user_email)
         .await
         .wrap_err("cannot signup a new workspace")?;
-    let auth_token = create_jwt(UserClaim {
+    let auth_token = create_auth_token(UserClaim {
         user_pk: nw.user.pk(),
         workspace_pk: *nw.workspace.pk(),
     })

@@ -10,12 +10,12 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
 council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
+derive_builder = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 names = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
 remain = { workspace = true }
-sdf-server = { path = "../../lib/sdf-server" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
