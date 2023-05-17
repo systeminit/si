@@ -106,6 +106,11 @@ const routes: RouteRecordRaw[] = [
         name: "workspace-fix",
         component: () => import("@/components/Workspace/WorkspaceApply.vue"),
       },
+      {
+        path: "r2",
+        name: "workspace-sync",
+        component: () => import("@/components/Workspace/WorkspaceSync.vue"),
+      },
       ...(isDevMode
         ? [
             {
