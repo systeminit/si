@@ -62,6 +62,7 @@ impl<'a> TryFrom<SiPkgActionFunc<'a>> for ActionFuncSpec {
 
     fn try_from(value: SiPkgActionFunc<'a>) -> Result<Self, Self::Error> {
         Ok(ActionFuncSpec::builder()
+            .kind(value.kind())
             .func_unique_id(value.func_unique_id)
             .build()?)
     }
