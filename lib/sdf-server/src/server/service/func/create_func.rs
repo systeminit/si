@@ -52,8 +52,8 @@ pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
 pub static DEFAULT_CONFIRMATION_HANDLER: &str = "confirm";
 pub static DEFAULT_CONFIRMATION_CODE: &str = include_str!("./defaults/confirmation.ts");
-pub static DEFAULT_COMMAND_HANDLER: &str = "action";
-pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/action.ts");
+pub static DEFAULT_ACTION_HANDLER: &str = "action";
+pub static DEFAULT_ACTION_CODE: &str = include_str!("./defaults/action.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
 
@@ -83,9 +83,9 @@ async fn create_action_func(ctx: &DalContext) -> FuncResult<Func> {
     )
     .await?;
 
-    func.set_code_plaintext(ctx, Some(DEFAULT_COMMAND_CODE))
+    func.set_code_plaintext(ctx, Some(DEFAULT_ACTION_CODE))
         .await?;
-    func.set_handler(ctx, Some(DEFAULT_COMMAND_HANDLER)).await?;
+    func.set_handler(ctx, Some(DEFAULT_ACTION_HANDLER)).await?;
 
     Ok(func)
 }

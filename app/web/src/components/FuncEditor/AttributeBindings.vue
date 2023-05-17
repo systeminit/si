@@ -80,7 +80,7 @@ import { computed, inject, ref, Ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { VButton } from "@si/vue-lib/design-system";
 import {
-  AttributeAssocations,
+  AttributeAssociations,
   AttributePrototypeView,
 } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
@@ -98,13 +98,13 @@ const {
 } = storeToRefs(funcStore);
 
 const props = defineProps<{
-  modelValue: AttributeAssocations;
+  modelValue: AttributeAssociations;
   disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "update:modelValue", v: AttributeAssocations): void;
-  (e: "change", v: AttributeAssocations): void;
+  (e: "update:modelValue", v: AttributeAssociations): void;
+  (e: "change", v: AttributeAssociations): void;
 }>();
 
 const associations = ref(props.modelValue);
@@ -141,7 +141,7 @@ const removeBinding = (prototypeId: string) => {
 };
 
 const addOrUpdateBinding = (
-  associations: AttributeAssocations,
+  associations: AttributeAssociations,
   prototype: AttributePrototypeView,
 ) => {
   if (prototype.id !== nilId()) {

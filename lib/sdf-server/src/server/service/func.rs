@@ -38,6 +38,10 @@ pub mod save_func;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
+    #[error("action func {0} assigned to multiple kinds")]
+    ActionFuncMultipleKinds(FuncId),
+    #[error("action kind missing on prototypes for action func {0}")]
+    ActionKindMissing(FuncId),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context error: {0}")]
@@ -353,18 +357,27 @@ async fn prototype_view_for_attribute_prototype(
 async fn action_prototypes_into_schema_variants_and_components(
     ctx: &DalContext,
     func_id: FuncId,
-) -> FuncResult<(Vec<SchemaVariantId>, Option<ActionKind>)> {
+) -> FuncResult<(ActionKind, Vec<SchemaVariantId>)> {
     let mut variant_ids = vec![];
-    let mut action_kind: Option<ActionKind> = None;
+    let mut maybe_action_kind: Option<ActionKind> = None;
 
     for proto in ActionPrototype::find_for_func(ctx, func_id).await? {
-        action_kind = Some(*proto.kind());
+        if let Some(action_kind) = maybe_action_kind {
+            if action_kind != *proto.kind() {
+                return Err(FuncError::ActionFuncMultipleKinds(func_id));
+            }
+        } else {
+            maybe_action_kind = Some(*proto.kind());
+        }
+
         if proto.schema_variant_id().is_some() {
             variant_ids.push(proto.schema_variant_id());
         }
     }
 
-    Ok((variant_ids, action_kind))
+    let action_kind = maybe_action_kind.ok_or(FuncError::ActionKindMissing(func_id))?;
+
+    Ok((action_kind, variant_ids))
 }
 
 async fn attribute_prototypes_into_schema_variants_and_components(
@@ -453,13 +466,13 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             (associations, input_type)
         }
         FuncBackendKind::JsAction => {
-            let (schema_variant_ids, action_kind) =
+            let (kind, schema_variant_ids) =
                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
 
-            let associations = Some(dbg!(FuncAssociations::Action {
+            let associations = Some(FuncAssociations::Action {
                 schema_variant_ids,
-                kind: action_kind.unwrap_or(ActionKind::Other)
-            }));
+                kind,
+            });
 
             (associations, compile_action_types())
         }

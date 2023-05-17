@@ -85,6 +85,14 @@
               />
             </div>
           </SiCollapsible>
+          <ActionDetails
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'action'
+            "
+            v-model="editingFunc.associations"
+            @change="updateFunc"
+          />
           <QualificationDetails
             v-if="
               editingFunc.associations &&
@@ -182,6 +190,7 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
+import ActionDetails from "./ActionDetails.vue";
 
 const funcStore = useFuncStore();
 

@@ -1,5 +1,12 @@
 import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncArgument } from "@/api/sdf/dal/func";
+import { ActionKind } from "@/store/fixes.store";
+
+export interface ActionAssociations {
+  type: "action";
+  schemaVariantIds: string[];
+  kind: ActionKind;
+}
 
 export interface CodeGenerationAssociations {
   type: "codeGeneration";
@@ -13,7 +20,7 @@ export interface ConfirmationAssociations {
   componentIds: string[];
 }
 
-export interface QualificationAssocations {
+export interface QualificationAssociations {
   type: "qualification";
   schemaVariantIds: string[];
   componentIds: string[];
@@ -44,17 +51,18 @@ export interface AttributePrototypeView {
   prototypeArguments: AttributePrototypeArgumentView[];
 }
 
-export interface AttributeAssocations {
+export interface AttributeAssociations {
   type: "attribute";
   prototypes: AttributePrototypeView[];
   arguments: FuncArgument[];
 }
 
 export type FuncAssociations =
-  | AttributeAssocations
+  | ActionAssociations
+  | AttributeAssociations
   | CodeGenerationAssociations
   | ConfirmationAssociations
-  | QualificationAssocations
+  | QualificationAssociations
   | ValidationAssociations;
 
 export interface InputSourceSocket {
