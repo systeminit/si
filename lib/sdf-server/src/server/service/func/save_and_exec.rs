@@ -5,7 +5,7 @@ use super::{
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue,
+    job::definition::DependentValuesUpdate, ActionPrototype, AttributePrototype, AttributeValue,
     AttributeValueError, AttributeValueId, Component, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, PropId, RootPropChild, SchemaVariant, StandardModel,
     ValidationPrototype, WsEvent,
@@ -111,7 +111,12 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
 }
 
 async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
-    for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
+    let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
+    if protos.is_empty() {
+        return Err(FuncError::FuncExecutionFailedNoPrototypes);
+    }
+
+    for proto in protos {
         let schema_variant_id = proto.context().schema_variant_id();
         if schema_variant_id.is_none() {
             continue;
@@ -122,6 +127,26 @@ async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
             component
                 .check_single_validation(ctx, &proto, &mut cache)
                 .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn run_actions(ctx: &DalContext, func: &Func) -> FuncResult<()> {
+    let protos = ActionPrototype::find_for_func(ctx, *func.id()).await?;
+    if protos.is_empty() {
+        return Err(FuncError::FuncExecutionFailedNoPrototypes);
+    }
+
+    for proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
+        let schema_variant_id = proto.context().schema_variant_id();
+        if schema_variant_id.is_none() {
+            continue;
+        }
+        let components = Component::list_for_schema_variant(ctx, schema_variant_id).await?;
+        for component in components {
+            proto.run(ctx, *component.id(), true).await?;
         }
     }
 
@@ -143,6 +168,9 @@ pub async fn save_and_exec(
         }
         FuncBackendKind::JsValidation => {
             run_validations(&ctx, &func).await?;
+        }
+        FuncBackendKind::JsAction => {
+            run_actions(&ctx, &func).await?;
         }
         _ => {}
     }

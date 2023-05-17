@@ -1,24 +1,15 @@
 <template>
   <div class="p-3 flex flex-col gap-2">
-    <p class="text-neutral-400 dark:text-neutral-300 text-sm">
-      For more information on authoring a qualification, please read the
-      <a
-        href="http://systeminit.com/docs/qualifications"
-        target="_blank"
-        class="hover:underline"
-        >qualification documentation
-      </a>
-    </p>
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-      Run this qualification on the selected asset and assets of type below.
+      Run this action on the selected assets of type below.
     </h1>
-    <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Asset:
+    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      Kind of Action:
     </h2>
-    <RunOnSelector
-      v-model="selectedComponents"
-      thing-label="asset"
-      :options="componentOptions"
+    <SelectMenu
+      v-model="selectedKind"
+      class="flex-auto"
+      :options="kindOptions"
       :disabled="disabled"
       @change="updateAssociations"
     />
@@ -38,50 +29,66 @@
 <script lang="ts" setup>
 import { ref, watch, toRef } from "vue";
 import { storeToRefs } from "pinia";
-import { Option } from "@/components/SelectMenu.vue";
-import { QualificationAssociations } from "@/store/func/types";
+import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import { ActionAssociations } from "@/store/func/types";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { ActionKind } from "@/store/fixes.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
 const funcStore = useFuncStore();
 const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
-  modelValue: QualificationAssociations;
+  modelValue: ActionAssociations;
   disabled?: boolean;
 }>();
 
+const kindToOption = (kind: string): Option => ({
+  label: kind,
+  value: kind,
+});
+
+const generateKindOptions = () => {
+  const options: Option[] = [];
+  for (const kind of Object.values(ActionKind)) {
+    options.push(kindToOption(kind as ActionKind));
+  }
+  return options;
+};
+
 const modelValue = toRef(props, "modelValue");
+
+const kindOptions = generateKindOptions();
+
+const selectedKind = ref<Option>(
+  kindToOption(modelValue.value?.kind ?? "other"),
+);
 
 const selectedVariants = ref<Option[]>(
   toOptionValues(schemaVariantOptions.value, modelValue.value.schemaVariantIds),
 );
-const selectedComponents = ref<Option[]>(
-  toOptionValues(componentOptions.value, modelValue.value.componentIds),
-);
 
 const emit = defineEmits<{
-  (e: "update:modelValue", v: QualificationAssociations): void;
-  (e: "change", v: QualificationAssociations): void;
+  (e: "update:modelValue", v: ActionAssociations): void;
+  (e: "change", v: ActionAssociations): void;
 }>();
 
 watch(
   [modelValue, schemaVariantOptions, componentOptions],
-  ([mv, svOpts, componentOpts]) => {
+  ([mv, svOpts]) => {
     selectedVariants.value = toOptionValues(svOpts, mv.schemaVariantIds);
-    selectedComponents.value = toOptionValues(componentOpts, mv.componentIds);
   },
   { immediate: true },
 );
 
 const updateAssociations = () => {
-  const associations: QualificationAssociations = {
-    componentIds: selectedComponents.value.map(({ value }) => value as string),
+  const associations: ActionAssociations = {
+    kind: selectedKind.value.value as ActionKind,
     schemaVariantIds: selectedVariants.value.map(
       ({ value }) => value as string,
     ),
-    type: "qualification",
+    type: "action",
   };
 
   emit("update:modelValue", associations);

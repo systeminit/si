@@ -12,13 +12,21 @@ function nilId(): string {
   return "00000000000000000000000000";
 }
 
+export type ActionPrototypeId = string;
+
 export type FixStatus =
   | "success"
   | "failure"
   | "running"
   | "error"
   | "unstarted";
-export type ActionKind = "create" | "delete" | "other" | "refresh";
+
+export enum ActionKind {
+  Create = "create",
+  Delete = "delete",
+  Other = "other",
+  Refresh = "refresh",
+}
 
 // TODO(nick,paulo,paul,wendy): get rid of never started.
 export type ConfirmationStatus =
@@ -49,7 +57,7 @@ export type Recommendation = {
   componentId: ComponentId;
   componentName: string;
   name: string;
-  actionPrototypeId: string; // TODO add type
+  actionPrototypeId: ActionPrototypeId;
   provider: string;
   actionKind: ActionKind;
   hasRunningFix: boolean;

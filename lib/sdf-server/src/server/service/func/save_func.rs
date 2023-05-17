@@ -16,9 +16,10 @@ use dal::{
     func::argument::FuncArgument,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     validation::prototype::context::ValidationPrototypeContext,
-    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
-    AttributeValue, Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
-    InternalProviderId, Prop, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributePrototype,
+    AttributePrototypeArgument, AttributePrototypeId, AttributeValue, Component, ComponentId,
+    DalContext, Func, FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop,
+    SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
 
@@ -432,6 +433,40 @@ async fn save_attr_func_arguments(
     Ok(())
 }
 
+async fn save_action_func_prototypes(
+    ctx: &DalContext,
+    func: &Func,
+    kind: ActionKind,
+    schema_variant_ids: Vec<SchemaVariantId>,
+) -> FuncResult<()> {
+    let mut id_set = HashSet::new();
+
+    for schema_variant_id in schema_variant_ids {
+        let context = ActionPrototypeContext { schema_variant_id };
+
+        let proto = match ActionPrototype::find_for_context(ctx, context).await?.pop() {
+            Some(mut existing_proto) => {
+                existing_proto.set_func_id(ctx, *func.id()).await?;
+                existing_proto.set_kind(ctx, kind).await?;
+                existing_proto
+            }
+            None => ActionPrototype::new(ctx, *func.id(), kind, context).await?,
+        };
+
+        id_set.insert(*proto.id());
+    }
+
+    for proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
+        if !id_set.contains(proto.id()) {
+            if let Some(mut proto) = ActionPrototype::get_by_id(ctx, proto.id()).await? {
+                proto.delete_by_id(ctx).await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 async fn save_validation_func_prototypes(
     ctx: &DalContext,
     func: &Func,
@@ -505,6 +540,15 @@ pub async fn do_save_func(
         .await?;
 
     match func.backend_kind() {
+        FuncBackendKind::JsAction => {
+            if let Some(FuncAssociations::Action {
+                schema_variant_ids,
+                kind,
+            }) = request.associations
+            {
+                save_action_func_prototypes(ctx, &func, kind, schema_variant_ids).await?;
+            }
+        }
         FuncBackendKind::JsValidation => {
             if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
                 save_validation_func_prototypes(ctx, &func, prototypes).await?;

@@ -58,7 +58,7 @@ import { ref, watch } from "vue";
 import { Inline, VButton, VormInput } from "@si/vue-lib/design-system";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { AttributeAssocations } from "@/store/func/types";
+import { AttributeAssociations } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
 
 const generateKindOptions = () => {
@@ -79,13 +79,13 @@ const kindOptions = generateKindOptions();
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const props = defineProps<{
-  modelValue: AttributeAssocations;
+  modelValue: AttributeAssociations;
   disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "update:modelValue", v: AttributeAssocations): void;
-  (e: "change", v: AttributeAssocations): void;
+  (e: "update:modelValue", v: AttributeAssociations): void;
+  (e: "change", v: AttributeAssociations): void;
 }>();
 
 const defaultNewArg = {
