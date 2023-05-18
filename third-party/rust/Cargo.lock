@@ -3559,7 +3559,7 @@ dependencies = [
  "sodiumoxide",
  "stream-cancel",
  "strum",
- "syn 2.0.15",
+ "syn 2.0.16",
  "tar",
  "tempfile",
  "test-log",
