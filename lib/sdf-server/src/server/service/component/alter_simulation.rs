@@ -1,7 +1,6 @@
 use axum::Json;
 use dal::{
-    AttributeValue, AttributeValueError, AttributeValueId, ChangeSet, ChangeSetPk, StandardModel,
-    Visibility,
+    AttributeValue, AttributeValueError, AttributeValueId, ChangeSet, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -11,7 +10,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateModelRequest {
+pub struct AlterSimulationRequest {
     pub attribute_values: HashMap<AttributeValueId, serde_json::Value>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -19,18 +18,18 @@ pub struct UpdateModelRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateModelResponse {
-    change_set_pk: ChangeSetPk,
+pub struct AlterSimulationResponse {
+    success: bool,
 }
 
-pub async fn update_model(
+pub async fn alter_simulation(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<UpdateModelRequest>,
-) -> ComponentResult<Json<UpdateModelResponse>> {
+    Json(request): Json<AlterSimulationRequest>,
+) -> ComponentResult<Json<AlterSimulationResponse>> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let change_set = ChangeSet::new(&ctx, "fix-simulation", None).await?;
+    let mut change_set = ChangeSet::new(&ctx, "fix-simulation", None).await?;
     ctx.update_visibility(Visibility::new_change_set(change_set.pk, false));
 
     for (attribute_value_id, value) in request.attribute_values {
@@ -52,9 +51,12 @@ pub async fn update_model(
         .await?;
     }
 
+    // Propagates all values before applying
+    ctx.blocking_commit().await?;
+
+    change_set.apply(&mut ctx).await?;
+
     ctx.commit().await?;
 
-    Ok(Json(UpdateModelResponse {
-        change_set_pk: change_set.pk,
-    }))
+    Ok(Json(AlterSimulationResponse { success: true }))
 }

@@ -16,6 +16,7 @@ use thiserror::Error;
 
 use crate::{server::state::AppState, service::schema::SchemaError};
 
+pub mod alter_simulation;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
@@ -27,7 +28,6 @@ pub mod list_qualifications;
 pub mod refresh;
 pub mod resource_domain_diff;
 pub mod set_type;
-pub mod update_model;
 pub mod update_property_editor_value;
 
 #[remain::sorted]
@@ -156,5 +156,8 @@ pub fn routes() -> Router<AppState> {
         .route("/set_type", post(set_type::set_type))
         .route("/refresh", post(refresh::refresh))
         .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
-        .route("/update_model", post(update_model::update_model))
+        .route(
+            "/alter_simulation",
+            post(alter_simulation::alter_simulation),
+        )
 }
