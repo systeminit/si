@@ -22,6 +22,7 @@ use veritech_client::ResourceStatus;
 mod code;
 mod confirmation;
 mod qualification;
+mod resource;
 mod validation;
 mod view;
 
