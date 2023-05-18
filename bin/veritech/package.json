@@ -17,26 +17,5 @@
     "check": "pnpm check:format && pnpm check:lint && pnpm check:doc",
     "prepush": "pnpm check && pnpm test",
     "dev:backend": "CARGO_MANIFEST_DIR=${PWD} ../../target/debug/veritech"
-  },
-  "dependencies": {
-    "telemetry-application": "workspace:*",
-    "veritech-server": "workspace:*",
-    "cyclone": "workspace:*",
-    "lang-js": "workspace:*"
-  },
-  "devDependencies": {},
-  "dependenciesMeta": {
-    "telemetry-application": {
-      "injected": true
-    },
-    "lang-js": {
-      "injected": true
-    },
-    "veritech-server": {
-      "injected": true
-    },
-    "cyclone": {
-      "injected": true
-    }
   }
 }

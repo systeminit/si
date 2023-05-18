@@ -461,26 +461,7 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
-  bin/council:
-    dependencies:
-      council-server:
-        specifier: workspace:*
-        version: link:../../lib/council-server
-      telemetry-application:
-        specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
-
-  bin/cyclone:
-    dependencies:
-      cyclone-server:
-        specifier: workspace:*
-        version: link:../../lib/cyclone-server
-      lang-js:
-        specifier: workspace:*
-        version: link:../lang-js
-      telemetry-application:
-        specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
+  bin/council: {}
 
   bin/lang-js:
     dependencies:
@@ -561,163 +542,11 @@ importers:
         specifier: ^27.1.4
         version: 27.1.5(@types/jest@27.5.2)(jest@27.5.1)(typescript@4.9.5)
 
-  bin/pinga:
-    dependencies:
-      pinga-server:
-        specifier: workspace:*
-        version: link:../../lib/pinga-server
-      telemetry-application:
-        specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
+  bin/pinga: {}
 
-  bin/sdf:
-    dependencies:
-      sdf-server:
-        specifier: workspace:*
-        version: link:../../lib/sdf-server
-      telemetry-application:
-        specifier: workspace:*
-        version: link:../../lib/telemetry-application-rs
+  bin/sdf: {}
 
-  bin/veritech:
-    dependencies:
-      cyclone:
-        specifier: workspace:*
-        version: file:bin/cyclone
-      lang-js:
-        specifier: workspace:*
-        version: file:bin/lang-js
-      telemetry-application:
-        specifier: workspace:*
-        version: file:lib/telemetry-application-rs
-      veritech-server:
-        specifier: workspace:*
-        version: file:lib/veritech-server
-    dependenciesMeta:
-      cyclone:
-        injected: true
-      lang-js:
-        injected: true
-      telemetry-application:
-        injected: true
-      veritech-server:
-        injected: true
-
-  lib/bytes-lines-codec: {}
-
-  lib/config-file: {}
-
-  lib/council-server:
-    dependencies:
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-settings:
-        specifier: workspace:*
-        version: link:../si-settings
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/cyclone-client:
-    dependencies:
-      cyclone-core:
-        specifier: workspace:*
-        version: link:../cyclone-core
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-    devDependencies:
-      cyclone-server:
-        specifier: workspace:*
-        version: link:../cyclone-server
-
-  lib/cyclone-core:
-    dependencies:
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/cyclone-server:
-    dependencies:
-      bytes-lines-codec:
-        specifier: workspace:*
-        version: link:../bytes-lines-codec
-      cyclone-core:
-        specifier: workspace:*
-        version: link:../cyclone-core
-      si-settings:
-        specifier: workspace:*
-        version: link:../si-settings
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/dal:
-    dependencies:
-      council-server:
-        specifier: workspace:*
-        version: link:../council-server
-      nats-subscriber:
-        specifier: workspace:*
-        version: link:../nats-subscriber
-      object-tree:
-        specifier: workspace:*
-        version: link:../object-tree
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-data-pg:
-        specifier: workspace:*
-        version: link:../si-data-pg
-      si-pkg:
-        specifier: workspace:*
-        version: link:../si-pkg
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-client:
-        specifier: workspace:*
-        version: link:../veritech-client
-
-  lib/dal-test:
-    dependencies:
-      council-server:
-        specifier: workspace:*
-        version: link:../council-server
-      dal:
-        specifier: workspace:*
-        version: link:../dal
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-data-pg:
-        specifier: workspace:*
-        version: link:../si-data-pg
-      si-std:
-        specifier: workspace:*
-        version: link:../si-std
-      si-test-macros:
-        specifier: workspace:*
-        version: link:../si-test-macros
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-client:
-        specifier: workspace:*
-        version: link:../veritech-client
-      veritech-server:
-        specifier: workspace:*
-        version: link:../veritech-server
-
-  lib/deadpool-cyclone:
-    dependencies:
-      cyclone-client:
-        specifier: workspace:*
-        version: link:../cyclone-client
-      cyclone-core:
-        specifier: workspace:*
-        version: link:../cyclone-core
+  bin/veritech: {}
 
   lib/eslint-config:
     devDependencies:
@@ -770,112 +599,6 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
-  lib/nats-subscriber:
-    dependencies:
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/object-tree: {}
-
-  lib/pinga-server:
-    dependencies:
-      dal:
-        specifier: workspace:*
-        version: link:../dal
-      nats-subscriber:
-        specifier: workspace:*
-        version: link:../nats-subscriber
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-data-pg:
-        specifier: workspace:*
-        version: link:../si-data-pg
-      si-settings:
-        specifier: workspace:*
-        version: link:../si-settings
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-client:
-        specifier: workspace:*
-        version: link:../veritech-client
-
-  lib/sdf-server:
-    dependencies:
-      dal:
-        specifier: workspace:*
-        version: link:../dal
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-data-pg:
-        specifier: workspace:*
-        version: link:../si-data-pg
-      si-pkg:
-        specifier: workspace:*
-        version: link:../si-pkg
-      si-posthog-rs:
-        specifier: workspace:*
-        version: link:../si-posthog-rs
-      si-settings:
-        specifier: workspace:*
-        version: link:../si-settings
-      si-std:
-        specifier: workspace:*
-        version: link:../si-std
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-client:
-        specifier: workspace:*
-        version: link:../veritech-client
-
-  lib/si-data-nats:
-    dependencies:
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/si-data-pg:
-    dependencies:
-      si-std:
-        specifier: workspace:*
-        version: link:../si-std
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/si-pkg:
-    dependencies:
-      object-tree:
-        specifier: workspace:*
-        version: link:../object-tree
-
-  lib/si-posthog-rs: {}
-
-  lib/si-settings:
-    dependencies:
-      config-file:
-        specifier: workspace:*
-        version: link:../config-file
-
-  lib/si-std: {}
-
-  lib/si-test-macros: {}
-
-  lib/telemetry-application-rs:
-    dependencies:
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-
-  lib/telemetry-rs: {}
-
   lib/ts-lib:
     devDependencies:
       '@si/eslint-config':
@@ -886,51 +609,6 @@ importers:
         version: link:../tsconfig
 
   lib/tsconfig: {}
-
-  lib/veritech-client:
-    dependencies:
-      cyclone-core:
-        specifier: workspace:*
-        version: link:../cyclone-core
-      nats-subscriber:
-        specifier: workspace:*
-        version: link:../nats-subscriber
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-core:
-        specifier: workspace:*
-        version: link:../veritech-core
-    devDependencies:
-      veritech-server:
-        specifier: workspace:*
-        version: link:../veritech-server
-
-  lib/veritech-core: {}
-
-  lib/veritech-server:
-    dependencies:
-      deadpool-cyclone:
-        specifier: workspace:*
-        version: link:../deadpool-cyclone
-      nats-subscriber:
-        specifier: workspace:*
-        version: link:../nats-subscriber
-      si-data-nats:
-        specifier: workspace:*
-        version: link:../si-data-nats
-      si-settings:
-        specifier: workspace:*
-        version: link:../si-settings
-      telemetry:
-        specifier: workspace:*
-        version: link:../telemetry-rs
-      veritech-core:
-        specifier: workspace:*
-        version: link:../veritech-core
 
   lib/vue-lib:
     dependencies:
@@ -5959,6 +5637,7 @@ packages:
   /commander@9.5.0:
     resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
     engines: {node: ^12.20.0 || >=14}
+    dev: true
 
   /comment-json@4.2.3:
     resolution: {integrity: sha512-SsxdiOf064DWoZLH799Ata6u7iV658A11PlWtZATDlXPpKGJnbJZ5Z24ybixAi+LUUqJ/GKowAejtC5GFUG7Tw==}
@@ -16127,55 +15806,4 @@ packages:
 
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
-    dev: false
-
-  file:bin/cyclone:
-    resolution: {directory: bin/cyclone, type: directory}
-    name: cyclone
-    version: 0.1.0
-    dependencies:
-      cyclone-server: link:lib/cyclone-server
-      lang-js: link:bin/lang-js
-      telemetry-application: link:lib/telemetry-application-rs
-    dev: false
-
-  file:bin/lang-js:
-    resolution: {directory: bin/lang-js, type: directory}
-    name: lang-js
-    version: 0.1.0
-    hasBin: true
-    dependencies:
-      '@typescript/vfs': 1.4.0
-      commander: 9.5.0
-      debug: 4.3.4(supports-color@8.1.1)
-      execa: 5.1.1
-      js-yaml: 4.1.0
-      lodash: 4.17.21
-      node-fetch: 2.6.7
-      typescript: 4.9.5
-      vm2: 3.9.11
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-    dev: false
-
-  file:lib/telemetry-application-rs:
-    resolution: {directory: lib/telemetry-application-rs, type: directory}
-    name: telemetry-application
-    version: 0.1.0
-    dependencies:
-      telemetry: link:lib/telemetry-rs
-    dev: false
-
-  file:lib/veritech-server:
-    resolution: {directory: lib/veritech-server, type: directory}
-    name: veritech-server
-    version: 0.1.0
-    dependencies:
-      deadpool-cyclone: link:lib/deadpool-cyclone
-      nats-subscriber: link:lib/nats-subscriber
-      si-data-nats: link:lib/si-data-nats
-      si-settings: link:lib/si-settings
-      telemetry: link:lib/telemetry-rs
-      veritech-core: link:lib/veritech-core
     dev: false
