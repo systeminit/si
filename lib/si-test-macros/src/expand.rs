@@ -204,9 +204,6 @@ pub(crate) trait FnSetupExpander {
     fn test_context(&self) -> Option<&Arc<Ident>>;
     fn set_test_context(&mut self, value: Option<Arc<Ident>>);
 
-    fn jwt_secret_key(&self) -> Option<&Arc<Ident>>;
-    fn set_jwt_secret_key(&mut self, value: Option<Arc<Ident>>);
-
     fn nats_subject_prefix(&self) -> Option<&Arc<Ident>>;
     fn set_nats_subject_prefix(&mut self, value: Option<Arc<Ident>>);
 
@@ -273,23 +270,6 @@ pub(crate) trait FnSetupExpander {
         self.set_test_context(Some(Arc::new(var)));
 
         self.test_context().unwrap().clone()
-    }
-
-    fn setup_jwt_secret_key(&mut self) -> Arc<Ident> {
-        if let Some(ident) = self.jwt_secret_key() {
-            return ident.clone();
-        }
-
-        let test_context = self.setup_test_context();
-        let test_context = test_context.as_ref();
-
-        let var = Ident::new("jwt_secret_key", Span::call_site());
-        self.code_extend(quote! {
-            let #var = #test_context.jwt_secret_key();
-        });
-        self.set_jwt_secret_key(Some(Arc::new(var)));
-
-        self.jwt_secret_key().unwrap().clone()
     }
 
     fn setup_nats_subject_prefix(&mut self) -> Arc<Ident> {
@@ -486,8 +466,6 @@ pub(crate) trait FnSetupExpander {
             return idents.clone();
         }
 
-        let test_context = self.setup_test_context();
-        let test_context = test_context.as_ref();
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
 
@@ -501,7 +479,6 @@ pub(crate) trait FnSetupExpander {
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
                 let r = ::dal_test::helpers::workspace_signup(
                     &ctx,
-                    #test_context.jwt_secret_key(),
                 ).await?;
                 ctx.commit()
                     .await

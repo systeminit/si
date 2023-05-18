@@ -12,7 +12,7 @@ base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
 convert_case = { workspace = true }
-dal = { path = "../dal" }
+dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
@@ -40,9 +40,6 @@ tokio-tungstenite = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
-
-[build-dependencies]
-thiserror = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

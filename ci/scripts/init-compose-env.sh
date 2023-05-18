@@ -21,14 +21,6 @@ function check-init {
   fi
 }
 
-function set-jwt-secret-key {
-  JWT_SECRET_KEY="$(realpath "$REPOPATH/bin/sdf/src/dev.jwt_secret_key.bin")"
-  if [[ ! -f "$JWT_SECRET_KEY" ]]; then
-    echo "file does not exist or could not be found: $JWT_SECRET_KEY"
-    exit 1
-  fi
-}
-
 function set-cyclone-encryption-key {
   CYCLONE_ENCRYPTION_KEY="$(
     realpath "$REPOPATH/lib/cyclone-server/src/dev.encryption.key"
@@ -54,7 +46,6 @@ function perform-init {
   local compose_yaml="$REPOPATH/deploy/docker-compose.env.yml"
 
   cp "$REPOPATH/ci/docker-compose.env.yml" "$compose_yaml"
-  sed -i "s|<jwt-secret-key>|$JWT_SECRET_KEY|g" "$compose_yaml"
   sed -i "s|<cyclone-encryption-key>|$CYCLONE_ENCRYPTION_KEY|g" "$compose_yaml"
   sed -i "s|<cyclone-decryption-key>|$CYCLONE_DECRYPTION_KEY|g" "$compose_yaml"
   sed -i "s|<honeycomb-token>|$HONEYCOMB_TOKEN|g" "$compose_yaml"
@@ -62,7 +53,6 @@ function perform-init {
 
 set-repopath
 check-init
-set-jwt-secret-key
 set-cyclone-encryption-key
 set-cyclone-decryption-key
 perform-init

@@ -14,3 +14,15 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     visibility = ["PUBLIC"],
 )
+
+rust_test(
+    name = "integration-test",
+    srcs = glob(["tests/**/*.rs"]),
+    crate_root = "tests/integration.rs",
+    deps = [
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+        ":si-posthog",
+    ],
+    visibility = ["PUBLIC"],
+)

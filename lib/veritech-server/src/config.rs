@@ -1,4 +1,5 @@
 use std::{
+    env,
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
     time::Duration,
@@ -68,6 +69,16 @@ pub struct ConfigFile {
     cyclone: CycloneConfig,
 }
 
+impl ConfigFile {
+    pub fn set_nats(&mut self, nats: NatsConfig) {
+        self.nats = nats;
+    }
+
+    pub fn set_cyclone(&mut self, cyclone: CycloneConfig) {
+        self.cyclone = cyclone;
+    }
+}
+
 impl StandardConfigFile for ConfigFile {
     type Error = ConfigError;
 }
@@ -75,10 +86,12 @@ impl StandardConfigFile for ConfigFile {
 impl TryFrom<ConfigFile> for Config {
     type Error = ConfigError;
 
-    fn try_from(value: ConfigFile) -> Result<Self> {
+    fn try_from(mut value: ConfigFile) -> Result<Self> {
+        detect_and_configure_development(&mut value)?;
+
         let mut config = Config::builder();
         config.nats(value.nats);
-        config.cyclone_spec(detect_and_configure_development_spec(value.cyclone)?);
+        config.cyclone_spec(value.cyclone.try_into()?);
         config.build().map_err(Into::into)
     }
 }
@@ -335,31 +348,31 @@ fn default_enable_endpoint() -> bool {
     true
 }
 
-fn detect_and_configure_development_spec(cyclone: CycloneConfig) -> Result<CycloneSpec> {
-    if std::env::var("BUCK_RUN_BUILD_ID").is_ok() {
-        buck2_development_cyclone_spec(cyclone)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        cargo_development_cyclone_spec(dir, cyclone)
+pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        buck2_development(config)
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        cargo_development(dir, config)
     } else {
-        cyclone.try_into()
+        Ok(())
     }
 }
 
-fn buck2_development_cyclone_spec(mut cyclone: CycloneConfig) -> Result<CycloneSpec> {
+fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::cyclone_spec_build)?;
 
     let cyclone_cmd_path = resources
-        .get("bin/veritech/cyclone")
+        .get_ends_with("cyclone")
         .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
     let cyclone_decryption_key_path = resources
-        .get("bin/veritech/dev.decryption.key")
+        .get_ends_with("dev.decryption.key")
         .map_err(ConfigError::cyclone_spec_build)?
         .to_string_lossy()
         .to_string();
     let lang_server_cmd_path = resources
-        .get("bin/veritech/lang-js")
+        .get_ends_with("lang-js")
         .map_err(ConfigError::cyclone_spec_build)?
         // TODO(fnichol): tweak build rule to produce binary as its output
         .join("lang-js")
@@ -373,14 +386,18 @@ fn buck2_development_cyclone_spec(mut cyclone: CycloneConfig) -> Result<CycloneS
         "detected development run",
     );
 
-    cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    cyclone.set_cyclone_decryption_key_path(cyclone_decryption_key_path);
-    cyclone.set_lang_server_cmd_path(lang_server_cmd_path);
+    config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
+    config
+        .cyclone
+        .set_cyclone_decryption_key_path(cyclone_decryption_key_path);
+    config
+        .cyclone
+        .set_lang_server_cmd_path(lang_server_cmd_path);
 
-    cyclone.try_into()
+    Ok(())
 }
 
-fn cargo_development_cyclone_spec(dir: String, mut cyclone: CycloneConfig) -> Result<CycloneSpec> {
+fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     let cyclone_cmd_path = Path::new(&dir)
         .join("../../target/debug/cyclone")
         .canonicalize()
@@ -409,9 +426,13 @@ fn cargo_development_cyclone_spec(dir: String, mut cyclone: CycloneConfig) -> Re
         "detected development run",
     );
 
-    cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
-    cyclone.set_cyclone_decryption_key_path(cyclone_decryption_key_path);
-    cyclone.set_lang_server_cmd_path(lang_server_cmd_path);
+    config.cyclone.set_cyclone_cmd_path(cyclone_cmd_path);
+    config
+        .cyclone
+        .set_cyclone_decryption_key_path(cyclone_decryption_key_path);
+    config
+        .cyclone
+        .set_lang_server_cmd_path(lang_server_cmd_path);
 
-    cyclone.try_into()
+    Ok(())
 }

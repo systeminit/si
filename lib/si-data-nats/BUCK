@@ -13,5 +13,6 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
+    # doctests = True,
     visibility = ["PUBLIC"],
 )

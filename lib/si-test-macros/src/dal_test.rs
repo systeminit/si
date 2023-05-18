@@ -140,11 +140,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                     let var = var.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
                                 }
-                                "JwtSecretKey" => {
-                                    let var = expander.setup_jwt_secret_key();
-                                    let var = var.as_ref();
-                                    expander.push_arg(parse_quote! {#var});
-                                }
                                 "ServicesContext" => {
                                     let var = expander.setup_services_context();
                                     let var = var.as_ref();
@@ -199,7 +194,6 @@ struct DalTestFnSetupExpander {
     args: Punctuated<Expr, Comma>,
 
     test_context: Option<Arc<Ident>>,
-    jwt_secret_key: Option<Arc<Ident>>,
     nats_subject_prefix: Option<Arc<Ident>>,
     council_server: Option<Arc<Ident>>,
     start_council_server: Option<()>,
@@ -226,7 +220,6 @@ impl DalTestFnSetupExpander {
             code: TokenStream::new(),
             args: Punctuated::new(),
             test_context: None,
-            jwt_secret_key: None,
             nats_subject_prefix: None,
             council_server: None,
             start_council_server: None,
@@ -275,14 +268,6 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_test_context(&mut self, value: Option<Arc<Ident>>) {
         self.test_context = value;
-    }
-
-    fn jwt_secret_key(&self) -> Option<&Arc<Ident>> {
-        self.jwt_secret_key.as_ref()
-    }
-
-    fn set_jwt_secret_key(&mut self, value: Option<Arc<Ident>>) {
-        self.jwt_secret_key = value;
     }
 
     fn nats_subject_prefix(&self) -> Option<&Arc<Ident>> {

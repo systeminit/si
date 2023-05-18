@@ -1,16 +1,13 @@
 use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 
-use crate::server::config::{CycloneKeyPair, JwtSecretKey};
+use crate::server::config::CycloneKeyPair;
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::tasks::{StatusReceiver, StatusReceiverError};
 use dal::JwtPublicSigningKey;
 use dal::{
-    cyclone_key_pair::CycloneKeyPairError,
-    job::processor::JobQueueProcessor,
-    jwt_key::{install_new_jwt_key, jwt_key_exists},
-    tasks::ResourceScheduler,
-    ServicesContext,
+    cyclone_key_pair::CycloneKeyPairError, job::processor::JobQueueProcessor,
+    tasks::ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
@@ -85,7 +82,6 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
-        jwt_secret_key: JwtSecretKey,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
@@ -103,7 +99,6 @@ impl Server<(), ()> {
 
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
-                    jwt_secret_key,
                     jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
@@ -137,7 +132,6 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
-        jwt_secret_key: JwtSecretKey,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
@@ -155,7 +149,6 @@ impl Server<(), ()> {
 
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
-                    jwt_secret_key,
                     jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
@@ -194,11 +187,6 @@ impl Server<(), ()> {
         Ok(posthog_client)
     }
 
-    #[instrument(name = "sdf.init.generate_jwt_secret_key", skip_all)]
-    pub async fn generate_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
-        Ok(JwtSecretKey::create(path).await?)
-    }
-
     #[instrument(name = "sdf.init.generate_cyclone_key_pair", skip_all)]
     pub async fn generate_cyclone_key_pair(
         secret_key_path: impl AsRef<Path>,
@@ -207,11 +195,6 @@ impl Server<(), ()> {
         CycloneKeyPair::create(secret_key_path, public_key_path)
             .await
             .map_err(Into::into)
-    }
-
-    #[instrument(name = "sdf.init.load_jwt_secret_key", skip_all)]
-    pub async fn load_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
-        Ok(JwtSecretKey::load(path).await?)
     }
 
     #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
@@ -231,22 +214,10 @@ impl Server<(), ()> {
         pg: &PgPool,
         nats: &NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        jwt_secret_key: &JwtSecretKey,
         veritech: VeritechClient,
         encryption_key: &EncryptionKey,
     ) -> Result<()> {
         dal::migrate_all_with_progress(pg, nats, job_processor, veritech, encryption_key).await?;
-
-        let mut conn = pg.get().await?;
-        let txn = conn.transaction().await?;
-        if !jwt_key_exists(&txn).await? {
-            debug!("no jwt key found, generating new keypair");
-            install_new_jwt_key(&txn, jwt_secret_key).await?;
-        }
-        // TODO: manually process job queue
-
-        txn.commit().await?;
-
         Ok(())
     }
 
@@ -341,7 +312,6 @@ where
 
 pub fn build_service(
     services_context: ServicesContext,
-    jwt_secret_key: JwtSecretKey,
     jwt_public_signing_key: JwtPublicSigningKey,
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
@@ -352,7 +322,6 @@ pub fn build_service(
     let state = AppState::new(
         services_context,
         signup_secret,
-        jwt_secret_key,
         jwt_public_signing_key,
         posthog_client,
         shutdown_broadcast_tx.clone(),

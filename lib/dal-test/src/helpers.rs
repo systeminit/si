@@ -5,12 +5,14 @@ use dal::{
         binding::FuncBindingId,
         binding_return_value::FuncBindingReturnValueId,
     },
-    ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, StandardModel,
-    User, UserClaim, UserPk, Visibility, Workspace, WorkspaceSignup,
+    ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor, StandardModel, User, UserClaim,
+    UserPk, Visibility, Workspace, WorkspaceSignup,
 };
-use jwt_simple::algorithms::{RS256KeyPair, RSAKeyPairLike};
+use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
 use names::{Generator, Name};
+
+use crate::jwt_private_signing_key;
 
 pub mod component_bag;
 
@@ -18,9 +20,10 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub fn create_jwt(claim: UserClaim) -> String {
-    let key = include_str!("../../../config/keys/dev.jwt_signing_private_key.pem");
-    let key_pair = RS256KeyPair::from_pem(key).expect("unable to extract private key");
+pub async fn create_auth_token(claim: UserClaim) -> String {
+    let key_pair = jwt_private_signing_key()
+        .await
+        .expect("failed to load jwt private signing key");
     let claim = Claims::with_custom_claims(claim, Duration::from_days(1))
         .with_audience("https://app.systeminit.com")
         .with_issuer("https://app.systeminit.com")
@@ -29,10 +32,7 @@ pub fn create_jwt(claim: UserClaim) -> String {
     key_pair.sign(claim).expect("unable to sign jwt")
 }
 
-pub async fn workspace_signup(
-    ctx: &DalContext,
-    _jwt_secret_key: &JwtSecretKey,
-) -> Result<(WorkspaceSignup, String)> {
+pub async fn workspace_signup(ctx: &DalContext) -> Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
     let mut ctx = ctx.clone_with_head();
@@ -44,10 +44,11 @@ pub async fn workspace_signup(
     let nw = Workspace::signup(&mut ctx, &workspace_name, &user_name, &user_email)
         .await
         .wrap_err("cannot signup a new workspace")?;
-    let auth_token = create_jwt(UserClaim {
+    let auth_token = create_auth_token(UserClaim {
         user_pk: nw.user.pk(),
         workspace_pk: *nw.workspace.pk(),
-    });
+    })
+    .await;
     Ok((nw, auth_token))
 }
 

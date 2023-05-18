@@ -7,9 +7,6 @@ Here is an example:
 ```yaml
 version: "3"
 services:
-  sdf:
-    volumes:
-      - /<path>/<to>/jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin
   otel:
     environment:
       - HONEYCOMB_TOKEN=<token>

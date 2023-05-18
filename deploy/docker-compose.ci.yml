@@ -7,11 +7,11 @@ services:
     # NOTE(nick): "dist" is a directory and the other mounts are files. This might help when debugging permissions errors
     # SELinux, volume mounts, etc.
     volumes:
-      - type: bind 
+      - type: bind
         source: "${REPOPATH:-..}/app/web/dist"
         target: "/usr/share/nginx/html"
         read_only: true
-      - type: bind 
+      - type: bind
         source: "${REPOPATH:-..}/app/web/nginx.conf"
         target: "/etc/nginx/conf.d/default.conf"
         read_only: true
@@ -23,16 +23,12 @@ services:
         source: "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.crt"
         target: "/etc/ssl/certs/nginx-selfsigned.crt"
         read_only: true
-      - type: bind 
+      - type: bind
         source: "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.key"
         target: "/etc/ssl/certs/nginx-selfsigned.key"
         read_only: true
   sdf:
     volumes:
-      - type: bind
-        source: "${REPOPATH:-..}/bin/sdf/src/dev.jwt_secret_key.bin"
-        target: "/run/sdf/jwt_secret_key.bin"
-        read_only: true
       - type: bind
         source: "${REPOPATH:-..}/lib/cyclone-server/src/dev.encryption.key"
         target: "/run/sdf/cyclone_encryption.key"

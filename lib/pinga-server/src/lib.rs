@@ -2,7 +2,10 @@ mod config;
 pub mod server;
 
 pub use crate::{
-    config::{Config, ConfigBuilder, ConfigError, ConfigFile, StandardConfig, StandardConfigFile},
+    config::{
+        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
+        StandardConfig, StandardConfigFile,
+    },
     server::{Server, ServerError},
 };
 

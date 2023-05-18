@@ -56,12 +56,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     Server::init()?;
 
-    if let Some(path) = args.generate_jwt_secret_key {
-        info!("Generating JWT secret at: {}", path.display());
-        let _key = Server::generate_jwt_secret_key(path).await?;
-        return Ok(());
-    }
-
     if let (Some(secret_key_path), Some(public_key_path)) = (
         &args.generate_cyclone_secret_key_path,
         &args.generate_cyclone_public_key_path,
@@ -77,7 +71,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let config = Config::try_from(args)?;
 
-    let jwt_secret_key = Server::load_jwt_secret_key(config.jwt_secret_key_path()).await?;
     let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
     let jwt_public_signing_key =
         Server::load_jwt_public_signing_key(config.jwt_signing_public_key_path()).await?;
@@ -100,7 +93,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             &pg_pool,
             &nats,
             job_processor.clone(),
-            &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
         )
@@ -129,7 +121,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 job_processor,
                 veritech.clone(),
                 encryption_key,
-                jwt_secret_key,
                 jwt_public_signing_key,
                 posthog_client,
                 pkgs_path,
@@ -166,7 +157,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 job_processor,
                 veritech.clone(),
                 encryption_key,
-                jwt_secret_key,
                 jwt_public_signing_key,
                 posthog_client,
                 pkgs_path,

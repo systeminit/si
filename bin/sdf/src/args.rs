@@ -55,14 +55,6 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
 
-    /// JWT secret key file location [default: /run/sdf/jwt_secret_key.bin]
-    #[arg(long)]
-    pub(crate) jwt_secret_key_path: Option<String>,
-
-    /// Generates a JWT secret key file (does not run server)
-    #[arg(long)]
-    pub(crate) generate_jwt_secret_key: Option<PathBuf>,
-
     /// Cyclone encryption key file location [default: /run/sdf/cyclone_encryption.key]
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
@@ -108,9 +100,6 @@ impl TryFrom<Args> for Config {
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
-            }
-            if let Some(jwt_secret_key_path) = args.jwt_secret_key_path {
-                config_map.set("jwt_secret_key_path", jwt_secret_key_path);
             }
             if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
                 config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);

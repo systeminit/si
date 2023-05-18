@@ -43,3 +43,45 @@ rust_library(
     ]),
     visibility = ["PUBLIC"],
 )
+
+rust_test(
+    name = "integration-test",
+    edition = "2021",
+    deps = [
+        "//lib/dal-test:dal-test",
+        "//lib/dal:dal",
+        "//lib/si-posthog-rs:si-posthog",
+        "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:axum",
+        "//third-party/rust:hyper",
+        "//third-party/rust:names",
+        "//third-party/rust:pretty_assertions_sorted",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:serde_url_params",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tower",
+        ":sdf-server",
+    ],
+    crate_root = "tests/api.rs",
+    srcs = glob([
+       "tests/**/*.rs",
+    ]),
+    env = {
+        "CARGO_PKG_NAME": "api",
+    },
+    resources = {
+        "cyclone": "//bin/cyclone:cyclone",
+        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
+        "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
+        "jwt_private_key": "//lib/dal-test:jwt-private-key",
+        "jwt_public_key": "//lib/dal-test:jwt-public-key",
+        "lang-js": "//bin/lang-js:build-package",
+        "pkgs_path": "//pkgs:pkgs",
+        "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
+    },
+    visibility = ["PUBLIC"],
+)

@@ -1,4 +1,5 @@
 use std::{
+    env,
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
@@ -14,7 +15,7 @@ use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub use dal::{CycloneKeyPair, JwtSecretKey, MigrationMode};
+pub use dal::{CycloneKeyPair, MigrationMode};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
@@ -63,7 +64,6 @@ pub struct Config {
 
     jwt_signing_public_key_path: CanonicalFile,
 
-    jwt_secret_key_path: CanonicalFile,
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -104,12 +104,6 @@ impl Config {
         self.jwt_signing_public_key_path.as_path()
     }
 
-    /// Gets a reference to the config's jwt secret key path.
-    #[must_use]
-    pub fn jwt_secret_key_path(&self) -> &Path {
-        self.jwt_secret_key_path.as_path()
-    }
-
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
     pub fn cyclone_encryption_key_path(&self) -> &Path {
@@ -148,23 +142,21 @@ impl ConfigBuilder {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default)]
-    pg: PgPoolConfig,
+    pub pg: PgPoolConfig,
     #[serde(default)]
-    nats: NatsConfig,
+    pub nats: NatsConfig,
     #[serde(default)]
-    migration_mode: MigrationMode,
+    pub migration_mode: MigrationMode,
     #[serde(default = "default_jwt_signing_public_key_path")]
-    jwt_signing_public_key_path: String,
-    #[serde(default = "default_jwt_secret_key_path")]
-    jwt_secret_key_path: String,
+    pub jwt_signing_public_key_path: String,
     #[serde(default = "default_cyclone_encryption_key_path")]
-    cyclone_encryption_key_path: String,
+    pub cyclone_encryption_key_path: String,
     #[serde(default = "default_signup_secret")]
-    signup_secret: SensitiveString,
+    pub signup_secret: SensitiveString,
     #[serde(default = "default_pkgs_path")]
-    pkgs_path: String,
+    pub pkgs_path: String,
     #[serde(default)]
-    posthog: PosthogConfig,
+    pub posthog: PosthogConfig,
 }
 
 impl Default for ConfigFile {
@@ -174,7 +166,6 @@ impl Default for ConfigFile {
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
-            jwt_secret_key_path: default_jwt_secret_key_path(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             signup_secret: default_signup_secret(),
             pkgs_path: default_pkgs_path(),
@@ -198,7 +189,6 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
-        config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
@@ -240,10 +230,6 @@ fn default_jwt_signing_public_key_path() -> String {
     "/run/sdf/jwt_signing_public_key.pem".to_string()
 }
 
-fn default_jwt_secret_key_path() -> String {
-    "/run/sdf/jwt_secret_key.bin".to_string()
-}
-
 fn default_cyclone_encryption_key_path() -> String {
     "/run/sdf/cyclone_encryption.key".to_string()
 }
@@ -256,10 +242,10 @@ fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
 
-fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
-    if std::env::var("BUCK_RUN_BUILD_ID").is_ok() {
+pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         cargo_development(dir, config)
     } else {
         Ok(())
@@ -269,44 +255,38 @@ fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
-    let jwt_signing_public_key_path = match std::env::var("LOCAL_AUTH_STACK") {
-        Ok(_) => resources
-            .get("bin/sdf/dev.jwt_signing_public_key.pem")
+    let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
+        resources
+            .get_ends_with("dev.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
             .to_string_lossy()
-            .to_string(),
-        Err(_) => resources
-            .get("bin/sdf/prod.jwt_signing_public_key.pem")
+            .to_string()
+    } else {
+        resources
+            .get_ends_with("prod.jwt_signing_public_key.pem")
             .map_err(ConfigError::development)?
             .to_string_lossy()
-            .to_string(),
+            .to_string()
     };
-    let jwt_secret_key_path = resources
-        .get("bin/sdf/dev.jwt_secret_key.bin")
-        .map_err(ConfigError::development)?
-        .to_string_lossy()
-        .to_string();
     let cyclone_encryption_key_path = resources
-        .get("bin/sdf/dev.encryption.key")
+        .get_ends_with("dev.encryption.key")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
     let pkgs_path = resources
-        .get("bin/sdf/pkgs_path")
+        .get_ends_with("pkgs_path")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
 
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
-        jwt_secret_key_path = jwt_secret_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
-    config.jwt_secret_key_path = jwt_secret_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
     config.pkgs_path = pkgs_path;
 
@@ -314,20 +294,17 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 }
 
 fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
-    let jwt_signing_public_key_path = match std::env::var("LOCAL_AUTH_STACK") {
-        Ok(_) => Path::new(&dir)
+    let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
+        Path::new(&dir)
             .join("../../config/keys/dev.jwt_signing_public_key.pem")
             .to_string_lossy()
-            .to_string(),
-        Err(_) => Path::new(&dir)
+            .to_string()
+    } else {
+        Path::new(&dir)
             .join("../../config/keys/prod.jwt_signing_public_key.pem")
             .to_string_lossy()
-            .to_string(),
+            .to_string()
     };
-    let jwt_secret_key_path = Path::new(&dir)
-        .join("src/dev.jwt_secret_key.bin")
-        .to_string_lossy()
-        .to_string();
     let cyclone_encryption_key_path = Path::new(&dir)
         .join("../../lib/cyclone-server/src/dev.encryption.key")
         .to_string_lossy()
@@ -339,14 +316,12 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
-        jwt_secret_key_path = jwt_secret_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
-    config.jwt_secret_key_path = jwt_secret_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
     config.pkgs_path = pkgs_path;
 

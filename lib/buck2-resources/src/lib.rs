@@ -6,6 +6,11 @@ use thiserror::Error;
 pub enum Buck2ResourcesError {
     #[error("failed canonicalize path: `{path}`")]
     Canonicalize { source: io::Error, path: PathBuf },
+    #[error("looking for key ending with `{ends_with}` returned multiple matches: {matches:?}")]
+    MultipleKeyMatches {
+        ends_with: String,
+        matches: Vec<String>,
+    },
     #[error("failed to look up our own executable path")]
     NoCurrentExe { source: io::Error },
     #[error("executable doesn't have a filename: `{executable_path}`")]
@@ -88,5 +93,38 @@ impl Buck2Resources {
             .map_err(|source| Buck2ResourcesError::Canonicalize { source, path })?;
 
         Ok(path)
+    }
+
+    pub fn get_ends_with(&self, name: impl AsRef<str>) -> Result<PathBuf, Buck2ResourcesError> {
+        let ends_with = format!("/{}", name.as_ref());
+        let mut candidates: Vec<_> = self
+            .inner
+            .keys()
+            .filter_map(|key| {
+                if key.ends_with(&ends_with) {
+                    Some(key.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if candidates.is_empty() {
+            return Err(Buck2ResourcesError::NoSuchResource {
+                name: format!("*{ends_with}"),
+                manifest_path: self.manifest_path.clone(),
+            });
+        }
+        if candidates.len() >= 2 {
+            return Err(Buck2ResourcesError::MultipleKeyMatches {
+                ends_with,
+                matches: candidates.into_iter().map(|c| c.to_string()).collect(),
+            });
+        }
+
+        match candidates.pop() {
+            Some(key) => self.get(key),
+            None => unreachable!("candidates has len == 1"),
+        }
     }
 }

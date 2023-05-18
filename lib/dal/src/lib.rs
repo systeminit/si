@@ -121,7 +121,7 @@ pub use job::consumer::JobInvocationId;
 pub use job::definition::DependentValuesUpdate;
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
-pub use jwt_key::{create_jwt_key_if_missing, JwtPublicSigningKey, JwtSecretKey};
+pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::NodeId;
