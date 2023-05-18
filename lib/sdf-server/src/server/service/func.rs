@@ -540,7 +540,7 @@ fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
 }"
         }
         FuncBackendResponseType::Confirmation => {
-            "type ActionKind = 'create' | 'destroy' | 'other' | 'refresh';
+            "type ActionKind = 'create' | 'delete' | 'other' | 'refresh';
 interface Output {
   success: boolean;
   recommendedActions: ActionKind[];
