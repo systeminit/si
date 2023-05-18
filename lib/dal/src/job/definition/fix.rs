@@ -11,9 +11,9 @@ use crate::{
         },
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototype, ActionPrototypeId, AttributeValueId, Component, ComponentId,
-    DalContext, DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId,
-    FixResolver, RootPropChild, StandardModel, Visibility, WsEvent,
+    AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, AttributeValueId, Component,
+    ComponentId, DalContext, DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus,
+    FixId, FixResolver, RootPropChild, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,6 +199,10 @@ impl JobConsumer for FixesJob {
         // consecutive fixes that depend on the /root/resource from the previous fix.
         // `blocking_commit()` will wait for any jobs that have ben created through
         // `enqueue_job(...)` to finish before moving on.
+        ctx.blocking_commit().await?;
+
+        component.act(ctx, ActionKind::Refresh).await?;
+
         ctx.blocking_commit().await?;
 
         WsEvent::fix_return(
