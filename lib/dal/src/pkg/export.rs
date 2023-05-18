@@ -397,7 +397,7 @@ async fn build_socket_specs(
     Ok(specs)
 }
 
-async fn get_component_type(
+pub async fn get_component_type(
     ctx: &DalContext,
     variant: &SchemaVariant,
 ) -> Result<SchemaVariantSpecComponentType, PkgError> {

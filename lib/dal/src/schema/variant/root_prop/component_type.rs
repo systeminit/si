@@ -6,10 +6,23 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use si_pkg::SchemaVariantSpecComponentType;
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 /// The possible values of "/root/si/type".
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum ComponentType {
     AggregationFrame,

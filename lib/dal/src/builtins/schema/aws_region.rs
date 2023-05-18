@@ -58,6 +58,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::ConfigurationFrame,
                 ),
                 None,
             )

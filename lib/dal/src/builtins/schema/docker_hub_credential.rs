@@ -1,7 +1,7 @@
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
-use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
+use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ComponentType};
 use crate::{
     component::ComponentKind, property_editor::schema::WidgetKind, socket::SocketArity,
     BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Prop, PropKind, SchemaVariant,
@@ -26,6 +26,7 @@ impl MigrationDriver {
                     ComponentKind::Credential,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

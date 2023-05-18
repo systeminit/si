@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
+use si_pkg::PropSpecKind;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -107,6 +108,19 @@ pub enum PropKind {
     Map,
     Object,
     String,
+}
+
+impl From<PropKind> for PropSpecKind {
+    fn from(prop: PropKind) -> Self {
+        match prop {
+            PropKind::Array => Self::Array,
+            PropKind::Boolean => Self::Boolean,
+            PropKind::String => Self::String,
+            PropKind::Integer => Self::Number,
+            PropKind::Object => Self::Object,
+            PropKind::Map => Self::Map,
+        }
+    }
 }
 
 impl ToLabelList for PropKind {}

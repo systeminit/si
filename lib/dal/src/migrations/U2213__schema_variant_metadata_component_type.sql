@@ -1,0 +1,1 @@
+ALTER TABLE schema_variant_definition ADD COLUMN component_type TEXT NOT NULL default 'component';

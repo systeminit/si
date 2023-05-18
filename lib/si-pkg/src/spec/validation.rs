@@ -7,7 +7,7 @@ use object_tree::Hash;
 use super::SpecError;
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ValidationSpec {
     CustomValidation {
