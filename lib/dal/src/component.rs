@@ -1173,6 +1173,11 @@ impl Component {
             .transpose()?;
         Ok(color)
     }
+
+    /// Check if the [`Component`] has been fully destroyed.
+    pub fn is_destroyed(&self) -> bool {
+        self.visibility.deleted_at.is_some() && !self.needs_destroy()
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

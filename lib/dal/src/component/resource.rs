@@ -201,11 +201,13 @@ impl ResourceView {
         let ctx = &ctx.clone_with_delete_visibility();
         let mut resources = HashMap::new();
         for component in Component::list(ctx).await? {
-            // Use the entry API to ensure that we do not process the same component twice, if
-            // duplicates were accidentally(?) provided.
-            resources
-                .entry(*component.id())
-                .or_insert(Self::new(component.resource(ctx).await?));
+            if !component.is_destroyed() {
+                // Use the entry API to ensure that we do not process the same component twice, if
+                // duplicates were accidentally(?) provided.
+                resources
+                    .entry(*component.id())
+                    .or_insert(Self::new(component.resource(ctx).await?));
+            }
         }
         Ok(resources)
     }

@@ -40,7 +40,7 @@ pub async fn refresh(
             if let Some(component_id) = component_id {
                 let bailout =
                     if let Some(component) = Component::get_by_id(&ctx, &component_id).await? {
-                        component.visibility().deleted_at.is_some() && !component.needs_destroy()
+                        component.is_destroyed()
                     } else {
                         false
                     };

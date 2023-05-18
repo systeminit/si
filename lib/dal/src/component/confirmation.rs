@@ -108,7 +108,7 @@ impl Component {
                 .await?
                 .ok_or(NodeError::ComponentIsNone)?;
 
-            if component.visibility.deleted_at.is_some() && !component.needs_destroy() {
+            if component.is_destroyed() {
                 continue;
             }
 
