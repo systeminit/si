@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use veritech_client::ResourceStatus;
 
 use crate::attribute::context::AttributeContextBuilder;
@@ -191,6 +192,22 @@ impl ResourceView {
             logs: result.logs,
             last_synced: result.last_synced,
         }
+    }
+
+    /// Generate a map of [views](Self) for all [`Components`](Component) in the workspace.
+    pub async fn list_with_deleted(
+        ctx: &DalContext,
+    ) -> ComponentResult<HashMap<ComponentId, Self>> {
+        let ctx = &ctx.clone_with_delete_visibility();
+        let mut resources = HashMap::new();
+        for component in Component::list(ctx).await? {
+            // Use the entry API to ensure that we do not process the same component twice, if
+            // duplicates were accidentally(?) provided.
+            resources
+                .entry(*component.id())
+                .or_insert(Self::new(component.resource(ctx).await?));
+        }
+        Ok(resources)
     }
 }
 
