@@ -137,12 +137,13 @@ pub async fn migrate(
 
     match selected_test_builtin_schemas {
         Some(found_selected_test_builtin_schemas) => {
-            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas).await?;
+            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas.to_owned()).await?;
+            func::migrate_action_prototypes(ctx, Some(found_selected_test_builtin_schemas)).await?;
         }
         None => {
             schema::migrate_for_production(ctx).await?;
             info!("migrating action prototypes");
-            func::migrate_action_prototypes(ctx).await?;
+            func::migrate_action_prototypes(ctx, None).await?;
         }
     }
 

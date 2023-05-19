@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    builtins::schema::BuiltinSchema,
     func::argument::{FuncArgument, FuncArgumentKind},
     ActionKind, ActionPrototype, ActionPrototypeContext, BuiltinsError, BuiltinsResult, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
 };
+
+use super::SelectedTestBuiltinSchemas;
 
 #[derive(Deserialize, Serialize, Debug)]
 struct FunctionMetadataArgument {
@@ -50,8 +53,11 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
 
 // This is a transitional function that creates the necessary action prototypes during
 // migration so that we have the correct data for the initial SI package.
-pub async fn migrate_action_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
-    let command_functions = vec![
+pub async fn migrate_action_prototypes(
+    ctx: &DalContext,
+    selected_test_builtins_schemas: Option<SelectedTestBuiltinSchemas>,
+) -> BuiltinsResult<()> {
+    let action_funcs = vec![
         "si:awsAmiRefreshAction",
         "si:awsEc2CreateAction",
         "si:awsEc2DeleteAction",
@@ -75,31 +81,55 @@ pub async fn migrate_action_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
         "si:dockerImageRefreshAction",
     ];
 
-    for func_name in command_functions {
-        let schema_name = match func_name {
+    for func_name in action_funcs {
+        let schema = match func_name {
             "si:awsEc2DeleteAction" | "si:awsEc2CreateAction" | "si:awsEc2RefreshAction" => {
-                "EC2 Instance"
+                BuiltinSchema::AwsEc2
             }
             "si:awsSecurityGroupRefreshAction"
             | "si:awsSecurityGroupCreateAction"
-            | "si:awsSecurityGroupDeleteAction" => "Security Group",
+            | "si:awsSecurityGroupDeleteAction" => BuiltinSchema::AwsSecurityGroup,
             "si:awsEgressCreateAction"
             | "si:awsEgressRefreshAction"
-            | "si:awsEgressDeleteAction" => "Egress",
+            | "si:awsEgressDeleteAction" => BuiltinSchema::AwsEgress,
             "si:awsEipCreateAction" | "si:awsEipDeleteAction" | "si:awsEipRefreshAction" => {
-                "Elastic IP"
+                BuiltinSchema::AwsEip
             }
-            "si:awsAmiRefreshAction" => "AMI",
+            "si:awsAmiRefreshAction" => BuiltinSchema::AwsAmi,
             "si:awsIngressDeleteAction"
             | "si:awsIngressRefreshAction"
-            | "si:awsIngressCreateAction" => "Ingress",
-            "si:awsRegionRefreshAction" => "Region",
+            | "si:awsIngressCreateAction" => BuiltinSchema::AwsIngress,
+            "si:awsRegionRefreshAction" => BuiltinSchema::AwsRegion,
             "si:awsKeyPairCreateAction"
             | "si:awsKeyPairRefreshAction"
-            | "si:awsKeyPairDeleteAction" => "Key Pair",
-            "si:dockerImageRefreshAction" => "Docker Image",
+            | "si:awsKeyPairDeleteAction" => BuiltinSchema::AwsKeyPair,
+            "si:dockerImageRefreshAction" => BuiltinSchema::DockerImage,
             _ => unreachable!("that string is not in my list!"),
         };
+
+        // this is wonderfully exponential time, but we're going to delete this all soon anyway
+        let should_migrate = match &selected_test_builtins_schemas {
+            Some(SelectedTestBuiltinSchemas::Some(selected_test_builtins_schemas)) => {
+                let mut should_migrate = false;
+                for selected_schema in selected_test_builtins_schemas.iter() {
+                    if let Some(selected_schema) =
+                        BuiltinSchema::match_str(selected_schema.as_str())
+                    {
+                        if schema == selected_schema {
+                            should_migrate = true;
+                            break;
+                        }
+                    }
+                }
+                should_migrate
+            }
+            Some(SelectedTestBuiltinSchemas::All) | None => true,
+            _ => false,
+        };
+
+        if !should_migrate {
+            continue;
+        }
 
         let action_kind = match func_name {
             "si:awsAmiRefreshAction"
@@ -126,7 +156,7 @@ pub async fn migrate_action_prototypes(ctx: &DalContext) -> BuiltinsResult<()> {
             _ => unreachable!("that string is not in my list :("),
         };
 
-        let schema = Schema::find_by_attr(ctx, "name", &schema_name)
+        let schema = Schema::find_by_attr(ctx, "name", &schema.real_schema_name())
             .await?
             .pop()
             .expect("able to find default schema");
