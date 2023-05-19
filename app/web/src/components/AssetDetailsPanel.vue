@@ -27,8 +27,8 @@
       </div>
       <div class="p-2">
         <ErrorMessage
-            v-if="executeAssetReqStatus.isError"
-            :request-status="executeAssetReqStatus"
+          v-if="executeAssetReqStatus.isError"
+          :request-status="executeAssetReqStatus"
         />
       </div>
       <div class="p-sm flex flex-col">
@@ -169,8 +169,8 @@ const executeAsset = async () => {
 };
 
 const executeAssetReqStatus = assetStore.getRequestStatus(
-    "EXEC_ASSET",
-    assetStore.selectedAsset?.id,
+  "EXEC_ASSET",
+  assetStore.selectedAsset?.id,
 );
 
 const cloneAsset = async () => {
