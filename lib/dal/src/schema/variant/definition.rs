@@ -21,8 +21,8 @@ use crate::{
 };
 use crate::{SchemaError, SchemaId, TransactionsError};
 use si_pkg::{
-    AttrFuncInputSpec, FuncUniqueId, PropSpec, SchemaSpec, SchemaVariantSpec, SpecError,
-    ValidationSpec,
+    AttrFuncInputSpec, FuncUniqueId, PropSpec, SchemaSpec, SchemaVariantSpec, SocketSpec,
+    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
 };
 
 #[remain::sorted]
@@ -422,6 +422,7 @@ impl SchemaVariantDefinitionJson {
         identity_func_unique_id: FuncUniqueId,
     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
+        builder.name("v0");
         for prop in &self.props {
             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
         }
@@ -429,6 +430,12 @@ impl SchemaVariantDefinitionJson {
         builder.component_type(metadata.component_type);
         if let Some(link) = metadata.link {
             builder.try_link(link.as_str())?;
+        }
+        for input_socket in &self.input_sockets {
+            builder.socket(input_socket.to_spec(true)?);
+        }
+        for output_socket in &self.output_sockets {
+            builder.socket(output_socket.to_spec(false)?);
         }
 
         Ok(builder.build()?)
@@ -538,6 +545,12 @@ impl PropDefinition {
                         prop_path: prop_path.join(PROP_PATH_SEPARATOR),
                     });
                 }
+                ValueFrom::OutputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::OutputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
             }
         }
         if let Some(hidden) = self.hidden {
@@ -559,13 +572,66 @@ pub struct SocketDefinition {
     /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arity: Option<SocketArity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_hidden: Option<bool>,
+    // The source of the information for the socket
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_from: Option<ValueFrom>,
 }
 
-/// The definition for the source of the information for a socket in a [`SchemaVariant`](crate::SchemaVariant).
+impl SocketDefinition {
+    pub fn to_spec(&self, is_input: bool) -> SchemaVariantDefinitionResult<SocketSpec> {
+        let mut builder = SocketSpec::builder();
+        builder.name(&self.name);
+        if is_input {
+            builder.kind(SocketSpecKind::Input);
+        } else {
+            builder.kind(SocketSpecKind::Output);
+        }
+
+        if let Some(arity) = &self.arity {
+            builder.arity(arity);
+        } else {
+            builder.arity(SocketSpecArity::Many);
+        }
+        if let Some(hidden) = &self.ui_hidden {
+            builder.ui_hidden(*hidden);
+        } else {
+            builder.ui_hidden(false);
+        }
+        if let Some(value_from) = &self.value_from {
+            match value_from {
+                ValueFrom::InputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::InputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+                ValueFrom::Prop { prop_path } => {
+                    builder.input(AttrFuncInputSpec::Prop {
+                        name: "identity".to_string(),
+                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+                    });
+                }
+                ValueFrom::OutputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::OutputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+            }
+        }
+
+        Ok(builder.build()?)
+    }
+}
+
+/// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ValueFrom {
     InputSocket { socket_name: String },
+    OutputSocket { socket_name: String },
     Prop { prop_path: Vec<String> },
 }
 

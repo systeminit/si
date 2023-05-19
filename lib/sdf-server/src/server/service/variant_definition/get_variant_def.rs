@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    StandardModel, Timestamp, Visibility,
+    ComponentType, StandardModel, Timestamp, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ pub struct GetVariantDefRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetVariantDefResponse {
     pub id: SchemaVariantDefinitionId,
@@ -27,6 +27,7 @@ pub struct GetVariantDefResponse {
     pub description: Option<String>,
     pub definition: String,
     pub variant_exists: bool,
+    pub component_type: ComponentType,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -44,6 +45,7 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             description: def.description().map(|d| d.to_string()),
             timestamp: def.timestamp().to_owned(),
             variant_exists: false, // This requires a database call, so this is a dummy value
+            component_type: *def.component_type(),
         }
     }
 }

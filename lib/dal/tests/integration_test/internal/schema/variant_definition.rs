@@ -11,7 +11,8 @@ const VARIANT_DEFINITION_METADATA_JSON: &str = r#"{
   "name": "OingoBoingo",
   "category": "NewWave", 
   "componentKind": "standard",
-  "color": "DEADAF"
+  "color": "DEADAF",
+  "componentType": "component"
 }
 "#;
 
