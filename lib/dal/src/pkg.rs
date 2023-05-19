@@ -21,10 +21,10 @@ use crate::{
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
-    StandardModelError, ValidationPrototypeError,
+    AttributeReadContext, AttributeValueError, ExternalProviderError, ExternalProviderId,
+    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, InternalProviderError,
+    InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId, SchemaVariantError,
+    SchemaVariantId, StandardModelError, ValidationPrototypeError,
 };
 
 #[remain::sorted]
@@ -34,6 +34,10 @@ pub enum PkgError {
     Action(#[from] ActionPrototypeError),
     #[error(transparent)]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
+    AttributeFuncForKeyMissingProp(AttributeReadContext, String),
+    #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
+    AttributeFuncForKeySetOnWrongKind(PropId, String, PropKind),
     #[error(transparent)]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error(transparent)]
@@ -52,6 +56,8 @@ pub enum PkgError {
     ),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
+    #[error("map item prop {0} has both custom key prototypes and custom prop only prototype")]
+    ConflictingMapKeyPrototypes(PropId),
     #[error("Cannot find Socket for explicit InternalProvider {0}")]
     ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error(transparent)]
@@ -102,6 +108,8 @@ pub enum PkgError {
     MissingIntrinsicFunc(String),
     #[error("Intrinsic function (0) argument {1} not found")]
     MissingIntrinsicFuncArgument(String, String),
+    #[error("Cannot find item prop for installed map prop {0}")]
+    MissingItemPropForMapProp(PropId),
     #[error("Cannot find installed prop {0}")]
     MissingProp(PropId),
     #[error("Package with that hash already installed: {0}")]

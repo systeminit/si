@@ -13,7 +13,7 @@ use super::{
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
-    AttrFuncInputSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
+    AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
     SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
 };
 
@@ -406,6 +406,9 @@ async fn create_prop_stack(
         }
         SiPkgProp::Map { .. } => {
             builder.kind(PropSpecKind::Map);
+            for map_key_func in spec.map_key_funcs()? {
+                builder.map_key_func(MapKeyFuncSpec::try_from(map_key_func)?);
+            }
         }
     }
 

@@ -8,6 +8,7 @@ mod attr_func_input;
 mod func;
 mod func_description;
 mod leaf_function;
+mod map_key_func;
 mod prop;
 mod schema;
 mod si_prop_func;
@@ -16,8 +17,8 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, func::*, func_description::*, leaf_function::*, prop::*,
-    schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
+    action_func::*, attr_func_input::*, func::*, func_description::*, leaf_function::*,
+    map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
 };
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

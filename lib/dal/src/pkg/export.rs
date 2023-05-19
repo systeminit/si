@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec,
     FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
-    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, PkgSpec, PropSpec,
+    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, MapKeyFuncSpec, PkgSpec, PropSpec,
     PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
     SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
     SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
@@ -218,7 +218,7 @@ async fn build_leaf_function_specs(
 
 async fn build_input_func_and_arguments(
     ctx: &DalContext,
-    proto: AttributePrototype,
+    proto: &AttributePrototype,
     func_specs: &FuncSpecMap,
 ) -> PkgResult<Option<(FuncUniqueId, Vec<AttrFuncInputSpec>)>> {
     let proto_func = Func::get_by_id(ctx, &proto.func_id()).await?.ok_or(
@@ -340,7 +340,7 @@ async fn build_socket_specs(
                 ))?;
 
             if let Some((func_unique_id, mut inputs)) =
-                build_input_func_and_arguments(ctx, proto, func_specs).await?
+                build_input_func_and_arguments(ctx, &proto, func_specs).await?
             {
                 socket_spec_builder.func_unique_id(func_unique_id);
                 inputs.drain(..).for_each(|input| {
@@ -382,7 +382,7 @@ async fn build_socket_specs(
                 ))?;
 
             if let Some((func_unique_id, mut inputs)) =
-                build_input_func_and_arguments(ctx, proto, func_specs).await?
+                build_input_func_and_arguments(ctx, &proto, func_specs).await?
             {
                 socket_spec_builder.func_unique_id(func_unique_id);
                 inputs.drain(..).for_each(|input| {
@@ -468,7 +468,7 @@ async fn build_si_prop_func_specs(
             .pop()
         {
             if let Some((func_unique_id, mut inputs)) =
-                build_input_func_and_arguments(ctx, prototype, func_specs).await?
+                build_input_func_and_arguments(ctx, &prototype, func_specs).await?
             {
                 let mut builder = SiPropFuncSpec::builder();
                 builder.func_unique_id(func_unique_id);
@@ -690,17 +690,24 @@ async fn set_variant_spec_prop_data(
         }
     }
 
-    let mut prop_children_map: HashMap<PropId, Vec<PropSpec>> = HashMap::new();
+    let mut prop_children_map: HashMap<PropId, Vec<(PropSpec, PropId)>> = HashMap::new();
 
     while let Some(mut entry) = traversal_stack.pop() {
+        let mut maybe_type_prop_id: Option<PropId> = None;
+
         if let Some(mut prop_children) = prop_children_map.remove(&entry.prop_id) {
             match entry.builder.get_kind() {
                 Some(kind) => match kind {
                     PropSpecKind::Object => {
-                        entry.builder.entries(prop_children);
+                        entry.builder.entries(
+                            prop_children
+                                .iter()
+                                .map(|(prop_spec, _)| prop_spec.to_owned())
+                                .collect(),
+                        );
                     }
                     PropSpecKind::Map | PropSpecKind::Array => {
-                        let type_prop = prop_children.pop().ok_or_else(|| {
+                        let (type_prop, type_prop_id) = prop_children.pop().ok_or_else(|| {
                             PkgError::prop_spec_children_invalid(format!(
                                 "found no child for map/array for prop id {}",
                                 entry.prop_id,
@@ -713,6 +720,7 @@ async fn set_variant_spec_prop_data(
                             )));
                         }
                         entry.builder.type_prop(type_prop);
+                        maybe_type_prop_id = Some(type_prop_id);
                     }
                     PropSpecKind::String | PropSpecKind::Number | PropSpecKind::Boolean => {
                         return Err(PkgError::prop_spec_children_invalid(format!(
@@ -727,6 +735,32 @@ async fn set_variant_spec_prop_data(
             };
         }
 
+        if matches!(entry.builder.get_kind(), Some(PropSpecKind::Map)) {
+            if let Some(type_prop_id) = maybe_type_prop_id {
+                let context = AttributeContextBuilder::new()
+                    .set_prop_id(type_prop_id)
+                    .to_context()?;
+
+                for proto in AttributePrototype::list_for_context(ctx, context).await? {
+                    if let Some(key) = proto.key() {
+                        if let Some((func_unique_id, mut inputs)) =
+                            build_input_func_and_arguments(ctx, &proto, func_specs).await?
+                        {
+                            let mut map_key_func_builder = MapKeyFuncSpec::builder();
+                            map_key_func_builder.key(key);
+                            map_key_func_builder.func_unique_id(func_unique_id);
+                            inputs.drain(..).for_each(|input| {
+                                map_key_func_builder.input(input);
+                            });
+                            entry.builder.map_key_func(map_key_func_builder.build()?);
+                        }
+                    }
+                }
+            }
+        }
+
+        // TODO: if we get funcs here but we also got map_key_funcs above, that's a sign of a
+        // TODO: misconfigured set of attribute prototypes. check and error
         let context = AttributeContextBuilder::new()
             .set_prop_id(entry.prop_id)
             .to_context()?;
@@ -736,7 +770,7 @@ async fn set_variant_spec_prop_data(
             .pop()
         {
             if let Some((func_unique_id, mut inputs)) =
-                build_input_func_and_arguments(ctx, prototype, func_specs).await?
+                build_input_func_and_arguments(ctx, &prototype, func_specs).await?
             {
                 entry.builder.func_unique_id(func_unique_id);
                 inputs.drain(..).for_each(|input| {
@@ -770,10 +804,10 @@ async fn set_variant_spec_prop_data(
             Some(parent_prop_id) => {
                 match prop_children_map.entry(parent_prop_id) {
                     Entry::Occupied(mut occupied) => {
-                        occupied.get_mut().push(prop_spec);
+                        occupied.get_mut().push((prop_spec, entry.prop_id));
                     }
                     Entry::Vacant(vacant) => {
-                        vacant.insert(vec![prop_spec]);
+                        vacant.insert(vec![(prop_spec, entry.prop_id)]);
                     }
                 };
             }

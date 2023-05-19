@@ -4,19 +4,19 @@ mod spec;
 
 pub use pkg::{
     SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
+    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp,
+    SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
     AttrFuncInputSpecKind, FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder,
     FuncDescriptionSpec, FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
-    LeafInputLocation, LeafKind, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind,
-    PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPropFuncSpec,
-    SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity, SocketSpecKind,
-    SpecError, ValidationSpec, ValidationSpecKind,
+    LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder,
+    PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]

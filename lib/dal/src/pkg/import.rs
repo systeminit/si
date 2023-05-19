@@ -17,11 +17,11 @@ use crate::{
     },
     schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
     validation::{create_validation, Validation, ValidationKind},
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, DalContext, ExternalProvider, ExternalProviderId, Func,
-    FuncArgument, FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider,
-    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId,
-    StandardModel,
+    ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, AttributeValueError, DalContext, ExternalProvider,
+    ExternalProviderId, Func, FuncArgument, FuncDescription, FuncDescriptionContents, FuncError,
+    FuncId, InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -230,6 +230,7 @@ struct PropVisitContext<'a, 'b> {
     pub func_map: &'b FuncMap,
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
     pub default_values: Mutex<Vec<DefaultValueInfo>>,
+    pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
 }
 
 async fn create_func_description(
@@ -417,7 +418,11 @@ async fn create_props(
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     func_map: &FuncMap,
-) -> PkgResult<(Vec<AttrFuncInfo>, Vec<DefaultValueInfo>)> {
+) -> PkgResult<(
+    Vec<AttrFuncInfo>,
+    Vec<DefaultValueInfo>,
+    Vec<(String, AttrFuncInfo)>,
+)> {
     let context = PropVisitContext {
         ctx,
         schema_id,
@@ -425,6 +430,7 @@ async fn create_props(
         func_map,
         attr_funcs: Mutex::new(vec![]),
         default_values: Mutex::new(vec![]),
+        map_key_funcs: Mutex::new(vec![]),
     };
 
     variant_spec
@@ -434,6 +440,7 @@ async fn create_props(
     Ok((
         context.attr_funcs.into_inner(),
         context.default_values.into_inner(),
+        context.map_key_funcs.into_inner(),
     ))
 }
 
@@ -469,7 +476,7 @@ async fn create_schema_variant(
                 schema_variant.set_color(ctx, color.to_owned()).await?;
             }
 
-            let (domain_attr_funcs, domain_default_values) = create_props(
+            let (domain_attr_funcs, domain_default_values, map_key_funcs) = create_props(
                 ctx,
                 &variant_spec,
                 SchemaVariantSpecPropRoot::Domain,
@@ -480,7 +487,7 @@ async fn create_schema_variant(
             )
             .await?;
 
-            let (rv_attr_funcs, rv_default_values) = match schema_variant
+            let (rv_attr_funcs, rv_default_values, rv_map_key_funcs) = match schema_variant
                 .find_prop(ctx, &["root", "resource_value"])
                 .await
             {
@@ -498,7 +505,7 @@ async fn create_schema_variant(
                 }
                 Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
                     warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
-                    (vec![], vec![])
+                    (vec![], vec![], vec![])
                 }
                 Err(err) => Err(err)?,
             };
@@ -540,6 +547,7 @@ async fn create_schema_variant(
                             .map(|input| input.to_owned().into())
                             .collect(),
                     },
+                    None,
                     func_map,
                 )
                 .await?;
@@ -556,8 +564,28 @@ async fn create_schema_variant(
                 .into_iter()
                 .chain(rv_attr_funcs.into_iter())
             {
-                create_attribute_function_for_prop(ctx, *schema_variant.id(), attr_func, func_map)
-                    .await?;
+                create_attribute_function_for_prop(
+                    ctx,
+                    *schema_variant.id(),
+                    attr_func,
+                    None,
+                    func_map,
+                )
+                .await?;
+            }
+
+            for (key, map_key_func) in map_key_funcs
+                .into_iter()
+                .chain(rv_map_key_funcs.into_iter())
+            {
+                create_attribute_function_for_prop(
+                    ctx,
+                    *schema_variant.id(),
+                    map_key_func,
+                    Some(key),
+                    func_map,
+                )
+                .await?;
             }
 
             schema_variant
@@ -612,6 +640,7 @@ async fn create_attribute_function_for_prop(
         prop_id,
         inputs,
     }: AttrFuncInfo,
+    key: Option<String>,
     func_map: &FuncMap,
 ) -> PkgResult<()> {
     let func = func_map
@@ -624,6 +653,7 @@ async fn create_attribute_function_for_prop(
             prop_id: Some(prop_id),
             ..Default::default()
         },
+        key,
         schema_variant_id,
         *func.id(),
         inputs,
@@ -651,6 +681,7 @@ async fn create_attribute_function_for_output_socket(
             external_provider_id: Some(external_provider_id),
             ..Default::default()
         },
+        None,
         schema_variant_id,
         *func.id(),
         inputs,
@@ -663,6 +694,7 @@ async fn create_attribute_function_for_output_socket(
 async fn create_attribute_function(
     ctx: &DalContext,
     context: AttributeReadContext,
+    key: Option<String>,
     schema_variant_id: SchemaVariantId,
     func_id: FuncId,
     inputs: Vec<SiPkgAttrFuncInputView>,
@@ -671,10 +703,65 @@ async fn create_attribute_function(
         .await?
         .ok_or(AttributeValueError::Missing)?;
 
-    let mut prototype = value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    // If we are provided a key, this means we're configuring a function to set the value for a key
+    // to a map (array setters not supported yet). In that case we need to insert an unset value
+    // for the key into the map to create the attribute value and then we can set the function and
+    // inputs up for the prototype for the inserted value
+    let mut prototype = if let Some(key) = key {
+        let parent_prop_id = context
+            .prop_id()
+            .ok_or(PkgError::AttributeFuncForKeyMissingProp(
+                context,
+                key.to_owned(),
+            ))?;
+
+        let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
+            .await?
+            .ok_or(PkgError::MissingProp(parent_prop_id))?;
+
+        if *parent_prop.kind() != PropKind::Map {
+            return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
+                parent_prop_id,
+                key,
+                *parent_prop.kind(),
+            ));
+        }
+
+        match parent_prop.child_props(ctx).await?.pop() {
+            Some(item_prop) => {
+                let item_write_context = AttributeContextBuilder::new()
+                    .set_prop_id(*item_prop.id())
+                    .to_context()?;
+
+                // TODO: We assume the item does not yet exist, but if the package is incorrectly
+                // constructed, it could have two map key funcs for the same key. We should
+                // check for this case on both export and import
+                let item_id = AttributeValue::insert_for_context(
+                    ctx,
+                    item_write_context,
+                    *value.id(),
+                    None,
+                    Some(key),
+                )
+                .await?;
+                let item_av = AttributeValue::get_by_id(ctx, &item_id)
+                    .await?
+                    .ok_or(AttributeValueError::MissingForId(item_id))?;
+                item_av
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or(AttributeValueError::MissingAttributePrototype)?
+            }
+            None => {
+                return Err(PkgError::MissingItemPropForMapProp(parent_prop_id));
+            }
+        }
+    } else {
+        value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(AttributeValueError::MissingAttributePrototype)?
+    };
 
     prototype.set_func_id(ctx, func_id).await?;
 
@@ -918,6 +1005,23 @@ async fn create_prop(
         _ => None,
     } {
         ctx.default_values.lock().await.push(default_value_info);
+    }
+
+    if matches!(&spec, SiPkgProp::Map { .. }) {
+        for map_key_func in spec.map_key_funcs()? {
+            let key = map_key_func.key();
+            let mut inputs = map_key_func.inputs()?;
+            let func_unique_id = map_key_func.func_unique_id();
+
+            ctx.map_key_funcs.lock().await.push((
+                key.to_owned(),
+                AttrFuncInfo {
+                    func_unique_id,
+                    prop_id,
+                    inputs: inputs.drain(..).map(Into::into).collect(),
+                },
+            ));
+        }
     }
 
     if let Some(func_unique_id) = spec.func_unique_id() {

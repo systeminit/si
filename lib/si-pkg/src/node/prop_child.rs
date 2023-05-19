@@ -6,13 +6,14 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{AttrFuncInputSpec, PropSpec, ValidationSpec};
+use crate::{AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, ValidationSpec};
 
 use super::PkgNode;
 
 const PROP_CHILD_TYPE_PROPS: &str = "props";
 const PROP_CHILD_TYPE_VALIDATIONS: &str = "validations";
 const PROP_CHILD_TYPE_ATTR_FUNC_INPUTS: &str = "attr_func_inputs";
+const PROP_CHILD_TYPE_MAP_KEY_FUNCS: &str = "map_key_funcs";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -21,6 +22,7 @@ const KEY_KIND_STR: &str = "kind";
 #[serde(rename_all = "camelCase")]
 pub enum PropChild {
     AttrFuncInputs(Vec<AttrFuncInputSpec>),
+    MapKeyFuncs(Vec<MapKeyFuncSpec>),
     Props(Vec<PropSpec>),
     Validations(Vec<ValidationSpec>),
 }
@@ -29,6 +31,7 @@ pub enum PropChild {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum PropChildNode {
     AttrFuncInputs,
+    MapKeyFuncs,
     Props,
     Validations,
 }
@@ -36,9 +39,10 @@ pub enum PropChildNode {
 impl PropChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
-            Self::Props => PROP_CHILD_TYPE_PROPS,
-            Self::Validations => PROP_CHILD_TYPE_VALIDATIONS,
             Self::AttrFuncInputs => PROP_CHILD_TYPE_ATTR_FUNC_INPUTS,
+            Self::Props => PROP_CHILD_TYPE_PROPS,
+            Self::MapKeyFuncs => PROP_CHILD_TYPE_MAP_KEY_FUNCS,
+            Self::Validations => PROP_CHILD_TYPE_VALIDATIONS,
         }
     }
 }
@@ -46,9 +50,10 @@ impl PropChildNode {
 impl NameStr for PropChildNode {
     fn name(&self) -> &str {
         match self {
+            Self::AttrFuncInputs => PROP_CHILD_TYPE_ATTR_FUNC_INPUTS,
+            Self::MapKeyFuncs => PROP_CHILD_TYPE_MAP_KEY_FUNCS,
             Self::Props => PROP_CHILD_TYPE_PROPS,
             Self::Validations => PROP_CHILD_TYPE_VALIDATIONS,
-            Self::AttrFuncInputs => PROP_CHILD_TYPE_ATTR_FUNC_INPUTS,
         }
     }
 }
@@ -68,9 +73,10 @@ impl ReadBytes for PropChildNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let node = match kind_str.as_str() {
+            PROP_CHILD_TYPE_ATTR_FUNC_INPUTS => Self::AttrFuncInputs,
+            PROP_CHILD_TYPE_MAP_KEY_FUNCS => Self::MapKeyFuncs,
             PROP_CHILD_TYPE_PROPS => Self::Props,
             PROP_CHILD_TYPE_VALIDATIONS => Self::Validations,
-            PROP_CHILD_TYPE_ATTR_FUNC_INPUTS => Self::AttrFuncInputs,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid schema variant child kind: {invalid_kind}"
@@ -87,6 +93,27 @@ impl NodeChild for PropChild {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
+            Self::AttrFuncInputs(inputs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::PropChild(PropChildNode::AttrFuncInputs),
+                inputs
+                    .iter()
+                    .map(|input| {
+                        Box::new(input.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::MapKeyFuncs(map_key_funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::PropChild(PropChildNode::MapKeyFuncs),
+                map_key_funcs
+                    .iter()
+                    .map(|map_key_func| {
+                        Box::new(map_key_func.clone())
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
             Self::Props(props) => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::PropChild(PropChildNode::Props),
@@ -105,16 +132,6 @@ impl NodeChild for PropChild {
                     .map(|validation| {
                         Box::new(validation.clone())
                             as Box<dyn NodeChild<NodeType = Self::NodeType>>
-                    })
-                    .collect(),
-            ),
-            Self::AttrFuncInputs(inputs) => NodeWithChildren::new(
-                NodeKind::Tree,
-                Self::NodeType::PropChild(PropChildNode::AttrFuncInputs),
-                inputs
-                    .iter()
-                    .map(|input| {
-                        Box::new(input.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),
