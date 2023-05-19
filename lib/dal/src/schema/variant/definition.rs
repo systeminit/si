@@ -21,8 +21,8 @@ use crate::{
 };
 use crate::{SchemaError, SchemaId, TransactionsError};
 use si_pkg::{
-    AttrFuncInputSpec, FuncUniqueId, PropSpec, SchemaSpec, SchemaVariantSpec, SocketSpec,
-    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
+    AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
+    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
 };
 
 #[remain::sorted]
@@ -452,6 +452,49 @@ pub struct PropWidgetDefinition {
     options: Option<Value>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapKeyFunc {
+    pub key: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_from: Option<ValueFrom>,
+}
+
+impl MapKeyFunc {
+    pub fn to_spec(
+        &self,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<MapKeyFuncSpec> {
+        let mut builder = MapKeyFuncSpec::builder();
+        builder.func_unique_id(identity_func_unique_id);
+        builder.key(&self.key);
+        if let Some(value_from) = &self.value_from {
+            match value_from {
+                ValueFrom::InputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::InputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+                ValueFrom::Prop { prop_path } => {
+                    builder.input(AttrFuncInputSpec::Prop {
+                        name: "identity".to_string(),
+                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+                    });
+                }
+                ValueFrom::OutputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::OutputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+            }
+        };
+        Ok(builder.build()?)
+    }
+}
+
 /// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -490,6 +533,8 @@ pub struct PropDefinition {
     pub validations: Option<Vec<ValidationSpec>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_value: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_key_funcs: Option<MapKeyFunc>,
 }
 
 impl PropDefinition {
@@ -555,6 +600,9 @@ impl PropDefinition {
         }
         if let Some(hidden) = self.hidden {
             builder.hidden(hidden);
+        }
+        if let Some(map_key_funcs) = &self.map_key_funcs {
+            builder.map_key_func(map_key_funcs.to_spec(identity_func_unique_id)?);
         }
 
         Ok(builder.build()?)
