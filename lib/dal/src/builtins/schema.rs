@@ -1,6 +1,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 
 use crate::func::argument::{FuncArgument, FuncArgumentId};
@@ -125,6 +126,159 @@ pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
     Ok(())
 }
 
+#[remain::sorted]
+#[derive(Debug, Copy, Clone, AsRefStr, Display, EnumIter, EnumString, Eq, PartialEq)]
+pub enum BuiltinSchema {
+    AwsAmi,
+    AwsEc2,
+    AwsEgress,
+    AwsEip,
+    AwsIngress,
+    AwsKeyPair,
+    AwsRegion,
+    AwsSecurityGroup,
+    CoreOsButane,
+    DockerHubCredential,
+    DockerImage,
+    Fallout,
+    GenericFrame,
+    KubeDeployment,
+    KubeNamespace,
+    Starfield,
+}
+
+impl BuiltinSchema {
+    pub fn real_schema_name(&self) -> &'static str {
+        match self {
+            BuiltinSchema::AwsAmi => "AMI",
+            BuiltinSchema::AwsEc2 => "EC2 Instance",
+            BuiltinSchema::AwsEgress => "Egress",
+            BuiltinSchema::AwsEip => "Elastic IP",
+            BuiltinSchema::AwsIngress => "Ingress",
+            BuiltinSchema::AwsKeyPair => "Key Pair",
+            BuiltinSchema::AwsRegion => "Region",
+            BuiltinSchema::AwsSecurityGroup => "Security Group",
+            BuiltinSchema::CoreOsButane => "",
+            BuiltinSchema::DockerHubCredential => "",
+            BuiltinSchema::DockerImage => "Docker Image",
+            BuiltinSchema::Fallout => "",
+            BuiltinSchema::GenericFrame => "",
+            BuiltinSchema::KubeDeployment => "",
+            BuiltinSchema::KubeNamespace => "",
+            BuiltinSchema::Starfield => "",
+        }
+    }
+
+    pub fn match_str(schema_name: &str) -> Option<BuiltinSchema> {
+        let schema_name = schema_name.to_lowercase();
+        match schema_name.as_str() {
+            "aws ami" => Some(BuiltinSchema::AwsAmi),
+            "aws ec2" | "aws ec2 instance" => Some(BuiltinSchema::AwsEc2),
+            "aws egress" => Some(BuiltinSchema::AwsEgress),
+            "aws eip" => Some(BuiltinSchema::AwsEip),
+            "aws ingress" => Some(BuiltinSchema::AwsIngress),
+            "aws keypair" | "aws key pair" => Some(BuiltinSchema::AwsKeyPair),
+            "aws region" => Some(BuiltinSchema::AwsRegion),
+            "aws securitygroup" | "aws security group" => Some(BuiltinSchema::AwsSecurityGroup),
+            "coreos butane" => Some(BuiltinSchema::CoreOsButane),
+            "docker hub credential" => Some(BuiltinSchema::DockerHubCredential),
+            "docker image" => Some(BuiltinSchema::DockerImage),
+            "fallout" => Some(BuiltinSchema::Fallout),
+            "generic frame" | "si generic frame" | "systeminit generic frame" => {
+                Some(BuiltinSchema::GenericFrame)
+            }
+            "kubernetes deployment" => Some(BuiltinSchema::KubeDeployment),
+            "kubernetes namespace" => Some(BuiltinSchema::KubeNamespace),
+            "starfield" => Some(BuiltinSchema::Starfield),
+
+            _ => None,
+        }
+    }
+}
+
+pub async fn migrate_schema(
+    ctx: &DalContext,
+    schema: BuiltinSchema,
+    driver: &MigrationDriver,
+) -> BuiltinsResult<()> {
+    match schema {
+        BuiltinSchema::AwsAmi => {
+            driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
+        }
+        BuiltinSchema::AwsEc2 => {
+            driver
+                .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::AwsEgress => {
+            driver
+                .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::AwsEip => {
+            driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
+        }
+        BuiltinSchema::AwsIngress => {
+            driver
+                .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::AwsKeyPair => {
+            driver
+                .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::AwsRegion => {
+            driver
+                .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::AwsSecurityGroup => {
+            driver
+                .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
+                .await?;
+        }
+        BuiltinSchema::CoreOsButane => {
+            driver
+                .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
+                .await?;
+        }
+        BuiltinSchema::DockerHubCredential => {
+            driver
+                .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
+                .await?;
+        }
+        BuiltinSchema::DockerImage => {
+            driver
+                .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
+                .await?;
+        }
+        BuiltinSchema::Fallout => {
+            driver.migrate_test_exclusive_fallout(ctx).await?;
+        }
+        BuiltinSchema::GenericFrame => {
+            driver
+                .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
+                .await?;
+        }
+        BuiltinSchema::KubeDeployment => {
+            driver
+                .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+                .await?;
+        }
+        BuiltinSchema::KubeNamespace => {
+            driver
+                .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+                .await?;
+        }
+        BuiltinSchema::Starfield => {
+            driver.migrate_test_exclusive_starfield(ctx).await?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Migrate [`Schemas`](crate::Schema) for use in tests.
 pub async fn migrate_for_tests(
     ctx: &DalContext,
@@ -156,109 +310,29 @@ pub async fn migrate_for_tests(
     let driver = MigrationDriver::new(ctx).await?;
     ctx.blocking_commit().await?;
 
-    // Perform migrations on production schemas.
-    if migrate_all || specific_builtin_schemas.contains("docker image") {
-        driver
-            .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("coreos butane") {
-        driver
-            .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("aws ami") {
-        driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws ec2")
-        || specific_builtin_schemas.contains("aws ec2 instance")
-    {
-        driver
-            .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("aws region") {
-        driver
-            .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("aws eip") {
-        driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws key pair")
-        || specific_builtin_schemas.contains("aws keypair")
-    {
-        driver
-            .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("aws ingress") {
-        driver
-            .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("aws egress") {
-        driver
-            .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws security group")
-        || specific_builtin_schemas.contains("aws securitygroup")
-    {
-        driver
-            .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all
-        || specific_builtin_schemas.contains("systeminit generic frame")
-        || specific_builtin_schemas.contains("si generic frame")
-        || specific_builtin_schemas.contains("generic frame")
-    {
-        driver
-            .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
-            .await?;
-        ctx.blocking_commit().await?;
+    let mut migrated = HashSet::new();
+
+    if migrate_all {
+        for builtin_schema in BuiltinSchema::iter() {
+            migrate_schema(ctx, builtin_schema, &driver).await?;
+            ctx.blocking_commit().await?;
+            migrated.insert(builtin_schema.to_string());
+        }
+    } else if migrate_test_exclusive {
+        for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
+            migrate_schema(ctx, test_schema, &driver).await?;
+            ctx.blocking_commit().await?;
+        }
     }
 
-    // Perform migrations on "hidden" schemas.
-    if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
-        driver
-            .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
-        driver
-            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
-        driver
-            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-            .await?;
-        ctx.blocking_commit().await?;
-    }
-
-    // Perform migrations on test-exclusive schemas.
-    if migrate_all || migrate_test_exclusive || specific_builtin_schemas.contains("starfield") {
-        driver.migrate_test_exclusive_starfield(ctx).await?;
-    }
-    if migrate_all || migrate_test_exclusive || specific_builtin_schemas.contains("fallout") {
-        driver.migrate_test_exclusive_fallout(ctx).await?;
+    for specified_schema in specific_builtin_schemas.iter() {
+        if let Some(builtin_schema) = BuiltinSchema::match_str(specified_schema.as_str()) {
+            if !migrated.contains(&builtin_schema.to_string()) {
+                migrate_schema(ctx, builtin_schema, &driver).await?;
+                ctx.blocking_commit().await?;
+                migrated.insert(builtin_schema.to_string());
+            }
+        }
     }
 
     Ok(())
