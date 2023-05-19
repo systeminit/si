@@ -6,6 +6,7 @@ mod export;
 mod import;
 
 pub use export::export_pkg;
+pub use export::get_component_type;
 pub use import::{import_pkg, import_pkg_from_pkg};
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};

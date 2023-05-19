@@ -18,6 +18,7 @@ export interface ListedVariantDef {
   name: string;
   menuName?: string;
   category: string;
+  componentType: string;
   color: string;
   description: string;
   createdAt: Date;
@@ -120,6 +121,7 @@ export const useAssetStore = () => {
             color: this.generateMockColor(),
             description: "",
             category: "",
+            componentType: "component",
             link: "https://www.systeminit.com/",
             createdAt: new Date(),
             updatedAt: new Date(),

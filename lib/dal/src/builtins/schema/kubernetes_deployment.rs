@@ -1,8 +1,8 @@
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
-    builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation, Prop, PropId,
-    SchemaVariantId,
+    builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation, ComponentType,
+    Prop, PropId, SchemaVariantId,
 };
 use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
@@ -41,6 +41,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

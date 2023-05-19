@@ -4,12 +4,14 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::pkg::PkgError;
 use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
     StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
+use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -33,9 +35,15 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
+    Pkg(#[from] PkgError),
+    #[error(transparent)]
     SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
+    Spec(#[from] SpecError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]

@@ -25,6 +25,12 @@
           @click="cloneAsset"
         />
       </div>
+      <div class="p-2">
+        <ErrorMessage
+          v-if="executeAssetReqStatus.isError"
+          :request-status="executeAssetReqStatus"
+        />
+      </div>
       <div class="p-sm flex flex-col">
         <VormInput
           id="name"
@@ -55,6 +61,17 @@
           :disabled="disabled"
           title="Category"
           placeholder="Pick a category for this asset"
+          @blur="updateAsset"
+        />
+      </div>
+      <div class="p-sm flex flex-col">
+        <VormInput
+          id="componentType"
+          v-model="assetStore.selectedAsset.componentType"
+          type="text"
+          :disabled="disabled"
+          title="Component Type"
+          placeholder="Pick a type for this asset"
           @blur="updateAsset"
         />
       </div>
@@ -119,7 +136,7 @@ import {
   VButton,
   VormInput,
   RequestStatusMessage,
-  Modal,
+  Modal, ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 
@@ -144,10 +161,17 @@ defineProps<{
 
 const executeAsset = async () => {
   if (assetStore.selectedAsset?.id) {
-    await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
-    executeAssetModalRef.value.open();
+    const result = await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
+    if (result.result.success) {
+      executeAssetModalRef.value.open();
+    }
   }
 };
+
+const executeAssetReqStatus = assetStore.getRequestStatus(
+  "EXEC_ASSET",
+  assetStore.selectedAsset?.id,
+);
 
 const cloneAsset = async () => {
   if (assetStore.selectedAsset?.id) {

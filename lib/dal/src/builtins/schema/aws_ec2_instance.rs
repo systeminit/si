@@ -10,8 +10,8 @@ use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
-    Func, InternalProvider, PropKind, SchemaError, StandardModel,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
+    ComponentType, DalContext, Func, InternalProvider, PropKind, SchemaError, StandardModel,
 };
 use crate::{
     schema::variant::leaves::{LeafInput, LeafInputLocation},
@@ -54,6 +54,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

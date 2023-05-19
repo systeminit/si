@@ -7,8 +7,9 @@ use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
-    Func, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
+    ComponentType, DalContext, Func, InternalProvider, PropKind, SchemaError, SchemaVariant,
+    StandardModel,
 };
 use crate::{schema::variant::leaves::LeafInputLocation, FuncDescription, FuncDescriptionContents};
 
@@ -40,6 +41,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

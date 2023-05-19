@@ -9,9 +9,9 @@ use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::variant::leaves::LeafInputLocation, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, BuiltinsResult, DalContext, ExternalProvider, Func,
-    FuncBinding, FuncDescription, FuncDescriptionContents, InternalProvider, PropId, PropKind,
-    SchemaError, SchemaVariant, SchemaVariantId, StandardModel,
+    AttributeValue, AttributeValueError, BuiltinsResult, ComponentType, DalContext,
+    ExternalProvider, Func, FuncBinding, FuncDescription, FuncDescriptionContents,
+    InternalProvider, PropId, PropKind, SchemaError, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 // Documentation URL(s)
@@ -43,6 +43,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

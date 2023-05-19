@@ -5,8 +5,9 @@ use crate::{
     schema::variant::definition::SchemaVariantDefinitionMetadataJson,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     socket::SocketArity,
-    AttributePrototypeArgument, BuiltinsResult, DalContext, ExternalProvider, Func, FuncArgument,
-    FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
+    AttributePrototypeArgument, BuiltinsResult, ComponentType, DalContext, ExternalProvider, Func,
+    FuncArgument, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant,
+    StandardModel,
 };
 
 // Documentation URL(s)
@@ -34,6 +35,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

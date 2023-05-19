@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
-use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
+use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ComponentType};
 use crate::{
     component::ComponentKind, socket::SocketArity, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
@@ -28,6 +28,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )

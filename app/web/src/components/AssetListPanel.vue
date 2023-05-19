@@ -44,8 +44,10 @@ import {
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import AssetListItem from "./AssetListItem.vue";
+import {useRouter} from "vue-router";
 
 const assetStore = useAssetStore();
+const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
 const props = defineProps({
@@ -62,6 +64,13 @@ const newAsset = async () => {
   const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
   if (result.result.success) {
     assetStore.SELECT_ASSET(result.result.data.id);
+    router.push({
+      name: "workspace-lab-assets",
+      params: {
+        ...router.currentRoute.value.params,
+        'assetId': result.result.data.id,
+      },
+    });
   }
 };
 </script>

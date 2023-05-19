@@ -7,16 +7,23 @@ use serde_json::Value;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
+use url::ParseError;
 
+use crate::pkg::{get_component_type, PkgError};
+use crate::prop::PROP_PATH_SEPARATOR;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
-    InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant,
-    SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    standard_model, standard_model_accessor, ComponentType, DalContext, ExternalProvider, Func,
+    HistoryEventError, InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp,
+    Schema, SchemaVariant, SchemaVariantId, SocketArity, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility,
 };
 use crate::{SchemaError, SchemaId, TransactionsError};
+use si_pkg::{
+    AttrFuncInputSpec, FuncUniqueId, PropSpec, SchemaSpec, SchemaVariantSpec, SocketSpec,
+    SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -35,14 +42,20 @@ pub enum SchemaVariantDefinitionError {
     Nats(#[from] NatsError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("pkg error: {0}")]
+    Pkg(#[from] Box<PkgError>),
     #[error(transparent)]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("spec error: {0}")]
+    Spec(#[from] SpecError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("url parse error: {0}")]
+    Url(#[from] ParseError),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
@@ -113,6 +126,7 @@ pub struct SchemaVariantDefinition {
     /// The color for the component on the component diagram as a hex string
     color: String,
     component_kind: ComponentKind,
+    component_type: ComponentType,
     link: Option<String>,
     definition: String,
     description: Option<String>,
@@ -224,6 +238,11 @@ impl SchemaVariantDefinition {
     standard_model_accessor!(link, Option<String>, SchemaVariantDefinitionResult);
     standard_model_accessor!(description, Option<String>, SchemaVariantDefinitionResult);
     standard_model_accessor!(definition, String, SchemaVariantDefinitionResult);
+    standard_model_accessor!(
+        component_type,
+        Enum(ComponentType),
+        SchemaVariantDefinitionResult
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -241,8 +260,24 @@ pub struct SchemaVariantDefinitionMetadataJson {
     pub color: String,
     #[serde(alias = "component_kind")]
     pub component_kind: ComponentKind,
+    #[serde(alias = "component_type")]
+    pub component_type: ComponentType,
     pub link: Option<String>,
     pub description: Option<String>,
+}
+
+impl SchemaVariantDefinitionMetadataJson {
+    pub fn to_spec(&self, variant: SchemaVariantSpec) -> SchemaVariantDefinitionResult<SchemaSpec> {
+        let mut builder = SchemaSpec::builder();
+        builder.name(&self.name);
+        builder.category(&self.category);
+        if let Some(menu_name) = &self.menu_name {
+            builder.category_name(menu_name.as_str());
+        }
+        builder.variant(variant);
+
+        Ok(builder.build()?)
+    }
 }
 
 impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
@@ -253,6 +288,7 @@ impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
             category: value.category,
             color: value.color,
             component_kind: value.component_kind,
+            component_type: value.component_type,
             link: value.link,
             description: value.description,
         }
@@ -267,6 +303,7 @@ impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
             category: value.category.clone(),
             color: value.color.clone(),
             component_kind: value.component_kind,
+            component_type: value.component_type,
             link: value.link.clone(),
             description: value.description.clone(),
         }
@@ -275,6 +312,7 @@ impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
 
 impl SchemaVariantDefinitionMetadataJson {
     #[instrument(skip_all)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
         menu_name: Option<&str>,
@@ -283,6 +321,7 @@ impl SchemaVariantDefinitionMetadataJson {
         component_kind: ComponentKind,
         link: Option<&str>,
         description: Option<&str>,
+        component_type: ComponentType,
     ) -> SchemaVariantDefinitionMetadataJson {
         SchemaVariantDefinitionMetadataJson {
             name: name.to_string(),
@@ -290,6 +329,7 @@ impl SchemaVariantDefinitionMetadataJson {
             category: category.to_string(),
             color: color.to_string(),
             component_kind,
+            component_type,
             link: link.map(|l| l.to_string()),
             description: description.map(|d| d.to_string()),
         }
@@ -327,6 +367,10 @@ impl SchemaVariantDefinitionMetadataJson {
             component_kind: *schema.component_kind(),
             link: variant.link().map(|l| l.to_string()),
             description: None,
+            component_type: get_component_type(ctx, variant)
+                .await
+                .map_err(Box::new)?
+                .into(),
         })
     }
 }
@@ -371,6 +415,33 @@ impl TryFrom<&SchemaVariantDefinition> for SchemaVariantDefinitionJson {
     }
 }
 
+impl SchemaVariantDefinitionJson {
+    pub fn to_spec(
+        &self,
+        metadata: SchemaVariantDefinitionMetadataJson,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
+        let mut builder = SchemaVariantSpec::builder();
+        builder.name("v0");
+        for prop in &self.props {
+            builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        builder.color(metadata.color);
+        builder.component_type(metadata.component_type);
+        if let Some(link) = metadata.link {
+            builder.try_link(link.as_str())?;
+        }
+        for input_socket in &self.input_sockets {
+            builder.socket(input_socket.to_spec(true)?);
+        }
+        for output_socket in &self.output_sockets {
+            builder.socket(output_socket.to_spec(false)?);
+        }
+
+        Ok(builder.build()?)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropWidgetDefinition {
@@ -408,6 +479,86 @@ pub struct PropDefinition {
     /// [`Prop`](crate::Prop) to be created.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub widget: Option<PropWidgetDefinition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    // The source of the information for the prop
+    pub value_from: Option<ValueFrom>,
+    // Whether the prop is hidden from the UI
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<bool>,
+    // The list of validations specific to the prop.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validations: Option<Vec<ValidationSpec>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<serde_json::Value>,
+}
+
+impl PropDefinition {
+    pub fn to_spec(
+        &self,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<PropSpec> {
+        let mut builder = PropSpec::builder();
+        builder.name(&self.name);
+        builder.kind(self.kind.into());
+        if let Some(doc_url) = &self.doc_link {
+            builder.try_doc_link(doc_url.as_str())?;
+        }
+        if let Some(default_value) = &self.default_value {
+            builder.default_value(default_value.to_owned());
+        }
+        if let Some(validations) = &self.validations {
+            for validation in validations {
+                builder.validation(validation.to_owned());
+            }
+        }
+        match self.kind {
+            PropKind::Array | PropKind::Map => {
+                if let Some(entry) = &self.entry {
+                    builder.type_prop(entry.to_spec(identity_func_unique_id)?);
+                }
+            }
+            PropKind::Object => {
+                for child in &self.children {
+                    builder.entry(child.to_spec(identity_func_unique_id)?);
+                }
+            }
+            _ => {}
+        }
+        if let Some(widget) = &self.widget {
+            builder.widget_kind(widget.kind);
+            if let Some(widget_options) = &widget.options {
+                builder.widget_options(widget_options.to_owned());
+            }
+        }
+        if let Some(value_from) = &self.value_from {
+            builder.func_unique_id(identity_func_unique_id);
+            match value_from {
+                ValueFrom::InputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::InputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+                ValueFrom::Prop { prop_path } => {
+                    builder.input(AttrFuncInputSpec::Prop {
+                        name: "identity".to_string(),
+                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+                    });
+                }
+                ValueFrom::OutputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::OutputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+            }
+        }
+        if let Some(hidden) = self.hidden {
+            builder.hidden(hidden);
+        }
+
+        Ok(builder.build()?)
+    }
 }
 
 /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
@@ -421,6 +572,67 @@ pub struct SocketDefinition {
     /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arity: Option<SocketArity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_hidden: Option<bool>,
+    // The source of the information for the socket
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_from: Option<ValueFrom>,
+}
+
+impl SocketDefinition {
+    pub fn to_spec(&self, is_input: bool) -> SchemaVariantDefinitionResult<SocketSpec> {
+        let mut builder = SocketSpec::builder();
+        builder.name(&self.name);
+        if is_input {
+            builder.kind(SocketSpecKind::Input);
+        } else {
+            builder.kind(SocketSpecKind::Output);
+        }
+
+        if let Some(arity) = &self.arity {
+            builder.arity(arity);
+        } else {
+            builder.arity(SocketSpecArity::Many);
+        }
+        if let Some(hidden) = &self.ui_hidden {
+            builder.ui_hidden(*hidden);
+        } else {
+            builder.ui_hidden(false);
+        }
+        if let Some(value_from) = &self.value_from {
+            match value_from {
+                ValueFrom::InputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::InputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+                ValueFrom::Prop { prop_path } => {
+                    builder.input(AttrFuncInputSpec::Prop {
+                        name: "identity".to_string(),
+                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+                    });
+                }
+                ValueFrom::OutputSocket { socket_name } => {
+                    builder.input(AttrFuncInputSpec::OutputSocket {
+                        name: "identity".to_string(),
+                        socket_name: socket_name.to_owned(),
+                    });
+                }
+            }
+        }
+
+        Ok(builder.build()?)
+    }
+}
+
+/// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ValueFrom {
+    InputSocket { socket_name: String },
+    OutputSocket { socket_name: String },
+    Prop { prop_path: Vec<String> },
 }
 
 // Not sure if this fits here still

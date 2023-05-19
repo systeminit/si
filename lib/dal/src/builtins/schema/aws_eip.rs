@@ -5,7 +5,6 @@ use crate::func::description::FuncDescription;
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
-use crate::SchemaVariant;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, DalContext,
@@ -15,6 +14,7 @@ use crate::{
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     FuncDescriptionContents,
 };
+use crate::{ComponentType, SchemaVariant};
 
 // Documentation URL(s)
 const AWS_REGIONS_DOCS_URL: &str =
@@ -42,6 +42,7 @@ impl MigrationDriver {
                     ComponentKind::Standard,
                     None,
                     None,
+                    ComponentType::Component,
                 ),
                 None,
             )
