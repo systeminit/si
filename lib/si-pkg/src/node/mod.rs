@@ -11,6 +11,7 @@ mod func;
 mod func_argument;
 mod func_description;
 mod leaf_function;
+mod map_key_func;
 mod package;
 mod prop;
 mod prop_child;
@@ -29,6 +30,7 @@ pub(crate) use self::{
     func_argument::FuncArgumentNode,
     func_description::FuncDescriptionNode,
     leaf_function::LeafFunctionNode,
+    map_key_func::MapKeyFuncNode,
     package::PackageNode,
     prop::PropNode,
     prop_child::PropChildNode,
@@ -47,6 +49,7 @@ const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_FUNC_DESCRIPTION: &str = "func_description";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
+const NODE_KIND_MAP_KEY_FUNC: &str = "map_key_func";
 const NODE_KIND_PACKAGE: &str = "package";
 const NODE_KIND_PROP: &str = "prop";
 const NODE_KIND_PROP_CHILD: &str = "prop_child";
@@ -69,6 +72,7 @@ pub enum PkgNode {
     FuncArgument(FuncArgumentNode),
     FuncDescription(FuncDescriptionNode),
     LeafFunction(LeafFunctionNode),
+    MapKeyFunc(MapKeyFuncNode),
     Package(PackageNode),
     Prop(PropNode),
     PropChild(PropChildNode),
@@ -88,6 +92,7 @@ impl PkgNode {
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const FUNC_DESCRIPTION_KIND_STR: &str = NODE_KIND_FUNC_DESCRIPTION;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
+    pub const MAP_KEY_FUNC_KIND_STR: &str = NODE_KIND_MAP_KEY_FUNC;
     pub const PACKAGE_KIND_STR: &str = NODE_KIND_PACKAGE;
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
     pub const PROP_CHILD_KIND_STR: &str = NODE_KIND_PROP_CHILD;
@@ -107,6 +112,7 @@ impl PkgNode {
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
+            Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(_) => NODE_KIND_PACKAGE,
             Self::Prop(_) => NODE_KIND_PROP,
             Self::PropChild(_) => NODE_KIND_PROP_CHILD,
@@ -130,6 +136,7 @@ impl NameStr for PkgNode {
             Self::FuncArgument(node) => node.name(),
             Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
+            Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(node) => node.name(),
             Self::Prop(node) => node.name(),
             Self::PropChild(node) => node.name(),
@@ -155,6 +162,7 @@ impl WriteBytes for PkgNode {
             Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::FuncDescription(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
+            Self::MapKeyFunc(node) => node.write_bytes(writer)?,
             Self::Package(node) => node.write_bytes(writer)?,
             Self::Prop(node) => node.write_bytes(writer)?,
             Self::PropChild(node) => node.write_bytes(writer)?,
@@ -189,6 +197,7 @@ impl ReadBytes for PkgNode {
                 Self::FuncDescription(FuncDescriptionNode::read_bytes(reader)?)
             }
             NODE_KIND_LEAF_FUNCTION => Self::LeafFunction(LeafFunctionNode::read_bytes(reader)?),
+            NODE_KIND_MAP_KEY_FUNC => Self::MapKeyFunc(MapKeyFuncNode::read_bytes(reader)?),
             NODE_KIND_PACKAGE => Self::Package(PackageNode::read_bytes(reader)?),
             NODE_KIND_PROP => Self::Prop(PropNode::read_bytes(reader)?),
             NODE_KIND_PROP_CHILD => Self::PropChild(PropChildNode::read_bytes(reader)?),

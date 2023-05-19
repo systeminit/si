@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
-use super::{AttrFuncInputSpec, FuncUniqueId, SpecError, ValidationSpec};
+use super::{AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, SpecError, ValidationSpec};
 
 #[remain::sorted]
 #[derive(
@@ -87,6 +87,7 @@ pub enum PropSpec {
         widget_options: Option<serde_json::Value>,
         hidden: Option<bool>,
         doc_link: Option<Url>,
+        map_key_funcs: Option<Vec<MapKeyFuncSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
@@ -146,18 +147,19 @@ pub enum PropSpecKind {
 
 #[derive(Clone, Debug, Default)]
 pub struct PropSpecBuilder {
-    kind: Option<PropSpecKind>,
-    name: Option<String>,
     default_value: Option<serde_json::Value>,
-    type_prop: Option<PropSpec>,
+    doc_link: Option<Url>,
     entries: Vec<PropSpec>,
-    validations: Vec<ValidationSpec>,
     func_unique_id: Option<FuncUniqueId>,
+    hidden: bool,
     inputs: Vec<AttrFuncInputSpec>,
+    kind: Option<PropSpecKind>,
+    map_key_funcs: Vec<MapKeyFuncSpec>,
+    name: Option<String>,
+    type_prop: Option<PropSpec>,
+    validations: Vec<ValidationSpec>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
-    doc_link: Option<Url>,
-    hidden: bool,
 }
 
 impl PropSpecBuilder {
@@ -236,6 +238,11 @@ impl PropSpecBuilder {
 
     pub fn doc_link(&mut self, value: impl Into<Url>) -> &mut Self {
         self.doc_link = Some(value.into());
+        self
+    }
+
+    pub fn map_key_func(&mut self, value: impl Into<MapKeyFuncSpec>) -> &mut Self {
+        self.map_key_funcs.push(value.into());
         self
     }
 
@@ -351,6 +358,7 @@ impl PropSpecBuilder {
                     widget_options,
                     hidden: Some(hidden),
                     doc_link,
+                    map_key_funcs: Some(self.map_key_funcs.to_owned()),
                 },
                 PropSpecKind::Array => PropSpec::Array {
                     name,

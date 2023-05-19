@@ -468,6 +468,7 @@ impl NodeChild for PropSpec {
                 widget_options,
                 hidden,
                 doc_link,
+                map_key_funcs,
             } => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::Prop(PropNode::Map {
@@ -480,6 +481,9 @@ impl NodeChild for PropSpec {
                     doc_link: doc_link.to_owned(),
                 }),
                 vec![
+                    Box::new(PropChild::MapKeyFuncs(
+                        map_key_funcs.to_owned().unwrap_or(vec![]),
+                    )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                     Box::new(PropChild::Props(vec![*type_prop.clone()]))
                         as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                     Box::new(PropChild::Validations(
