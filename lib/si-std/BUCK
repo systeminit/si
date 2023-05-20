@@ -1,3 +1,5 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-std",
     edition = "2021",
@@ -5,5 +7,4 @@ rust_library(
         "//third-party/rust:serde",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

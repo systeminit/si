@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "cyclone-core",
-    edition = "2021",
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",
@@ -13,5 +14,4 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

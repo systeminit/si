@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-test-macros",
-    edition = "2021",
     deps = [
         "//third-party/rust:proc-macro2",
         "//third-party/rust:quote",
@@ -8,5 +9,4 @@ rust_library(
     ],
     srcs = glob(["src/**/*.rs"]),
     proc_macro = True,
-    visibility = ["PUBLIC"],
 )

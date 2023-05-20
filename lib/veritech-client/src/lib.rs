@@ -314,12 +314,16 @@ mod tests {
     }
 
     async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
+        let mut config_file = veritech_server::ConfigFile::default_local_uds();
+        veritech_server::detect_and_configure_development(&mut config_file)
+            .expect("failed to determine test configuration");
+
         let cyclone_spec = CycloneSpec::LocalUds(
             LocalUdsInstance::spec()
-                .try_cyclone_cmd_path("../../target/debug/cyclone")
+                .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
                 .expect("failed to setup cyclone_cmd_path")
-                .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
-                .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
+                .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
+                .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
                 .expect("failed to setup lang_js_cmd_path")
                 .all_endpoints()
                 .build()

@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "telemetry-application",
-    edition = "2021",
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:derive_builder",
@@ -17,5 +18,4 @@ rust_library(
         "CARGO_PKG_VERSION": "0.1.0" ,
     },
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

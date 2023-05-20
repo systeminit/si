@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_binary")
+
 rust_binary(
     name = "sdf",
-    edition = "2021",
     deps = [
         "//lib/sdf-server:sdf-server",
         "//lib/telemetry-application-rs:telemetry-application",
@@ -15,5 +16,4 @@ rust_binary(
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
         "pkgs_path": "//pkgs:pkgs",
     },
-    visibility = ["PUBLIC"],
 )

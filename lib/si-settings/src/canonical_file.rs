@@ -182,6 +182,10 @@ mod tests {
     use super::*;
     use std::env;
 
+    // TODO(fnichol): we need to de-CARGO_MANIFEST_DIR this test--better to make a fixture-style
+    // directory setup and test that. With Buck2 it's harder to guarentee where we are and if
+    // source files are present...
+    #[ignore]
     #[test]
     fn test_safe_canonically_join() -> Result<(), CanonicalFileError> {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;

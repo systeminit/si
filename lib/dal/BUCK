@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "dal",
-    edition = "2021",
     deps = [
         "//lib/council-server:council-server",
         "//lib/nats-subscriber:nats-subscriber",
@@ -53,11 +54,13 @@ rust_library(
     env = {
         "CARGO_MANIFEST_DIR": ".",
     },
-    visibility = ["PUBLIC"],
+    test_unit_deps = [
+        "//third-party/rust:tempfile",
+    ],
 )
 
 rust_test(
-    name = "integration-test",
+    name = "test-integration",
     edition = "2021",
     deps = [
         "//lib/dal-test:dal-test",

@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "veritech-client",
-    edition = "2021",
     deps = [
         "//lib/cyclone-core:cyclone-core",
         "//lib/nats-subscriber:nats-subscriber",
@@ -15,5 +16,17 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
+    test_unit_deps = [
+        "//lib/veritech-server:veritech-server",
+        "//third-party/rust:base64",
+        "//third-party/rust:test-log",
+        "//third-party/rust:tracing",
+        "//third-party/rust:tracing-subscriber",
+        "//third-party/rust:uuid",
+    ],
+    test_unit_resources = {
+        "cyclone": "//bin/cyclone:cyclone",
+        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "lang-js": "//bin/lang-js:build-package",
+    },
 )

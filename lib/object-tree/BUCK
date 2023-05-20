@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "object-tree",
-    edition = "2021",
     deps = [
         "//third-party/rust:blake3",
         "//third-party/rust:petgraph",
@@ -15,5 +16,4 @@ rust_library(
         "//third-party/rust:vfs-tar",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

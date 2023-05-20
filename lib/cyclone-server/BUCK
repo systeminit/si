@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "cyclone-server",
-    edition = "2021",
     deps = [
         "//lib/bytes-lines-codec:bytes-lines-codec",
         "//lib/cyclone-core:cyclone-core",
@@ -26,7 +27,6 @@ rust_library(
         "//third-party/rust:tower-http",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )
 
 export_file(

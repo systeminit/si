@@ -1,11 +1,17 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "bytes-lines-codec",
-    edition = "2021",
     deps = [
         "//third-party/rust:bytes",
         "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
     ],
+    test_unit_deps = [
+        "//third-party/rust:futures",
+        "//third-party/rust:serde",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-serde",
+    ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_binary")
+
 rust_binary(
     name = "council",
-    edition = "2021",
     deps = [
         "//lib/council-server:council-server",
         "//lib/telemetry-application-rs:telemetry-application",
@@ -9,5 +10,4 @@ rust_binary(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

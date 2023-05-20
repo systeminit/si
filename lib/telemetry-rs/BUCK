@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "telemetry",
-    edition = "2021",
     deps = [
         "//third-party/rust:async-trait",
         "//third-party/rust:opentelemetry",
@@ -10,5 +11,4 @@ rust_library(
         "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

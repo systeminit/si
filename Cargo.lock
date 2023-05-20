@@ -757,6 +757,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.21.0",
+ "buck2-resources",
  "cyclone-core",
  "cyclone-server",
  "futures",
@@ -1036,6 +1037,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "veritech-server",
 ]
 
 [[package]]
@@ -3645,6 +3647,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
+ "tempfile",
  "thiserror",
  "tokio",
  "url",

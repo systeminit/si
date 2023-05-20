@@ -21,27 +21,15 @@ pub use spec::{
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs, path::PathBuf};
-
     use petgraph::dot::Dot;
+    use tempfile::tempdir;
+    use tokio::sync::Mutex;
 
     use crate::spec::PkgSpec;
 
     use super::*;
 
-    use tokio::sync::Mutex;
-
     const PACKAGE_JSON: &str = include_str!("../pkg-complex.json");
-
-    fn base_path() -> PathBuf {
-        let base_path = PathBuf::from(
-            env::var("CARGO_MANIFEST_DIR").expect("cargo manifest dir cannot be computed"),
-        )
-        .join("pkg");
-        fs::create_dir_all(&base_path).expect("failed to create base path");
-
-        base_path
-    }
 
     pub async fn prop_visitor(
         prop: SiPkgProp<'_>,
@@ -75,11 +63,13 @@ mod tests {
         let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
 
-        pkg.write_to_dir(base_path())
+        let tempdir = tempdir().expect("failed to create tempdir");
+
+        pkg.write_to_dir(tempdir.path())
             .await
             .expect("failed to write pkg to dir");
 
-        let read_pkg = SiPkg::load_from_dir(base_path())
+        let read_pkg = SiPkg::load_from_dir(tempdir.path())
             .await
             .expect("failed to load pkg from dir");
 

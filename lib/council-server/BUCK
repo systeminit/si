@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "council-server",
-    edition = "2021",
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-settings:si-settings",
@@ -15,5 +16,4 @@ rust_library(
         "//third-party/rust:ulid",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

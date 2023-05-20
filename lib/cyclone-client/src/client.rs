@@ -425,9 +425,10 @@ impl Default for ClientConfig {
 #[allow(clippy::panic, clippy::assertions_on_constants)]
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, env, path::Path};
+    use std::{env, path::Path};
 
     use base64::{engine::general_purpose, Engine};
+    use buck2_resources::Buck2Resources;
     use cyclone_core::{
         ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
         ValidationRequest,
@@ -439,6 +440,7 @@ mod tests {
     use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
     use test_log::test;
+    use tracing::warn;
 
     use super::*;
 
@@ -453,18 +455,43 @@ mod tests {
             .into_temp_path()
     }
 
-    fn lang_server_path() -> Cow<'static, str> {
-        const ENVVAR: &str = "SI_TEST_LANG_SERVER";
-        const DEFAULT: &str = "../../bin/lang-js/target/lang-js";
+    fn lang_server_path() -> String {
+        if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+            let resources = Buck2Resources::read().expect("failed to read buck2 resources");
 
-        env::var(ENVVAR).ok().map(Cow::Owned).unwrap_or_else(|| {
-            if !Path::new(DEFAULT).exists() {
-                panic!(
-                    "lang server not yet built at {DEFAULT}. Override default by setting {ENVVAR}"
-                );
-            }
-            Cow::Borrowed(DEFAULT)
-        })
+            let lang_server_cmd_path = resources
+                .get_ends_with("lang-js")
+                .expect("failed to get lang-js resource")
+                // TODO(fnichol): tweak build rule to produce binary as its output
+                .join("lang-js")
+                .to_string_lossy()
+                .to_string();
+
+            warn!(
+                lang_server_cmd_path = lang_server_cmd_path.as_str(),
+                "detected development run",
+            );
+
+            lang_server_cmd_path
+        } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+            let lang_server_cmd_path = Path::new(&dir)
+                .join("../../bin/lang-js/target/lang-js")
+                .canonicalize()
+                .expect(
+                    "failed to canonicalize local dev build of <root>/bin/lang-js/target/lang-js",
+                )
+                .to_string_lossy()
+                .to_string();
+
+            warn!(
+                lang_server_cmd_path = lang_server_cmd_path.as_str(),
+                "detected development run",
+            );
+
+            lang_server_cmd_path
+        } else {
+            unimplemented!("tests must be run either with Cargo or Buck2");
+        }
     }
 
     async fn uds_server(
@@ -474,7 +501,7 @@ mod tests {
     ) -> Server<UdsIncomingStream, PathBuf> {
         let config = builder
             .unix_domain_socket(tmp_socket)
-            .try_lang_server_path(lang_server_path().to_string())
+            .try_lang_server_path(lang_server_path())
             .expect("failed to resolve lang server path")
             .build()
             .expect("failed to build config");
@@ -503,7 +530,7 @@ mod tests {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
-            .try_lang_server_path(lang_server_path().to_string())
+            .try_lang_server_path(lang_server_path())
             .expect("failed to resolve lang server path")
             .build()
             .expect("failed to build config");

@@ -421,7 +421,7 @@ pub async fn veritech_server_for_uds_cyclone(
 ) -> Result<veritech_server::Server> {
     let config: veritech_server::Config = {
         let mut config_file = veritech_server::ConfigFile::default();
-        config_file.set_nats(nats_config);
+        config_file.nats = nats_config;
         veritech_server::detect_and_configure_development(&mut config_file)
             .wrap_err("failed to detect and configure Veritech ConfigFile")?;
         config_file

@@ -1,8 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "veritech-core",
-    edition = "2021",
-    deps = [
-    ],
+    deps = [],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )
