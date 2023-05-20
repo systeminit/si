@@ -1,4 +1,4 @@
-load("//build-rules/ts.bzl", "pnpm_install")
+load("@prelude-si//:pnpm.bzl", "pnpm_install")
 
 alias(
     name = "council",
