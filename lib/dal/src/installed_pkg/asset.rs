@@ -2,6 +2,7 @@ use super::{InstalledPkgId, InstalledPkgResult};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
+use crate::schema::variant::definition::SchemaVariantDefinitionId;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId, SchemaId,
     SchemaVariantId, StandardModel, Tenancy, Timestamp, Visibility,
@@ -38,6 +39,7 @@ pub enum InstalledPkgAssetKind {
     Func,
     Schema,
     SchemaVariant,
+    SchemaVariantDefinition,
 }
 
 /// An `InstalledPkgAsset` is a record of the installation of a package asset. It tracks the
@@ -82,6 +84,12 @@ pub enum InstalledPkgAssetTyped {
         id: SchemaVariantId,
         hash: String,
     },
+    SchemaVariantDefinition {
+        installed_pkg_asset_id: InstalledPkgAssetId,
+        installed_pkg_id: InstalledPkgId,
+        id: SchemaVariantDefinitionId,
+        hash: String,
+    },
 }
 
 impl InstalledPkgAssetTyped {
@@ -107,6 +115,19 @@ impl InstalledPkgAssetTyped {
             installed_pkg_asset_id: InstalledPkgAssetId::NONE,
             installed_pkg_id,
             id: schema_variant_id,
+            hash,
+        }
+    }
+
+    pub fn new_for_schema_variant_definition(
+        schema_variant_definition_id: SchemaVariantDefinitionId,
+        installed_pkg_id: InstalledPkgId,
+        hash: String,
+    ) -> Self {
+        Self::SchemaVariantDefinition {
+            installed_pkg_asset_id: InstalledPkgAssetId::NONE,
+            installed_pkg_id,
+            id: schema_variant_definition_id,
             hash,
         }
     }
@@ -141,6 +162,12 @@ impl From<&InstalledPkgAsset> for InstalledPkgAssetTyped {
                 hash,
             },
             InstalledPkgAssetKind::Func => Self::Func {
+                installed_pkg_asset_id,
+                installed_pkg_id,
+                id: Into::<ulid::Ulid>::into(value.asset_id()).into(),
+                hash,
+            },
+            InstalledPkgAssetKind::SchemaVariantDefinition => Self::SchemaVariantDefinition {
                 installed_pkg_asset_id,
                 installed_pkg_id,
                 id: Into::<ulid::Ulid>::into(value.asset_id()).into(),
@@ -193,6 +220,18 @@ impl InstalledPkgAsset {
                 hash,
                 InstalledPkgAssetKind::SchemaVariant,
             ),
+            InstalledPkgAssetTyped::SchemaVariantDefinition {
+                installed_pkg_id,
+                id,
+                hash,
+                ..
+            } => (
+                installed_pkg_id,
+                Into::<ulid::Ulid>::into(id).into(),
+                hash,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
+            ),
+
             InstalledPkgAssetTyped::Func {
                 installed_pkg_id,
                 id,
@@ -240,12 +279,54 @@ impl InstalledPkgAsset {
                 InstalledPkgAssetKind::Schema,
                 InstalledPkgAssetKind::SchemaVariant,
             )),
+            InstalledPkgAssetTyped::SchemaVariantDefinition {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::Schema,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
+            )),
             InstalledPkgAssetTyped::Func {
                 installed_pkg_asset_id,
                 ..
             } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
                 installed_pkg_asset_id,
                 InstalledPkgAssetKind::Schema,
+                InstalledPkgAssetKind::Func,
+            )),
+        }
+    }
+
+    pub fn as_installed_schema_variant_definition(
+        &self,
+    ) -> InstalledPkgResult<InstalledPkgAssetTyped> {
+        let typed: InstalledPkgAssetTyped = self.into();
+
+        match typed {
+            InstalledPkgAssetTyped::SchemaVariantDefinition { .. } => Ok(typed),
+            InstalledPkgAssetTyped::SchemaVariant {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
+                InstalledPkgAssetKind::SchemaVariant,
+            )),
+            InstalledPkgAssetTyped::Schema {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
+                InstalledPkgAssetKind::Schema,
+            )),
+            InstalledPkgAssetTyped::Func {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
                 InstalledPkgAssetKind::Func,
             )),
         }
@@ -263,6 +344,14 @@ impl InstalledPkgAsset {
                 installed_pkg_asset_id,
                 InstalledPkgAssetKind::SchemaVariant,
                 InstalledPkgAssetKind::Schema,
+            )),
+            InstalledPkgAssetTyped::SchemaVariantDefinition {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::SchemaVariant,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
             )),
             InstalledPkgAssetTyped::Func {
                 installed_pkg_asset_id,
@@ -287,6 +376,14 @@ impl InstalledPkgAsset {
                 installed_pkg_asset_id,
                 InstalledPkgAssetKind::Func,
                 InstalledPkgAssetKind::Schema,
+            )),
+            InstalledPkgAssetTyped::SchemaVariantDefinition {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::Func,
+                InstalledPkgAssetKind::SchemaVariantDefinition,
             )),
             InstalledPkgAssetTyped::SchemaVariant {
                 installed_pkg_asset_id,

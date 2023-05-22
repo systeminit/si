@@ -115,6 +115,17 @@ impl FuncSpec {
     pub fn builder() -> FuncSpecBuilder {
         FuncSpecBuilder::default()
     }
+
+    pub fn identity_func() -> Result<Self, SpecError> {
+        Self::builder()
+            .name("si:identity")
+            .handler("si:identity")
+            .code_base64("")
+            .response_type(FuncSpecBackendResponseType::Json)
+            .backend_kind(FuncSpecBackendKind::JsAttribute)
+            .hidden(false)
+            .build()
+    }
 }
 
 impl FuncSpecBuilder {
