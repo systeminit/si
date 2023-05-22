@@ -14,7 +14,7 @@ main() {
   : "${PGPASSWORD=bugbear}"
   : "${POSTGRES_USER=si}"
   : "${POSTGRES_DB=si}"
-  : "${POSTGRES_MULTIPLE_DBS=si_test,si_auth,si_auth_test}"
+  : "${POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_auth_test}"
 
   if [ -n "$(docker container ls --filter "name=^$name" --filter "status=running" --quiet)" ]; then
     echo "  - Container $name is already running"
