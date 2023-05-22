@@ -1,5 +1,7 @@
 use super::SchemaVariantDefinitionResult;
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{
     component::ComponentKind,
@@ -37,6 +39,8 @@ pub struct CreateVariantDefResponse {
 pub async fn create_variant_def(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateVariantDefRequest>,
 ) -> SchemaVariantDefinitionResult<Json<CreateVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -53,6 +57,20 @@ pub async fn create_variant_def(
         DEFAULT_ASSET_CODE.to_string(),
     )
     .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "create_variant_def",
+        serde_json::json!({
+                    "variant_def_name": variant_def.name(),
+                    "variant_def_category": variant_def.category(),
+                    "variant_def_menu_name": variant_def.menu_name(),
+                    "variant_def_id": variant_def.id(),
+                    "variant_def_component_type": variant_def.component_type(),
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?
