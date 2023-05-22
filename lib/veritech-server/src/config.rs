@@ -253,10 +253,12 @@ impl CycloneConfig {
     pub fn cyclone_decryption_key_path(&self) -> &str {
         match self {
             CycloneConfig::LocalUds {
-                cyclone_decryption_key_path, ..
+                cyclone_decryption_key_path,
+                ..
             } => cyclone_decryption_key_path,
             CycloneConfig::LocalHttp {
-                cyclone_decryption_key_path, ..
+                cyclone_decryption_key_path,
+                ..
             } => cyclone_decryption_key_path,
         }
     }
@@ -277,10 +279,12 @@ impl CycloneConfig {
     pub fn lang_server_cmd_path(&self) -> &str {
         match self {
             CycloneConfig::LocalUds {
-                lang_server_cmd_path, ..
+                lang_server_cmd_path,
+                ..
             } => lang_server_cmd_path,
             CycloneConfig::LocalHttp {
-                lang_server_cmd_path, ..
+                lang_server_cmd_path,
+                ..
             } => lang_server_cmd_path,
         }
     }
@@ -300,45 +304,29 @@ impl CycloneConfig {
 
     pub fn set_limit_requests(&mut self, value: impl Into<Option<u32>>) {
         match self {
-            CycloneConfig::LocalUds {
-                limit_requets, ..
-            } => *limit_requets = value.into(),
-            CycloneConfig::LocalHttp {
-                limit_requets, ..
-            } => *limit_requets = value.into(),
+            CycloneConfig::LocalUds { limit_requets, .. } => *limit_requets = value.into(),
+            CycloneConfig::LocalHttp { limit_requets, .. } => *limit_requets = value.into(),
         };
     }
 
     pub fn set_ping(&mut self, value: bool) {
         match self {
-            CycloneConfig::LocalUds {
-                ping, ..
-            } => *ping = value,
-            CycloneConfig::LocalHttp {
-                ping, ..
-            } => *ping = value,
+            CycloneConfig::LocalUds { ping, .. } => *ping = value,
+            CycloneConfig::LocalHttp { ping, .. } => *ping = value,
         };
     }
 
     pub fn set_resolver(&mut self, value: bool) {
         match self {
-            CycloneConfig::LocalUds {
-                resolver, ..
-            } => *resolver = value,
-            CycloneConfig::LocalHttp {
-                resolver, ..
-            } => *resolver = value,
+            CycloneConfig::LocalUds { resolver, .. } => *resolver = value,
+            CycloneConfig::LocalHttp { resolver, .. } => *resolver = value,
         };
     }
 
     pub fn set_action(&mut self, value: bool) {
         match self {
-            CycloneConfig::LocalUds {
-                action, ..
-            } => *action = value,
-            CycloneConfig::LocalHttp {
-                action, ..
-            } => *action = value,
+            CycloneConfig::LocalUds { action, .. } => *action = value,
+            CycloneConfig::LocalHttp { action, .. } => *action = value,
         };
     }
 }
