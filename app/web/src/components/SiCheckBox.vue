@@ -10,6 +10,7 @@
 
       <Switch
         :id="props.id"
+        :disabled="props.disabled"
         v-model="inputValue"
         :class="inputValue ? 'bg-blue-600' : 'bg-gray-200'"
         class="relative inline-flex h-5 w-8 items-center rounded-full ml-2"

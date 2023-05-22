@@ -22,17 +22,17 @@ use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, Publishe
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ServerError {
-    #[error(transparent)]
+    #[error("action run error: {0}")]
     ActionRun(#[from] deadpool_cyclone::ExecutionError<ActionRunResultSuccess>),
-    #[error(transparent)]
+    #[error("cyclone error: {0}")]
     Cyclone(#[from] deadpool_cyclone::ClientError),
-    #[error("cyclone pool error")]
+    #[error("cyclone pool error: {0}")]
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("cyclone progress error")]
+    #[error("cyclone progress error: {0}")]
     CycloneProgress(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("cyclone spec builder error")]
+    #[error("cyclone spec builder error: {0}")]
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("error connecting to nats")]
+    #[error("error connecting to nats: {0}")]
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error("no reply mailbox found")]
     NoReplyMailboxFound,
