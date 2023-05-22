@@ -629,7 +629,7 @@ async fn set_variant_spec_prop_data(
                 tree_node.name == "domain" && tree_node.path == "/root/"
             }
             SchemaVariantSpecPropRoot::ResourceValue => {
-                tree_node.name == "value" && tree_node.path == "/root/resource/"
+                tree_node.name == "resource_value" && tree_node.path == "/root/"
             }
         }
     }) {

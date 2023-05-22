@@ -383,6 +383,9 @@ pub struct SchemaVariantDefinitionJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]
     pub props: Vec<PropDefinition>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/resource_value".
+    #[serde(default)]
+    pub resource_props: Vec<PropDefinition>,
     /// The input [`Sockets`](crate::Socket) and corresponding
     /// explicit [`InternalProviders`](crate::InternalProvider) created for the
     /// [`variant`](crate::SchemaVariant).
@@ -425,6 +428,9 @@ impl SchemaVariantDefinitionJson {
         builder.name("v0");
         for prop in &self.props {
             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        for resource_prop in &self.resource_props {
+            builder.resource_value_prop(resource_prop.to_spec(identity_func_unique_id)?);
         }
         builder.color(metadata.color);
         builder.component_type(metadata.component_type);
