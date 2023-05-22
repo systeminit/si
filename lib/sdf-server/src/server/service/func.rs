@@ -23,6 +23,7 @@ use dal::{
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId, WsEventError,
 };
+use dal::{FuncDescription, FuncDescriptionContents};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -246,6 +247,13 @@ pub struct ValidationPrototypeView {
     prop_id: PropId,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncDescriptionView {
+    schema_variant_id: SchemaVariantId,
+    contents: FuncDescriptionContents,
+}
+
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -269,6 +277,7 @@ pub enum FuncAssociations {
     Confirmation {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
+        descriptions: Vec<FuncDescriptionView>,
     },
     #[serde(rename_all = "camelCase")]
     Qualification {
@@ -401,6 +410,22 @@ async fn attribute_prototypes_into_schema_variants_and_components(
     Ok((schema_variant_ids, component_ids))
 }
 
+pub async fn func_description_views(
+    ctx: &DalContext,
+    func_id: FuncId,
+) -> FuncResult<Vec<FuncDescriptionView>> {
+    let mut views = vec![];
+
+    for desc in FuncDescription::list_for_func(ctx, func_id).await? {
+        views.push(FuncDescriptionView {
+            schema_variant_id: *desc.schema_variant_id(),
+            contents: desc.deserialized_contents()?,
+        });
+    }
+
+    Ok(views)
+}
+
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
     let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
 
@@ -424,9 +449,12 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                         attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
                             .await?;
 
+                    let descriptions = func_description_views(ctx, *func.id()).await?;
+
                     Some(FuncAssociations::Confirmation {
                         schema_variant_ids,
                         component_ids,
+                        descriptions,
                     })
                 }
                 FuncBackendResponseType::Qualification => {

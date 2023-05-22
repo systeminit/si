@@ -15,8 +15,9 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 
 use crate::{
-    impl_standard_model, pk, standard_model, DalContext, Func, FuncBackendResponseType, FuncError,
-    FuncId, FuncResult, SchemaVariantId, StandardModel, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    DalContext, Func, FuncBackendResponseType, FuncError, FuncId, FuncResult, SchemaVariantId,
+    StandardModel, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
@@ -133,21 +134,10 @@ impl FuncDescription {
         Ok(object)
     }
 
-    pub fn func_id(&self) -> FuncId {
-        self.func_id
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn serialized_contents(&self) -> &Value {
-        &self.serialized_contents
-    }
-
-    pub fn response_type(&self) -> FuncBackendResponseType {
-        self.response_type
-    }
+    standard_model_accessor!(serialized_contents, Json<Value>, FuncResult);
+    standard_model_accessor_ro!(func_id, FuncId);
+    standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
+    standard_model_accessor_ro!(response_type, FuncBackendResponseType);
 
     /// Find all [`Self`] for the provided [`SchemaVariantId`](crate::SchemaVariantId).
     #[instrument(skip_all)]
@@ -155,7 +145,7 @@ impl FuncDescription {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> FuncResult<Vec<Self>> {
-        let row = ctx
+        let rows = ctx
             .txns()
             .await?
             .pg()
@@ -164,7 +154,25 @@ impl FuncDescription {
                 &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
-        Ok(standard_model::objects_from_rows(row)?)
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find all [`Self`] for the provided [`FuncId`](crate::FuncId).
+    #[instrument(skip_all)]
+    pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT row_to_json(func_descriptions.*) as object
+                FROM func_descriptions_v1($1, $2) AS func_descriptions
+                WHERE func_descriptions.func_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &func_id],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     /// Find [`Self`] with a provided [`FuncId`](crate::FuncId) and
@@ -197,5 +205,15 @@ impl FuncDescription {
         let contents: FuncDescriptionContents =
             serde_json::from_value(self.serialized_contents.clone())?;
         Ok(contents)
+    }
+
+    pub async fn set_deserialized_contents(
+        &mut self,
+        ctx: &DalContext,
+        contents: FuncDescriptionContents,
+    ) -> FuncResult<()> {
+        let deserialized_contents: Value = serde_json::to_value(contents)?;
+        self.set_serialized_contents(ctx, deserialized_contents)
+            .await
     }
 }

@@ -136,7 +136,8 @@ import {
   VButton,
   VormInput,
   RequestStatusMessage,
-  Modal, ErrorMessage,
+  Modal,
+  ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 

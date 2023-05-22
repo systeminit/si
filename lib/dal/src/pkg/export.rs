@@ -170,8 +170,8 @@ async fn build_func_description_specs(
 
     for func_description in FuncDescription::list_for_schema_variant(ctx, variant_id).await? {
         let func_spec = func_specs
-            .get(&func_description.func_id())
-            .ok_or(PkgError::MissingExportedFunc(func_description.func_id()))?;
+            .get(func_description.func_id())
+            .ok_or(PkgError::MissingExportedFunc(*func_description.func_id()))?;
 
         specs.push(
             FuncDescriptionSpec::builder()
