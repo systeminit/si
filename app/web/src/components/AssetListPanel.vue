@@ -41,10 +41,10 @@ import {
   VButton,
   RequestStatusMessage,
 } from "@si/vue-lib/design-system";
+import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import AssetListItem from "./AssetListItem.vue";
-import {useRouter} from "vue-router";
 
 const assetStore = useAssetStore();
 const router = useRouter();
@@ -68,7 +68,7 @@ const newAsset = async () => {
       name: "workspace-lab-assets",
       params: {
         ...router.currentRoute.value.params,
-        'assetId': result.result.data.id,
+        assetId: result.result.data.id,
       },
     });
   }

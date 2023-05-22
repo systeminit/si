@@ -24,15 +24,15 @@ async fn new(ctx: &DalContext) {
         .await
         .expect("could not create description");
 
-    assert_eq!(func_id, description.func_id());
-    assert_eq!(*schema_variant.id(), description.schema_variant_id());
+    assert_eq!(func_id, *description.func_id());
+    assert_eq!(schema_variant.id(), description.schema_variant_id());
     assert_eq!(
         contents,
         description
             .deserialized_contents()
             .expect("could not deserialize contents")
     );
-    assert_eq!(contents.response_type(), description.response_type());
+    assert_eq!(contents.response_type(), *description.response_type());
     assert_eq!(contents.response_type(), response_type);
 }
 

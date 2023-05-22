@@ -4,24 +4,21 @@
       Run this confirmation on the selected components and component types
       below.
     </h1>
-    <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Component:
-    </h2>
-    <RunOnSelector
-      v-model="selectedComponents"
-      thing-label="components"
-      :options="componentOptions"
-      :disabled="props.disabled"
-      @change="updateAssociations"
-    />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Schema Variant:
+      Run on Assets of Type
     </h2>
     <RunOnSelector
       v-model="selectedVariants"
-      thing-label="schema variants"
+      thing-label="asset type"
       :options="schemaVariantOptions"
       :disabled="props.disabled"
+      @change="updateAssociations"
+    />
+    <VButton @click="openModal">Edit Confirmation Descriptions</VButton>
+    <ConfirmationDescriptionModal
+      ref="descriptionsModal"
+      v-model="funcDescriptions"
+      :schema-variants="selectedVariants"
       @change="updateAssociations"
     />
   </div>
@@ -30,14 +27,21 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { Modal, VButton } from "@si/vue-lib/design-system";
 import { Option } from "@/components/SelectMenu.vue";
-import { ConfirmationAssociations } from "@/store/func/types";
+import {
+  ConfirmationAssociations,
+  FuncDescriptionView,
+} from "@/store/func/types";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
+import ConfirmationDescriptionModal from "./ConfirmationDescriptionModal.vue";
 
 const funcStore = useFuncStore();
-const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
+const { schemaVariantOptions } = storeToRefs(funcStore);
+
+const descriptionsModal = ref<InstanceType<typeof Modal>>();
 
 const props = defineProps<{
   modelValue: ConfirmationAssociations;
@@ -47,14 +51,19 @@ const props = defineProps<{
 const selectedVariants = ref<Option[]>(
   toOptionValues(schemaVariantOptions.value, props.modelValue.schemaVariantIds),
 );
-const selectedComponents = ref<Option[]>(
-  toOptionValues(componentOptions.value, props.modelValue.componentIds),
+
+const funcDescriptions = ref<FuncDescriptionView[]>(
+  props.modelValue.descriptions,
 );
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: ConfirmationAssociations): void;
   (e: "change", v: ConfirmationAssociations): void;
 }>();
+
+const openModal = () => {
+  descriptionsModal?.value?.open();
+};
 
 watch(
   () => props.modelValue,
@@ -63,20 +72,17 @@ watch(
       schemaVariantOptions.value,
       mv.schemaVariantIds,
     );
-    selectedComponents.value = toOptionValues(
-      componentOptions.value,
-      mv.componentIds,
-    );
   },
   { immediate: true },
 );
 
 const updateAssociations = () => {
   const associations: ConfirmationAssociations = {
-    componentIds: selectedComponents.value.map(({ value }) => value as string),
+    componentIds: props.modelValue.componentIds,
     schemaVariantIds: selectedVariants.value.map(
       ({ value }) => value as string,
     ),
+    descriptions: funcDescriptions.value,
     type: "confirmation",
   };
 
