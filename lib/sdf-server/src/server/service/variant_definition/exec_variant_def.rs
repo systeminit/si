@@ -1,5 +1,7 @@
 use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{
@@ -29,6 +31,8 @@ pub struct ExecVariantDefResponse {
 pub async fn exec_variant_def(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ExecVariantDefRequest>,
 ) -> SchemaVariantDefinitionResult<Json<ExecVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -61,8 +65,22 @@ pub async fn exec_variant_def(
         .version("0.0.1")
         .build()?;
 
-    let pkg = SiPkg::load_from_spec(pkg_spec)?;
+    let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
     import_pkg_from_pkg(&ctx, &pkg, metadata.clone().name.as_str()).await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "exec_variant_def",
+        serde_json::json!({
+                    "variant_def_category": metadata.clone().category,
+                    "variant_def_name": metadata.clone().name,
+                    "variant_def_version": pkg_spec.clone().version,
+                    "variant_def_schema_count":  pkg_spec.clone().schemas.len(),
+                    "variant_def_function_count":  pkg_spec.clone().funcs.len(),
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?
