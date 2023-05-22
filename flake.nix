@@ -12,15 +12,11 @@
     #   url = "path:nix/buck2";
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };
-    # reindeer = {
-    #   url = "path:nix/reindeer";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
   };
 
   # Flake outputs
   # TODO(nick): re-enable once remote caching is enabled.
-  # outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, reindeer, ... }:
+  # outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, ... }:
   outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -36,7 +32,6 @@
 
         # TODO(nick): re-enable once remote caching is enabled.
         # buck2-pkg = buck2.packages.${system}.buck2;
-        # reindeer-pkg = reindeer.packages.${system}.reindeer;
 
         # Ensure pnpm uses our defined node toolchain and does not download its own.
         pinnedNode = pkgs.nodejs-18_x;
@@ -48,7 +43,6 @@
           buildInputs = [
             # TODO(nick): re-enable once remote caching is enabled.
             # buck2-pkg
-            # reindeer-pkg
 
             # NOTE(nick): we may not need this if we are purely using pnpm's toolchain. More
             # investigation with veritech on NixOS is recommended.
@@ -71,6 +65,8 @@
             pkg-config
             postgresql_14
             protobuf
+            reindeer
+
             (rustToolchain.override {
               # This really should be augmenting the extensions, instead of
               # completely overriding them, but since we're not setting up
