@@ -15,15 +15,10 @@
 
         # First, run the update script with the new commit. Then, use "pkgs.lib.fakeSha256" to
         # determine hashes.
-        latestBranchCommit = "6ce606949631ca86c4cbb3de53ee90ceb031257a";
+        latestBranchCommit = "3f08969e1b3ea6bc40e8fefb76dd4783601db060";
+        gitHubSha256 = "sha256-Qcls3IRoqfRWvGykZJu3I3Nnu1HP822HRJrfuJfpX98=";
         rustChannel = "nightly";
         rustVersion = "2023-03-07";
-        gitHubSha256 = "sha256-gsmGC3qYnmVAqV7Hnqt0OlQ9ek4ODenhDH5GN1czk+Q=";
-        outputHashes = {
-          "perf-event-0.4.8" =
-            "sha256-4OSGmbrL5y1g+wdA+W9DrhWlHQGeVCsMLz87pJNckvw=";
-          "tonic-0.8.3" = "sha256-xuQVixIxTDS4IZIN46aMAer3v4/81IQEG975vuNNerU=";
-        };
 
         buck2RustPlatform = pkgs.makeRustPlatform {
           rustc = pkgs.rust-bin."${rustChannel}"."${rustVersion}".default;
@@ -33,6 +28,8 @@
         buck2 = buck2RustPlatform.buildRustPackage rec {
           pname = "buck2";
           version = latestBranchCommit;
+
+          RUSTFLAGS = "--cfg tokio_unstable";
 
           src = pkgs.fetchFromGitHub {
             owner = "facebook";
@@ -47,7 +44,7 @@
           cargoPatches = [ ./Cargo.lock.patch ];
           cargoLock = {
             lockFile = ./Cargo.lock;
-            outputHashes = outputHashes;
+            allowBuiltinFetchGit = true;
           };
 
           nativeBuildInputs = with pkgs; [ pkg-config protobuf ];
@@ -61,7 +58,8 @@
           BUCK2_BUILD_PROTOC = "${pkgs.protobuf}/bin/protoc";
           BUCK2_BUILD_PROTOC_INCLUDE = "${pkgs.protobuf}/include";
         };
-      in {
+      in
+      {
         defaultPackage = buck2;
         packages.buck2 = buck2;
       });

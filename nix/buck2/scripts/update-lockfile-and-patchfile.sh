@@ -1,34 +1,22 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-function help-and-die {
-  echo "options:
-    update.sh buck2    <commit-hash>"
-  exit 1
-}
-
-REPO=""
-if [ ! $1 ] || [ "$1" = "" ] || [ ! $2 ] || [ "$2" = "" ]; then
-  help-and-die
-elif [ "$1" = "buck2" ]; then
-  REPO="https://github.com/facebook/buck2.git"
-else
-  help-and-die
-fi
-
 # Ensure that we can move the files to this script's directory on both macOS and Linux.
 SCRIPT_DIR=$(
   cd $(dirname "${BASH_SOURCE[0]}")
   pwd -P
 )
-FLAKE_DIR=${SCRIPT_DIR}/${1}
+FLAKE_DIR=$(dirname $SCRIPT_DIR)
+
+# Must provide commit to generate lockfile and patch file for.
+echo "commit: $1"
 
 # Create a temporary directory, clone the repository, and checkout the provided commit.
 TEMP_DIR=$(mktemp -d)
 cd $TEMP_DIR
-git clone $REPO $1
-cd $1
-git checkout $2
+git clone https://github.com/facebook/buck2.git buck2
+cd buck2
+git checkout $1
 
 # Generate the new lockfile and patch file. The "git diff" command will have a non-zero exit code,
 # so we need to ignore it.
