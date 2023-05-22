@@ -583,9 +583,9 @@ async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
 }
 
 fn detect_and_configure_testing(builder: &mut ConfigBuilder) -> Result<()> {
-    if std::env::var("BUCK_BUILD_ID").is_ok() {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         detect_and_configure_testing_for_buck2(builder)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         detect_and_configure_testing_for_cargo(dir, builder)
     } else {
         unimplemented!("tests must be run either with Cargo or Buck2");
