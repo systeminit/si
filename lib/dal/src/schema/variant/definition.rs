@@ -22,7 +22,8 @@ use crate::{
 use crate::{SchemaError, SchemaId, TransactionsError};
 use si_pkg::{
     AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, PropSpecWidgetKind, SchemaSpec,
-    SchemaVariantSpec, SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
+    SchemaVariantSpec, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
+    SocketSpecKind, SpecError, ValidationSpec,
 };
 
 #[remain::sorted]
@@ -390,6 +391,10 @@ pub struct SchemaVariantDefinitionJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/resource_value".
     #[serde(default)]
     pub resource_props: Vec<PropDefinition>,
+    /// Identity relationships for [`Props`](crate::Prop) underneath "/root/si".
+    #[serde(default)]
+    pub si_prop_value_froms: Vec<SiPropValueFrom>,
+
     /// The input [`Sockets`](crate::Socket) and corresponding
     /// explicit [`InternalProviders`](crate::InternalProvider) created for the
     /// [`variant`](crate::SchemaVariant).
@@ -430,6 +435,9 @@ impl SchemaVariantDefinitionJson {
     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
         builder.name("v0");
+        for si_prop_value_from in &self.si_prop_value_froms {
+            builder.si_prop_func(si_prop_value_from.to_spec(identity_func_unique_id));
+        }
         for prop in &self.props {
             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
         }
@@ -471,8 +479,8 @@ impl SchemaVariantDefinitionJson {
             color: variant_spec.color.to_owned().unwrap_or("000000".into()),
             component_kind: ComponentKind::Standard,
             component_type: variant_spec.component_type.into(),
-            link: None,        // XXX
-            description: None, // XXX
+            link: variant_spec.link.as_ref().map(|l| l.to_string()),
+            description: None, // XXX - does this exist?
         };
 
         let mut props = vec![];
@@ -498,6 +506,18 @@ impl SchemaVariantDefinitionJson {
         let definition = SchemaVariantDefinitionJson {
             props,
             resource_props,
+            si_prop_value_froms: variant_spec
+                .si_prop_funcs
+                .iter()
+                .filter_map(|si_prop_func| {
+                    SiPropValueFrom::maybe_from_spec(
+                        si_prop_func.kind,
+                        Some(si_prop_func.inputs.to_owned()),
+                        Some(si_prop_func.func_unique_id),
+                        identity_func_unique_id,
+                    )
+                })
+                .collect(),
             input_sockets: variant_spec
                 .sockets
                 .iter()
@@ -1035,6 +1055,33 @@ impl ValueFrom {
             }
             None => None,
         }
+    }
+}
+
+/// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SiPropValueFrom {
+    kind: SiPropFuncSpecKind,
+    value_from: ValueFrom,
+}
+
+impl SiPropValueFrom {
+    fn to_spec(&self, identity_func_unique_id: FuncUniqueId) -> SiPropFuncSpec {
+        SiPropFuncSpec {
+            kind: self.kind,
+            func_unique_id: identity_func_unique_id,
+            inputs: vec![self.value_from.to_spec()],
+        }
+    }
+
+    fn maybe_from_spec(
+        kind: SiPropFuncSpecKind,
+        inputs: Option<Vec<AttrFuncInputSpec>>,
+        func_unique_id: Option<FuncUniqueId>,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> Option<Self> {
+        ValueFrom::maybe_from_spec(inputs, func_unique_id, identity_func_unique_id)
+            .map(|value_from| SiPropValueFrom { kind, value_from })
     }
 }
 
