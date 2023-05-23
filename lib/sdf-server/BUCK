@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "sdf-server",
-    edition = "2021",
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
@@ -41,11 +42,10 @@ rust_library(
         "src/**/*.rs",
         "src/server/service/func/defaults/*.ts",
     ]),
-    visibility = ["PUBLIC"],
 )
 
 rust_test(
-    name = "integration-test",
+    name = "test-integration",
     edition = "2021",
     deps = [
         "//lib/dal-test:dal-test",

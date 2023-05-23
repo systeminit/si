@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-pkg",
-    edition = "2021",
     deps = [
         "//lib/object-tree:object-tree",
         "//third-party/rust:chrono",
@@ -15,5 +16,8 @@ rust_library(
         "//third-party/rust:url",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
+    test_unit_srcs = ["pkg-complex.json", "pkg-simple.json"],
+    test_unit_deps = [
+        "//third-party/rust:tempfile",
+    ],
 )

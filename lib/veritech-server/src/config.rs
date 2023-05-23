@@ -65,17 +65,23 @@ impl StandardConfig for Config {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ConfigFile {
-    nats: NatsConfig,
-    cyclone: CycloneConfig,
+    pub nats: NatsConfig,
+    pub cyclone: CycloneConfig,
 }
 
 impl ConfigFile {
-    pub fn set_nats(&mut self, nats: NatsConfig) {
-        self.nats = nats;
+    pub fn default_local_http() -> Self {
+        Self {
+            nats: Default::default(),
+            cyclone: CycloneConfig::default_local_http(),
+        }
     }
 
-    pub fn set_cyclone(&mut self, cyclone: CycloneConfig) {
-        self.cyclone = cyclone;
+    pub fn default_local_uds() -> Self {
+        Self {
+            nats: Default::default(),
+            cyclone: CycloneConfig::default_local_uds(),
+        }
     }
 }
 
@@ -111,6 +117,11 @@ impl Config {
     /// Gets a reference to the config's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
         self.nats.subject_prefix.as_deref()
+    }
+
+    // Consumes into a [`CycloneSpec`].
+    pub fn into_cyclone_spec(self) -> CycloneSpec {
+        self.cyclone_spec
     }
 }
 
@@ -189,46 +200,21 @@ pub enum CycloneConfig {
 }
 
 impl CycloneConfig {
-    fn set_cyclone_cmd_path(&mut self, value: String) {
-        match self {
-            CycloneConfig::LocalUds {
-                cyclone_cmd_path, ..
-            } => *cyclone_cmd_path = value,
-            CycloneConfig::LocalHttp {
-                cyclone_cmd_path, ..
-            } => *cyclone_cmd_path = value,
-        };
+    pub fn default_local_http() -> Self {
+        Self::LocalHttp {
+            cyclone_cmd_path: default_cyclone_cmd_path(),
+            cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
+            lang_server_cmd_path: default_lang_server_cmd_path(),
+            socket_strategy: Default::default(),
+            watch_timeout: Default::default(),
+            limit_requets: default_limit_requests(),
+            ping: default_enable_endpoint(),
+            resolver: default_enable_endpoint(),
+            action: default_enable_endpoint(),
+        }
     }
 
-    fn set_cyclone_decryption_key_path(&mut self, value: String) {
-        match self {
-            CycloneConfig::LocalUds {
-                cyclone_decryption_key_path,
-                ..
-            } => *cyclone_decryption_key_path = value,
-            CycloneConfig::LocalHttp {
-                cyclone_decryption_key_path,
-                ..
-            } => *cyclone_decryption_key_path = value,
-        };
-    }
-
-    fn set_lang_server_cmd_path(&mut self, value: String) {
-        match self {
-            CycloneConfig::LocalUds {
-                lang_server_cmd_path,
-                ..
-            } => *lang_server_cmd_path = value,
-            CycloneConfig::LocalHttp {
-                lang_server_cmd_path,
-                ..
-            } => *lang_server_cmd_path = value,
-        };
-    }
-}
-
-impl Default for CycloneConfig {
-    fn default() -> Self {
+    pub fn default_local_uds() -> Self {
         Self::LocalUds {
             cyclone_cmd_path: default_cyclone_cmd_path(),
             cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
@@ -240,6 +226,114 @@ impl Default for CycloneConfig {
             resolver: default_enable_endpoint(),
             action: default_enable_endpoint(),
         }
+    }
+
+    pub fn cyclone_cmd_path(&self) -> &str {
+        match self {
+            CycloneConfig::LocalUds {
+                cyclone_cmd_path, ..
+            } => cyclone_cmd_path,
+            CycloneConfig::LocalHttp {
+                cyclone_cmd_path, ..
+            } => cyclone_cmd_path,
+        }
+    }
+
+    pub fn set_cyclone_cmd_path(&mut self, value: String) {
+        match self {
+            CycloneConfig::LocalUds {
+                cyclone_cmd_path, ..
+            } => *cyclone_cmd_path = value,
+            CycloneConfig::LocalHttp {
+                cyclone_cmd_path, ..
+            } => *cyclone_cmd_path = value,
+        };
+    }
+
+    pub fn cyclone_decryption_key_path(&self) -> &str {
+        match self {
+            CycloneConfig::LocalUds {
+                cyclone_decryption_key_path,
+                ..
+            } => cyclone_decryption_key_path,
+            CycloneConfig::LocalHttp {
+                cyclone_decryption_key_path,
+                ..
+            } => cyclone_decryption_key_path,
+        }
+    }
+
+    pub fn set_cyclone_decryption_key_path(&mut self, value: String) {
+        match self {
+            CycloneConfig::LocalUds {
+                cyclone_decryption_key_path,
+                ..
+            } => *cyclone_decryption_key_path = value,
+            CycloneConfig::LocalHttp {
+                cyclone_decryption_key_path,
+                ..
+            } => *cyclone_decryption_key_path = value,
+        };
+    }
+
+    pub fn lang_server_cmd_path(&self) -> &str {
+        match self {
+            CycloneConfig::LocalUds {
+                lang_server_cmd_path,
+                ..
+            } => lang_server_cmd_path,
+            CycloneConfig::LocalHttp {
+                lang_server_cmd_path,
+                ..
+            } => lang_server_cmd_path,
+        }
+    }
+
+    pub fn set_lang_server_cmd_path(&mut self, value: String) {
+        match self {
+            CycloneConfig::LocalUds {
+                lang_server_cmd_path,
+                ..
+            } => *lang_server_cmd_path = value,
+            CycloneConfig::LocalHttp {
+                lang_server_cmd_path,
+                ..
+            } => *lang_server_cmd_path = value,
+        };
+    }
+
+    pub fn set_limit_requests(&mut self, value: impl Into<Option<u32>>) {
+        match self {
+            CycloneConfig::LocalUds { limit_requets, .. } => *limit_requets = value.into(),
+            CycloneConfig::LocalHttp { limit_requets, .. } => *limit_requets = value.into(),
+        };
+    }
+
+    pub fn set_ping(&mut self, value: bool) {
+        match self {
+            CycloneConfig::LocalUds { ping, .. } => *ping = value,
+            CycloneConfig::LocalHttp { ping, .. } => *ping = value,
+        };
+    }
+
+    pub fn set_resolver(&mut self, value: bool) {
+        match self {
+            CycloneConfig::LocalUds { resolver, .. } => *resolver = value,
+            CycloneConfig::LocalHttp { resolver, .. } => *resolver = value,
+        };
+    }
+
+    pub fn set_action(&mut self, value: bool) {
+        match self {
+            CycloneConfig::LocalUds { action, .. } => *action = value,
+            CycloneConfig::LocalHttp { action, .. } => *action = value,
+        };
+    }
+}
+
+impl Default for CycloneConfig {
+    fn default() -> Self {
+        Self::default_local_uds()
     }
 }
 

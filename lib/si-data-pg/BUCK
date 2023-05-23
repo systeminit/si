@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-data-pg",
-    edition = "2021",
     deps = [
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
@@ -18,5 +19,4 @@ rust_library(
         "//third-party/rust:tokio-postgres",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

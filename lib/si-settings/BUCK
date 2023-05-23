@@ -1,6 +1,9 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+# TODO(fnichol): fix `canonical_file::test_safe_canonically_join` unit test
+
 rust_library(
     name = "si-settings",
-    edition = "2021",
     deps = [
         "//lib/config-file:config-file",
         "//third-party/rust:remain",
@@ -9,5 +12,4 @@ rust_library(
         "//third-party/rust:thiserror",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

@@ -8,7 +8,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_test,si_auth"
+      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth"
     ports:
       - "5432:5432"
 

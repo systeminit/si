@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-data-nats",
-    edition = "2021",
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:crossbeam-channel",
@@ -13,6 +14,4 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    # doctests = True,
-    visibility = ["PUBLIC"],
 )

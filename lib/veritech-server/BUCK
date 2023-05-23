@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "veritech-server",
-    edition = "2021",
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/deadpool-cyclone:deadpool-cyclone",
@@ -19,5 +20,4 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

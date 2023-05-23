@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "nats-subscriber",
-    edition = "2021",
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
@@ -14,5 +15,4 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )

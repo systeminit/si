@@ -1,4 +1,4 @@
-load("//build-rules/ts.bzl", "pnpm_task_library", "pnpm_task_binary", "pnpm_task_test")
+load("@prelude-si//:pnpm.bzl", "pnpm_task_library", "pnpm_task_binary", "pnpm_task_test")
 
 export_file(
     name = "package.json",

@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "buck2-resources",
-    edition = "2021",
     deps = [
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
@@ -8,5 +9,4 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
     ]),
-    visibility = ["PUBLIC"],
 )

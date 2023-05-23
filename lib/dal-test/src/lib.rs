@@ -1,8 +1,8 @@
 //! This module provides helpers and resources for constructing and running integration tests.
 
-use std::collections::HashSet;
 use std::{
     borrow::Cow,
+    collections::HashSet,
     env,
     path::Path,
     sync::{Arc, Once},
@@ -37,8 +37,6 @@ pub use tracing_subscriber;
 pub mod helpers;
 pub mod test_harness;
 
-const DEFAULT_PG_DBNAME: &str = "si_test";
-
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
@@ -47,9 +45,6 @@ const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
 lazy_static! {
-    static ref CONFIG: Config = Config::create_default()
-        .wrap_err("failed to create default test Config")
-        .unwrap();
     static ref TEST_CONTEXT_BUILDER: Mutex<ContextBuilderState> = Mutex::new(Default::default());
 }
 
@@ -91,7 +86,7 @@ pub struct Config {
 }
 
 impl Config {
-    fn create_default() -> Result<Self> {
+    fn create_default(pg_dbname: &'static str) -> Result<Self> {
         let mut config = {
             let mut builder = ConfigBuilder::default();
             detect_and_configure_testing(&mut builder)?;
@@ -105,8 +100,7 @@ impl Config {
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
             config.pg.hostname = value;
         }
-        config.pg.dbname =
-            env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| DEFAULT_PG_DBNAME.to_string());
+        config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
 
         Ok(config)
@@ -128,6 +122,14 @@ impl ContextBuilderState {
 
     fn errored(message: impl Into<Cow<'static, str>>) -> Self {
         Self::Errored(message.into())
+    }
+
+    fn config(&self) -> Result<&Config> {
+        match self {
+            Self::Created(builder) => Ok(&builder.config),
+            Self::Errored(msg) => Err(eyre!("global setup has failed: {msg}")),
+            Self::Uninitialized => Err(eyre!("global setup is uninitialized")),
+        }
     }
 }
 
@@ -160,12 +162,15 @@ impl TestContext {
     ///
     /// This functions wraps over a mutex which ensures that only the first caller will run global
     /// database creation, migrations, and other preparations.
-    pub async fn global() -> Result<Self> {
+    pub async fn global(pg_dbname: &'static str) -> Result<Self> {
         let mut mutex_guard = TEST_CONTEXT_BUILDER.lock().await;
 
         match &*mutex_guard {
             ContextBuilderState::Uninitialized => {
-                let test_context_builder = TestContextBuilder::create(CONFIG.clone())
+                let config = Config::create_default(pg_dbname).si_inspect_err(|err| {
+                    *mutex_guard = ContextBuilderState::errored(err.to_string())
+                })?;
+                let test_context_builder = TestContextBuilder::create(config)
                     .await
                     .si_inspect_err(|err| {
                         *mutex_guard = ContextBuilderState::errored(err.to_string());
@@ -354,14 +359,23 @@ pub fn random_identifier_string() -> String {
 
 // Returns a JWT public signing key, used to verify claims
 pub async fn jwt_public_signing_key() -> Result<JwtPublicSigningKey> {
-    let key = JwtPublicSigningKey::load(&CONFIG.jwt_signing_public_key_path).await?;
+    let jwt_signing_public_key_path = {
+        let context_builder = TEST_CONTEXT_BUILDER.lock().await;
+        let config = context_builder.config()?;
+        config.jwt_signing_public_key_path.clone()
+    };
+    let key = JwtPublicSigningKey::load(&jwt_signing_public_key_path).await?;
 
     Ok(key)
 }
 
 // Returns a JWT private signing key, used to sign claims
 pub async fn jwt_private_signing_key() -> Result<RS256KeyPair> {
-    let key_path = CONFIG.jwt_signing_private_key_path.as_str();
+    let key_path = {
+        let context_builder = TEST_CONTEXT_BUILDER.lock().await;
+        let config = context_builder.config()?;
+        config.jwt_signing_private_key_path.clone()
+    };
     let key_str = {
         let mut file = File::open(key_path)
             .await
@@ -420,8 +434,10 @@ pub async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
 ) -> Result<veritech_server::Server> {
     let config: veritech_server::Config = {
-        let mut config_file = veritech_server::ConfigFile::default();
-        config_file.set_nats(nats_config);
+        let mut config_file = veritech_server::ConfigFile {
+            nats: nats_config,
+            ..Default::default()
+        };
         veritech_server::detect_and_configure_development(&mut config_file)
             .wrap_err("failed to detect and configure Veritech ConfigFile")?;
         config_file
@@ -583,9 +599,9 @@ async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
 }
 
 fn detect_and_configure_testing(builder: &mut ConfigBuilder) -> Result<()> {
-    if std::env::var("BUCK_BUILD_ID").is_ok() {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         detect_and_configure_testing_for_buck2(builder)
-    } else if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         detect_and_configure_testing_for_cargo(dir, builder)
     } else {
         unimplemented!("tests must be run either with Cargo or Buck2");

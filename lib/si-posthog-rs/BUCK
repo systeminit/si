@@ -1,6 +1,7 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
 rust_library(
     name = "si-posthog",
-    edition = "2021",
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:derive_builder",
@@ -12,11 +13,10 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    visibility = ["PUBLIC"],
 )
 
 rust_test(
-    name = "integration-test",
+    name = "test-integration",
     srcs = glob(["tests/**/*.rs"]),
     crate_root = "tests/integration.rs",
     deps = [

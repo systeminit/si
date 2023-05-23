@@ -1,3 +1,5 @@
+load("@prelude-si//:macros.bzl", "rust_binary")
+
 rust_binary(
     name = "veritech",
     edition = "2021",
@@ -11,8 +13,8 @@ rust_binary(
     srcs = glob(["src/**/*.rs"]),
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
-        "lang-js": "//bin/lang-js:build-package",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "lang-js": "//bin/lang-js:build-package",
     },
     visibility = ["PUBLIC"],
 )

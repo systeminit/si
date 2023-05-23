@@ -9398,7 +9398,7 @@ cargo.rust_library(
 
 alias(
     name = "proc-macro2",
-    actual = ":proc-macro2-1.0.56",
+    actual = ":proc-macro2-1.0.58",
     visibility = ["PUBLIC"],
 )
 
@@ -13194,7 +13194,7 @@ cargo.rust_library(
 
 alias(
     name = "syn",
-    actual = ":syn-2.0.15",
+    actual = ":syn-2.0.16",
     visibility = ["PUBLIC"],
 )
 
@@ -13522,7 +13522,7 @@ cargo.rust_binary(
         ":pin-project-lite-0.2.9",
         ":postgres-types-0.2.5",
         ":pretty_assertions_sorted-1.2.1",
-        ":proc-macro2-1.0.56",
+        ":proc-macro2-1.0.58",
         ":quote-1.0.27",
         ":rand-0.8.5",
         ":refinery-0.8.9",
@@ -13538,7 +13538,7 @@ cargo.rust_binary(
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.1",
         ":strum-0.24.1",
-        ":syn-2.0.15",
+        ":syn-2.0.16",
         ":tar-0.4.38",
         ":tempfile-3.5.0",
         ":test-log-0.2.11",

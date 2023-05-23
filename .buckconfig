@@ -1,6 +1,7 @@
 [repositories]
 root = .
 prelude = prelude
+prelude-si = prelude-si
 toolchains = toolchains
 none = none
 

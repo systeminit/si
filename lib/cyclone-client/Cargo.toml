@@ -23,6 +23,7 @@ tokio-tungstenite = { workspace = true }
 
 [dev-dependencies]
 base64 = { workspace = true }
+buck2-resources = { path = "../../lib/buck2-resources" }
 cyclone-server = { path = "../../lib/cyclone-server" }
 sodiumoxide = { workspace = true }
 tempfile = { workspace = true }
