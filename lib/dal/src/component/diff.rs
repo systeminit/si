@@ -21,6 +21,7 @@ const NEWLINE: &str = "\n";
 /// [`Self::new()`].
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ComponentDiff {
+    pub component_id: ComponentId,
     /// The [`Component's`](crate::Component) [`CodeView`](crate::code_view::CodeView) found in the
     /// current [`Visibility`](crate::Visibility).
     pub current: CodeView,
@@ -46,6 +47,7 @@ impl ComponentDiff {
         let curr_component_view = ComponentView::new(ctx, component_id).await?;
         if curr_component_view.properties.is_null() {
             return Ok(Self {
+                component_id,
                 current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned())),
                 diffs: Vec::new(),
             });
@@ -64,6 +66,7 @@ impl ComponentDiff {
             let prev_component_view = ComponentView::new(&head_ctx, component_id).await?;
             if prev_component_view.properties.is_null() {
                 return Ok(Self {
+                    component_id,
                     current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
                     diffs: Vec::new(),
                 });
@@ -92,6 +95,7 @@ impl ComponentDiff {
         };
 
         Ok(Self {
+            component_id,
             current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
             diffs,
         })

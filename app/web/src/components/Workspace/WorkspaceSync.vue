@@ -35,9 +35,7 @@ import { useComponentsStore } from "@/store/components.store";
 import RecommendationProgressOverlay from "@/components/RecommendationProgressOverlay.vue";
 import SiPanel from "@/components/SiPanel.vue";
 import SyncExecutor from "@/components/SyncExecutor.vue";
-import RecommendationPicker from "../RecommendationPicker.vue";
 import ComponentOutlineSync from "../ComponentOutlineSync.vue";
-import ApplyHistory from "../ApplyHistory.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import {
   DiagramEdgeData,

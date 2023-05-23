@@ -359,6 +359,10 @@ impl Component {
         )
         .await?;
 
+        // NOTE: temporary hack to run create confirmations in the change-set as needed as
+        // they don't depend on the domain
+        component.run_confirmations(ctx).await?;
+
         Ok((component, node))
     }
 

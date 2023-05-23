@@ -7,6 +7,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
+import type { Recommendation } from "@/store/fixes.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -83,6 +84,25 @@ export function useChangeSetsStore() {
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
+            },
+          });
+        },
+        async APPLY_CHANGE_SET2(recommendations: Array<Recommendation>) {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest<{ changeSet: ChangeSet }>({
+            method: "post",
+            url: "change_set/apply_change_set2",
+            params: {
+              changeSetPk: this.selectedChangeSet.pk,
+              list: recommendations.map((r) => ({
+                attributeValueId: r.confirmationAttributeValueId,
+                componentId: r.componentId,
+                actionPrototypeId: r.actionPrototypeId,
+              })),
+            },
+            onSuccess: (response) => {
+              this.changeSetsById[response.changeSet.pk] = response.changeSet;
+              // could switch to head here, or could let the caller decide...
             },
           });
         },
