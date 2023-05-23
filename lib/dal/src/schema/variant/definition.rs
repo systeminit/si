@@ -653,7 +653,7 @@ impl PropDefinition {
     ) -> SchemaVariantDefinitionResult<PropSpec> {
         let mut builder = PropSpec::builder();
         builder.name(&self.name);
-        builder.kind(self.kind.into());
+        builder.kind(self.kind);
         if let Some(doc_url) = &self.doc_link {
             builder.try_doc_link(doc_url.as_str())?;
         }

@@ -1,57 +1,27 @@
-use crate::func::argument::FuncArgumentKind;
-use crate::schema::variant::definition::{
-    SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
+use si_pkg::{
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec, PkgSpec, PropSpec,
+    SchemaSpec, SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecKind,
 };
+
+use crate::func::argument::FuncArgumentKind;
+use crate::pkg::import_pkg_from_pkg;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
-use crate::{
-    builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput, ActionKind,
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, BuiltinsError, Func, FuncArgument, FuncBackendKind,
-    FuncBackendResponseType, InternalProvider,
-};
-use crate::{BuiltinsResult, DalContext, SchemaVariant, StandardModel};
-
-const DEFINITION: &str = include_str!("definitions/test_exclusive_starfield.json");
-const DEFINITION_METADATA: &str =
-    include_str!("definitions/test_exclusive_starfield.metadata.json");
+use crate::{builtins::schema::MigrationDriver, prop::PropPath, ActionKind};
+use crate::{BuiltinsResult, DalContext, PropKind};
 
 impl MigrationDriver {
     pub async fn migrate_test_exclusive_starfield(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let definition: SchemaVariantDefinitionJson = serde_json::from_str(DEFINITION)?;
-        let metadata: SchemaVariantDefinitionMetadataJson =
-            serde_json::from_str(DEFINITION_METADATA)?;
+        let mut starfield_builder = PkgSpec::builder();
 
-        SchemaVariantDefinition::new_from_structs(ctx, metadata.clone(), definition.clone())
-            .await?;
+        starfield_builder
+            .name("starfield")
+            .version("2023-05-23")
+            .created_by("System Initiative");
 
-        let (
-            mut schema,
-            mut schema_variant,
-            _root_prop,
-            _maybe_prop_cache,
-            _explicit_internal_providers,
-            _external_providers,
-        ) = match self
-            .create_schema_and_variant(ctx, metadata, Some(definition))
-            .await?
-        {
-            Some(tuple) => tuple,
-            None => return Ok(()),
-        };
-        schema.set_ui_hidden(ctx, true).await?;
-        let schema_variant_id = *schema_variant.id();
-
-        // Setup the confirmation function.
-        let mut confirmation_func = Func::new(
-            ctx,
-            "test:confirmationStarfield",
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Confirmation,
-        )
-        .await?;
-        let confirmation_func_id = *confirmation_func.id();
-        let code = "async function exists(input) {
+        let identity_func_spec = FuncSpec::identity_func()?;
+        let starfield_confirmation_code = "async function exists(input) {
             if (!input.resource?.payload) {
                 return {
                     success: false,
@@ -63,88 +33,47 @@ impl MigrationDriver {
                 recommendedActions: [],
             }
         }";
-        confirmation_func
-            .set_code_plaintext(ctx, Some(code))
-            .await?;
-        confirmation_func.set_handler(ctx, Some("exists")).await?;
-        let confirmation_func_argument = FuncArgument::new(
-            ctx,
-            "resource",
-            FuncArgumentKind::String,
-            None,
-            confirmation_func_id,
-        )
-        .await?;
 
-        // Add the leaf for the confirmation.
-        SchemaVariant::add_leaf(
-            ctx,
-            confirmation_func_id,
-            schema_variant_id,
-            None,
-            LeafKind::Confirmation,
-            vec![LeafInput {
-                location: LeafInputLocation::Resource,
-                func_argument_id: *confirmation_func_argument.id(),
-            }],
-        )
-        .await?;
-
-        // Add create command, workflow and action.
-        {
-            let mut action_func = Func::new(
-                ctx,
-                "test:createActionStarfield",
-                FuncBackendKind::JsAction,
-                FuncBackendResponseType::Action,
+        let starfield_confirmation_func = FuncSpec::builder()
+            .name("test:confirmationStarfield")
+            .code_plaintext(starfield_confirmation_code)
+            .backend_kind(FuncSpecBackendKind::JsAttribute)
+            .response_type(FuncSpecBackendResponseType::Confirmation)
+            .handler("exists")
+            .argument(
+                FuncArgumentSpec::builder()
+                    .name("resource")
+                    .kind(FuncArgumentKind::String)
+                    .build()?,
             )
-            .await?;
-            let code = "async function create() {
+            .build()?;
+
+        let starfield_create_action_code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
             }";
-            action_func.set_code_plaintext(ctx, Some(code)).await?;
-            action_func.set_handler(ctx, Some("create")).await?;
-            ActionPrototype::new(
-                ctx,
-                *action_func.id(),
-                ActionKind::Create,
-                ActionPrototypeContext { schema_variant_id },
-            )
-            .await?;
-        }
+        let starfield_create_action_func = FuncSpec::builder()
+            .name("test:createActionStarfield")
+            .code_plaintext(starfield_create_action_code)
+            .handler("create")
+            .backend_kind(FuncSpecBackendKind::JsAction)
+            .response_type(FuncSpecBackendResponseType::Action)
+            .build()?;
 
-        // Add refresh command, workflow and action.
-        {
-            let mut refresh_func = Func::new(
-                ctx,
-                "test:refreshActionStarfield",
-                FuncBackendKind::JsAction,
-                FuncBackendResponseType::Action,
-            )
-            .await?;
-            let code = "async function refresh(component: Input): Promise<Output> {
+        let starfield_refresh_action_code =
+            "async function refresh(component: Input): Promise<Output> {
               return { payload: { \"poop\": true }, status: \"ok\" };
             }";
-            refresh_func.set_code_plaintext(ctx, Some(code)).await?;
-            refresh_func.set_handler(ctx, Some("refresh")).await?;
-            ActionPrototype::new(
-                ctx,
-                *refresh_func.id(),
-                ActionKind::Refresh,
-                ActionPrototypeContext { schema_variant_id },
-            )
-            .await?;
-        }
 
-        // Create the transformation func for one of the input sockets.
-        let mut transformation_func = Func::new(
-            ctx,
-            "test:falloutEntriesToGalaxies",
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Array,
-        )
-        .await?;
-        let code =  "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+        let starfield_refresh_action_func = FuncSpec::builder()
+            .name("test:refreshActionStarfield")
+            .handler("refresh")
+            .code_plaintext(starfield_refresh_action_code)
+            .backend_kind(FuncSpecBackendKind::JsAction)
+            .response_type(FuncSpecBackendResponseType::Action)
+            .build()?;
+
+        let fallout_entries_to_galaxies_transform_code =
+        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
           let galaxies = [];
           let entries = input.entries;
 
@@ -167,145 +96,149 @@ impl MigrationDriver {
 
           return galaxies;
         }";
-        transformation_func
-            .set_code_plaintext(ctx, Some(code))
-            .await?;
-        transformation_func
-            .set_handler(ctx, Some("falloutEntriesToGalaxies"))
-            .await?;
-        let transformation_func_argument = FuncArgument::new(
-            ctx,
-            "entries",
-            FuncArgumentKind::Array,
-            Some(FuncArgumentKind::Object),
-            *transformation_func.id(),
-        )
-        .await?;
-
-        // Finalize the schema variant.
-        schema_variant.finalize(ctx, None).await?;
-
-        // Get the identity func and cache props.
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let domain_name_prop = schema_variant
-            .find_prop(ctx, &["root", "domain", "name"])
-            .await?;
-        let si_name_prop = schema_variant
-            .find_prop(ctx, &["root", "si", "name"])
-            .await?;
-        let attributes_prop = schema_variant
-            .find_prop(ctx, &["root", "domain", "attributes"])
-            .await?;
-        let galaxies_prop = schema_variant
-            .find_prop(ctx, &["root", "domain", "universe", "galaxies"])
-            .await?;
-
-        // Connect the "/root/si/name" field to the "/root/domain/name" field.
-        {
-            let domain_name_attribute_value = AttributeValue::find_for_context(
-                ctx,
-                AttributeReadContext::default_with_prop(*domain_name_prop.id()),
+        let fallout_entries_to_galaxies_transform_func = FuncSpec::builder()
+            .name("test:falloutEntriesToGalaxies")
+            .code_plaintext(fallout_entries_to_galaxies_transform_code)
+            .handler("falloutEntriesToGalaxies")
+            .backend_kind(FuncSpecBackendKind::JsAttribute)
+            .response_type(FuncSpecBackendResponseType::Array)
+            .argument(
+                FuncArgumentSpec::builder()
+                    .name("entries")
+                    .kind(FuncArgumentKind::Array)
+                    .element_kind(Some(FuncArgumentKind::Object.into()))
+                    .build()?,
             )
-            .await?
-            .ok_or(AttributeValueError::Missing)?;
-            let mut domain_name_attribute_prototype = domain_name_attribute_value
-                .attribute_prototype(ctx)
-                .await?
-                .ok_or(AttributeValueError::MissingAttributePrototype)?;
-            domain_name_attribute_prototype
-                .set_func_id(ctx, identity_func_item.func_id)
-                .await?;
-            let si_name_internal_provider =
-                InternalProvider::find_for_prop(ctx, *si_name_prop.id())
-                    .await?
-                    .ok_or_else(|| {
-                        BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
-                    })?;
-            AttributePrototypeArgument::new_for_intra_component(
-                ctx,
-                *domain_name_attribute_prototype.id(),
-                identity_func_item.func_argument_id,
-                *si_name_internal_provider.id(),
-            )
-            .await?;
-        }
+            .build()?;
 
-        // Connect the "bethesda" explicit internal provider to the "/root/domain/attributes" prop.
-        {
-            let explicit_internal_provider_name = "bethesda".to_string();
-            let explicit_internal_provider =
-                InternalProvider::find_explicit_for_schema_variant_and_name(
-                    ctx,
-                    schema_variant_id,
-                    &explicit_internal_provider_name,
-                )
-                .await?
-                .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
-                    explicit_internal_provider_name,
-                ))?;
-            let attribute_read_context =
-                AttributeReadContext::default_with_prop(*attributes_prop.id());
-            let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    attribute_read_context,
-                ))?;
-            let mut attribute_prototype = attribute_value
-                .attribute_prototype(ctx)
-                .await?
-                .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-            attribute_prototype
-                .set_func_id(ctx, &identity_func_item.func_id)
-                .await?;
-            AttributePrototypeArgument::new_for_intra_component(
-                ctx,
-                *attribute_prototype.id(),
-                identity_func_item.func_argument_id,
-                *explicit_internal_provider.id(),
+        let starfield_schema = SchemaSpec::builder()
+            .name("starfield")
+            .category("test exclusive")
+            .category_name("starfield")
+            .variant(
+                SchemaVariantSpec::builder()
+                    .color("#ffffff")
+                    .name("v0")
+                    .domain_prop(
+                        PropSpec::builder()
+                            .name("name")
+                            .kind(PropKind::String)
+                            .func_unique_id(identity_func_spec.unique_id)
+                            .input(
+                                AttrFuncInputSpec::builder()
+                                    .kind(AttrFuncInputSpecKind::Prop)
+                                    .name("identity")
+                                    .prop_path(PropPath::new(&["root", "si", "name"]))
+                                    .build()?,
+                            )
+                            .build()?,
+                    )
+                    .domain_prop(
+                        PropSpec::builder()
+                            .name("freestar")
+                            .kind(PropKind::String)
+                            .build()?,
+                    )
+                    .domain_prop(
+                        PropSpec::builder()
+                            .name("attributes")
+                            .kind(PropKind::String)
+                            .func_unique_id(identity_func_spec.unique_id)
+                            .input(
+                                AttrFuncInputSpec::builder()
+                                    .kind(AttrFuncInputSpecKind::InputSocket)
+                                    .name("identity")
+                                    .socket_name("bethesda")
+                                    .build()?,
+                            )
+                            .build()?,
+                    )
+                    .domain_prop(
+                        PropSpec::builder()
+                            .name("universe")
+                            .kind(PropKind::Object)
+                            .entry(
+                                PropSpec::builder()
+                                    .name("galaxies")
+                                    .kind(PropKind::Array)
+                                    .func_unique_id(
+                                        fallout_entries_to_galaxies_transform_func.unique_id,
+                                    )
+                                    .input(
+                                        AttrFuncInputSpec::builder()
+                                            .kind(AttrFuncInputSpecKind::InputSocket)
+                                            .name("entries")
+                                            .socket_name("fallout")
+                                            .build()?,
+                                    )
+                                    .type_prop(
+                                        PropSpec::builder()
+                                            .name("galaxy")
+                                            .kind(PropKind::Object)
+                                            .entry(
+                                                PropSpec::builder()
+                                                    .name("sun")
+                                                    .kind(PropKind::String)
+                                                    .build()?,
+                                            )
+                                            .entry(
+                                                PropSpec::builder()
+                                                    .name("planets")
+                                                    .kind(PropKind::Integer)
+                                                    .build()?,
+                                            )
+                                            .build()?,
+                                    )
+                                    .build()?,
+                            )
+                            .build()?,
+                    )
+                    .socket(
+                        SocketSpec::builder()
+                            .name("bethesda")
+                            .kind(SocketSpecKind::Input)
+                            .build()?,
+                    )
+                    .socket(
+                        SocketSpec::builder()
+                            .name("fallout")
+                            .kind(SocketSpecKind::Input)
+                            .build()?,
+                    )
+                    .leaf_function(
+                        LeafFunctionSpec::builder()
+                            .leaf_kind(LeafKind::Confirmation)
+                            .func_unique_id(starfield_confirmation_func.unique_id)
+                            .inputs(vec![LeafInputLocation::Resource.into()])
+                            .build()?,
+                    )
+                    .action_func(
+                        ActionFuncSpec::builder()
+                            .kind(&ActionKind::Create)
+                            .func_unique_id(starfield_create_action_func.unique_id)
+                            .build()?,
+                    )
+                    .action_func(
+                        ActionFuncSpec::builder()
+                            .kind(&ActionKind::Refresh)
+                            .func_unique_id(starfield_refresh_action_func.unique_id)
+                            .build()?,
+                    )
+                    .build()?,
             )
-            .await?;
-        }
+            .build()?;
 
-        // Enable connections from the "fallout" explicit internal provider to the
-        // "/root/domain/universe/galaxies/" field. We need to use the appropriate function with and
-        // name the argument "galaxies".
-        {
-            let explicit_internal_provider_name = "fallout".to_string();
-            let explicit_internal_provider =
-                InternalProvider::find_explicit_for_schema_variant_and_name(
-                    ctx,
-                    schema_variant_id,
-                    &explicit_internal_provider_name,
-                )
-                .await?
-                .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
-                    explicit_internal_provider_name,
-                ))?;
-            let galaxies_attribute_read_context =
-                AttributeReadContext::default_with_prop(*galaxies_prop.id());
-            let galaxies_attribute_value =
-                AttributeValue::find_for_context(ctx, galaxies_attribute_read_context)
-                    .await?
-                    .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                        galaxies_attribute_read_context,
-                    ))?;
-            let mut galaxies_attribute_prototype = galaxies_attribute_value
-                .attribute_prototype(ctx)
-                .await?
-                .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-            galaxies_attribute_prototype
-                .set_func_id(ctx, *transformation_func.id())
-                .await?;
-            AttributePrototypeArgument::new_for_intra_component(
-                ctx,
-                *galaxies_attribute_prototype.id(),
-                *transformation_func_argument.id(),
-                *explicit_internal_provider.id(),
-            )
-            .await?;
-        }
+        let starfield_spec = starfield_builder
+            .func(identity_func_spec)
+            .func(starfield_refresh_action_func)
+            .func(starfield_create_action_func)
+            .func(starfield_confirmation_func)
+            .func(fallout_entries_to_galaxies_transform_func)
+            .schema(starfield_schema)
+            .build()?;
+
+        let starfield_pkg = SiPkg::load_from_spec(starfield_spec)?;
+        import_pkg_from_pkg(ctx, &starfield_pkg, "test:starfield").await?;
 
         Ok(())
     }

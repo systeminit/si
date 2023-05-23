@@ -546,7 +546,7 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     )
     .await
     .expect("could not perform socket find'")
-    .expect("could not find socket");
+    .expect("could not find fallout socket");
     let to_fallout_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
         "fallout",

@@ -170,8 +170,8 @@ impl PropSpecBuilder {
     }
 
     #[allow(unused_mut)]
-    pub fn kind(&mut self, value: PropSpecKind) -> &mut Self {
-        self.kind = Some(value);
+    pub fn kind(&mut self, value: impl Into<PropSpecKind>) -> &mut Self {
+        self.kind = Some(value.into());
         self
     }
 

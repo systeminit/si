@@ -7,9 +7,12 @@ use std::collections::HashSet;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use si_pkg::{SiPkgError, SpecError};
+
 use crate::func::argument::FuncArgumentError;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::pkg::PkgError;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::definition::SchemaVariantDefinitionError;
@@ -77,6 +80,8 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForExplicitInternalProvider(InternalProviderId),
     #[error("missing attribute prototype for external provider: {0}")]
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
+    #[error(transparent)]
+    Pkg(#[from] PkgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("prop cache not found: {0}")]
@@ -95,8 +100,12 @@ pub enum BuiltinsError {
     SerdeJson(#[from] serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
     SerdeJsonErrorForFunc(String, serde_json::Error),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
+    #[error(transparent)]
+    Spec(#[from] SpecError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("error creating new transactions")]

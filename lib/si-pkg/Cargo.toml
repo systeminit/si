@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+base64.workspace = true
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 object-tree = { path = "../../lib/object-tree" }

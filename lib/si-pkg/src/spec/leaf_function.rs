@@ -73,7 +73,7 @@ pub struct LeafFunctionSpec {
     #[builder(setter(into))]
     pub leaf_kind: LeafKind,
 
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     pub inputs: Vec<LeafInputLocation>,
 }
 
