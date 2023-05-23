@@ -33,6 +33,20 @@ use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, Tran
 /// not (we'll see) be able to be provided by our users in [`Prop`] names.
 pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
+pub struct PropPath(String);
+
+impl PropPath {
+    pub fn new(parts: &[&str]) -> Self {
+        Self(parts.join(PROP_PATH_SEPARATOR))
+    }
+}
+
+impl From<PropPath> for String {
+    fn from(value: PropPath) -> Self {
+        value.0
+    }
+}
+
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
 const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql");

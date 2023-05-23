@@ -90,11 +90,28 @@ impl Into<RootPropChild> for LeafInputLocation {
 impl From<&PkgLeafInputLocation> for LeafInputLocation {
     fn from(value: &PkgLeafInputLocation) -> LeafInputLocation {
         match value {
-            PkgLeafInputLocation::Code => LeafInputLocation::Code,
-            PkgLeafInputLocation::Domain => LeafInputLocation::Domain,
-            PkgLeafInputLocation::Resource => LeafInputLocation::Resource,
-            PkgLeafInputLocation::DeletedAt => LeafInputLocation::DeletedAt,
+            PkgLeafInputLocation::Code => Self::Code,
+            PkgLeafInputLocation::Domain => Self::Domain,
+            PkgLeafInputLocation::Resource => Self::Resource,
+            PkgLeafInputLocation::DeletedAt => Self::DeletedAt,
         }
+    }
+}
+
+impl From<LeafInputLocation> for PkgLeafInputLocation {
+    fn from(value: LeafInputLocation) -> Self {
+        match value {
+            LeafInputLocation::Code => Self::Code,
+            LeafInputLocation::Domain => Self::Domain,
+            LeafInputLocation::Resource => Self::Resource,
+            LeafInputLocation::DeletedAt => Self::DeletedAt,
+        }
+    }
+}
+
+impl From<PkgLeafInputLocation> for LeafInputLocation {
+    fn from(value: PkgLeafInputLocation) -> LeafInputLocation {
+        (&value).into()
     }
 }
 

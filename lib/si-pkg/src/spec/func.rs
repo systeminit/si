@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use derive_builder::Builder;
 use object_tree::Hash;
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ pub struct FuncArgumentSpec {
     pub name: String,
     #[builder(setter(into))]
     pub kind: FuncArgumentKind,
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     pub element_kind: Option<FuncArgumentKind>,
 }
 
@@ -98,7 +99,7 @@ pub struct FuncSpec {
     pub backend_kind: FuncSpecBackendKind,
     #[builder(setter(into))]
     pub response_type: FuncSpecBackendResponseType,
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     pub hidden: bool,
     #[builder(field(type = "FuncUniqueId", build = "self.build_func_unique_id()"))]
     pub unique_id: FuncUniqueId,
@@ -136,6 +137,11 @@ impl FuncSpecBuilder {
     {
         let converted: Url = value.try_into()?;
         Ok(self.link(converted))
+    }
+
+    pub fn code_plaintext(&mut self, code: impl Into<String>) -> &mut Self {
+        let code_plaintext = code.into();
+        self.code_base64(general_purpose::STANDARD_NO_PAD.encode(code_plaintext))
     }
 
     fn build_func_unique_id(&self) -> Hash {

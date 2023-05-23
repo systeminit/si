@@ -37,9 +37,11 @@ pub enum SocketSpecKind {
     PartialEq,
     Serialize,
     Copy,
+    Default,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum SocketSpecArity {
+    #[default]
     Many,
     One,
 }
@@ -57,13 +59,13 @@ pub struct SocketSpec {
     #[builder(setter(into))]
     pub name: String,
 
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     pub arity: SocketSpecArity,
 
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
 
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     pub ui_hidden: bool,
 }
 
