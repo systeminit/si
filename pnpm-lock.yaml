@@ -461,8 +461,6 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
-  bin/council: {}
-
   bin/lang-js:
     dependencies:
       '@typescript/vfs':
@@ -541,12 +539,6 @@ importers:
       ts-jest:
         specifier: ^27.1.4
         version: 27.1.5(@types/jest@27.5.2)(jest@27.5.1)(typescript@4.9.5)
-
-  bin/pinga: {}
-
-  bin/sdf: {}
-
-  bin/veritech: {}
 
   lib/eslint-config:
     devDependencies:
