@@ -12,7 +12,7 @@ use dal::{
     StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SiPkg};
+use si_pkg::{FuncSpec, PkgSpec, SiPkg};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -47,14 +47,7 @@ pub async fn exec_variant_def(
     let definition: SchemaVariantDefinitionJson = variant_def.try_into()?;
 
     // we need to change this to use the PkgImport
-    let identity_func_spec = FuncSpec::builder()
-        .name("si:identity")
-        .handler("si:identity")
-        .code_base64("")
-        .response_type(FuncSpecBackendResponseType::Json)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .hidden(false)
-        .build()?;
+    let identity_func_spec = FuncSpec::identity_func()?;
     let variant_spec = definition.to_spec(metadata.clone(), identity_func_spec.unique_id)?;
     let schema_spec = metadata.to_spec(variant_spec)?;
     let pkg_spec = PkgSpec::builder()

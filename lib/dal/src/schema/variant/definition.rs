@@ -21,8 +21,8 @@ use crate::{
 };
 use crate::{SchemaError, SchemaId, TransactionsError};
 use si_pkg::{
-    AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
-    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
+    AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, PropSpecWidgetKind, SchemaSpec,
+    SchemaVariantSpec, SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec,
 };
 
 #[remain::sorted]
@@ -38,8 +38,12 @@ pub enum SchemaVariantDefinitionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("{0} is not a valid hex color string")]
     InvalidHexColor(String),
+    #[error("schema spec has more than one variant, which we do not yet support")]
+    MoreThanOneVariant,
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("schema spec has no variants")]
+    NoVariants,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("pkg error: {0}")]
@@ -446,6 +450,81 @@ impl SchemaVariantDefinitionJson {
 
         Ok(builder.build()?)
     }
+
+    pub fn from_spec(
+        schema_spec: SchemaSpec,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<(Self, SchemaVariantDefinitionMetadataJson)> {
+        if schema_spec.variants.len() > 1 {
+            return Err(SchemaVariantDefinitionError::MoreThanOneVariant);
+        }
+
+        let variant_spec = schema_spec
+            .variants
+            .get(0)
+            .ok_or(SchemaVariantDefinitionError::NoVariants)?;
+
+        let metadata = SchemaVariantDefinitionMetadataJson {
+            name: schema_spec.name,
+            menu_name: schema_spec.category_name,
+            category: schema_spec.category,
+            color: variant_spec.color.to_owned().unwrap_or("000000".into()),
+            component_kind: ComponentKind::Standard,
+            component_type: variant_spec.component_type.into(),
+            link: None,        // XXX
+            description: None, // XXX
+        };
+
+        let mut props = vec![];
+        if let PropSpec::Object { entries, .. } = &variant_spec.domain {
+            for entry in entries {
+                props.push(PropDefinition::from_spec(
+                    entry.to_owned(),
+                    identity_func_unique_id,
+                )?);
+            }
+        }
+
+        let mut resource_props = vec![];
+        if let PropSpec::Object { entries, .. } = &variant_spec.resource_value {
+            for entry in entries {
+                resource_props.push(PropDefinition::from_spec(
+                    entry.to_owned(),
+                    identity_func_unique_id,
+                )?);
+            }
+        }
+
+        let definition = SchemaVariantDefinitionJson {
+            props,
+            resource_props,
+            input_sockets: variant_spec
+                .sockets
+                .iter()
+                .filter_map(|sock| match sock.kind {
+                    SocketSpecKind::Input => Some(SocketDefinition::from_spec(
+                        sock.to_owned(),
+                        identity_func_unique_id,
+                    )),
+                    _ => None,
+                })
+                .collect(),
+            output_sockets: variant_spec
+                .sockets
+                .iter()
+                .filter_map(|sock| match sock.kind {
+                    SocketSpecKind::Output => Some(SocketDefinition::from_spec(
+                        sock.to_owned(),
+                        identity_func_unique_id,
+                    )),
+                    _ => None,
+                })
+                .collect(),
+            doc_links: None,
+        };
+
+        Ok((definition, metadata))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -456,6 +535,15 @@ pub struct PropWidgetDefinition {
     /// The `Option<Value>` of the [`kind`](crate::property_editor::schema::WidgetKind) to be created.
     #[serde(default)]
     options: Option<Value>,
+}
+
+impl PropWidgetDefinition {
+    fn from_spec(kind: Option<PropSpecWidgetKind>, options: Option<Value>) -> Option<Self> {
+        kind.map(|kind| Self {
+            kind: (&kind).into(),
+            options,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -476,28 +564,23 @@ impl MapKeyFunc {
         builder.func_unique_id(identity_func_unique_id);
         builder.key(&self.key);
         if let Some(value_from) = &self.value_from {
-            match value_from {
-                ValueFrom::InputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::InputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-                ValueFrom::Prop { prop_path } => {
-                    builder.input(AttrFuncInputSpec::Prop {
-                        name: "identity".to_string(),
-                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
-                    });
-                }
-                ValueFrom::OutputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::OutputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-            }
+            builder.input(value_from.to_spec());
         };
         Ok(builder.build()?)
+    }
+
+    pub fn from_spec(spec: MapKeyFuncSpec, identity_func_unique_id: FuncUniqueId) -> Option<Self> {
+        match ValueFrom::maybe_from_spec(
+            Some(spec.inputs),
+            Some(spec.func_unique_id),
+            identity_func_unique_id,
+        ) {
+            Some(value_from) => Some(Self {
+                key: spec.key,
+                value_from: Some(value_from),
+            }),
+            None => None,
+        }
     }
 }
 
@@ -540,7 +623,7 @@ pub struct PropDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_value: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub map_key_funcs: Option<MapKeyFunc>,
+    pub map_key_funcs: Option<Vec<MapKeyFunc>>,
 }
 
 impl PropDefinition {
@@ -608,10 +691,221 @@ impl PropDefinition {
             builder.hidden(hidden);
         }
         if let Some(map_key_funcs) = &self.map_key_funcs {
-            builder.map_key_func(map_key_funcs.to_spec(identity_func_unique_id)?);
+            for map_key_func in map_key_funcs {
+                builder.map_key_func(map_key_func.to_spec(identity_func_unique_id)?);
+            }
         }
 
         Ok(builder.build()?)
+    }
+
+    pub fn from_spec(
+        prop_spec: PropSpec,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<Self> {
+        Ok(match prop_spec {
+            PropSpec::Array {
+                name,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+                type_prop,
+                ..
+            } => PropDefinition {
+                name,
+                kind: PropKind::Array,
+                doc_link_ref: None,
+                doc_link: doc_link.map(|l| l.to_string()),
+                children: vec![],
+                entry: Some(Box::new(Self::from_spec(
+                    *type_prop,
+                    identity_func_unique_id,
+                )?)),
+                widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                value_from: ValueFrom::maybe_from_spec(
+                    inputs,
+                    func_unique_id,
+                    identity_func_unique_id,
+                ),
+                hidden,
+                validations,
+                default_value: None,
+                map_key_funcs: None,
+            },
+            PropSpec::Boolean {
+                name,
+                default_value,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+            } => PropDefinition {
+                name,
+                kind: PropKind::Boolean,
+                doc_link_ref: None,
+                doc_link: doc_link.map(|l| l.to_string()),
+                children: vec![],
+                entry: None,
+                widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                value_from: ValueFrom::maybe_from_spec(
+                    inputs,
+                    func_unique_id,
+                    identity_func_unique_id,
+                ),
+                hidden,
+                validations,
+                default_value: match default_value {
+                    Some(dv) => Some(serde_json::to_value(dv)?),
+                    None => None,
+                },
+                map_key_funcs: None,
+            },
+            PropSpec::Map {
+                name,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+                type_prop,
+                map_key_funcs,
+                ..
+            } => PropDefinition {
+                name,
+                kind: PropKind::Array,
+                doc_link_ref: None,
+                doc_link: doc_link.map(|l| l.to_string()),
+                children: vec![],
+                entry: Some(Box::new(Self::from_spec(
+                    *type_prop,
+                    identity_func_unique_id,
+                )?)),
+                widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                value_from: ValueFrom::maybe_from_spec(
+                    inputs,
+                    func_unique_id,
+                    identity_func_unique_id,
+                ),
+                hidden,
+                validations,
+                default_value: None,
+                map_key_funcs: map_key_funcs.map(|specs| {
+                    specs
+                        .iter()
+                        .filter_map(|spec| {
+                            MapKeyFunc::from_spec(spec.to_owned(), identity_func_unique_id)
+                        })
+                        .collect()
+                }),
+            },
+            PropSpec::Number {
+                name,
+                default_value,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+            } => PropDefinition {
+                name,
+                kind: PropKind::Integer,
+                doc_link_ref: None,
+                doc_link: doc_link.map(|l| l.to_string()),
+                children: vec![],
+                entry: None,
+                widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                value_from: ValueFrom::maybe_from_spec(
+                    inputs,
+                    func_unique_id,
+                    identity_func_unique_id,
+                ),
+                hidden,
+                validations,
+                default_value: match default_value {
+                    Some(dv) => Some(serde_json::to_value(dv)?),
+                    None => None,
+                },
+                map_key_funcs: None,
+            },
+            PropSpec::Object {
+                name,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+                entries,
+                ..
+            } => {
+                let mut children = vec![];
+                for entry in entries {
+                    children.push(Self::from_spec(entry, identity_func_unique_id)?);
+                }
+
+                PropDefinition {
+                    name,
+                    kind: PropKind::Integer,
+                    doc_link_ref: None,
+                    doc_link: doc_link.map(|l| l.to_string()),
+                    children,
+                    entry: None,
+                    widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                    value_from: ValueFrom::maybe_from_spec(
+                        inputs,
+                        func_unique_id,
+                        identity_func_unique_id,
+                    ),
+                    hidden,
+                    validations,
+                    default_value: None,
+                    map_key_funcs: None,
+                }
+            }
+            PropSpec::String {
+                name,
+                default_value,
+                validations,
+                func_unique_id,
+                inputs,
+                widget_kind,
+                widget_options,
+                hidden,
+                doc_link,
+            } => PropDefinition {
+                name,
+                kind: PropKind::String,
+                doc_link_ref: None,
+                doc_link: doc_link.map(|l| l.to_string()),
+                children: vec![],
+                entry: None,
+                widget: PropWidgetDefinition::from_spec(widget_kind, widget_options),
+                value_from: ValueFrom::maybe_from_spec(
+                    inputs,
+                    func_unique_id,
+                    identity_func_unique_id,
+                ),
+                hidden,
+                validations,
+                default_value: match default_value {
+                    Some(dv) => Some(serde_json::to_value(dv)?),
+                    None => None,
+                },
+                map_key_funcs: None,
+            },
+        })
     }
 }
 
@@ -654,29 +948,23 @@ impl SocketDefinition {
             builder.ui_hidden(false);
         }
         if let Some(value_from) = &self.value_from {
-            match value_from {
-                ValueFrom::InputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::InputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-                ValueFrom::Prop { prop_path } => {
-                    builder.input(AttrFuncInputSpec::Prop {
-                        name: "identity".to_string(),
-                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
-                    });
-                }
-                ValueFrom::OutputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::OutputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-            }
+            builder.input(value_from.to_spec());
         }
 
         Ok(builder.build()?)
+    }
+
+    pub fn from_spec(spec: SocketSpec, identity_func_unique_id: FuncUniqueId) -> Self {
+        SocketDefinition {
+            name: spec.name,
+            arity: Some(spec.arity.into()),
+            ui_hidden: Some(spec.ui_hidden),
+            value_from: ValueFrom::maybe_from_spec(
+                Some(spec.inputs),
+                spec.func_unique_id,
+                identity_func_unique_id,
+            ),
+        }
     }
 }
 
@@ -687,6 +975,67 @@ pub enum ValueFrom {
     InputSocket { socket_name: String },
     OutputSocket { socket_name: String },
     Prop { prop_path: Vec<String> },
+}
+
+impl ValueFrom {
+    fn to_spec(&self) -> AttrFuncInputSpec {
+        match self {
+            ValueFrom::InputSocket { socket_name } => AttrFuncInputSpec::InputSocket {
+                name: "identity".to_string(),
+                socket_name: socket_name.to_owned(),
+            },
+            ValueFrom::Prop { prop_path } => AttrFuncInputSpec::Prop {
+                name: "identity".to_string(),
+                prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+            },
+            ValueFrom::OutputSocket { socket_name } => AttrFuncInputSpec::OutputSocket {
+                name: "identity".to_string(),
+                socket_name: socket_name.to_owned(),
+            },
+        }
+    }
+
+    fn maybe_from_spec(
+        inputs: Option<Vec<AttrFuncInputSpec>>,
+        func_unique_id: Option<FuncUniqueId>,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> Option<Self> {
+        match func_unique_id {
+            Some(func_unique_id) => {
+                if func_unique_id != identity_func_unique_id {
+                    return None;
+                }
+            }
+            None => {
+                return None;
+            }
+        }
+
+        match inputs {
+            Some(inputs) => {
+                if inputs.len() > 1 {
+                    return None;
+                }
+                inputs.get(0).map(|input| match input {
+                    AttrFuncInputSpec::Prop { prop_path, .. } => ValueFrom::Prop {
+                        prop_path: prop_path
+                            .split(PROP_PATH_SEPARATOR)
+                            .map(Into::into)
+                            .collect(),
+                    },
+                    AttrFuncInputSpec::InputSocket { socket_name, .. } => ValueFrom::InputSocket {
+                        socket_name: socket_name.to_owned(),
+                    },
+                    AttrFuncInputSpec::OutputSocket { socket_name, .. } => {
+                        ValueFrom::OutputSocket {
+                            socket_name: socket_name.to_owned(),
+                        }
+                    }
+                })
+            }
+            None => None,
+        }
+    }
 }
 
 // Not sure if this fits here still

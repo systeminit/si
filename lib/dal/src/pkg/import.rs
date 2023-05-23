@@ -15,7 +15,13 @@ use crate::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
-    schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
+    schema::{
+        variant::{
+            definition::{SchemaVariantDefinition, SchemaVariantDefinitionJson},
+            leaves::LeafInputLocation,
+        },
+        SchemaUiMenu,
+    },
     validation::{create_validation, Validation, ValidationKind},
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, DalContext, ExternalProvider,
@@ -195,6 +201,84 @@ async fn create_schema(
     for variant_spec in schema_spec.variants()? {
         create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map).await?;
     }
+
+    let mut maybe_identity_func_unique_id = None;
+    for (unique_id, func) in func_map.iter() {
+        if func.name() == "si:identity" {
+            maybe_identity_func_unique_id = Some(*unique_id);
+            break;
+        }
+    }
+    create_schema_variant_definition(
+        ctx,
+        schema_spec,
+        maybe_identity_func_unique_id
+            .ok_or(PkgError::MissingIntrinsicFunc("si:identity".into()))?,
+        installed_pkg_id,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn create_schema_variant_definition(
+    ctx: &DalContext,
+    schema_spec: SiPkgSchema<'_>,
+    identity_func_unique_id: FuncUniqueId,
+    installed_pkg_id: InstalledPkgId,
+) -> PkgResult<()> {
+    let hash = schema_spec.hash().to_string();
+    let existing_definition = InstalledPkgAsset::list_for_kind_and_hash(
+        ctx,
+        InstalledPkgAssetKind::SchemaVariantDefinition,
+        &hash,
+    )
+    .await?
+    .pop();
+
+    let definition = match existing_definition {
+        None => {
+            let spec = schema_spec.to_spec().await?;
+            let (definition, metadata) =
+                SchemaVariantDefinitionJson::from_spec(spec, identity_func_unique_id)?;
+
+            SchemaVariantDefinition::new(
+                ctx,
+                metadata.name,
+                metadata.menu_name,
+                metadata.category,
+                metadata.link,
+                metadata.color,
+                metadata.component_kind,
+                metadata.description,
+                serde_json::to_string_pretty(&definition)?,
+            )
+            .await?
+        }
+        Some(existing_definition) => {
+            match existing_definition.as_installed_schema_variant_definition()? {
+                InstalledPkgAssetTyped::SchemaVariantDefinition { id, .. } => {
+                    match SchemaVariantDefinition::get_by_id(ctx, &id).await? {
+                        Some(definition) => definition,
+                        None => return Err(PkgError::InstalledSchemaVariantDefinitionMissing(id)),
+                    }
+                }
+                _ => unreachable!(
+                    "we are protected by the as_installed_schema_variant_definition method"
+                ),
+            }
+        }
+    };
+
+    InstalledPkgAsset::new(
+        ctx,
+        InstalledPkgAssetTyped::new_for_schema_variant_definition(
+            *definition.id(),
+            installed_pkg_id,
+            hash,
+        ),
+    )
+    .await?;
 
     Ok(())
 }

@@ -11,6 +11,7 @@ pub use import::{import_pkg, import_pkg_from_pkg};
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
+use crate::schema::variant::definition::SchemaVariantDefinitionId;
 use crate::{
     func::{
         argument::{FuncArgumentError, FuncArgumentId},
@@ -77,6 +78,8 @@ pub enum PkgError {
     InstalledPkg(#[from] InstalledPkgError),
     #[error("Installed schema id {0} does not exist")]
     InstalledSchemaMissing(SchemaId),
+    #[error("Installed schema variant definition {0} does not exist")]
+    InstalledSchemaVariantDefinitionMissing(SchemaVariantDefinitionId),
     #[error("Installed schema variant {0} does not exist")]
     InstalledSchemaVariantMissing(SchemaVariantId),
     #[error(transparent)]

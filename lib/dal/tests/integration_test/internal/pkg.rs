@@ -145,6 +145,7 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let code = "function truth() { return true; }";
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code.as_bytes());
+    let identity_func_spec = FuncSpec::identity_func().expect("create identity func spec");
 
     let func_spec = FuncSpec::builder()
         .name("si:truthy")
@@ -192,6 +193,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .created_by("Pirate Prentice")
         .schema(schema_a.clone())
         .func(func_spec)
+        .func(identity_func_spec.clone())
         .func(qualification_func_spec)
         .build()
         .expect("able to build package spec");
@@ -203,6 +205,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .version("0.1")
         .created_by("Pointsman")
         .func(validation_func_spec)
+        .func(identity_func_spec.clone())
         .schema(schema_a)
         .schema(schema_b)
         .build()
@@ -236,8 +239,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("able to fetch installed pkgs for pkg a");
 
-    // One schema, one variant, two funcs
-    assert_eq!(4, pkg_a_ipas.len());
+    // One schema, one variant, two funcs, one definition
+    assert_eq!(5, pkg_a_ipas.len());
 
     for ipa in pkg_a_ipas {
         match ipa.asset_kind() {
@@ -282,6 +285,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                     _ => unreachable!(),
                 }
             }
+            InstalledPkgAssetKind::SchemaVariantDefinition => {}
             InstalledPkgAssetKind::Func => {
                 let typed: InstalledPkgAssetTyped =
                     ipa.as_installed_func().expect("get func ipa typed");
@@ -318,8 +322,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("able to fetch installed pkgs for pkg a");
 
-    // Two schemas, two variants, one func
-    assert_eq!(5, pkg_b_ipas.len());
+    // Two schemas, two variants, one func, two definitions
+    assert_eq!(7, pkg_b_ipas.len());
 
     // Ensure we did not install the schema that is in both packages twice
     let schemas = Schema::find_by_attr(ctx, "name", &"Tyrone Slothrop".to_string())
