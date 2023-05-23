@@ -34,8 +34,6 @@ mod aws_security_group;
 mod coreos_butane;
 mod docker_hub_credential;
 mod docker_image;
-mod kubernetes_deployment;
-mod kubernetes_namespace;
 mod systeminit_generic_frame;
 mod test_exclusive_fallout;
 mod test_exclusive_starfield;
@@ -47,9 +45,6 @@ const NODE_COLOR_AWS: &str = "#FF9900";
 const NODE_COLOR_COREOS: &str = "#E26B70";
 // Reference: https://www.docker.com/company/newsroom/media-resources/
 const NODE_COLOR_DOCKER: &str = "#4695E7";
-// This node color is purely meant the complement existing node colors.
-// It does not reflect an official branding Kubernetes color.
-const NODE_COLOR_KUBERNETES: &str = "#30BA78";
 
 /// Migrate [`Schemas`](crate::Schema) for production use.
 pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -64,16 +59,6 @@ pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
 
     driver
         .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
-        .await?;
-    ctx.blocking_commit().await?;
-
-    driver
-        .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-        .await?;
-    ctx.blocking_commit().await?;
-
-    driver
-        .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
         .await?;
     ctx.blocking_commit().await?;
 
@@ -142,8 +127,6 @@ pub enum BuiltinSchema {
     DockerImage,
     Fallout,
     GenericFrame,
-    KubeDeployment,
-    KubeNamespace,
     Starfield,
 }
 
@@ -163,8 +146,6 @@ impl BuiltinSchema {
             BuiltinSchema::DockerImage => "Docker Image",
             BuiltinSchema::Fallout => "",
             BuiltinSchema::GenericFrame => "",
-            BuiltinSchema::KubeDeployment => "",
-            BuiltinSchema::KubeNamespace => "",
             BuiltinSchema::Starfield => "",
         }
     }
@@ -187,8 +168,6 @@ impl BuiltinSchema {
             "generic frame" | "si generic frame" | "systeminit generic frame" => {
                 Some(BuiltinSchema::GenericFrame)
             }
-            "kubernetes deployment" => Some(BuiltinSchema::KubeDeployment),
-            "kubernetes namespace" => Some(BuiltinSchema::KubeNamespace),
             "starfield" => Some(BuiltinSchema::Starfield),
 
             _ => None,
@@ -259,16 +238,6 @@ pub async fn migrate_schema(
         BuiltinSchema::GenericFrame => {
             driver
                 .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
-                .await?;
-        }
-        BuiltinSchema::KubeDeployment => {
-            driver
-                .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-                .await?;
-        }
-        BuiltinSchema::KubeNamespace => {
-            driver
-                .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
                 .await?;
         }
         BuiltinSchema::Starfield => {
