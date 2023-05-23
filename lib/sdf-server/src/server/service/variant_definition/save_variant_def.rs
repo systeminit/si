@@ -1,5 +1,7 @@
 use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
@@ -31,6 +33,8 @@ pub struct SaveVariantDefResponse {
 pub async fn save_variant_def(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SaveVariantDefRequest>,
 ) -> SchemaVariantDefinitionResult<Json<SaveVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -41,15 +45,34 @@ pub async fn save_variant_def(
             request.id,
         ))?;
 
-    variant_def.set_name(&ctx, request.name).await?;
-    variant_def.set_menu_name(&ctx, request.menu_name).await?;
-    variant_def.set_category(&ctx, request.category).await?;
+    variant_def.set_name(&ctx, request.name.clone()).await?;
+    variant_def
+        .set_menu_name(&ctx, request.menu_name.clone())
+        .await?;
+    variant_def
+        .set_category(&ctx, request.category.clone())
+        .await?;
     variant_def.set_color(&ctx, request.color).await?;
     variant_def.set_link(&ctx, request.link).await?;
     variant_def
         .set_description(&ctx, request.description)
         .await?;
-    variant_def.set_definition(&ctx, request.definition).await?;
+    variant_def
+        .set_definition(&ctx, request.definition.clone())
+        .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "save_variant_def",
+        serde_json::json!({
+                    "variant_def_category": request.category,
+                    "variant_def_name": request.name,
+                    "variant_def_menu_name": request.menu_name,
+                    "variant_def_definition":  request.definition,
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?

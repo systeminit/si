@@ -1,5 +1,7 @@
 use super::{get_new_pkg_path, PkgError, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
@@ -25,6 +27,8 @@ pub struct ExportPkgResponse {
 pub async fn export_pkg(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ExportPkgRequest>,
 ) -> PkgResult<Json<ExportPkgResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -46,13 +50,26 @@ pub async fn export_pkg(
     dal::pkg::export_pkg(
         &ctx,
         &new_pkg_path,
-        request.name,
-        request.version,
+        request.name.clone(),
+        request.version.clone(),
         request.description,
         "Sally Signup".to_string(),
-        request.schema_variants,
+        request.schema_variants.clone(),
     )
     .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "export_pkg",
+        serde_json::json!({
+                    "pkg_name": request.name,
+                    "pkg_version": request.version,
+                    "pkg_schema_count": request.schema_variants.len(),
+
+        }),
+    );
 
     WsEvent::change_set_written(&ctx)
         .await?

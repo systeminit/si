@@ -1,5 +1,7 @@
 use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
@@ -53,6 +55,8 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
 pub async fn get_variant_def(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Query(request): Query<GetVariantDefRequest>,
 ) -> SchemaVariantDefinitionResult<Json<GetVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -67,8 +71,22 @@ pub async fn get_variant_def(
         .existing_default_schema_variant_id(&ctx)
         .await?
         .is_some();
-    let mut response: GetVariantDefResponse = variant_def.into();
+    let mut response: GetVariantDefResponse = variant_def.clone().into();
     response.variant_exists = variant_exists;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "get_variant_def",
+        serde_json::json!({
+                    "variant_def_name": variant_def.name(),
+                    "variant_def_category": variant_def.category(),
+                    "variant_def_menu_name": variant_def.menu_name(),
+                    "variant_def_id": variant_def.id(),
+                    "variant_def_component_type": variant_def.component_type(),
+        }),
+    );
 
     Ok(Json(response))
 }
