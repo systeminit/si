@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, PartialOrd};
 
 use super::{pkg_open, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +55,8 @@ pub struct PkgGetResponse {
 pub async fn get_pkg(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Query(request): Query<PkgGetRequest>,
 ) -> PkgResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -84,6 +88,20 @@ pub async fn get_pkg(
 
     // This type can be serialized to json with serde_json::to_string/to_string_pretty
     let pkg_spec = pkg.to_spec().await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "get_pkg",
+        serde_json::json!({
+                    "pkg_name": metadata.clone().name(),
+                    "pkg_version": metadata.clone().version(),
+                    "pkg_schema_count": schemas.len(),
+                    "pkg_funcs_count":  funcs.len(),
+                    "pkg_is_installed":  installed.clone(),
+        }),
+    );
 
     Ok(Json(PkgGetResponse {
         hash: root_hash,

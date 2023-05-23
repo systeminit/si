@@ -1,5 +1,7 @@
 use super::{get_pkgs_path, list_pkg_dir_entries, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{installed_pkg::InstalledPkg, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
@@ -35,6 +37,8 @@ enum PackageMapEntry {
 pub async fn list_pkgs(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Query(request): Query<PkgListRequest>,
 ) -> PkgResult<Json<PkgListResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -71,6 +75,14 @@ pub async fn list_pkgs(
             },
         })
         .collect();
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "list_pkgs",
+        serde_json::json!({}),
+    );
 
     Ok(Json(PkgListResponse { pkgs }))
 }
