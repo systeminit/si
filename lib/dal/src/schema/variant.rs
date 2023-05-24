@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
-use crate::prop::PROP_PATH_SEPARATOR;
+use crate::prop::PropPath;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
@@ -743,9 +743,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
         path: &[&str],
     ) -> SchemaVariantResult<Prop> {
-        let path = path.join(PROP_PATH_SEPARATOR);
-
-        match Prop::find_prop_by_raw_path(ctx, schema_variant_id, &path).await {
+        match Prop::find_prop_by_path(ctx, schema_variant_id, &PropPath::new(path)).await {
             Ok(prop) => Ok(prop),
             Err(PropError::NotFoundAtPath(path, visiblity)) => Err(
                 SchemaVariantError::PropNotFoundAtPath(schema_variant_id, path, visiblity),

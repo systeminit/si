@@ -862,7 +862,8 @@ async fn create_attribute_function(
 
         match input {
             SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
-                let prop = Prop::find_prop_by_raw_path(ctx, schema_variant_id, &prop_path).await?;
+                let prop =
+                    Prop::find_prop_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
                 let prop_ip = InternalProvider::find_for_prop(ctx, *prop.id())
                     .await?
                     .ok_or(PkgError::MissingInternalProviderForProp(*prop.id()))?;

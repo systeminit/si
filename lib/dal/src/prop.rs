@@ -1,9 +1,8 @@
-use std::collections::VecDeque;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
 use si_pkg::PropSpecKind;
+use std::collections::VecDeque;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -21,11 +20,11 @@ use crate::{
     label_list::ToLabelList,
     pk,
     property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    standard_model_has_many, AttributeContext, AttributeContextBuilder,
-    AttributeContextBuilderError, AttributePrototypeError, AttributeReadContext, DalContext, Func,
-    FuncError, FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility,
+    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
+    AttributePrototypeError, AttributeReadContext, DalContext, Func, FuncError, FuncId,
+    HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
@@ -33,17 +32,68 @@ use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, Tran
 /// not (we'll see) be able to be provided by our users in [`Prop`] names.
 pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
+/// This type should be used to manage prop paths instead of a raw string
+#[derive(Clone, Debug)]
 pub struct PropPath(String);
 
 impl PropPath {
-    pub fn new(parts: &[&str]) -> Self {
-        Self(parts.join(PROP_PATH_SEPARATOR))
+    pub fn new<S>(parts: impl IntoIterator<Item = S>) -> Self
+    where
+        S: AsRef<str>,
+    {
+        Self(
+            parts
+                .into_iter()
+                .map(|part| part.as_ref().to_owned())
+                .collect::<Vec<String>>()
+                .join(PROP_PATH_SEPARATOR),
+        )
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn as_owned_parts(&self) -> Vec<String> {
+        self.0.split(PROP_PATH_SEPARATOR).map(Into::into).collect()
+    }
+
+    pub fn join(&self, path: &PropPath) -> Self {
+        Self::new([self.as_str(), path.as_str()])
+    }
+
+    pub fn with_replaced_sep(&self, sep: &str) -> String {
+        self.0.to_owned().replace(PROP_PATH_SEPARATOR, sep)
+    }
+}
+
+impl AsRef<str> for PropPath {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display for PropPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
 impl From<PropPath> for String {
     fn from(value: PropPath) -> Self {
         value.0
+    }
+}
+
+impl From<&String> for PropPath {
+    fn from(value: &String) -> Self {
+        Self(value.to_owned())
+    }
+}
+
+impl From<String> for PropPath {
+    fn from(value: String) -> Self {
+        Self(value)
     }
 }
 
@@ -260,7 +310,10 @@ impl Prop {
     standard_model_accessor!(hidden, bool, PropResult);
     standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
     standard_model_accessor!(diff_func_id, Option<Pk(FuncId)>, PropResult);
-    standard_model_accessor_ro!(path, String);
+
+    pub fn path(&self) -> PropPath {
+        self.path.to_owned().into()
+    }
 
     // TODO(nick): replace this table with a foreign key relationship.
     standard_model_belongs_to!(
@@ -338,10 +391,10 @@ impl Prop {
 
     /// Finds a prop by a path made up of prop names separated by
     /// [`PROP_PATH_SEPARATOR`](crate::prop::PROP_PATH_SEPARATOR) for each depth level
-    pub async fn find_prop_by_raw_path(
+    pub async fn find_prop_by_path(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-        raw_path: &str,
+        path: &PropPath,
     ) -> PropResult<Self> {
         let row = ctx
             .txns()
@@ -353,13 +406,13 @@ impl Prop {
                     ctx.tenancy(),
                     ctx.visibility(),
                     &schema_variant_id,
-                    &raw_path,
+                    &path.as_str(),
                 ],
             )
             .await?;
 
         object_option_from_row_option(row)?.ok_or(PropError::NotFoundAtPath(
-            raw_path.into(),
+            path.to_string(),
             *ctx.visibility(),
         ))
     }

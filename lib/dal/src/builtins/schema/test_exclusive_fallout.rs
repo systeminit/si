@@ -77,7 +77,7 @@ impl MigrationDriver {
                                 AttrFuncInputSpec::builder()
                                     .kind(AttrFuncInputSpecKind::Prop)
                                     .name("identity")
-                                    .prop_path(PropPath::new(&["root", "si", "name"]))
+                                    .prop_path(PropPath::new(["root", "si", "name"]))
                                     .build()?,
                             )
                             .build()?,
@@ -122,7 +122,7 @@ impl MigrationDriver {
                                 AttrFuncInputSpec::builder()
                                     .name("identity")
                                     .kind(AttrFuncInputSpecKind::Prop)
-                                    .prop_path(PropPath::new(&["root", "domain", "special"]))
+                                    .prop_path(PropPath::new(["root", "domain", "special"]))
                                     .build()?,
                             )
                             .build()?,
@@ -136,7 +136,7 @@ impl MigrationDriver {
                                 AttrFuncInputSpec::builder()
                                     .name("identity")
                                     .kind(AttrFuncInputSpecKind::Prop)
-                                    .prop_path(PropPath::new(&["root"]))
+                                    .prop_path(PropPath::new(["root"]))
                                     .build()?,
                             )
                             .build()?,

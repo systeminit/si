@@ -10,7 +10,7 @@ use thiserror::Error;
 use url::ParseError;
 
 use crate::pkg::{get_component_type, PkgError};
-use crate::prop::PROP_PATH_SEPARATOR;
+use crate::prop::PropPath;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
@@ -686,26 +686,7 @@ impl PropDefinition {
         }
         if let Some(value_from) = &self.value_from {
             builder.func_unique_id(identity_func_unique_id);
-            match value_from {
-                ValueFrom::InputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::InputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-                ValueFrom::Prop { prop_path } => {
-                    builder.input(AttrFuncInputSpec::Prop {
-                        name: "identity".to_string(),
-                        prop_path: prop_path.join(PROP_PATH_SEPARATOR),
-                    });
-                }
-                ValueFrom::OutputSocket { socket_name } => {
-                    builder.input(AttrFuncInputSpec::OutputSocket {
-                        name: "identity".to_string(),
-                        socket_name: socket_name.to_owned(),
-                    });
-                }
-            }
+            builder.input(value_from.to_spec());
         }
         if let Some(hidden) = self.hidden {
             builder.hidden(hidden);
@@ -1006,7 +987,7 @@ impl ValueFrom {
             },
             ValueFrom::Prop { prop_path } => AttrFuncInputSpec::Prop {
                 name: "identity".to_string(),
-                prop_path: prop_path.join(PROP_PATH_SEPARATOR),
+                prop_path: PropPath::new(prop_path).into(),
             },
             ValueFrom::OutputSocket { socket_name } => AttrFuncInputSpec::OutputSocket {
                 name: "identity".to_string(),
@@ -1037,12 +1018,13 @@ impl ValueFrom {
                     return None;
                 }
                 inputs.get(0).map(|input| match input {
-                    AttrFuncInputSpec::Prop { prop_path, .. } => ValueFrom::Prop {
-                        prop_path: prop_path
-                            .split(PROP_PATH_SEPARATOR)
-                            .map(Into::into)
-                            .collect(),
-                    },
+                    AttrFuncInputSpec::Prop { prop_path, .. } => {
+                        let path: PropPath = prop_path.into();
+
+                        ValueFrom::Prop {
+                            prop_path: path.as_owned_parts(),
+                        }
+                    }
                     AttrFuncInputSpec::InputSocket { socket_name, .. } => ValueFrom::InputSocket {
                         socket_name: socket_name.to_owned(),
                     },
