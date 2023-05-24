@@ -2,7 +2,6 @@ use axum::{extract::Query, Json};
 use dal::func::backend::js_reconciliation::{
     ReconciliationDiff, ReconciliationDiffDomain, ReconciliationResult,
 };
-use dal::prop::PROP_PATH_SEPARATOR;
 use dal::{
     AttributeReadContext, AttributeValue, AttributeView, Component, ComponentId,
     ExternalProviderId, Func, FuncBinding, FuncError, InternalProviderId, Prop,
@@ -132,7 +131,7 @@ pub async fn get_diff(
                 // TODO: Should we treat unset as equal or not?
                 if diff_value.diff {
                     diff.insert(
-                        prop.path().clone().replace(PROP_PATH_SEPARATOR, "/"),
+                        prop.path().with_replaced_sep("/"),
                         ReconciliationDiff {
                             normalized_resource: diff_value.new_value,
                             resource: resource_prop_view.value().clone(),
@@ -144,7 +143,7 @@ pub async fn get_diff(
                     );
                 }
             } else {
-                warn!("Prop {} does not have diff functions set, therefore can't be diffed with prop {domain_prop_id:?}", prop.path());
+                warn!("Prop {} does not have diff functions set, therefore can't be diffed with prop {domain_prop_id:?}", prop.path().as_str());
             }
         }
 
