@@ -1,4 +1,10 @@
-load("@prelude-si//:pnpm.bzl", "pnpm_install")
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "export_file",
+    "pnpm_lock",
+    "workspace_node_modules",
+)
 
 alias(
     name = "council",
@@ -45,10 +51,28 @@ alias(
     actual = "//bin/auth-api:dev",
 )
 
-pnpm_install(
-    name = "pnpm-install",
-    srcs = [
-        "//bin/lang-js:package.json"
+export_file(
+    name = "package.json",
+)
+
+export_file(
+    name = "pnpm-workspace.yaml",
+)
+
+pnpm_lock(
+    name = "pnpm-lock.yaml",
+    packages = [
+        "//app/auth-portal:package.json",
+        "//app/web:package.json",
+        "//bin/auth-api:package.json",
+        "//bin/lang-js:package.json",
+        "//lib/eslint-config:package.json",
+        "//lib/ts-lib:package.json",
+        "//lib/tsconfig:package.json",
+        "//lib/vue-lib:package.json",
     ],
-    visibility = ["PUBLIC"]
+)
+
+workspace_node_modules(
+    name = "node_modules",
 )

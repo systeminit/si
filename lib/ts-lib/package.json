@@ -9,8 +9,5 @@
   "devDependencies": {
     "@si/tsconfig": "workspace:*",
     "@si/eslint-config": "workspace:*"
-  },
-  "volta": {
-    "extends": "../../package.json"
   }
 }

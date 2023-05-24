@@ -1,10 +1,11 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+)
 load("@prelude-si//:pnpm.bzl", "pnpm_task_library", "pnpm_task_binary")
 
 export_file(
     name = "package.json",
-    src = "./package.json",
-    mode = "reference",
-    visibility = ["PUBLIC"],
 )
 
 export_file(
@@ -18,7 +19,9 @@ pnpm_task_library(
     name = "build-lint",
     command = "lint",
     srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     path = "bin/auth-api",
     visibility = ["PUBLIC"],
 )
@@ -28,8 +31,8 @@ pnpm_task_library(
     command = "build",
     srcs = glob(["src/**/*", "tsconfig.json"]),
     deps = [
-        "//:pnpm-install",
-        ":build-lint"
+        "//:node_modules",
+        ":build-lint",
     ],
     path = "bin/auth-api",
     outs = ["dist"],
@@ -41,7 +44,9 @@ pnpm_task_binary(
     command = "lint",
     srcs = glob(["src/**/*"]),
     path = "bin/auth-api",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -50,7 +55,9 @@ pnpm_task_binary(
     command = "lint:strict",
     srcs = glob(["src/**/*"]),
     path = "bin/auth-api",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -59,7 +66,9 @@ pnpm_task_binary(
     command = "lint:fix",
     srcs = glob(["src/**/*"]),
     path = "bin/auth-api",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -68,7 +77,9 @@ pnpm_task_binary(
     command = "dev",
     srcs = glob(["src/**/*"]),
     path = "bin/auth-api",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -77,6 +88,8 @@ pnpm_task_binary(
     command = "db:reset",
     srcs = glob(["src/**/*"]),
     path = "bin/auth-api",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )

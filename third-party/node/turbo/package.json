@@ -1,0 +1,12 @@
+{
+  "name": "turbo",
+  "version": "1.0.0",
+  "dependencies": {
+    "turbo": "^1.9.1"
+  },
+  "engines": {
+    "node": ">=18 <19",
+    "pnpm": ">=8 <9"
+  },
+  "packageManager": "pnpm@8.5.0"
+}

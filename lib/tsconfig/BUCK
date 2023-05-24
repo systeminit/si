@@ -1,0 +1,17 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "filegroup",
+)
+
+export_file(
+    name = "package.json",
+)
+
+filegroup(
+    name = "src",
+    srcs = [
+        "tsconfig.browser.json",
+        "tsconfig.node.json",
+    ],
+)

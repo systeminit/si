@@ -1,0 +1,27 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "npm_bin",
+    "pnpm_lock",
+    "workspace_node_modules",
+)
+
+export_file(
+    name = "pnpm-workspace.yaml",
+)
+
+pnpm_lock(
+    name = "pnpm-lock.yaml",
+    pnpm_workspace = ":pnpm-workspace.yaml",
+)
+
+workspace_node_modules(
+    name = "node_modules",
+    pnpm_lock = ":pnpm-lock.yaml",
+    root_workspace = False,
+)
+
+npm_bin(
+    name = "turbo",
+    workspace = True,
+)

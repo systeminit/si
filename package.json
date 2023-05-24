@@ -37,9 +37,5 @@
     "node": ">=18 <19",
     "pnpm": ">=8 <9"
   },
-  "volta": {
-    "node": "18.16.0",
-    "pnpm": "8.5.0"
-  },
   "packageManager": "pnpm@8.5.0"
 }

@@ -1,0 +1,36 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+)
+
+export_file(
+    name = "build_npm_bin.py",
+)
+
+export_file(
+    name = "build_package_node_modules.py",
+)
+
+export_file(
+    name = "build_pkg_bin.py",
+)
+
+export_file(
+    name = "build_pnpm_lock.py",
+)
+
+export_file(
+    name = "build_workspace_node_modules.py",
+)
+
+export_file(
+    name = "exec_cmd.py",
+)
+
+export_file(
+    name = "package_build_context.py",
+)
+
+export_file(
+    name = "run_pnpm_script.py",
+)
