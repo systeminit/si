@@ -695,18 +695,41 @@ pub fn read_key_value_line<R: BufRead>(
 ) -> Result<String, GraphError> {
     let mut line = String::new();
     reader.read_line(&mut line).map_err(GraphError::IoRead)?;
-    let (line_key, line_value) = match line.trim_end().split_once('=') {
-        Some((key, value)) => (key, value),
+    let (line_key_and_len, line_value) = match line.split_once('=') {
+        Some((key_and_len, value)) => (key_and_len, value),
         None => return Err(GraphError::ParseLineKeyValueFormat(line)),
     };
 
-    if line_key == key.as_ref() {
-        Ok(line_value.to_string())
-    } else {
-        Err(GraphError::ParseLineExpectedKey(
+    let (line_key, len) = match line_key_and_len.split_once(':') {
+        Some((key, len_str)) => (key, usize::from_str(len_str).map_err(GraphError::parse)?),
+        None => return Err(GraphError::ParseLineKeyValueFormat(line)),
+    };
+
+    if line_key != key.as_ref() {
+        return Err(GraphError::ParseLineExpectedKey(
             key.as_ref().to_string(),
             line_key.to_string(),
-        ))
+        ));
+    }
+
+    if line_value.trim_end().len() == len {
+        Ok(line_value.trim_end().to_owned())
+    } else {
+        let remaining_bytes = len - line_value.len();
+        let mut remaining = vec![0; remaining_bytes + 1];
+        reader
+            .read_exact(&mut remaining)
+            .map_err(GraphError::IoRead)?;
+
+        let value = format!(
+            "{}{}",
+            line_value,
+            std::str::from_utf8(&remaining)
+                .map_err(GraphError::parse)?
+                .trim_end()
+        );
+
+        Ok(value)
     }
 }
 
@@ -794,7 +817,9 @@ pub fn write_key_value_line<W: Write>(
     key: impl fmt::Display,
     value: impl fmt::Display,
 ) -> Result<(), GraphError> {
-    write!(writer, "{key}={value}{NL}").map_err(GraphError::IoWrite)
+    let value: String = value.to_string();
+    let len = value.len();
+    write!(writer, "{key}:{len}={value}{NL}").map_err(GraphError::IoWrite)
 }
 
 /// Writes a separator/blank line to a writer.
