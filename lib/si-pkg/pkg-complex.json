@@ -1,7 +1,7 @@
 {
   "name": "complex",
   "version": "12.11.0",
-  "description": "complex things",
+  "description": "complex\nthings\nwith\nmultiple\nlines",
   "createdAt": "2023-02-28T00:19:25Z",
   "createdBy": "fnichol",
   "funcs": [

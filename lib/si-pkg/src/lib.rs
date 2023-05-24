@@ -61,6 +61,7 @@ mod tests {
     #[tokio::test]
     async fn pkg_fs_round_trip() {
         let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
+        let description = spec.description.to_owned();
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
 
         let tempdir = tempdir().expect("failed to create tempdir");
@@ -72,6 +73,11 @@ mod tests {
         let read_pkg = SiPkg::load_from_dir(tempdir.path())
             .await
             .expect("failed to load pkg from dir");
+
+        assert_eq!(
+            description,
+            read_pkg.metadata().expect("get metadata").description()
+        );
 
         let funcs = read_pkg.funcs().expect("failed to get funcs");
         assert_eq!(2, funcs.len());
