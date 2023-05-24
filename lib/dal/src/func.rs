@@ -4,6 +4,7 @@ use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -23,23 +24,10 @@ pub mod binding_return_value;
 pub mod description;
 pub mod execution;
 pub mod identity;
-
-/// These are the names of functions that are handled internally by the dal instead of being sent
-/// to veritech for execution by the language runtime.
-pub const INTRINSIC_FUNC_NAMES: [&str; 9] = [
-    "si:identity",
-    "si:setObject",
-    "si:setArray",
-    "si:setBoolean",
-    "si:setInteger",
-    "si:setMap",
-    "si:setString",
-    "si:unset",
-    "si:validation",
-];
+pub mod intrinsics;
 
 pub fn is_intrinsic(name: &str) -> bool {
-    INTRINSIC_FUNC_NAMES.contains(&name)
+    intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
 }
 
 #[remain::sorted]
@@ -61,6 +49,8 @@ pub enum FuncError {
     /// Could not find the identity [`Func`].
     #[error("identity func not found")]
     IdentityFuncNotFound,
+    #[error("intrinsic spec creation error {0}")]
+    IntrinsicSpecCreation(String),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("could not find func by id: {0}")]

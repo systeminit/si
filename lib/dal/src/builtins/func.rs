@@ -1,11 +1,17 @@
 use base64::engine::general_purpose;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use si_pkg::SiPkg;
 use telemetry::prelude::*;
 
 use crate::{
     builtins::schema::BuiltinSchema,
-    func::argument::{FuncArgument, FuncArgumentKind},
+    func::{
+        argument::{FuncArgument, FuncArgumentKind},
+        intrinsics::IntrinsicFunc,
+    },
+    installed_pkg::InstalledPkg,
+    pkg::import_pkg_from_pkg,
     ActionKind, ActionPrototype, ActionPrototypeContext, BuiltinsError, BuiltinsResult, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
 };
@@ -182,6 +188,22 @@ pub async fn migrate_action_prototypes(
                 .await
                 .expect("could not create action prototype");
         }
+    }
+
+    Ok(())
+}
+
+pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
+    let intrinsics_pkg_spec = IntrinsicFunc::pkg_spec()?;
+    let name = intrinsics_pkg_spec.name.to_owned();
+    let intrinsics_pkg = SiPkg::load_from_spec(intrinsics_pkg_spec)?;
+
+    if InstalledPkg::find_by_hash(ctx, &intrinsics_pkg.hash()?.to_string())
+        .await?
+        .is_none()
+    {
+        import_pkg_from_pkg(ctx, &intrinsics_pkg, &name).await?;
+        ctx.blocking_commit().await?;
     }
 
     Ok(())

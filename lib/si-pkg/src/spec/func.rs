@@ -54,10 +54,20 @@ impl FuncArgumentSpec {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
 pub enum FuncSpecBackendKind {
+    Array,
+    Boolean,
+    Diff,
+    Identity,
+    Integer,
     JsAction,
     JsAttribute,
     JsReconciliation,
     JsValidation,
+    Map,
+    Object,
+    String,
+    Unset,
+    Validation,
 }
 
 #[remain::sorted]
@@ -69,6 +79,7 @@ pub enum FuncSpecBackendResponseType {
     Boolean,
     CodeGeneration,
     Confirmation,
+    Identity,
     Integer,
     Json,
     Map,
@@ -76,6 +87,7 @@ pub enum FuncSpecBackendResponseType {
     Qualification,
     Reconciliation,
     String,
+    Unset,
     Validation,
 }
 
@@ -115,17 +127,6 @@ impl FuncSpec {
     #[must_use]
     pub fn builder() -> FuncSpecBuilder {
         FuncSpecBuilder::default()
-    }
-
-    pub fn identity_func() -> Result<Self, SpecError> {
-        Self::builder()
-            .name("si:identity")
-            .handler("si:identity")
-            .code_base64("")
-            .response_type(FuncSpecBackendResponseType::Json)
-            .backend_kind(FuncSpecBackendKind::JsAttribute)
-            .hidden(false)
-            .build()
     }
 }
 

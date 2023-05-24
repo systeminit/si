@@ -339,7 +339,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        for builtin_func_name in ["si:validation", "si:generateYAML"] {
+        for builtin_func_name in ["si:validation"] {
             driver
                 .add_func_id(ctx, builtin_func_name.to_string())
                 .await?;

@@ -1,6 +1,5 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    convert::TryFrom,
     path::PathBuf,
 };
 use strum::IntoEnumIterator;
@@ -8,9 +7,9 @@ use telemetry::prelude::*;
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec,
-    FuncDescriptionSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncUniqueId,
-    LeafFunctionSpec, LeafInputLocation as PkgLeafInputLocation, MapKeyFuncSpec, PkgSpec, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    FuncDescriptionSpec, FuncSpec, FuncUniqueId, LeafFunctionSpec,
+    LeafInputLocation as PkgLeafInputLocation, MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder,
+    PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
     SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
     SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
@@ -56,13 +55,14 @@ pub async fn export_pkg(
 
     let mut func_specs = FuncSpecMap::new();
 
-    for intrinsic_name in crate::func::INTRINSIC_FUNC_NAMES {
+    for intrinsic in crate::func::intrinsics::IntrinsicFunc::iter() {
+        let intrinsic_name = intrinsic.name();
         // We need a unique id for intrinsic funcs to refer to them in custom bindings (for example
         // mapping one prop to another via si:identity)
         let intrinsic_func = Func::find_by_name(ctx, intrinsic_name)
             .await?
             .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
-        let intrinsic_spec = build_intrinsic_func_spec(intrinsic_name)?;
+        let intrinsic_spec = intrinsic.to_spec()?;
         func_specs.insert(*intrinsic_func.id(), intrinsic_spec.clone());
         pkg_spec_builder.func(intrinsic_spec);
     }
@@ -89,17 +89,6 @@ pub async fn export_pkg(
     Ok(())
 }
 
-fn build_intrinsic_func_spec(name: &str) -> PkgResult<FuncSpec> {
-    Ok(FuncSpec::builder()
-        .name(name)
-        .handler(name)
-        .code_base64("")
-        .response_type(FuncSpecBackendResponseType::Json)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .hidden(false)
-        .build()?)
-}
-
 fn build_func_spec(func: &Func, args: &[FuncArgument]) -> PkgResult<FuncSpec> {
     let mut func_spec_builder = FuncSpec::builder();
 
@@ -120,11 +109,8 @@ fn build_func_spec(func: &Func, args: &[FuncArgument]) -> PkgResult<FuncSpec> {
     func_spec_builder.handler(func.handler().unwrap_or(""));
     func_spec_builder.code_base64(func.code_base64().unwrap_or(""));
 
-    func_spec_builder.response_type(FuncSpecBackendResponseType::try_from(
-        *func.backend_response_type(),
-    )?);
-
-    func_spec_builder.backend_kind(FuncSpecBackendKind::try_from(*func.backend_kind())?);
+    func_spec_builder.response_type(*func.backend_response_type());
+    func_spec_builder.backend_kind(*func.backend_kind());
 
     func_spec_builder.hidden(func.hidden());
 

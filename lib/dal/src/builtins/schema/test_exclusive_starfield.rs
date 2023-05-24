@@ -5,6 +5,7 @@ use si_pkg::{
 };
 
 use crate::func::argument::FuncArgumentKind;
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::pkg::import_pkg_from_pkg;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
@@ -20,7 +21,9 @@ impl MigrationDriver {
             .version("2023-05-23")
             .created_by("System Initiative");
 
-        let identity_func_spec = FuncSpec::identity_func()?;
+        let identity_func_spec = IntrinsicFunc::Identity
+            .to_spec()
+            .expect("create identity func spec");
         let starfield_confirmation_code = "async function exists(input) {
             if (!input.resource?.payload) {
                 return {

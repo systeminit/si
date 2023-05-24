@@ -39,10 +39,7 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
 
-    if !InstalledPkg::find_by_attr(ctx, "root_hash", &root_hash)
-        .await?
-        .is_empty()
-    {
+    if InstalledPkg::find_by_hash(ctx, &root_hash).await?.is_some() {
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
     }
 
@@ -51,15 +48,7 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {
         let unique_id = func_spec.unique_id();
-        let func = if crate::func::is_intrinsic(func_spec.name()) {
-            // We don't want to create intrinsic funcs but we need them in our map
-            Func::find_by_name(ctx, func_spec.name())
-                .await?
-                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name().to_string()))?
-        } else {
-            create_func(ctx, func_spec, *installed_pkg.id()).await?
-        };
-
+        let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
         funcs_by_unique_id.insert(unique_id, func);
     }
 

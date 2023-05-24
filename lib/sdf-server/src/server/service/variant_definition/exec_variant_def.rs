@@ -3,6 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
+use dal::func::intrinsics::IntrinsicFunc;
 use dal::pkg::import_pkg_from_pkg;
 use dal::{
     schema::variant::definition::{
@@ -12,7 +13,7 @@ use dal::{
     StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_pkg::{FuncSpec, PkgSpec, SiPkg};
+use si_pkg::{PkgSpec, SiPkg};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +48,7 @@ pub async fn exec_variant_def(
     let definition: SchemaVariantDefinitionJson = variant_def.try_into()?;
 
     // we need to change this to use the PkgImport
-    let identity_func_spec = FuncSpec::identity_func()?;
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
     let variant_spec = definition.to_spec(metadata.clone(), identity_func_spec.unique_id)?;
     let schema_spec = metadata.to_spec(variant_spec)?;
     let pkg_spec = PkgSpec::builder()
