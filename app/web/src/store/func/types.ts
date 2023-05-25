@@ -5,7 +5,7 @@ import { ActionKind } from "@/store/fixes.store";
 export interface ActionAssociations {
   type: "action";
   schemaVariantIds: string[];
-  kind: ActionKind;
+  kind?: ActionKind;
 }
 
 export interface CodeGenerationAssociations {

@@ -261,7 +261,7 @@ pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Action {
         schema_variant_ids: Vec<SchemaVariantId>,
-        kind: ActionKind,
+        kind: Option<ActionKind>,
     },
     #[serde(rename_all = "camelCase")]
     Attribute {
@@ -366,17 +366,17 @@ async fn prototype_view_for_attribute_prototype(
 async fn action_prototypes_into_schema_variants_and_components(
     ctx: &DalContext,
     func_id: FuncId,
-) -> FuncResult<(ActionKind, Vec<SchemaVariantId>)> {
+) -> FuncResult<(Option<ActionKind>, Vec<SchemaVariantId>)> {
     let mut variant_ids = vec![];
-    let mut maybe_action_kind: Option<ActionKind> = None;
+    let mut action_kind: Option<ActionKind> = None;
 
     for proto in ActionPrototype::find_for_func(ctx, func_id).await? {
-        if let Some(action_kind) = maybe_action_kind {
-            if action_kind != *proto.kind() {
+        if let Some(action_kind) = &action_kind {
+            if action_kind != proto.kind() {
                 return Err(FuncError::ActionFuncMultipleKinds(func_id));
             }
         } else {
-            maybe_action_kind = Some(*proto.kind());
+            action_kind = Some(*proto.kind());
         }
 
         if proto.schema_variant_id().is_some() {
@@ -384,7 +384,9 @@ async fn action_prototypes_into_schema_variants_and_components(
         }
     }
 
-    let action_kind = maybe_action_kind.ok_or(FuncError::ActionKindMissing(func_id))?;
+    if !variant_ids.is_empty() && action_kind.is_none() {
+        return Err(FuncError::ActionKindMissing(func_id));
+    }
 
     Ok((action_kind, variant_ids))
 }
