@@ -218,9 +218,9 @@ impl ConfirmationView {
                         .ok_or_else(|| ComponentError::FixNotFound(fix_resolver.last_fix_id()))?;
 
                     // Refresh running fixes.
-                    // FIXME(paulo,fletcher,nick,paul): hardcoding 3 minutes timeout to avoid permanently fix results
+                    // FIXME(paulo,fletcher,nick,paul): hardcoding 5 minutes timeout to avoid permanently fix results
                     if Utc::now().signed_duration_since(fix.timestamp().created_at)
-                        > chrono::Duration::minutes(3)
+                        > chrono::Duration::minutes(5)
                     {
                         None
                     } else {

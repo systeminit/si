@@ -63,6 +63,12 @@ const routes: RouteRecordRaw[] = [
           import("@/components/Workspace/WorkspaceModelAndView.vue"),
       },
       {
+        path: ":changeSetId/c2",
+        name: "workspace-compose-2",
+        component: () =>
+          import("@/components/Workspace/WorkspaceModelAndView2.vue"),
+      },
+      {
         path: ":changeSetId/l",
         name: "workspace-lab",
         component: () =>

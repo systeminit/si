@@ -6,14 +6,15 @@ use axum::{
 };
 use dal::change_status::ChangeStatusError;
 use dal::{
-    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, StandardModelError,
-    TransactionsError,
+    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, FixError,
+    StandardModelError, TransactionsError, UserError, UserPk,
 };
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
 pub mod apply_change_set;
+pub mod apply_change_set2;
 pub mod create_change_set;
 pub mod get_change_set;
 pub mod get_stats;
@@ -34,11 +35,19 @@ pub enum ChangeSetError {
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
     #[error(transparent)]
+    Fix(#[from] FixError),
+    #[error("invalid user {0}")]
+    InvalidUser(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
+    #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    User(#[from] UserError),
 }
 
 pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;
@@ -73,6 +82,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
+        )
+        .route(
+            "/apply_change_set2",
+            post(apply_change_set2::apply_change_set),
         )
         .route(
             "/update_selected_change_set",

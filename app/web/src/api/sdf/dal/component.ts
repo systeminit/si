@@ -12,6 +12,7 @@ export interface ComponentIdentificationTimestamp {
 }
 
 export interface ComponentDiff {
+  componentId: string;
   current: CodeView;
   diffs: Array<CodeView>;
 }

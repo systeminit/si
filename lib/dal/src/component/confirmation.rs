@@ -63,6 +63,32 @@ impl Component {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
+    /// Temporary hack to trigger confirmations on change-sets without hurting performance of
+    /// the regular flow
+    ///
+    /// Run confirmation for one [`Components`](Self) in the workspace by running a
+    /// [`DependentValuesUpdate`](crate::job::definition::DependentValuesUpdate) job for every
+    /// [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/resource" implicit
+    /// [`InternalProvider`](crate::InternalProvider) for every [`Component`](crate::Component).
+    pub async fn run_confirmations(&self, ctx: &DalContext) -> ComponentResult<()> {
+        let resource_attribute_values: Vec<_> =
+            Component::list_all_resource_implicit_internal_provider_attribute_values(ctx)
+                .await?
+                .into_iter()
+                .filter(|v| v.context.component_id() == *self.id())
+                .map(|v| *v.id())
+                .collect();
+
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            resource_attribute_values,
+        ))
+        .await?;
+
+        Ok(())
+    }
+
     /// Run confirmations for all [`Components`](Self) in the workspace by running a
     /// [`DependentValuesUpdate`](crate::job::definition::DependentValuesUpdate) job for every
     /// [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/resource" implicit
@@ -168,12 +194,12 @@ impl Component {
             .to_string();
 
         // Refresh running fixes.
-        // FIXME(paulo,fletcher,nick,paul): hardcoding 3 minutes timeout to avoid permanently running fixes
+        // FIXME(paulo,fletcher,nick,paul): hardcoding 5 minutes timeout to avoid permanently running fixes
         let fixes = Fix::find_by_attr_null(ctx, "finished_at").await?;
         let mut running_fixes = Vec::new();
         for fix in fixes {
             if Utc::now().signed_duration_since(fix.timestamp().created_at)
-                < chrono::Duration::minutes(3)
+                < chrono::Duration::minutes(5)
             {
                 running_fixes.push(fix);
             }
