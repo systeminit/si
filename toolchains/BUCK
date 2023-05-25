@@ -5,6 +5,8 @@ load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
+    linker = "clang",
+    link_flags = ["-v"],
     visibility = ["PUBLIC"],
 )
 

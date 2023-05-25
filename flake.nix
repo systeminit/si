@@ -7,17 +7,14 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    # TODO(nick): re-enable once remote caching is enabled.
-    # buck2 = {
-    #   url = "path:nix/buck2";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    buck2-subflake = {
+      url = "path:nix/buck2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # Flake outputs
-  # TODO(nick): re-enable once remote caching is enabled.
-  # outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2, ... }:
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, buck2-subflake, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [
@@ -30,8 +27,8 @@
         ];
         pkgs = import nixpkgs { inherit system overlays; };
 
-        # TODO(nick): re-enable once remote caching is enabled.
-        # buck2-pkg = buck2.packages.${system}.buck2;
+        # Context: https://github.com/NixOS/nixpkgs/issues/226677
+        buck2 = buck2-subflake.packages.${system}.buck2;
 
         # Ensure pnpm uses our defined node toolchain and does not download its own.
         pinnedNode = pkgs.nodejs-18_x;
@@ -41,15 +38,9 @@
       in with pkgs; {
         devShells.default = mkShell {
           buildInputs = [
-            # TODO(nick): re-enable once remote caching is enabled.
-            # buck2-pkg
-
-            # NOTE(nick): we may not need this if we are purely using pnpm's toolchain. More
-            # investigation with veritech on NixOS is recommended.
-            pinnedNode
-
             automake
             bash
+            buck2
             clang
             coreutils
             docker-compose
@@ -62,6 +53,7 @@
             nodePackagesWithPinnedNode.typescript
             nodePackagesWithPinnedNode.typescript-language-server
             pgcli
+            pinnedNode
             pkg-config
             postgresql_14
             protobuf
