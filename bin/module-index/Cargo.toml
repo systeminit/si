@@ -1,0 +1,17 @@
+[package]
+name = "module-index"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[[bin]]
+name = "module-index"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+color-eyre = { workspace = true }
+module-index-server = { path = "../../lib/module-index-server" }
+telemetry-application = { path = "../../lib/telemetry-application-rs" }
+tokio = { workspace = true }

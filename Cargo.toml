@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "bin/council",
     "bin/cyclone",
+    "bin/module-index",
     "bin/pinga",
     "bin/sdf",
     "bin/veritech",
@@ -19,6 +20,7 @@ members = [
     "lib/dal",
     "lib/dal-test",
     "lib/deadpool-cyclone",
+    "lib/module-index-server",
     "lib/nats-subscriber",
     "lib/object-tree",
     "lib/pinga-server",
@@ -40,7 +42,7 @@ members = [
 [workspace.dependencies]
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
-axum = { version = "0.6.18", features = ["macros", "ws"] }
+axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
 base64 = "0.21.0"
 blake3 = "1.3.3"
 bytes = "1.4.0"
