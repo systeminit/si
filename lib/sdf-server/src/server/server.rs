@@ -216,8 +216,17 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: &EncryptionKey,
+        pkgs_path: PathBuf,
     ) -> Result<()> {
-        dal::migrate_all_with_progress(pg, nats, job_processor, veritech, encryption_key).await?;
+        dal::migrate_all_with_progress(
+            pg,
+            nats,
+            job_processor,
+            veritech,
+            encryption_key,
+            pkgs_path,
+        )
+        .await?;
         Ok(())
     }
 

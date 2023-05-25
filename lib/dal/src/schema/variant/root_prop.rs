@@ -332,7 +332,7 @@ impl SchemaVariant {
                 .await?
                 .pop()
                 .ok_or(FuncError::NotFoundByName(
-                    "si:defaultREconciliation".to_owned(),
+                    "si:defaultReconciliation".to_owned(),
                 ))?;
         ReconciliationPrototype::upsert(
             ctx,

@@ -262,6 +262,9 @@ async fn list_confirmations(mut octx: DalContext) {
                 "color": "#ffffff",
                 "protected": false
             },
+            "domain": {
+                "name": "starfield",
+            },
             "confirmation": {
                 "test:confirmationStarfield": {
                     "success": false,
@@ -321,6 +324,9 @@ async fn list_confirmations(mut octx: DalContext) {
                 "type": "component",
                 "color": "#ffffff",
                 "protected": false
+            },
+            "domain": {
+                "name": "starfield",
             },
             "resource": {
                 "logs": [],
@@ -402,6 +408,9 @@ async fn list_confirmations(mut octx: DalContext) {
                 "type": "component",
                 "color": "#ffffff",
                 "protected": false
+            },
+            "domain": {
+                "name": "starfield",
             },
             "resource": {
                 "logs": [],

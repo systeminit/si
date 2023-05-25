@@ -34,7 +34,12 @@ use super::{PkgError, PkgResult};
 
 type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
 
-pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str) -> PkgResult<()> {
+pub async fn import_pkg_from_pkg(
+    ctx: &DalContext,
+    pkg: &SiPkg,
+    file_name: &str,
+    schemas: Option<Vec<String>>,
+) -> PkgResult<()> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
@@ -47,6 +52,11 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
 
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {
+        info!(
+            "installing function '{}' from {}",
+            func_spec.name(),
+            file_name
+        );
         let unique_id = func_spec.unique_id();
         let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
         funcs_by_unique_id.insert(unique_id, func);
@@ -55,6 +65,21 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
     // TODO: gather up a record of what wasn't installed and why (the id of the package that
     // already contained the schema or variant)
     for schema_spec in pkg.schemas()? {
+        match &schemas {
+            None => {}
+            Some(schemas) => {
+                if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
+                    continue;
+                }
+            }
+        }
+
+        info!(
+            "installing schema '{}' from {}",
+            schema_spec.name(),
+            file_name
+        );
+
         create_schema(ctx, schema_spec, *installed_pkg.id(), &funcs_by_unique_id).await?;
     }
 
@@ -71,7 +96,7 @@ pub async fn import_pkg(
 
     let pkg = SiPkg::load_from_file(pkg_file_path).await?;
 
-    import_pkg_from_pkg(ctx, &pkg, &pkg_file_path_str).await?;
+    import_pkg_from_pkg(ctx, &pkg, &pkg_file_path_str, None).await?;
 
     Ok(pkg)
 }
@@ -604,6 +629,29 @@ async fn create_schema_variant(
                 create_socket(ctx, socket, *schema.id(), *schema_variant.id(), func_map).await?;
             }
 
+            // Default values must be set before attribute functions are configured so they don't
+            // override the prototypes set there
+            for default_value_info in domain_default_values
+                .into_iter()
+                .chain(rv_default_values.into_iter())
+            {
+                set_default_value(ctx, default_value_info).await?;
+            }
+
+            // Set a default name value for all name props, this ensures region has a name before
+            // the function is executed
+            {
+                let name_prop = schema_variant
+                    .find_prop(ctx, &["root", "si", "name"])
+                    .await?;
+                let name_default_value_info = DefaultValueInfo::String {
+                    prop_id: *name_prop.id(),
+                    default_value: schema.name().to_lowercase(),
+                };
+
+                set_default_value(ctx, name_default_value_info).await?;
+            }
+
             for si_prop_func in variant_spec.si_prop_funcs()? {
                 let prop = schema_variant
                     .find_prop(ctx, &si_prop_func.kind().prop_path())
@@ -624,13 +672,6 @@ async fn create_schema_variant(
                     func_map,
                 )
                 .await?;
-            }
-
-            for default_value_info in domain_default_values
-                .into_iter()
-                .chain(rv_default_values.into_iter())
-            {
-                set_default_value(ctx, default_value_info).await?;
             }
 
             for attr_func in domain_attr_funcs

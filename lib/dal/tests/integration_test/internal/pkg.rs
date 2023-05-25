@@ -216,12 +216,12 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let pkg_b = SiPkg::load_from_spec(spec_b).expect("able to load pkg from spec");
 
-    import_pkg_from_pkg(ctx, &pkg_a, "pkg_a")
+    import_pkg_from_pkg(ctx, &pkg_a, "pkg_a", None)
         .await
         .expect("able to install pkg");
 
     // We should refuse to install the same package twice
-    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, "pkg_a").await;
+    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, "pkg_a", None).await;
     assert!(matches!(
         second_import_result,
         Err(PkgError::PackageAlreadyInstalled(_))
@@ -302,7 +302,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         }
     }
 
-    import_pkg_from_pkg(ctx, &pkg_b, "pkg_b")
+    import_pkg_from_pkg(ctx, &pkg_b, "pkg_b", None)
         .await
         .expect("install pkg b");
 

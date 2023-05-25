@@ -30,7 +30,7 @@ pub async fn install_pkg(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let pkg = pkg_open(&builder, &request.name).await?;
-    import_pkg_from_pkg(&ctx, &pkg, &request.name).await?;
+    import_pkg_from_pkg(&ctx, &pkg, &request.name, None).await?;
 
     track(
         &posthog_client,

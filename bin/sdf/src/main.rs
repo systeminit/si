@@ -95,6 +95,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             job_processor.clone(),
             veritech.clone(),
             &encryption_key,
+            pkgs_path.to_owned(),
         )
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
