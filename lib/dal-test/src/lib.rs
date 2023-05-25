@@ -4,7 +4,7 @@ use std::{
     borrow::Cow,
     collections::HashSet,
     env,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, Once},
 };
 
@@ -83,6 +83,8 @@ pub struct Config {
     cyclone_encryption_key_path: String,
     jwt_signing_public_key_path: String,
     jwt_signing_private_key_path: String,
+    #[builder(default)]
+    pkgs_path: Option<PathBuf>,
 }
 
 impl Config {
@@ -102,6 +104,11 @@ impl Config {
         }
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
+
+        let pkgs_path =
+            Path::new(&env::var("CARGO_MANIFEST_DIR").expect("able to get CARGO_MANIFEST_DIR"))
+                .join("../../pkgs/");
+        config.pkgs_path = Some(pkgs_path);
 
         Ok(config)
     }
@@ -223,7 +230,7 @@ impl TestContext {
             self.job_processor.clone(),
             veritech,
             self.encryption_key.clone(),
-            None,
+            self.config.pkgs_path.to_owned(),
         )
     }
 
@@ -522,6 +529,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
         Some(selected_test_builtin_schemas),
+        test_context
+            .config
+            .pkgs_path
+            .to_owned()
+            .expect("no pkgs path configured"),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

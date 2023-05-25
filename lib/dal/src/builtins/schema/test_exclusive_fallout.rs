@@ -167,7 +167,13 @@ impl MigrationDriver {
             .build()?;
 
         let fallout_pkg = SiPkg::load_from_spec(fallout_spec)?;
-        import_pkg_from_pkg(ctx, &fallout_pkg, "test:fallout").await?;
+        import_pkg_from_pkg(
+            ctx,
+            &fallout_pkg,
+            "test:fallout",
+            Some(vec!["fallout".into()]),
+        )
+        .await?;
 
         Ok(())
     }

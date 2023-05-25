@@ -5,18 +5,15 @@ use si_pkg::SiPkg;
 use telemetry::prelude::*;
 
 use crate::{
-    builtins::schema::BuiltinSchema,
     func::{
         argument::{FuncArgument, FuncArgumentKind},
         intrinsics::IntrinsicFunc,
     },
     installed_pkg::InstalledPkg,
     pkg::import_pkg_from_pkg,
-    ActionKind, ActionPrototype, ActionPrototypeContext, BuiltinsError, BuiltinsResult, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, Schema, StandardModel,
+    BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    StandardModel,
 };
-
-use super::SelectedTestBuiltinSchemas;
 
 #[derive(Deserialize, Serialize, Debug)]
 struct FunctionMetadataArgument {
@@ -57,142 +54,6 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
             .collect()
     });
 
-// This is a transitional function that creates the necessary action prototypes during
-// migration so that we have the correct data for the initial SI package.
-pub async fn migrate_action_prototypes(
-    ctx: &DalContext,
-    selected_test_builtins_schemas: Option<SelectedTestBuiltinSchemas>,
-) -> BuiltinsResult<()> {
-    let action_funcs = vec![
-        "si:awsAmiRefreshAction",
-        "si:awsEc2CreateAction",
-        "si:awsEc2DeleteAction",
-        "si:awsEc2RefreshAction",
-        "si:awsEgressCreateAction",
-        "si:awsEgressRefreshAction",
-        "si:awsEgressDeleteAction",
-        "si:awsIngressCreateAction",
-        "si:awsIngressRefreshAction",
-        "si:awsIngressDeleteAction",
-        "si:awsEipCreateAction",
-        "si:awsEipDeleteAction",
-        "si:awsEipRefreshAction",
-        "si:awsKeyPairCreateAction",
-        "si:awsKeyPairDeleteAction",
-        "si:awsKeyPairRefreshAction",
-        "si:awsSecurityGroupCreateAction",
-        "si:awsSecurityGroupDeleteAction",
-        "si:awsSecurityGroupRefreshAction",
-        "si:awsRegionRefreshAction",
-        "si:dockerImageRefreshAction",
-    ];
-
-    for func_name in action_funcs {
-        let schema = match func_name {
-            "si:awsEc2DeleteAction" | "si:awsEc2CreateAction" | "si:awsEc2RefreshAction" => {
-                BuiltinSchema::AwsEc2
-            }
-            "si:awsSecurityGroupRefreshAction"
-            | "si:awsSecurityGroupCreateAction"
-            | "si:awsSecurityGroupDeleteAction" => BuiltinSchema::AwsSecurityGroup,
-            "si:awsEgressCreateAction"
-            | "si:awsEgressRefreshAction"
-            | "si:awsEgressDeleteAction" => BuiltinSchema::AwsEgress,
-            "si:awsEipCreateAction" | "si:awsEipDeleteAction" | "si:awsEipRefreshAction" => {
-                BuiltinSchema::AwsEip
-            }
-            "si:awsAmiRefreshAction" => BuiltinSchema::AwsAmi,
-            "si:awsIngressDeleteAction"
-            | "si:awsIngressRefreshAction"
-            | "si:awsIngressCreateAction" => BuiltinSchema::AwsIngress,
-            "si:awsRegionRefreshAction" => BuiltinSchema::AwsRegion,
-            "si:awsKeyPairCreateAction"
-            | "si:awsKeyPairRefreshAction"
-            | "si:awsKeyPairDeleteAction" => BuiltinSchema::AwsKeyPair,
-            "si:dockerImageRefreshAction" => BuiltinSchema::DockerImage,
-            _ => unreachable!("that string is not in my list!"),
-        };
-
-        // this is wonderfully exponential time, but we're going to delete this all soon anyway
-        let should_migrate = match &selected_test_builtins_schemas {
-            Some(SelectedTestBuiltinSchemas::Some(selected_test_builtins_schemas)) => {
-                let mut should_migrate = false;
-                for selected_schema in selected_test_builtins_schemas.iter() {
-                    if let Some(selected_schema) =
-                        BuiltinSchema::match_str(selected_schema.as_str())
-                    {
-                        if schema == selected_schema {
-                            should_migrate = true;
-                            break;
-                        }
-                    }
-                }
-                should_migrate
-            }
-            Some(SelectedTestBuiltinSchemas::All) | None => true,
-            _ => false,
-        };
-
-        if !should_migrate {
-            continue;
-        }
-
-        let action_kind = match func_name {
-            "si:awsAmiRefreshAction"
-            | "si:awsEc2RefreshAction"
-            | "si:awsEgressRefreshAction"
-            | "si:awsEipRefreshAction"
-            | "si:awsIngressRefreshAction"
-            | "si:awsRegionRefreshAction"
-            | "si:awsSecurityGroupRefreshAction"
-            | "si:dockerImageRefreshAction"
-            | "si:awsKeyPairRefreshAction" => ActionKind::Refresh,
-            "si:awsEc2CreateAction"
-            | "si:awsEgressCreateAction"
-            | "si:awsEipCreateAction"
-            | "si:awsIngressCreateAction"
-            | "si:awsKeyPairCreateAction"
-            | "si:awsSecurityGroupCreateAction" => ActionKind::Create,
-            "si:awsEc2DeleteAction"
-            | "si:awsEgressDeleteAction"
-            | "si:awsEipDeleteAction"
-            | "si:awsIngressDeleteAction"
-            | "si:awsKeyPairDeleteAction"
-            | "si:awsSecurityGroupDeleteAction" => ActionKind::Delete,
-            _ => unreachable!("that string is not in my list :("),
-        };
-
-        let schema = Schema::find_by_attr(ctx, "name", &schema.real_schema_name())
-            .await?
-            .pop()
-            .expect("able to find default schema");
-
-        let default_variant = schema.default_variant(ctx).await?;
-
-        let func = Func::find_by_name(ctx, func_name)
-            .await?
-            .expect("cannot find builtin command function");
-
-        let context = ActionPrototypeContext {
-            schema_variant_id: *default_variant.id(),
-        };
-
-        if ActionPrototype::find_for_func_kind_context(ctx, *func.id(), action_kind, context)
-            .await
-            .expect("able to search for the action prototype")
-            .is_empty()
-        {
-            info!("migrating action prototype for {}", func.name());
-
-            ActionPrototype::new(ctx, *func.id(), action_kind, context)
-                .await
-                .expect("could not create action prototype");
-        }
-    }
-
-    Ok(())
-}
-
 pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
     let intrinsics_pkg_spec = IntrinsicFunc::pkg_spec()?;
     let name = intrinsics_pkg_spec.name.to_owned();
@@ -202,7 +63,7 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .is_none()
     {
-        import_pkg_from_pkg(ctx, &intrinsics_pkg, &name).await?;
+        import_pkg_from_pkg(ctx, &intrinsics_pkg, &name, None).await?;
         ctx.blocking_commit().await?;
     }
 

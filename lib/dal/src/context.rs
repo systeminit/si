@@ -462,6 +462,11 @@ impl DalContext {
         &self.history_actor
     }
 
+    /// Gets an optional reference to the dal context's pkgs path
+    pub fn pkgs_path(&self) -> Option<&PathBuf> {
+        self.services_context.pkgs_path.as_ref()
+    }
+
     /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(

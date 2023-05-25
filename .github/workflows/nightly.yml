@@ -39,4 +39,4 @@ jobs:
       - name: Create Whiskers
         run: cargo test --package sdf-server --test api service_tests::scenario::model_and_fix_flow_whiskers::model_and_fix_flow_whiskers -- --ignored --exact
         env:
-          SI_TEST_BUILTIN_SCHEMAS: "aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane"
+          SI_TEST_BUILTIN_SCHEMAS: "region,ami,key pair,ec2 instance,security group,ingress,docker image,butane"

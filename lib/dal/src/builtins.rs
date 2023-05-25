@@ -20,21 +20,24 @@ use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
-    ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
-    AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
-    DalContext, ExternalProviderId, FuncError, InternalProviderId, PropError, PropId, SchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError, ValidationPrototypeError,
+    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
+    AttributeReadContext, AttributeValueError, AttributeValueId, DalContext, ExternalProviderId,
+    FuncError, InternalProviderId, PropError, PropId, SchemaError, SchemaVariantId,
+    StandardModelError, TransactionsError, ValidationPrototypeError,
 };
 
 // Private builtins modules.
 mod func;
 pub mod schema;
 
+pub const SI_AWS_PKG: &str = "si-aws-2023-05-25.sipkg";
+pub const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-05-25.sipkg";
+pub const SI_COREOS_PKG: &str = "si-coreos-2023-05-25.sipkg";
+pub const SI_GENERIC_FRAME_PKG: &str = "si-generic-frame-2023-05-25.sipkg";
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
-    #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
@@ -83,6 +86,8 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForExplicitInternalProvider(InternalProviderId),
     #[error("missing attribute prototype for external provider: {0}")]
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
+    #[error("no packages path configured")]
+    MissingPkgsPath,
     #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error("prop error: {0}")]
@@ -151,13 +156,10 @@ pub async fn migrate(
 
     match selected_test_builtin_schemas {
         Some(found_selected_test_builtin_schemas) => {
-            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas.to_owned()).await?;
-            func::migrate_action_prototypes(ctx, Some(found_selected_test_builtin_schemas)).await?;
+            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas).await?;
         }
         None => {
             schema::migrate_for_production(ctx).await?;
-            info!("migrating action prototypes");
-            func::migrate_action_prototypes(ctx, None).await?;
         }
     }
 

@@ -241,7 +241,13 @@ impl MigrationDriver {
             .build()?;
 
         let starfield_pkg = SiPkg::load_from_spec(starfield_spec)?;
-        import_pkg_from_pkg(ctx, &starfield_pkg, "test:starfield").await?;
+        import_pkg_from_pkg(
+            ctx,
+            &starfield_pkg,
+            "test:starfield",
+            Some(vec!["starfield".into()]),
+        )
+        .await?;
 
         Ok(())
     }

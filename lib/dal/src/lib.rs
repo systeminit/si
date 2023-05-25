@@ -1,5 +1,6 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -219,9 +220,19 @@ pub async fn migrate_all(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: Client,
     encryption_key: &EncryptionKey,
+    pkgs_path: PathBuf,
 ) -> ModelResult<()> {
     migrate(pg).await?;
-    migrate_builtins(pg, nats, job_processor, veritech, encryption_key, None).await?;
+    migrate_builtins(
+        pg,
+        nats,
+        job_processor,
+        veritech,
+        encryption_key,
+        None,
+        pkgs_path,
+    )
+    .await?;
     Ok(())
 }
 
@@ -232,10 +243,11 @@ pub async fn migrate_all_with_progress(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: Client,
     encryption_key: &EncryptionKey,
+    pkgs_path: PathBuf,
 ) -> ModelResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
-    let migrate_all = migrate_all(pg, nats, job_processor, veritech, encryption_key);
+    let migrate_all = migrate_all(pg, nats, job_processor, veritech, encryption_key, pkgs_path);
     tokio::pin!(migrate_all);
 
     loop {
@@ -269,6 +281,7 @@ pub async fn migrate_builtins(
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
+    pkgs_path: PathBuf,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -276,7 +289,7 @@ pub async fn migrate_builtins(
         job_processor,
         veritech,
         Arc::new(*encryption_key),
-        None, // XXX: inject packages path here
+        Some(pkgs_path),
     );
     let dal_context = services_context.into_builder();
     let mut ctx = dal_context.build_default().await?;
