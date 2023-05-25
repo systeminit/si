@@ -12,6 +12,7 @@ use si_pkg::{SiPkgError, SpecError};
 use crate::func::argument::FuncArgumentError;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::installed_pkg::InstalledPkgError;
 use crate::pkg::PkgError;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
@@ -72,6 +73,8 @@ pub enum BuiltinsError {
     FuncNotFoundInMigrationCache(&'static str),
     #[error("implicit internal provider not found for prop: {0}")]
     ImplicitInternalProviderNotFoundForProp(PropId),
+    #[error(transparent)]
+    InstalledPkg(#[from] InstalledPkgError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("missing attribute prototype for attribute value")]
@@ -141,7 +144,9 @@ pub async fn migrate(
     ctx: &DalContext,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
 ) -> BuiltinsResult<()> {
-    info!("migrating functions");
+    info!("migrating intrinsic functions");
+    func::migrate_intrinsics(ctx).await?;
+    info!("migrating builtin functions");
     func::migrate(ctx).await?;
 
     match selected_test_builtin_schemas {

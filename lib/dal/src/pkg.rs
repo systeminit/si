@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use thiserror::Error;
 use url::ParseError;
 
@@ -86,10 +85,6 @@ pub enum PkgError {
     InternalProvider(#[from] InternalProviderError),
     #[error("Missing Prop {1} for InternalProvider {1}")]
     InternalProviderMissingProp(InternalProviderId, PropId),
-    #[error("Cannot package func with backend kind of {0}")]
-    InvalidFuncBackendKind(FuncBackendKind),
-    #[error("Cannot package func with backend response type of {0}")]
-    InvalidFuncBackendResponseType(FuncBackendResponseType),
     #[error("Leaf Function {0} has invalid argument {1}")]
     InvalidLeafArgument(FuncId, String),
     #[error("Missing AttributePrototype {0} for explicit InternalProvider {1}")]
@@ -164,70 +159,88 @@ impl PkgError {
 
 pub type PkgResult<T> = Result<T, PkgError>;
 
-impl TryFrom<FuncBackendKind> for FuncSpecBackendKind {
-    type Error = PkgError;
-
-    fn try_from(value: FuncBackendKind) -> Result<Self, Self::Error> {
-        Ok(match value {
-            FuncBackendKind::JsAttribute => FuncSpecBackendKind::JsAttribute,
-            FuncBackendKind::JsReconciliation => FuncSpecBackendKind::JsReconciliation,
-            FuncBackendKind::JsAction => FuncSpecBackendKind::JsAction,
-            FuncBackendKind::JsValidation => FuncSpecBackendKind::JsValidation,
-            _ => return Err(PkgError::InvalidFuncBackendKind(value)),
-        })
+impl From<FuncBackendKind> for FuncSpecBackendKind {
+    fn from(value: FuncBackendKind) -> Self {
+        match value {
+            FuncBackendKind::Array => Self::Array,
+            FuncBackendKind::Boolean => Self::Boolean,
+            FuncBackendKind::Diff => Self::Diff,
+            FuncBackendKind::Identity => Self::Identity,
+            FuncBackendKind::Integer => Self::Integer,
+            FuncBackendKind::JsAttribute => Self::JsAttribute,
+            FuncBackendKind::JsReconciliation => Self::JsReconciliation,
+            FuncBackendKind::JsAction => Self::JsAction,
+            FuncBackendKind::JsValidation => Self::JsValidation,
+            FuncBackendKind::Map => Self::Map,
+            FuncBackendKind::Object => Self::Object,
+            FuncBackendKind::String => Self::String,
+            FuncBackendKind::Unset => Self::Unset,
+            FuncBackendKind::Validation => Self::Validation,
+        }
     }
 }
 
 impl From<FuncSpecBackendKind> for FuncBackendKind {
     fn from(value: FuncSpecBackendKind) -> Self {
         match value {
-            FuncSpecBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
-            FuncSpecBackendKind::JsReconciliation => FuncBackendKind::JsReconciliation,
-            FuncSpecBackendKind::JsAction => FuncBackendKind::JsAction,
-            FuncSpecBackendKind::JsValidation => FuncBackendKind::JsValidation,
+            FuncSpecBackendKind::Array => Self::Array,
+            FuncSpecBackendKind::Boolean => Self::Boolean,
+            FuncSpecBackendKind::Diff => Self::Diff,
+            FuncSpecBackendKind::Identity => Self::Identity,
+            FuncSpecBackendKind::Integer => Self::Integer,
+            FuncSpecBackendKind::JsAttribute => Self::JsAttribute,
+            FuncSpecBackendKind::JsReconciliation => Self::JsReconciliation,
+            FuncSpecBackendKind::JsAction => Self::JsAction,
+            FuncSpecBackendKind::JsValidation => Self::JsValidation,
+            FuncSpecBackendKind::Map => Self::Map,
+            FuncSpecBackendKind::Object => Self::Object,
+            FuncSpecBackendKind::String => Self::String,
+            FuncSpecBackendKind::Unset => Self::Unset,
+            FuncSpecBackendKind::Validation => Self::Validation,
         }
     }
 }
 
-impl TryFrom<FuncBackendResponseType> for FuncSpecBackendResponseType {
-    type Error = PkgError;
-
-    fn try_from(value: FuncBackendResponseType) -> Result<Self, Self::Error> {
-        Ok(match value {
-            FuncBackendResponseType::Action => FuncSpecBackendResponseType::Action,
-            FuncBackendResponseType::Array => FuncSpecBackendResponseType::Array,
-            FuncBackendResponseType::Boolean => FuncSpecBackendResponseType::Boolean,
-            FuncBackendResponseType::CodeGeneration => FuncSpecBackendResponseType::CodeGeneration,
-            FuncBackendResponseType::Confirmation => FuncSpecBackendResponseType::Confirmation,
-            FuncBackendResponseType::Integer => FuncSpecBackendResponseType::Integer,
-            FuncBackendResponseType::Json => FuncSpecBackendResponseType::Json,
-            FuncBackendResponseType::Map => FuncSpecBackendResponseType::Map,
-            FuncBackendResponseType::Object => FuncSpecBackendResponseType::Object,
-            FuncBackendResponseType::Qualification => FuncSpecBackendResponseType::Qualification,
-            FuncBackendResponseType::String => FuncSpecBackendResponseType::String,
-            FuncBackendResponseType::Validation => FuncSpecBackendResponseType::Validation,
-
-            _ => return Err(PkgError::InvalidFuncBackendResponseType(value)),
-        })
+impl From<FuncBackendResponseType> for FuncSpecBackendResponseType {
+    fn from(value: FuncBackendResponseType) -> Self {
+        match value {
+            FuncBackendResponseType::Action => Self::Action,
+            FuncBackendResponseType::Array => Self::Array,
+            FuncBackendResponseType::Boolean => Self::Boolean,
+            FuncBackendResponseType::CodeGeneration => Self::CodeGeneration,
+            FuncBackendResponseType::Confirmation => Self::Confirmation,
+            FuncBackendResponseType::Identity => Self::Identity,
+            FuncBackendResponseType::Integer => Self::Integer,
+            FuncBackendResponseType::Json => Self::Json,
+            FuncBackendResponseType::Map => Self::Map,
+            FuncBackendResponseType::Object => Self::Object,
+            FuncBackendResponseType::Qualification => Self::Qualification,
+            FuncBackendResponseType::Reconciliation => Self::Reconciliation,
+            FuncBackendResponseType::String => Self::String,
+            FuncBackendResponseType::Unset => Self::Unset,
+            FuncBackendResponseType::Validation => Self::Validation,
+        }
     }
 }
 
 impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
     fn from(value: FuncSpecBackendResponseType) -> Self {
         match value {
-            FuncSpecBackendResponseType::Action => FuncBackendResponseType::Action,
-            FuncSpecBackendResponseType::Array => FuncBackendResponseType::Array,
-            FuncSpecBackendResponseType::Boolean => FuncBackendResponseType::Boolean,
-            FuncSpecBackendResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
-            FuncSpecBackendResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
-            FuncSpecBackendResponseType::Confirmation => FuncBackendResponseType::Confirmation,
-            FuncSpecBackendResponseType::Integer => FuncBackendResponseType::Integer,
-            FuncSpecBackendResponseType::Json => FuncBackendResponseType::Json,
-            FuncSpecBackendResponseType::Map => FuncBackendResponseType::Map,
-            FuncSpecBackendResponseType::Object => FuncBackendResponseType::Object,
-            FuncSpecBackendResponseType::Qualification => FuncBackendResponseType::Qualification,
-            FuncSpecBackendResponseType::String => FuncBackendResponseType::String,
-            FuncSpecBackendResponseType::Validation => FuncBackendResponseType::Validation,
+            FuncSpecBackendResponseType::Action => Self::Action,
+            FuncSpecBackendResponseType::Array => Self::Array,
+            FuncSpecBackendResponseType::Boolean => Self::Boolean,
+            FuncSpecBackendResponseType::CodeGeneration => Self::CodeGeneration,
+            FuncSpecBackendResponseType::Confirmation => Self::Confirmation,
+            FuncSpecBackendResponseType::Identity => Self::Identity,
+            FuncSpecBackendResponseType::Integer => Self::Integer,
+            FuncSpecBackendResponseType::Json => Self::Json,
+            FuncSpecBackendResponseType::Map => Self::Map,
+            FuncSpecBackendResponseType::Object => Self::Object,
+            FuncSpecBackendResponseType::Qualification => Self::Qualification,
+            FuncSpecBackendResponseType::Reconciliation => Self::Reconciliation,
+            FuncSpecBackendResponseType::String => Self::String,
+            FuncSpecBackendResponseType::Unset => Self::Unset,
+            FuncSpecBackendResponseType::Validation => Self::Validation,
         }
     }
 }

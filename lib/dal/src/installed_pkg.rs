@@ -95,4 +95,8 @@ impl InstalledPkg {
 
     standard_model_accessor!(name, String, InstalledPkgResult);
     standard_model_accessor!(root_hash, String, InstalledPkgResult);
+
+    pub async fn find_by_hash(ctx: &DalContext, hash: &str) -> InstalledPkgResult<Option<Self>> {
+        Ok(Self::find_by_attr(ctx, "root_hash", &hash).await?.pop())
+    }
 }
