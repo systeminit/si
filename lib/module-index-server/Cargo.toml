@@ -1,0 +1,34 @@
+[package]
+name = "module-index-server"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+axum = { workspace = true }
+base64 = { workspace = true }
+buck2-resources = { path = "../../lib/buck2-resources" }
+chrono = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
+jwt-simple = { workspace = true }
+refinery = { workspace = true }
+regex = { workspace = true }
+remain = { workspace = true }
+sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-posthog = { path = "../../lib/si-posthog-rs" }
+si-settings = { path = "../../lib/si-settings" }
+stream-cancel = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+ulid = { workspace = true }
