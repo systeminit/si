@@ -475,10 +475,12 @@ async fn save_attr_func_arguments(
 async fn save_action_func_prototypes(
     ctx: &DalContext,
     func: &Func,
-    kind: ActionKind,
+    kind: Option<ActionKind>,
     schema_variant_ids: Vec<SchemaVariantId>,
 ) -> FuncResult<()> {
     let mut id_set = HashSet::new();
+
+    let kind = kind.ok_or(FuncError::ActionKindMissing(*func.id()))?;
 
     for schema_variant_id in schema_variant_ids {
         let context = ActionPrototypeContext { schema_variant_id };
