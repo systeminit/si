@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
 import { posthog } from "@/utils/posthog";
+import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 
@@ -60,13 +61,9 @@ const routes: RouteRecordRaw[] = [
         path: ":changeSetId/c",
         name: "workspace-compose",
         component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView.vue"),
-      },
-      {
-        path: ":changeSetId/c2",
-        name: "workspace-compose-2",
-        component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView2.vue"),
+          SINGLE_MODEL_SCREEN_FF
+            ? import("@/components/Workspace/WorkspaceModelAndView2.vue")
+            : import("@/components/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: ":changeSetId/l",
@@ -111,11 +108,6 @@ const routes: RouteRecordRaw[] = [
         path: "r",
         name: "workspace-fix",
         component: () => import("@/components/Workspace/WorkspaceApply.vue"),
-      },
-      {
-        path: "r2",
-        name: "workspace-sync",
-        component: () => import("@/components/Workspace/WorkspaceSync.vue"),
       },
       ...(isDevMode
         ? [
