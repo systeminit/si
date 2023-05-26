@@ -14,6 +14,7 @@
       :disabled="props.disabled"
       @change="updateAssociations"
     />
+    <LeafInputs v-model="inputs" @change="updateAssociations" />
     <VButton @click="openModal">Edit Confirmation Descriptions</VButton>
     <ConfirmationDescriptionModal
       ref="descriptionsModal"
@@ -37,6 +38,7 @@ import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 import ConfirmationDescriptionModal from "./ConfirmationDescriptionModal.vue";
+import LeafInputs from "./LeafInputs.vue";
 
 const funcStore = useFuncStore();
 const { schemaVariantOptions } = storeToRefs(funcStore);
@@ -55,6 +57,8 @@ const selectedVariants = ref<Option[]>(
 const funcDescriptions = ref<FuncDescriptionView[]>(
   props.modelValue.descriptions,
 );
+
+const inputs = ref(props.modelValue.inputs);
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: ConfirmationAssociations): void;
@@ -82,6 +86,7 @@ const updateAssociations = () => {
     schemaVariantIds: selectedVariants.value.map(
       ({ value }) => value as string,
     ),
+    inputs: inputs.value,
     descriptions: funcDescriptions.value,
     type: "confirmation",
   };

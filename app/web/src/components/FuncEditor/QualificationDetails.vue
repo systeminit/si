@@ -32,6 +32,7 @@
       :disabled="disabled"
       @change="updateAssociations"
     />
+    <LeafInputs v-model="inputs" @change="updateAssociations" />
   </div>
 </template>
 
@@ -43,6 +44,7 @@ import { QualificationAssociations } from "@/store/func/types";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
+import LeafInputs from "./LeafInputs.vue";
 
 const funcStore = useFuncStore();
 const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
@@ -60,6 +62,8 @@ const selectedVariants = ref<Option[]>(
 const selectedComponents = ref<Option[]>(
   toOptionValues(componentOptions.value, modelValue.value.componentIds),
 );
+
+const inputs = ref(modelValue.value.inputs);
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: QualificationAssociations): void;
@@ -81,6 +85,7 @@ const updateAssociations = () => {
     schemaVariantIds: selectedVariants.value.map(
       ({ value }) => value as string,
     ),
+    inputs: inputs.value,
     type: "qualification",
   };
 

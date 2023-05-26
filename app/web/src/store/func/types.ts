@@ -8,10 +8,13 @@ export interface ActionAssociations {
   kind?: ActionKind;
 }
 
+export type LeafInputLocation = "code" | "deletedAt" | "domain" | "resource";
+
 export interface CodeGenerationAssociations {
   type: "codeGeneration";
   schemaVariantIds: string[];
   componentIds: string[];
+  inputs: LeafInputLocation[];
 }
 
 export interface ConfirmationFuncDescriptionContents {
@@ -35,12 +38,14 @@ export interface ConfirmationAssociations {
   schemaVariantIds: string[];
   componentIds: string[];
   descriptions: FuncDescriptionView[];
+  inputs: LeafInputLocation[];
 }
 
 export interface QualificationAssociations {
   type: "qualification";
   schemaVariantIds: string[];
   componentIds: string[];
+  inputs: LeafInputLocation[];
 }
 
 export interface ValidationAssociations {

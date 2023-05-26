@@ -15,6 +15,7 @@ use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::root_prop::SiPropChild;
 use crate::standard_model::{object_from_row, option_object_from_row};
+use crate::AttributePrototypeArgument;
 use crate::{
     func::{
         argument::{FuncArgument, FuncArgumentError},
@@ -561,38 +562,83 @@ impl SchemaVariant {
         };
 
         let key = Some(func.name().to_string());
+        let mut existing_args = FuncArgument::list_for_func(ctx, *func.id()).await?;
+        let mut inputs = vec![];
+        for location in input_locations {
+            let arg_name = location.arg_name();
+            let arg = match existing_args.iter().find(|arg| arg.name() == arg_name) {
+                Some(existing_arg) => existing_arg.clone(),
+                None => {
+                    FuncArgument::new(ctx, arg_name, location.arg_kind(), None, *func.id()).await?
+                }
+            };
+
+            inputs.push(LeafInput {
+                location: *location,
+                func_argument_id: *arg.id(),
+            });
+        }
+
+        for mut existing_arg in existing_args.drain(..) {
+            if !inputs.iter().any(
+                |&LeafInput {
+                     func_argument_id, ..
+                 }| func_argument_id == *existing_arg.id(),
+            ) {
+                existing_arg.delete_by_id(ctx).await?;
+            }
+        }
 
         Ok(
             match AttributePrototype::find_for_context_and_key(ctx, context, &key)
                 .await?
                 .pop()
             {
-                Some(existing_proto) => existing_proto,
-                None => {
-                    let existing_args = FuncArgument::list_for_func(ctx, *func.id()).await?;
-                    let mut inputs = vec![];
-                    for location in input_locations {
-                        let arg_name = location.arg_name();
-                        let arg = match existing_args.iter().find(|arg| arg.name() == arg_name) {
-                            Some(existing_arg) => existing_arg.clone(),
-                            None => {
-                                FuncArgument::new(
-                                    ctx,
-                                    arg_name,
-                                    location.arg_kind(),
-                                    None,
-                                    *func.id(),
-                                )
-                                .await?
-                            }
-                        };
+                Some(existing_proto) => {
+                    let mut apas = AttributePrototypeArgument::list_for_attribute_prototype(
+                        ctx,
+                        *existing_proto.id(),
+                    )
+                    .await?;
 
-                        inputs.push(LeafInput {
-                            location: *location,
-                            func_argument_id: *arg.id(),
-                        });
+                    for input in &inputs {
+                        if !apas
+                            .iter()
+                            .any(|apa| apa.func_argument_id() == input.func_argument_id)
+                        {
+                            let input_internal_provider =
+                                Self::find_root_child_implicit_internal_provider(
+                                    ctx,
+                                    schema_variant_id,
+                                    input.location.into(),
+                                )
+                                .await?;
+
+                            AttributePrototypeArgument::new_for_intra_component(
+                                ctx,
+                                *existing_proto.id(),
+                                input.func_argument_id,
+                                *input_internal_provider.id(),
+                            )
+                            .await?;
+                        }
                     }
 
+                    for mut apa in apas.drain(..) {
+                        if !inputs.iter().any(
+                            |&LeafInput {
+                                 func_argument_id, ..
+                             }| {
+                                func_argument_id == apa.func_argument_id()
+                            },
+                        ) {
+                            apa.delete_by_id(ctx).await?;
+                        }
+                    }
+
+                    existing_proto
+                }
+                None => {
                     let (_, new_proto) = SchemaVariant::add_leaf(
                         ctx,
                         *func.id(),

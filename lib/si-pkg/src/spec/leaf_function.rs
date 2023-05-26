@@ -47,22 +47,6 @@ pub enum LeafInputLocation {
     Resource,
 }
 
-impl LeafInputLocation {
-    pub fn try_from_arg_name(arg_name: &str) -> Result<Self, SpecError> {
-        Ok(match arg_name {
-            "domain" => LeafInputLocation::Domain,
-            "code" => LeafInputLocation::Code,
-            "resource" => LeafInputLocation::Resource,
-            "deleted_at" => LeafInputLocation::DeletedAt,
-            _ => {
-                return Err(SpecError::LeafInputLocationConversionError(
-                    arg_name.to_string(),
-                ))
-            }
-        })
-    }
-}
-
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]

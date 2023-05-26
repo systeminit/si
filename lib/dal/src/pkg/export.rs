@@ -7,11 +7,11 @@ use telemetry::prelude::*;
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec,
-    FuncDescriptionSpec, FuncSpec, FuncUniqueId, LeafFunctionSpec,
-    LeafInputLocation as PkgLeafInputLocation, MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder,
-    PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
-    SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    FuncDescriptionSpec, FuncSpec, FuncUniqueId, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
+    PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg,
+    SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec,
+    ValidationSpecKind,
 };
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
     ExternalProvider, ExternalProviderId, Func, FuncDescription, FuncId, InternalProvider,
-    InternalProviderId, LeafKind, Prop, PropId, PropKind, Schema, SchemaVariant,
+    InternalProviderId, LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema, SchemaVariant,
     SchemaVariantError, SchemaVariantId, Socket, StandardModel, StandardModelError,
     ValidationPrototype,
 };
@@ -186,7 +186,13 @@ async fn build_leaf_function_specs(
 
             let mut inputs = vec![];
             for arg in FuncArgument::list_for_func(ctx, *leaf_func.id()).await? {
-                inputs.push(PkgLeafInputLocation::try_from_arg_name(arg.name())?);
+                inputs.push(
+                    LeafInputLocation::maybe_from_arg_name(arg.name())
+                        .ok_or(SpecError::LeafInputLocationConversionError(
+                            arg.name().into(),
+                        ))?
+                        .into(),
+                );
             }
 
             specs.push(
