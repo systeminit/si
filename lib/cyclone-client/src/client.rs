@@ -462,8 +462,6 @@ mod tests {
             let lang_server_cmd_path = resources
                 .get_ends_with("lang-js")
                 .expect("failed to get lang-js resource")
-                // TODO(fnichol): tweak build rule to produce binary as its output
-                .join("lang-js")
                 .to_string_lossy()
                 .to_string();
 

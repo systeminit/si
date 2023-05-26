@@ -1,38 +1,71 @@
-load("@prelude-si//:pnpm.bzl", "pnpm_task_library", "pnpm_task_binary", "pnpm_task_test")
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "npm_bin",
+    "package_node_modules",
+    "vite_app",
+)
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_library",
+    "pnpm_task_binary",
+    "pnpm_task_test",
+)
 
 export_file(
     name = "package.json",
-    src = "./package.json",
-    mode = "reference",
-    visibility = ["PUBLIC"],
+)
+
+package_node_modules(
+    name = "node_modules",
+)
+
+npm_bin(
+    name = "vite",
+)
+
+filegroup(
+    name = "src",
+    srcs = glob([
+        "build-src/**/*",
+        "index.html",
+        "postcss.config.js",
+        "public/**/*",
+        "src/**/*",
+        "tailwind.config.cjs",
+        "tsconfig.json",
+        "tsconfig.node.json",
+        "vite.config.ts",
+    ]),
+)
+
+vite_app(
+    name = "web",
+    srcs = [":src"],
+    prod_deps_srcs = {
+        "lib/ts-lib": "//lib/ts-lib:src",
+        "lib/vue-lib": "//lib/vue-lib:src",
+    },
+    dev_deps_srcs = {
+        "lib/eslint-config": "//lib/eslint-config:src",
+        "lib/tsconfig": "//lib/tsconfig:src",
+    },
 )
 
 export_file(
     name = "dotenv",
     src = "./.env",
     mode = "reference",
-    visibility = ["PUBLIC"],
 )
 
 pnpm_task_library(
     name = "build-lint",
     command = "lint",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = ["//:pnpm-install"],
-    path = "app/web",
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_library(
-    name = "build",
-    command = "build",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
+    srcs = [":src"],
     deps = [
-        "//:pnpm-install",
-        ":build-lint"
+        "//:node_modules",
     ],
     path = "app/web",
-    outs = ["dist"],
     visibility = ["PUBLIC"],
 )
 
@@ -41,7 +74,9 @@ pnpm_task_binary(
     command = "lint",
     srcs = glob(["src/**/*"]),
     path = "app/web",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -50,7 +85,9 @@ pnpm_task_binary(
     command = "lint:fix",
     srcs = glob(["src/**/*"]),
     path = "app/web",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -59,7 +96,9 @@ pnpm_task_binary(
     command = "dev",
     srcs = glob(["src/**/*"]),
     path = "app/web",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -73,7 +112,9 @@ pnpm_task_binary(
 pnpm_task_test(
     name = "test",
     command = "test",
-    deps = [":build"],
+    deps = [
+        ":build",
+    ],
     path = "app/web",
     visibility = ["PUBLIC"],
 )

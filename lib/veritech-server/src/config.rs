@@ -468,8 +468,6 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let lang_server_cmd_path = resources
         .get_ends_with("lang-js")
         .map_err(ConfigError::cyclone_spec_build)?
-        // TODO(fnichol): tweak build rule to produce binary as its output
-        .join("lang-js")
         .to_string_lossy()
         .to_string();
 

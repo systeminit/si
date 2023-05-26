@@ -1,24 +1,74 @@
-load("@prelude-si//:pnpm.bzl", "pnpm_task_library", "pnpm_task_binary")
-
-export_file(
-    name = "package.json",
-    src = "./package.json",
-    mode = "reference",
-    visibility = ["PUBLIC"],
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "npm_bin",
+    "package_node_modules",
+    "vite_app",
+)
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_library",
+    "pnpm_task_binary",
 )
 
 export_file(
-    name = "dotenv",
-    src = "./.env",
-    mode = "reference",
-    visibility = ["PUBLIC"],
+    name = "package.json",
+)
+
+package_node_modules(
+    name = "node_modules",
+    package_name = "@si/auth-portal",
+)
+
+npm_bin(
+    name = "vite",
+)
+
+npm_bin(
+    name = "vite-ssg",
+)
+
+filegroup(
+    name = "src",
+    srcs = glob([
+        ".env",
+        ".eslintrc.cjs",
+        "index.html",
+        "postcss.config.js",
+        "public/**/*",
+        "src/**/*",
+        "tailwind.config.cjs",
+        "tsconfig.json",
+        "tsconfig.node.json",
+        "vite.config.ts",
+    ]),
+)
+
+vite_app(
+    name = "auth-portal",
+    srcs = [":src"],
+    prod_deps_srcs = {
+        "lib/ts-lib": "//lib/ts-lib:src",
+        "lib/vue-lib": "//lib/vue-lib:src",
+    },
+    dev_deps_srcs = {
+        "lib/eslint-config": "//lib/eslint-config:src",
+        "lib/tsconfig": "//lib/tsconfig:src",
+    },
+    vite = ":vite-ssg",
+)
+
+export_file(
+    name = ".env",
 )
 
 pnpm_task_library(
     name = "build-lint",
     command = "lint",
     srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     path = "app/auth-portal",
     visibility = ["PUBLIC"],
 )
@@ -28,8 +78,8 @@ pnpm_task_library(
     command = "build",
     srcs = glob(["src/**/*", "tsconfig.json"]),
     deps = [
-        "//:pnpm-install",
-        ":build-lint"
+        "//:node_modules",
+        ":build-lint",
     ],
     path = "app/auth-portal",
     outs = ["dist"],
@@ -41,8 +91,8 @@ pnpm_task_library(
     command = "build2",
     srcs = glob(["src/**/*", "tsconfig.json"]),
     deps = [
-        "//:pnpm-install",
-        ":build-lint"
+        "//:node_modules",
+        ":build-lint",
     ],
     path = "app/auth-portal",
     outs = ["dist"],
@@ -54,7 +104,9 @@ pnpm_task_binary(
     command = "lint",
     srcs = glob(["src/**/*"]),
     path = "app/auth-portal",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -63,7 +115,9 @@ pnpm_task_binary(
     command = "lint:strict",
     srcs = glob(["src/**/*"]),
     path = "app/auth-portal",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -72,7 +126,9 @@ pnpm_task_binary(
     command = "lint:fix",
     srcs = glob(["src/**/*"]),
     path = "app/auth-portal",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -81,6 +137,8 @@ pnpm_task_binary(
     command = "dev",
     srcs = glob(["src/**/*"]),
     path = "app/auth-portal",
-    deps = ["//:pnpm-install"],
+    deps = [
+        "//:node_modules",
+    ],
     visibility = ["PUBLIC"],
 )
