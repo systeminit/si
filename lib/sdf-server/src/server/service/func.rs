@@ -23,7 +23,7 @@ use dal::{
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId, WsEventError,
 };
-use dal::{FuncDescription, FuncDescriptionContents};
+use dal::{FuncDescription, FuncDescriptionContents, LeafInputLocation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -272,17 +272,20 @@ pub enum FuncAssociations {
     CodeGeneration {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
+        inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
     Confirmation {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
         descriptions: Vec<FuncDescriptionView>,
+        inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
     Qualification {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
+        inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
     Validation {
@@ -426,6 +429,17 @@ pub async fn func_description_views(
     Ok(views)
 }
 
+pub async fn get_leaf_function_inputs(
+    ctx: &DalContext,
+    func_id: FuncId,
+) -> FuncResult<Vec<LeafInputLocation>> {
+    Ok(FuncArgument::list_for_func(ctx, func_id)
+        .await?
+        .iter()
+        .filter_map(|arg| LeafInputLocation::maybe_from_arg_name(arg.name()))
+        .collect())
+}
+
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
     let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
 
@@ -442,6 +456,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                     Some(FuncAssociations::CodeGeneration {
                         schema_variant_ids,
                         component_ids,
+                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
                     })
                 }
                 FuncBackendResponseType::Confirmation => {
@@ -455,6 +470,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                         schema_variant_ids,
                         component_ids,
                         descriptions,
+                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
                     })
                 }
                 FuncBackendResponseType::Qualification => {
@@ -465,6 +481,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                     Some(FuncAssociations::Qualification {
                         schema_variant_ids,
                         component_ids,
+                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
                     })
                 }
                 _ => {

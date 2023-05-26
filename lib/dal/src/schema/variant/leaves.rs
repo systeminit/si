@@ -2,6 +2,7 @@
 //! subtrees for a [`SchemaVariant`](crate::SchemaVariant). In this domain, a "leaf" is considered
 //! to an entry of a immediate child [`map`](crate::PropKind::Map) underneath "/root".
 
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
@@ -61,7 +62,8 @@ impl From<LeafKind> for PkgLeafKind {
 /// as "inputs" in order to prevent cycles. This enum provides an approved subset of those
 /// children_.
 #[remain::sorted]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LeafInputLocation {
     /// The input location corresponding to "/root/code".
     Code,
@@ -123,6 +125,16 @@ impl LeafInputLocation {
             LeafInputLocation::Resource => "resource",
             LeafInputLocation::DeletedAt => "deleted_at",
         }
+    }
+
+    pub fn maybe_from_arg_name(arg_name: &str) -> Option<Self> {
+        Some(match arg_name {
+            "domain" => LeafInputLocation::Domain,
+            "code" => LeafInputLocation::Code,
+            "resource" => LeafInputLocation::Resource,
+            "deleted_at" => LeafInputLocation::DeletedAt,
+            _ => return None,
+        })
     }
 
     pub fn arg_kind(&self) -> FuncArgumentKind {

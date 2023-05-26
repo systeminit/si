@@ -1,6 +1,5 @@
 use axum::extract::OriginalUri;
 use axum::Json;
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -260,20 +259,15 @@ async fn attribute_view_for_leaf_func(
     func: &Func,
     schema_variant_id: SchemaVariantId,
     component_id: Option<ComponentId>,
+    inputs: &[LeafInputLocation],
     leaf_kind: LeafKind,
 ) -> FuncResult<AttributePrototypeView> {
-    let inputs = match leaf_kind {
-        LeafKind::Confirmation => vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
-        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
-        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
-    };
-
     let existing_proto = SchemaVariant::upsert_leaf_function(
         ctx,
         schema_variant_id,
         component_id,
         leaf_kind,
-        &inputs,
+        inputs,
         func,
     )
     .await?;
@@ -371,13 +365,15 @@ async fn save_leaf_prototypes(
     func: &Func,
     schema_variant_ids: Vec<SchemaVariantId>,
     component_ids: Vec<ComponentId>,
+    inputs: &[LeafInputLocation],
     leaf_kind: LeafKind,
 ) -> FuncResult<()> {
     let mut attribute_views = vec![];
 
     for schema_variant_id in schema_variant_ids {
         attribute_views.push(
-            attribute_view_for_leaf_func(ctx, func, schema_variant_id, None, leaf_kind).await?,
+            attribute_view_for_leaf_func(ctx, func, schema_variant_id, None, inputs, leaf_kind)
+                .await?,
         );
     }
 
@@ -390,6 +386,7 @@ async fn save_leaf_prototypes(
                 func,
                 schema_variant_id,
                 Some(component_id),
+                inputs,
                 leaf_kind,
             )
             .await?,
@@ -598,6 +595,7 @@ pub async fn do_save_func(
                 if let Some(FuncAssociations::CodeGeneration {
                     schema_variant_ids,
                     component_ids,
+                    inputs,
                 }) = request.associations
                 {
                     save_leaf_prototypes(
@@ -605,6 +603,7 @@ pub async fn do_save_func(
                         &func,
                         schema_variant_ids,
                         component_ids,
+                        &inputs,
                         LeafKind::CodeGeneration,
                     )
                     .await?;
@@ -615,6 +614,7 @@ pub async fn do_save_func(
                     schema_variant_ids,
                     component_ids,
                     descriptions,
+                    inputs,
                 }) = request.associations
                 {
                     save_leaf_prototypes(
@@ -622,6 +622,7 @@ pub async fn do_save_func(
                         &func,
                         schema_variant_ids,
                         component_ids,
+                        &inputs,
                         LeafKind::Confirmation,
                     )
                     .await?;
@@ -633,6 +634,7 @@ pub async fn do_save_func(
                 if let Some(FuncAssociations::Qualification {
                     schema_variant_ids,
                     component_ids,
+                    inputs,
                 }) = request.associations
                 {
                     save_leaf_prototypes(
@@ -640,6 +642,7 @@ pub async fn do_save_func(
                         &func,
                         schema_variant_ids,
                         component_ids,
+                        &inputs,
                         LeafKind::Qualification,
                     )
                     .await?;
@@ -719,10 +722,12 @@ pub async fn save_func<'a>(
         Some(FuncAssociations::Qualification {
             component_ids,
             schema_variant_ids,
+            ..
         })
         | Some(FuncAssociations::CodeGeneration {
             component_ids,
             schema_variant_ids,
+            ..
         })
         | Some(FuncAssociations::Confirmation {
             component_ids,
