@@ -45,5 +45,8 @@
     "vite-plugin-markdown": "^2.2.0-2",
     "vite-svg-loader": "^3.4.0",
     "vue-tsc": "^1.1.7"
+  },
+  "volta": {
+    "extends": "../../package.json"
   }
 }
