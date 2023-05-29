@@ -25,7 +25,7 @@
               />
             </Switch>
           </span>
-          <span class="text-xs text-neutral-700 dark:text-neutral-300 truncate">
+          <span class="text-neutral-400 truncate">
             <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
             {{
               props.recommendation.componentName

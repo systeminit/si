@@ -65,6 +65,17 @@
     :min-size="300"
   >
     <div class="flex flex-col h-full">
+      <span
+        class="flex flex-row w-full p-3 text-neutral-400 border-b dark:border-neutral-500"
+      >
+        <strong class="grow uppercase text-lg">Changes</strong>
+        <strong
+          class="text-action-300 mx-2 bg-action-100 text-xl rounded-2xl px-3 border border-action-300"
+          >{{
+            1 + diffs.length + confirmationsStore.recommendations.length
+          }}</strong
+        >
+      </span>
       <div class="grow relative">
         <TabGroup
           remember-selected-tab-key="proposed_right"
@@ -84,14 +95,14 @@
                     <span>Change Set Created</span>
                   </span>
 
-                  <span class="truncate flex flex-row">
+                  <span class="truncate flex flex-row text-neutral-400">
                     {{ changeSetStore.selectedChangeSet?.name }}
                   </span>
                 </div>
               </template>
 
               <template #default>
-                <div class="px-5">
+                <div class="px-5 text-neutral-400">
                   {{ changeSetStore.selectedChangeSet?.name }}
                 </div>
               </template>
@@ -124,7 +135,7 @@
                     >
                   </span>
 
-                  <span class="truncate flex flex-row">
+                  <span class="truncate flex flex-row text-neutral-400">
                     {{
                       componentsStore.componentsById[diff.componentId]
                         ?.displayName
@@ -134,7 +145,7 @@
               </template>
 
               <template #default>
-                <div class="px-5">
+                <div class="px-5 text-neutral-400">
                   {{
                     componentsStore.componentsById[diff.componentId]
                       ?.displayName
@@ -186,6 +197,11 @@
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
       <div class="half">
+        <span
+          class="flex flex-row w-full p-3 text-neutral-400 border-y dark:border-neutral-500"
+        >
+          <strong class="grow uppercase text-lg">Selected Asset(s)</strong>
+        </span>
         <template v-if="selectedEdge">
           <EdgeDetailsPanel
             @delete="triggerDeleteSelection"
