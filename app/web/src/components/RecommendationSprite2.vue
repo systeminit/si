@@ -12,12 +12,12 @@
       >
         <div class="flex flex-col min-w-0 grow">
           <span class="font-bold truncate flex flex-row">
-            <span>{{ props.recommendation.name }}</span>
+            <span class="grow">{{ props.recommendation.name }}</span>
             <Switch
               :id="`${props.recommendation.confirmationAttributeValueId}-${props.recommendation.actionKind}`"
               v-model="inputValue"
               :class="inputValue ? 'bg-blue-600' : 'bg-gray-200'"
-              class="relative inline-flex h-5 w-8 items-center rounded-full ml-2"
+              class="relative inline-flex h-5 w-8 items-center rounded-full mt-1 mr-3"
             >
               <span
                 :class="inputValue ? 'translate-x-4' : 'translate-x-1'"
