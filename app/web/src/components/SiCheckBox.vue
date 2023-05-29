@@ -10,8 +10,8 @@
 
       <Switch
         :id="props.id"
-        :disabled="props.disabled"
         v-model="inputValue"
+        :disabled="props.disabled"
         :class="inputValue ? 'bg-blue-600' : 'bg-gray-200'"
         class="relative inline-flex h-5 w-8 items-center rounded-full ml-2"
         :aria-invalid="inError"

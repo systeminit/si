@@ -64,133 +64,148 @@
     :default-size="380"
     :min-size="300"
   >
-    <TransitionGroup
-      tag="ul"
-      enter-active-class="duration-500 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="duration-300 ease-in delay-2000"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <ApplyChangeSetButton key="apply-button" />
+    <div class="flex flex-col h-full">
+      <ApplyChangeSetButton />
 
-      <SiCollapsible
-        key="change-set-name"
-        as="div"
-        content-as="ul"
-        :default-open="false"
-        hide-bottom-border-when-open
-      >
-        <template #label>
-          <div class="flex flex-col min-w-0 grow">
-            <span class="font-bold truncate flex flex-row">
-              <span>Change Set Created</span>
-            </span>
+      <div class="grow relative">
+        <TabGroup
+          remember-selected-tab-key="proposed_right"
+          tracking-slug="recommendations_applied"
+        >
+          <TabGroupItem label="Proposed" slug="recommendations_proposed">
+            <SiCollapsible
+              as="div"
+              content-as="ul"
+              :default-open="false"
+              hide-bottom-border-when-open
+            >
+              <template #label>
+                <div class="flex flex-col min-w-0 grow">
+                  <span class="font-bold truncate flex flex-row">
+                    <span>Change Set Created</span>
+                  </span>
 
-            <span class="font-bold truncate flex flex-row">
-              {{ changeSetStore.selectedChangeSet?.name }}
-            </span>
-          </div>
-        </template>
+                  <span class="font-bold truncate flex flex-row">
+                    {{ changeSetStore.selectedChangeSet?.name }}
+                  </span>
+                </div>
+              </template>
 
-        <template #default>
-          <div class="px-5">
-            {{ changeSetStore.selectedChangeSet?.name }}
-          </div>
-        </template>
-      </SiCollapsible>
+              <template #default>
+                <div class="px-5">
+                  {{ changeSetStore.selectedChangeSet?.name }}
+                </div>
+              </template>
+            </SiCollapsible>
 
-      <SiCollapsible
-        v-for="diff in diffs"
-        :key="diff.componentId"
-        as="div"
-        content-as="ul"
-        :default-open="false"
-        hide-bottom-border-when-open
-      >
-        <template #label>
-          <div class="flex flex-col min-w-0 grow">
-            <span class="font-bold truncate flex flex-row">
-              <span>Created Component</span>
-            </span>
+            <SiCollapsible
+              v-for="diff in diffs"
+              :key="diff.componentId"
+              as="div"
+              content-as="ul"
+              :default-open="false"
+              hide-bottom-border-when-open
+            >
+              <template #label>
+                <div class="flex flex-col min-w-0 grow">
+                  <span class="font-bold truncate flex flex-row">
+                    <span>Created Component</span>
+                  </span>
 
-            <span class="font-bold truncate flex flex-row">
-              {{
-                componentsStore.componentsById[diff.componentId]?.displayName
-              }}
-            </span>
-          </div>
-        </template>
+                  <span class="font-bold truncate flex flex-row">
+                    {{
+                      componentsStore.componentsById[diff.componentId]
+                        ?.displayName
+                    }}
+                  </span>
+                </div>
+              </template>
 
-        <template #default>
-          <div class="px-5">
-            {{ componentsStore.componentsById[diff.componentId]?.displayName }}
-          </div>
-        </template>
-      </SiCollapsible>
+              <template #default>
+                <div class="px-5">
+                  {{
+                    componentsStore.componentsById[diff.componentId]
+                      ?.displayName
+                  }}
+                </div>
+              </template>
+            </SiCollapsible>
 
-      <li
-        v-for="recommendation in confirmationsStore.recommendations"
-        :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-      >
-        <RecommendationSprite
-          :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-          :recommendation="recommendation"
-          :selected="
-            recommendationSelection[
-              `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
-            ]
-          "
-          @click.stop
-          @toggle="toggleRecommendation($event, recommendation)"
-        />
-      </li>
-      <li
-        v-if="confirmationsStore.recommendations.length === 0"
-        key="no-recommendation"
-        class="p-4 italic !delay-0 !duration-0 hidden first:block"
-      >
-        <div class="pb-sm">No recommendations are available at this time.</div>
-        <div>
-          You can go to the
-          <span class="font-bold text-action-500 hover:underline">
-            <RouterLink :to="{ name: 'workspace-view' }"> Analyze</RouterLink>
-          </span>
-          page to view the status of your resources.
-        </div>
-      </li>
-    </TransitionGroup>
+            <li
+              v-for="recommendation in confirmationsStore.recommendations"
+              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
+            >
+              <RecommendationSprite
+                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
+                :recommendation="recommendation"
+                :selected="
+                  recommendationSelection[
+                    `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
+                  ]
+                "
+                @click.stop
+                @toggle="toggleRecommendation($event, recommendation)"
+              />
+            </li>
+            <li
+              v-if="confirmationsStore.recommendations.length === 0"
+              class="p-4 italic !delay-0 !duration-0 hidden first:block"
+            >
+              <div class="pb-sm">
+                No recommendations are available at this time.
+              </div>
+              <div>
+                You can go to the
+                <span class="font-bold text-action-500 hover:underline">
+                  <RouterLink :to="{ name: 'workspace-view' }">
+                    Analyze</RouterLink
+                  >
+                </span>
+                page to view the status of your resources.
+              </div>
+            </li>
+          </TabGroupItem>
 
-    <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
-    <template v-if="selectedEdge">
-      <EdgeDetailsPanel
-        @delete="triggerDeleteSelection"
-        @restore="triggerRestoreSelection"
-      />
-    </template>
-    <template v-else-if="selectedComponent">
-      <ComponentDetails
-        v-if="selectedComponent"
-        :key="selectedComponent.id"
-        :is-view-mode="isViewMode"
-        @delete="triggerDeleteSelection"
-        @restore="triggerRestoreSelection"
-      />
-    </template>
-    <template v-else-if="selectedComponentIds.length">
-      <MultiSelectDetailsPanel />
-    </template>
-    <template v-else>
-      <div
-        class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
-      >
-        <template v-if="componentsStore.allComponents.length === 0">
-          Your model is currently empty.
-        </template>
-        <template v-else>Click something on the diagram to select it.</template>
+          <TabGroupItem label="Applied" slug="recommendations_applied">
+            <ApplyHistory />
+          </TabGroupItem>
+        </TabGroup>
       </div>
-    </template>
+
+      <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
+      <div class="half">
+        <template v-if="selectedEdge">
+          <EdgeDetailsPanel
+            @delete="triggerDeleteSelection"
+            @restore="triggerRestoreSelection"
+          />
+        </template>
+        <template v-else-if="selectedComponent">
+          <ComponentDetails
+            v-if="selectedComponent"
+            :key="selectedComponent.id"
+            :is-view-mode="isViewMode"
+            @delete="triggerDeleteSelection"
+            @restore="triggerRestoreSelection"
+          />
+        </template>
+        <template v-else-if="selectedComponentIds.length">
+          <MultiSelectDetailsPanel />
+        </template>
+        <template v-else>
+          <div
+            class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
+          >
+            <template v-if="componentsStore.allComponents.length === 0">
+              Your model is currently empty.
+            </template>
+            <template v-else
+              >Click something on the diagram to select it.</template
+            >
+          </div>
+        </template>
+      </div>
+    </div>
   </SiPanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
@@ -280,6 +295,7 @@ import {
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
+import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
@@ -832,3 +848,9 @@ const refreshResourceForSelectedComponent = () => {
   }
 };
 </script>
+
+<style lang="less" scoped>
+.half {
+  flex: 0%;
+}
+</style>
