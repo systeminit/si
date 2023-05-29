@@ -19,7 +19,11 @@
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
   <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">
-    <ApplyHistory />
+    <TabGroup start-selected-tab-slug="apply-history">
+      <TabGroupItem label="Apply History" slug="apply-history">
+        <ApplyHistory />
+      </TabGroupItem>
+    </TabGroup>
   </SiPanel>
 </template>
 
@@ -29,6 +33,8 @@ import { computed, ref } from "vue";
 import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  TabGroup,
+  TabGroupItem,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import RecommendationProgressOverlay from "@/components/RecommendationProgressOverlay.vue";

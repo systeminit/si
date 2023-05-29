@@ -65,14 +65,13 @@
     :min-size="300"
   >
     <div class="flex flex-col h-full">
-      <ApplyChangeSetButton />
-
       <div class="grow relative">
         <TabGroup
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
         >
           <TabGroupItem label="Proposed" slug="recommendations_proposed">
+            <ApplyChangeSetButton />
             <SiCollapsible
               as="div"
               content-as="ul"
@@ -85,7 +84,7 @@
                     <span>Change Set Created</span>
                   </span>
 
-                  <span class="font-bold truncate flex flex-row">
+                  <span class="truncate flex flex-row">
                     {{ changeSetStore.selectedChangeSet?.name }}
                   </span>
                 </div>
@@ -109,10 +108,23 @@
               <template #label>
                 <div class="flex flex-col min-w-0 grow">
                   <span class="font-bold truncate flex flex-row">
-                    <span>Created Component</span>
+                    <span v-if="diff.status === 'added'">Added</span>
+                    <span v-if="diff.status === 'deleted'">Removed</span>
+                    <span v-if="diff.status === 'modified'">Modified</span>
+                    <span
+                      >&nbsp;{{
+                        componentsStore.componentsById[diff.componentId]
+                          ?.schemaName
+                      }}
+                      Asset
+                      {{
+                        componentsStore.componentsById[diff.componentId]
+                          ?.displayName
+                      }}</span
+                    >
                   </span>
 
-                  <span class="font-bold truncate flex flex-row">
+                  <span class="truncate flex flex-row">
                     {{
                       componentsStore.componentsById[diff.componentId]
                         ?.displayName
@@ -324,8 +336,16 @@ const changeSetStore = useChangeSetsStore();
 const confirmationsStore = useConfirmationsStore();
 
 const diffs = computed(() => {
-  const arr = Array.from(Object.values(componentsStore.componentDiffsById));
-  arr.sort();
+  const arr = Object.values(componentsStore.componentsById)
+    .filter((c) => c.changeStatus !== "unmodified")
+    .map((c) => ({
+      componentId: c.id,
+      status: c.changeStatus,
+      updatedAt: c.updatedInfo.timestamp,
+    }));
+  arr.sort(
+    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
+  );
   return arr;
 });
 
