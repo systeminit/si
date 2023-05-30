@@ -60,7 +60,16 @@ pub async fn exec_variant_def(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
-    import_pkg_from_pkg(&ctx, &pkg, metadata.clone().name.as_str(), None).await?;
+    import_pkg_from_pkg(
+        &ctx,
+        &pkg,
+        metadata.clone().name.as_str(),
+        Some(dal::pkg::ImportOptions {
+            schemas: None,
+            no_definitions: true,
+        }),
+    )
+    .await?;
 
     track(
         &posthog_client,

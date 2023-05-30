@@ -245,7 +245,10 @@ impl MigrationDriver {
             ctx,
             &starfield_pkg,
             "test:starfield",
-            Some(vec!["starfield".into()]),
+            Some(crate::pkg::ImportOptions {
+                schemas: Some(vec!["starfield".into()]),
+                ..Default::default()
+            }),
         )
         .await?;
 

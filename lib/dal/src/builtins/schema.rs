@@ -6,7 +6,7 @@ use telemetry::prelude::*;
 
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::installed_pkg::InstalledPkg;
-use crate::pkg::import_pkg_from_pkg;
+use crate::pkg::{import_pkg_from_pkg, ImportOptions};
 use crate::{
     func::{
         binding::{FuncBinding, FuncBindingId},
@@ -139,7 +139,16 @@ pub async fn migrate_pkg(
 
     let root_hash = pkg.hash()?.to_string();
     if InstalledPkg::find_by_hash(ctx, &root_hash).await?.is_none() {
-        import_pkg_from_pkg(ctx, &pkg, pkg_filename, schemas).await?;
+        import_pkg_from_pkg(
+            ctx,
+            &pkg,
+            pkg_filename,
+            schemas.map(|schemas| ImportOptions {
+                schemas: Some(schemas),
+                ..Default::default()
+            }),
+        )
+        .await?;
     }
 
     Ok(())

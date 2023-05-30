@@ -34,15 +34,23 @@ use super::{PkgError, PkgResult};
 
 type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
 
+#[derive(Clone, Debug, Default)]
+pub struct ImportOptions {
+    pub schemas: Option<Vec<String>>,
+    pub no_definitions: bool,
+}
+
 pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
     pkg: &SiPkg,
     file_name: &str,
-    schemas: Option<Vec<String>>,
+    options: Option<ImportOptions>,
 ) -> PkgResult<()> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
+
+    let options = options.unwrap_or_default();
 
     if InstalledPkg::find_by_hash(ctx, &root_hash).await?.is_some() {
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
@@ -65,7 +73,7 @@ pub async fn import_pkg_from_pkg(
     // TODO: gather up a record of what wasn't installed and why (the id of the package that
     // already contained the schema or variant)
     for schema_spec in pkg.schemas()? {
-        match &schemas {
+        match &options.schemas {
             None => {}
             Some(schemas) => {
                 if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
@@ -80,7 +88,14 @@ pub async fn import_pkg_from_pkg(
             file_name
         );
 
-        create_schema(ctx, schema_spec, *installed_pkg.id(), &funcs_by_unique_id).await?;
+        create_schema(
+            ctx,
+            schema_spec,
+            *installed_pkg.id(),
+            &funcs_by_unique_id,
+            options.no_definitions,
+        )
+        .await?;
     }
 
     Ok(())
@@ -172,6 +187,7 @@ async fn create_schema(
     schema_spec: SiPkgSchema<'_>,
     installed_pkg_id: InstalledPkgId,
     func_map: &FuncMap,
+    no_definitions: bool,
 ) -> PkgResult<()> {
     let hash = schema_spec.hash().to_string();
     let existing_schema =
@@ -223,14 +239,17 @@ async fn create_schema(
             break;
         }
     }
-    create_schema_variant_definition(
-        ctx,
-        schema_spec,
-        maybe_identity_func_unique_id
-            .ok_or(PkgError::MissingIntrinsicFunc("si:identity".into()))?,
-        installed_pkg_id,
-    )
-    .await?;
+
+    if !no_definitions {
+        create_schema_variant_definition(
+            ctx,
+            schema_spec,
+            maybe_identity_func_unique_id
+                .ok_or(PkgError::MissingIntrinsicFunc("si:identity".into()))?,
+            installed_pkg_id,
+        )
+        .await?;
+    }
 
     Ok(())
 }
