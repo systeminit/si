@@ -4,6 +4,7 @@ import async from "async";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
+import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 
 import {
   DiagramEdgeDef,
@@ -136,6 +137,19 @@ const confirmationStatusToIconMap: Record<
   neverStarted: {
     icon: "x-square",
     tone: "error",
+  },
+};
+
+const confirmationStatusToIconMap2: Record<
+  ConfirmationStatus,
+  DiagramStatusIcon
+> = {
+  success: { icon: "tools", tone: "success" },
+  failure: { icon: "tools", tone: "error" },
+  running: { icon: "loader", tone: "info" },
+  neverStarted: {
+    icon: "minus",
+    tone: "neutral",
   },
 };
 
@@ -312,6 +326,28 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const confirmationStatus =
               fixesStore.statusByComponentId[componentId];
 
+            let statusIcons: DiagramStatusIcon[] = _.compact([
+              qualificationStatusToIconMap[qualificationStatus ?? "failure"],
+              confirmationStatus
+                ? confirmationStatusToIconMap[confirmationStatus]
+                : {
+                    icon: "minus",
+                    tone: "neutral",
+                  },
+            ]);
+
+            if (SINGLE_MODEL_SCREEN_FF) {
+              statusIcons = _.compact([
+                confirmationStatus
+                  ? confirmationStatusToIconMap2[confirmationStatus]
+                  : {
+                      icon: "minus",
+                      tone: "neutral",
+                    },
+                qualificationStatusToIconMap[qualificationStatus ?? "failure"],
+              ]);
+            }
+
             return {
               ...component,
               // swapping "id" to be node id and passing along component id separately for the diagram
@@ -323,15 +359,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
-              statusIcons: _.compact([
-                qualificationStatusToIconMap[qualificationStatus ?? "failure"],
-                confirmationStatus
-                  ? confirmationStatusToIconMap[confirmationStatus]
-                  : {
-                      icon: "minus",
-                      tone: "neutral",
-                    },
-              ]),
+              statusIcons,
             };
           });
         },
