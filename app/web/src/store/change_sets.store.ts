@@ -24,20 +24,22 @@ export function useChangeSetsStore() {
   return addStoreHooks(
     defineStore(`w${workspacePk || "NONE"}/change-sets`, {
       state: () => ({
-        changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
+        changeSetsById: null as Record<ChangeSetId, ChangeSet> | null,
         selectedChangeSetId: null as ChangeSetId | null,
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
-        openChangeSets(): ChangeSet[] {
+        openChangeSets(): ChangeSet[] | null {
+          if (!this.changeSetsById) return null;
+
           return _.filter(
             this.allChangeSets,
             (cs) => cs.status === ChangeSetStatus.Open,
           );
         },
         selectedChangeSet: (state) =>
-          state.selectedChangeSetId
+          state.selectedChangeSetId && state.changeSetsById
             ? state.changeSetsById[state.selectedChangeSetId] ?? null
             : null,
 
@@ -83,6 +85,7 @@ export function useChangeSetsStore() {
               changeSetName: name,
             },
             onSuccess: (response) => {
+              this.changeSetsById ||= {};
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });
@@ -101,6 +104,7 @@ export function useChangeSetsStore() {
               })),
             },
             onSuccess: (response) => {
+              this.changeSetsById ||= {};
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
               // could switch to head here, or could let the caller decide...
             },
@@ -115,6 +119,7 @@ export function useChangeSetsStore() {
               changeSetPk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
+              this.changeSetsById ||= {};
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
               // could switch to head here, or could let the caller decide...
             },
@@ -128,7 +133,7 @@ export function useChangeSetsStore() {
 
         getAutoSelectedChangeSetId() {
           // returning `false` means we cannot auto select
-          if (!this.openChangeSets.length) return false; // no open change sets
+          if (!this.openChangeSets?.length) return false; // no open change sets
           if (this.openChangeSets.length === 1)
             return this.openChangeSets[0]?.pk; // only 1 change set - will auto select it
           // TODO: add logic to for auto-selecting when multiple change sets open
@@ -139,7 +144,7 @@ export function useChangeSetsStore() {
           );
           if (!lastChangeSetId) return false;
           if (
-            this.changeSetsById[lastChangeSetId]?.status ===
+            this.changeSetsById![lastChangeSetId]?.status ===
             ChangeSetStatus.Open
           ) {
             return lastChangeSetId;
@@ -179,10 +184,10 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetApplied",
             callback: (id) => {
-              const changeSet = this.changeSetsById[id];
+              const changeSet = (this.changeSetsById ?? {})[id];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
-                this.changeSetsById[id] = changeSet;
+                this.changeSetsById![id] = changeSet;
               }
             },
           },

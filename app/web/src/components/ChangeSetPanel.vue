@@ -156,7 +156,7 @@ const workspacesStore = useWorkspacesStore();
 const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
 
 const changeSetsStore = useChangeSetsStore();
-const openChangeSets = computed(() => changeSetsStore.openChangeSets);
+const openChangeSets = computed(() => changeSetsStore.openChangeSets ?? []);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 const selectedChangeSetName = computed(
   () => changeSetsStore.selectedChangeSet?.name,
@@ -284,7 +284,7 @@ watch(
   // have to also watch for the modals existing since they may not exist immediately on mount
   [openChangeSets, createModalRef, selectModalRef],
   () => {
-    if (!openChangeSets.value.length) {
+    if (!openChangeSets.value?.length) {
       openCreateModal();
     } else if (!selectedChangeSetId.value) {
       selectModalRef.value?.open();

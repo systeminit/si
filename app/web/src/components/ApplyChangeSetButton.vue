@@ -18,14 +18,7 @@
     </section>
 
     <Wipe ref="wipeRef">
-      <template #duringWipe>
-        <VButton
-          icon="loader"
-          size="md"
-          label="Applying Changes"
-          class="!bg-action-500"
-        />
-      </template>
+      <template #duringWipe></template>
       <template #afterWipe>
         <div
           v-if="changeSetApplyStatus.isPending || wipeRef?.state === 'running'"

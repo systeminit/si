@@ -128,7 +128,7 @@ const selectedChangeSetName = computed(
 );
 
 const changeSetDropdownOptions = computed(() =>
-  _.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
+  _.map(openChangeSets.value ?? [], (cs) => ({ value: cs.id, label: cs.name })),
 );
 
 const router = useRouter();
@@ -195,8 +195,11 @@ watch(
   // have to also watch for the modals existing since they may not exist immediately on mount
   [openChangeSets, createModalRef, selectModalRef],
   () => {
+    if (!openChangeSets.value) return;
+
     if (!openChangeSets.value.length) {
-      openCreateModal();
+      createChangeSetName.value = getGeneratedChangesetName();
+      onCreateChangeSet();
     } else if (!selectedChangeSetId.value) {
       selectModalRef.value?.open();
     }
