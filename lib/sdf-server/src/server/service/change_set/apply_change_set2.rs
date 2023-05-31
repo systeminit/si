@@ -65,41 +65,43 @@ pub async fn apply_change_set(
 
         HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
     };
-    let batch = FixBatch::new(&ctx, user.email()).await?;
-    let mut fixes = Vec::with_capacity(request.list.len());
+    if !request.list.is_empty() {
+        let batch = FixBatch::new(&ctx, user.email()).await?;
+        let mut fixes = Vec::with_capacity(request.list.len());
 
-    for fix_run_request in request.list {
-        let fix = Fix::new(
+        for fix_run_request in request.list {
+            let fix = Fix::new(
+                &ctx,
+                *batch.id(),
+                fix_run_request.attribute_value_id,
+                fix_run_request.component_id,
+                fix_run_request.action_prototype_id,
+            )
+            .await?;
+
+            fixes.push(FixItem {
+                id: *fix.id(),
+                attribute_value_id: fix_run_request.attribute_value_id,
+                component_id: fix_run_request.component_id,
+                action_prototype_id: fix_run_request.action_prototype_id,
+            });
+        }
+
+        track(
+            &posthog_client,
             &ctx,
-            *batch.id(),
-            fix_run_request.attribute_value_id,
-            fix_run_request.component_id,
-            fix_run_request.action_prototype_id,
-        )
-        .await?;
+            &original_uri,
+            "apply_fix",
+            serde_json::json!({
+                "fix_batch_id": batch.id(),
+                "number_of_fixes_in_batch": fixes.len(),
+                "fixes_applied": fixes,
+            }),
+        );
 
-        fixes.push(FixItem {
-            id: *fix.id(),
-            attribute_value_id: fix_run_request.attribute_value_id,
-            component_id: fix_run_request.component_id,
-            action_prototype_id: fix_run_request.action_prototype_id,
-        });
+        ctx.enqueue_job(FixesJob::new(&ctx, fixes, *batch.id()))
+            .await?;
     }
-
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        "apply_fix",
-        serde_json::json!({
-            "fix_batch_id": batch.id(),
-            "number_of_fixes_in_batch": fixes.len(),
-            "fixes_applied": fixes,
-        }),
-    );
-
-    ctx.enqueue_job(FixesJob::new(&ctx, fixes, *batch.id()))
-        .await?;
 
     ctx.commit().await?;
 

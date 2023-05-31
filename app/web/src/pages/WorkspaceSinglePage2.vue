@@ -33,11 +33,6 @@
         </div>
       </template>
 
-      <!-- change set id in the URL, but it is invalid -->
-      <template v-else-if="changeSetId && changeSetId !== 'auto' && !selectedChangeSet">
-        <ErrorMessage>Change set "{{ changeSetId }}" not found </ErrorMessage>
-      </template>
-
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
       <template v-else>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
@@ -62,7 +57,6 @@ import {
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
-import PlaceholderComposeView from "@/components/layout/PlaceholderComposeView.vue";
 import StatusBar from "@/components/StatusBar.vue";
 
 const props = defineProps({
@@ -110,6 +104,10 @@ function handleUrlChange() {
     changeSetsStore.selectedChangeSetId = changeSetIdNil();
   } else {
     changeSetsStore.selectedChangeSetId = props.changeSetId;
+  }
+
+  if (!changeSetsStore.selectedChangeSet && changeSetsStore.selectedChangeSetId) {
+    routeToChangeSet('auto', true);
   }
 }
 function handleChangeSetsLoaded() {

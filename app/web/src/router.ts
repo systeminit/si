@@ -37,9 +37,9 @@ const routes: RouteRecordRaw[] = [
     name: "workspace-single",
     path: "/w/:workspacePk",
     component: () =>
-          SINGLE_MODEL_SCREEN_FF
-            ? import("@/pages/WorkspaceSinglePage2.vue")
-            : import("@/pages/WorkspaceSinglePage.vue"),
+      SINGLE_MODEL_SCREEN_FF
+        ? import("@/pages/WorkspaceSinglePage2.vue")
+        : import("@/pages/WorkspaceSinglePage.vue"),
     // TODO: will probably want a workspace "home" page at some point
     redirect(to) {
       return {
@@ -101,18 +101,22 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
-      ...(SINGLE_MODEL_SCREEN_FF ? [] : [
-      {
-        path: "v",
-        name: "workspace-view",
-        component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView.vue"),
-      },
-      {
-        path: "r",
-        name: "workspace-fix",
-        component: () => import("@/components/Workspace/WorkspaceApply.vue"),
-      }]),
+      ...(SINGLE_MODEL_SCREEN_FF
+        ? []
+        : [
+            {
+              path: "v",
+              name: "workspace-view",
+              component: () =>
+                import("@/components/Workspace/WorkspaceModelAndView.vue"),
+            },
+            {
+              path: "r",
+              name: "workspace-fix",
+              component: () =>
+                import("@/components/Workspace/WorkspaceApply.vue"),
+            },
+          ]),
       ...(isDevMode
         ? [
             {
