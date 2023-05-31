@@ -91,7 +91,7 @@ export const useAssetStore = () => {
 
         // MOCK DATA GENERATION
         generateMockColor() {
-          return `${_.sample([
+          return `#${_.sample([
             "FF0000",
             "FFFF00",
             "FF00FF",

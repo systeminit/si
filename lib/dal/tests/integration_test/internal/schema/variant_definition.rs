@@ -9,9 +9,9 @@ use dal_test::test;
 const VARIANT_DEFINITION_METADATA_JSON: &str = r#"{
   "link": "https://coreos.github.io/butane/config-fcos-v1_4/",
   "name": "OingoBoingo",
-  "category": "NewWave", 
+  "category": "NewWave",
   "componentKind": "standard",
-  "color": "DEADAF",
+  "color": "\#DEADAF",
   "componentType": "component"
 }
 "#;
@@ -24,7 +24,7 @@ const VARIANT_DEFINITION_JSON: &str = r#"{
     "props": [
         {
             "name": "oingo",
-            "kind": "boolean", 
+            "kind": "boolean",
             "docLinkRef": "default"
         },
         {
@@ -38,21 +38,21 @@ const VARIANT_DEFINITION_JSON: &str = r#"{
         },
         {
             "name": "deadmansparty",
-            "kind": "integer" 
+            "kind": "integer"
         },
         {
             "name": "weirdscience",
-            "kind": "object", 
+            "kind": "object",
             "children": [
                 {
                     "name": "mycreation",
-                    "kind": "string" 
+                    "kind": "string"
                 },
                 {
                     "name": "isitreal",
-                    "kind": "string" 
+                    "kind": "string"
                 }
-            ] 
+            ]
         }
     ],
     "inputSockets": [
@@ -80,7 +80,8 @@ async fn variant_definition_from_json(ctx: &DalContext) {
         .await
         .expect("could not create variant definition from json");
 
-    let _metadata_from_db_row: SchemaVariantDefinitionMetadataJson = (&variant_definition).into();
+    let _metadata_from_db_row: SchemaVariantDefinitionMetadataJson =
+        variant_definition.clone().into();
     let _definition_from_db_row: SchemaVariantDefinitionJson = variant_definition
         .try_into()
         .expect("Could not deserialize db row definition");

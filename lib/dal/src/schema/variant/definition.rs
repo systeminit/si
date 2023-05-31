@@ -298,21 +298,6 @@ impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
     }
 }
 
-impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
-    fn from(value: &SchemaVariantDefinition) -> Self {
-        SchemaVariantDefinitionMetadataJson {
-            name: value.name.clone(),
-            menu_name: value.menu_name.clone(),
-            category: value.category.clone(),
-            color: value.color.clone(),
-            component_kind: value.component_kind,
-            component_type: value.component_type,
-            link: value.link.clone(),
-            description: value.description.clone(),
-        }
-    }
-}
-
 impl SchemaVariantDefinitionMetadataJson {
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
