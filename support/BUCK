@@ -1,6 +1,6 @@
 load("@prelude-si//:macros.bzl", "sh_binary")
 
 sh_binary(
-    name = "upload-latest-buck2",
-    main = "upload-latest-buck2-and-find-hashes.sh",
+    name = "buck2-upload-latest-binaries",
+    main = "buck2-upload-latest-binaries.sh",
 )
