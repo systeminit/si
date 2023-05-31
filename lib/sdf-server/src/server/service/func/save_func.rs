@@ -477,12 +477,24 @@ async fn save_action_func_prototypes(
 ) -> FuncResult<()> {
     let mut id_set = HashSet::new();
 
-    let kind = kind.ok_or(FuncError::ActionKindMissing(*func.id()))?;
+    let kind = match kind {
+        Some(kind) => kind,
+        None => {
+            if !schema_variant_ids.is_empty() {
+                return Err(FuncError::ActionKindMissing(*func.id()));
+            }
+
+            ActionKind::Other
+        }
+    };
 
     for schema_variant_id in schema_variant_ids {
         let context = ActionPrototypeContext { schema_variant_id };
 
-        let proto = match ActionPrototype::find_for_context(ctx, context).await?.pop() {
+        let proto = match ActionPrototype::find_for_context_and_func(ctx, context, *func.id())
+            .await?
+            .pop()
+        {
             Some(mut existing_proto) => {
                 existing_proto.set_func_id(ctx, *func.id()).await?;
                 existing_proto.set_kind(ctx, kind).await?;
@@ -494,11 +506,9 @@ async fn save_action_func_prototypes(
         id_set.insert(*proto.id());
     }
 
-    for proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
+    for mut proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
         if !id_set.contains(proto.id()) {
-            if let Some(mut proto) = ActionPrototype::get_by_id(ctx, proto.id()).await? {
-                proto.delete_by_id(ctx).await?;
-            }
+            proto.delete_by_id(ctx).await?;
         }
     }
 

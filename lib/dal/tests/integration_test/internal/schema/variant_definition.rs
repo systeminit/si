@@ -6,15 +6,15 @@ use dal::{
 };
 use dal_test::test;
 
-const VARIANT_DEFINITION_METADATA_JSON: &str = r#"{
+const VARIANT_DEFINITION_METADATA_JSON: &str = r##"{
   "link": "https://coreos.github.io/butane/config-fcos-v1_4/",
   "name": "OingoBoingo",
   "category": "NewWave",
   "componentKind": "standard",
-  "color": "\#DEADAF",
+  "color": "#DEADAF",
   "componentType": "component"
 }
-"#;
+"##;
 
 const VARIANT_DEFINITION_JSON: &str = r#"{
     "docLinks": {

@@ -21,8 +21,8 @@ const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for
 const FIND_FOR_CONTEXT_AND_KIND: &str =
     include_str!("./queries/action_prototype/find_for_context_and_kind.sql");
 const FIND_FOR_FUNC: &str = include_str!("./queries/action_prototype/find_for_func.sql");
-const FIND_FOR_FUNC_KIND_CONTEXT: &str =
-    include_str!("./queries/action_prototype/find_for_func_kind_context.sql");
+const FIND_FOR_CONTEXT_AND_FUNC: &str =
+    include_str!("./queries/action_prototype/find_for_context_and_func.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -264,24 +264,22 @@ impl ActionPrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    pub async fn find_for_func_kind_context(
+    pub async fn find_for_context_and_func(
         ctx: &DalContext,
-        func_id: FuncId,
-        kind: ActionKind,
         context: ActionPrototypeContext,
+        func_id: FuncId,
     ) -> ActionPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                FIND_FOR_FUNC_KIND_CONTEXT,
+                FIND_FOR_CONTEXT_AND_FUNC,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &func_id,
-                    &kind.as_ref(),
                     &context.schema_variant_id(),
+                    &func_id,
                 ],
             )
             .await?;
