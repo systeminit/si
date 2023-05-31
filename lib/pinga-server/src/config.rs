@@ -13,7 +13,7 @@ pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
 
-const DEFAULT_CONCURRENCY_LIMIT: usize = 50;
+const DEFAULT_CONCURRENCY_LIMIT: usize = 5;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
