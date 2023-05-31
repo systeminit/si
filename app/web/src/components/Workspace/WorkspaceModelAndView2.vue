@@ -71,9 +71,7 @@
         <strong class="grow uppercase text-lg">Changes</strong>
         <strong
           class="text-action-300 mx-2 bg-action-100 text-xl rounded-2xl px-3 border border-action-300"
-          >{{
-            1 + diffs.length + confirmationsStore.recommendations.length
-          }}</strong
+          >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
         >
       </span>
       <div class="grow relative">
@@ -155,7 +153,7 @@
             </SiCollapsible>
 
             <li
-              v-for="recommendation in confirmationsStore.recommendations"
+              v-for="recommendation in fixesStore.recommendations"
               :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
             >
               <RecommendationSprite
@@ -171,7 +169,7 @@
               />
             </li>
             <li
-              v-if="confirmationsStore.recommendations.length === 0"
+              v-if="fixesStore.recommendations.length === 0"
               class="p-4 italic !delay-0 !duration-0 hidden first:block"
             >
               <div class="pb-sm">
@@ -316,10 +314,7 @@ import {
 
 import SiPanel from "@/components/SiPanel.vue";
 import { useStatusStore } from "@/store/status.store";
-import {
-  Recommendation,
-  useConfirmationsStore,
-} from "@/store/confirmations.store";
+import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -349,7 +344,7 @@ import ReadOnlyBanner from "../ReadOnlyBanner.vue";
 
 const statusStore = useStatusStore();
 const changeSetStore = useChangeSetsStore();
-const confirmationsStore = useConfirmationsStore();
+const fixesStore = useFixesStore();
 
 const diffs = computed(() => {
   const arr = Object.values(componentsStore.componentsById)
@@ -366,7 +361,7 @@ const diffs = computed(() => {
 });
 
 const recommendationSelection = ref<Record<string, boolean>>({});
-const { recommendations } = storeToRefs(confirmationsStore);
+const { recommendations } = storeToRefs(fixesStore);
 watch(recommendations, (r) => {
   const keys = new Set(...Object.keys(recommendationSelection.value));
   for (const recommendation of r) {

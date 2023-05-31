@@ -55,10 +55,10 @@ import JSConfetti from "js-confetti";
 import { VButton, Icon, VormInput } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
-import { useConfirmationsStore } from "@/store/confirmations.store";
+import { useFixesStore } from "@/store/fixes.store";
 import Wipe from "./Wipe.vue";
 
-const confirmationsStore = useConfirmationsStore();
+const fixesStore = useFixesStore();
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const applyButtonRef = ref();
@@ -111,7 +111,7 @@ const applyChangeSet = async () => {
   // Run both the wipe and the change set apply in parallel
   const wipeDone = wipeRef.value.open(applyButtonRef.value.$el);
 
-  await changeSetsStore.APPLY_CHANGE_SET2(confirmationsStore.recommendations);
+  await changeSetsStore.APPLY_CHANGE_SET2(fixesStore.recommendations);
   await wipeDone;
 
   // when the change set is done done, check if the change set apply was successful

@@ -1,16 +1,14 @@
-import { defineStore } from "pinia";
+import { storeToRefs, defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
 import { Resource } from "@/api/sdf/dal/resource";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { AttributeValueId } from "./status.store";
 import { trackEvent } from "../utils/tracking";
-
-function nilId(): string {
-  return "00000000000000000000000000";
-}
 
 export type ActionPrototypeId = string;
 
@@ -99,11 +97,14 @@ export interface ConfirmationStats {
 }
 
 export const useFixesStore = () => {
+  const changeSetStore = useChangeSetsStore();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
+  const changeSetId = useChangeSetsStore().selectedChangeSetId;
+  const name = `w${workspacePk || "NONE"}/cs${changeSetId || "NONE"}/fixes`;
 
   return addStoreHooks(
-    defineStore(`w${workspacePk || "NONE"}/fixes`, {
+    defineStore(name, {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
         recommendations: [] as Array<Recommendation>,
@@ -239,7 +240,9 @@ export const useFixesStore = () => {
             recommendations: Array<Recommendation>;
           }>({
             url: "/fix/confirmations",
-            params: { visibility_change_set_pk: nilId() },
+            params: {
+              visibility_change_set_pk: changeSetStore.selectedChangeSetId,
+            },
             onSuccess: ({ confirmations, recommendations }) => {
               this.confirmations = confirmations;
               this.recommendations = recommendations;
@@ -253,7 +256,9 @@ export const useFixesStore = () => {
         async LOAD_FIX_BATCHES() {
           return new ApiRequest<Array<FixBatch>>({
             url: "/fix/list",
-            params: { visibility_change_set_pk: nilId() },
+            params: {
+              visibility_change_set_pk: nilId(),
+            },
             onSuccess: (response) => {
               this.fixBatches = response;
               this.runningFixBatch = response.find(
@@ -288,42 +293,57 @@ export const useFixesStore = () => {
         this.LOAD_FIX_BATCHES();
 
         const realtimeStore = useRealtimeStore();
-        realtimeStore.subscribe(this.$id, `workspace/${workspacePk}/head`, [
-          {
-            eventType: "ConfirmationsUpdated",
-            callback: (_update) => {
-              this.LOAD_CONFIRMATIONS();
-              this.LOAD_FIX_BATCHES();
+        realtimeStore.subscribe(
+          this.$id,
+          `workspace/${workspacePk}/${
+            changeSetStore.selectedChangeSetId ?? "head"
+          }`,
+          [
+            {
+              eventType: "ChangeSetWritten",
+              callback: (writtenChangeSetId) => {
+                if (writtenChangeSetId !== changeSetStore.selectedChangeSetId)
+                  return;
+                this.LOAD_CONFIRMATIONS();
+                this.LOAD_FIX_BATCHES();
+              },
             },
-          },
-          {
-            eventType: "FixReturn",
-            callback: (update) => {
-              trackEvent("fix_return", {
-                fix_action: update.action,
-                fix_status: update.status,
-                fix_id: update.id,
-                fix_batch_id: update.batchId,
-              });
+            {
+              eventType: "ConfirmationsUpdated",
+              callback: (_update) => {
+                this.LOAD_CONFIRMATIONS();
+                this.LOAD_FIX_BATCHES();
+              },
+            },
+            {
+              eventType: "FixReturn",
+              callback: (update) => {
+                trackEvent("fix_return", {
+                  fix_action: update.action,
+                  fix_status: update.status,
+                  fix_id: update.id,
+                  fix_batch_id: update.batchId,
+                });
 
-              this.LOAD_CONFIRMATIONS();
-              this.LOAD_FIX_BATCHES();
+                this.LOAD_CONFIRMATIONS();
+                this.LOAD_FIX_BATCHES();
+              },
             },
-          },
-          {
-            eventType: "FixBatchReturn",
-            callback: (update) => {
-              this.runningFixBatch = undefined;
-              trackEvent("fix_batch_return", {
-                batch_status: update.status,
-                batch_id: update.id,
-              });
+            {
+              eventType: "FixBatchReturn",
+              callback: (update) => {
+                this.runningFixBatch = undefined;
+                trackEvent("fix_batch_return", {
+                  batch_status: update.status,
+                  batch_id: update.id,
+                });
 
-              this.LOAD_CONFIRMATIONS();
-              this.LOAD_FIX_BATCHES();
+                this.LOAD_CONFIRMATIONS();
+                this.LOAD_FIX_BATCHES();
+              },
             },
-          },
-        ]);
+          ],
+        );
 
         return () => {
           realtimeStore.unsubscribe(this.$id);
