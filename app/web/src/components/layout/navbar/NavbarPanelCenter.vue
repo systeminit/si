@@ -25,9 +25,10 @@
     </NavbarButton>
 
     <!-- Vertical bar -->
-    <div class="w-0.5 h-8 self-center mx-xs bg-white"></div>
+    <div v-if="!SINGLE_MODEL_SCREEN_FF" class="w-0.5 h-8 self-center mx-xs bg-white"></div>
 
     <NavbarButton
+      v-if="!SINGLE_MODEL_SCREEN_FF"
       tooltip-text="Apply"
       :selected="route.name === 'workspace-fix'"
       :link-to="{ name: 'workspace-fix' }"
@@ -36,6 +37,7 @@
     </NavbarButton>
 
     <NavbarButton
+      v-if="!SINGLE_MODEL_SCREEN_FF"
       tooltip-text="Analyze"
       :selected="route.name === 'workspace-view'"
       :link-to="{ name: 'workspace-view' }"
@@ -49,6 +51,7 @@
 import { useRoute } from "vue-router";
 import { Icon } from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
+import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 
 const route = useRoute();
 </script>
