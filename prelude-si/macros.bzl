@@ -3,10 +3,12 @@ load(
     _alias = "alias",
     _export_file = "export_file",
     _filegroup = "filegroup",
+    _sh_binary = "sh_binary",
 )
 alias = _alias
 export_file = _export_file
 filegroup = _filegroup
+sh_binary = _sh_binary
 
 load(
     "@prelude-si//macros:pnpm.bzl",

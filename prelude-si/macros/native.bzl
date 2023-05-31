@@ -12,3 +12,8 @@ def filegroup(
         visibility = ["PUBLIC"],
         **kwargs):
     native.filegroup(visibility = visibility, **kwargs)
+
+def sh_binary(
+        visibility = ["PUBLIC"],
+        **kwargs):
+    native.sh_binary(visibility = visibility, **kwargs)
