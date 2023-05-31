@@ -10,6 +10,7 @@ use jwt_simple::{
     algorithms::RS256PublicKey,
     prelude::{JWTClaims, RSAPublicKeyLike},
 };
+use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_posthog::{PosthogClient, PosthogConfig};
@@ -32,6 +33,7 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use crate::{
     app_state::{AppState, ShutdownSource},
     jwt_key::{JwtKeyError, JwtPublicSigningKey},
+    s3::S3Config,
     Config,
 };
 
@@ -44,6 +46,10 @@ mod embedded_migrations {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("bad aws config")]
+    AwsConfigError,
+    #[error("aws creds error: {0}")]
+    CredentialsError(#[from] CredentialsError),
     #[error("db error: {0}")]
     DbErr(#[from] DbErr),
     #[error("hyper server error")]
@@ -85,8 +91,28 @@ impl Server<(), ()> {
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         // socket_addr
 
-        let (service, shutdown_rx, shutdown_broadcast_rx) =
-            build_service(pg_pool, jwt_public_signing_key, posthog_client)?;
+        // try to load aws creds from a few different places
+        let aws_creds = match (&config.s3().access_key_id, &config.s3().secret_access_key) {
+            (Some(aws_key), Some(aws_secret)) => {
+                AwsCredentials::new(Some(aws_key), Some(aws_secret), None, None, None)?
+            }
+            (None, None) => match AwsCredentials::from_env() {
+                Ok(creds) => creds,
+                Err(CredentialsError::MissingEnvVar(_, _)) => AwsCredentials::from_profile(None)?,
+                Err(err) => return Err(err.into()),
+            },
+            _ => {
+                return Err(ServerError::AwsConfigError);
+            }
+        };
+
+        let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
+            pg_pool,
+            jwt_public_signing_key,
+            posthog_client,
+            aws_creds,
+            config.s3().clone(),
+        )?;
 
         info!(
             "binding to HTTP socket; socket_addr={}",
@@ -198,6 +224,8 @@ pub fn build_service(
     pg_pool: DatabaseConnection,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    aws_creds: AwsCredentials,
+    s3_config: S3Config,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -206,6 +234,8 @@ pub fn build_service(
         pg_pool,
         jwt_public_signing_key,
         posthog_client,
+        aws_creds,
+        s3_config,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
     );

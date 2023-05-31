@@ -17,6 +17,7 @@ jwt-simple = { workspace = true }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }
+rust-s3 = { version = "0.33.0" }
 sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
 serde = { workspace = true }
 serde_json = { workspace = true }

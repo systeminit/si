@@ -7,6 +7,7 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
+use s3::{Bucket as S3Bucket, Region as AwsRegion};
 use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -27,6 +28,49 @@ impl FromRequestParts<AppState> for PosthogClient {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         Ok(Self(state.posthog_client().clone()))
+    }
+}
+
+pub struct ExtractedS3Bucket(pub S3Bucket);
+
+#[async_trait]
+impl FromRequestParts<AppState> for ExtractedS3Bucket {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let region = match (&state.s3_config().region).parse::<AwsRegion>() {
+            Ok(region) => region,
+            Err(err) => {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": {
+                            "message": err.to_string(),
+                            "code": 42,
+                            "statusCode": 500
+                        }
+                    })),
+                ))
+            }
+        };
+
+        let bucket = S3Bucket::new(&state.s3_config().bucket, region, state.aws_creds().clone())
+            .map_err(|err| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": {
+                            "message": err.to_string(),
+                            "code": 42,
+                            "statusCode": 500
+                        }
+                    })),
+                )
+            })?;
+        Ok(ExtractedS3Bucket(bucket))
     }
 }
 

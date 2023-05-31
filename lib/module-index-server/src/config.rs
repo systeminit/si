@@ -12,6 +12,8 @@ use thiserror::Error;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
 
+use crate::s3::S3Config;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -52,6 +54,8 @@ pub struct Config {
 
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
+
+    s3: S3Config,
 }
 
 impl StandardConfig for Config {
@@ -86,6 +90,12 @@ impl Config {
     pub fn posthog(&self) -> &PosthogConfig {
         &self.posthog
     }
+
+    /// Gets a config's s3 details
+    #[must_use]
+    pub fn s3(&self) -> &S3Config {
+        &self.s3
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -100,6 +110,8 @@ pub struct ConfigFile {
     pub jwt_signing_public_key_path: String,
     #[serde(default)]
     pub posthog: PosthogConfig,
+    #[serde(default)]
+    pub s3: S3Config,
 }
 
 impl Default for ConfigFile {
@@ -116,6 +128,7 @@ impl Default for ConfigFile {
             instance_id: random_instance_id(),
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
             posthog: Default::default(),
+            s3: Default::default(),
         }
     }
 }
@@ -136,6 +149,7 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
         config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
         config.posthog(value.posthog);
+        config.s3(value.s3);
         config.build().map_err(Into::into)
     }
 }

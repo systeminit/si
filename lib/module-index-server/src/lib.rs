@@ -4,6 +4,7 @@ mod extract;
 mod jwt_key;
 mod models;
 mod routes;
+mod s3;
 pub mod server;
 
 pub use crate::{
