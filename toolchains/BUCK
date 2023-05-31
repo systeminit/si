@@ -10,8 +10,6 @@ load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
-    linker = "clang",
-    link_flags = ["-v"],
     visibility = ["PUBLIC"],
 )
 
