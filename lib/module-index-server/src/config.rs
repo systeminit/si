@@ -105,7 +105,13 @@ pub struct ConfigFile {
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
-            pg: Default::default(),
+            // config from toml file is not working at the moment
+            // so we just override from the base defaults here
+            pg: PgPoolConfig {
+                dbname: "si_module_index".to_owned(),
+                application_name: "si-module-index".to_owned(),
+                ..Default::default()
+            },
             socket_addr: get_default_socket_addr(),
             instance_id: random_instance_id(),
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[sea_orm(table_name = "modules")]
 pub struct Model {
     #[sea_orm(primary_key, column_type = "custom(\"ident\")")]
@@ -29,7 +30,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 // custom ulid type
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleId(pub Ulid);
 
 impl From<ModuleId> for Value {
