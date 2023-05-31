@@ -12,8 +12,22 @@
         pkgs = import nixpkgs { inherit system; };
 
         buck2 = pkgs.stdenv.mkDerivation rec {
-          # The primary variable to control the "version" of buck2 that we want from S3.
-          date = "2023-05-24";
+          # The primary variables to control the "version" of buck2 that we want from S3.
+          #
+          # To upload the latest objects and get the hashes needed for this flake, run
+          # "buck2 run //support:upload-latest-buck2". You can run that target again to find the
+          # hashes, even if the objects have already been uploaded.
+          #
+          # For the hashes, default to "aarch64-darwin".
+          date = "2023-05-31";
+          binarySha256 = if system == "x86_64-linux" then
+            "sha256-0MzhwUgBO7BUuwExGx/htm6UOxPr00CKC9edNYqwQoA="
+          else if system == "aarch64-linux" then
+            "sha256-/Fo6IEPx6+5H4/kHxPahGUJlMxSeS5mXWtHfux4PxL4="
+          else if system == "x86_64-darwin" then
+            "sha256-UzhZznPbwzYTNLUhLtW7uNC2F7R6UMSFonDY8StunBc="
+          else
+            "sha256-i2MVcLcrGN3G4tE0aaf/65zBJeLBkSgm8vroQ1EenlA=";
 
           pname = "buck2";
           version = "unstable-${date}";
@@ -28,21 +42,6 @@
             "x86_64-apple-darwin"
           else
             "aarch64-apple-darwin";
-
-          # Default to "aarch64-darwin" for the sha256 value.
-          binarySha256 = if system == "x86_64-linux" then
-            "sha256-TzKQM7P9zdcUx/RAjATlKYML2bzMPSe4wZNw6kupQS8="
-          else if system == "aarch64-linux" then
-            "sha256-De/1MxFs1u8c83a1VltGqXjEwwS+2apSY1IXvX9EaFQ="
-          else if system == "x86_64-darwin" then
-            "sha256-WP+LivDDAlgZ8UBcUadkW6+AxseRqHXGX9rOFykNEz4="
-          else
-            "sha256-tpkfodVXP3C66ZR/NSjMrdyJrqg5h0NYO5l9B0TZFOg=";
-
-          # Uncomment these two variables (and comment the ones of the same name) to update the
-          # sha256 values for each system.
-          # binarySystem = "aarch64-apple-darwin";
-          # binarySha256 = pkgs.lib.fakeSha256;
 
           binary = pkgs.fetchurl {
             url =

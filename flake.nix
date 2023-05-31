@@ -7,10 +7,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    buck2-subflake = {
-      url = "path:nix/buck2";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    buck2-subflake.url = "path:nix/buck2";
   };
 
   # Flake outputs

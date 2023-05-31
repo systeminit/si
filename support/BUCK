@@ -1,0 +1,5 @@
+sh_binary(
+    name = "upload-latest-buck2",
+    main = "upload-latest-buck2-and-find-hashes.sh",
+    visibility = ["PUBLIC"],
+)
