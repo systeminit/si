@@ -132,6 +132,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
+        config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.build().map_err(Into::into)
     }
