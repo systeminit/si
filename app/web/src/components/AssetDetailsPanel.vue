@@ -98,7 +98,7 @@
         />
         <div
           class="box-border h-8 w-8 mt-[23px] ml-auto"
-          :style="`background-color: #${assetStore.selectedAsset.color}`"
+          :style="`background-color: ${assetStore.selectedAsset.color}`"
         ></div>
       </div>
       <div class="p-sm flex flex-col">

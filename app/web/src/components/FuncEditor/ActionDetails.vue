@@ -11,7 +11,7 @@
       class="flex-auto"
       :options="kindOptions"
       :disabled="disabled"
-      @change="updateAssociations"
+      @change="updateKind"
     />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
       Run on Assets of Type:
@@ -81,6 +81,12 @@ watch(
   },
   { immediate: true },
 );
+
+const updateKind = () => {
+  if (selectedVariants.value.length > 0) {
+    updateAssociations();
+  }
+};
 
 const updateAssociations = () => {
   const associations: ActionAssociations = {

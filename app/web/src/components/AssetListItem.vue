@@ -11,7 +11,7 @@
       params: { ...route.params, assetId: a.id },
     }"
   >
-    <NodeSkeleton :color="`#${a.color}`" />
+    <NodeSkeleton :color="`${a.color}`" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
       {{ assetDisplayName(a) }}
     </div>

@@ -37,13 +37,7 @@
         json
         :disabled="assetStore.selectedAsset.variantExists"
         @change="onChange"
-      >
-        <template #title>
-          <div class="truncate">
-            Code for "{{ assetDisplayName(assetStore.selectedAsset) }}"
-          </div>
-        </template>
-      </CodeEditor>
+      />
     </div>
   </div>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
