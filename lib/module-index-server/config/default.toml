@@ -1,7 +1,0 @@
-[pg]
-user = "si"
-password = "bugbear"
-dbname = "si_module_index"
-application_name = "si-module-index"
-hostname = "localhost"
-port = 5432

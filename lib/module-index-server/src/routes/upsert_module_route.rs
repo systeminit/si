@@ -11,7 +11,9 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone, Utc};
 use hyper::StatusCode;
-use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, DbErr, InsertResult, Set};
+use sea_orm::{
+    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue::NotSet, DbErr, InsertResult, Set,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use si_pkg::{SiPkg, SiPkgError};
@@ -69,22 +71,22 @@ pub async fn upsert_module_route(
     let temp_path = std::env::temp_dir().join("tmp-package.sipkg");
     fs::write(&temp_path, data).await?;
 
-    let pkg_info = SiPkg::load_from_file(temp_path).await?;
-    let pkg_metadata = pkg_info.metadata()?;
+    // SiPkg using old term "package" but we are dealing with a "module"
+    let loaded_module = SiPkg::load_from_file(temp_path).await?;
+    let module_metadata = loaded_module.metadata()?;
 
     let new_module = si_module::ActiveModel {
-        name: Set(pkg_metadata.name().to_owned()),
-        description: Set(Some(pkg_metadata.description().to_owned())),
+        name: Set(module_metadata.name().to_owned()),
+        description: Set(Some(module_metadata.description().to_owned())),
         // owner_user_id: Set(claim.user_pk.to_string()),
         owner_user_id: Set(Ulid::new().to_string()),
-        owner_display_name: Set(Some(pkg_metadata.created_by().to_owned())),
-        latest_hash: Set(pkg_metadata.hash().to_string()),
+        owner_display_name: Set(Some(module_metadata.created_by().to_owned())),
+        latest_hash: Set(module_metadata.hash().to_string()),
         // maybe use db's `CLOCK_TIMESTAMP()`?
         latest_hash_created_at: Set(DateTime::<FixedOffset>::from_utc(
             Utc::now().naive_utc(),
             Utc.fix(),
         )),
-
         ..Default::default() // all other attributes are `NotSet`
     };
 
@@ -92,5 +94,5 @@ pub async fn upsert_module_route(
 
     txn.commit().await?;
 
-    Ok(Json(json!({ "metadata": format!("{:?}", new_module) })))
+    Ok(Json(json!({ "module": new_module })))
 }

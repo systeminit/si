@@ -28,7 +28,7 @@ pub fn routes(state: AppState) -> Router {
         .route("/modules", post(upsert_module_route::upsert_module_route))
         .route(
             "/modules/:module_id",
-            post(get_module_details_route::get_module_details_route),
+            get(get_module_details_route::get_module_details_route),
         );
 
     router.with_state(state)
