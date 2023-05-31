@@ -148,6 +148,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useStatusStore } from "@/store/status.store";
 import Wipe from "./Wipe.vue";
+import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();
@@ -297,7 +298,7 @@ watch(
 const navigateToFixMode = async () => {
   if (selectedWorkspacePk.value) {
     await router.push({
-      name: "workspace-fix",
+      name: SINGLE_MODEL_SCREEN_FF ? "workspace-compose" : "workspace-fix",
       params: { workspacePk: selectedWorkspacePk.value },
     });
   } else {
