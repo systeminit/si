@@ -10,6 +10,7 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use tower_http::cors::CorsLayer;
 
+mod download_module_route;
 mod get_module_details_route;
 mod list_modules_route;
 mod upsert_module_route;
@@ -29,6 +30,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/modules/:module_id",
             get(get_module_details_route::get_module_details_route),
+        )
+        .route(
+            "/modules/:module_id/download",
+            get(download_module_route::download_module_route),
         );
 
     router.with_state(state)

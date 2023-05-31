@@ -1,5 +1,5 @@
 use crate::{
-    extract::{Authorization, DbConnection, UserClaim},
+    extract::{Authorization, DbConnection, ExtractedS3Bucket, UserClaim},
     models::si_module,
 };
 use axum::{
@@ -11,6 +11,7 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone, Utc};
 use hyper::StatusCode;
+use s3::error::S3Error;
 use sea_orm::{
     prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue::NotSet, DbErr, InsertResult, Set,
 };
@@ -34,6 +35,8 @@ pub enum UpsertModuleError {
     DbErr(#[from] DbErr),
     #[error("file upload error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("s3 error: {0}")]
+    S3Error(#[from] S3Error),
     #[error("module parsing error: {0}")]
     SiPkgError(#[from] SiPkgError),
     #[error("upload is required")]
@@ -58,6 +61,7 @@ impl IntoResponse for UpsertModuleError {
 // #[debug_handler]
 pub async fn upsert_module_route(
     // Authorization(claim): Authorization,
+    ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
 ) -> Result<Json<Value>, UpsertModuleError> {
@@ -69,7 +73,7 @@ pub async fn upsert_module_route(
     let data = field.bytes().await.unwrap();
 
     let temp_path = std::env::temp_dir().join("tmp-package.sipkg");
-    fs::write(&temp_path, data).await?;
+    fs::write(&temp_path, data.clone()).await?;
 
     // SiPkg using old term "package" but we are dealing with a "module"
     let loaded_module = SiPkg::load_from_file(temp_path).await?;
@@ -89,6 +93,12 @@ pub async fn upsert_module_route(
         )),
         ..Default::default() // all other attributes are `NotSet`
     };
+
+    // TODO: put below
+    // upload to s3
+    s3_bucket
+        .put_object(format!("{}.sipkg", module_metadata.hash()), &data)
+        .await?;
 
     let new_module: si_module::Model = new_module.insert(&txn).await?;
 

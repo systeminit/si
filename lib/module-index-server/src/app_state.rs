@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use axum::extract::FromRef;
+use s3::creds::Credentials as AwsCredentials;
 use sea_orm::DatabaseConnection;
 pub use si_posthog::PosthogClient;
 
 use tokio::sync::{broadcast, mpsc};
 
-use crate::jwt_key::JwtPublicSigningKey;
+use crate::{jwt_key::JwtPublicSigningKey, s3::S3Config};
 
 #[remain::sorted]
 #[derive(Debug, Eq, PartialEq)]
@@ -21,6 +22,8 @@ pub struct AppState {
     pg_pool: DatabaseConnection,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
+    aws_creds: AwsCredentials,
+    s3_config: S3Config,
 
     shutdown_broadcast: ShutdownBroadcast,
 
@@ -35,6 +38,8 @@ impl AppState {
         pg_pool: DatabaseConnection,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
+        aws_creds: AwsCredentials,
+        s3_config: S3Config,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
@@ -42,6 +47,8 @@ impl AppState {
             pg_pool,
             jwt_public_signing_key,
             posthog_client,
+            aws_creds,
+            s3_config,
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }
@@ -59,5 +66,14 @@ impl AppState {
     /// Gets a reference to the Posthog client.
     pub fn posthog_client(&self) -> &PosthogClient {
         &self.posthog_client
+    }
+
+    /// Gets a reference to the aws creds.
+    pub fn aws_creds(&self) -> &AwsCredentials {
+        &self.aws_creds
+    }
+    /// Gets a reference to the s3 config (bucket, region, etc)
+    pub fn s3_config(&self) -> &S3Config {
+        &self.s3_config
     }
 }
