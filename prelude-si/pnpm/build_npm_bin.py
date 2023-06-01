@@ -13,9 +13,8 @@ if __name__ == "__main__":
         help="Path to output binary script",
     )
     parser.add_argument(
-        "--workspace",
-        action='store_true',
-        help="Whether the binary script is in the workspace root",
+        "--package-dir",
+        help="Path to the workspace member package",
     )
     parser.add_argument(
         "node_modules",
@@ -29,17 +28,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     bins_path = os.path.abspath(args.node_modules)
-    if args.workspace:
+    if args.package_dir:
         bins_path = os.path.join(
             bins_path,
+            args.package_dir,
             "node_modules",
             ".bin",
         )
     else:
         bins_path = os.path.join(
             bins_path,
-            "node_modules",
-            ".pnpm",
             "node_modules",
             ".bin",
         )

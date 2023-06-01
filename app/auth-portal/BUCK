@@ -24,10 +24,6 @@ npm_bin(
     name = "vite",
 )
 
-npm_bin(
-    name = "vite-ssg",
-)
-
 filegroup(
     name = "src",
     srcs = glob([
@@ -55,7 +51,7 @@ vite_app(
         "lib/eslint-config": "//lib/eslint-config:src",
         "lib/tsconfig": "//lib/tsconfig:src",
     },
-    vite = ":vite-ssg",
+    pnpm_exec_cmd_override = "vite-ssg",
 )
 
 export_file(
@@ -70,32 +66,6 @@ pnpm_task_library(
         "//:node_modules",
     ],
     path = "app/auth-portal",
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_library(
-    name = "build",
-    command = "build",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = [
-        "//:node_modules",
-        ":build-lint",
-    ],
-    path = "app/auth-portal",
-    outs = ["dist"],
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_library(
-    name = "build2",
-    command = "build2",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = [
-        "//:node_modules",
-        ":build-lint",
-    ],
-    path = "app/auth-portal",
-    outs = ["dist"],
     visibility = ["PUBLIC"],
 )
 
