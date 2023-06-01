@@ -9,7 +9,6 @@
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
-        <!-- TODO - currently this button doesn't do anything -->
         <VButton
           label="Author New Asset"
           tone="action"
@@ -27,15 +26,29 @@
     </template>
     <template v-if="loadAssetsReqStatus.isSuccess">
       <ul class="overflow-y-auto min-h-[200px]">
-        <AssetListItem v-for="a in assetStore.assetList" :key="a.id" :a="a" />
+        <SiCollapsible
+          v-for="category in Object.keys(categorizedAssets)"
+          :key="category"
+          :label="category"
+          as="li"
+          content-as="ul"
+          default-open
+          class="select-none"
+        >
+          <AssetListItem
+            v-for="asset in categorizedAssets[category]"
+            :key="asset.id"
+            :a="asset"
+          />
+        </SiCollapsible>
       </ul>
     </template>
   </ScrollArea>
 </template>
 
 <script lang="ts" setup>
-import * as _ from "lodash-es";
-import { onMounted } from "vue";
+import { onMounted, computed } from "vue";
+import { storeToRefs } from "pinia";
 import {
   ScrollArea,
   VButton,
@@ -43,10 +56,12 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
-import { useAssetStore } from "@/store/asset.store";
+import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import AssetListItem from "./AssetListItem.vue";
+import SiCollapsible from "./SiCollapsible.vue";
 
 const assetStore = useAssetStore();
+const { assetList } = storeToRefs(assetStore);
 const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
@@ -59,6 +74,18 @@ onMounted(() => {
     assetStore.SELECT_ASSET(null);
   }
 });
+
+const categorizedAssets = computed(() =>
+  assetList.value.reduce((categorized, asset) => {
+    let catList = categorized[asset.category];
+    if (!catList) {
+      catList = [];
+    }
+    catList.push(asset);
+    categorized[asset.category] = catList;
+    return categorized;
+  }, {} as { [key: string]: AssetListEntry[] }),
+);
 
 const newAsset = async () => {
   const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
