@@ -113,8 +113,10 @@ impl ConfirmationView {
                 )
                 .await?;
 
-            confirmations.push(confirmation);
-            recommendations.extend(recommendations_for_confirmation);
+            if let Some(confirmation) = confirmation {
+                confirmations.push(confirmation);
+                recommendations.extend(recommendations_for_confirmation);
+            }
         }
 
         Ok((confirmations, recommendations))
@@ -135,13 +137,18 @@ impl ConfirmationView {
         schema_variant_id: SchemaVariantId,
         running_fixes: &[Fix],
         schema_name: String,
-    ) -> Result<(Self, Vec<RecommendationView>), ConfirmationViewError> {
+    ) -> Result<(Option<Self>, Vec<RecommendationView>), ConfirmationViewError> {
         let (found_func_binding_return_value_id, found_attribute_value_id, found_func_id) =
-            cache.get(&confirmation_name).ok_or_else(|| {
-                ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
-                    confirmation_name.clone(),
-                )
-            })?;
+            match cache.get(&confirmation_name) {
+                Some(cache_result) => cache_result,
+                None => {
+                    warn!(
+                        "No confirmation result found for {} on component {}",
+                        &confirmation_name, component_id
+                    );
+                    return Ok((None, vec![]));
+                }
+            };
 
         // Collect the output from the func binding return value.
         let mut output = Vec::new();
@@ -201,13 +208,18 @@ impl ConfirmationView {
         for action in &entry.recommended_actions {
             let context = ActionPrototypeContext { schema_variant_id };
 
-            let action_prototype =
-                ActionPrototype::find_for_context_and_kind(ctx, *action, context)
-                    .await?
-                    .pop()
-                    .ok_or_else(|| {
-                        ActionPrototypeError::NotFoundByKindAndContext(*action, context)
-                    })?;
+            let action_prototype = match ActionPrototype::find_for_context_and_kind(
+                ctx, *action, context,
+            )
+            .await?
+            .pop()
+            {
+                Some(action_prototype) => action_prototype,
+                None => {
+                    warn!("Confirmation {} recomended {} but no action of that kind could be found for schema variant {}", &confirmation_name, action.as_ref(), schema_variant_id);
+                    continue;
+                }
+            };
 
             // Find the last fix ran. If a fix has never been ran before for this
             // recommendation (i.e. no fix resolver), that is fine!
@@ -277,7 +289,7 @@ impl ConfirmationView {
             provider: maybe_provider,
         };
 
-        Ok((view, recommendations))
+        Ok((Some(view), recommendations))
     }
 }
 

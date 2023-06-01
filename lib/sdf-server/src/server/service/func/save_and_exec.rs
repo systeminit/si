@@ -39,12 +39,14 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
 
             // We need to make this generic to handle *any* value type so that it creates the
             // child proxies for any value that needs them, but I'm rigging this up just for
-            // qualifications right now.
+            // leaf functions right now.
             if proto.context.is_component_unset()
                 && !proto.context.is_prop_unset()
                 && matches!(
                     func.backend_response_type(),
                     FuncBackendResponseType::Qualification
+                        | FuncBackendResponseType::Confirmation
+                        | FuncBackendResponseType::CodeGeneration
                 )
             {
                 let parent_attribute_value = match value.parent_attribute_value(ctx).await? {
@@ -71,7 +73,12 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                         Component::root_prop_child_attribute_value_for_component(
                             ctx,
                             *component.id(),
-                            RootPropChild::Qualification,
+                            match func.backend_response_type() {
+                                FuncBackendResponseType::CodeGeneration => RootPropChild::Code,
+                                FuncBackendResponseType::Confirmation => RootPropChild::Confirmation,
+                                FuncBackendResponseType::Qualification => RootPropChild::Qualification,
+                                _ => unreachable!("we guard this with a match above to ensure we only have leaf functions with root prop children")
+                            }
                         )
                         .await?;
 
