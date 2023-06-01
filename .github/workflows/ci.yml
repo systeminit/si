@@ -83,6 +83,7 @@ jobs:
             CI=true \
             CI_FROM_REF=${{ github.event.pull_request.base.sha }} \
             CI_TO_REF=${{ github.event.pull_request.head.sha }} \
+            SI_TEST_ARGS=--nocapture \
             ci
         env:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}

@@ -234,6 +234,8 @@ async fn list_confirmations(mut octx: DalContext) {
     );
     let recommendation = recommendations.pop().expect("recommendations are empty");
 
+    dbg!(&confirmations);
+
     // Check that there is only one recommendation and that it looks as expected.
     assert!(recommendations.is_empty());
     assert_eq!(
