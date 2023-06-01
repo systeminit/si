@@ -21,7 +21,7 @@ path = "top/main.rs"
 [dependencies]
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
-axum = { version = "0.6.18", features = ["macros", "ws"] }
+axum = { version = "0.6.18", features = ["macros", "ws", "multipart"] }
 base64 = "0.21.0"
 blake3 = "1.3.3"
 bytes = "1.4.0"
@@ -72,6 +72,8 @@ refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json"] }
+rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
+sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }
