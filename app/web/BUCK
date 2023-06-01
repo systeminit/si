@@ -113,7 +113,7 @@ pnpm_task_test(
     name = "test",
     command = "test",
     deps = [
-        ":build",
+        "//:node_modules",
     ],
     path = "app/web",
     visibility = ["PUBLIC"],

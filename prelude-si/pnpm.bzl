@@ -78,8 +78,9 @@ def npm_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type, TemplatePl
         "--bin-out-path",
         exe.as_output(),
     )
-    if ctx.attrs.workspace:
-        cmd.add("--workspace")
+    if not ctx.attrs.workspace:
+        cmd.add("--package-dir")
+        cmd.add(ctx.label.package)
     cmd.add([
         ctx.attrs.node_modules,
         bin_name,
@@ -309,16 +310,25 @@ def vite_app_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_build_ctx = package_build_context(ctx)
 
+    if ctx.attrs.pnpm_exec_cmd_override:
+        exec_cmd = cmd_args(
+            "pnpm",
+            "exec",
+            ctx.attrs.pnpm_exec_cmd_override,
+        )
+    else:
+        exec_cmd = cmd_args(ctx.attrs.vite[RunInfo], format = "{}::abspath")
+
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         pnpm_toolchain.exec_cmd[DefaultInfo].default_outputs,
         "--cwd",
         cmd_args([package_build_ctx.srcs_tree, ctx.label.package], delimiter = "/"),
+        "--copy-tree",
+        cmd_args(["dist", cmd_args(out.as_output(), format = "{}::abspath")], delimiter = "="),
         "--",
-        cmd_args(ctx.attrs.vite[RunInfo], format = "{}::abspath"),
+        exec_cmd,
         "build",
-        "--outDir",
-        cmd_args(out.as_output(), format = "{}::relpath"),
     )
 
     ctx.actions.run(cmd, category = "vite", identifier = "build")
@@ -364,6 +374,11 @@ vite_app = rule(
         ),
         "package_node_modules": attrs.source(
             doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
