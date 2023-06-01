@@ -62,7 +62,7 @@ Using them you should be able to run the whole stack via CLion's Run tool window
 
 ## Learning About SI Concepts
 
-As referenced in [CODE_DOCUMENTATION](./docs/dev/CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
+As referenced in [CODE_DOCUMENTATION](docs/CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
 into learning about the Rust modules and structs that back many SI concepts.
 
 Let's say you want to learn about what a `Component` is.
@@ -235,7 +235,7 @@ When in doubt, use `feat`, `fix`, or `chore`!
 Moreover, please sign your commits using `git commit -s`.
 You can amend an existing commit with `git commit -s --amend`, if needed.
 
-Please see [the relevant document](./docs/dev/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.
+Please see [the relevant document](docs/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.
 
 ## Using `pnpm` for Your Development Workflow
 
