@@ -104,12 +104,7 @@ import {
   ref,
   watch,
 } from "vue";
-import {
-  RichText,
-  Stack,
-  VButton,
-  VormInput,
-} from "@si/vue-lib/design-system";
+import { RichText, Stack, VButton, VormInput } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useHead } from "@vueuse/head";
 import { useAuthStore } from "@/store/auth.store";
