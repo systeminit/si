@@ -105,11 +105,6 @@ impl Config {
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
 
-        let pkgs_path =
-            Path::new(&env::var("CARGO_MANIFEST_DIR").expect("able to get CARGO_MANIFEST_DIR"))
-                .join("../../pkgs/");
-        config.pkgs_path = Some(pkgs_path);
-
         Ok(config)
     }
 }
@@ -635,17 +630,23 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .get_ends_with("dev.jwt_signing_private_key.pem")?
         .to_string_lossy()
         .to_string();
+    let pkgs_path = resources
+        .get_ends_with("pkgs_path")?
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+    builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
 }
@@ -663,17 +664,23 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         .join("../../config/keys/dev.jwt_signing_private_key.pem")
         .to_string_lossy()
         .to_string();
+    let pkgs_path = Path::new(&dir)
+        .join("../../pkgs")
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+    builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
 }
