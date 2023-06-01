@@ -147,8 +147,8 @@ import {
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useStatusStore } from "@/store/status.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import Wipe from "./Wipe.vue";
-import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();
@@ -172,6 +172,8 @@ const route = useRoute();
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 const selectModalRef = ref<InstanceType<typeof Modal>>();
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 // The name for a new change set
 const createChangeSetName = ref("");
@@ -298,7 +300,9 @@ watch(
 const navigateToFixMode = async () => {
   if (selectedWorkspacePk.value) {
     await router.push({
-      name: SINGLE_MODEL_SCREEN_FF ? "workspace-compose" : "workspace-fix",
+      name: featureFlagsStore.SINGLE_MODEL_SCREEN
+        ? "workspace-compose"
+        : "workspace-fix",
       params: { workspacePk: selectedWorkspacePk.value },
     });
   } else {

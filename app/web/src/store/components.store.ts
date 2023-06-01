@@ -4,7 +4,7 @@ import async from "async";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
-import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 import {
   DiagramEdgeDef,
@@ -315,6 +315,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const qualificationsStore = useQualificationsStore();
           const fixesStore = useFixesStore();
           const statusStore = useStatusStore();
+          const featureFlagsStore = useFeatureFlagsStore();
 
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
@@ -336,7 +337,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   },
             ]);
 
-            if (SINGLE_MODEL_SCREEN_FF) {
+            if (featureFlagsStore.SINGLE_MODEL_SCREEN) {
               statusIcons = _.compact([
                 confirmationStatus
                   ? confirmationStatusToIconMap2[confirmationStatus]

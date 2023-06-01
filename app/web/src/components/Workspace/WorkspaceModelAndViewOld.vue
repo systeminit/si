@@ -2,22 +2,23 @@
 <template>
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
-      <div class="grow">
-        <ComponentOutline
-          class="relative"
-          :style="{ height: `${topLeftPanel.height}px` }"
-          @right-click-item="onOutlineRightClick"
-        />
-        <SiPanelResizer
-          panel-side="bottom"
-          :style="{ top: `${topLeftPanel.height}px` }"
-          class="w-full"
-          @resize-start="topLeftPanel.onResizeStart"
-          @resize-move="topLeftPanel.onResizeMove"
-          @resize-reset="topLeftPanel.resetSize"
-        />
-
-        <AssetPalette class="border-t dark:border-neutral-600" />
+      <ChangeSetPanel v-if="!isViewMode" />
+      <div class="grow relative">
+        <TabGroup
+          remember-selected-tab-key="diagram_left"
+          tracking-slug="diagram_outline"
+        >
+          <TabGroupItem
+            v-if="!isViewMode"
+            label="Asset Palette"
+            slug="asset_palette"
+          >
+            <AssetPalette />
+          </TabGroupItem>
+          <TabGroupItem label="Diagram Outline" slug="diagram_outline">
+            <ComponentOutline @right-click-item="onOutlineRightClick" />
+          </TabGroupItem>
+        </TabGroup>
       </div>
     </div>
   </SiPanel>
@@ -63,169 +64,35 @@
     :default-size="380"
     :min-size="300"
   >
-    <div class="flex flex-col h-full">
-      <span
-        class="flex flex-row w-full p-3 text-neutral-400 border-b dark:border-neutral-500"
+    <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
+    <template v-if="selectedEdge">
+      <EdgeDetailsPanel
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+    </template>
+    <template v-else-if="selectedComponent">
+      <ComponentDetails
+        v-if="selectedComponent"
+        :key="selectedComponent.id"
+        :is-view-mode="isViewMode"
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+    </template>
+    <template v-else-if="selectedComponentIds.length">
+      <MultiSelectDetailsPanel />
+    </template>
+    <template v-else>
+      <div
+        class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
       >
-        <strong class="grow uppercase text-lg">Changes</strong>
-        <strong
-          class="text-action-300 mx-2 bg-action-100 text-xl rounded-2xl px-3 border border-action-300"
-          >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
-        >
-      </span>
-      <div :style="{ height: `${topRightPanel.height}px` }" class="relative">
-        <TabGroup
-          remember-selected-tab-key="proposed_right"
-          tracking-slug="recommendations_applied"
-        >
-          <TabGroupItem label="Proposed" slug="recommendations_proposed">
-            <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
-            <SiCollapsible
-              as="div"
-              content-as="ul"
-              :default-open="false"
-              hide-bottom-border-when-open
-            >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span>Change Set Created</span>
-                  </span>
-
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{ changeSetStore.selectedChangeSet?.name }}
-                  </span>
-                </div>
-              </template>
-
-              <template #default>
-                <div class="px-5 text-neutral-400">
-                  {{ changeSetStore.selectedChangeSet?.name }}
-                </div>
-              </template>
-            </SiCollapsible>
-
-            <SiCollapsible
-              v-for="diff in diffs"
-              :key="diff.componentId"
-              as="div"
-              content-as="ul"
-              :default-open="false"
-              hide-bottom-border-when-open
-            >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span v-if="diff.status === 'added'">Added</span>
-                    <span v-if="diff.status === 'deleted'">Removed</span>
-                    <span v-if="diff.status === 'modified'">Modified</span>
-                    <span
-                      >&nbsp;{{
-                        componentsStore.componentsById[diff.componentId]
-                          ?.schemaName
-                      }}
-                      Asset
-                      {{
-                        componentsStore.componentsById[diff.componentId]
-                          ?.displayName
-                      }}</span
-                    >
-                  </span>
-
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{
-                      componentsStore.componentsById[diff.componentId]
-                        ?.displayName
-                    }}
-                  </span>
-                </div>
-              </template>
-
-              <template #default>
-                <div class="px-5 text-neutral-400">
-                  {{
-                    componentsStore.componentsById[diff.componentId]
-                      ?.displayName
-                  }}
-                </div>
-              </template>
-            </SiCollapsible>
-
-            <li
-              v-for="recommendation in fixesStore.recommendations"
-              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-            >
-              <RecommendationSprite
-                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-                :recommendation="recommendation"
-                :selected="
-                  recommendationSelection[
-                    `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
-                  ]
-                "
-                @click.stop
-                @toggle="toggleRecommendation($event, recommendation)"
-              />
-            </li>
-            <li
-              v-if="fixesStore.recommendations.length === 0"
-              class="p-4 italic !delay-0 !duration-0 hidden first:block"
-            >
-              <div class="pb-sm">
-                No recommendations are available at this time.
-              </div>
-            </li>
-          </TabGroupItem>
-
-          <TabGroupItem label="Applied" slug="recommendations_applied">
-            <ApplyHistory />
-          </TabGroupItem>
-        </TabGroup>
-        <SiPanelResizer
-          panel-side="bottom"
-          style="width: 100%; bottom: 0"
-          @resize-start="topRightPanel.onResizeStart"
-          @resize-move="topRightPanel.onResizeMove"
-          @resize-reset="topRightPanel.resetSize"
-        />
+        <template v-if="componentsStore.allComponents.length === 0">
+          Your model is currently empty.
+        </template>
+        <template v-else>Click something on the diagram to select it.</template>
       </div>
-
-      <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
-      <div class="half">
-        <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
-
-        <template v-if="selectedEdge">
-          <EdgeDetailsPanel
-            @delete="triggerDeleteSelection"
-            @restore="triggerRestoreSelection"
-          />
-        </template>
-        <template v-else-if="selectedComponent">
-          <ComponentDetails
-            v-if="selectedComponent"
-            :key="selectedComponent.id"
-            :is-view-mode="isViewMode"
-            @delete="triggerDeleteSelection"
-            @restore="triggerRestoreSelection"
-          />
-        </template>
-        <template v-else-if="selectedComponentIds.length">
-          <MultiSelectDetailsPanel />
-        </template>
-        <template v-else>
-          <div
-            class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
-          >
-            <template v-if="componentsStore.allComponents.length === 0">
-              Your model is currently empty.
-            </template>
-            <template v-else
-              >Click something on the diagram to select it.
-            </template>
-          </div>
-        </template>
-      </div>
-    </div>
+    </template>
   </SiPanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
@@ -282,7 +149,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch, Ref, reactive } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
@@ -295,11 +162,8 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
-import { storeToRefs } from "pinia";
-import ChangeSetPanel from "@/components/ChangeSetPanel2.vue";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
+import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import {
   ComponentId,
   EdgeId,
@@ -308,13 +172,7 @@ import {
 
 import SiPanel from "@/components/SiPanel.vue";
 import { useStatusStore } from "@/store/status.store";
-import { Recommendation, useFixesStore } from "@/store/fixes.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import RecommendationSprite from "@/components/RecommendationSprite2.vue";
-import SiPanelResizer from "@/components/SiPanelResizer.vue";
-import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
@@ -339,44 +197,6 @@ import EdgeCard from "../EdgeCard.vue";
 import ReadOnlyBanner from "../ReadOnlyBanner.vue";
 
 const statusStore = useStatusStore();
-const changeSetStore = useChangeSetsStore();
-const fixesStore = useFixesStore();
-
-const diffs = computed(() => {
-  const arr = Object.values(componentsStore.componentsById)
-    .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => ({
-      componentId: c.id,
-      status: c.changeStatus,
-      updatedAt: c.updatedInfo.timestamp,
-    }));
-  arr.sort(
-    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-  );
-  return arr;
-});
-
-const recommendationSelection = ref<Record<string, boolean>>({});
-const recommendationsToExecute = computed(() => {
-  return fixesStore.recommendations.filter((recommendation) => {
-    const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-    return recommendationSelection.value[key] ? recommendation : null;
-  });
-});
-const { recommendations } = storeToRefs(fixesStore);
-watch(recommendations, (r) => {
-  const keys = new Set(...Object.keys(recommendationSelection.value));
-  for (const recommendation of r) {
-    const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-    keys.delete(key);
-    recommendationSelection.value[key] =
-      recommendationSelection.value[key] ?? true;
-  }
-
-  for (const key of keys) {
-    delete recommendationSelection.value[key];
-  }
-});
 
 const currentRoute = useRoute();
 
@@ -386,11 +206,6 @@ const isViewMode = computed(() => currentRoute.name === "workspace-view");
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-const toggleRecommendation = (c: boolean, recommendation: Recommendation) => {
-  const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-  recommendationSelection.value[key] = c;
-};
 
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes
@@ -880,54 +695,4 @@ const refreshResourceForSelectedComponent = () => {
     componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
   }
 };
-
-const SUB_PANEL_DEFAULT_HEIGHT = 350;
-const SUB_PANEL_MIN_HEIGHT = 150;
-
-// TODO: Move panels to their own components after they stabilize a bit
-const topRightPanel = reactive({
-  height: SUB_PANEL_DEFAULT_HEIGHT,
-  beginResizeValue: 0,
-
-  onResizeStart() {
-    topRightPanel.beginResizeValue = topRightPanel.height;
-  },
-
-  onResizeMove(delta: number) {
-    const adjustedDelta = -delta;
-    const newHeight = topRightPanel.beginResizeValue + adjustedDelta;
-
-    topRightPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
-  },
-
-  resetSize() {
-    topRightPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
-  },
-});
-
-const topLeftPanel = reactive({
-  height: SUB_PANEL_DEFAULT_HEIGHT,
-  beginResizeValue: 0,
-
-  onResizeStart() {
-    topLeftPanel.beginResizeValue = topLeftPanel.height;
-  },
-
-  onResizeMove(delta: number) {
-    const adjustedDelta = -delta;
-    const newHeight = topLeftPanel.beginResizeValue + adjustedDelta;
-
-    topLeftPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
-  },
-
-  resetSize() {
-    topLeftPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
-  },
-});
 </script>
-
-<style lang="less" scoped>
-.half {
-  flex: 0%;
-}
-</style>
