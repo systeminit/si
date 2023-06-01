@@ -40,3 +40,30 @@ jobs:
         run: cargo test --package sdf-server --test api service_tests::scenario::model_and_fix_flow_whiskers::model_and_fix_flow_whiskers -- --ignored --exact
         env:
           SI_TEST_BUILTIN_SCHEMAS: "region,ami,key pair,ec2 instance,security group,ingress,docker image,butane"
+  author:
+    timeout-minutes: 60
+    runs-on: self-hosted
+    name: authoring!
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install node, pnpm, dependencies
+        uses: ./.github/actions/node-pnpm-setup
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Login Docker
+        id: login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build Veritech
+        run: make build//bin/veritech
+      - name: Run Authoring Workflow
+        run: cargo test --package sdf-server --test api service_tests::scenario::authoring_flow_asset::authoring_flow_asset -- --ignored --exact

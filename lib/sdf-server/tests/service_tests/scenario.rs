@@ -8,6 +8,7 @@
 mod fix_flow_deletion;
 
 // Tests not reliant on "dev" routes:
+mod authoring_flow_asset;
 mod model_and_fix_flow_aws_key_pair;
 mod model_and_fix_flow_whiskers;
 mod model_flow_fedora_coreos_ignition;
@@ -15,6 +16,7 @@ mod model_flow_fedora_coreos_ignition;
 use axum::http::Method;
 use axum::Router;
 use dal::component::confirmation::view::{ConfirmationView, RecommendationView};
+use dal::schema::variant::definition::SchemaVariantDefinitionId;
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
     AttributeValueId, ComponentId, ComponentView, ComponentViewProperties, DalContext, Diagram,
@@ -28,6 +30,15 @@ use sdf_server::service::diagram::delete_component::{
     DeleteComponentRequest, DeleteComponentResponse,
 };
 use sdf_server::service::diagram::get_diagram::GetDiagramRequest;
+use sdf_server::service::variant_definition::create_variant_def::{
+    CreateVariantDefRequest, CreateVariantDefResponse,
+};
+use sdf_server::service::variant_definition::exec_variant_def::{
+    ExecVariantDefRequest, ExecVariantDefResponse,
+};
+use sdf_server::service::variant_definition::save_variant_def::{
+    SaveVariantDefRequest, SaveVariantDefResponse,
+};
 use sdf_server::service::{
     change_set::{
         apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse},
@@ -66,6 +77,18 @@ use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 struct ComponentBag {
     pub component_id: ComponentId,
     pub node_id: NodeId,
+}
+
+struct AssetBag {
+    pub asset_id: SchemaVariantDefinitionId,
+}
+
+impl From<CreateVariantDefResponse> for AssetBag {
+    fn from(response: CreateVariantDefResponse) -> Self {
+        Self {
+            asset_id: response.id,
+        }
+    }
 }
 
 impl From<CreateNodeResponse> for ComponentBag {
@@ -377,6 +400,64 @@ impl ScenarioHarness {
         let _response: CreateConnectionResponse = self
             .query_post("/api/diagram/create_connection", &request)
             .await;
+    }
+
+    pub async fn publish_asset(&mut self, ctx: &DalContext, asset_id: SchemaVariantDefinitionId) {
+        let request = ExecVariantDefRequest {
+            id: asset_id,
+            visibility: *ctx.visibility(),
+        };
+        let response: ExecVariantDefResponse = self
+            .query_post("/api/variant_def/exec_variant_def", &request)
+            .await;
+        assert!(response.success)
+    }
+
+    pub async fn update_asset(
+        &mut self,
+        ctx: &DalContext,
+        asset_id: SchemaVariantDefinitionId,
+        asset_name: String,
+        menu_name: Option<String>,
+        schema_definition: &str,
+    ) {
+        let request = SaveVariantDefRequest {
+            id: asset_id,
+            name: asset_name,
+            menu_name,
+            category: "".to_string(),
+            color: "#FFFF00".to_string(),
+            link: Some("https://www.systeminit.com/".to_string()),
+            definition: schema_definition.to_string(),
+            description: None,
+            visibility: *ctx.visibility(),
+        };
+        let response: SaveVariantDefResponse = self
+            .query_post("/api/variant_def/save_variant_def", &request)
+            .await;
+        assert!(response.success)
+    }
+
+    pub async fn create_asset(
+        &mut self,
+        ctx: &DalContext,
+        asset_name: String,
+        menu_name: Option<String>,
+    ) -> AssetBag {
+        let request = CreateVariantDefRequest {
+            name: asset_name,
+            menu_name,
+            category: "".to_string(),
+            color: "#FFFF00".to_string(),
+            link: Some("https://www.systeminit.com/".to_string()),
+            description: None,
+            visibility: *ctx.visibility(),
+        };
+
+        let save_variant_def_response: CreateVariantDefResponse = self
+            .query_post("/api/variant_def/create_variant_def", &request)
+            .await;
+        save_variant_def_response.into()
     }
 
     /// Create a [`Component`](dal::Component) and [`Node`](dal::Node) for a given
