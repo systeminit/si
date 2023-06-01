@@ -26,6 +26,11 @@ import { VButton, Icon, VormInput } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useFixesStore } from "@/store/fixes.store";
+import type { Recommendation } from "@/store/fixes.store";
+
+const props = defineProps<{
+  recommendations: Recommendation[]
+}>();
 
 const fixesStore = useFixesStore();
 const changeSetsStore = useChangeSetsStore();
@@ -37,7 +42,7 @@ const applyChangeSetReqStatus =
 
 // Applies the current change set
 const applyChangeSet = async () => {
-  await changeSetsStore.APPLY_CHANGE_SET2(fixesStore.recommendations);
+  await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
 };
 
 const statusStore = useStatusStore();

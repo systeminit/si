@@ -80,7 +80,7 @@
           tracking-slug="recommendations_applied"
         >
           <TabGroupItem label="Proposed" slug="recommendations_proposed">
-            <ApplyChangeSetButton />
+            <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
             <SiCollapsible
               as="div"
               content-as="ul"
@@ -352,6 +352,12 @@ const diffs = computed(() => {
 });
 
 const recommendationSelection = ref<Record<string, boolean>>({});
+const recommendationsToExecute = computed(() => {
+  return fixesStore.recommendations.filter((recommendation) => {
+    const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
+    return recommendationSelection.value[key] ? recommendation : null;
+  });
+});
 const { recommendations } = storeToRefs(fixesStore);
 watch(recommendations, (r) => {
   const keys = new Set(...Object.keys(recommendationSelection.value));
