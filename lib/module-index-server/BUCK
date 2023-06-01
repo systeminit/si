@@ -1,0 +1,41 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "module-index-server",
+    deps = [
+        "//lib/buck2-resources:buck2-resources",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/si-pkg:si-pkg",
+        "//lib/si-posthog-rs:si-posthog",
+        "//lib/si-settings:si-settings",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:axum",
+        "//third-party/rust:base64",
+        "//third-party/rust:chrono",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:futures",
+        "//third-party/rust:hyper",
+        "//third-party/rust:jwt-simple",
+        "//third-party/rust:refinery",
+        "//third-party/rust:regex",
+        "//third-party/rust:remain",
+        "//third-party/rust:rust-s3",
+        "//third-party/rust:sea-orm",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:stream-cancel",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-stream",
+        "//third-party/rust:tower",
+        "//third-party/rust:tower-http",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+        "src/migrations/**/*.sql",
+    ]),
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    },
+)

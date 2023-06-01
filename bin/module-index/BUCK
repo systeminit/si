@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_binary")
+
+rust_binary(
+    name = "module-index",
+    deps = [
+        "//lib/module-index-server:module-index-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    resources = {
+        "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
+        "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
+#        "pkgs_path": "//pkgs:pkgs",
+    },
+)
