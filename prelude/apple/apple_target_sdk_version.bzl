@@ -6,7 +6,7 @@
 # of this source tree.
 
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
-load("@prelude//cxx:preprocessor.bzl", "CPreprocessor")
+load("@prelude//cxx:preprocessor.bzl", "CPreprocessor", "CPreprocessorArgs")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 
 # TODO(T112099448): In the future, the min version flag should live on the apple_toolchain()
@@ -14,6 +14,7 @@ load(":apple_sdk.bzl", "get_apple_sdk_name")
 _APPLE_MIN_VERSION_FLAG_SDK_MAP = {
     "iphoneos": "-mios-version-min",
     "iphonesimulator": "-mios-simulator-version-min",
+    "maccatalyst": "-mios-version-min",  # Catalyst uses iOS min version flags
     "macosx": "-mmacosx-version-min",
     "watchos": "-mwatchos-version-min",
     "watchsimulator": "-mwatchsimulator-version-min",
@@ -75,5 +76,5 @@ def get_min_deployment_version_target_preprocessor_flags(ctx: "context") -> [CPr
 
     args = cmd_args(min_version_flag)
     return [CPreprocessor(
-        args = [args],
+        relative_args = CPreprocessorArgs(args = [args]),
     )]

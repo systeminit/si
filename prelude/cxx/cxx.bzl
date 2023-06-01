@@ -111,6 +111,7 @@ load(":platform.bzl", "cxx_by_platform")
 load(
     ":preprocessor.bzl",
     "CPreprocessor",
+    "CPreprocessorArgs",
     "cxx_attr_exported_preprocessor_flags",
     "cxx_exported_preprocessor_info",
     "cxx_inherited_preprocessor_infos",
@@ -320,7 +321,7 @@ def prebuilt_cxx_library_impl(ctx: "context") -> ["provider"]:
     if header_dirs != None:
         for x in header_dirs:
             args.append(format_system_include_arg(cmd_args(x), compiler_type))
-    specific_exportd_pre = CPreprocessor(args = args)
+    specific_exportd_pre = CPreprocessor(relative_args = CPreprocessorArgs(args = args))
     providers.append(cxx_merge_cpreprocessors(
         ctx,
         [generic_exported_pre, specific_exportd_pre],
@@ -615,6 +616,7 @@ def _get_params_for_android_binary_cxx_library() -> (CxxRuleSubTargetParams.type
         xcode_data = False,
         clang_traces = False,
         objects = False,
+        bitcode_bundle = False,
     )
     provider_params = CxxRuleProviderParams(
         compilation_database = False,

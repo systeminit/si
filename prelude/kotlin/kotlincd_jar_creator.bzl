@@ -24,6 +24,7 @@ load(
     "encode_jar_params",
     "generate_abi_jars",
     "get_compiling_deps_tset",
+    "prepare_cd_exe",
     "prepare_final_jar",
     "setup_dep_files",
 )
@@ -92,6 +93,7 @@ def create_jar_artifact_kotlincd(
             standardLibraryClassPath = kotlin_toolchain.kotlin_stdlib[JavaLibraryInfo].library_output.full_library,
             annotationProcessingClassPath = kotlin_toolchain.annotation_processing_jar[JavaLibraryInfo].library_output.full_library,
             compilationTracerPlugin = kotlin_toolchain.compilation_tracer_plugin,
+            qpldDotslash = kotlin_toolchain.qpld_dotslash,
             jvmAbiGenPlugin = kotlin_toolchain.jvm_abi_gen_plugin,
             kotlinCompilerPlugins = {plugin: {"params": plugin_options} if plugin_options else {} for plugin, plugin_options in kotlin_compiler_plugins.items()},
             kosabiPluginOptions = struct(
@@ -212,35 +214,24 @@ def create_jar_artifact_kotlincd(
             abi_dir: ["artifact", None],
             target_type: TargetType.type,
             path_to_class_hashes: ["artifact", None],
-            debug_port: [int.type, None],
-            debug_target: ["label", None],
-            extra_jvm_args: [str.type],
             source_only_abi_compiling_deps: ["JavaClasspathEntry"] = []):
         _unused = source_only_abi_compiling_deps
 
         proto = declare_prefixed_output(actions, actions_identifier, "jar_command.proto.json")
         proto_with_inputs = actions.write_json(proto, encoded_command, with_inputs = True)
 
-        cmd = cmd_args()
-        cmd.add(
-            java_toolchain.java[RunInfo],
+        exe = prepare_cd_exe(
+            qualified_name,
+            java = java_toolchain.java[RunInfo],
+            compiler = kotlin_toolchain.kotlinc[DefaultInfo].default_outputs[0],
+            worker = kotlin_toolchain.kotlincd_worker[WorkerInfo],
+            debug_port = kotlin_toolchain.kotlincd_debug_port,
+            debug_target = kotlin_toolchain.kotlincd_debug_target,
+            extra_jvm_args = kotlin_toolchain.kotlincd_jvm_args,
         )
 
-        if debug_port and qualified_name.startswith(base_qualified_name(debug_target)):
-            cmd.add(
-                "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address={}".format(debug_port),
-            )
-
-        if len(extra_jvm_args) > 0:
-            cmd.add(extra_jvm_args)
-
-        cmd.add(
-            "-XX:-MaxFDLimit",
-            "-jar",
-            kotlin_toolchain.kotlinc[DefaultInfo].default_outputs[0],
-        )
-
-        cmd.add(
+        args = cmd_args()
+        args.add(
             "--action-id",
             qualified_name,
             "--command-file",
@@ -248,7 +239,7 @@ def create_jar_artifact_kotlincd(
         )
 
         if target_type == TargetType("library") and should_create_class_abi:
-            cmd.add(
+            args.add(
                 "--full-library",
                 output_paths.jar.as_output(),
                 "--class-abi-output",
@@ -260,14 +251,14 @@ def create_jar_artifact_kotlincd(
             )
 
         if target_type == TargetType("source_abi") or target_type == TargetType("source_only_abi"):
-            cmd.add(
+            args.add(
                 "--kotlincd-abi-output",
                 output_paths.jar.as_output(),
                 "--abi-output-dir",
                 abi_dir.as_output(),
             )
 
-        cmd = add_output_paths_to_cmd_args(cmd, output_paths, path_to_class_hashes)
+        args = add_output_paths_to_cmd_args(args, output_paths, path_to_class_hashes)
 
         event_pipe_out = declare_prefixed_output(actions, actions_identifier, "events.data")
 
@@ -277,10 +268,10 @@ def create_jar_artifact_kotlincd(
                 output_paths.jar_parent.project("used-classes.json"),
                 output_paths.jar_parent.project("kotlin-used-classes.json"),
             ]
-            cmd = setup_dep_files(
+            args = setup_dep_files(
                 actions,
                 actions_identifier,
-                cmd,
+                args,
                 classpath_jars_tag,
                 used_classes_json_outputs,
                 compiling_deps_tset.project_as_args("abi_to_abi_dir") if kotlin_toolchain.dep_files == DepFiles("per_class") and compiling_deps_tset else None,
@@ -289,7 +280,7 @@ def create_jar_artifact_kotlincd(
             dep_files["classpath_jars"] = classpath_jars_tag
 
         actions.run(
-            cmd,
+            args,
             env = {
                 "BUCK_EVENT_PIPE": event_pipe_out.as_output(),
                 "JAVACD_ABSOLUTE_PATHS_ARE_RELATIVE_TO_CWD": "1",
@@ -297,6 +288,7 @@ def create_jar_artifact_kotlincd(
             category = "{}kotlincd_jar".format(category_prefix),
             identifier = actions_identifier,
             dep_files = dep_files,
+            exe = exe,
         )
 
     library_classpath_jars_tag = actions.artifact_tag()
@@ -311,9 +303,6 @@ def create_jar_artifact_kotlincd(
         abi_dir = class_abi_output_dir if should_create_class_abi else None,
         target_type = TargetType("library"),
         path_to_class_hashes = path_to_class_hashes_out,
-        debug_port = kotlin_toolchain.kotlincd_debug_port,
-        debug_target = kotlin_toolchain.kotlincd_debug_target,
-        extra_jvm_args = kotlin_toolchain.kotlincd_jvm_args,
     )
 
     final_jar = prepare_final_jar(
@@ -341,9 +330,6 @@ def create_jar_artifact_kotlincd(
         class_abi_output_dir = class_abi_output_dir,
         encode_abi_command = encode_abi_command,
         define_action = define_kotlincd_action,
-        debug_port = kotlin_toolchain.kotlincd_debug_port,
-        debug_target = kotlin_toolchain.kotlincd_debug_target,
-        extra_jvm_args = kotlin_toolchain.kotlincd_jvm_args,
     )
     return make_compile_outputs(
         full_library = final_jar,
