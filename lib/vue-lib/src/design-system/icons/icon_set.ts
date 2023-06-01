@@ -4,6 +4,7 @@
 import Loader from "~icons/gg/spinner";
 
 import Resize from "~icons/mdi/resize-bottom-right";
+import SlashForward from "~icons/mdi/slash-forward";
 
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
@@ -165,6 +166,7 @@ export const ICONS = Object.freeze({
   search: Search,
   selector: Selector,
   show: Eye,
+  slash: SlashForward,
   sun: Sun,
   "thumbs-down": ThumbsDown,
   "thumbs-up": ThumbsUp,

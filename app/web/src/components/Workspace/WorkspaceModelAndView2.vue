@@ -2,23 +2,22 @@
 <template>
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel v-if="!isViewMode" />
-      <div class="grow relative">
-        <TabGroup
-          remember-selected-tab-key="diagram_left"
-          tracking-slug="diagram_outline"
-        >
-          <TabGroupItem
-            v-if="!isViewMode"
-            label="Asset Palette"
-            slug="asset_palette"
-          >
-            <AssetPalette />
-          </TabGroupItem>
-          <TabGroupItem label="Diagram Outline" slug="diagram_outline">
-            <ComponentOutline @right-click-item="onOutlineRightClick" />
-          </TabGroupItem>
-        </TabGroup>
+      <div class="grow">
+        <ComponentOutline
+          class="relative"
+          :style="{ height: `${topLeftPanel.height}px` }"
+          @right-click-item="onOutlineRightClick"
+        />
+        <SiPanelResizer
+          panel-side="bottom"
+          :style="{ top: `${topLeftPanel.height}px` }"
+          class="w-full"
+          @resize-start="topLeftPanel.onResizeStart"
+          @resize-move="topLeftPanel.onResizeMove"
+          @resize-reset="topLeftPanel.resetSize"
+        />
+
+        <AssetPalette class="border-t dark:border-neutral-600" />
       </div>
     </div>
   </SiPanel>
@@ -74,7 +73,7 @@
           >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
         >
       </span>
-      <div class="grow relative">
+      <div :style="{ height: `${topRightPanel.height}px` }" class="relative">
         <TabGroup
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
@@ -182,15 +181,19 @@
             <ApplyHistory />
           </TabGroupItem>
         </TabGroup>
+        <SiPanelResizer
+          panel-side="bottom"
+          style="width: 100%; bottom: 0"
+          @resize-start="topRightPanel.onResizeStart"
+          @resize-move="topRightPanel.onResizeMove"
+          @resize-reset="topRightPanel.resetSize"
+        />
       </div>
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
       <div class="half">
-        <span
-          class="flex flex-row w-full p-3 text-neutral-400 border-y dark:border-neutral-500"
-        >
-          <strong class="grow uppercase text-lg">Selected Asset(s)</strong>
-        </span>
+        <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
+
         <template v-if="selectedEdge">
           <EdgeDetailsPanel
             @delete="triggerDeleteSelection"
@@ -217,8 +220,8 @@
               Your model is currently empty.
             </template>
             <template v-else
-              >Click something on the diagram to select it.</template
-            >
+              >Click something on the diagram to select it.
+            </template>
           </div>
         </template>
       </div>
@@ -279,7 +282,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, Ref, reactive } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
@@ -308,6 +311,8 @@ import { useStatusStore } from "@/store/status.store";
 import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
+import SiPanelResizer from "@/components/SiPanelResizer.vue";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -875,6 +880,50 @@ const refreshResourceForSelectedComponent = () => {
     componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
   }
 };
+
+const SUB_PANEL_DEFAULT_HEIGHT = 350;
+const SUB_PANEL_MIN_HEIGHT = 150;
+
+// TODO: Move panels to their own components after they stabilize a bit
+const topRightPanel = reactive({
+  height: SUB_PANEL_DEFAULT_HEIGHT,
+  beginResizeValue: 0,
+
+  onResizeStart() {
+    topRightPanel.beginResizeValue = topRightPanel.height;
+  },
+
+  onResizeMove(delta: number) {
+    const adjustedDelta = -delta;
+    const newHeight = topRightPanel.beginResizeValue + adjustedDelta;
+
+    topRightPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
+  },
+
+  resetSize() {
+    topRightPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
+  },
+});
+
+const topLeftPanel = reactive({
+  height: SUB_PANEL_DEFAULT_HEIGHT,
+  beginResizeValue: 0,
+
+  onResizeStart() {
+    topLeftPanel.beginResizeValue = topLeftPanel.height;
+  },
+
+  onResizeMove(delta: number) {
+    const adjustedDelta = -delta;
+    const newHeight = topLeftPanel.beginResizeValue + adjustedDelta;
+
+    topLeftPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
+  },
+
+  resetSize() {
+    topLeftPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
+  },
+});
 </script>
 
 <style lang="less" scoped>

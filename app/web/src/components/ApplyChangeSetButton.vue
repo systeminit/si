@@ -22,17 +22,19 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import * as _ from "lodash-es";
-import { VButton, Icon, VormInput } from "@si/vue-lib/design-system";
+import { VButton, VormInput } from "@si/vue-lib/design-system";
+import { useRouter, useRoute } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
-import { useFixesStore } from "@/store/fixes.store";
 import type { Recommendation } from "@/store/fixes.store";
 
 const props = defineProps<{
-  recommendations: Recommendation[]
+  recommendations: Recommendation[];
 }>();
 
-const fixesStore = useFixesStore();
+const router = useRouter();
+const route = useRoute();
+
 const changeSetsStore = useChangeSetsStore();
 
 const applyButtonRef = ref();
@@ -43,6 +45,13 @@ const applyChangeSetReqStatus =
 // Applies the current change set
 const applyChangeSet = async () => {
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
+  await router.replace({
+    name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    params: {
+      ...route.params,
+      changeSetId: "auto",
+    },
+  });
 };
 
 const statusStore = useStatusStore();

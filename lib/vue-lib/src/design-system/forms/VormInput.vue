@@ -18,24 +18,26 @@ you can pass in options as props too */
         name="lock"
       />
       <slot name="label"
-        >{{ label || "&nbsp;"
-        }}{{ required || requiredWarning ? "*" : "" }}</slot
-      >
+        >{{ label || "&nbsp;" }}{{ required || requiredWarning ? "*" : "" }}
+      </slot>
     </label>
     <div class="vorm-input__input-and-instructions-wrap">
       <div class="vorm-input__input-wrap">
-        <template v-if="type === 'container'"><slot /></template>
+        <template v-if="type === 'container'">
+          <slot />
+        </template>
 
         <template v-else-if="type === 'dropdown'">
           <select
             :id="formInputId"
             ref="inputRef"
             class="vorm-input__input"
-            :class="
+            :class="[
               modelValue === null && !placeholderSelectable
                 ? '--placeholder-selected'
-                : ''
-            "
+                : '',
+              { sm: '', md: 'vorm-input__input-medium' }[props.size],
+            ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"
             @focus="onFocus"
@@ -57,8 +59,8 @@ you can pass in options as props too */
               v-for="(o, i) in optionsFromProps"
               :key="generateOptionKey(o, i)"
               :value="o.value"
-              >{{ o.label }}</VormInputOption
-            >
+              >{{ o.label }}
+            </VormInputOption>
           </select>
         </template>
 
@@ -69,8 +71,8 @@ you can pass in options as props too */
             ref="inputRef"
             :disabled="disabledBySelfOrParent"
             :value="o.value"
-            >{{ o.label }}</VormInputOption
-          >
+            >{{ o.label }}
+          </VormInputOption>
           <slot />
         </template>
 
@@ -208,6 +210,8 @@ const props = defineProps({
     // type: [String, Number, Array, Boolean, null] as PropType<any>,
   },
   type: { type: String as PropType<InputTypes>, default: "text" },
+
+  size: { type: String as PropType<"sm" | "md">, default: "md" },
 
   // label, placeholder, additional text instructions
   label: { type: String },
@@ -423,6 +427,7 @@ function cleanValue(val: any) {
 
   return val;
 }
+
 function setNewValue(newValue: any, clean = true) {
   emit("update:modelValue", clean ? cleanValue(newValue) : newValue);
 }
@@ -431,6 +436,7 @@ function setNewValue(newValue: any, clean = true) {
 function generateOptionKey(option: { value: string }, index: number) {
   return `vorm-input-option-${formInputId}-${index}`;
 }
+
 const optionsFromProps = computed((): OptionsAsArray => {
   /* eslint-disable consistent-return */
   if (!isTypeWithOptions.value) return [];
@@ -471,6 +477,7 @@ function onFocus() {
   isFocus.value = true;
   emit("focus");
 }
+
 function onBlur() {
   isFocus.value = false;
   // inputs with child options fire change events from the VormInputOption component
@@ -480,6 +487,7 @@ function onBlur() {
   validationMethods.touch();
   emit("blur");
 }
+
 function onChange(event: Event) {
   if (
     event.target instanceof HTMLInputElement ||
@@ -489,6 +497,7 @@ function onChange(event: Event) {
     setNewValue(event.target?.value, false);
   }
 }
+
 function onKeyboardEvent(event: KeyboardEvent) {
   const key = event.key;
   if (key === "Enter") {
@@ -509,11 +518,13 @@ function onKeyboardEvent(event: KeyboardEvent) {
 }
 
 const childInputOptions = ref([] as ComponentInternalInstance[]);
+
 function registerChildInputOption(
   inputOptionComponent: ComponentInternalInstance,
 ) {
   childInputOptions.value.push(inputOptionComponent as any);
 }
+
 function unregisterChildInputOption(
   inputOptionComponent: ComponentInternalInstance,
 ) {
@@ -575,6 +586,7 @@ function fixOptionSelection() {
       setNewValue(autoSelectOptionComponent?.exposed?.value);
   }
 }
+
 // have to do some special handling for selects that are using empty and boolean values
 // see VormInputOption for more info
 const valueForSelectField = computed(() => {
@@ -695,12 +707,16 @@ defineExpose({
   border: 1px solid var(--border-color);
   border-radius: 3px;
   transition: border-color 0.15s;
-  padding: 8px 12px;
-  height: 40px;
+  padding: 4px 10px;
   color: var(--text-color);
   font: inherit;
   background-color: var(--bg-color);
   line-height: 2;
+
+  &.vorm-input__input-medium {
+    padding: 8px 12px;
+    height: 40px;
+  }
 
   &:hover {
     --border-color: @colors-neutral-500;
@@ -715,7 +731,7 @@ defineExpose({
     -webkit-appearance: none;
     padding-top: 0;
     padding-bottom: 0;
-    padding-right: 22px; // to make space for dropdown arrow
+    padding-right: 28px; // to make space for dropdown arrow
 
     // dropdown arrow on right
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='%23666'><polygon points='10,15 30,15 20,25'/></svg>");
@@ -767,6 +783,7 @@ defineExpose({
 .vorm-input__pass-show-hide-toggle + .vorm-input__input {
   padding-right: 35px;
 }
+
 .vorm-input__label {
   @apply capsize text-sm;
   padding-bottom: @vertical-gap;
@@ -800,6 +817,7 @@ defineExpose({
 
 .vorm-input__instructions {
   color: var(--text-color-muted);
+
   a {
     color: currentColor;
     text-decoration: underline;
@@ -811,6 +829,7 @@ defineExpose({
     vertical-align: bottom;
     margin-right: 4px;
   }
+
   &:empty {
     display: none;
   }
@@ -877,6 +896,7 @@ defineExpose({
       background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='black' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
     }
   }
+
   &.--theme-dark {
     .vorm-input__input {
       &:checked {

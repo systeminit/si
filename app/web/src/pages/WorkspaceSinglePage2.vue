@@ -49,14 +49,10 @@ import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
-import {
-  ChangeSetId,
-  useChangeSetsStore,
-  changeSetIdNil,
-} from "@/store/change_sets.store";
+import { useChangeSetsStore, changeSetIdNil } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
-import Navbar from "@/components/layout/navbar/Navbar.vue";
+import Navbar from "@/components/layout/navbar/Navbar2.vue";
 import StatusBar from "@/components/StatusBar.vue";
 
 const props = defineProps({
@@ -77,28 +73,14 @@ const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
-const selectedChangeSet = computed(() => changeSetsStore.selectedChangeSet);
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
-watch(changeSetsReqStatus, handleChangeSetsLoaded);
 watch(route, handleUrlChange, { immediate: true });
-
-function routeToChangeSet(id: ChangeSetId, replace = false) {
-  // reroutes to a specific changeset but keeps the same route name
-  // so we can go from /auto/some-specific-page -> 1/some-specific-page
-  router[replace ? "replace" : "push"]({
-    name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    params: {
-      ...route.params,
-      changeSetId: id,
-    },
-  });
-}
 
 function handleUrlChange() {
   // if "auto", we do our best to autoselect, and show a selection screen otherwise
   if (props.changeSetId === "auto") {
-    tryAutoSelect();
+    changeSetsStore.selectedChangeSetId = null;
     // if undefined, that means the route has no changeSetId param, so we select "head"
   } else if (props.changeSetId === undefined) {
     changeSetsStore.selectedChangeSetId = changeSetIdNil();
@@ -106,24 +88,17 @@ function handleUrlChange() {
     changeSetsStore.selectedChangeSetId = props.changeSetId;
   }
 
-  if (!changeSetsStore.selectedChangeSet && changeSetsStore.selectedChangeSetId) {
-    routeToChangeSet('auto', true);
-  }
-}
-function handleChangeSetsLoaded() {
-  if (changeSetsReqStatus.value.isSuccess && props.changeSetId === "auto") {
-    tryAutoSelect();
-  }
-}
-
-// gets called on url change when id is "auto", and also when change set's are loaded
-function tryAutoSelect() {
-  const autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
-  if (autoSelectChangeSetId) {
-    routeToChangeSet(autoSelectChangeSetId, true);
-  } else {
-    // only clear the selected change set id if we are on "auto" mode and we can't autoamtically select
-    changeSetsStore.selectedChangeSetId = null;
+  if (
+    !changeSetsStore.selectedChangeSet &&
+    changeSetsStore.selectedChangeSetId
+  ) {
+    router.replace({
+      name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      params: {
+        ...route.params,
+        changeSetId: "auto",
+      },
+    });
   }
 }
 </script>
