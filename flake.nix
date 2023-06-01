@@ -27,9 +27,9 @@
         buck2 = pkgs.stdenv.mkDerivation rec {
           # These are the primary variables to control the "version" of buck2 that we want from S3.
           #
-          # To upload the latest objects and get the hashes needed for this flake, run
-          # "buck2 run //support:upload-latest-buck2". You can run that target again to find the
-          # hashes, even if the objects have already been uploaded.
+          # To upload the latest objects and get the hashes needed for this flake, run the update
+          # script from the support directory via buck2 itself. You can run that target again to
+          # find the hashes, even if the objects have already been uploaded.
           #
           # For the hashes, default to "aarch64-darwin".
           buckDate = "2023-05-31";
