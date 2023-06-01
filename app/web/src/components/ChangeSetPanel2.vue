@@ -1,22 +1,22 @@
 <template>
-  <div class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0">
-    <section class="p-sm">
-      <div class="flex items-center gap-x-xs">
-        <VormInput
-          class="flex-grow"
-          type="dropdown"
-          :model-value="selectedChangeSetId"
-          label="Change Set"
-          placeholder="no changeset selected"
-          :options="changeSetDropdownOptions"
-          @update:model-value="onSelectChangeSet"
-        >
-          <VormInputOption value="NEW">
-            - Create new change set -
-          </VormInputOption>
-        </VormInput>
-      </div>
-    </section>
+  <div class="flex-shrink-0">
+    <div class="flex flex-col gap-1">
+      <div class="text-xs font-medium capsize">CHANGE SET:</div>
+
+      <VormInput
+        class="flex-grow font-bold"
+        size="sm"
+        type="dropdown"
+        no-label
+        :model-value="selectedChangeSetId"
+        :options="changeSetDropdownOptions"
+        @update:model-value="onSelectChangeSet"
+      >
+        <VormInputOption value="NEW">
+          - Create new change set -
+        </VormInputOption>
+      </VormInput>
+    </div>
 
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
@@ -51,28 +51,6 @@
           </div>
         </Stack>
       </form>
-    </Modal>
-
-    <Modal ref="selectModalRef" no-exit title="Select Change Set">
-      <Stack>
-        <p>
-          Select the Change Set you would like to resume working in, or select
-          <b>- new -</b> to create a new Change Set.
-        </p>
-        <VormInput
-          type="dropdown"
-          no-label
-          :model-value="selectedChangeSetId"
-          :options="changeSetDropdownOptions"
-          placeholder="Select an existing change set"
-          class="flex-grow"
-          @update:model-value="onSelectChangeSet"
-        />
-        <Divider label="or" />
-        <VButton icon="plus-circle" @click="openCreateModal">
-          Create a new change set
-        </VButton>
-      </Stack>
     </Modal>
 
     <Wipe ref="wipeRef">
@@ -115,7 +93,7 @@ import {
   Modal,
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
-import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
 import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
@@ -135,7 +113,6 @@ const router = useRouter();
 const route = useRoute();
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
-const selectModalRef = ref<InstanceType<typeof Modal>>();
 
 // The name for a new change set
 const createChangeSetName = ref("");
@@ -165,6 +142,7 @@ async function onCreateChangeSet() {
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
     onSelectChangeSet(createReq.result.data.changeSet.pk);
+    createModalRef.value?.close();
   }
 }
 
@@ -174,36 +152,44 @@ const createChangeSetReqStatus =
 const changeSetMergeStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
-function getGeneratedChangesetName() {
-  // TODO: do we want to autogenerate names when not in dev? Maybe toggle-able setting?
-  if (!import.meta.env.DEV) return "";
-  let latestNum = 0;
-  _.each(changeSetsStore.allChangeSets, (cs) => {
-    const labelNum = parseInt(cs.name.split(" ").pop() || "");
-    if (!_.isNaN(labelNum) && labelNum > latestNum) {
-      latestNum = labelNum;
-    }
-  });
-  return `Demo ${latestNum + 1}`;
-}
 function openCreateModal() {
-  createChangeSetName.value = getGeneratedChangesetName();
+  createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
   createModalRef.value?.open();
 }
 
 watch(
   // have to also watch for the modals existing since they may not exist immediately on mount
-  [openChangeSets, createModalRef, selectModalRef],
+  [openChangeSets, createModalRef, route],
   () => {
     if (!openChangeSets.value) return;
 
-    if (!openChangeSets.value.length) {
-      createChangeSetName.value = getGeneratedChangesetName();
-      onCreateChangeSet();
-    } else if (!selectedChangeSetId.value) {
-      selectModalRef.value?.open();
+    if (!selectedChangeSetId.value) {
+      tryAutoSelect();
     }
   },
   { immediate: true },
 );
+
+function routeToChangeSet(id: ChangeSetId, replace = false) {
+  // reroutes to a specific changeset but keeps the same route name
+  // so we can go from /auto/some-specific-page -> 1/some-specific-page
+  router[replace ? "replace" : "push"]({
+    name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    params: {
+      ...route.params,
+      changeSetId: id,
+    },
+  });
+}
+
+// gets called on url change when id is "auto", and also when change set's are loaded
+function tryAutoSelect() {
+  const autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
+  if (autoSelectChangeSetId) {
+    routeToChangeSet(autoSelectChangeSetId, true);
+  } else {
+    createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
+    onCreateChangeSet();
+  }
+}
 </script>

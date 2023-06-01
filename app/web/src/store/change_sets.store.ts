@@ -151,6 +151,16 @@ export function useChangeSetsStore() {
           }
           return false;
         },
+        getGeneratedChangesetName() {
+          let latestNum = 0;
+          _.each(this.allChangeSets, (cs) => {
+            const labelNum = parseInt(cs.name.split(" ").pop() || "");
+            if (!_.isNaN(labelNum) && labelNum > latestNum) {
+              latestNum = labelNum;
+            }
+          });
+          return `Demo ${latestNum + 1}`;
+        },
       },
       onActivated() {
         if (!workspacePk) return;

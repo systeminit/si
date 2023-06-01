@@ -55,7 +55,7 @@
 
       <!-- change set id in the URL, but it is invalid -->
       <template v-else-if="changeSetId && !selectedChangeSet">
-        <ErrorMessage>Change set "{{ changeSetId }}" not found </ErrorMessage>
+        <ErrorMessage>Change set "{{ changeSetId }}" not found</ErrorMessage>
       </template>
 
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
@@ -84,6 +84,8 @@ import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
 import PlaceholderComposeView from "@/components/layout/PlaceholderComposeView.vue";
 import StatusBar from "@/components/StatusBar.vue";
+import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
+import Navbar2 from "@/components/layout/navbar/Navbar2.vue";
 
 const props = defineProps({
   workspacePk: { type: String, required: true },
@@ -132,6 +134,7 @@ function handleUrlChange() {
     changeSetsStore.selectedChangeSetId = props.changeSetId;
   }
 }
+
 function handleChangeSetsLoaded() {
   if (changeSetsReqStatus.value.isSuccess && props.changeSetId === "auto") {
     tryAutoSelect();

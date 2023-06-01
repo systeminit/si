@@ -241,7 +241,8 @@ export const useFixesStore = () => {
           }>({
             url: "/fix/confirmations",
             params: {
-              visibility_change_set_pk: changeSetStore.selectedChangeSetId,
+              visibility_change_set_pk:
+                changeSetStore.selectedChangeSetId ?? nilId(),
             },
             onSuccess: ({ confirmations, recommendations }) => {
               this.confirmations = confirmations;
