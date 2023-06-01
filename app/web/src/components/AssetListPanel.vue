@@ -11,7 +11,7 @@
       >
         <!-- TODO - currently this button doesn't do anything -->
         <VButton
-          label="Add Asset"
+          label="Author New Asset"
           tone="action"
           icon="plus"
           size="sm"

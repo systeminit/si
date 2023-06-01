@@ -10,7 +10,7 @@
         class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-end gap-2"
       >
         <VButton
-          label="Execute"
+          label="Create Asset"
           :disabled="disabled"
           tone="action"
           icon="bolt"
