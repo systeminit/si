@@ -36,10 +36,6 @@ load(
     "get_linkable_graph_node_map_func",
 )
 load(
-    "@prelude//linking:linkables.bzl",
-    "linkable",
-)
-load(
     "@prelude//utils:graph_utils.bzl",
     "breadth_first_traversal_by",
 )
@@ -51,6 +47,7 @@ load(
 load(
     "@prelude//utils:utils.bzl",
     "expect",
+    "value_or",
 )
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 load(
@@ -97,6 +94,13 @@ LinkGroupInfo = provider(fields = [
     "groups",  # [Group.type]
     "groups_hash",  # str.type
     "mappings",  # {"label": str.type}
+    # Additional graphs needed to cover labels referenced by the groups above.
+    # This is useful in cases where the consumer of this provider won't already
+    # have deps covering these.
+    # NOTE(agallagher): We do this to maintain existing behavior w/ the
+    # standalone `link_group_map()` rule, but it's not clear if it's actually
+    # desirable behavior.
+    "graph",  # LinkableGraph.type
 ])
 
 LinkGroupLinkInfo = record(
@@ -128,24 +132,39 @@ _LinkedLinkGroup = record(
 _LinkedLinkGroups = record(
     libs = field({str.type: _LinkedLinkGroup.type}),
     symbol_ldflags = field([""], []),
-    disabled_link_groups = field([str.type]),
 )
-
-def parse_link_group_definitions(mappings: list.type) -> [Group.type]:
-    return parse_groups_definitions(mappings, linkable)
 
 def get_link_group(ctx: "context") -> [str.type, None]:
     return ctx.attrs.link_group
 
 def build_link_group_info(
-        linkable_graph: LinkableGraph.type,
-        link_groups: [Group.type]) -> LinkGroupInfo.type:
-    linkable_graph_node_map = get_linkable_graph_node_map_func(linkable_graph)()
-    mappings = compute_mappings(groups = link_groups, graph_map = linkable_graph_node_map)
+        graph: LinkableGraph.type,
+        groups: [Group.type],
+        min_node_count: [int.type, None] = None) -> LinkGroupInfo.type:
+    linkable_graph_node_map = get_linkable_graph_node_map_func(graph)()
+
+    # Filter out groups which don't meet the node count requirement.
+    filtered_groups = []
+    node_count = value_or(min_node_count, len(linkable_graph_node_map))
+    for group in groups:
+        if group.attrs.enable_if_node_count_exceeds != None and node_count < group.attrs.enable_if_node_count_exceeds:
+            continue
+        filtered_groups.append(group)
+
+    mappings = compute_mappings(
+        groups = filtered_groups,
+        graph_map = linkable_graph_node_map,
+    )
+
     return LinkGroupInfo(
-        groups = link_groups,
-        groups_hash = hash(str(link_groups)),
+        groups = filtered_groups,
+        groups_hash = hash(str(filtered_groups)),
         mappings = mappings,
+        # The consumer of this info may not have deps that cover that labels
+        # referenced in our roots, so propagate graphs for them.
+        # NOTE(agallagher): We do this to maintain existing behavior here
+        # but it's not clear if it's actually desirable behavior.
+        graph = graph,
     )
 
 def get_link_group_info(
@@ -166,16 +185,20 @@ def get_link_group_info(
 
     # Otherwise build one from our graph.
     expect(executable_deps != None)
-    link_groups = parse_link_group_definitions(link_group_map)
+    link_groups = parse_groups_definitions(link_group_map)
     linkable_graph = create_linkable_graph(
         ctx,
         children = executable_deps,
     )
-    return build_link_group_info(linkable_graph, link_groups)
+    return build_link_group_info(
+        graph = linkable_graph,
+        groups = link_groups,
+        min_node_count = getattr(ctx.attrs, "link_group_min_binary_node_count", 0),
+    )
 
 def get_link_group_preferred_linkage(link_groups: [Group.type]) -> {"label": Linkage.type}:
     return {
-        mapping.root.label: mapping.preferred_linkage
+        mapping.root: mapping.preferred_linkage
         for group in link_groups
         for mapping in group.mappings
         if mapping.root != None and mapping.preferred_linkage != None
@@ -224,8 +247,7 @@ def get_filtered_labels_to_links_map(
         link_group_libs: {str.type: (["label", None], LinkInfos.type)} = {},
         prefer_stripped: bool.type = False,
         is_executable_link: bool.type = False,
-        force_static_follows_dependents: bool.type = True,
-        disabled_link_groups: [str.type] = []) -> {"label": LinkGroupLinkInfo.type}:
+        force_static_follows_dependents: bool.type = True) -> {"label": LinkGroupLinkInfo.type}:
     """
     Given a linkable graph, link style and link group mappings, finds all links
     to consider for linking traversing the graph as necessary and then
@@ -312,7 +334,7 @@ def get_filtered_labels_to_links_map(
             link_style = LinkStyle("shared"),
         )  # buildifier: disable=uninitialized
 
-    filtered_groups = [None, NO_MATCH_LABEL, MATCH_ALL_LABEL] + disabled_link_groups
+    filtered_groups = [None, NO_MATCH_LABEL, MATCH_ALL_LABEL]
 
     for target in linkables:
         node = linkable_graph_node_map[target]
@@ -337,8 +359,8 @@ def get_filtered_labels_to_links_map(
             elif not target_link_group and not link_group:
                 # Ungrouped linkable targets belong to the unlabeled executable
                 add_link(target, actual_link_style)
-            elif is_executable_link and (target_link_group == NO_MATCH_LABEL or target_link_group in disabled_link_groups):
-                # Targets labeled NO_MATCH or targets whose link group is disabled belong to the unlabeled executable
+            elif is_executable_link and target_link_group == NO_MATCH_LABEL:
+                # Targets labeled NO_MATCH belong to the unlabeled executable
                 add_link(target, actual_link_style)
             elif target_link_group == MATCH_ALL_LABEL or target_link_group == link_group:
                 # If this belongs to the match all link group or the group currently being evaluated
@@ -445,13 +467,6 @@ def get_link_group_map_json(ctx: "context", targets: ["target_label"]) -> Defaul
     json_map = ctx.actions.write_json(LINK_GROUP_MAP_DATABASE_FILENAME, sorted(targets))
     return DefaultInfo(default_output = json_map)
 
-def make_link_group_info(groups: [Group.type], mappings: {"label": str.type}) -> LinkGroupInfo.type:
-    return LinkGroupInfo(
-        groups = groups,
-        groups_hash = hash(str(groups)),
-        mappings = mappings,
-    )
-
 def find_relevant_roots(
         link_group: [str.type, None] = None,
         linkable_graph_node_map: {"label": LinkableNode.type} = {},
@@ -537,7 +552,7 @@ def _create_link_group(
             if mapping.root == None:
                 has_empty_root = True
             else:
-                roots.append(mapping.root.label)
+                roots.append(mapping.root)
 
         # If this link group has an empty mapping, we need to search everything
         # -- even the additional roots -- to find potential nodes in the link
@@ -681,27 +696,20 @@ def create_link_groups(
         link_group_mappings: [{"label": str.type}, None] = None) -> _LinkedLinkGroups.type:
     # Generate stubs first, so that subsequent links can link against them.
     link_group_shared_links = {}
-    node_count = getattr(ctx.attrs, "link_group_min_binary_node_count", None) or len(linkable_graph_node_map)
     specs = []
-    disabled_link_groups = []
     for link_group_spec in link_group_specs:
         if link_group_spec.group.attrs.discard_group:
             # Don't create a link group for deps that we want to drop
             continue
-        if not link_group_spec.is_shared_lib:
-            # always add libraries that are not constructed from link groups
-            specs.append(link_group_spec)
-        elif (node_count != 0 and  # avoid creating stub libraries when the link group matches nothing
-              (link_group_spec.group.attrs.enable_if_node_count_exceeds == None or
-               node_count >= link_group_spec.group.attrs.enable_if_node_count_exceeds)):
-            specs.append(link_group_spec)
+        specs.append(link_group_spec)
+
+        # always add libraries that are not constructed from link groups
+        if link_group_spec.is_shared_lib:
             link_group_shared_links[link_group_spec.group.name] = _stub_library(
                 ctx = ctx,
                 name = link_group_spec.name,
                 extra_ldflags = linker_flags,
             )
-        else:
-            disabled_link_groups.append(link_group_spec.group.name)
 
     linked_link_groups = {}
     undefined_symfiles = []
@@ -786,5 +794,4 @@ def create_link_groups(
     return _LinkedLinkGroups(
         libs = linked_link_groups,
         symbol_ldflags = symbol_ldflags,
-        disabled_link_groups = disabled_link_groups,
     )

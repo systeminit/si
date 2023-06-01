@@ -30,7 +30,9 @@
 %%%       "applications"           := [<entry to applications field>],
 %%%       "included_applications"  := I[<entry to included_applications field>],
 %%%       "template"               => <path to an .app.src file>,
-%%%       "version"                => <version string>
+%%%       "version"                => <version string>,
+%%%       "env"                    => [application env variable],
+%%%       "metadata"               => map of metadata
 %%%   }
 %%%
 %%% @end
@@ -69,7 +71,8 @@ do(AppInfoFile) ->
         applications := Applications,
         included_applications := IncludedApplications,
         mod := Mod,
-        env := Env
+        env := Env,
+        metadata := Metadata
     } = do_parse_app_info_file(AppInfoFile),
     VerifiedTerms = check_and_normalize_template(
         Name,
@@ -78,7 +81,8 @@ do(AppInfoFile) ->
         Applications,
         IncludedApplications,
         Mod,
-        Env
+        Env,
+        Metadata
     ),
     render_app_file(Name, VerifiedTerms, Output, Srcs).
 
@@ -102,7 +106,8 @@ do_parse_app_info_file(AppInfoFile) ->
         ]} ->
             Template = get_template(maps:get("template", Terms, undefined)),
             Mod = get_mod(Name, maps:get("mod", Terms, undefined)),
-            Env = rewrite_env(maps:get("env", Terms, undefined), []),
+            Env = get_env(maps:get("env", Terms, undefined)),
+            Metadata = get_metadata(maps:get("metadata", Terms, undefined)),
             #{
                 name => Name,
                 sources => Sources,
@@ -114,7 +119,8 @@ do_parse_app_info_file(AppInfoFile) ->
                 included_applications =>
                     [list_to_atom(App) || App <- IncludedApplications],
                 mod => Mod,
-                env => Env
+                env => Env,
+                metadata => Metadata
             };
         {ok, Terms} ->
             file_corrupt_error(AppInfoFile, Terms);
@@ -147,19 +153,15 @@ get_mod(AppName, {ModuleName, StringArgs}) ->
         _:_ -> module_filed_error(AppName, ModString)
     end.
 
--spec rewrite_env([tuple()] | undefined, [tuple()]) -> [tuple()] | undefined.
-rewrite_env(undefined, _) -> undefined;
-rewrite_env([], EnvList) -> lists:reverse(EnvList);
-rewrite_env([{K, V} | T], EnvList) ->
-    rewrite_env(T, [{parse_str(K), parse_str(V)} | EnvList]).
+-spec get_env(map() | undefined) -> [tuple()] | undefined.
+get_env(undefined) -> undefined;
+get_env(Env) ->
+    [{list_to_atom(K), V} || {K, V} <- maps:to_list(Env)].
 
--spec parse_str(string()) -> term().
-parse_str("") ->
-    [];
-parse_str(StrArgs) ->
-    {ok, Tokens, _} = erl_scan:string(StrArgs ++ "."),
-    {ok, Term} = erl_parse:parse_term(Tokens),
-    Term.
+-spec get_metadata(map() | undefined) -> map().
+get_metadata(undefined) -> #{};
+get_metadata(Metadata) ->
+    maps:from_list([{list_to_atom(K), V} || {K, V} <- maps:to_list(Metadata)]).
 
 -spec check_and_normalize_template(
     string(),
@@ -168,7 +170,8 @@ parse_str(StrArgs) ->
     [atom()],
     [atom()],
     mod(),
-    [tuple()]
+    [tuple()],
+    map()
 ) ->
     application_resource().
 check_and_normalize_template(
@@ -178,7 +181,8 @@ check_and_normalize_template(
     Applications,
     IncludedApplications,
     Mod,
-    Env
+    Env,
+    Metadata
 ) ->
     App = erlang:list_to_atom(AppName),
     Props =
@@ -202,8 +206,9 @@ check_and_normalize_template(
     VerifiedProps = verify_app_props(
         AppName, TargetVersion, Applications, IncludedApplications, Props
     ),
-    FinalProps = add_optional_fields(VerifiedProps, [{mod, Mod}, {env, Env}]),
-    {application, App, FinalProps}.
+    Props0 = add_optional_fields(VerifiedProps, [{mod, Mod}, {env, Env}]),
+    Props1 = add_metadata(Props0, Metadata),
+    {application, App, Props1}.
 
 -spec add_optional_fields(proplists:proplist(), mod() | [tuple()]) -> proplists:proplist().
 add_optional_fields(Props, []) ->
@@ -214,6 +219,9 @@ add_optional_fields(Props, [{K, V0} | Fields]) ->
     V1 = proplists:get_value(K, Props, undefined),
     case V1 of
         undefined ->
+            add_optional_fields([{K, V0} | Props], Fields);
+        % overwrite the value of empty list in .app.src, for example: {env, []}
+        [] ->
             add_optional_fields([{K, V0} | Props], Fields);
         _ ->
             case V0 =:= V1 of
@@ -521,4 +529,24 @@ lcs([_SH | ST] = S, [_TH | TT] = T, Cache, Acc) ->
             lcs(S, TT, Cache, Acc);
         false ->
             lcs(ST, T, Cache, Acc)
+    end.
+
+-spec add_metadata(proplists:proplist(), map()) -> proplists:proplist().
+add_metadata(Props, Metadata) ->
+    ok = verify_metadata(Props, Metadata),
+    Props ++ maps:to_list(Metadata).
+
+-spec verify_metadata(proplists:proplist(), map()) -> ok.
+verify_metadata([], _) -> ok;
+verify_metadata([{K, V0} | T], Metadata) ->
+    case maps:get(K, Metadata, undefined) of
+        undefined ->
+            verify_metadata(T, Metadata);
+        V1 ->
+            case V0 =:= V1 of
+                true ->
+                    verify_metadata(T, Metadata);
+                false ->
+                    erlang:error(metadata_not_compatible, [{K, V0}, {K, V1}])
+            end
     end.
