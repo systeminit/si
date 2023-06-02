@@ -16,7 +16,7 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { AxiosInstance } from "axios";
+import { Axios, AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -78,22 +78,22 @@ export class ApiRequest<
 > {
   // these are used to attach the result which can be used directly by the caller
   // most data and request status info should be used via the store, but it is useful sometimes
-  private rawResponseData: Response | undefined;
-  private rawSuccess?: boolean;
+  #rawResponseData: Response | undefined;
+  #rawSuccess?: boolean;
 
   setResult(success: boolean, data: Response | undefined) {
-    this.rawSuccess = success;
-    this.rawResponseData = data;
+    this.#rawSuccess = success;
+    this.#rawResponseData = data;
   }
 
   // we use a getter to get the result so that we can add further type restrictions
   // ie, checking success guarantees data is present
   get result(): { success: true; data: Response } | { success: false } {
-    if (this.rawSuccess === undefined)
+    if (this.#rawSuccess === undefined)
       throw new Error("You must await the request to get the result");
-    if (this.rawSuccess) {
+    if (this.#rawSuccess) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return { success: true, data: this.rawResponseData! };
+      return { success: true, data: this.#rawResponseData! };
     } else {
       return { success: false };
     }
@@ -103,8 +103,21 @@ export class ApiRequest<
   constructor(
     public requestSpec: ApiRequestDescription<Response, RequestParams>,
   ) {
+    if (!this.requestSpec.api) {
+      this.requestSpec.api = (this.constructor as any).api;
+    }
     if (!this.requestSpec.method) this.requestSpec.method = "get";
   }
+}
+
+export function registerApi(axiosInstance: AxiosInstance) {
+  class ApiRequestForSpecificApi<
+    Response = any,
+    RequestParams = Record<string, unknown>,
+  > extends ApiRequest<Response, RequestParams> {
+    static api = axiosInstance;
+  }
+  return ApiRequestForSpecificApi;
 }
 
 // types to describe our api request definitions
@@ -113,6 +126,7 @@ export type ApiRequestDescription<
   Response = any,
   RequestParams = Record<string, unknown>,
 > = {
+  api?: AxiosInstance;
   /** http request method, defaults to "get" */
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
   /** url to request */
@@ -157,12 +171,6 @@ type RawRequestStatusesByKey = Record<string, RawApiRequestStatus>;
 const TRACKING_KEY_SEPARATOR = "%";
 
 export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
-  // for now we just expect the config to have a single api
-  const { api } = config;
-
-  // TODO: allow registering multiple APIs, probably with names
-  // so that individual requests can specify which api to use
-
   const plugin: PiniaPlugin = ({
     // pinia,
     // app,
@@ -245,6 +253,8 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       const { method, url, params, headers, options, onSuccess, onFail } =
         requestSpec;
       try {
+        const api = requestSpec.api || config.api;
+
         // add artificial delay - helpful to test loading states in UI when using local API which is very fast
         if (import.meta.env.VITE_DELAY_API_REQUESTS) {
           await promiseDelay(
@@ -439,6 +449,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       ...apiRequestActions,
     };
   };
+
   return plugin;
 };
 
