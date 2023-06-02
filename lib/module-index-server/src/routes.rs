@@ -21,10 +21,7 @@ use super::{app_state::AppState, server::ServerError};
 pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
-        .nest(
-            "/",
-            Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
-        )
+        .route("/", get(system_status_route))
         .route("/modules", get(list_modules_route::list_module_route))
         .route("/modules", post(upsert_module_route::upsert_module_route))
         .route(
@@ -34,7 +31,8 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/modules/:module_id/download",
             get(download_module_route::download_module_route),
-        );
+        )
+        .layer(CorsLayer::permissive());
 
     router.with_state(state)
 }

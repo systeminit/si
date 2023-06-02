@@ -32,21 +32,18 @@
           >
             No modules installed.
           </li>
-          <li v-for="p in moduleStore.installedPackages" :key="p.name">
-            <SiPackageListItem :package-id="p.name" />
+          <li v-for="p in packageStore.installedPackages" :key="p.name">
+            <SiPackageListItem :module-id="p.name" />
           </li>
         </ul>
       </SiCollapsible>
       <SiCollapsible label="Available Modules" default-open>
         <ul class="overflow-y-auto">
           <li
-            v-if="!moduleStore.notInstalledPackages.length"
-            class="p-sm italic text-center text-xs"
-          >
-            All available modules are already installed.
+            v-if="!moduleStore.modulesSearchResults.length"
           </li>
-          <li v-for="p in moduleStore.notInstalledPackages" :key="p.name">
-            <SiPackageListItem :package-id="p.name" />
+          <li v-for="m in moduleStore.notInstalledPackages" :key="m.name">
+            <SiPackageListItem :module-id="m.id" />
           </li>
         </ul>
       </SiCollapsible>
@@ -56,7 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import {
   Modal,
   RequestStatusMessage,
@@ -76,4 +73,9 @@ const exportModalRef = ref<InstanceType<typeof Modal>>();
 const openModal = () => {
   exportModalRef.value?.open();
 };
+
+async function triggerSearch() {
+  await moduleStore.SEARCH_MODULES();
+}
+onMounted(triggerSearch);
 </script>

@@ -7,6 +7,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
+import { ModuleIndexApiRequest } from ".";
 
 export type ModuleId = string;
 export type ModuleSlug = string;
@@ -69,6 +70,13 @@ export type Asset = {
   displayName: string;
 };
 
+export type ModuleSummary = {
+  id: ModuleId;
+  name: string;
+  description: string;
+};
+export type ModuleDetails = ModuleSummary & { more: string };
+
 export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
@@ -80,6 +88,9 @@ export const useModuleStore = () => {
       state: () => ({
         packagesByName: {} as Record<ModuleId, Package>,
         packageListByName: {} as Record<ModuleId, PackageListItem>,
+
+        modulesSearchResults: [] as ModuleSummary[],
+        moduleDetailsById: {} as Record<ModuleId, ModuleDetails>,
       }),
       getters: {
         urlSelectedPackageSlug: () => {
@@ -99,6 +110,9 @@ export const useModuleStore = () => {
           _.filter(state.packageListByName, (p) => p.installed),
         notInstalledPackages: (state) =>
           _.filter(state.packageListByName, (p) => !p.installed),
+
+        modulesSearchResultsById: (state) =>
+          _.keyBy(state.modulesSearchResults, (m) => m.id),
       },
       actions: {
         async GET_MODULE(pkg: PackageListItem) {
@@ -156,6 +170,26 @@ export const useModuleStore = () => {
             method: "post",
             url: "/pkg/export_pkg",
             params: { ...exportRequest, ...visibility },
+          });
+        },
+
+        async SEARCH_MODULES(nameQuery?: string) {
+          return new ModuleIndexApiRequest<{ modules: ModuleSummary[] }>({
+            method: "get",
+            url: "/modules",
+            params: { name: nameQuery },
+            onSuccess: (response) => {
+              this.modulesSearchResults = response.modules;
+            },
+          });
+        },
+        async GET_MODULE_DETAILS(id: string) {
+          return new ModuleIndexApiRequest<ModuleDetails>({
+            method: "get",
+            url: `/modules/${id}`,
+            onSuccess: (response) => {
+              this.moduleDetailsById[response.id] = response;
+            },
           });
         },
       },
