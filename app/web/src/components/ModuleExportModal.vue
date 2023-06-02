@@ -1,23 +1,23 @@
 <template>
-  <Modal ref="modalRef" title="Export package">
+  <Modal ref="modalRef" title="Export module">
     <Stack>
       <VormInput
         v-model="packageExportReq.name"
         label="Name"
         required
-        placeholder="The name of this package..."
+        placeholder="The name of this module..."
       />
       <VormInput
         v-model="packageExportReq.version"
         label="Version"
         required
-        placeholder="The version of this package..."
+        placeholder="The version of this module..."
       />
       <VormInput
         v-model="packageExportReq.description"
         label="Description"
         type="textarea"
-        placeholder="Give this package a short description..."
+        placeholder="Give this module a short description..."
       />
       <div class="flex flex-row items-end gap-sm">
         <VormInput
@@ -76,13 +76,13 @@ import {
   Stack,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { usePackageStore, PkgExportRequest } from "@/store/package.store";
+import { useModuleStore, PkgExportRequest } from "../store/module.store";
 import { useComponentsStore } from "@/store/components.store";
 
-const packageStore = usePackageStore();
+const moduleStore = useModuleStore();
 const componentStore = useComponentsStore();
 const modalRef = ref<InstanceType<typeof Modal>>();
-const exportPkgReqStatus = packageStore.getRequestStatus("EXPORT_PACKAGE");
+const exportPkgReqStatus = moduleStore.getRequestStatus("EXPORT_MODULE");
 
 const emptyExportPackageReq: PkgExportRequest = {
   name: "",
@@ -129,13 +129,13 @@ const schemaVariantOptions = computed(() =>
 );
 
 const exportPkg = async () => {
-  const result = await packageStore.EXPORT_PACKAGE({
+  const result = await moduleStore.EXPORT_MODULE({
     ...packageExportReq.value,
     schemaVariants: schemaVariantsForExport.value,
   });
   if (result.result.success) {
     close();
-    await packageStore.LOAD_PACKAGES();
+    await moduleStore.LOAD_MODULES();
   }
 };
 </script>

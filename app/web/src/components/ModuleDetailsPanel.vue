@@ -4,24 +4,24 @@
     :request-status="getPackageReqStatus"
     show-loader-without-message
   />
-  <div v-else-if="selectedPackage" class="flex flex-col">
+  <div v-else-if="selectedModule" class="flex flex-col">
     <div
       class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
     >
       <div class="font-bold truncate leading-relaxed">
-        {{ selectedPackage.name }}
+        {{ selectedModule.name }}
       </div>
       <VButton
         :disabled="disableInstallButton"
         :loading="disableInstallButton"
-        :label="selectedPackage.installed ? 'Remove' : 'Install'"
+        :label="selectedModule.installed ? 'Remove' : 'Install'"
         :loading-text="
-          selectedPackage.installed ? 'Removing...' : 'Installing...'
+          selectedModule.installed ? 'Removing...' : 'Installing...'
         "
         tone="action"
         icon="plus"
         size="md"
-        @click="installPackage"
+        @click="installModule"
       />
     </div>
   </div>
@@ -31,21 +31,21 @@
 import { computed, ref } from "vue";
 
 import { VButton, RequestStatusMessage } from "@si/vue-lib/design-system";
-import { usePackageStore } from "@/store/package.store";
+import { useModuleStore } from "../store/module.store";
 
-const packageStore = usePackageStore();
-const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");
+const moduleStore = useModuleStore();
+const getPackageReqStatus = moduleStore.getRequestStatus("GET_MODULE");
 const disableInstallButton = ref(false);
 
-const selectedPackage = computed(() => packageStore.selectedPackage);
-const selectedPackageListItem = computed(
-  () => packageStore.selectedPackageListItem,
+const selectedModule = computed(() => moduleStore.selectedPackage);
+const selectedModuleListItem = computed(
+  () => moduleStore.selectedPackageListItem,
 );
 
-const installPackage = async () => {
+const installModule = async () => {
   disableInstallButton.value = true;
-  if (selectedPackageListItem.value) {
-    await packageStore.INSTALL_PACKAGE(selectedPackageListItem.value);
+  if (selectedModuleListItem.value) {
+    await moduleStore.INSTALL_MODULE(selectedModuleListItem.value);
   }
   disableInstallButton.value = false;
 };
