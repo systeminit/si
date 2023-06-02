@@ -20,7 +20,7 @@
               size="sm"
               type="dropdown"
               no-label
-              :model-value="selectedWorkspacePk"
+              :model-value="workspacesStore.selectedWorkspacePk"
               :options="workspaceDropdownOptions"
             />
           </div>
@@ -42,33 +42,20 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { DropdownMenuItem, Icon, VormInput } from "@si/vue-lib/design-system";
+import { Icon, VormInput } from "@si/vue-lib/design-system";
 import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo.svg?url";
 import * as _ from "lodash-es";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import SiArrow from "@/components/SiArrow.vue";
 import ChangeSetPanel from "@/components/ChangeSetPanel2.vue";
 import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
-import NavbarButton from "./NavbarButton.vue";
 
 const workspacesStore = useWorkspacesStore();
-const workspaces = computed(() => workspacesStore.allWorkspaces);
-const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
-const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
-
-const workspacesReqStatus = workspacesStore.getRequestStatus(
-  "FETCH_USER_WORKSPACES",
-);
-
-// including here so the changeset store always has something using it
-// TODO: may want to move this to main app or app layout...
-// but basically it should always be loaded when we are logged in (on app pages)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const changeSetsStore = useChangeSetsStore();
 
 const workspaceDropdownOptions = computed(() =>
-  _.map(workspaces.value ?? [], (w) => ({ value: w.pk, label: w.name })),
+  _.map(workspacesStore.allWorkspaces ?? [], (w) => ({
+    value: w.pk,
+    label: w.name,
+  })),
 );
 </script>

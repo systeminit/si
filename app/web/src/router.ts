@@ -2,7 +2,6 @@ import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
 import { posthog } from "@/utils/posthog";
-import { SINGLE_MODEL_SCREEN_FF } from "@/utils/feature_flags";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 
@@ -36,10 +35,7 @@ const routes: RouteRecordRaw[] = [
   {
     name: "workspace-single",
     path: "/w/:workspacePk",
-    component: () =>
-      SINGLE_MODEL_SCREEN_FF
-        ? import("@/pages/WorkspaceSinglePage2.vue")
-        : import("@/pages/WorkspaceSinglePage.vue"),
+    component: () => import("@/pages/WorkspaceSinglePage.vue"),
     // TODO: will probably want a workspace "home" page at some point
     redirect(to) {
       return {
@@ -64,9 +60,7 @@ const routes: RouteRecordRaw[] = [
         path: ":changeSetId/c",
         name: "workspace-compose",
         component: () =>
-          SINGLE_MODEL_SCREEN_FF
-            ? import("@/components/Workspace/WorkspaceModelAndView2.vue")
-            : import("@/components/Workspace/WorkspaceModelAndView.vue"),
+          import("@/components/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: ":changeSetId/l",
@@ -101,22 +95,17 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
-      ...(SINGLE_MODEL_SCREEN_FF
-        ? []
-        : [
-            {
-              path: "v",
-              name: "workspace-view",
-              component: () =>
-                import("@/components/Workspace/WorkspaceModelAndView.vue"),
-            },
-            {
-              path: "r",
-              name: "workspace-fix",
-              component: () =>
-                import("@/components/Workspace/WorkspaceApply.vue"),
-            },
-          ]),
+      {
+        path: "v",
+        name: "workspace-view",
+        component: () =>
+          import("@/components/Workspace/WorkspaceModelAndView.vue"),
+      },
+      {
+        path: "r",
+        name: "workspace-fix",
+        component: () => import("@/components/Workspace/WorkspaceApply.vue"),
+      },
       ...(isDevMode
         ? [
             {
