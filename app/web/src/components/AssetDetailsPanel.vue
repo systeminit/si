@@ -37,7 +37,7 @@
           v-model="assetStore.selectedAsset.name"
           type="text"
           :disabled="disabled"
-          title="Name"
+          label="Name"
           placeholder="Give this asset a name here..."
           @blur="updateAsset"
         />
@@ -48,7 +48,7 @@
           v-model="assetStore.selectedAsset.menuName"
           type="text"
           :disabled="disabled"
-          title="Display name"
+          label="Display name"
           placeholder="Optionally, give the asset a shorter name for display here..."
           @blur="updateAsset"
         />
@@ -59,7 +59,7 @@
           v-model="assetStore.selectedAsset.category"
           type="text"
           :disabled="disabled"
-          title="Category"
+          label="Category"
           placeholder="Pick a category for this asset"
           @blur="updateAsset"
         />
@@ -68,11 +68,11 @@
         <VormInput
           id="componentType"
           v-model="assetStore.selectedAsset.componentType"
-          type="text"
+          type="dropdown"
           :disabled="disabled"
-          title="Component Type"
-          placeholder="Pick a type for this asset"
-          @blur="updateAsset"
+          :options="componentTypeOptions"
+          label="Component Type"
+          @change="updateAsset"
         />
       </div>
       <div class="p-sm flex flex-col">
@@ -81,32 +81,27 @@
           v-model="assetStore.selectedAsset.description"
           type="textarea"
           :disabled="disabled"
-          title="Description"
+          label="Description"
           placeholder="Provide a brief description of this asset here..."
           @blur="updateAsset"
         />
       </div>
-      <div class="p-sm flex items-center">
-        <VormInput
-          id="color"
-          v-model="assetStore.selectedAsset.color"
-          type="text"
-          :disabled="disabled"
-          title="Color"
-          placeholder="Choose a color for this asset"
-          @blur="updateAsset"
-        />
-        <div
-          class="box-border h-8 w-8 mt-[23px] ml-auto"
-          :style="`background-color: ${assetStore.selectedAsset.color}`"
-        ></div>
+      <div class="p-sm">
+        <label class="pl-[1px] text-sm font-bold" for="color">Color</label>
+        <div class="mt-1 block">
+          <ColorPicker
+            id="color"
+            v-model="assetStore.selectedAsset.color"
+            @change="updateAsset"
+          />
+        </div>
       </div>
       <div class="p-sm flex flex-col">
         <VormInput
           id="link"
           v-model="assetStore.selectedAsset.link"
           :disabled="disabled"
-          title="Documentation Link"
+          label="Documentation Link"
           placeholder="Enter a link to the documentation for this asset here..."
           @blur="updateAsset"
         />
@@ -140,11 +135,18 @@ import {
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
+import ColorPicker from "./ColorPicker.vue";
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
 const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
+
+const componentTypeOptions = [
+  { label: "Aggregation Frame", value: "aggregationFrame" },
+  { label: "Component", value: "component" },
+  { label: "Configuration Frame", value: "configurationFrame" },
+];
 
 const updateAsset = () => {
   if (assetStore.selectedAsset) {

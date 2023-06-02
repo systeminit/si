@@ -13,12 +13,17 @@ export interface ListVariantDefsResponse {
   variantDefs: ListedVariantDef[];
 }
 
+export type ComponentType =
+  | "aggregationFrame"
+  | "component"
+  | "configurationFrame";
+
 export interface ListedVariantDef {
   id: AssetId;
   name: string;
   menuName?: string;
   category: string;
-  componentType: string;
+  componentType: ComponentType;
   color: string;
   description: string;
   createdAt: Date;
@@ -109,7 +114,7 @@ export const useAssetStore = () => {
           return assets;
         },
 
-        createNewAsset() {
+        createNewAsset(): Asset {
           return {
             id: nilId(),
             name: `new asset ${Math.floor(Math.random() * 10000)}${
