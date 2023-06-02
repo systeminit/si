@@ -16,7 +16,7 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { Axios, AxiosInstance } from "axios";
+import { AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -253,6 +253,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       const { method, url, params, headers, options, onSuccess, onFail } =
         requestSpec;
       try {
+        // the api (axios instance) to use can be set several ways:
+        // - passed in with the specific request (probably not common)
+        // - use registerApi(api) to create new SpecificApiRequest class with api attached
+        // - fallback to default api that was set when initializing the plugin
         const api = requestSpec.api || config.api;
 
         // add artificial delay - helpful to test loading states in UI when using local API which is very fast

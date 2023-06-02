@@ -26,13 +26,13 @@ import { Icon } from "@si/vue-lib/design-system";
 import { ModuleId, useModuleStore } from "../store/module.store";
 
 const props = defineProps({
-  packageId: { type: String as PropType<ModuleId>, required: true },
+  moduleId: { type: String as PropType<ModuleId>, required: true },
 });
 
 const route = useRoute();
 const moduleStore = useModuleStore();
 const packageInfo = computed(
-  () => moduleStore.packageListByName[props.packageId],
+  () => moduleStore.packageListByName[props.moduleId],
 );
 const isSelected = computed(
   () => packageInfo.value?.name === moduleStore.urlSelectedPackageSlug,
