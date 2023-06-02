@@ -23,18 +23,18 @@
 import { computed, PropType } from "vue";
 import { useRoute } from "vue-router";
 import { Icon } from "@si/vue-lib/design-system";
-import { PackageId, usePackageStore } from "@/store/package.store";
+import { ModuleId, useModuleStore } from "../store/module.store";
 
 const props = defineProps({
-  packageId: { type: String as PropType<PackageId>, required: true },
+  packageId: { type: String as PropType<ModuleId>, required: true },
 });
 
 const route = useRoute();
-const packageStore = usePackageStore();
+const moduleStore = useModuleStore();
 const packageInfo = computed(
-  () => packageStore.packageListByName[props.packageId],
+  () => moduleStore.packageListByName[props.packageId],
 );
 const isSelected = computed(
-  () => packageInfo.value?.name === packageStore.urlSelectedPackageSlug,
+  () => packageInfo.value?.name === moduleStore.urlSelectedPackageSlug,
 );
 </script>

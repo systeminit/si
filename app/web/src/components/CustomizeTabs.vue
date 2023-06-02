@@ -7,7 +7,7 @@
       <TabGroupItem slug="functions" label="FUNCTIONS">
         <slot v-if="tabContentSlug === 'functions'" />
       </TabGroupItem>
-      <TabGroupItem slug="packages" label="PACKAGES">
+      <TabGroupItem slug="packages" label="MODULES">
         <slot v-if="tabContentSlug === 'packages'" />
       </TabGroupItem>
       <TabGroupItem slug="assets" label="ASSETS">

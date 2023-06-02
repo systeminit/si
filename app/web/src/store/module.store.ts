@@ -8,8 +8,8 @@ import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
 
-export type PackageId = string;
-export type PackageSlug = string;
+export type ModuleId = string;
+export type ModuleSlug = string;
 
 export interface SchemaVariant {
   id: string;
@@ -69,7 +69,7 @@ export type Asset = {
   displayName: string;
 };
 
-export const usePackageStore = () => {
+export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
   const visibility: Visibility = {
@@ -78,13 +78,13 @@ export const usePackageStore = () => {
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/package`, {
       state: () => ({
-        packagesByName: {} as Record<PackageId, Package>,
-        packageListByName: {} as Record<PackageId, PackageListItem>,
+        packagesByName: {} as Record<ModuleId, Package>,
+        packageListByName: {} as Record<ModuleId, PackageListItem>,
       }),
       getters: {
         urlSelectedPackageSlug: () => {
           const route = useRouterStore().currentRoute;
-          return route?.params?.packageSlug as PackageSlug | undefined;
+          return route?.params?.packageSlug as ModuleSlug | undefined;
         },
         packageList: (state) => _.values(state.packageListByName),
         packagesBySlug: (state) =>
@@ -101,7 +101,7 @@ export const usePackageStore = () => {
           _.filter(state.packageListByName, (p) => !p.installed),
       },
       actions: {
-        async GET_PACKAGE(pkg: PackageListItem) {
+        async GET_MODULE(pkg: PackageListItem) {
           return new ApiRequest<PkgGetResponse>({
             method: "get",
             url: "/pkg/get_pkg",
@@ -115,7 +115,7 @@ export const usePackageStore = () => {
           });
         },
 
-        async INSTALL_PACKAGE(pkg: PackageListItem) {
+        async INSTALL_MODULE(pkg: PackageListItem) {
           return new ApiRequest({
             method: "post",
             url: "/pkg/install_pkg",
@@ -135,7 +135,7 @@ export const usePackageStore = () => {
           });
         },
 
-        async LOAD_PACKAGES() {
+        async LOAD_MODULES() {
           return new ApiRequest<{ pkgs: PackageListItem[] }>({
             url: "/pkg/list_pkgs",
             params: { ...visibility },
@@ -151,7 +151,7 @@ export const usePackageStore = () => {
           });
         },
 
-        async EXPORT_PACKAGE(exportRequest: PkgExportRequest) {
+        async EXPORT_MODULE(exportRequest: PkgExportRequest) {
           return new ApiRequest({
             method: "post",
             url: "/pkg/export_pkg",
@@ -160,7 +160,7 @@ export const usePackageStore = () => {
         },
       },
       onActivated() {
-        this.LOAD_PACKAGES();
+        this.LOAD_MODULES();
       },
     }),
   )();

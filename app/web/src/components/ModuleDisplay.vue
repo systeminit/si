@@ -77,17 +77,17 @@
   </div>
   <div
     v-else-if="
-      packageStore.urlSelectedPackageSlug && getPackageReqStatus.isError
+      moduleStore.urlSelectedPackageSlug && getPackageReqStatus.isError
     "
     class="text-neutral-400 dark:text-neutral-300 text-center"
   >
     <ErrorMessage :request-status="getPackageReqStatus" />
   </div>
   <div v-else class="text-neutral-400 dark:text-neutral-300 text-center">
-    <ErrorMessage v-if="packageStore.urlSelectedPackageSlug">
-      Package "{{ packageStore.urlSelectedPackageSlug }}" does not exist!
+    <ErrorMessage v-if="moduleStore.urlSelectedPackageSlug">
+      Module "{{ moduleStore.urlSelectedPackageSlug }}" does not exist!
     </ErrorMessage>
-    <template v-else>Select a package to view it.</template>
+    <template v-else>Select a module to view it.</template>
   </div>
 </template>
 
@@ -99,21 +99,21 @@ import {
   Timestamp,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { usePackageStore } from "@/store/package.store";
+import { useModuleStore } from "../store/module.store";
 
-const packageStore = usePackageStore();
-const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");
+const moduleStore = useModuleStore();
+const getPackageReqStatus = moduleStore.getRequestStatus("GET_MODULE");
 
-const selectedPackage = computed(() => packageStore.selectedPackage);
+const selectedPackage = computed(() => moduleStore.selectedPackage);
 const selectedPackageListItem = computed(
-  () => packageStore.selectedPackageListItem,
+  () => moduleStore.selectedPackageListItem,
 );
 
 watch(
-  () => packageStore.urlSelectedPackageSlug,
+  () => moduleStore.urlSelectedPackageSlug,
   (selectedPackageName) => {
     if (selectedPackageName && selectedPackageListItem.value) {
-      packageStore.GET_PACKAGE(selectedPackageListItem.value);
+      moduleStore.GET_MODULE(selectedPackageListItem.value);
     }
   },
 );
