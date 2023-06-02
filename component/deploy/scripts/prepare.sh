@@ -4,6 +4,11 @@ if [ "${1:-}" = "--verbose" -o "${1:-}" = "-V" ]; then
   set -x
 fi
 
+# NOTE(nick): the "sh_binary" rule cannot have deps right now (although the docs appear to have it?), so this is a
+# workaround. Run "down" before running prepare.
+${BUCK_DEFAULT_RUNTIME_RESOURCES}/component/deploy/down.sh
+
+# Begin the "prepare" portion of the script.
 COMPOSE_FILE="${BUCK_DEFAULT_RUNTIME_RESOURCES}/component/deploy/docker-compose.yml"
 LOCAL_PG_COMPOSE_FILE="${BUCK_DEFAULT_RUNTIME_RESOURCES}/component/deploy/docker-compose.local-postgres.yml"
 
