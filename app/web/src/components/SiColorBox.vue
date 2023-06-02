@@ -10,17 +10,7 @@
     </label>
 
     <div class="mt-1 relative">
-      <span class="flex">
-        <span
-          :id="props.id"
-          ref="pickerElement"
-          :aria-required="props.required"
-          :style="{ backgroundColor: props.modelValue }"
-          class="block w-10 h-6 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm dark:color-white"
-          :class="boxClasses"
-        ></span>
-        <span class="p-1">{{ props.modelValue?.toUpperCase() }}</span>
-      </span>
+      <ColorPicker :id="id" v-model="color" @change="updateValue" />
 
       <div
         v-if="inError"
@@ -41,7 +31,7 @@
     </p>
 
     <SiValidation
-      :value="String(inputValue)"
+      :value="color"
       :validations="props.validations"
       class="mt-2"
       @errors="setInError($event)"
@@ -50,18 +40,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, toRefs, onMounted, ref } from "vue";
+import { PropType, toRefs, ref } from "vue";
 import * as _ from "lodash-es";
-import Picker from "vanilla-picker";
 import { Icon } from "@si/vue-lib/design-system";
 import { useFormSettings } from "@/utils/formSettings";
 import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import SiValidation from "./SiValidation.vue";
+import ColorPicker from "./ColorPicker.vue";
 
 const props = defineProps({
-  modelValue: { type: String },
+  modelValue: { type: String, required: true },
   title: String,
-  id: { type: String, required: true },
+  id: { type: String },
   description: String,
 
   validations: { type: Array as PropType<ValidatorArray> },
@@ -73,49 +63,23 @@ const props = defineProps({
   disabled: Boolean,
 });
 
-const pickerElement = ref<HTMLElement | null>(null);
-const picker = ref<Picker | null>(null);
-onMounted(() => {
-  if (!props.disabled) {
-    const p = new Picker(pickerElement.value as HTMLElement);
-    p.onDone = valueChanged;
-    picker.value = p;
-    p.setOptions({ alpha: false });
-  }
-});
-
 const { alwaysValidate } = toRefs(props);
 
 const formSettings = useFormSettings();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
-const inputValue = computed<string>({
-  get() {
-    return props.modelValue ?? "";
-  },
-  set(value) {
-    emit("update:modelValue", value);
-  },
-});
+const color = ref(props.modelValue ?? "#AABBCC");
 
 const { inError, setInError, setDirty } = useValidations(
   alwaysValidate,
-  () => emit("blur", inputValue),
+  () => emit("blur", color),
   (inError: boolean) => emit("error", inError),
 );
 
-const boxClasses = computed((): Record<string, boolean> => {
-  const results: Record<string, boolean> = {};
-  if (!props.disabled) {
-    results["cursor-pointer"] = true;
-  }
-  return results;
-});
-
-const valueChanged = (color: { hex: string }) => {
+const updateValue = (color: string) => {
   setDirty();
-  emit("update:modelValue", color.hex.substring(0, color.hex.length - 2));
+  emit("update:modelValue", color);
   emit("blur");
 };
 </script>
@@ -125,47 +89,3 @@ export default {
   inheritAttrs: false,
 };
 </script>
-
-<style lang="less">
-.picker_wrapper.popup,
-.picker_wrapper.popup .picker_arrow::before,
-.picker_wrapper.popup .picker_arrow::after {
-  background: white;
-  z-index: 100;
-  body.dark & {
-    background: black;
-  }
-}
-
-.picker_wrapper.popup {
-  border-radius: 0 0.25rem 0.25rem 0.25rem;
-}
-
-.picker_editor input,
-.picker_sample {
-  border-radius: 0.25rem;
-  overflow: hidden;
-}
-
-.picker_wrapper,
-.picker_editor,
-.picker_editor input,
-.picker_editor input::placeholder {
-  background: white;
-  body.dark & {
-    background: @colors-neutral-700;
-    color: white;
-  }
-}
-
-.picker_done button {
-  background: white;
-  border-radius: 0.25rem;
-  body.dark & {
-    background: @colors-neutral-700;
-    &:hover {
-      background: black;
-    }
-  }
-}
-</style>

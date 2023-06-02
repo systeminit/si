@@ -86,20 +86,15 @@
           @blur="updateAsset"
         />
       </div>
-      <div class="p-sm flex items-center">
-        <VormInput
-          id="color"
-          v-model="assetStore.selectedAsset.color"
-          type="text"
-          :disabled="disabled"
-          label="Color"
-          placeholder="Choose a color for this asset"
-          @blur="updateAsset"
-        />
-        <div
-          class="box-border h-8 w-8 mt-[23px] ml-auto"
-          :style="`background-color: ${assetStore.selectedAsset.color}`"
-        ></div>
+      <div class="p-sm">
+        <label class="pl-[1px] text-sm font-bold" for="color">Color</label>
+        <div class="mt-1 block">
+          <ColorPicker
+            id="color"
+            v-model="assetStore.selectedAsset.color"
+            @change="updateAsset"
+          />
+        </div>
       </div>
       <div class="p-sm flex flex-col">
         <VormInput
@@ -140,6 +135,7 @@ import {
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
+import ColorPicker from "./ColorPicker.vue";
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
