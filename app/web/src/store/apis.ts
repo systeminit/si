@@ -13,7 +13,7 @@ export const API_HTTP_URL = apiUrl;
 // set up websocket url, by replacing protocol and appending /ws
 export const API_WS_URL = `${API_HTTP_URL.replace(/^http/, "ws")}/ws`;
 
-const api = Axios.create({
+export const sdfApiInstance = Axios.create({
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,7 +21,7 @@ const api = Axios.create({
 });
 
 // add axios interceptors to add auth headers, handle logout errors, etc...
-api.interceptors.request.use((config) => {
+sdfApiInstance.interceptors.request.use((config) => {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   const workspacesStore = useWorkspacesStore();
@@ -39,4 +39,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export default api;
+export const authApiInstance = Axios.create({
+  headers: {
+    "Content-Type": "application/json",
+  },
+  baseURL: import.meta.env.VITE_AUTH_API_URL,
+  withCredentials: true, // needed to attach the cookie
+});
+
+export const moduleIndexApiInstance = Axios.create({
+  headers: {
+    "Content-Type": "application/json",
+  },
+  baseURL: import.meta.env.VITE_MODULE_INDEX_API_URL,
+  // TODO: wont have a cookie here, so might want to use the same signed token used for sdf?
+});

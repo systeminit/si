@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
-import { API_WS_URL } from "@/store/api";
+import { API_WS_URL } from "@/store/apis";
 import { useAuthStore } from "../auth.store";
 import { WsEventPayloadMap } from "./realtime_events";
 

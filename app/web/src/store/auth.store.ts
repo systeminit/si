@@ -7,6 +7,7 @@ import { posthog } from "@/utils/posthog";
 
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
+import { AuthApiRequest } from ".";
 
 // keys we use to store auth tokens in local storage
 const AUTH_LOCAL_STORAGE_KEYS = {
@@ -67,6 +68,16 @@ export const useAuthStore = defineStore("auth", {
       });
     },
 
+    async CHECK_AUTH() {
+      return new AuthApiRequest({
+        method: "get",
+        url: "/whoami",
+        onSuccess: (response) => {
+          console.log(response);
+        },
+      });
+    },
+
     // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
     async initFromStorage() {
       // check regular user token (we will likely have a different token for admin auth later)
@@ -82,6 +93,8 @@ export const useAuthStore = defineStore("auth", {
         workspacePk,
         // adminIsImpersonatingUser: isImpersonating,
       });
+
+      this.CHECK_AUTH();
 
       // this endpoint re-fetches the user and workspace
       // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
