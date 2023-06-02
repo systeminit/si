@@ -17,6 +17,7 @@ load(
 load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
+    "CPreprocessorArgs",
     "cxx_inherited_preprocessor_infos",
     "cxx_merge_cpreprocessors",
 )
@@ -293,7 +294,7 @@ def haskell_prebuilt_library_impl(ctx: "context") -> ["provider"]:
 
     inherited_pp_info = cxx_inherited_preprocessor_infos(ctx.attrs.deps)
     own_pp_info = CPreprocessor(
-        args = flatten([["-isystem", d] for d in ctx.attrs.cxx_header_dirs]),
+        relative_args = CPreprocessorArgs(args = flatten([["-isystem", d] for d in ctx.attrs.cxx_header_dirs])),
     )
 
     return [
@@ -444,6 +445,12 @@ def _compile(
         else:
             compile_args.add(src)
 
+    for dep in ctx.attrs.deps:
+        # Make all exported files available for compilation
+        def_info = dep.get(DefaultInfo)
+        if def_info != None:
+            compile_args.hidden(def_info.default_outputs)
+
     argsfile = ctx.actions.declare_output("haskell_compile_" + link_style.value + ".argsfile")
     ctx.actions.write(argsfile.as_output(), compile_args, allow_args = True)
     hidden_args = [compile_args]
@@ -564,7 +571,6 @@ def haskell_library_impl(ctx: "context") -> ["provider"]:
     hlis = []
     nlis = []
     shared_library_infos = []
-
     for lib in _attr_deps(ctx):
         li = lib.get(HaskellLinkInfo)
         if li != None:

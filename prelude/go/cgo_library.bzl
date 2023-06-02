@@ -20,6 +20,7 @@ load("@prelude//cxx:headers.bzl", "cxx_get_regular_cxx_headers_layout", "prepare
 load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
+    "CPreprocessorArgs",
     "cxx_inherited_preprocessor_infos",
     "cxx_merge_cpreprocessors",
     "cxx_private_preprocessor_info",
@@ -137,14 +138,15 @@ def cgo_library_impl(ctx: "context") -> ["provider"]:
     cxx_srcs.extend(c_srcs)
 
     # Wrap the generated CGO C headers in a CPreprocessor object for compiling.
-    cgo_headers_pre = CPreprocessor(args = [
+    cgo_headers_pre = CPreprocessor(relative_args = CPreprocessorArgs(args = [
         "-I",
         prepare_headers(
             ctx,
             {h.basename: h for h in c_headers},
             "cgo-private-headers",
+            None,
         ).include_path,
-    ])
+    ]))
 
     link_style = ctx.attrs.link_style
     if link_style == None:
@@ -163,6 +165,7 @@ def cgo_library_impl(ctx: "context") -> ["provider"]:
         [own_pre, cgo_headers_pre],
         inherited_pre,
         [],
+        None,
         linkage,
     )
 

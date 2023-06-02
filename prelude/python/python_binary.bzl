@@ -19,17 +19,15 @@ load(
     "Group",
     "GroupAttrs",
     "GroupMapping",
-    "GroupRoot",
     "Traversal",
-    "compute_mappings",
 )
 load("@prelude//cxx:headers.bzl", "cxx_get_regular_cxx_headers_layout")
 load(
     "@prelude//cxx:link_groups.bzl",
     "LinkGroupInfo",  # @unused Used as a type
     "LinkGroupLibSpec",
+    "build_link_group_info",
     "get_link_group_info",
-    "make_link_group_info",
 )
 load("@prelude//cxx:linker.bzl", "get_rpath_origin")
 load(
@@ -42,6 +40,7 @@ load(
 load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
+    "CPreprocessorArgs",
     "cxx_inherited_preprocessor_infos",
 )
 load(
@@ -54,7 +53,6 @@ load(
     "LinkableGraph",
     "LinkableGraphTSet",
     "create_linkable_graph",
-    "get_linkable_graph_node_map_func",
 )
 load(
     "@prelude//linking:linkables.bzl",
@@ -157,10 +155,7 @@ def _get_root_link_group_specs(
                     name = dep.linkable_root_info.name,
                     mappings = [
                         GroupMapping(
-                            root = GroupRoot(
-                                label = dep.linkable_graph.nodes.value.label,
-                                node = dep,
-                            ),
+                            root = dep.linkable_graph.nodes.value.label,
                             traversal = Traversal("node"),
                         ),
                     ],
@@ -183,10 +178,7 @@ def _get_root_link_group_specs(
                     name = name,
                     mappings = [
                         GroupMapping(
-                            root = GroupRoot(
-                                label = extension.linkable_graph.nodes.value.label,
-                                node = extension,
-                            ),
+                            root = extension.linkable_graph.nodes.value.label,
                             traversal = Traversal("node"),
                         ),
                     ],
@@ -215,10 +207,7 @@ def _get_shared_only_groups(shared_only_libs: [LinkableProviders.type]) -> [Grou
                 name = str(dep.linkable_graph.nodes.value.label.raw_target()),
                 mappings = [
                     GroupMapping(
-                        root = GroupRoot(
-                            label = dep.linkable_graph.nodes.value.label,
-                            node = dep,
-                        ),
+                        root = dep.linkable_graph.nodes.value.label,
                         traversal = Traversal("node"),
                         preferred_linkage = Linkage("shared"),
                     ),
@@ -279,7 +268,6 @@ def _get_link_group_info(
                 ),
             ),
         )
-        linkable_graph_node_map = get_linkable_graph_node_map_func(linkable_graph)()
 
         # We add user-defined mappings last, so that our auto-generated
         # ones get precedence (as we rely on this for things to work).
@@ -287,13 +275,10 @@ def _get_link_group_info(
         if link_group_info != None:
             link_groups += link_group_info.groups
 
-        mappings = compute_mappings(
+        link_group_info = build_link_group_info(
+            graph = linkable_graph,
             groups = link_groups,
-            graph_map = linkable_graph_node_map,
-        )
-        link_group_info = make_link_group_info(
-            groups = link_groups,
-            mappings = mappings,
+            min_node_count = ctx.attrs.link_group_min_binary_node_count,
         )
 
     return (link_group_info, link_group_specs)
@@ -506,7 +491,7 @@ def convert_python_library_to_executable(
         ]
         extra_preprocessors = []
         if ctx.attrs.par_style == "native":
-            extra_preprocessors.append(CPreprocessor(args = ["-DNATIVE_PAR_STYLE=1"]))
+            extra_preprocessors.append(CPreprocessor(relative_args = CPreprocessorArgs(args = ["-DNATIVE_PAR_STYLE=1"])))
 
         # All deps inolved in the link.
         link_deps = (

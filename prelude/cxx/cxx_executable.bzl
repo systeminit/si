@@ -18,6 +18,10 @@ load(
     "apple_get_link_info_by_deduping_link_infos",
 )
 load(
+    "@prelude//apple:xcode.bzl",
+    "apple_get_xcode_absolute_path_prefix",
+)
+load(
     "@prelude//cxx:cxx_bolt.bzl",
     "cxx_use_bolt",
 )
@@ -76,12 +80,15 @@ load(
 load(":cxx_context.bzl", "get_cxx_platform_info", "get_cxx_toolchain_info")
 load(
     ":cxx_library_utility.bzl",
+    "ABS_ARGSFILES_SUBTARGET",
     "ARGSFILES_SUBTARGET",
+    "OBJECTS_SUBTARGET",
     "cxx_attr_deps",
     "cxx_attr_link_style",
     "cxx_attr_linker_flags",
     "cxx_attr_resources",
     "cxx_is_gnu",
+    "cxx_objects_sub_target",
 )
 load(
     ":cxx_link_utility.bzl",
@@ -129,6 +136,7 @@ load(
 
 CxxExecutableOutput = record(
     binary = "artifact",
+    bitcode_bundle = field(["artifact", None], None),
     dwp = field(["artifact", None]),
     # Files that will likely need to be included as .hidden() arguments
     # when executing the executable (ex. RunInfo())
@@ -147,6 +155,8 @@ CxxExecutableOutput = record(
 )
 
 def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, is_cxx_test: bool.type = False) -> CxxExecutableOutput.type:
+    absolute_path_prefix = apple_get_xcode_absolute_path_prefix()
+
     # Gather preprocessor inputs.
     preprocessor_deps = cxx_attr_deps(ctx) + filter(None, [ctx.attrs.precompiled_header])
     (own_preprocessor_info, test_preprocessor_infos) = cxx_private_preprocessor_info(
@@ -156,6 +166,7 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
         extra_preprocessors = impl_params.extra_preprocessors,
         non_exported_deps = preprocessor_deps,
         is_test = is_cxx_test,
+        absolute_path_prefix = absolute_path_prefix,
     )
     inherited_preprocessor_infos = cxx_inherited_preprocessor_infos(preprocessor_deps) + impl_params.extra_preprocessors_info
 
@@ -170,14 +181,18 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
         impl_params,
         [own_preprocessor_info] + test_preprocessor_infos,
         inherited_preprocessor_infos,
+        absolute_path_prefix,
     )
-    cxx_outs = compile_cxx(ctx, compile_cmd_output.source_commands.src_compile_cmds, pic = link_style != LinkStyle("static"))
-    sub_targets[ARGSFILES_SUBTARGET] = [compile_cmd_output.source_commands.argsfiles_info]
+    cxx_outs = compile_cxx(ctx, compile_cmd_output.src_compile_cmds, pic = link_style != LinkStyle("static"))
+    sub_targets[ARGSFILES_SUBTARGET] = [compile_cmd_output.relative_argsfiles.info]
+    if absolute_path_prefix:
+        sub_targets[ABS_ARGSFILES_SUBTARGET] = [compile_cmd_output.absolute_argsfiles.info]
+    sub_targets[OBJECTS_SUBTARGET] = cxx_objects_sub_target(cxx_outs)
 
     # Compilation DB.
-    comp_db = create_compilation_database(ctx, compile_cmd_output.comp_db_commands.src_compile_cmds)
+    comp_db = create_compilation_database(ctx, compile_cmd_output.comp_db_compile_cmds)
     sub_targets["compilation-database"] = [comp_db]
-    comp_db_info = make_compilation_db_info(compile_cmd_output.comp_db_commands.src_compile_cmds, get_cxx_toolchain_info(ctx), get_cxx_platform_info(ctx))
+    comp_db_info = make_compilation_db_info(compile_cmd_output.comp_db_compile_cmds, get_cxx_toolchain_info(ctx), get_cxx_platform_info(ctx))
 
     # Link deps
     link_deps = linkables(cxx_attr_deps(ctx)) + impl_params.extra_link_deps
@@ -189,15 +204,7 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
     if link_group_info:
         link_groups = link_group_info.groups
         link_group_mappings = link_group_info.mappings
-        link_group_deps = [
-            mapping.root.node.linkable_graph
-            for group in link_group_info.groups
-            for mapping in group.mappings
-            # Preferred-linkage mappings are just used to override the linkage
-            # of existing nodes in the graph, so don't "add" in the root node
-            # (in case it wasn't actually in the graph to begin with).
-            if mapping.root != None and mapping.preferred_linkage == None
-        ]
+        link_group_deps = [link_group_info.graph]
     else:
         link_groups = []
         link_group_mappings = {}
@@ -234,7 +241,6 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
     link_group_libs = {}
     auto_link_groups = {}
     labels_to_links_map = {}
-    disabled_link_groups = []
 
     if not link_group_mappings:
         # We cannot support deriving link execution preference off the included links, as we've already
@@ -280,7 +286,6 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
                 if linked_link_group.library != None:
                     link_group_libs[name] = linked_link_group.library
             own_binary_link_flags += linked_link_groups.symbol_ldflags
-            disabled_link_groups = linked_link_groups.disabled_link_groups
 
         else:
             # NOTE(agallagher): We don't use version scripts and linker scripts
@@ -315,7 +320,6 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
             is_executable_link = True,
             prefer_stripped = impl_params.prefer_stripped_objects,
             force_static_follows_dependents = impl_params.link_groups_force_static_follows_dependents,
-            disabled_link_groups = disabled_link_groups,
         )
 
         if is_cxx_test and link_group != None:
@@ -402,7 +406,7 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
             LinkInfo(
                 pre_flags = own_binary_link_flags,
                 linkables = [ObjectsLinkable(
-                    objects = [out.object for out in cxx_outs],
+                    objects = [out.object for out in cxx_outs] + impl_params.extra_link_input,
                     linker_type = linker_info.type,
                     link_whole = True,
                 )],
@@ -444,7 +448,7 @@ def cxx_executable(ctx: "context", impl_params: CxxRuleConstructorParams.type, i
         output = binary.output,
         populate_rule_specific_attributes_func = impl_params.cxx_populate_xcode_attributes_func,
         srcs = impl_params.srcs + impl_params.additional.srcs,
-        argsfiles_by_ext = compile_cmd_output.source_commands.argsfile_by_ext,
+        argsfiles_by_ext = compile_cmd_output.absolute_argsfiles.by_ext if absolute_path_prefix else compile_cmd_output.relative_argsfiles.by_ext,
         product_name = get_cxx_executable_product_name(ctx),
     )
     sub_targets[XCODE_DATA_SUB_TARGET] = xcode_data_default_info
