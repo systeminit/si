@@ -139,15 +139,22 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+
 import { useComponentOutlineContext } from "./ComponentOutline.vue";
+import { useComponentOutlineContext2 } from "./ComponentOutline2.vue";
+
+const featureFlagStore = useFeatureFlagsStore();
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
 });
 
-const rootCtx = useComponentOutlineContext();
+const rootCtx = featureFlagStore.SINGLE_MODEL_SCREEN
+  ? useComponentOutlineContext2()
+  : useComponentOutlineContext();
 const { filterModeActive } = rootCtx;
 
 const isOpen = ref(true);
@@ -190,9 +197,11 @@ function onClick(e: MouseEvent) {
 const isHover = computed(
   () => componentsStore.hoveredComponentId === props.componentId,
 );
+
 function onHoverStart() {
   componentsStore.setHoveredComponentId(props.componentId);
 }
+
 function onHoverEnd() {
   componentsStore.setHoveredComponentId(null);
 }

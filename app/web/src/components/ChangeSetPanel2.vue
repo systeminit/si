@@ -181,7 +181,7 @@ function routeToChangeSet(id: ChangeSetId, replace = false) {
   });
 }
 
-// gets called on url change when id is "auto", and also when change set's are loaded
+// gets called on url change when id is "auto", and also when change sets are loaded
 function tryAutoSelect() {
   const autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
   if (autoSelectChangeSetId) {

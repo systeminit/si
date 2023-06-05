@@ -21,7 +21,9 @@
 
     <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
-      <template v-if="changeSetsReqStatus.isPending">
+      <template
+        v-if="!changeSetsReqStatus.isRequested || changeSetsReqStatus.isPending"
+      >
         <div class="flex-grow p-lg flex flex-col items-center gap-4">
           <Icon name="loader" size="2xl" />
           <h2>Loading change sets...</h2>
@@ -34,7 +36,7 @@
       </template>
 
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
-      <template v-else>
+      <template v-else-if="changeSetsStore.selectedChangeSet">
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="changeSetId" />
         </div>
@@ -75,20 +77,22 @@ const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
-watch(route, handleUrlChange, { immediate: true });
+watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
 
 function handleUrlChange() {
+  const changeSetId = route.params.changeSetId as string | undefined;
   // if "auto", we do our best to autoselect, and show a selection screen otherwise
-  if (props.changeSetId === "auto") {
+  if (changeSetId === "auto") {
     changeSetsStore.selectedChangeSetId = null;
     // if undefined, that means the route has no changeSetId param, so we select "head"
-  } else if (props.changeSetId === undefined) {
+  } else if (changeSetId === undefined) {
     changeSetsStore.selectedChangeSetId = changeSetIdNil();
   } else {
-    changeSetsStore.selectedChangeSetId = props.changeSetId;
+    changeSetsStore.selectedChangeSetId = changeSetId;
   }
 
   if (
+    changeSetsReqStatus.value.isSuccess &&
     !changeSetsStore.selectedChangeSet &&
     changeSetsStore.selectedChangeSetId
   ) {

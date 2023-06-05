@@ -2,21 +2,23 @@
 <template>
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
-      <div class="grow">
-        <ComponentOutline
-          class="relative"
-          :style="{ height: `${topLeftPanel.height}px` }"
-          @right-click-item="onOutlineRightClick"
-        />
-        <SiPanelResizer
-          panel-side="bottom"
-          :style="{ top: `${topLeftPanel.height}px` }"
-          class="w-full"
-          @resize-start="topLeftPanel.onResizeStart"
-          @resize-move="topLeftPanel.onResizeMove"
-          @resize-reset="topLeftPanel.resetSize"
-        />
+      <div
+        :style="{ height: `${topLeftPanel.height}px` }"
+        class="relative flex-shrink-0"
+      >
+        <ComponentOutline class="" @right-click-item="onOutlineRightClick" />
+      </div>
 
+      <SiPanelResizer
+        panel-side="bottom"
+        :style="{ top: `${topLeftPanel.height}px` }"
+        class="w-full"
+        @resize-start="topLeftPanel.onResizeStart"
+        @resize-move="topLeftPanel.onResizeMove"
+        @resize-reset="topLeftPanel.resetSize"
+      />
+
+      <div class="relative flex-grow">
         <AssetPalette class="border-t dark:border-neutral-600" />
       </div>
     </div>
@@ -65,11 +67,11 @@
   >
     <div class="flex flex-col h-full">
       <span
-        class="flex flex-row w-full p-3 text-neutral-400 border-b dark:border-neutral-500"
+        class="flex flex-row items-center w-full p-3 text-neutral-400 border-b dark:border-neutral-500"
       >
-        <strong class="grow uppercase text-lg">Changes</strong>
+        <strong class="grow uppercase text-md">Changes</strong>
         <strong
-          class="text-action-300 mx-2 bg-action-100 text-xl rounded-2xl px-3 border border-action-300"
+          class="text-action-300 mx-2 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
           >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
         >
       </span>
@@ -314,7 +316,7 @@ import SiPanelResizer from "@/components/SiPanelResizer.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
-import AssetPalette from "../AssetPalette.vue";
+import AssetPalette from "../AssetPalette2.vue";
 import {
   InsertElementEvent,
   MoveElementEvent,
@@ -329,7 +331,7 @@ import {
   DiagramEdgeData,
   HoverElementEvent,
 } from "../GenericDiagram/diagram_types";
-import ComponentOutline from "../ComponentOutline/ComponentOutline.vue";
+import ComponentOutline from "../ComponentOutline/ComponentOutline2.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
