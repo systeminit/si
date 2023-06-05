@@ -122,14 +122,15 @@ function routeToChangeSet(id: ChangeSetId, replace = false) {
 }
 
 function handleUrlChange() {
+  const changeSetId = route.params.changeSetId as string | undefined;
   // if "auto", we do our best to autoselect, and show a selection screen otherwise
-  if (props.changeSetId === "auto") {
+  if (changeSetId === "auto") {
     tryAutoSelect();
     // if undefined, that means the route has no changeSetId param, so we select "head"
-  } else if (props.changeSetId === undefined) {
+  } else if (changeSetId === undefined) {
     changeSetsStore.selectedChangeSetId = changeSetIdNil();
   } else {
-    changeSetsStore.selectedChangeSetId = props.changeSetId;
+    changeSetsStore.selectedChangeSetId = changeSetId;
   }
 }
 
