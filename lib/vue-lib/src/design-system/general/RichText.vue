@@ -62,23 +62,32 @@ function styleCodeElements() {
 
     const parent = codeEl.parentElement;
 
-    if(parent && parent.tagName === "PRE") {
+    if (parent && parent.tagName === "PRE") {
       const pasteButton = document.createElement("div");
-      pasteButton.classList.add("absolute", "top-xs", "right-xs", "text-neutral-500", "dark:hover:text-shade-0", "hover:text-shade-100", "cursor-pointer")
+      pasteButton.classList.add(
+        "absolute",
+        "top-xs",
+        "right-xs",
+        "text-neutral-500",
+        "dark:hover:text-shade-0",
+        "hover:text-shade-100",
+        "cursor-pointer",
+      );
       pasteButton.innerHTML = copyIcon;
       pasteButton.addEventListener("click", () => {
-        if(code) {
+        if (code) {
           let paste = code;
 
           // TODO - we're currently manually truncating characters we don't want, better to fix this elsewhere in the future
-          if(paste.substring(0, 2) === '$ ') {
+          if (paste.substring(0, 2) === "$ ") {
             paste = paste.substring(2);
           }
-          while(paste.substring(paste.length - 1) === "\n") {
+          while (paste.substring(paste.length - 1) === "\n") {
             paste = paste.substring(0, paste.length - 1);
           }
           // TODO - we're currently manually truncating characters we don't want, better to fix this elsewhere in the future
 
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           navigator.clipboard.writeText(paste);
         }
       });

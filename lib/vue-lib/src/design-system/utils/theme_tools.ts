@@ -11,7 +11,6 @@
 
 import {
   computed,
-  ComputedRef,
   InjectionKey,
   provide,
   inject,
@@ -46,7 +45,9 @@ try {
     .addEventListener("change", () => {
       systemTheme.value = getSystemTheme();
     });
-} catch (err) {}
+} catch (err) {
+  // dont need to do anything...
+}
 // single user-selected theme (overriding the system theme) saved to localstorage
 // we export the user-set theme directly, but we only need to use it for theme switcher components
 // as most components will get current value via inject in `useTheme()`

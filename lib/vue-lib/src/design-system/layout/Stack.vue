@@ -3,16 +3,13 @@ with even spacing between them */
 
 <script lang="ts">
 import { h, VNode, PropType } from "vue";
-import {
-  responsiveSpacingProps,
-} from "../utils/size_utils";
+import { responsiveSpacingProps } from "../utils/size_utils";
 import {
   FunctionalComponentContextArg,
   FunctionalComponentPropsType,
   getSlotChildren,
-} from '../../utils/vue_utils';
+} from "../../utils/vue_utils";
 import Divider from "./Divider.vue";
-
 
 const propsDefinition = {
   ...responsiveSpacingProps("sm"),
@@ -37,6 +34,7 @@ const Stack = (
   const wrappedChildren = [] as VNode[];
   const children = getSlotChildren(context.slots.default);
   for (let i = 0; i < children.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     wrappedChildren.push(children[i]!);
     if (props.dividers && i < children.length - 1) {
       wrappedChildren.push(h(Divider));

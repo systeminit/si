@@ -5,6 +5,10 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "lint": "eslint src --ext .ts,.js,.cjs,.vue",
+    "lint:fix": "pnpm run lint --fix"
+  },
   "dependencies": {},
   "devDependencies": {
     "@si/tsconfig": "workspace:*",

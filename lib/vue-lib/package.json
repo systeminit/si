@@ -33,6 +33,10 @@
       ]
     }
   },
+  "scripts": {
+    "lint": "eslint src --ext .ts,.js,.cjs,.vue",
+    "lint:fix": "pnpm run lint --fix"
+  },
   "dependencies": {
     "@headlessui/tailwindcss": "^0.1.2",
     "@headlessui/vue": "^1.7.10",
