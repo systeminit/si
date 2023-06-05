@@ -19,6 +19,7 @@ pub struct GetFuncResponse {
     pub handler: Option<String>,
     pub variant: FuncVariant,
     pub name: String,
+    pub display_name: Option<String>,
     pub description: Option<String>,
     pub code: Option<String>,
     pub types: String,
