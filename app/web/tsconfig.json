@@ -11,6 +11,8 @@
     "types": [
       "unplugin-icons/types/raw"
     ],
+    "declaration": false,
+    "declarationMap": false
   },
   "include": [
     "src/**/*.ts",

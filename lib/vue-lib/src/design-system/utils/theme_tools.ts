@@ -11,7 +11,6 @@
 
 import {
   computed,
-  ComputedRef,
   InjectionKey,
   provide,
   inject,
@@ -25,9 +24,7 @@ import storage from "local-storage-fallback";
 export type ThemeValue = "dark" | "light";
 
 const THEME_STORAGE_KEY = "SI:THEME";
-const THEME_INJECTION_KEY: InjectionKey<ComputedRef<ThemeValue>> =
-  Symbol("THEME");
-
+const THEME_INJECTION_KEY: InjectionKey<Ref<ThemeValue>> = Symbol("THEME");
 
 // NOTE - some issues with window here when running SSG. Tried a few things but try/catch finally worked...
 
@@ -48,7 +45,9 @@ try {
     .addEventListener("change", () => {
       systemTheme.value = getSystemTheme();
     });
-} catch (err) {}
+} catch (err) {
+  // dont need to do anything...
+}
 // single user-selected theme (overriding the system theme) saved to localstorage
 // we export the user-set theme directly, but we only need to use it for theme switcher components
 // as most components will get current value via inject in `useTheme()`

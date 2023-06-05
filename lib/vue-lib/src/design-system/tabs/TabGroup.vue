@@ -195,9 +195,6 @@ const orderedTabs = computed(
     ) as TabGroupItemDefinition[],
 );
 const selectedTabSlug = ref<string>();
-const selectedTab = computed(() =>
-  selectedTabSlug.value ? tabs[selectedTabSlug.value] : undefined,
-);
 
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;

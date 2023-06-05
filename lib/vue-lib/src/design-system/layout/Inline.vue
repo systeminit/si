@@ -15,7 +15,7 @@ import {
   FunctionalComponentContextArg,
   FunctionalComponentPropsType,
   getSlotChildren,
-} from '../../utils/vue_utils';
+} from "../../utils/vue_utils";
 
 const propsDefinition = {
   ...responsiveSpacingProps("xs"),

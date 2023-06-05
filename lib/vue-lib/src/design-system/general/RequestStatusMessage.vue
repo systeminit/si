@@ -11,8 +11,8 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import ErrorMessage from './ErrorMessage.vue';
-import LoadingMessage from './LoadingMessage.vue';
+import ErrorMessage from "./ErrorMessage.vue";
+import LoadingMessage from "./LoadingMessage.vue";
 import { ApiRequestStatus } from "../../pinia";
 
 defineProps({
