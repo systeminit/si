@@ -1,13 +1,17 @@
 <template>
   <div ref="outlineRef" class="flex flex-col">
     <ScrollArea>
-      <template v-if="rootComponents.length" #top>
-        <SidebarSubpanelTitle class="border-t-0"
-          >Diagram Outline
+      <template #top>
+        <SidebarSubpanelTitle class="border-t-0">
+          Diagram Outline
         </SidebarSubpanelTitle>
 
         <!-- search bar - dont need to show if no components -->
-        <SiSearch auto-search @search="onSearchUpdated" />
+        <SiSearch
+          v-if="rootComponents.length"
+          auto-search
+          @search="onSearchUpdated"
+        />
       </template>
 
       <RequestStatusMessage
