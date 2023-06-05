@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { defineStore, PiniaPlugin, PiniaPluginContext } from "pinia";
+import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import {
   ComponentInternalInstance,
   computed,
@@ -23,9 +23,8 @@ declare module "pinia" {
   }
 }
 
-export function addStoreHooks<T extends ReturnType<typeof defineStore>>(
-  useStoreFn: T,
-) {
+// TODO: couldnt get the typing of T happy here... but it works for consumers
+export function addStoreHooks<T extends () => any>(useStoreFn: T) {
   return (...args: Parameters<T>): ReturnType<T> => {
     const store = useStoreFn.apply(null, [...args]) as ReturnType<T>;
     const component = getCurrentInstance();
@@ -67,13 +66,13 @@ export const piniaHooksPlugin: PiniaPlugin = ({
     if (store._trackedStoreUsers[trackedComponentId]) return;
 
     store._trackedStoreUsers[trackedComponentId] = true;
-    
+
     if (!store._initHookCalled && storeOptions.onInit) {
       // TODO: what to do if this errors?
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       storeOptions.onInit.call(store);
     }
-    
+
     // console.log(store.$id, "+");
     // store._trackedStoreUsersCount++;
     if (store._trackedStoreUsersCount === 1 && storeOptions.onActivated) {

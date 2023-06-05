@@ -25,9 +25,7 @@ import storage from "local-storage-fallback";
 export type ThemeValue = "dark" | "light";
 
 const THEME_STORAGE_KEY = "SI:THEME";
-const THEME_INJECTION_KEY: InjectionKey<ComputedRef<ThemeValue>> =
-  Symbol("THEME");
-
+const THEME_INJECTION_KEY: InjectionKey<Ref<ThemeValue>> = Symbol("THEME");
 
 // NOTE - some issues with window here when running SSG. Tried a few things but try/catch finally worked...
 
