@@ -524,7 +524,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             (associations, compile_action_types())
         }
         FuncBackendKind::JsReconciliation => {
-            return Err(FuncError::EditingReconciliationFuncsNotImplemented)
+            return Err(FuncError::EditingReconciliationFuncsNotImplemented);
         }
         FuncBackendKind::JsValidation => {
             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
@@ -558,10 +558,8 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         id: func.id().to_owned(),
         handler: func.handler().map(|h| h.to_owned()),
         variant: func.try_into()?,
-        name: func
-            .display_name()
-            .unwrap_or_else(|| func.name())
-            .to_owned(),
+        display_name: func.display_name().map(Into::into),
+        name: func.name().to_owned(),
         description: func.description().map(|d| d.to_owned()),
         code: func.code_plaintext()?,
         is_builtin: func.builtin(),

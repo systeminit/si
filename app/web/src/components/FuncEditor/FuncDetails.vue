@@ -70,6 +70,13 @@
                 @blur="updateFunc"
               />
               <VormInput
+                v-model="editingFunc.displayName"
+                label="Display Name"
+                required
+                placeholder="Type the display name of this function here..."
+                @blur="updateFunc"
+              />
+              <VormInput
                 v-model="editingFunc.handler"
                 label="Entrypoint"
                 required

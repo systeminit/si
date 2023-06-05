@@ -27,6 +27,7 @@ use dal::{FuncBackendResponseType, FuncDescription, PropKind, SchemaVariant, Val
 pub struct SaveFuncRequest {
     pub id: FuncId,
     pub handler: Option<String>,
+    pub display_name: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,
@@ -581,7 +582,8 @@ pub async fn do_save_func(
         return Err(FuncError::NotWritable);
     }
 
-    func.set_display_name(ctx, Some(request.name)).await?;
+    func.set_display_name(ctx, request.display_name).await?;
+    func.set_name(ctx, request.name).await?;
     func.set_description(ctx, request.description).await?;
     func.set_handler(ctx, request.handler).await?;
     func.set_code_plaintext(ctx, request.code.as_deref())

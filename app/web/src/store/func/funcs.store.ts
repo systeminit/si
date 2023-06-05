@@ -31,6 +31,7 @@ export type FuncSummary = {
   handler: string;
   variant: FuncVariant;
   name: string;
+  displayName?: string;
   description?: string;
   isBuiltin: boolean;
 };
