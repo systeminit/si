@@ -146,9 +146,10 @@ async fn save_attr_func_prototypes(
     prototypes: Vec<AttributePrototypeView>,
     removed_protoype_op: RemovedPrototypeOp,
     key: Option<String>,
-) -> FuncResult<Option<PropKind>> {
+) -> FuncResult<FuncBackendResponseType> {
     let mut id_set = HashSet::new();
     let mut prop_kind: Option<PropKind> = None;
+    let mut computed_backend_response_type = *func.backend_response_type();
 
     for proto_view in prototypes {
         let context = proto_view.to_attribute_context()?;
@@ -224,15 +225,41 @@ async fn save_attr_func_prototypes(
 
         id_set.insert(*proto.id());
 
-        let prop = Prop::get_by_id(ctx, &proto.context.prop_id())
-            .await?
-            .ok_or(FuncError::PropNotFound)?;
-        if let Some(prop_kind) = prop_kind {
-            if prop_kind != *prop.kind() {
-                return Err(FuncError::FuncDestinationPropKindMismatch);
+        if proto.context.prop_id().is_some() {
+            let prop = Prop::get_by_id(ctx, &proto.context.prop_id())
+                .await?
+                .ok_or(FuncError::PropNotFound)?;
+            if let Some(prop_kind) = prop_kind {
+                if prop_kind != *prop.kind() {
+                    return Err(FuncError::FuncDestinationPropKindMismatch);
+                }
+            } else {
+                prop_kind = Some(*prop.kind());
             }
-        } else {
-            prop_kind = Some(*prop.kind());
+
+            if matches!(
+                computed_backend_response_type,
+                FuncBackendResponseType::Json
+            ) {
+                return Err(FuncError::FuncDestinationPropAndOutputSocket);
+            }
+
+            computed_backend_response_type = (*prop.kind()).into();
+        } else if proto.context.external_provider_id().is_some() {
+            // External and internal providers do not have types yet -- so we set functions that
+            // set them to Json, However, some builtins have expressed their type concretely
+            // already, so we should continue to use that type to prevent mutation of the function
+            // itself. A new function will have an Unset response type, however (until it is bound)
+            if prop_kind.is_some() {
+                return Err(FuncError::FuncDestinationPropAndOutputSocket);
+            }
+
+            if matches!(
+                computed_backend_response_type,
+                FuncBackendResponseType::Unset,
+            ) {
+                computed_backend_response_type = FuncBackendResponseType::Json;
+            }
         }
 
         save_attr_func_proto_arguments(ctx, &proto, proto_view.prototype_arguments, need_to_create)
@@ -244,7 +271,7 @@ async fn save_attr_func_prototypes(
         if !id_set.contains(proto.id()) {
             match removed_protoype_op {
                 RemovedPrototypeOp::Reset => {
-                    reset_prototype_and_value_to_builtin_function(ctx, &proto, proto.context)
+                    reset_prototype_and_value_to_intrinsic_function(ctx, &proto, proto.context)
                         .await?
                 }
                 RemovedPrototypeOp::Delete => AttributePrototype::remove(ctx, proto.id()).await?,
@@ -252,7 +279,12 @@ async fn save_attr_func_prototypes(
         }
     }
 
-    Ok(prop_kind)
+    // Unset response type if all bindings removed
+    if id_set.is_empty() {
+        computed_backend_response_type = FuncBackendResponseType::Unset;
+    }
+
+    Ok(computed_backend_response_type)
 }
 
 async fn attribute_view_for_leaf_func(
@@ -401,7 +433,7 @@ async fn save_leaf_prototypes(
     Ok(())
 }
 
-async fn reset_prototype_and_value_to_builtin_function(
+async fn reset_prototype_and_value_to_intrinsic_function(
     ctx: &DalContext,
     proto: &AttributePrototype,
     context: AttributeContext,
@@ -668,7 +700,7 @@ pub async fn do_save_func(
                     arguments,
                 }) = request.associations
                 {
-                    let prop_kind = save_attr_func_prototypes(
+                    let backend_response_type = save_attr_func_prototypes(
                         ctx,
                         &func,
                         prototypes,
@@ -678,20 +710,8 @@ pub async fn do_save_func(
                     .await?;
                     save_attr_func_arguments(ctx, &func, arguments).await?;
 
-                    match prop_kind {
-                        Some(prop_kind) => {
-                            func.set_backend_response_type(
-                                ctx,
-                                Into::<FuncBackendResponseType>::into(prop_kind),
-                            )
-                            .await?
-                        }
-                        // If we're removing all associations there won't be a prop kind
-                        None => {
-                            func.set_backend_response_type(ctx, FuncBackendResponseType::Unset)
-                                .await?
-                        }
-                    };
+                    func.set_backend_response_type(ctx, backend_response_type)
+                        .await?;
                 }
             }
         },
