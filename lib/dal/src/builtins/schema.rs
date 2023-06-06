@@ -24,6 +24,7 @@ pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
     info!("migrating schemas");
 
     migrate_pkg(ctx, super::SI_AWS_PKG, None).await?;
+    migrate_pkg(ctx, super::SI_AWS_EC2_PKG, None).await?;
     migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, None).await?;
     migrate_pkg(ctx, super::SI_COREOS_PKG, None).await?;
     migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, None).await?;
@@ -97,6 +98,7 @@ pub async fn migrate_for_tests(
 
     if migrate_all {
         migrate_pkg(ctx, super::SI_AWS_PKG, None).await?;
+        migrate_pkg(ctx, super::SI_AWS_EC2_PKG, None).await?;
         migrate_pkg(ctx, super::SI_COREOS_PKG, None).await?;
         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, None).await?;
         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
@@ -114,6 +116,7 @@ pub async fn migrate_for_tests(
             .map(|s| s.to_owned())
             .collect();
         migrate_pkg(ctx, super::SI_AWS_PKG, Some(schemas.to_owned())).await?;
+        migrate_pkg(ctx, super::SI_AWS_EC2_PKG, Some(schemas.to_owned())).await?;
         migrate_pkg(ctx, super::SI_COREOS_PKG, Some(schemas.to_owned())).await?;
         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, Some(schemas.to_owned())).await?;
         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
