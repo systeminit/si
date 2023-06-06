@@ -97,6 +97,9 @@ pub enum FuncError {
     FuncBindingReturnValueMissing,
     #[error("func {0} cannot be converted to frontend variant")]
     FuncCannotBeTurnedIntoVariant(FuncId),
+    // XXX: we will be able to remove this error once we make output sockets typed
+    #[error("Cannot bind function to both an output socket and a prop")]
+    FuncDestinationPropAndOutputSocket,
     #[error("cannot bind func to different prop kinds")]
     FuncDestinationPropKindMismatch,
     #[error("Function execution failed: {0}")]
