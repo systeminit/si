@@ -29,8 +29,8 @@ import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ModuleListPanel from "@/components/ModuleListPanel.vue";
 import ModuleDisplay from "@/components/ModuleDisplay.vue";
 import ModuleDetailsPanel from "@/components/ModuleDetailsPanel.vue";
-import { useModuleStore } from "../../store/module.store";
 import SiPanel from "@/components/SiPanel.vue";
+import { useModuleStore } from "../../store/module.store";
 import CustomizeTabs from "../CustomizeTabs.vue";
 
 const moduleStore = useModuleStore();
