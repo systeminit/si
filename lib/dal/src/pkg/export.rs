@@ -641,16 +641,17 @@ async fn set_variant_spec_prop_data(
         builder: PropSpecBuilder,
         prop_id: PropId,
         parent_prop_id: Option<PropId>,
+        inside_map_or_array: bool,
     }
 
-    let mut stack: Vec<(PropTreeNode, Option<PropId>)> = Vec::new();
+    let mut stack: Vec<(PropTreeNode, Option<PropId>, bool)> = Vec::new();
     for child_tree_node in prop_root_tree_node.children {
-        stack.push((child_tree_node, None));
+        stack.push((child_tree_node, None, false));
     }
 
     let mut traversal_stack: Vec<TraversalStackEntry> = Vec::new();
 
-    while let Some((tree_node, parent_prop_id)) = stack.pop() {
+    while let Some((tree_node, parent_prop_id, inside_map_or_array)) = stack.pop() {
         let prop_id = tree_node.prop_id;
         let mut builder = PropSpec::builder();
         builder
@@ -675,10 +676,15 @@ async fn set_variant_spec_prop_data(
             builder,
             prop_id,
             parent_prop_id,
+            inside_map_or_array,
         });
 
         for child_tree_node in tree_node.children {
-            stack.push((child_tree_node, Some(prop_id)));
+            stack.push((
+                child_tree_node,
+                Some(prop_id),
+                matches!(tree_node.kind, PropKind::Array | PropKind::Map) || inside_map_or_array,
+            ));
         }
     }
 
@@ -771,11 +777,14 @@ async fn set_variant_spec_prop_data(
             }
         }
 
-        // TODO: handle default values for complex types.
+        // TODO: handle default values for complex types. We also cannot set default values for
+        // children of arrays and maps, at any depth (currently), since that requires tracking the
+        // key or index
         if matches!(
             entry.builder.get_kind(),
             Some(PropSpecKind::String) | Some(PropSpecKind::Number) | Some(PropSpecKind::Boolean)
-        ) {
+        ) && !entry.inside_map_or_array
+        {
             if let Some(av) = AttributeValue::find_for_context(ctx, context.into()).await? {
                 if let Some(default_value) = av.get_value(ctx).await? {
                     entry.builder.default_value(default_value);
