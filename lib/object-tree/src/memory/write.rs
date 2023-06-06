@@ -6,10 +6,8 @@ use std::{
 use petgraph::prelude::*;
 use tar::{Builder, Header};
 use thiserror::Error;
-use vfs::{MemoryFS, PhysicalFS, VfsPath};
 
 use crate::{
-    fs::object_path,
     graph::{HashedNodeWithEntries, NodeEntry},
     FsError, GraphError, NameStr, ObjectTree, WriteBytes,
 };

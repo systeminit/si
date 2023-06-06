@@ -14,11 +14,20 @@ derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
 jwt-simple = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }
-rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
+rust-s3 = { version = "0.33.0", default-features = false, features = [
+        "tokio-rustls-tls",
+] }
+sea-orm = { version = "0.11", features = [
+        "sqlx-postgres",
+        "runtime-tokio-rustls",
+        "macros",
+        "with-chrono",
+        "debug-print",
+] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-pg = { path = "../../lib/si-data-pg" }

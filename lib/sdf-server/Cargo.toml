@@ -22,6 +22,7 @@ pathdiff = { workspace = true }
 rand = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }

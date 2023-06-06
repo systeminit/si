@@ -47,7 +47,7 @@ pub async fn export_pkg(
     }
 
     let module_index_url = match ctx.module_index_url() {
-        Some(url) => format!("{url}/modules"),
+        Some(url) => url,
         None => return Err(PkgError::ModuleIndexNotConfigured),
     };
 
@@ -63,24 +63,8 @@ pub async fn export_pkg(
     .await?;
 
     info!("Building module-index request");
-    let request_part = reqwest::multipart::Part::bytes(module_payload).file_name(format!(
-        "{}_{}.tar",
-        request.name.trim(),
-        request.version.trim()
-    ));
-    let module_index_uploader = reqwest::Client::new();
-    info!("Uploading to module-index");
-    let upload_response = module_index_uploader
-        .post(dbg!(reqwest::Url::parse(&module_index_url))?)
-        .multipart(reqwest::multipart::Form::new().part("module bundle", request_part))
-        .send()
-        .await?;
-    // TODO: Actually do something reasonable here.
-    let response_status = dbg!(upload_response.status());
-    dbg!(upload_response.text().await?);
-    if !response_status.is_success() {
-        return Err(PkgError::PackageExportEmpty);
-    }
+    let index_client = module_index_client::IndexClient::new(module_index_url.try_into()?);
+    let _response = dbg!(index_client.upload_module(request.name.trim(), request.version.trim(), module_payload).await?);
 
     track(
         &posthog_client,

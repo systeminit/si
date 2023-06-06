@@ -110,3 +110,12 @@ impl sea_query::ValueType for ModuleId {
         sea_query::ColumnType::String(None)
     }
 }
+
+
+impl TryInto<module_index_client::UploadResponse> for Model {
+    type Error = crate::routes::upsert_module_route::UpsertModuleError;
+
+    fn try_into(self) -> Result<module_index_client::UploadResponse, Self::Error> {
+        Ok(serde_json::from_value(serde_json::to_value(self)?)?)
+    }
+}
