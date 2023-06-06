@@ -8,8 +8,8 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use object_tree::{
-    FsError, GraphError, Hash, HashedNode, NameStr, NodeChild, ObjectTree, TreeFileSystemReader,
-    TreeFileSystemWriter,
+    FsError, GraphError, Hash, HashedNode, MemoryError, MemoryWriter, NameStr, NodeChild,
+    ObjectTree, TreeFileSystemReader, TreeFileSystemWriter,
 };
 use petgraph::prelude::*;
 use thiserror::Error;
@@ -46,6 +46,8 @@ pub enum SiPkgError {
     Fs(#[from] FsError),
     #[error(transparent)]
     Graph(#[from] GraphError),
+    #[error(transparent)]
+    Memory(#[from] MemoryError),
     #[error("node not found with hash={0}")]
     NodeWithHashNotFound(Hash),
     #[error("node not found with name={0}")]
@@ -138,6 +140,10 @@ impl SiPkg {
             .write(&self.tree)
             .await
             .map_err(Into::into)
+    }
+
+    pub async fn write_to_bytes(&self) -> PkgResult<Vec<u8>> {
+        Ok(MemoryWriter::new(&self.tree).await?.bytes())
     }
 
     pub fn metadata(&self) -> PkgResult<SiPkgMetadata> {

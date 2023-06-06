@@ -44,6 +44,36 @@ pub async fn export_pkg(
     created_by: impl Into<String>,
     variant_ids: Vec<SchemaVariantId>,
 ) -> PkgResult<()> {
+    let pkg = build_pkg(ctx, name, version, description, created_by, variant_ids).await?;
+
+    pkg.write_to_file(pkg_file_path).await?;
+
+    Ok(())
+}
+
+pub async fn export_pkg_as_bytes(
+    ctx: &DalContext,
+    name: impl Into<String>,
+    version: impl Into<String>,
+    description: Option<impl Into<String>>,
+    created_by: impl Into<String>,
+    variant_ids: Vec<SchemaVariantId>,
+) -> PkgResult<Vec<u8>> {
+    info!("Building module package");
+    let pkg = build_pkg(ctx, name, version, description, created_by, variant_ids).await?;
+    info!("Exporting as bytes");
+
+    Ok(pkg.write_to_bytes().await?)
+}
+
+async fn build_pkg(
+    ctx: &DalContext,
+    name: impl Into<String>,
+    version: impl Into<String>,
+    description: Option<impl Into<String>>,
+    created_by: impl Into<String>,
+    variant_ids: Vec<SchemaVariantId>,
+) -> PkgResult<SiPkg> {
     let mut pkg_spec_builder = PkgSpec::builder();
     pkg_spec_builder
         .name(name)
@@ -84,9 +114,8 @@ pub async fn export_pkg(
     let spec = pkg_spec_builder.build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    pkg.write_to_file(pkg_file_path).await?;
 
-    Ok(())
+    Ok(pkg)
 }
 
 fn build_func_spec(func: &Func, args: &[FuncArgument]) -> PkgResult<FuncSpec> {

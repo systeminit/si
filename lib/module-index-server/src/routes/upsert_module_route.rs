@@ -18,6 +18,7 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use si_pkg::{SiPkg, SiPkgError};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::fs;
 use ulid::Ulid;
@@ -65,19 +66,23 @@ pub async fn upsert_module_route(
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
 ) -> Result<Json<Value>, UpsertModuleError> {
+    info!("Upsert module");
     let field = match multipart.next_field().await.unwrap() {
         Some(f) => f,
         None => return Err(UpsertModuleError::UploadRequiredError),
     };
-    let name = field.name().unwrap().to_string();
+    info!("Found multipart field");
     let data = field.bytes().await.unwrap();
+    info!("Got part data");
 
     let temp_path = std::env::temp_dir().join("tmp-package.sipkg");
     fs::write(&temp_path, data.clone()).await?;
 
+    info!("Wrote to {:?}", &temp_path);
+
     // SiPkg using old term "package" but we are dealing with a "module"
-    let loaded_module = SiPkg::load_from_file(temp_path).await?;
-    let module_metadata = loaded_module.metadata()?;
+    let loaded_module = dbg!(SiPkg::load_from_file(temp_path).await)?;
+    let module_metadata = dbg!(loaded_module.metadata())?;
 
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),

@@ -1,0 +1,4 @@
+extra_deps = [":unicase-2.6.0"]
+
+[[buildscript]]
+[buildscript.gen_srcs]

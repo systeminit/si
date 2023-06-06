@@ -40,6 +40,8 @@ pub enum PkgError {
     InvalidPackageFileName(String),
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Module index not configured")]
+    ModuleIndexNotConfigured,
     #[error("No packages path provided")]
     NoPackagesPath,
     #[error("Package with that name already installed: {0}")]
@@ -58,6 +60,8 @@ pub enum PkgError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -66,6 +70,8 @@ pub enum PkgError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error("Unable to parse URL: {0}")]
+    Url(#[from] url::ParseError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }

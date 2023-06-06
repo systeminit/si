@@ -425,7 +425,7 @@ where
     }
 }
 
-fn object_path(vfs_path: &VfsPath, hash: Hash) -> Result<VfsPath, FsError> {
+pub fn object_path(vfs_path: &VfsPath, hash: Hash) -> Result<VfsPath, FsError> {
     vfs_path
         .join("objects")
         .map_err(FsError::InvalidPath)?

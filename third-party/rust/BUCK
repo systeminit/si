@@ -7811,6 +7811,54 @@ cargo.rust_library(
 )
 
 cargo.rust_library(
+    name = "mime_guess-2.0.4",
+    srcs = [
+        "vendor/mime_guess-2.0.4/src/impl_bin_search.rs",
+        "vendor/mime_guess-2.0.4/src/impl_phf.rs",
+        "vendor/mime_guess-2.0.4/src/lib.rs",
+        "vendor/mime_guess-2.0.4/src/mime_types.rs",
+    ],
+    crate = "mime_guess",
+    crate_root = "vendor/mime_guess-2.0.4/src/lib.rs",
+    edition = "2015",
+    env = {
+        "OUT_DIR": "$(location :mime_guess-2.0.4-build-script-run[out_dir])",
+    },
+    rustc_flags = ["--cap-lints=allow"],
+    visibility = [],
+    deps = [
+        ":mime-0.3.17",
+        ":unicase-2.6.0",
+    ],
+)
+
+cargo.rust_binary(
+    name = "mime_guess-2.0.4-build-script-build",
+    srcs = [
+        "vendor/mime_guess-2.0.4/benches/benchmark.rs",
+        "vendor/mime_guess-2.0.4/build.rs",
+        "vendor/mime_guess-2.0.4/examples/rev_map.rs",
+        "vendor/mime_guess-2.0.4/src/impl_bin_search.rs",
+        "vendor/mime_guess-2.0.4/src/impl_phf.rs",
+        "vendor/mime_guess-2.0.4/src/lib.rs",
+        "vendor/mime_guess-2.0.4/src/mime_types.rs",
+    ],
+    crate = "build_script_build",
+    crate_root = "vendor/mime_guess-2.0.4/build.rs",
+    edition = "2015",
+    rustc_flags = ["--cap-lints=allow"],
+    visibility = [],
+    deps = [":unicase-2.6.0"],
+)
+
+buildscript_run(
+    name = "mime_guess-2.0.4-build-script-run",
+    package_name = "mime_guess",
+    buildscript_rule = ":mime_guess-2.0.4-build-script-build",
+    version = "2.0.4",
+)
+
+cargo.rust_library(
     name = "minimal-lexical-0.2.1",
     srcs = [
         "vendor/minimal-lexical-0.2.1/src/bellerophon.rs",
@@ -11294,6 +11342,8 @@ cargo.rust_library(
         "__tls",
         "hyper-rustls",
         "json",
+        "mime_guess",
+        "multipart",
         "rustls",
         "rustls-pemfile",
         "rustls-tls",
@@ -11443,6 +11493,7 @@ cargo.rust_library(
         ":futures-core-0.3.28",
         ":futures-util-0.3.28",
         ":http-0.2.9",
+        ":mime_guess-2.0.4",
         ":serde-1.0.163",
         ":serde_json-1.0.96",
         ":serde_urlencoded-0.7.1",
@@ -18361,6 +18412,49 @@ cargo.rust_library(
         ":rand-0.8.5",
         ":serde-1.0.163",
     ],
+)
+
+cargo.rust_library(
+    name = "unicase-2.6.0",
+    srcs = [
+        "vendor/unicase-2.6.0/src/ascii.rs",
+        "vendor/unicase-2.6.0/src/lib.rs",
+        "vendor/unicase-2.6.0/src/unicode/map.rs",
+        "vendor/unicase-2.6.0/src/unicode/mod.rs",
+    ],
+    crate = "unicase",
+    crate_root = "vendor/unicase-2.6.0/src/lib.rs",
+    edition = "2015",
+    rustc_flags = [
+        "--cap-lints=allow",
+        "@$(location :unicase-2.6.0-build-script-run[rustc_flags])",
+    ],
+    visibility = [],
+    deps = [":version_check-0.9.4"],
+)
+
+cargo.rust_binary(
+    name = "unicase-2.6.0-build-script-build",
+    srcs = [
+        "vendor/unicase-2.6.0/build.rs",
+        "vendor/unicase-2.6.0/src/ascii.rs",
+        "vendor/unicase-2.6.0/src/lib.rs",
+        "vendor/unicase-2.6.0/src/unicode/map.rs",
+        "vendor/unicase-2.6.0/src/unicode/mod.rs",
+    ],
+    crate = "build_script_build",
+    crate_root = "vendor/unicase-2.6.0/build.rs",
+    edition = "2015",
+    rustc_flags = ["--cap-lints=allow"],
+    visibility = [],
+    deps = [":version_check-0.9.4"],
+)
+
+buildscript_run(
+    name = "unicase-2.6.0-build-script-run",
+    package_name = "unicase",
+    buildscript_rule = ":unicase-2.6.0-build-script-build",
+    version = "2.6.0",
 )
 
 cargo.rust_library(
