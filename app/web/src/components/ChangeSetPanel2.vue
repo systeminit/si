@@ -158,7 +158,7 @@ function openCreateModal() {
 
 watch(
   // have to also watch for the modals existing since they may not exist immediately on mount
-  [openChangeSets, createModalRef, route],
+  [openChangeSets, createModalRef, route, selectedChangeSetId],
   () => {
     if (!openChangeSets.value) return;
 

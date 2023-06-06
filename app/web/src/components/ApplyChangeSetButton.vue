@@ -23,18 +23,14 @@
 import { onMounted, computed, ref } from "vue";
 import * as _ from "lodash-es";
 import { VButton, VormInput } from "@si/vue-lib/design-system";
-import { useRouter, useRoute } from "vue-router";
+import JSConfetti from "js-confetti";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
-import JSConfetti from "js-confetti";
 import type { Recommendation } from "@/store/fixes.store";
 
 const props = defineProps<{
   recommendations: Recommendation[];
 }>();
-
-const router = useRouter();
-const route = useRoute();
 
 const changeSetsStore = useChangeSetsStore();
 
@@ -58,7 +54,6 @@ const celebrationEmoji = [
   "🍾",
 ];
 
-const celebrate = ref("🎉");
 let jsConfetti: JSConfetti;
 const confettis = [
   { emojis: ["🎉"] },
@@ -80,13 +75,7 @@ const applyChangeSet = async () => {
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
   emit("applied-change-set");
   await jsConfetti.addConfetti(_.sample(confettis));
-  await router.replace({
-    name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    params: {
-      ...route.params,
-      changeSetId: "auto",
-    },
-  });
+  changeSetsStore.selectedChangeSetId = null;
 };
 
 const statusStore = useStatusStore();
