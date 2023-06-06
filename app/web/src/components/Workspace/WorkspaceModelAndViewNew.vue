@@ -77,11 +77,15 @@
       </span>
       <div :style="{ height: `${topRightPanel.height}px` }" class="relative">
         <TabGroup
+          ref="proposedRightTabGroupRef"
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
         >
           <TabGroupItem label="Proposed" slug="recommendations_proposed">
-            <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
+            <ApplyChangeSetButton
+              :recommendations="recommendationsToExecute"
+              @applied-change-set="appliedRecommendations"
+            />
             <SiCollapsible
               as="div"
               content-as="ul"
@@ -356,6 +360,11 @@ const diffs = computed(() => {
   );
   return arr;
 });
+
+const proposedRightTabGroupRef = ref<InstanceType<typeof TabGroup>>();
+const appliedRecommendations = () => {
+  proposedRightTabGroupRef.value?.selectTab("recommendations_applied");
+};
 
 const recommendationSelection = ref<Record<string, boolean>>({});
 const recommendationsToExecute = computed(() => {

@@ -42,9 +42,12 @@ const applyButtonRef = ref();
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET2");
 
+const emit = defineEmits(["applied-change-set"]);
+
 // Applies the current change set
 const applyChangeSet = async () => {
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
+  emit("applied-change-set");
   await router.replace({
     name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
     params: {
