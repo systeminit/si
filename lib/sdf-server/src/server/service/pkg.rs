@@ -40,6 +40,8 @@ pub enum PkgError {
     InvalidPackageFileName(String),
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Module index: {0}")]
+    ModuleIndex(#[from] module_index_client::IndexClientError),
     #[error("Module index not configured")]
     ModuleIndexNotConfigured,
     #[error("No packages path provided")]

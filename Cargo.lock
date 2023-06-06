@@ -2407,6 +2407,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-index-client"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "remain",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "si-pkg",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "ulid",
+ "url",
+]
+
+[[package]]
 name = "module-index-server"
 version = "0.1.0"
 dependencies = [
@@ -2418,6 +2435,7 @@ dependencies = [
  "futures",
  "hyper",
  "jwt-simple",
+ "module-index-client",
  "refinery",
  "regex",
  "remain",
@@ -3888,6 +3906,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "hyper",
+ "module-index-client",
  "names",
  "nix",
  "pathdiff",

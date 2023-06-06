@@ -1,0 +1,19 @@
+[package]
+name = "module-index-client"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.69"
+publish = false
+
+[dependencies]
+chrono = { workspace = true }
+remain = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-pkg = { path = "../../lib/si-pkg" }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+ulid = { workspace = true }
+url = { workspace = true }

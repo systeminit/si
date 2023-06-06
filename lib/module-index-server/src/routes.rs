@@ -13,7 +13,7 @@ use tower_http::cors::CorsLayer;
 mod download_module_route;
 mod get_module_details_route;
 mod list_modules_route;
-mod upsert_module_route;
+pub(crate) mod upsert_module_route;
 
 use super::{app_state::AppState, server::ServerError};
 

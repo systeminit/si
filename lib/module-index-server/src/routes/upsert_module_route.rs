@@ -1,7 +1,3 @@
-use crate::{
-    extract::{Authorization, DbConnection, ExtractedS3Bucket, UserClaim},
-    models::si_module,
-};
 use axum::{
     debug_handler,
     extract::Multipart,
@@ -22,6 +18,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::fs;
 use ulid::Ulid;
+use module_index_client::UploadResponse;
+
+use crate::{
+    extract::{Authorization, DbConnection, ExtractedS3Bucket, UserClaim},
+    models::si_module,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +40,8 @@ pub enum UpsertModuleError {
     IoError(#[from] std::io::Error),
     #[error("s3 error: {0}")]
     S3Error(#[from] S3Error),
+    #[error("JSON serialization/deserialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("module parsing error: {0}")]
     SiPkgError(#[from] SiPkgError),
     #[error("upload is required")]
@@ -47,9 +51,7 @@ pub enum UpsertModuleError {
 // TODO: figure out how to not keep this serialization logic here
 impl IntoResponse for UpsertModuleError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
@@ -65,7 +67,7 @@ pub async fn upsert_module_route(
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
-) -> Result<Json<Value>, UpsertModuleError> {
+) -> Result<Json<UploadResponse>, UpsertModuleError> {
     info!("Upsert module");
     let field = match multipart.next_field().await.unwrap() {
         Some(f) => f,
@@ -109,5 +111,5 @@ pub async fn upsert_module_route(
 
     txn.commit().await?;
 
-    Ok(Json(json!({ "module": new_module })))
+    Ok(Json(new_module.try_into()?))
 }
