@@ -20,12 +20,13 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { onMounted, computed, ref } from "vue";
 import * as _ from "lodash-es";
 import { VButton, VormInput } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
+import JSConfetti from "js-confetti";
 import type { Recommendation } from "@/store/fixes.store";
 
 const props = defineProps<{
@@ -44,10 +45,41 @@ const applyChangeSetReqStatus =
 
 const emit = defineEmits(["applied-change-set"]);
 
+const celebrationEmoji = [
+  "🎉",
+  "🎊",
+  "✨",
+  "🔥",
+  "⚡️",
+  "🥳",
+  "🍻",
+  "🍺",
+  "🥂",
+  "🍾",
+];
+
+const celebrate = ref("🎉");
+let jsConfetti: JSConfetti;
+const confettis = [
+  { emojis: ["🎉"] },
+  { emojis: ["🍿"] },
+  { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
+  { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
+  { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
+  { emojis: ["🏳️‍🌈", "🏳️‍⚧️", "⚡️", "🌈", "✨", "🔥", "🇧🇷"] },
+];
+onMounted(() => {
+  jsConfetti = new JSConfetti({
+    canvas:
+      (document.getElementById("confetti") as HTMLCanvasElement) || undefined,
+  });
+});
+
 // Applies the current change set
 const applyChangeSet = async () => {
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
   emit("applied-change-set");
+  await jsConfetti.addConfetti(_.sample(confettis));
   await router.replace({
     name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
     params: {
