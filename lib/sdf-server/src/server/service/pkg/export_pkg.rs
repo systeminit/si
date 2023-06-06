@@ -5,6 +5,7 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,11 +46,14 @@ pub async fn export_pkg(
         return Err(PkgError::PackageExportEmpty);
     }
 
-    let new_pkg_path = get_new_pkg_path(&builder, &request.name, &request.version).await?;
+    let module_index_url = match ctx.module_index_url() {
+        Some(url) => format!("{url}/modules"),
+        None => return Err(PkgError::ModuleIndexNotConfigured),
+    };
 
-    dal::pkg::export_pkg(
+    info!("Packaging module");
+    let module_payload = dal::pkg::export_pkg_as_bytes(
         &ctx,
-        &new_pkg_path,
         request.name.clone(),
         request.version.clone(),
         request.description,
@@ -57,6 +61,26 @@ pub async fn export_pkg(
         request.schema_variants.clone(),
     )
     .await?;
+
+    info!("Building module-index request");
+    let request_part = reqwest::multipart::Part::bytes(module_payload).file_name(format!(
+        "{}_{}.tar",
+        request.name.trim(),
+        request.version.trim()
+    ));
+    let module_index_uploader = reqwest::Client::new();
+    info!("Uploading to module-index");
+    let upload_response = module_index_uploader
+        .post(dbg!(reqwest::Url::parse(&module_index_url))?)
+        .multipart(reqwest::multipart::Form::new().part("module bundle", request_part))
+        .send()
+        .await?;
+    // TODO: Actually do something reasonable here.
+    let response_status = dbg!(upload_response.status());
+    dbg!(upload_response.text().await?);
+    if !response_status.is_success() {
+        return Err(PkgError::PackageExportEmpty);
+    }
 
     track(
         &posthog_client,
@@ -67,10 +91,10 @@ pub async fn export_pkg(
                     "pkg_name": request.name,
                     "pkg_version": request.version,
                     "pkg_schema_count": request.schema_variants.len(),
-
         }),
     );
 
+    // TODO: Is this really the WsEvent we want to send right now?
     WsEvent::change_set_written(&ctx)
         .await?
         .publish_on_commit(&ctx)
@@ -80,6 +104,6 @@ pub async fn export_pkg(
 
     Ok(Json(ExportPkgResponse {
         success: true,
-        full_path: new_pkg_path.to_string_lossy().to_string(),
+        full_path: "Get this from module-index service".to_owned(),
     }))
 }

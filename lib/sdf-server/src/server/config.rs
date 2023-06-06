@@ -53,6 +53,9 @@ pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
 
+    #[builder(default = "default_module_index_url()")]
+    module_index_url: String,
+
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
@@ -67,6 +70,10 @@ pub struct Config {
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
+}
+
+fn default_module_index_url() -> String {
+    "http://localhost:5157".into()
 }
 
 impl StandardConfig for Config {
@@ -127,6 +134,12 @@ impl Config {
     pub fn posthog(&self) -> &PosthogConfig {
         &self.posthog
     }
+
+    /// URL to the module index service
+    #[must_use]
+    pub fn module_index_url(&self) -> &str {
+        &self.module_index_url
+    }
 }
 
 impl ConfigBuilder {
@@ -157,6 +170,8 @@ pub struct ConfigFile {
     pub pkgs_path: String,
     #[serde(default)]
     pub posthog: PosthogConfig,
+    #[serde(default)]
+    pub module_index_url: String,
 }
 
 impl Default for ConfigFile {
@@ -170,6 +185,7 @@ impl Default for ConfigFile {
             signup_secret: default_signup_secret(),
             pkgs_path: default_pkgs_path(),
             posthog: Default::default(),
+            module_index_url: default_module_index_url(),
         }
     }
 }
@@ -193,6 +209,7 @@ impl TryFrom<ConfigFile> for Config {
         config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
+        config.module_index_url(value.module_index_url);
         config.build().map_err(Into::into)
     }
 }

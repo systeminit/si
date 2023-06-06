@@ -289,6 +289,7 @@ impl Subscriber {
             veritech.clone(),
             encryption_key,
             None,
+            None,
         );
         let ctx_builder = DalContext::builder(services_context);
 

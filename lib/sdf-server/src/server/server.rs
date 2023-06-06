@@ -85,6 +85,7 @@ impl Server<(), ()> {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
+        module_index_url: String,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -95,6 +96,7 @@ impl Server<(), ()> {
                     veritech,
                     Arc::new(encryption_key),
                     Some(pkgs_path),
+                    Some(module_index_url),
                 );
 
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
@@ -135,6 +137,7 @@ impl Server<(), ()> {
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         pkgs_path: PathBuf,
+        module_index_url: String,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -145,6 +148,7 @@ impl Server<(), ()> {
                     veritech,
                     Arc::new(encryption_key),
                     Some(pkgs_path),
+                    Some(module_index_url),
                 );
 
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
@@ -217,6 +221,7 @@ impl Server<(), ()> {
         veritech: VeritechClient,
         encryption_key: &EncryptionKey,
         pkgs_path: PathBuf,
+        module_index_url: String,
     ) -> Result<()> {
         dal::migrate_all_with_progress(
             pg,
@@ -225,6 +230,7 @@ impl Server<(), ()> {
             veritech,
             encryption_key,
             pkgs_path,
+            module_index_url,
         )
         .await?;
         Ok(())
@@ -246,6 +252,7 @@ impl Server<(), ()> {
             veritech,
             Arc::new(encryption_key),
             None,
+            None,
         );
         ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
     }
@@ -264,6 +271,7 @@ impl Server<(), ()> {
             job_processor,
             veritech,
             Arc::new(encryption_key),
+            None,
             None,
         );
         StatusReceiver::new(services_context)

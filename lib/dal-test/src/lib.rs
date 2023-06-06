@@ -85,6 +85,8 @@ pub struct Config {
     jwt_signing_private_key_path: String,
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
+    #[builder(default)]
+    module_index_url: Option<String>,
 }
 
 impl Config {
@@ -226,6 +228,7 @@ impl TestContext {
             veritech,
             self.encryption_key.clone(),
             self.config.pkgs_path.to_owned(),
+            None,
         )
     }
 
@@ -529,6 +532,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .pkgs_path
             .to_owned()
             .expect("no pkgs path configured"),
+        test_context
+            .config
+            .module_index_url
+            .to_owned()
+            .expect("no module index service url configured"),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

@@ -76,6 +76,7 @@
 mod fs;
 mod graph;
 mod hash;
+mod memory;
 
 pub use fs::{FsError, TreeFileSystemReader, TreeFileSystemWriter};
 pub use graph::{
@@ -83,3 +84,4 @@ pub use graph::{
     NodeKind, NodeWithChildren, ObjectTree, ReadBytes, WriteBytes,
 };
 pub use hash::{Hash, HashParseError};
+pub use memory::write::{MemoryError, MemoryWriter};

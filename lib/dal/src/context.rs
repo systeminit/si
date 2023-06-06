@@ -35,6 +35,8 @@ pub struct ServicesContext {
     encryption_key: Arc<EncryptionKey>,
     /// The path where available packages can be found
     pkgs_path: Option<PathBuf>,
+    /// The URL of the module index
+    module_index_url: Option<String>,
 }
 
 impl ServicesContext {
@@ -46,6 +48,7 @@ impl ServicesContext {
         veritech: VeritechClient,
         encryption_key: Arc<EncryptionKey>,
         pkgs_path: Option<PathBuf>,
+        module_index_url: Option<String>,
     ) -> Self {
         Self {
             pg_pool,
@@ -54,6 +57,7 @@ impl ServicesContext {
             veritech,
             encryption_key,
             pkgs_path,
+            module_index_url,
         }
     }
 
@@ -465,6 +469,11 @@ impl DalContext {
     /// Gets an optional reference to the dal context's pkgs path
     pub fn pkgs_path(&self) -> Option<&PathBuf> {
         self.services_context.pkgs_path.as_ref()
+    }
+
+    /// Gets an optional reference to the module index service's url
+    pub fn module_index_url(&self) -> Option<&str> {
+        self.services_context.module_index_url.as_deref()
     }
 
     /// Determines if a standard model object matches the tenancy of the current context and
