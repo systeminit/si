@@ -32,15 +32,15 @@
           # find the hashes, even if the objects have already been uploaded.
           #
           # For the hashes, default to "aarch64-darwin".
-          buckDate = "2023-05-31";
+          buckDate = "2023-06-07";
           buckSha256 = if system == "x86_64-linux" then
-            "sha256-0MzhwUgBO7BUuwExGx/htm6UOxPr00CKC9edNYqwQoA="
+            "sha256-9MkyE9d2xRZ+yNiWgYN21GJXuf1u8snKxJcRHpMdlBA="
           else if system == "aarch64-linux" then
-            "sha256-/Fo6IEPx6+5H4/kHxPahGUJlMxSeS5mXWtHfux4PxL4="
+            "sha256-mA/fL1NCtsOM+fTzN/63mVcWJleZIlPTM6UMGw2iU4g="
           else if system == "x86_64-darwin" then
-            "sha256-UzhZznPbwzYTNLUhLtW7uNC2F7R6UMSFonDY8StunBc="
+            "sha256-+htuu3M1YsRj+4L/9cq1cXQUItCCztHxC052p3RTEDQ="
           else
-            "sha256-i2MVcLcrGN3G4tE0aaf/65zBJeLBkSgm8vroQ1EenlA=";
+            "sha256-dUaar49HWUktV+DmJx9lBOVKXrQYd2mvEKboUW8sBhI=";
 
           pname = "buck2";
           version = "unstable-${buckDate}";
