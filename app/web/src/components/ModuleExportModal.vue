@@ -76,8 +76,8 @@ import {
   Stack,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { useModuleStore, PkgExportRequest } from "../store/module.store";
 import { useComponentsStore } from "@/store/components.store";
+import { useModuleStore, PkgExportRequest } from "../store/module.store";
 
 const moduleStore = useModuleStore();
 const componentStore = useComponentsStore();

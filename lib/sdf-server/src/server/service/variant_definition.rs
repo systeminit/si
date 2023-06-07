@@ -9,12 +9,13 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    StandardModelError, TenancyError, TransactionsError, WsEventError,
+    SchemaVariantError, StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
+use crate::service::func::FuncError as SdfFuncError;
 
 pub mod clone_variant_def;
 pub mod create_variant_def;
@@ -39,7 +40,11 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error(transparent)]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error(transparent)]
     SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
+    #[error(transparent)]
+    SdfFunc(#[from] SdfFuncError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
