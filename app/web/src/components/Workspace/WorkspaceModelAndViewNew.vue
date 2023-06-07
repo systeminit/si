@@ -321,6 +321,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
 import SiPanelResizer from "@/components/SiPanelResizer.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { nilId } from "@/utils/nilId";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette2.vue";
@@ -391,11 +392,13 @@ watch(recommendations, (r) => {
   }
 });
 
-const currentRoute = useRoute();
-
 // TODO: we'll very likely split view mode from compose mode again, so this is just temporary
 // but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
-const isViewMode = computed(() => currentRoute.name === "workspace-view");
+const isViewMode = computed(
+  (_) =>
+    [null, nilId()].includes(changeSetStore.selectedChangeSetId) ||
+    changeSetStore.getRequestStatus("APPLY_CHANGE_SET2").value.isPending,
+);
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
