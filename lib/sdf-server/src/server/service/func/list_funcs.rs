@@ -11,17 +11,18 @@ pub struct ListFuncsRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListedFuncView {
     pub id: FuncId,
     pub handler: Option<String>,
     pub variant: FuncVariant,
     pub name: String,
+    pub display_name: Option<String>,
     pub is_builtin: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListFuncsResponse {
     pub funcs: Vec<ListedFuncView>,
@@ -51,10 +52,8 @@ pub async fn list_funcs(
             id: func.id().to_owned(),
             handler: func.handler().map(|handler| handler.to_owned()),
             variant: func.try_into()?,
-            name: func
-                .display_name()
-                .unwrap_or_else(|| func.name())
-                .to_owned(),
+            name: func.name().into(),
+            display_name: func.display_name().map(Into::into),
             is_builtin: func.builtin(),
         })
     })

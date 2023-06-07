@@ -5,6 +5,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { FuncSummary } from "./func/funcs.store";
 
 export type AssetId = string;
 export type AssetSlug = string;
@@ -26,6 +27,7 @@ export interface ListedVariantDef {
   componentType: ComponentType;
   color: string;
   description: string;
+  funcs: FuncSummary[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,6 +130,7 @@ export const useAssetStore = () => {
             category: "",
             componentType: "component",
             link: "https://www.systeminit.com/",
+            funcs: [],
             createdAt: new Date(),
             updatedAt: new Date(),
             variantExists: false,
