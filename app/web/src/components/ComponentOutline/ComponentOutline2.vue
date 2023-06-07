@@ -34,11 +34,18 @@
 
         <!-- tree mode -->
         <template v-else>
-          <template v-if="!rootComponents.length">
-            <div class="px-xs py-lg text-neutral-400 text-center italic">
-              Your model is currently empty.
+          <div v-if="!rootComponents.length" class="flex flex-col items-center">
+            <NoComponents class="items-center" />
+            <div class="text-xl text-neutral-400 mt-2">Drag & Drop</div>
+            <div class="px-xs pt-lg text-neutral-400 text-center italic">
+              Assets on to the canvas to the right to start modeling your
+              infrastructure
             </div>
-          </template>
+            <div class="px-xs pt-lg text-neutral-400 text-center italic">
+              Assets are reusable infrastructure components such as key pairs,
+              docker images EC2 instances etc.
+            </div>
+          </div>
           <template v-else>
             <ComponentOutlineNode
               v-for="component in rootComponents"
@@ -90,6 +97,7 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
+import NoComponents from "@/assets/images/no-components.svg?component";
 
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
