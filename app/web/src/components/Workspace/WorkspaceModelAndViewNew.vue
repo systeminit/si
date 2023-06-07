@@ -201,41 +201,43 @@
       </div>
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
-      <div class="half">
+      <div class="flex flex-col h-full">
         <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
 
-        <template v-if="selectedEdge">
-          <EdgeDetailsPanel
-            @delete="triggerDeleteSelection"
-            @restore="triggerRestoreSelection"
-          />
-        </template>
-        <template v-else-if="selectedComponent">
-          <ComponentDetails
-            v-if="selectedComponent"
-            :key="selectedComponent.id"
-            :is-view-mode="isViewMode"
-            @delete="triggerDeleteSelection"
-            @restore="triggerRestoreSelection"
-          />
-        </template>
-        <template v-else-if="selectedComponentIds.length">
-          <MultiSelectDetailsPanel />
-        </template>
-        <template v-else>
-          <div class="flex flex-col items-center text-neutral-400">
-            <NoAssets class="mt-3" />
-            <span class="text-xl">No Assets Selected</span>
-            <div class="capsize px-xs py-md mt-xs italic text-sm text-center">
-              <template v-if="componentsStore.allComponents.length === 0">
-                Your model is currently empty.
-              </template>
-              <template v-else
-                >Click something on the diagram to select it.
-              </template>
+        <div class="flex-1">
+          <template v-if="selectedEdge">
+            <EdgeDetailsPanel
+              @delete="triggerDeleteSelection"
+              @restore="triggerRestoreSelection"
+            />
+          </template>
+          <template v-else-if="selectedComponent">
+            <ComponentDetails
+              v-if="selectedComponent"
+              :key="selectedComponent.id"
+              :is-view-mode="isViewMode"
+              @delete="triggerDeleteSelection"
+              @restore="triggerRestoreSelection"
+            />
+          </template>
+          <template v-else-if="selectedComponentIds.length">
+            <MultiSelectDetailsPanel />
+          </template>
+          <template v-else>
+            <div class="flex flex-col items-center text-neutral-400">
+              <NoAssets class="mt-3" />
+              <span class="text-xl">No Assets Selected</span>
+              <div class="capsize px-xs py-md mt-xs italic text-sm text-center">
+                <template v-if="componentsStore.allComponents.length === 0">
+                  Your model is currently empty.
+                </template>
+                <template v-else
+                  >Click something on the diagram to select it.
+                </template>
+              </div>
             </div>
-          </div>
-        </template>
+          </template>
+        </div>
       </div>
     </div>
   </SiPanel>
