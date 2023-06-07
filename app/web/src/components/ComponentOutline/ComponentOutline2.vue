@@ -93,7 +93,7 @@ import SiSearch from "@/components/SiSearch.vue";
 
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import ComponentOutlineNode from "./ComponentOutlineNode.vue";
+import ComponentOutlineNode from "./ComponentOutlineNode2.vue";
 
 const outlineRef = ref<HTMLElement>();
 

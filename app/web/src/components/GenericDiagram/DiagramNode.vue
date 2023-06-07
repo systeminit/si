@@ -151,7 +151,7 @@
       <v-group
         v-if="node.def.statusIcons?.length"
         :config="{
-          x: halfWidth - node.def.statusIcons.length * 22 - 2,
+          x: halfWidth - node.def.statusIcons.length * 36 + 12,
           y:
             nodeHeaderHeight +
             subtitleTextHeight +
@@ -159,16 +159,29 @@
             SOCKET_GAP * (leftSockets.length + rightSockets.length),
         }"
       >
-        <DiagramIcon
+        <template
           v-for="(statusIcon, i) in node.def.statusIcons"
           :key="`status-icon-${i}`"
-          :icon="statusIcon.icon"
-          :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
-          :size="20"
-          :x="i * 22"
-          :y="0"
-          origin="top-left"
-        />
+        >
+          <DiagramIcon
+            :icon="statusIcon.icon"
+            :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+            :size="20"
+            :x="i * 36"
+            :y="0"
+            origin="top-left"
+          />
+
+          <DiagramIcon
+            v-if="i !== node.def.statusIcons.length - 1"
+            icon="pipe"
+            :color="'#AAA'"
+            :size="20"
+            :x="i * 36 + 18"
+            :y="0"
+            origin="top-left"
+          />
+        </template>
       </v-group>
 
       <!--  spinner overlay  -->
@@ -353,6 +366,7 @@ watch(
   },
   { immediate: true },
 );
+
 function recalcHeaderHeight() {
   headerTextHeight.value =
     titleTextRef.value?.getNode()?.getSelfRect().height || 20;
@@ -420,12 +434,15 @@ watch([() => props.node.def.isLoading, overlay], () => {
 function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:start");
 }
+
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
 }
+
 function onSocketHoverStart(socket: DiagramSocketData) {
   emit("hover:start", { type: "socket", socket });
 }
+
 function onSocketHoverEnd(_socket: DiagramSocketData) {
   emit("hover:end");
 }
