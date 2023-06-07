@@ -75,7 +75,10 @@
           >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
         >
       </span>
-      <div :style="{ height: `${topRightPanel.height}px` }" class="relative">
+      <div
+        :style="{ height: `${topRightPanel.height}px` }"
+        class="relative flex-shrink-0"
+      >
         <TabGroup
           ref="proposedRightTabGroupRef"
           remember-selected-tab-key="proposed_right"
@@ -201,7 +204,7 @@
       </div>
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
-      <div class="flex flex-col h-full">
+      <div class="flex flex-col flex-grow">
         <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
 
         <div class="flex-1">
