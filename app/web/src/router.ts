@@ -69,11 +69,18 @@ const routes: RouteRecordRaw[] = [
           import("@/components/Workspace/WorkspaceCustomizeIndex.vue"),
         redirect(to) {
           return {
-            name: "workspace-lab-functions",
+            name: "workspace-lab-assets",
             params: to.params,
           };
         },
         children: [
+          {
+            path: "a/:assetId?",
+            name: "workspace-lab-assets",
+            props: true,
+            component: () =>
+                import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
+          },
           {
             path: "f/:funcId?",
             name: "workspace-lab-functions",
@@ -85,13 +92,6 @@ const routes: RouteRecordRaw[] = [
             name: "workspace-lab-packages",
             component: () =>
               import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
-          },
-          {
-            path: "a/:assetId?",
-            name: "workspace-lab-assets",
-            props: true,
-            component: () =>
-              import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
           },
         ],
       },
