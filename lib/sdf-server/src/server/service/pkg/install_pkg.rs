@@ -1,15 +1,18 @@
-use super::{pkg_open, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use super::PkgResult;
+use crate::{server::extract::{AccessBuilder, HandlerContext, PosthogClient}, service::pkg::PkgError};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
+use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
+use si_pkg::SiPkg;
+use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallPkgRequest {
-    pub name: String,
+    pub id: Ulid,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -29,8 +32,17 @@ pub async fn install_pkg(
 ) -> PkgResult<Json<InstallPkgResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let pkg = pkg_open(&builder, &request.name).await?;
-    import_pkg_from_pkg(&ctx, &pkg, &request.name, None).await?;
+    let module_index_url = match ctx.module_index_url() {
+        Some(url) => url,
+        None => return Err(PkgError::ModuleIndexNotConfigured)
+    };
+
+    let module_index_client = IndexClient::new(module_index_url.try_into()?);
+    let pkg_data = module_index_client.download_module(request.id).await?;
+
+    let pkg = SiPkg::load_from_bytes(pkg_data)?;
+    let pkg_name = pkg.metadata()?.name().to_owned();
+    import_pkg_from_pkg(&ctx, &pkg, &pkg_name, None).await?;
 
     track(
         &posthog_client,
@@ -38,7 +50,7 @@ pub async fn install_pkg(
         &original_uri,
         "install_pkg",
         serde_json::json!({
-                    "pkg_name": request.name,
+                    "pkg_name": pkg_name,
         }),
     );
 

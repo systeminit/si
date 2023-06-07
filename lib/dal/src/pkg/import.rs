@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
@@ -101,15 +101,10 @@ pub async fn import_pkg_from_pkg(
     Ok(*installed_pkg.id())
 }
 
-pub async fn import_pkg(
-    ctx: &DalContext,
-    pkg_file_path: impl Into<PathBuf> + Clone,
-) -> PkgResult<SiPkg> {
-    let pkg_file_path_str = Into::<PathBuf>::into(pkg_file_path.clone())
-        .to_string_lossy()
-        .to_string();
+pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> PkgResult<SiPkg> {
+    let pkg_file_path_str = pkg_file_path.as_ref().to_string_lossy().to_string();
 
-    let pkg = SiPkg::load_from_file(pkg_file_path).await?;
+    let pkg = SiPkg::load_from_file(&pkg_file_path).await?;
 
     import_pkg_from_pkg(ctx, &pkg, &pkg_file_path_str, None).await?;
 

@@ -1,11 +1,10 @@
-use serde::{Serialize, Deserialize};
-use ulid::Ulid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadResponse {
-    pub id: Ulid,
+    pub id: String,
     pub name: String,
     pub description: Option<String>,
     pub owner_user_id: String,

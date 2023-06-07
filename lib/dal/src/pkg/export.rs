@@ -1,6 +1,5 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    path::PathBuf,
 };
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
@@ -31,26 +30,6 @@ use super::{PkgError, PkgResult};
 
 type FuncSpecMap = HashMap<FuncId, FuncSpec>;
 
-// TODO(fnichol): another first-pass function with arguments. At the moment we're passing a list of
-// `SchemaVariantId`s in an effort to export specific schema/variant combos but this will change in
-// the future to be more encompassing. And yes, to many function args, way too many--and they're
-// all `String`s
-pub async fn export_pkg(
-    ctx: &DalContext,
-    pkg_file_path: impl Into<PathBuf>,
-    name: impl Into<String>,
-    version: impl Into<String>,
-    description: Option<impl Into<String>>,
-    created_by: impl Into<String>,
-    variant_ids: Vec<SchemaVariantId>,
-) -> PkgResult<()> {
-    let pkg = build_pkg(ctx, name, version, description, created_by, variant_ids).await?;
-
-    pkg.write_to_file(pkg_file_path).await?;
-
-    Ok(())
-}
-
 pub async fn export_pkg_as_bytes(
     ctx: &DalContext,
     name: impl Into<String>,
@@ -63,7 +42,7 @@ pub async fn export_pkg_as_bytes(
     let pkg = build_pkg(ctx, name, version, description, created_by, variant_ids).await?;
     info!("Exporting as bytes");
 
-    Ok(pkg.write_to_bytes().await?)
+    Ok(pkg.write_to_bytes()?)
 }
 
 async fn build_pkg(

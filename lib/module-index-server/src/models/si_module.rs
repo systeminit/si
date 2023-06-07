@@ -111,7 +111,6 @@ impl sea_query::ValueType for ModuleId {
     }
 }
 
-
 impl TryInto<module_index_client::UploadResponse> for Model {
     type Error = crate::routes::upsert_module_route::UpsertModuleError;
 

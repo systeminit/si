@@ -1,36 +1,41 @@
 use std::{
     num::TryFromIntError,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
+use ::tar::{Builder, Header};
 use petgraph::prelude::*;
-use tar::{Builder, Header};
 use thiserror::Error;
 
 use crate::{
     graph::{HashedNodeWithEntries, NodeEntry},
-    FsError, GraphError, NameStr, ObjectTree, WriteBytes,
+    tar::{object_path, ref_path},
+    GraphError, NameStr, ObjectTree, WriteBytes,
 };
 
+/// Errors that can occur when creating a tar bundle of the object tree
 #[remain::sorted]
 #[derive(Debug, Error)]
-pub enum MemoryError {
-    #[error("FsError: {0}")]
-    Fs(#[from] FsError),
+pub enum TarWriterError {
+    /// When the object tree cannot be converted to a petgraph graph
     #[error("GraphError: {0}")]
     Graph(#[from] GraphError),
+    /// When an entry cannot be added to the tar file
     #[error("IoError: {0}")]
     Io(#[from] std::io::Error),
+    /// When the length of the entry is unable to be converted to the size entry of the tar header
     #[error("TryFromIntError: {0}")]
     TryFromInt(#[from] TryFromIntError),
 }
 
-pub struct MemoryWriter {
+/// Create a tar from an [`ObjectTree`]
+pub struct TarWriter {
     bytes: Vec<u8>,
 }
 
-impl MemoryWriter {
-    pub async fn new<T>(tree: &ObjectTree<T>) -> Result<Self, MemoryError>
+impl TarWriter {
+    /// Return a [`TarWriter`] populated from the provided [`ObjectTree`]
+    pub fn new<T>(tree: &ObjectTree<T>) -> Result<Self, TarWriterError>
     where
         T: Clone + NameStr + WriteBytes + Send + Sync + 'static,
     {
@@ -55,37 +60,34 @@ impl MemoryWriter {
             let tar_entry = HashedNodeWithEntries::new(node, entries);
             write_tar_entry(
                 &mut tar_builder,
-                Path::new(".")
-                    .join("objects")
-                    .join(tar_entry.hash().to_string()),
+                object_path(&tar_entry.hash()),
                 &tar_entry.to_bytes()?,
-            )
-            .await?;
+            )?;
         }
 
         write_tar_entry(
             &mut tar_builder,
-            Path::new(".").join("refs").join("root"),
+            ref_path("root"),
             graph[root_idx].hash().to_string().as_bytes(),
-        )
-        .await?;
+        )?;
         tar_builder.finish()?;
 
-        Ok(MemoryWriter {
+        Ok(Self {
             bytes: tar_builder.into_inner()?,
         })
     }
 
+    /// Return the tar as a `Vec<u8>`
     pub fn bytes(self) -> Vec<u8> {
         self.bytes
     }
 }
 
-async fn write_tar_entry(
+fn write_tar_entry(
     tar_builder: &mut Builder<Vec<u8>>,
     path: PathBuf,
     entry: &[u8],
-) -> Result<(), MemoryError> {
+) -> Result<(), TarWriterError> {
     let mut tar_entry_header = Header::new_gnu();
     tar_entry_header.set_path(&path)?;
     tar_entry_header.set_size(entry.len().try_into()?);

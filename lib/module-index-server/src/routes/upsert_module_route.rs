@@ -1,24 +1,20 @@
 use axum::{
-    debug_handler,
     extract::Multipart,
-    extract::Query,
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, FixedOffset, Local, Offset, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
+use module_index_client::UploadResponse;
 use s3::error::S3Error;
 use sea_orm::{
-    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue::NotSet, DbErr, InsertResult, Set,
+    ActiveModelTrait, DbErr, Set,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use si_pkg::{SiPkg, SiPkgError};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::fs;
 use ulid::Ulid;
-use module_index_client::UploadResponse;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket, UserClaim},
@@ -77,13 +73,8 @@ pub async fn upsert_module_route(
     let data = field.bytes().await.unwrap();
     info!("Got part data");
 
-    let temp_path = std::env::temp_dir().join("tmp-package.sipkg");
-    fs::write(&temp_path, data.clone()).await?;
-
-    info!("Wrote to {:?}", &temp_path);
-
     // SiPkg using old term "package" but we are dealing with a "module"
-    let loaded_module = dbg!(SiPkg::load_from_file(temp_path).await)?;
+    let loaded_module = dbg!(SiPkg::load_from_bytes(data.to_vec()))?;
     let module_metadata = dbg!(loaded_module.metadata())?;
 
     let new_module = si_module::ActiveModel {
@@ -111,5 +102,5 @@ pub async fn upsert_module_route(
 
     txn.commit().await?;
 
-    Ok(Json(new_module.try_into()?))
+    Ok(dbg!(Json(new_module.try_into()?)))
 }

@@ -3932,6 +3932,7 @@ dependencies = [
  "tokio-tungstenite",
  "tower",
  "tower-http",
+ "ulid",
  "url",
  "veritech-client",
 ]
