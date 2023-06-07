@@ -190,7 +190,7 @@ import FixDetails from "./FixDetails.vue";
 
 const fixesStore = useFixesStore();
 
-const fixBatches = computed(() => _.reverse(fixesStore.fixBatches));
+const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
 
 const formatTitle = (title: string) => {
   return title

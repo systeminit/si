@@ -44,7 +44,7 @@ pub async fn apply_change_set(
     let mut change_set = ChangeSet::get_by_pk(&ctx, &request.change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.apply(&mut ctx).await?;
+    change_set.apply_raw(&mut ctx, false).await?;
 
     track(
         &posthog_client,

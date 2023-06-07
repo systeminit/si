@@ -18,7 +18,7 @@
         @resize-reset="topLeftPanel.resetSize"
       />
 
-      <div class="relative flex-grow">
+      <div v-if="!isViewMode" class="relative flex-grow">
         <AssetPalette class="border-t dark:border-neutral-600" />
       </div>
     </div>
@@ -81,7 +81,11 @@
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
         >
-          <TabGroupItem label="Proposed" slug="recommendations_proposed">
+          <TabGroupItem
+            v-if="!isHead"
+            label="Proposed"
+            slug="recommendations_proposed"
+          >
             <ApplyChangeSetButton
               :recommendations="recommendationsToExecute"
               @applied-change-set="appliedRecommendations"
@@ -394,9 +398,12 @@ watch(recommendations, (r) => {
 
 // TODO: we'll very likely split view mode from compose mode again, so this is just temporary
 // but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
+const isHead = computed(() =>
+  [null, nilId()].includes(changeSetStore.selectedChangeSetId),
+);
 const isViewMode = computed(
   (_) =>
-    [null, nilId()].includes(changeSetStore.selectedChangeSetId) ||
+    isHead.value ||
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET2").value.isPending,
 );
 

@@ -109,6 +109,14 @@
                 size="md"
               />
             </template>
+
+            <!-- change status -->
+            <StatusIndicatorIcon
+              v-if="component.changeStatus === 'deleted'"
+              type="change"
+              :status="component.changeStatus"
+              size="md"
+            />
           </div>
         </div>
       </div>

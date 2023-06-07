@@ -22,6 +22,7 @@
 <script lang="ts" setup>
 import { onMounted, computed, ref } from "vue";
 import * as _ from "lodash-es";
+import { useRouter, useRoute }  from "vue-router";
 import { VButton, VormInput } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -33,6 +34,8 @@ const props = defineProps<{
 }>();
 
 const changeSetsStore = useChangeSetsStore();
+const router = useRouter();
+const route = useRoute();
 
 const applyButtonRef = ref();
 
@@ -75,8 +78,31 @@ const applyChangeSet = async () => {
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
   emit("applied-change-set");
   await jsConfetti.addConfetti(_.sample(confettis));
-  changeSetsStore.selectedChangeSetId = null;
+  await tryAutoSelect();
 };
+
+async function tryAutoSelect() {
+  let autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
+  if (!autoSelectChangeSetId) {
+    const createReq = await changeSetsStore.CREATE_CHANGE_SET(
+      changeSetsStore.getGeneratedChangesetName()
+    );
+    if (createReq.result.success) {
+      autoSelectChangeSetId = createReq.result.data.changeSet.pk;
+    } else {
+      autoSelectChangeSetId = "auto";
+    }
+  }
+
+  if (!route.name) return;
+  router.replace({
+    name: route.name,
+    params: {
+      ...route.params,
+      changeSetId: autoSelectChangeSetId,
+    },
+  });
+}
 
 const statusStore = useStatusStore();
 const statusStoreUpdating = computed(() => {
