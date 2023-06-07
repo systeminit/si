@@ -5,9 +5,9 @@
         'si-panel-resizer',
         'z-30 absolute',
         panelIsVertical
-          ? ['h-full cursor-col-resize', isHandleVisible ? 'w-1' : 'w-0']
-          : ['w-full cursor-row-resize', isHandleVisible ? 'h-1' : 'h-0'],
-        isHandleVisible
+          ? ['h-full cursor-col-resize w-1 z-40']
+          : ['w-full cursor-row-resize h-1'],
+        isHovered
           ? 'bg-neutral-400 dark:bg-neutral-500'
           : 'bg-neutral-300 dark:bg-neutral-600',
         {
@@ -27,9 +27,7 @@
           showResizeHoverAreas
             ? 'bg-destructive-500 opacity-25'
             : 'bg-transparent',
-          panelIsVertical
-            ? ['h-full', isHandleVisible ? 'w-8' : 'w-1']
-            : ['w-full', isHandleVisible ? 'h-8' : 'h-1'],
+          panelIsVertical ? ['h-full w-8'] : ['w-full h-8'],
           {
             left: 'left-0.5 translate-x-[-50%]',
             right: 'right-0.5 translate-x-[50%]',
@@ -51,7 +49,6 @@
           'w-3 h-16 rounded-full',
           'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
           !panelIsVertical && 'rotate-90',
-          !isHandleVisible && 'hidden',
         )
       "
     >
@@ -91,8 +88,6 @@ const dragStartMouseX = ref(0);
 const dragStartMouseY = ref(0);
 const isHovered = ref(false);
 const isResizing = ref(false);
-
-const isHandleVisible = computed(() => isHovered.value || isResizing.value);
 
 const onMouseDown = (e: MouseEvent) => {
   isResizing.value = true;

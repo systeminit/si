@@ -74,6 +74,12 @@ macro_rules! pk {
             }
         }
 
+        impl From<$name> for String {
+            fn from(pk: $name) -> Self {
+                ulid::Ulid::from(pk.0).into()
+            }
+        }
+
         impl<'a> From<&'a $name> for council_server::Id {
             fn from(pk: &'a $name) -> Self {
                 pk.0.into()

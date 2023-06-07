@@ -102,7 +102,11 @@ impl ChangeSet {
     }
 
     #[instrument(skip(ctx))]
-    pub async fn apply(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+    pub async fn apply_raw(
+        &mut self,
+        ctx: &mut DalContext,
+        run_confirmations: bool,
+    ) -> ChangeSetResult<()> {
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
             .txns()
@@ -129,12 +133,19 @@ impl ChangeSet {
             .publish_on_commit(ctx)
             .await?;
 
-        // Update the visibility.
-        ctx.update_visibility(Visibility::new_head(false));
+        if run_confirmations {
+            // Update the visibility.
+            ctx.update_visibility(Visibility::new_head(false));
 
-        // Before retuning, run all confirmations now that we are on head.
-        Component::run_all_confirmations(ctx).await?;
+            // Before retuning, run all confirmations now that we are on head.
+            Component::run_all_confirmations(ctx).await?;
+        }
+        Ok(())
+    }
 
+    #[instrument(skip(ctx))]
+    pub async fn apply(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+        self.apply_raw(ctx, true).await?;
         Ok(())
     }
 
