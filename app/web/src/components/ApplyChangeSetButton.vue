@@ -22,7 +22,7 @@
 <script lang="ts" setup>
 import { onMounted, computed, ref } from "vue";
 import * as _ from "lodash-es";
-import { useRouter, useRoute }  from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { VButton, VormInput } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -85,7 +85,7 @@ async function tryAutoSelect() {
   let autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
   if (!autoSelectChangeSetId) {
     const createReq = await changeSetsStore.CREATE_CHANGE_SET(
-      changeSetsStore.getGeneratedChangesetName()
+      changeSetsStore.getGeneratedChangesetName(),
     );
     if (createReq.result.success) {
       autoSelectChangeSetId = createReq.result.data.changeSet.pk;

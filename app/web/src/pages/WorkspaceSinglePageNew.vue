@@ -22,7 +22,10 @@
     <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
       <template
-        v-if="!changeSetsReqStatus.lastSuccessAt && (!changeSetsReqStatus.isRequested || changeSetsReqStatus.isPending)"
+        v-if="
+          !changeSetsReqStatus.lastSuccessAt &&
+          (!changeSetsReqStatus.isRequested || changeSetsReqStatus.isPending)
+        "
       >
         <div class="flex-grow p-lg flex flex-col items-center gap-4">
           <Icon name="loader" size="2xl" />
