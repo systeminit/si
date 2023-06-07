@@ -98,23 +98,17 @@
           >
             <template v-if="component.changeStatus !== 'deleted'">
               <StatusIndicatorIcon
-                type="qualification"
-                :status="qualificationStatus"
-                size="xs"
-              />
-              <StatusIndicatorIcon
                 type="confirmation"
                 :status="confirmationStatus"
-                size="xs"
+                size="md"
+              />
+              <Icon name="pipe" />
+              <StatusIndicatorIcon
+                type="qualification"
+                :status="qualificationStatus"
+                size="md"
               />
             </template>
-
-            <!-- change status -->
-            <StatusIndicatorIcon
-              type="change"
-              :status="component.changeStatus"
-              :size="component.changeStatus === 'deleted' ? 'md' : 'xs'"
-            />
           </div>
         </div>
       </div>
@@ -141,15 +135,15 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
-import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 
-import { useComponentOutlineContext } from "./ComponentOutline.vue";
+import { useComponentOutlineContext2 } from "./ComponentOutline2.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
 });
 
-const rootCtx = useComponentOutlineContext();
+const rootCtx = useComponentOutlineContext2();
 const { filterModeActive } = rootCtx;
 
 const isOpen = ref(true);

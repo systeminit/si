@@ -144,7 +144,7 @@ const confirmationStatusToIconMap2: Record<
   ConfirmationStatus,
   DiagramStatusIcon
 > = {
-  success: { icon: "tools", tone: "success" },
+  success: { icon: "check-circle", tone: "success" },
   failure: { icon: "tools", tone: "error" },
   running: { icon: "loader", tone: "info" },
   neverStarted: {
