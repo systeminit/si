@@ -73,15 +73,16 @@
     clippy::module_name_repetitions
 )]
 
-mod fs;
 mod graph;
 mod hash;
-mod memory;
+mod tar;
 
-pub use fs::{FsError, TreeFileSystemReader, TreeFileSystemWriter};
+pub use crate::tar::{
+    read::TarReadError,
+    write::{TarWriter, TarWriterError},
+};
 pub use graph::{
     read_key_value_line, write_key_value_line, GraphError, HashedNode, NameStr, NodeChild,
     NodeKind, NodeWithChildren, ObjectTree, ReadBytes, WriteBytes,
 };
 pub use hash::{Hash, HashParseError};
-pub use memory::write::{MemoryError, MemoryWriter};

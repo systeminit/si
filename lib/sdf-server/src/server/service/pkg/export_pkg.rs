@@ -1,4 +1,4 @@
-use super::{get_new_pkg_path, PkgError, PkgResult};
+use super::{PkgError, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
@@ -64,7 +64,11 @@ pub async fn export_pkg(
 
     info!("Building module-index request");
     let index_client = module_index_client::IndexClient::new(module_index_url.try_into()?);
-    let _response = dbg!(index_client.upload_module(request.name.trim(), request.version.trim(), module_payload).await?);
+    let _response = dbg!(
+        index_client
+            .upload_module(request.name.trim(), request.version.trim(), module_payload)
+            .await?
+    );
 
     track(
         &posthog_client,
