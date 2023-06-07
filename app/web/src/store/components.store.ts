@@ -222,6 +222,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const typeIcon =
               {
                 AWS: "logo-aws",
+                "AWS EC2": "logo-aws",
                 CoreOS: "logo-coreos",
                 Docker: "logo-docker",
                 Kubernetes: "logo-k8s",
