@@ -219,15 +219,17 @@
           <MultiSelectDetailsPanel />
         </template>
         <template v-else>
-          <div
-            class="capsize px-xs py-md mt-xs italic text-neutral-400 text-sm text-center"
-          >
-            <template v-if="componentsStore.allComponents.length === 0">
-              Your model is currently empty.
-            </template>
-            <template v-else
-              >Click something on the diagram to select it.
-            </template>
+          <div class="flex flex-col items-center text-neutral-400">
+            <NoAssets class="mt-3" />
+            <span class="text-xl">No Assets Selected</span>
+            <div class="capsize px-xs py-md mt-xs italic text-sm text-center">
+              <template v-if="componentsStore.allComponents.length === 0">
+                Your model is currently empty.
+              </template>
+              <template v-else
+                >Click something on the diagram to select it.
+              </template>
+            </div>
           </div>
         </template>
       </div>
@@ -310,6 +312,7 @@ import {
   EdgeId,
   useComponentsStore,
 } from "@/store/components.store";
+import NoAssets from "@/assets/images/no-assets.svg?component";
 
 import SiPanel from "@/components/SiPanel.vue";
 import { useStatusStore } from "@/store/status.store";
