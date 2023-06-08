@@ -49,11 +49,7 @@
           </template>
           <template #default>
             <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
-              <SiFuncListItem
-                :func="func"
-                color="#921ed6"
-                @click="routeToFunc(func.id)"
-              />
+              <SiFuncListItem :func="func" color="#921ed6" />
             </li>
           </template>
         </SiCollapsible>

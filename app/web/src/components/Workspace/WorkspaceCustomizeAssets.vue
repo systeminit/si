@@ -2,12 +2,32 @@
 <template>
   <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
+      <div
+        :style="{ height: `${topSplitSizer.height}px` }"
+        class="relative flex flex-col flex-shrink-0"
+      >
+        <ChangeSetPanel
+          class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
+        />
+
+        <CustomizeTabs tab-content-slug="assets">
+          <AssetListPanel :asset-id="assetId" />
+        </CustomizeTabs>
+      </div>
+
+      <SiPanelResizer
+        panel-side="bottom"
+        :style="{ top: `${topSplitSizer.height}px` }"
+        class="w-full"
+        @resize-start="topSplitSizer.onResizeStart"
+        @resize-move="topSplitSizer.onResizeMove"
+        @resize-reset="topSplitSizer.resetSize"
       />
-      <CustomizeTabs tab-content-slug="assets">
-        <AssetListPanel :asset-id="assetId" />
-      </CustomizeTabs>
+      <div
+        class="h-full border-t dark:border-neutral-600 relative z-20 p-8 dark:bg-neutral-800 bg-shade-0"
+      >
+        <AssetFuncListPanel />
+      </div>
     </div>
   </SiPanel>
   <div
@@ -26,15 +46,25 @@
 import * as _ from "lodash-es";
 import { watch } from "vue";
 import { useAssetStore } from "@/store/asset.store";
+import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditor from "../AssetEditor.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
+import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+
+const TOP_SPLIT_DEFAULT_HEIGHT = 700;
+const TOP_SPLIT_MIN_HEIGHT = 150;
+
+const topSplitSizer = defaultSizer(
+  TOP_SPLIT_DEFAULT_HEIGHT,
+  TOP_SPLIT_MIN_HEIGHT,
+);
 
 const props = defineProps<{
   assetId?: string;

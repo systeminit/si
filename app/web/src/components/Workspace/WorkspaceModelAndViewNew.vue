@@ -299,7 +299,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch, reactive } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
@@ -328,7 +328,7 @@ import { useStatusStore } from "@/store/status.store";
 import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
-import SiPanelResizer from "@/components/SiPanelResizer.vue";
+import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { nilId } from "@/utils/nilId";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -913,45 +913,15 @@ const SUB_PANEL_DEFAULT_HEIGHT = 350;
 const SUB_PANEL_MIN_HEIGHT = 150;
 
 // TODO: Move panels to their own components after they stabilize a bit
-const topRightPanel = reactive({
-  height: SUB_PANEL_DEFAULT_HEIGHT,
-  beginResizeValue: 0,
+const topRightPanel = defaultSizer(
+  SUB_PANEL_DEFAULT_HEIGHT,
+  SUB_PANEL_MIN_HEIGHT,
+);
 
-  onResizeStart() {
-    topRightPanel.beginResizeValue = topRightPanel.height;
-  },
-
-  onResizeMove(delta: number) {
-    const adjustedDelta = -delta;
-    const newHeight = topRightPanel.beginResizeValue + adjustedDelta;
-
-    topRightPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
-  },
-
-  resetSize() {
-    topRightPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
-  },
-});
-
-const topLeftPanel = reactive({
-  height: SUB_PANEL_DEFAULT_HEIGHT,
-  beginResizeValue: 0,
-
-  onResizeStart() {
-    topLeftPanel.beginResizeValue = topLeftPanel.height;
-  },
-
-  onResizeMove(delta: number) {
-    const adjustedDelta = -delta;
-    const newHeight = topLeftPanel.beginResizeValue + adjustedDelta;
-
-    topLeftPanel.height = Math.max(newHeight, SUB_PANEL_MIN_HEIGHT);
-  },
-
-  resetSize() {
-    topLeftPanel.height = SUB_PANEL_DEFAULT_HEIGHT;
-  },
-});
+const topLeftPanel = defaultSizer(
+  SUB_PANEL_DEFAULT_HEIGHT,
+  SUB_PANEL_MIN_HEIGHT,
+);
 </script>
 
 <style lang="less" scoped>
