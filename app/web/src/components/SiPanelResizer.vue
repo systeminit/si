@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, PropType, ref } from "vue";
+import { computed, onBeforeUnmount, PropType, ref, reactive } from "vue";
 import clsx from "clsx";
 import { Icon } from "@si/vue-lib/design-system";
 
@@ -119,4 +119,30 @@ onBeforeUnmount(() => {
   window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("mouseup", onMouseUp);
 });
+</script>
+
+<script lang="ts">
+// Handles the most common resizing case
+export const defaultSizer = (defaultHeight: number, minHeight: number) => {
+  const sizer = reactive({
+    height: defaultHeight,
+    beginResizeValue: 0,
+
+    onResizeStart() {
+      sizer.beginResizeValue = sizer.height;
+    },
+
+    onResizeMove(delta: number) {
+      const adjustedDetla = -delta;
+      const newHeight = sizer.beginResizeValue + adjustedDetla;
+
+      sizer.height = Math.max(newHeight, minHeight);
+    },
+
+    resetSize() {
+      sizer.height = defaultHeight;
+    },
+  });
+  return sizer;
+};
 </script>
