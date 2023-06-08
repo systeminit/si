@@ -53,7 +53,7 @@ type RawComponent = {
   schemaId: string;
   schemaVariantId: string;
   schemaVariantName: string;
-  schemaCategory: string; // I _think_ this will evolve into something like `packageSlug`
+  schemaCategory: string;
   color: string;
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
   position: GridPoint;

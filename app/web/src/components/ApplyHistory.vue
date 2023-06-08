@@ -13,33 +13,35 @@
   </div>
   <div v-else>
     <SiSearch auto-search class="border-b-0" />
-    <SiCollapsible
+    <Collapsible
       v-for="(fixBatch, batch_index) of fixBatches"
       :key="batch_index"
       hide-bottom-border
     >
       <template #label>
         <div class="flex flex-row flex-wrap items-center gap-1">
-          <div class="font-bold flex flex-row items-center">
+          <span class="font-bold flex flex-row items-center">
             <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
             <div
               v-if="
                 fixBatch.status === 'success' &&
-                fixBatch.fixes.filter((f) => f.status === 'success').length ===
-                  fixBatch.fixes.length
+                fixBatch.fixes.filter((f) => f.status === 'success')
+                  .length === fixBatch.fixes.length
               "
               class="pl-xs whitespace-nowrap"
             >
               All fixes succeeded
             </div>
             <div v-else class="pl-xs">
-              {{ fixBatch.fixes.filter((f) => f.status === "success").length }}
+              {{
+                fixBatch.fixes.filter((f) => f.status === "success").length
+              }}
               of {{ fixBatch.fixes.length }} fix{{
                 fixBatch.fixes.length > 1 ? "es" : ""
               }}
               succeeded
             </div>
-          </div>
+          </span>
           <span
             v-if="fixBatch.startedAt"
             :class="
@@ -86,7 +88,7 @@
         </div>
 
         <ul class="pl-5 mt-2">
-          <SiCollapsible
+          <Collapsible
             v-for="(fix, fix_index) of fixBatch.fixes"
             :key="fix_index"
             hide-bottom-border
@@ -114,11 +116,15 @@
                     <div class="font-bold">
                       {{ fix.resource.message ?? "Resource Code" }}
                       <FixDetails
-                        v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                        v-if="
+                          fix.resource.logs && fix.resource.logs.length > 0
+                        "
                         :health="fix.resource.status"
                         :message="
                           [
-                            `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
+                            `${formatTitle(fix.actionKind)} ${
+                              fix.schemaName
+                            }`,
                             fix.resource.message ?? '',
                           ].filter((f) => f.length > 0)
                         "
@@ -161,10 +167,10 @@
                 </template>
               </div>
             </template>
-          </SiCollapsible>
+          </Collapsible>
         </ul>
       </template>
-    </SiCollapsible>
+    </Collapsible>
   </div>
 </template>
 
@@ -172,9 +178,12 @@
 import * as _ from "lodash-es";
 import { computed } from "vue";
 import clsx from "clsx";
-import { themeClasses, Timestamp } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  Timestamp,
+  Collapsible,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";

@@ -1,5 +1,5 @@
 <template>
-  <SiCollapsible
+  <Collapsible
     as="div"
     :class="
       clsx(
@@ -121,7 +121,7 @@
         </div>
       </div>
     </template>
-  </SiCollapsible>
+  </Collapsible>
 </template>
 
 <script setup lang="ts">
@@ -136,6 +136,7 @@ import {
 } from "vue";
 import clsx from "clsx";
 import {
+  Collapsible,
   Timestamp,
   themeClasses,
   VormInput,
@@ -143,7 +144,6 @@ import {
   IconNames,
 } from "@si/vue-lib/design-system";
 import { Recommendation } from "@/store/fixes.store";
-import SiCollapsible from "./SiCollapsible.vue";
 
 const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },

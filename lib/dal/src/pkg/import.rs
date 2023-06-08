@@ -56,7 +56,8 @@ pub async fn import_pkg_from_pkg(
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
     }
 
-    let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
+    let installed_pkg =
+        InstalledPkg::new(ctx, pkg.metadata()?.name(), pkg.hash()?.to_string()).await?;
 
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {

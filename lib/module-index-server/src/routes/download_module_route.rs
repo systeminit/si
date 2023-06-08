@@ -12,7 +12,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    extract::{DbConnection, ExtractedS3Bucket},
+    extract::{Authorization, DbConnection, ExtractedS3Bucket},
     models::si_module::{self, ModuleId},
 };
 
@@ -45,7 +45,7 @@ impl IntoResponse for DownloadModuleError {
 
 pub async fn download_module_route(
     Path(module_id): Path<ModuleId>,
-    // Authorization(claim): Authorization,
+    Authorization(claim): Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
 ) -> Result<Redirect, DownloadModuleError> {

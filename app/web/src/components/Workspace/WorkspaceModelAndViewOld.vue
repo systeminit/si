@@ -96,7 +96,7 @@
   </SiPanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
-    <Stack space="sm">
+    <Stack spacing="sm">
       <p>
         {{ actionBlockedModalText }}
       </p>
@@ -108,7 +108,7 @@
   </Modal>
 
   <Modal ref="confirmDeleteModalRef" title="Are you sure?">
-    <Stack space="sm">
+    <Stack spacing="sm">
       <template v-if="selectedEdge">
         <p>You're about to delete the following edge:</p>
         <EdgeCard :edge-id="selectedEdge.id" />

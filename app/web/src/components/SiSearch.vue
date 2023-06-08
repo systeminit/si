@@ -31,11 +31,9 @@ import { ref, watch } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 
-// TODO: we may want to swap this over to vmodel instead, but we'll see
-const searchString = ref("");
-
 const emit = defineEmits<{
   (e: "search", searchTerm: string): void;
+  (e: "update:modelValue", newValue: string): void;
 }>();
 
 const props = defineProps({
@@ -44,13 +42,24 @@ const props = defineProps({
   autoSearch: { type: Boolean },
 });
 
+const searchString = ref(props.modelValue) || "";
+watch(
+  () => props.modelValue,
+  () => {
+    searchString.value = props.modelValue;
+  },
+);
+
 function triggerSearch() {
-  emit("search", searchString.value);
+  emit("search", searchString.value || "");
 }
 
 // if autoSearch prop is true, we'll trigger the search event as the user types (debounced)
 // rather than only when they click the search icon
-watch(() => searchString.value, _.debounce(triggerAutoSearch, 50));
+watch(searchString, () => {
+  emit("update:modelValue", searchString.value || "");
+  _.debounce(triggerAutoSearch, 50);
+});
 
 function triggerAutoSearch() {
   if (props.autoSearch) triggerSearch();

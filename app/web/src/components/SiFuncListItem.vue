@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useFuncStore, FuncSummary, FuncId } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";

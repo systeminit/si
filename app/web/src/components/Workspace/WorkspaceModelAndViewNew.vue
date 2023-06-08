@@ -67,7 +67,7 @@
     :min-size="300"
   >
     <div class="flex flex-col h-full">
-      <SiCollapsible
+      <Collapsible
         as="div"
         content-as="span"
         :default-open="false"
@@ -108,7 +108,7 @@
               tracking-slug="recommendations_applied"
             >
               <TabGroupItem label="Proposed" slug="recommendations_proposed">
-                <SiCollapsible
+                <Collapsible
                   as="div"
                   content-as="ul"
                   :default-open="false"
@@ -137,9 +137,9 @@
                       }}
                     </div>
                   </template>
-                </SiCollapsible>
+                </Collapsible>
 
-                <SiCollapsible
+                <Collapsible
                   v-for="diff in diffs"
                   :key="diff.componentId"
                   as="div"
@@ -183,7 +183,7 @@
                       }}
                     </div>
                   </template>
-                </SiCollapsible>
+                </Collapsible>
 
                 <li
                   v-for="recommendation in fixesStore.recommendations"
@@ -224,7 +224,7 @@
             />
           </div>
         </template>
-      </SiCollapsible>
+      </Collapsible>
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
       <div class="flex flex-col flex-grow">
@@ -269,7 +269,7 @@
   </SiPanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
-    <Stack space="sm">
+    <Stack spacing="sm">
       <p>
         {{ actionBlockedModalText }}
       </p>
@@ -281,7 +281,7 @@
   </Modal>
 
   <Modal ref="confirmDeleteModalRef" title="Are you sure?">
-    <Stack space="sm">
+    <Stack spacing="sm">
       <template v-if="selectedEdge">
         <p>You're about to delete the following edge:</p>
         <EdgeCard :edge-id="selectedEdge.id" />
@@ -326,6 +326,7 @@ import { computed, ref, watch } from "vue";
 import plur from "plur";
 import clsx from "clsx";
 import {
+  Collapsible,
   VButton,
   Modal,
   Stack,
@@ -337,7 +338,6 @@ import {
 import { storeToRefs } from "pinia";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import {
   ComponentId,
   EdgeId,

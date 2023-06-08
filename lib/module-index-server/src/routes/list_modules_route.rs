@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
 
-use crate::{extract::DbConnection, models::si_module};
+use crate::{
+    extract::{Authorization, DbConnection},
+    models::si_module,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -40,7 +43,7 @@ pub struct ListModulesRequest {
 }
 
 pub async fn list_module_route(
-    // Authorization(claim): Authorization,
+    Authorization(claim): Authorization,
     DbConnection(txn): DbConnection,
     Query(request): Query<ListModulesRequest>,
 ) -> Result<Json<Value>, ListModulesError> {

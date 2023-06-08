@@ -1,4 +1,4 @@
-import Axios from "axios";
+import Axios, { AxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 
@@ -20,8 +20,7 @@ export const sdfApiInstance = Axios.create({
   baseURL: API_HTTP_URL,
 });
 
-// add axios interceptors to add auth headers, handle logout errors, etc...
-sdfApiInstance.interceptors.request.use((config) => {
+function injectBearerTokenAuth(config: AxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   const workspacesStore = useWorkspacesStore();
@@ -37,7 +36,9 @@ sdfApiInstance.interceptors.request.use((config) => {
     config.headers.WorkspacePk = workspacesStore.selectedWorkspacePk;
   }
   return config;
-});
+}
+
+sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
 export const authApiInstance = Axios.create({
   headers: {
@@ -52,5 +53,5 @@ export const moduleIndexApiInstance = Axios.create({
     "Content-Type": "application/json",
   },
   baseURL: import.meta.env.VITE_MODULE_INDEX_API_URL,
-  // TODO: wont have a cookie here, so might want to use the same signed token used for sdf?
 });
+moduleIndexApiInstance.interceptors.request.use(injectBearerTokenAuth);
