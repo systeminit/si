@@ -11,7 +11,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    extract::DbConnection,
+    extract::{Authorization, DbConnection},
     models::si_module::{self, ModuleId},
 };
 
@@ -48,7 +48,7 @@ pub struct GetModuleDetailsRequest {
 
 pub async fn get_module_details_route(
     Path(module_id): Path<ModuleId>,
-    // Authorization(claim): Authorization,
+    Authorization(claim): Authorization,
     DbConnection(txn): DbConnection,
     Query(request): Query<GetModuleDetailsRequest>,
 ) -> Result<Json<Value>, GetModuleDetailsError> {

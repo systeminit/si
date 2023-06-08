@@ -77,7 +77,7 @@ import {
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import { useModuleStore, PkgExportRequest } from "../store/module.store";
+import { useModuleStore, PkgExportRequest } from "@/store/module.store";
 
 const moduleStore = useModuleStore();
 const componentStore = useComponentsStore();
@@ -135,7 +135,7 @@ const exportPkg = async () => {
   });
   if (result.result.success) {
     close();
-    await moduleStore.LOAD_MODULES();
+    await moduleStore.LOAD_LOCAL_MODULES();
   }
 };
 </script>

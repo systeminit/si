@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { PropType } from "vue";
-import { useRoute } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";

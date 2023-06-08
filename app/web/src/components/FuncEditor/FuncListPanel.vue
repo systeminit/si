@@ -33,7 +33,7 @@
       </template>
 
       <ul class="overflow-y-auto min-h-[200px]">
-        <SiCollapsible
+        <Collapsible
           v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
           :key="variant"
           as="li"
@@ -56,7 +56,7 @@
               />
             </li>
           </template>
-        </SiCollapsible>
+        </Collapsible>
       </ul>
     </ScrollArea>
   </div>
@@ -67,11 +67,11 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
 import {
+  Collapsible,
   RequestStatusMessage,
   ScrollArea,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";

@@ -1,5 +1,5 @@
 <template>
-  <SiCollapsible
+  <Collapsible
     as="div"
     content-as="ul"
     :default-open="false"
@@ -98,16 +98,19 @@
         </div>
       </div>
     </template>
-  </SiCollapsible>
+  </Collapsible>
 </template>
 
 <script setup lang="ts">
 import { computed, PropType } from "vue";
 import clsx from "clsx";
-import { Timestamp, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Collapsible,
+  Timestamp,
+  themeClasses,
+} from "@si/vue-lib/design-system";
 import { Switch } from "@headlessui/vue";
 import { Recommendation } from "@/store/fixes.store";
-import SiCollapsible from "./SiCollapsible.vue";
 
 const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },

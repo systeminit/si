@@ -14,7 +14,7 @@
     </div>
     <div v-else>
       <SiSearch auto-search class="border-b-0" />
-      <SiCollapsible
+      <Collapsible
         v-for="(fixBatch, batch_index) of fixBatches"
         :key="batch_index"
         hide-bottom-border
@@ -89,7 +89,7 @@
           </div>
 
           <ul class="pl-5 mt-2">
-            <SiCollapsible
+            <Collapsible
               v-for="(fix, fix_index) of fixBatch.fixes"
               :key="fix_index"
               hide-bottom-border
@@ -168,10 +168,10 @@
                   </template>
                 </div>
               </template>
-            </SiCollapsible>
+            </Collapsible>
           </ul>
         </template>
-      </SiCollapsible>
+      </Collapsible>
     </div>
   </span>
 </template>
@@ -180,9 +180,12 @@
 import * as _ from "lodash-es";
 import { computed } from "vue";
 import clsx from "clsx";
-import { themeClasses, Timestamp } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  Timestamp,
+  Collapsible,
+} from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";

@@ -79,7 +79,7 @@ const routes: RouteRecordRaw[] = [
             name: "workspace-lab-assets",
             props: true,
             component: () =>
-                import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
+              import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
           },
           {
             path: "f/:funcId?",
@@ -88,7 +88,7 @@ const routes: RouteRecordRaw[] = [
               import("@/components/Workspace/WorkspaceCustomizeFunctions.vue"),
           },
           {
-            path: "m/:packageSlug?",
+            path: "m/:moduleSlug?",
             name: "workspace-lab-packages",
             component: () =>
               import("@/components/Workspace/WorkspaceCustomizePackages.vue"),

@@ -156,6 +156,7 @@ import {
   themeClasses,
   ScrollArea,
 } from "@si/vue-lib/design-system";
+import { RouterLink } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import { useStatusStore } from "@/store/status.store";

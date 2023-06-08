@@ -43,6 +43,7 @@
 <script lang="ts" setup>
 import { VButton } from "@si/vue-lib/design-system";
 import { ref, onBeforeUnmount } from "vue";
+import { RouterLink } from "vue-router";
 import { useComponentsStore } from "@/store/components.store";
 
 const componentsStore = useComponentsStore();

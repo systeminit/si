@@ -56,7 +56,7 @@
             </Stack>
           </template>
 
-          <SiCollapsible label="Attributes" default-open>
+          <Collapsible label="Attributes" default-open>
             <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this function a Name, Entrypoint and brief description
@@ -91,7 +91,7 @@
                 @blur="updateFunc"
               />
             </div>
-          </SiCollapsible>
+          </Collapsible>
           <ActionDetails
             v-if="
               editingFunc.associations &&
@@ -133,7 +133,7 @@
             @change="updateFunc"
           />
 
-          <SiCollapsible
+          <Collapsible
             v-if="editingFunc.variant === FuncVariant.Attribute"
             label="Arguments"
             default-open
@@ -146,7 +146,7 @@
               v-model="editingFunc.associations"
               @change="updateFunc"
             />
-          </SiCollapsible>
+          </Collapsible>
         </ScrollArea>
       </TabGroupItem>
 
@@ -179,6 +179,7 @@ import * as _ from "lodash-es";
 import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
+  Collapsible,
   VButton,
   TabGroup,
   TabGroupItem,
@@ -188,7 +189,6 @@ import {
   ErrorMessage,
   ScrollArea,
 } from "@si/vue-lib/design-system";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
