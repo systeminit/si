@@ -76,7 +76,6 @@ import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 // import ExternalLink rom "~icons/heroicons/arrow-top-right-on-square-20-solid";
 
 import EmptyIcon from "./custom-icons/empty-icon.svg?raw";
-import Pipe from "./custom-icons/pipe.svg?raw";
 
 // octicons (from github) available as no suffix, -16, -24
 import GitBranch from "~icons/octicon/git-branch-24";
@@ -155,7 +154,6 @@ export const ICONS = Object.freeze({
   moon: Moon,
   multiselect: Boxes,
   none: EmptyIcon,
-  pipe: Pipe,
   play: Play,
   "play-circle": PlayCircle,
   plug: Plug,
