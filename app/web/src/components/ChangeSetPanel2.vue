@@ -3,19 +3,25 @@
     <div class="flex flex-col gap-1">
       <div class="text-xs font-medium capsize">CHANGE SET:</div>
 
-      <VormInput
-        class="flex-grow font-bold"
-        size="sm"
-        type="dropdown"
-        no-label
-        :model-value="selectedChangeSetId"
-        :options="changeSetDropdownOptions"
-        @update:model-value="onSelectChangeSet"
-      >
-        <VormInputOption value="NEW">
-          - Create new change set -
-        </VormInputOption>
-      </VormInput>
+      <div class="flex-grow flex gap-2.5">
+        <VormInput
+          class="flex-grow font-bold"
+          size="sm"
+          type="dropdown"
+          no-label
+          :model-value="selectedChangeSetId"
+          :options="changeSetDropdownOptions"
+          @update:model-value="onSelectChangeSet"
+        />
+
+        <VButton
+          tone="action"
+          variant="ghost"
+          icon="git-branch"
+          size="sm"
+          @click="openCreateModal"
+        />
+      </div>
     </div>
 
     <Modal ref="createModalRef" title="Create Change Set">
@@ -141,10 +147,8 @@ const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-function onSelectChangeSet(newVal: string | "NEW") {
-  if (newVal === "NEW") {
-    openCreateModal();
-  } else if (newVal && route.name) {
+function onSelectChangeSet(newVal: string) {
+  if (newVal && route.name) {
     if (newVal === nilId()) newVal = "head";
     router.push({
       name: route.name,

@@ -900,7 +900,7 @@ const refreshResourceForSelectedComponent = () => {
   }
 };
 
-const SUB_PANEL_DEFAULT_HEIGHT = 350;
+const SUB_PANEL_DEFAULT_HEIGHT = 450;
 const SUB_PANEL_MIN_HEIGHT = 150;
 
 // TODO: Move panels to their own components after they stabilize a bit

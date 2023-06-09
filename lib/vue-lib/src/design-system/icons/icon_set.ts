@@ -77,8 +77,9 @@ import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 
 import EmptyIcon from "./custom-icons/empty-icon.svg?raw";
 
+import GitBranch from "~icons/mdi/source-branch-plus";
+
 // octicons (from github) available as no suffix, -16, -24
-import GitBranch from "~icons/octicon/git-branch-24";
 import GitCommit from "~icons/octicon/git-commit-24";
 import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
