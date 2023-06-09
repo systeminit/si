@@ -86,7 +86,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { onMounted, computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -98,7 +98,8 @@ import {
   Modal,
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
-import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
+import { nilId } from "@/utils/nilId";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
@@ -110,22 +111,45 @@ const selectedChangeSetName = computed(
   () => changeSetsStore.selectedChangeSet?.name,
 );
 
-const changeSetDropdownOptions = computed(() =>
-  _.map(openChangeSets.value ?? [], (cs) => ({ value: cs.id, label: cs.name })),
-);
+const changeSetDropdownOptions = computed(() => {
+  const cs: { value: string; label: string }[] = _.map(
+    openChangeSets.value ?? [],
+    (cs) => ({ value: cs.id, label: cs.name }),
+  );
+  cs.unshift({ value: nilId(), label: "head" });
+  return cs;
+});
 
 const router = useRouter();
 const route = useRoute();
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 
+const changeSetsReqStatus =
+  changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
+
+const checkFirstLoad = () => {
+  if (!changeSetsReqStatus.value.isSuccess || !createModalRef.value) return;
+
+  const isFirstLoad = !window.localStorage.getItem("ran-first-load");
+  window.localStorage.setItem("ran-first-load", "true");
+
+  if (isFirstLoad) {
+    createModalRef.value!.open();
+  }
+};
+
+watch([changeSetsReqStatus], checkFirstLoad);
+onMounted(checkFirstLoad);
+
 // The name for a new change set
-const createChangeSetName = ref("");
+const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
 function onSelectChangeSet(newVal: string) {
   if (newVal && route.name) {
+    if (newVal === nilId()) newVal = "head";
     router.push({
       name: route.name,
       params: {
@@ -142,6 +166,8 @@ async function onCreateChangeSet() {
   const createReq = await changeSetsStore.CREATE_CHANGE_SET(
     createChangeSetName.value,
   );
+  createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
+
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
     onSelectChangeSet(createReq.result.data.changeSet.pk);
@@ -158,41 +184,5 @@ const changeSetMergeStatus =
 function openCreateModal() {
   createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
   createModalRef.value?.open();
-}
-
-watch(
-  // have to also watch for the modals existing since they may not exist immediately on mount
-  [openChangeSets, createModalRef, route, selectedChangeSetId],
-  () => {
-    if (!openChangeSets.value) return;
-
-    if (!selectedChangeSetId.value) {
-      tryAutoSelect();
-    }
-  },
-  { immediate: true },
-);
-
-function routeToChangeSet(id: ChangeSetId, replace = false) {
-  // reroutes to a specific changeset but keeps the same route name
-  // so we can go from /auto/some-specific-page -> 1/some-specific-page
-  router[replace ? "replace" : "push"]({
-    name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    params: {
-      ...route.params,
-      changeSetId: id,
-    },
-  });
-}
-
-// gets called on url change when id is "auto", and also when change sets are loaded
-function tryAutoSelect() {
-  const autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
-  if (autoSelectChangeSetId) {
-    routeToChangeSet(autoSelectChangeSetId, true);
-  } else {
-    createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
-    onCreateChangeSet();
-  }
 }
 </script>
