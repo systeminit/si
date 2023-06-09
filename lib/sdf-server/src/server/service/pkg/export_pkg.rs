@@ -1,5 +1,5 @@
 use super::{PkgError, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
@@ -28,6 +28,7 @@ pub struct ExportPkgResponse {
 pub async fn export_pkg(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ExportPkgRequest>,
@@ -63,7 +64,8 @@ pub async fn export_pkg(
     .await?;
 
     info!("Building module-index request");
-    let index_client = module_index_client::IndexClient::new(module_index_url.try_into()?);
+    let index_client =
+        module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let _response = dbg!(
         index_client
             .upload_module(request.name.trim(), request.version.trim(), module_payload)

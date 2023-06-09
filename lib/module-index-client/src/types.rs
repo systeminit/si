@@ -6,6 +6,8 @@ pub mod upload;
 #[derive(Debug, Error)]
 pub enum IndexClientError {
     #[error("Request error: {0}")]
+    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("Upload error: {0}")]
     Upload(String),

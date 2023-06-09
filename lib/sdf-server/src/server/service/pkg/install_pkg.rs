@@ -1,4 +1,5 @@
 use super::PkgResult;
+use crate::server::extract::RawAccessToken;
 use crate::server::tracking::track;
 use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
@@ -29,6 +30,7 @@ pub struct InstallPkgResponse {
 pub async fn install_pkg(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<InstallPkgRequest>,
@@ -40,7 +42,7 @@ pub async fn install_pkg(
         None => return Err(PkgError::ModuleIndexNotConfigured),
     };
 
-    let module_index_client = IndexClient::new(module_index_url.try_into()?);
+    let module_index_client = IndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;

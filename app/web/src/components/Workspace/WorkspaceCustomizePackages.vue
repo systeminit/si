@@ -11,10 +11,10 @@
     </div>
   </SiPanel>
   <div
-    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
+    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
-    <div class="inset-0 p-sm absolute">
-      <ModuleDisplay :key="moduleSlug" :slug="moduleSlug" />
+    <div class="inset-0 p-sm absolute overflow-auto">
+      <ModuleDisplay :key="moduleSlug" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">

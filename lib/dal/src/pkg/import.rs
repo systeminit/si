@@ -56,8 +56,9 @@ pub async fn import_pkg_from_pkg(
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
     }
 
-    let installed_pkg =
-        InstalledPkg::new(ctx, pkg.metadata()?.name(), pkg.hash()?.to_string()).await?;
+    // TODO: store pkg.metadata()?.name() instead of file_name, but we'll need to also store the file name
+    // unless we stop using the .sipkg file completely after install
+    let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
 
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {

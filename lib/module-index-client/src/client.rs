@@ -6,11 +6,15 @@ use crate::{IndexClientResult, UploadResponse};
 #[derive(Debug, Clone)]
 pub struct IndexClient {
     base_url: Url,
+    auth_token: String,
 }
 
 impl IndexClient {
-    pub fn new(base_url: Url) -> Self {
-        Self { base_url }
+    pub fn new(base_url: Url, auth_token: &str) -> Self {
+        Self {
+            base_url,
+            auth_token: auth_token.to_owned(),
+        }
     }
 
     pub async fn upload_module(
@@ -26,8 +30,10 @@ impl IndexClient {
         let upload_response = reqwest::Client::new()
             .post(upload_url)
             .multipart(reqwest::multipart::Form::new().part("module bundle", module_upload_part))
+            .bearer_auth(&self.auth_token)
             .send()
-            .await?;
+            .await?
+            .error_for_status()?;
 
         Ok(upload_response.json::<UploadResponse>().await?)
     }
@@ -35,12 +41,18 @@ impl IndexClient {
     pub async fn download_module(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
         let download_url = dbg!(self
             .base_url
-            .join("modules")?
-            .join(&module_id.to_string())?
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
             .join("download"))?;
-        let response = reqwest::Client::new().get(download_url).send().await?;
+        let response = dbg!(reqwest::Client::new()
+            .get(download_url)
+            .bearer_auth(&self.auth_token))
+        .send()
+        .await?
+        .error_for_status()?;
 
         let bytes = response.bytes().await?;
+        dbg!(&bytes.len());
 
         Ok(bytes.to_vec())
     }
