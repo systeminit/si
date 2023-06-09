@@ -151,7 +151,7 @@
       <v-group
         v-if="node.def.statusIcons?.length"
         :config="{
-          x: halfWidth - node.def.statusIcons.length * 36 + 12,
+          x: halfWidth - node.def.statusIcons.length * 36 + 18,
           y:
             nodeHeaderHeight +
             subtitleTextHeight +
@@ -167,19 +167,20 @@
             :icon="statusIcon.icon"
             :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
             :size="20"
-            :x="i * 36"
+            :x="i * 30"
             :y="0"
             origin="top-left"
           />
 
-          <DiagramIcon
+          <v-line
             v-if="i !== node.def.statusIcons.length - 1"
-            icon="pipe"
-            :color="'#AAA'"
-            :size="20"
-            :x="i * 36 + 18"
-            :y="0"
-            origin="top-left"
+            :config="{
+              points: [i * 36 + 24, 0, i * 36 + 24, 18],
+              stroke: '#777',
+              strokeWidth: 1,
+              listening: false,
+              opacity: 0.7,
+            }"
           />
         </template>
       </v-group>

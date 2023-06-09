@@ -102,7 +102,7 @@
                 :status="confirmationStatus"
                 size="md"
               />
-              <Icon name="pipe" />
+              <div class="bg-neutral-500 w-[1px] h-4 mx-xs" />
               <StatusIndicatorIcon
                 type="qualification"
                 :status="qualificationStatus"
