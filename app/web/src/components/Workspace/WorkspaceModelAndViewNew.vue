@@ -10,6 +10,7 @@
       </div>
 
       <SiPanelResizer
+        v-if="!isViewMode"
         panel-side="bottom"
         :style="{ top: `${topLeftPanel.height}px` }"
         class="w-full"
@@ -80,7 +81,6 @@
         class="relative flex-shrink-0"
       >
         <TabGroup
-          ref="proposedRightTabGroupRef"
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
         >
@@ -89,10 +89,7 @@
             label="Proposed"
             slug="recommendations_proposed"
           >
-            <ApplyChangeSetButton
-              :recommendations="recommendationsToExecute"
-              @applied-change-set="appliedRecommendations"
-            />
+            <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
             <SiCollapsible
               as="div"
               content-as="ul"
@@ -106,14 +103,16 @@
                   </span>
 
                   <span class="truncate flex flex-row text-neutral-400">
-                    {{ changeSetStore.selectedChangeSet?.name }}
+                    {{
+                      isHead ? "head" : changeSetStore.selectedChangeSet?.name
+                    }}
                   </span>
                 </div>
               </template>
 
               <template #default>
                 <div class="px-5 text-neutral-400">
-                  {{ changeSetStore.selectedChangeSet?.name }}
+                  {{ isHead ? "head" : changeSetStore.selectedChangeSet?.name }}
                 </div>
               </template>
             </SiCollapsible>
@@ -300,7 +299,6 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 import plur from "plur";
 import clsx from "clsx";
 import {
@@ -374,11 +372,6 @@ const diffs = computed(() => {
   return arr;
 });
 
-const proposedRightTabGroupRef = ref<InstanceType<typeof TabGroup>>();
-const appliedRecommendations = () => {
-  proposedRightTabGroupRef.value?.selectTab("recommendations_applied");
-};
-
 const recommendationSelection = ref<Record<string, boolean>>({});
 const recommendationsToExecute = computed(() => {
   return fixesStore.recommendations.filter((recommendation) => {
@@ -403,9 +396,7 @@ watch(recommendations, (r) => {
 
 // TODO: we'll very likely split view mode from compose mode again, so this is just temporary
 // but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
-const isHead = computed(() =>
-  [null, nilId()].includes(changeSetStore.selectedChangeSetId),
-);
+const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
 const isViewMode = computed(
   (_) =>
     isHead.value ||
@@ -925,7 +916,7 @@ const topLeftPanel = defaultSizer(
 </script>
 
 <style lang="less" scoped>
-.half {
-  flex: 0%;
+li {
+  list-style-type: none;
 }
 </style>

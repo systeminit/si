@@ -141,7 +141,6 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 

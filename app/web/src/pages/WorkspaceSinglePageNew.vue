@@ -39,7 +39,7 @@
       </template>
 
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
-      <template v-else-if="changeSetsStore.selectedChangeSet">
+      <template v-else>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="changeSetId" />
         </div>
@@ -54,8 +54,9 @@ import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
-import { useChangeSetsStore, changeSetIdNil } from "@/store/change_sets.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { nilId } from "@/utils/nilId";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar2.vue";
 import StatusBar from "@/components/StatusBar.vue";
@@ -83,27 +84,43 @@ const changeSetsReqStatus =
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
 
 function handleUrlChange() {
+  if (!route.name || !changeSetsReqStatus.value.isSuccess) return;
+
   const changeSetId = route.params.changeSetId as string | undefined;
-  // if "auto", we do our best to autoselect, and show a selection screen otherwise
-  if (changeSetId === "auto") {
-    changeSetsStore.selectedChangeSetId = null;
-    // if undefined, that means the route has no changeSetId param, so we select "head"
-  } else if (changeSetId === undefined) {
-    changeSetsStore.selectedChangeSetId = changeSetIdNil();
-  } else {
+  if ([undefined, "null", "undefined", "auto"].includes(changeSetId ?? "")) {
+    const pk = changeSetsStore.getAutoSelectedChangeSetId();
+    router.replace({
+      name: route.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      params: {
+        ...route.params,
+        changeSetId: pk === false ? "head" : pk,
+      },
+    });
+    return;
+  }
+
+  if ([nilId(), "head"].includes(changeSetId ?? "")) {
+    changeSetsStore.selectedChangeSetId = nilId();
+  } else if (changeSetId) {
     changeSetsStore.selectedChangeSetId = changeSetId;
   }
 
+  window.localStorage.setItem(
+    "tab_group_proposed_right",
+    "recommendations_proposed",
+  );
+
   if (
-    changeSetsReqStatus.value.isSuccess &&
-    !changeSetsStore.selectedChangeSet &&
-    changeSetsStore.selectedChangeSetId
+    !changeSetId ||
+    (changeSetsReqStatus.value.isSuccess &&
+      !changeSetsStore.selectedChangeSet &&
+      changeSetsStore.selectedChangeSetId)
   ) {
     router.replace({
-      name: route.name!, // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      name: route.name,
       params: {
         ...route.params,
-        changeSetId: "auto",
+        changeSetId: "head",
       },
     });
   }
