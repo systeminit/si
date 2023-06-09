@@ -24,7 +24,6 @@
     </div>
     <div v-else-if="loadLocalModulesReqStatus.isSuccess">
       <template v-if="localSummary">
-        installed locally
         <template v-if="localDetails">
           <div
             class="text-sm italic pb-sm flex flex-row flex-wrap gap-x-8 gap-y-1 flex-none"
@@ -42,6 +41,11 @@
               >{{ localDetails.createdBy }}
             </div>
           </div>
+
+          <ErrorMessage v-if="!remoteSummary" tone="warning" class="mb-sm">
+            Module only exists locally
+          </ErrorMessage>
+
           <div
             class="border dark:border-neutral-600 rounded flex flex-col gap-sm overflow-auto"
           >
@@ -92,12 +96,43 @@
           </div>
         </template>
       </template>
-      <template v-else> Module NOT installed locally </template>
+
+      <!-- this else means the module does not exist locally -->
+      <template v-else>
+        <!-- deal with showing an error message if name is totally bogus -->
+        <template v-if="loadRemoteModulesReqStatus.isSuccess && !remoteSummary">
+          <ErrorMessage
+            >Could not find any module with name {{ moduleSlug }}</ErrorMessage
+          >
+        </template>
+        <template v-else-if="remoteSummary">
+          <Stack class="mt-md">
+            <Inline spacing="lg">
+              <VormInput type="container" label="Owner/Creator">
+                {{ remoteSummary.ownerDisplayName }}
+              </VormInput>
+              <VormInput type="container" label="Created Date">
+                <Timestamp :date="remoteSummary.createdAt" />
+              </VormInput>
+            </Inline>
+            <p class="text-lg">{{ remoteSummary.description }}</p>
+
+            <ErrorMessage tone="warning">
+              Module is not currently installed locally
+            </ErrorMessage>
+
+            <ErrorMessage :request-status="installReqStatus" />
+            <VButton
+              :request-status="installReqStatus"
+              @click="installButtonHandler"
+              >Install this module</VButton
+            >
+          </Stack>
+        </template>
+      </template>
     </div>
 
-    <hr />
-
-    <div
+    <!-- <div
       v-if="
         loadRemoteModulesReqStatus.isPending ||
         !loadRemoteModulesReqStatus.isRequested
@@ -111,7 +146,7 @@
     <div v-else-if="loadRemoteModulesReqStatus.isSuccess">
       <template v-if="remoteSummary">Module exists on remote! </template>
       <template v-else> Module NOT on index</template>
-    </div>
+    </div> -->
   </div>
 </template>
 
@@ -122,6 +157,11 @@ import {
   RequestStatusMessage,
   Timestamp,
   ErrorMessage,
+  VormInput,
+  Tiles,
+  Inline,
+  Stack,
+  VButton,
 } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
 
@@ -138,6 +178,9 @@ const localDetailsReq = moduleStore.getRequestStatus(
 const remoteDetailsReq = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_DETAILS",
 );
+const installReqStatus = moduleStore.getRequestStatus("INSTALL_REMOTE_MODULE");
+
+const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
 const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
 const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
@@ -147,8 +190,24 @@ const remoteSummary = computed(
 );
 const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
 
+// since the URL is based on the name, but we need the hash to fetch the module details
+// we have to wait until we have the local info loaded
+watch(
+  localSummary,
+  () => {
+    if (localSummary.value) {
+      moduleStore.GET_LOCAL_MODULE_DETAILS(localSummary.value?.hash);
+    }
+  },
+  { immediate: true },
+);
+
 onBeforeMount(() => {
   if (!moduleStore.urlSelectedModuleSlug) return; // can't happen, but makes TS happy
-  moduleStore.GET_LOCAL_MODULE_DETAILS(moduleStore.urlSelectedModuleSlug);
 });
+
+async function installButtonHandler() {
+  if (!remoteSummary.value) return;
+  await moduleStore.INSTALL_REMOTE_MODULE(remoteSummary.value?.id);
+}
 </script>

@@ -11,6 +11,7 @@ import { ModuleIndexApiRequest } from ".";
 
 export type ModuleId = string;
 export type ModuleSlug = string;
+export type ModuleHash = string;
 
 export interface SchemaVariant {
   id: string;
@@ -37,7 +38,7 @@ export interface PkgExportRequest {
 
 export interface LocalModuleSummary {
   name: string;
-  hash: string;
+  hash: ModuleHash;
 }
 export interface LocalModuleDetails {
   name: string;
@@ -47,7 +48,7 @@ export interface LocalModuleDetails {
   createdBy: string;
   schemas: string[];
   funcs: PkgFuncView[];
-  hash: string;
+  hash: ModuleHash;
 }
 
 export type Asset = {
@@ -59,7 +60,13 @@ export type RemoteModuleSummary = {
   id: ModuleId;
   name: string;
   description: string;
+  createdAt: IsoDateString;
+  latestHash: ModuleHash;
+  latestHashCreatedAt: IsoDateString;
+  ownerDisplayName: string;
+  ownerUserId: string; // userid?
 };
+
 export type RemoteModuleDetails = RemoteModuleSummary & { more: string };
 
 export const useModuleStore = () => {
@@ -112,16 +119,28 @@ export const useModuleStore = () => {
             url: "/pkg/list_pkgs",
             params: { ...visibility },
             onSuccess: (response) => {
-              this.localModulesByName = _.keyBy(response.pkgs, (m) => m.name);
+              // TODO: remove this
+              // the backend currently needs the full tar file name
+              // but we want the actual name in the module metadata
+              // easier to strip off temporarily but we'll need to change what the backend is storing
+              const modulesWithNamesFixed = _.map(response.pkgs, (m) => ({
+                ...m,
+                name: m.name.replace(/-\d\d\d\d-\d\d-\d\d\.sipkg/, ""),
+              }));
+
+              this.localModulesByName = _.keyBy(
+                modulesWithNamesFixed,
+                (m) => m.name,
+              );
             },
           });
         },
 
-        async GET_LOCAL_MODULE_DETAILS(slug: ModuleSlug) {
+        async GET_LOCAL_MODULE_DETAILS(hash: ModuleHash) {
           return new ApiRequest<LocalModuleDetails>({
             method: "get",
-            url: "/pkg/get_pkg",
-            params: { name: slug, ...visibility },
+            url: "/pkg/get_module_by_hash",
+            params: { hash, ...visibility },
             onSuccess: (response) => {
               this.localModuleDetailsByName[response.name] = response;
             },
