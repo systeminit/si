@@ -42,21 +42,6 @@ const applyButtonRef = ref();
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET2");
 
-const emit = defineEmits(["applied-change-set"]);
-
-const celebrationEmoji = [
-  "🎉",
-  "🎊",
-  "✨",
-  "🔥",
-  "⚡️",
-  "🥳",
-  "🍻",
-  "🍺",
-  "🥂",
-  "🍾",
-];
-
 let jsConfetti: JSConfetti;
 const confettis = [
   { emojis: ["🎉"] },
@@ -75,34 +60,17 @@ onMounted(() => {
 
 // Applies the current change set
 const applyChangeSet = async () => {
-  await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
-  emit("applied-change-set");
-  await jsConfetti.addConfetti(_.sample(confettis));
-  await tryAutoSelect();
-};
-
-async function tryAutoSelect() {
-  let autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
-  if (!autoSelectChangeSetId) {
-    const createReq = await changeSetsStore.CREATE_CHANGE_SET(
-      changeSetsStore.getGeneratedChangesetName(),
-    );
-    if (createReq.result.success) {
-      autoSelectChangeSetId = createReq.result.data.changeSet.pk;
-    } else {
-      autoSelectChangeSetId = "auto";
-    }
-  }
-
   if (!route.name) return;
+  await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
   router.replace({
     name: route.name,
     params: {
       ...route.params,
-      changeSetId: autoSelectChangeSetId,
+      changeSetId: "head",
     },
   });
-}
+  await jsConfetti.addConfetti(_.sample(confettis));
+};
 
 const statusStore = useStatusStore();
 const statusStoreUpdating = computed(() => {
