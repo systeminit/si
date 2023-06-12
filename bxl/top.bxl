@@ -1,0 +1,5 @@
+load(
+    "@bxl//dependent_targets.bxl",
+    _dependent_targets = "dependent_targets",
+)
+dependent_targets = _dependent_targets

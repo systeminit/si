@@ -1,0 +1,161 @@
+def _dependent_targets_impl(ctx):
+    targets = []
+
+    # Add affected targets if global project files are provided.
+    #
+    # Note: when a global project file is provided, *all* targets are considered affected.
+    if len(ctx.cli_args.global_file) > 0:
+        targets.extend(_dependent_global_file_targets(ctx))
+
+    # Add affected targets for all provided `BUCK` files.
+    #
+    # Note: when a `BUCK` file has been added or modified, all of its targets and associated reverse
+    # dependencies are considered affected.
+    if len(ctx.cli_args.buck_file) > 0:
+        targets.extend(_dependent_buck_file_targets(ctx, ctx.cli_args.buck_file))
+
+    # Add affected targets for all provided prelude files (i.e. `*.bzl` files).
+    #
+    # Note: when a `.bzl` file has been added or modified, all of the `BUCK` files which load this
+    # source and associated reverse dependencies are considered affected.
+    if len(ctx.cli_args.prelude_file) > 0:
+        print("TODO prelude files: {}".format(ctx.cli_args.prelude_file))
+
+    # Add affected targets for all provided deleted files.
+    #
+    # Note: for each deleted file, walk up the directory tree to find the nearest `BUCK` file, and
+    # use each parent `BUCK` file to determine all of its targets and associated reverse
+    # dependencies.
+    if len(ctx.cli_args.deleted_file) > 0:
+        targets.extend(_dependent_deleted_file_targets(ctx))
+
+    # Add affected targets for all provided added or modified files.
+    #
+    # Note: when a source file has been added or modified, all owned targets and associated reverse
+    # dependencies are considered affected.
+    if len(ctx.cli_args.modified_file) > 0:
+        targets.extend(_dependent_modified_file_targets(ctx))
+
+    # Sort targets and reduce to a unique set
+    targets = sorted(map(lambda e: e.label, ctx.uquery().eval(_set_str(targets))))
+
+    # Print each target string, one per line
+    for target in targets:
+        ctx.output.print(target)
+
+dependent_targets = bxl(
+    impl = _dependent_targets_impl,
+    cli_args = {
+        "global_file": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """Source file which impacts the global Buck2 configuration (ex: .buckconfig).""",
+        ),
+        "buck_file": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """A new or modified `BUCK` file.""",
+        ),
+        "prelude_file": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """A new or modified `*.bzl` file in a prelude (ex: prelude/defs.bzl).""",
+        ),
+        "deleted_file": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """A deleted source file underin a BUCK package (ex: lib/foo/src/mod.rs).""",
+        ),
+        "modified_file": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """A modified source file under a BUCK package (ex: lib/foo/src/mod.rs).""",
+        ),
+        "rdeps_universe": cli_args.list(
+            cli_args.string(),
+            default = [
+                "//app/...",
+                "//bin/...",
+                "//lib/...",
+                "//component/...",
+                "//third-party/...",
+            ],
+            doc = """A modified source file under a BUCK package (ex: lib/foo/src/mod.rs).""",
+        ),
+    },
+)
+
+# Computes a list of targets for all targets in the project.
+def _dependent_global_file_targets(ctx: "bxl_ctx") -> [str.type]:
+    query = "root//..."
+    results = ctx.uquery().eval(query)
+
+    return map(lambda e: "{}".format(e.label), results)
+
+# Computes a list of targets for all targets affected by given `BUCK` files.
+def _dependent_buck_file_targets(ctx: "bxl_ctx", buck_files: [str.type]) -> [str.type]:
+    return _rdeps_for_targets(ctx, _buck_files_to_targets(buck_files))
+
+# Computes a list of target strings for all targets affected by given deleted files.
+def _dependent_deleted_file_targets(ctx: "bxl_ctx") -> [str.type]:
+    buck_files = []
+    for deleted_file in ctx.cli_args.deleted_file:
+        buck_file = _find_parent_buck_file(ctx, deleted_file)
+        if buck_file:
+            buck_files.append(buck_file)
+
+    return _dependent_buck_file_targets(ctx, buck_files)
+
+# Computes a list of targets for all targets affected by given modified files.
+def _dependent_modified_file_targets(ctx: "bxl_ctx") -> [str.type]:
+    modified_files = map(
+        lambda e: e if e.startswith("root//") else "root//" + e,
+        filter(lambda e: ctx.fs.is_file(e), ctx.cli_args.modified_file),
+    )
+    query = "owner(%s)"
+    results = ctx.uquery().eval(query, query_args = modified_files)
+
+    target_set = {}
+    for values in results.values():
+        for value in map(lambda e: "{}".format(e.label), values):
+            target_set.update({value: True})
+
+    return _rdeps_for_targets(ctx, target_set.keys())
+
+# Computes a list of targets which are reverse dependencies of given targets within a universe.
+def _rdeps_for_targets(ctx: "bxl_ctx", targets: [str.type]) -> [str.type]:
+    query = "rdeps({}, {})".format(
+        _set_str(ctx.cli_args.rdeps_universe),
+        _set_str(targets),
+    )
+    results = ctx.uquery().eval(query)
+
+    return map(lambda e: "{}".format(e.label), results)
+
+# Returns a file path to the nearest `BUCK` file in parent directories of a given file path.
+def _find_parent_buck_file(ctx: "bxl_ctx", deleted_file: str.type) -> str.type:
+    for i in range(1, len(deleted_file.split("/")), 1):
+        candidate = "{}/{}".format(deleted_file.rsplit("/", i)[0], "BUCK")
+        if ctx.fs.is_file(candidate):
+            return candidate
+
+    candidate = "BUCK"
+    if ctx.fs.is_file(candidate):
+        return candidate
+
+    return ""
+
+# Generates a query `set` expression given a list of targets.
+def _set_str(targets: [str.type]) -> str.type:
+    return "set({})".format(
+        " ".join(
+            map(
+                lambda e: e if e.startswith("'") and e.endswith("'") else "'{}'".format(e),
+                map(lambda e: "root" + e if e.startswith("//") else e, targets)
+            )
+        )
+    )
+
+# Returns a list of target selectors for a given list of `BUCK` files.
+def _buck_files_to_targets(buck_files: [str.type]) -> [str.type]:
+    return map(lambda e: "//" + e.rstrip("/BUCK") + ":", buck_files)

@@ -1,5 +1,6 @@
 [repositories]
 root = .
+bxl = bxl
 prelude = prelude
 prelude-si = prelude-si
 toolchains = toolchains

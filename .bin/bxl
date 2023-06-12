@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""
+Executes a Buck2 BXL script.
+"""
+# The original inspiration for this implementation comes from the Buck2 issue
+# tracker, thanks to: https://github.com/facebook/buck2/issues/86
+import argparse
+import os
+import sys
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "script",
+        help="BXL Script",
+    )
+    parser.add_argument(
+        "args",
+        help="Additional script CLI arguments",
+        nargs=argparse.REMAINDER,
+    )
+    args = parser.parse_args()
+
+    script = args.script
+    cmd = ["buck2", "bxl", f"bxl//top.bxl:{script}", "--"] + args.args
+    os.execvp(cmd[0], cmd)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
