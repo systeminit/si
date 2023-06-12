@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
+import VueSafeTeleport from "vue-safe-teleport";
 
 import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
@@ -23,5 +24,7 @@ app.use(FloatingVue, { container: "#app-layout" });
 // unfortunately, vue-konva only works as a global plugin, so we must register it here
 // TODO: fork the lib and set it up so we can import individual components
 app.use(VueKonva);
+
+app.use(VueSafeTeleport);
 
 app.mount("#app");
