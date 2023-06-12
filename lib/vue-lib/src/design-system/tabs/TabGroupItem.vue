@@ -6,9 +6,9 @@
 
   <!-- if tab is selected, teleport default slot into the main tab content area -->
   <template v-if="slug === menuCtx.selectedTabSlug.value">
-    <Teleport :to="`#${menuCtx.teleportId}`">
+    <SafeTeleport :to="`#${menuCtx.teleportId}`">
       <slot />
-    </Teleport>
+    </SafeTeleport>
   </template>
 </template>
 
@@ -18,7 +18,7 @@ import { useTabGroupContext } from "./TabGroup.vue";
 import type { Slot } from "vue";
 
 export type TabGroupItemDefinition = {
-  props: { slug: string; label: string };
+  props: { slug: string; label: string; uncloseable: boolean };
   slots: {
     default?: Slot;
     label?: Slot;
@@ -29,6 +29,7 @@ export type TabGroupItemDefinition = {
 
 const props = defineProps({
   label: { type: String },
+  uncloseable: { type: Boolean, default: false },
   slug: { type: String, default: () => `tab-group-${idCounter++}` },
 });
 

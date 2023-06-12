@@ -17,7 +17,10 @@
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <FuncDetails :key="funcStore.urlSelectedFuncId" />
+    <FuncDetails
+      :key="funcStore.urlSelectedFuncId"
+      :func-id="funcStore.urlSelectedFuncId"
+    />
   </SiPanel>
 </template>
 

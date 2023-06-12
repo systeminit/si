@@ -7,7 +7,7 @@
     />
     <div v-else-if="assetStore.selectedAsset && assetId" class="flex flex-col">
       <div
-        class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-end gap-2"
+        class="p-sm border-b dark:border-neutral-600 flex flex-row items-center gap-2"
       >
         <VButton
           label="Create Asset"

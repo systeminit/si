@@ -5,7 +5,8 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { FuncSummary } from "./func/funcs.store";
+import { useFuncStore, FuncSummary, FuncId } from "./func/funcs.store";
+import { useRouterStore } from "./router.store";
 
 export type AssetId = string;
 export type AssetSlug = string;
@@ -38,6 +39,8 @@ export interface VariantDef extends ListedVariantDef {
   variantExists: boolean;
 }
 
+const funcStore = useFuncStore();
+
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
 export type AssetSaveRequest = Visibility &
@@ -62,15 +65,26 @@ export const useAssetStore = () => {
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
-        assetList: [] as ListedVariantDef[],
+        assetList: [] as AssetListEntry[],
         assetsById: {} as Record<AssetId, Asset>,
         selectedAssetId: null as AssetId | null,
+        openAssetFuncIds: {} as { [key: AssetId]: FuncId[] },
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
         selectedAsset(): Asset | undefined {
           return this.assetsById[this.selectedAssetId || 0];
         },
+        urlSelectedAssetId(): AssetId | undefined {
+          const route = useRouterStore().currentRoute;
+          return route?.params?.assetId as AssetId | undefined;
+        },
+        urlSelectedFuncId(): FuncId | undefined {
+          const route = useRouterStore().currentRoute;
+          return route?.params?.funcId as FuncId | undefined;
+        },
+        assetListEntryById: (state) => (assetId: AssetId) =>
+          state.assetList.find((asset) => asset.id === assetId),
       },
       actions: {
         setSelectedAssetId(selection: AssetId | null) {
@@ -81,6 +95,30 @@ export const useAssetStore = () => {
               this.selectedAssetId = selection;
             }
           }
+        },
+
+        async SELECT_FUNC(assetId: AssetId, funcId: FuncId) {
+          if (!funcStore.funcsById[funcId]) {
+            await funcStore.FETCH_FUNC_DETAILS(funcId);
+          }
+
+          this.openFunc(assetId, funcId);
+        },
+
+        openFunc(assetId: AssetId, funcId: FuncId) {
+          const funcs = this.openAssetFuncIds[assetId] ?? [];
+          if (!funcs.includes(funcId)) {
+            funcs.push(funcId);
+          }
+
+          this.openAssetFuncIds[assetId] = funcs;
+        },
+
+        closeFunc(assetId: AssetId, funcId: FuncId) {
+          const funcs = this.openAssetFuncIds[assetId] ?? [];
+          this.openAssetFuncIds[assetId] = funcs.filter(
+            (fId) => fId !== funcId,
+          );
         },
 
         async SELECT_ASSET(selection: AssetId | null) {
@@ -163,6 +201,7 @@ export const useAssetStore = () => {
             AssetCloneRequest
           >({
             method: "post",
+            keyRequestStatusBy: assetId,
             url: "/variant_def/clone_variant_def",
             params: {
               ...visibility,
@@ -175,6 +214,7 @@ export const useAssetStore = () => {
           this.assetsById[asset.id] = asset;
           return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
             method: "post",
+            keyRequestStatusBy: asset.id,
             url: "/variant_def/save_variant_def",
             params: {
               ...visibility,
@@ -186,6 +226,7 @@ export const useAssetStore = () => {
         async LOAD_ASSET(assetId: AssetId) {
           return new ApiRequest<Asset, Visibility & { id: AssetId }>({
             url: "/variant_def/get_variant_def",
+            keyRequestStatusBy: assetId,
             params: { id: assetId, ...visibility },
             onSuccess: (response) => {
               this.assetsById[response.id] = response;

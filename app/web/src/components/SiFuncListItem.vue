@@ -7,7 +7,7 @@
         : ''
     "
     :to="{
-      name: 'workspace-lab-functions',
+      name: context,
       params: { ...route.params, funcId: func.id },
     }"
     @click="trackFunctionSelected()"
@@ -24,17 +24,18 @@
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
-import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
+import { useFuncStore, FuncSummary, FuncId } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";
 import SiChip from "./SiChip.vue";
 
-const props = defineProps({
-  color: { type: String },
-  func: { type: Object as PropType<FuncSummary>, required: true },
-});
+const props = defineProps<{
+  color?: string;
+  func: FuncSummary;
+  context: string;
+  selectedFuncId?: FuncId;
+}>();
 
 const route = useRoute();
 const funcStore = useFuncStore();

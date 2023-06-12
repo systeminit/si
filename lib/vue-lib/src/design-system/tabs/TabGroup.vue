@@ -58,7 +58,7 @@
             </template>
             <template v-else>{{ tab.props.label }}</template>
             <button
-              v-if="closeable"
+              v-if="closeable && !tab.props.uncloseable"
               class="inline-block rounded-full text-neutral-400 ml-1"
               :class="
                 clsx(
@@ -108,7 +108,7 @@
       </div>
 
       <!-- the tabgroup item uses a teleport to render its default slot content here if active -->
-      <div :id="teleportId" class="overflow-auto flex-grow relative" />
+      <TeleportTarget :id="teleportId" class="overflow-auto flex-grow relative" />
     </template>
   </div>
 </template>
@@ -119,6 +119,7 @@ type TabGroupContext = {
   registerTab(id: string, component: TabGroupItemDefinition): void;
   unregisterTab(id: string): void;
   selectTab(id?: string): void;
+  tabExists(id?: string): boolean;
   teleportId: string;
 };
 
@@ -208,6 +209,10 @@ function registerTab(slug: string, component: TabGroupItemDefinition) {
       autoSelectTab(true);
     });
   }
+
+  if (pendingTabSlug.value && pendingTabSlug.value === slug) {
+    selectTab(slug);
+  }
 }
 function unregisterTab(slug: string) {
   if (unmounting.value) return;
@@ -229,6 +234,11 @@ function refreshSettingsFromTabs() {
   // currently there are no settings here - any child settings to set on the parent would go here
 }
 
+function tabExists(slug?: string) {
+  return !!(slug && tabs[slug]);
+}
+
+const pendingTabSlug = ref<string | undefined>();
 const lastSelectedTabIndex = ref(0);
 function selectTab(slug?: string) {
   if (unmounting.value) return;
@@ -241,8 +251,16 @@ function selectTab(slug?: string) {
   }
 
   // select the tab
-  if (slug && tabs[slug]) selectedTabSlug.value = slug;
-  else selectedTabSlug.value = undefined;
+  if (slug && tabs[slug]) {
+    selectedTabSlug.value = slug;
+    pendingTabSlug.value = undefined;
+  } else {
+    // If the tab is not yet present, we mark this as the pending tab slug. When
+    // registerTab is called with a matching slug, that tab will be selected.
+    // Any other tab selection clears the pending tab slug
+    selectedTabSlug.value = undefined;
+    pendingTabSlug.value = slug;
+  }
 
   lastSelectedTabIndex.value = _.indexOf(
     orderedTabSlugs.value,
@@ -279,7 +297,7 @@ function selectTab(slug?: string) {
         );
       }
     }
-  }
+  } 
 
   // emit new selected tab to parent in case it needs it, for example to sync the URL
   emit("update:selectedTab", selectedTabSlug.value);
@@ -294,6 +312,7 @@ const rememberLastTabStorageKey = computed(() => {
 });
 
 function autoSelectTab(isInitialSelection = false) {
+  pendingTabSlug.value = undefined;
   if (isNoTabs.value) {
     // can't select anything if there are no tabs
     // selectTab();
@@ -379,9 +398,10 @@ const context = {
   registerTab,
   unregisterTab,
   selectTab,
+  tabExists,
   teleportId,
 };
 provide(TabGroupContextInjectionKey, context);
 
-defineExpose({ selectTab });
+defineExpose({ selectTab, tabExists });
 </script>

@@ -190,7 +190,7 @@ import {
 } from "@si/vue-lib/design-system";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
@@ -199,10 +199,13 @@ import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import ActionDetails from "./ActionDetails.vue";
 
+const props = defineProps<{
+  funcId?: FuncId;
+}>();
+
 const funcStore = useFuncStore();
 
-// NOT REACTIVE - parent has a key so this component rerenders if this changes
-const funcId = funcStore.urlSelectedFuncId;
+const funcId = computed(() => props.funcId);
 
 const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
   "FETCH_FUNC_DETAILS",
@@ -236,18 +239,18 @@ watch(loadFuncDetailsReqStatus, () => {
 });
 
 const isRevertible = computed(() =>
-  funcId ? funcStore.funcDetailsById[funcId]?.isRevertible : false,
+  funcId.value ? funcStore.funcDetailsById[funcId.value]?.isRevertible : false,
 );
 
 const updateFunc = () => {
-  if (!funcId || !editingFunc.value) return;
+  if (!funcId.value || !editingFunc.value) return;
   funcStore.updateFuncMetadata(editingFunc.value);
 };
 
 const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
 const revertFunc = async () => {
-  if (!funcId) return;
-  await funcStore.REVERT_FUNC(funcId);
+  if (!funcId.value) return;
+  await funcStore.REVERT_FUNC(funcId.value);
   resetEditingFunc();
 };
 
@@ -256,7 +259,7 @@ const execFuncReqStatus = funcStore.getRequestStatus(
   funcId,
 );
 const execFunc = () => {
-  if (!funcId) return;
-  funcStore.SAVE_AND_EXEC_FUNC(funcId);
+  if (!funcId.value) return;
+  funcStore.SAVE_AND_EXEC_FUNC(funcId.value);
 };
 </script>
