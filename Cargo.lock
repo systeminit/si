@@ -1069,6 +1069,7 @@ dependencies = [
  "derive_builder",
  "jwt-simple",
  "lazy_static",
+ "module-index-client",
  "names",
  "pinga-server",
  "remain",

@@ -45,6 +45,7 @@ async fn ctx() -> Result<DalContext> {
         veritech,
         encryption_key,
         None,
+        None,
     );
 
     Ok(DalContext::builder(services_context)
