@@ -33,27 +33,32 @@
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
-    <div class="inset-2 bottom-0 absolute w-full h-full">
-      <AssetEditor :asset-id="assetId" />
+    <div class="left-2 right-2 top-2 bottom-2 absolute">
+      <AssetEditorTabs
+        :selected-asset-id="assetId"
+        :selected-func-id="funcId"
+      />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <AssetDetailsPanel :asset-id="assetId" />
+    <AssetDetailsPanel v-if="assetId && !funcId" :asset-id="assetId" />
+    <FuncDetails v-else-if="assetId && funcId" :func-id="funcId" />
   </SiPanel>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { watch } from "vue";
+import { computed, watch } from "vue";
 import { useAssetStore } from "@/store/asset.store";
 import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
-import AssetEditor from "../AssetEditor.vue";
+import AssetEditorTabs from "../AssetEditorTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
+import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
@@ -66,17 +71,20 @@ const topSplitSizer = defaultSizer(
   TOP_SPLIT_MIN_HEIGHT,
 );
 
-const props = defineProps<{
-  assetId?: string;
-  workspacePk: string;
-  changeSetId: string;
-}>();
+const assetId = computed(() => assetStore.urlSelectedAssetId);
+const funcId = computed(() => assetStore.urlSelectedFuncId);
+
+watch([assetId, funcId], () => {
+  if (funcId.value && assetId.value) {
+    assetStore.SELECT_FUNC(assetId.value, funcId.value);
+  }
+});
 
 watch(
-  [() => props.assetId, loadAssetsReqStatus],
+  [assetId, funcId, loadAssetsReqStatus],
   () => {
-    if (loadAssetsReqStatus.value.isSuccess && props.assetId) {
-      assetStore.SELECT_ASSET(props.assetId);
+    if (loadAssetsReqStatus.value.isSuccess && assetId.value && !funcId.value) {
+      assetStore.SELECT_ASSET(assetId.value);
     }
   },
   { immediate: true },

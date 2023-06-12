@@ -8,7 +8,7 @@
     "
     :to="{
       name: 'workspace-lab-assets',
-      params: { ...route.params, assetId: a.id },
+      params: { ...route.params, assetId: a.id, funcId: undefined },
     }"
   >
     <NodeSkeleton :color="`${a.color}`" />

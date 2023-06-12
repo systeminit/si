@@ -49,7 +49,12 @@
           </template>
           <template #default>
             <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
-              <SiFuncListItem :func="func" color="#921ed6" />
+              <SiFuncListItem
+                :func="func"
+                color="#921ed6"
+                context="workspace-lab-functions"
+                :selected-func-id="funcStore.selectedFuncId"
+              />
             </li>
           </template>
         </SiCollapsible>
