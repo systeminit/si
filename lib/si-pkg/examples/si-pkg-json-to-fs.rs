@@ -1,4 +1,4 @@
-use std::{path::Path, env::args};
+use std::{env::args, path::Path};
 use tokio::fs;
 
 use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
@@ -20,7 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(
         Path::new(&dst).join(format!("{}.sipkg", pkg.metadata()?.name())),
         pkg.write_to_bytes()?,
-    ).await?;
+    )
+    .await?;
 
     let schema = pkg.schema_by_name("kuberneteslike")?;
     dbg!(&schema);

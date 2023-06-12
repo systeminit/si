@@ -1,6 +1,9 @@
 use super::PkgResult;
-use crate::{server::extract::{AccessBuilder, HandlerContext, PosthogClient}, service::pkg::PkgError};
 use crate::server::tracking::track;
+use crate::{
+    server::extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::pkg::PkgError,
+};
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
@@ -34,7 +37,7 @@ pub async fn install_pkg(
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
-        None => return Err(PkgError::ModuleIndexNotConfigured)
+        None => return Err(PkgError::ModuleIndexNotConfigured),
     };
 
     let module_index_client = IndexClient::new(module_index_url.try_into()?);
