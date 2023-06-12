@@ -7,9 +7,7 @@ use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
 use module_index_client::UploadResponse;
 use s3::error::S3Error;
-use sea_orm::{
-    ActiveModelTrait, DbErr, Set,
-};
+use sea_orm::{ActiveModelTrait, DbErr, Set};
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
 use telemetry::prelude::*;

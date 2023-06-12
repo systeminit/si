@@ -537,9 +537,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .pkgs_path
             .to_owned()
             .expect("no pkgs path configured"),
-        test_context
-            .config
-            .module_index_url.clone(),
+        test_context.config.module_index_url.clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

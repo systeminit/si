@@ -32,15 +32,13 @@ impl IndexClient {
         Ok(upload_response.json::<UploadResponse>().await?)
     }
 
-    pub async fn download_module(
-        &self,
-        module_id: Ulid,
-    ) -> IndexClientResult<Vec<u8>> {
-        let download_url = dbg!(self.base_url.join("modules")?.join(&module_id.to_string())?.join("download"))?;
-        let response = reqwest::Client::new()
-            .get(download_url)
-            .send()
-            .await?;
+    pub async fn download_module(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
+        let download_url = dbg!(self
+            .base_url
+            .join("modules")?
+            .join(&module_id.to_string())?
+            .join("download"))?;
+        let response = reqwest::Client::new().get(download_url).send().await?;
 
         let bytes = response.bytes().await?;
 

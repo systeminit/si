@@ -1,10 +1,5 @@
 use core::fmt;
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, convert::Infallible, path::Path, sync::Arc};
 
 use chrono::{DateTime, Utc};
 use object_tree::{

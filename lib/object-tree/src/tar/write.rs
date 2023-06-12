@@ -1,7 +1,4 @@
-use std::{
-    num::TryFromIntError,
-    path::PathBuf,
-};
+use std::{num::TryFromIntError, path::PathBuf};
 
 use ::tar::{Builder, Header};
 use petgraph::prelude::*;

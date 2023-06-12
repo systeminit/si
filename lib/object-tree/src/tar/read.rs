@@ -1,19 +1,10 @@
-use std::{
-    collections::HashMap,
-    io::Read,
-    path::PathBuf,
-    str::FromStr,
-    string::FromUtf8Error,
-};
+use std::{collections::HashMap, io::Read, path::PathBuf, str::FromStr, string::FromUtf8Error};
 
 use petgraph::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    graph::{
-        GraphError, HashedNodeWithEntries, NodeWithEntries, ObjectTree,
-        ReadBytes,
-    },
+    graph::{GraphError, HashedNodeWithEntries, NodeWithEntries, ObjectTree, ReadBytes},
     hash::{Hash, HashParseError},
     tar::{object_path, ref_path},
 };

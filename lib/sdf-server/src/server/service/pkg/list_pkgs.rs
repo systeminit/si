@@ -40,8 +40,8 @@ pub async fn list_pkgs(
     let pkgs: Vec<PkgView> = installed_pkgs
         .iter()
         .map(|pkg| PkgView {
-                name: pkg.name().to_owned(),
-                hash: pkg.root_hash().to_string(),
+            name: pkg.name().to_owned(),
+            hash: pkg.root_hash().to_string(),
         })
         .collect();
 
