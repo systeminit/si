@@ -67,7 +67,13 @@ export type RemoteModuleSummary = {
   ownerUserId: string; // userid?
 };
 
-export type RemoteModuleDetails = RemoteModuleSummary & { more: string };
+export type RemoteModuleDetails = RemoteModuleSummary & {
+  metadata?: {
+    schemas: string[];
+    funcs: PkgFuncView[];
+    version: string;
+  };
+};
 
 export const useModuleStore = () => {
   const changeSetsStore = useChangeSetsStore();

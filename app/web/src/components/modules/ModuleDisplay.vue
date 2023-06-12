@@ -24,77 +24,78 @@
     </div>
     <div v-else-if="loadLocalModulesReqStatus.isSuccess">
       <template v-if="localSummary">
-        <template v-if="localDetails">
+        <div
+          class="text-sm italic pb-sm flex flex-row flex-wrap gap-x-8 gap-y-1 flex-none"
+        >
+          <div>
+            <span class="font-bold">Hash:</span>
+            {{ localSummary.hash }}
+          </div>
+          <div>
+            <span class="font-bold">Created At: </span>
+            <Timestamp
+              :date="remoteDetails?.createdAt || localDetails?.createdAt"
+              size="long"
+            />
+          </div>
+          <div>
+            <span class="font-bold">Created By: </span
+            >{{ remoteDetails?.ownerDisplayName || localDetails?.createdBy }}
+          </div>
+        </div>
+
+        <ErrorMessage v-if="!remoteSummary" tone="warning" class="mb-sm">
+          Module only exists locally
+        </ErrorMessage>
+
+        <div
+          class="border dark:border-neutral-600 rounded flex flex-col gap-sm overflow-auto"
+        >
           <div
-            class="text-sm italic pb-sm flex flex-row flex-wrap gap-x-8 gap-y-1 flex-none"
+            class="px-sm py-xs border-b dark:border-neutral-600 font-bold flex-none"
           >
-            <div>
-              <span class="font-bold">Version:</span>
-              {{ localDetails.version }}
-            </div>
-            <div>
-              <span class="font-bold">Created At: </span>
-              <Timestamp :date="localDetails.createdAt" size="long" />
-            </div>
-            <div>
-              <span class="font-bold">Created By: </span
-              >{{ localDetails.createdBy }}
-            </div>
+            Functions
           </div>
 
-          <ErrorMessage v-if="!remoteSummary" tone="warning" class="mb-sm">
-            Module only exists locally
-          </ErrorMessage>
+          <ul class="p-sm overflow-y-auto">
+            <li
+              v-for="func in remoteDetails?.metadata?.funcs ||
+              localDetails?.funcs"
+              :key="func.name"
+              class="flex flex-col"
+            >
+              <div class="flex flex-row items-center">
+                <div>
+                  <i>{{ func.name }}</i>
+                  <span v-if="func.displayName">: {{ func.displayName }}</span>
+                </div>
+              </div>
+              <div class="pl-lg pb-sm">
+                {{ func.description }}
+              </div>
+            </li>
+          </ul>
 
           <div
-            class="border dark:border-neutral-600 rounded flex flex-col gap-sm overflow-auto"
+            class="px-sm py-xs border-b border-t my-xs dark:border-neutral-600 font-bold flex-none"
           >
-            <div
-              class="px-sm py-xs border-b dark:border-neutral-600 font-bold flex-none"
-            >
-              Functions
-            </div>
-
-            <ul class="p-sm overflow-y-auto">
-              <li
-                v-for="func in localDetails.funcs"
-                :key="func.name"
-                class="flex flex-col"
-              >
-                <div class="flex flex-row items-center">
-                  <div>
-                    <i>{{ func.name }}</i>
-                    <span v-if="func.displayName"
-                      >: {{ func.displayName }}</span
-                    >
-                  </div>
-                </div>
-                <div class="pl-lg pb-sm">
-                  {{ func.description }}
-                </div>
-              </li>
-            </ul>
-
-            <div
-              class="px-sm py-xs border-b border-t my-xs dark:border-neutral-600 font-bold flex-none"
-            >
-              Schema Variants
-            </div>
-
-            <ul class="p-sm overflow-y-auto">
-              <li
-                v-for="sv in localDetails.schemas"
-                :key="sv"
-                class="flex flex-col"
-              >
-                <div class="flex flex-row items-center">
-                  <div>{{ sv }}</div>
-                </div>
-                <div class="pl-lg pb-sm">other info goes here</div>
-              </li>
-            </ul>
+            Schema Variants
           </div>
-        </template>
+
+          <ul class="p-sm overflow-y-auto">
+            <li
+              v-for="sv in remoteDetails?.metadata?.schemas ||
+              localDetails?.schemas"
+              :key="sv"
+              class="flex flex-col"
+            >
+              <div class="flex flex-row items-center">
+                <div>{{ sv }}</div>
+              </div>
+              <div class="pl-lg pb-sm">other info goes here</div>
+            </li>
+          </ul>
+        </div>
       </template>
 
       <!-- this else means the module does not exist locally -->
@@ -125,8 +126,9 @@
             <VButton
               :request-status="installReqStatus"
               @click="installButtonHandler"
-              >Install this module</VButton
             >
+              Install this module
+            </VButton>
           </Stack>
         </template>
       </template>
@@ -196,7 +198,17 @@ watch(
   localSummary,
   () => {
     if (localSummary.value) {
-      moduleStore.GET_LOCAL_MODULE_DETAILS(localSummary.value?.hash);
+      moduleStore.GET_LOCAL_MODULE_DETAILS(localSummary.value.hash);
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  remoteSummary,
+  () => {
+    if (remoteSummary.value) {
+      moduleStore.GET_REMOTE_MODULE_DETAILS(remoteSummary.value.id);
     }
   },
   { immediate: true },

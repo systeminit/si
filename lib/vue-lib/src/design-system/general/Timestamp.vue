@@ -12,7 +12,10 @@ import en from "javascript-time-ago/locale/en";
 export type TimestampSize = "mini" | "normal" | "long" | "extended";
 
 const props = defineProps({
-  date: { type: [Date, String], default: new Date() },
+  date: {
+    type: [Date, String] as PropType<string | Date>,
+    default: new Date(),
+  },
   relative: { type: Boolean, default: false },
   showTimeIfToday: { type: Boolean, default: false },
   size: {
