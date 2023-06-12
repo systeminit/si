@@ -10,7 +10,7 @@ use ulid::Ulid;
 #[serde(rename_all = "camelCase")]
 #[sea_orm(table_name = "modules")]
 pub struct Model {
-    #[sea_orm(primary_key, column_type = "custom(\"ident\")")]
+    #[sea_orm(primary_key, column_type = r##"custom("ident")"##)]
     pub id: ModuleId,
     #[sea_orm(column_type = "Text")]
     pub name: String,
@@ -18,6 +18,7 @@ pub struct Model {
     pub description: Option<String>,
     pub owner_user_id: String,
     pub owner_display_name: Option<String>,
+    pub metadata: Json,
     pub latest_hash: String,
     pub latest_hash_created_at: DateTimeWithTimeZone,
     pub created_at: DateTimeWithTimeZone,
@@ -79,7 +80,7 @@ impl sea_orm::TryGetable for ModuleId {
         let json_str: String = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
         Ulid::from_string(&json_str)
             .map_err(|e| TryGetError::DbErr(DbErr::Type(e.to_string())))
-            .map(|val| ModuleId(val))
+            .map(ModuleId)
         // serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
     }
 }
@@ -111,10 +112,10 @@ impl sea_query::ValueType for ModuleId {
     }
 }
 
-impl TryInto<module_index_client::UploadResponse> for Model {
+impl TryInto<module_index_client::ModuleDetailsResponse> for Model {
     type Error = crate::routes::upsert_module_route::UpsertModuleError;
 
-    fn try_into(self) -> Result<module_index_client::UploadResponse, Self::Error> {
+    fn try_into(self) -> Result<module_index_client::ModuleDetailsResponse, Self::Error> {
         Ok(serde_json::from_value(serde_json::to_value(self)?)?)
     }
 }

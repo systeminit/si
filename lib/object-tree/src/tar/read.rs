@@ -50,8 +50,6 @@ impl<T> ObjectTree<T> {
         let mut graph = Graph::new();
         let mut root_idx: Option<NodeIndex> = None;
 
-        dbg!(tar_data.len());
-
         let mut unpacked_tar = ::tar::Archive::new(tar_data.as_slice());
         let mut tar_data = HashMap::new();
         for maybe_tar_entry in unpacked_tar.entries()? {
@@ -63,7 +61,6 @@ impl<T> ObjectTree<T> {
             tar_data.insert(entry_path, entry_data);
         }
 
-        dbg!(tar_data.keys());
         let root_hash = get_root_ref(&mut tar_data)?;
         let root_node = get_node(&mut tar_data, root_hash)?;
 

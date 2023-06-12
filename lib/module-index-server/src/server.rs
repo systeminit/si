@@ -143,7 +143,7 @@ impl Server<(), ()> {
     // this creates the sea-orm managed db connection (also a pool)
     #[instrument(name = "module-index.init.create_db_connection", skip_all)]
     pub async fn create_db_connection(pg_pool_config: &PgPoolConfig) -> Result<DatabaseConnection> {
-        let mut opt = ConnectOptions::new(dbg!(format!(
+        let mut opt = ConnectOptions::new(format!(
             "{protocol}://{username}:{password}@{host}:{port}/{database}",
             protocol = "postgres",
             username = pg_pool_config.user,
@@ -151,7 +151,7 @@ impl Server<(), ()> {
             host = pg_pool_config.hostname,
             port = pg_pool_config.port,
             database = pg_pool_config.dbname
-        )));
+        ));
 
         opt.max_connections(pg_pool_config.pool_max_size.try_into().unwrap())
             .min_connections(5);

@@ -8,7 +8,6 @@ use sea_orm::{DbErr, EntityTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection},
@@ -48,9 +47,9 @@ pub struct GetModuleDetailsRequest {
 
 pub async fn get_module_details_route(
     Path(module_id): Path<ModuleId>,
-    Authorization(claim): Authorization,
+    Authorization(_claim): Authorization,
     DbConnection(txn): DbConnection,
-    Query(request): Query<GetModuleDetailsRequest>,
+    Query(_request): Query<GetModuleDetailsRequest>,
 ) -> Result<Json<Value>, GetModuleDetailsError> {
     let module = match si_module::Entity::find_by_id(module_id).one(&txn).await? {
         Some(module) => module,

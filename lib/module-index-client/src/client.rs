@@ -1,7 +1,7 @@
 use ulid::Ulid;
 use url::Url;
 
-use crate::{IndexClientResult, UploadResponse};
+use crate::{IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
 pub struct IndexClient {
@@ -22,7 +22,7 @@ impl IndexClient {
         module_name: &str,
         module_version: &str,
         module_bytes: Vec<u8>,
-    ) -> IndexClientResult<UploadResponse> {
+    ) -> IndexClientResult<ModuleDetailsResponse> {
         let module_upload_part = reqwest::multipart::Part::bytes(module_bytes)
             .file_name(format!("{module_name}_{module_version}.tar"));
 
@@ -35,7 +35,7 @@ impl IndexClient {
             .await?
             .error_for_status()?;
 
-        Ok(upload_response.json::<UploadResponse>().await?)
+        Ok(upload_response.json::<ModuleDetailsResponse>().await?)
     }
 
     pub async fn download_module(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {

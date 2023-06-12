@@ -5,6 +5,7 @@ CREATE TABLE modules
     description                 text,
     owner_user_id               ident                    NOT NULL,
     owner_display_name          text,
+    metadata                    json,
     latest_hash                 char(64)                 NOT NULL,
     latest_hash_created_at      timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()

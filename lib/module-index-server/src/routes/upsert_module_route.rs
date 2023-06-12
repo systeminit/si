@@ -5,7 +5,7 @@ use axum::{
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
-use module_index_client::UploadResponse;
+use module_index_client::{FuncMetadata, ModuleDetailsResponse};
 use s3::error::S3Error;
 use sea_orm::{ActiveModelTrait, DbErr, Set};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    extract::{Authorization, DbConnection, ExtractedS3Bucket, UserClaim},
+    extract::{Authorization, DbConnection, ExtractedS3Bucket},
     models::si_module,
 };
 
@@ -57,11 +57,11 @@ impl IntoResponse for UpsertModuleError {
 
 // #[debug_handler]
 pub async fn upsert_module_route(
-    Authorization(claim): Authorization,
+    Authorization(_claim): Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
-) -> Result<Json<UploadResponse>, UpsertModuleError> {
+) -> Result<Json<ModuleDetailsResponse>, UpsertModuleError> {
     info!("Upsert module");
     let field = match multipart.next_field().await.unwrap() {
         Some(f) => f,
@@ -75,6 +75,22 @@ pub async fn upsert_module_route(
     let loaded_module = dbg!(SiPkg::load_from_bytes(data.to_vec()))?;
     let module_metadata = dbg!(loaded_module.metadata())?;
 
+    let version = module_metadata.version().to_owned();
+    let schemas: Vec<String> = loaded_module
+        .schemas()?
+        .iter()
+        .map(|s| s.name().to_owned())
+        .collect();
+    let funcs: Vec<FuncMetadata> = loaded_module
+        .funcs()?
+        .iter()
+        .map(|f| FuncMetadata {
+            name: f.name().to_owned(),
+            display_name: f.display_name().map(|d| d.to_owned()),
+            description: f.description().map(|d| d.to_owned()),
+        })
+        .collect();
+
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),
         description: Set(Some(module_metadata.description().to_owned())),
@@ -87,6 +103,11 @@ pub async fn upsert_module_route(
             Utc::now().naive_utc(),
             Utc.fix(),
         )),
+        metadata: Set(serde_json::to_value(ExtraMetadata {
+            version,
+            schemas,
+            funcs,
+        })?),
         ..Default::default() // all other attributes are `NotSet`
     };
 
@@ -101,4 +122,11 @@ pub async fn upsert_module_route(
     txn.commit().await?;
 
     Ok(dbg!(Json(new_module.try_into()?)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtraMetadata {
+    pub version: String,
+    pub schemas: Vec<String>,
+    pub funcs: Vec<FuncMetadata>,
 }
