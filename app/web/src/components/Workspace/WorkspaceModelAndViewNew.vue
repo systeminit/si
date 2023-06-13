@@ -67,146 +67,164 @@
     :min-size="300"
   >
     <div class="flex flex-col h-full">
-      <span
-        class="flex flex-row items-center justify-center w-full p-3 text-neutral-400 border-b dark:border-neutral-500 gap-2"
+      <SiCollapsible
+        as="div"
+        content-as="span"
+        :default-open="false"
+        hide-bottom-border-when-open
       >
-        <strong class="grow uppercase text-md my-2">
-          <template v-if="isHead">Applied Changes</template>
-          <template v-else>Changes</template>
-        </strong>
-        <template v-if="!isHead">
-          <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
-          <strong
-            class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
+        <template #label>
+          <span
+            class="flex flex-row items-center justify-center w-full text-neutral-400 gap-2"
           >
-            {{ 1 + diffs.length + fixesStore.recommendations.length }}
-          </strong>
+            <strong class="grow uppercase text-lg my-2">
+              <template v-if="isHead">Applied Changes</template>
+              <template v-else>Changes</template>
+            </strong>
+            <template v-if="!isHead">
+              <ApplyChangeSetButton
+                :recommendations="recommendationsToExecute"
+              />
+              <strong
+                class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
+              >
+                {{ 1 + diffs.length + fixesStore.recommendations.length }}
+              </strong>
+            </template>
+          </span>
         </template>
-      </span>
-      <div
-        :style="{ height: `${topRightPanel.height}px` }"
-        class="relative flex-shrink-0"
-      >
-        <div v-if="isHead" class="relative h-full overflow-auto">
-          <ApplyHistory />
-        </div>
-        <TabGroup
-          v-else
-          remember-selected-tab-key="proposed_right"
-          tracking-slug="recommendations_applied"
-        >
-          <TabGroupItem label="Proposed" slug="recommendations_proposed">
-            <SiCollapsible
-              as="div"
-              content-as="ul"
-              :default-open="false"
-              hide-bottom-border-when-open
+
+        <template #default>
+          <div
+            :style="{ height: `${topRightPanel.height}px` }"
+            class="relative flex-shrink-0"
+          >
+            <div v-if="isHead" class="relative h-full overflow-auto">
+              <ApplyHistory />
+            </div>
+            <TabGroup
+              v-else
+              remember-selected-tab-key="proposed_right"
+              tracking-slug="recommendations_applied"
             >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span>Change Set Created</span>
-                  </span>
+              <TabGroupItem label="Proposed" slug="recommendations_proposed">
+                <SiCollapsible
+                  as="div"
+                  content-as="ul"
+                  :default-open="false"
+                  hide-bottom-border-when-open
+                >
+                  <template #label>
+                    <div class="flex flex-col min-w-0 grow">
+                      <span class="font-bold truncate flex flex-row">
+                        <span>Change Set Created</span>
+                      </span>
 
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{
-                      isHead ? "head" : changeSetStore.selectedChangeSet?.name
-                    }}
-                  </span>
-                </div>
-              </template>
+                      <span class="truncate flex flex-row text-neutral-400">
+                        {{
+                          isHead
+                            ? "head"
+                            : changeSetStore.selectedChangeSet?.name
+                        }}
+                      </span>
+                    </div>
+                  </template>
 
-              <template #default>
-                <div class="px-5 text-neutral-400">
-                  {{ isHead ? "head" : changeSetStore.selectedChangeSet?.name }}
-                </div>
-              </template>
-            </SiCollapsible>
-
-            <SiCollapsible
-              v-for="diff in diffs"
-              :key="diff.componentId"
-              as="div"
-              content-as="ul"
-              :default-open="false"
-              hide-bottom-border-when-open
-            >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span v-if="diff.status === 'added'">Added</span>
-                    <span v-if="diff.status === 'deleted'">Removed</span>
-                    <span v-if="diff.status === 'modified'">Modified</span>
-                    <span
-                      >&nbsp;{{
-                        componentsStore.componentsById[diff.componentId]
-                          ?.schemaName
+                  <template #default>
+                    <div class="px-5 text-neutral-400">
+                      {{
+                        isHead ? "head" : changeSetStore.selectedChangeSet?.name
                       }}
-                      Asset
+                    </div>
+                  </template>
+                </SiCollapsible>
+
+                <SiCollapsible
+                  v-for="diff in diffs"
+                  :key="diff.componentId"
+                  as="div"
+                  content-as="ul"
+                  :default-open="false"
+                  hide-bottom-border-when-open
+                >
+                  <template #label>
+                    <div class="flex flex-col min-w-0 grow">
+                      <span class="font-bold truncate flex flex-row">
+                        <span v-if="diff.status === 'added'">Added</span>
+                        <span v-if="diff.status === 'deleted'">Removed</span>
+                        <span v-if="diff.status === 'modified'">Modified</span>
+                        <span
+                          >&nbsp;{{
+                            componentsStore.componentsById[diff.componentId]
+                              ?.schemaName
+                          }}
+                          Asset
+                          {{
+                            componentsStore.componentsById[diff.componentId]
+                              ?.displayName
+                          }}</span
+                        >
+                      </span>
+
+                      <span class="truncate flex flex-row text-neutral-400">
+                        {{
+                          componentsStore.componentsById[diff.componentId]
+                            ?.displayName
+                        }}
+                      </span>
+                    </div>
+                  </template>
+
+                  <template #default>
+                    <div class="px-5 text-neutral-400">
                       {{
                         componentsStore.componentsById[diff.componentId]
                           ?.displayName
-                      }}</span
-                    >
-                  </span>
+                      }}
+                    </div>
+                  </template>
+                </SiCollapsible>
 
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{
-                      componentsStore.componentsById[diff.componentId]
-                        ?.displayName
-                    }}
-                  </span>
-                </div>
-              </template>
+                <li
+                  v-for="recommendation in fixesStore.recommendations"
+                  :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
+                >
+                  <RecommendationSprite
+                    :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
+                    :recommendation="recommendation"
+                    :selected="
+                      recommendationSelection[
+                        `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
+                      ]
+                    "
+                    @click.stop
+                    @toggle="toggleRecommendation($event, recommendation)"
+                  />
+                </li>
+                <li
+                  v-if="fixesStore.recommendations.length === 0"
+                  class="p-4 italic !delay-0 !duration-0 hidden first:block"
+                >
+                  <div class="pb-sm">
+                    No recommendations are available at this time.
+                  </div>
+                </li>
+              </TabGroupItem>
 
-              <template #default>
-                <div class="px-5 text-neutral-400">
-                  {{
-                    componentsStore.componentsById[diff.componentId]
-                      ?.displayName
-                  }}
-                </div>
-              </template>
-            </SiCollapsible>
-
-            <li
-              v-for="recommendation in fixesStore.recommendations"
-              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-            >
-              <RecommendationSprite
-                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-                :recommendation="recommendation"
-                :selected="
-                  recommendationSelection[
-                    `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
-                  ]
-                "
-                @click.stop
-                @toggle="toggleRecommendation($event, recommendation)"
-              />
-            </li>
-            <li
-              v-if="fixesStore.recommendations.length === 0"
-              class="p-4 italic !delay-0 !duration-0 hidden first:block"
-            >
-              <div class="pb-sm">
-                No recommendations are available at this time.
-              </div>
-            </li>
-          </TabGroupItem>
-
-          <TabGroupItem label="Applied" slug="recommendations_applied">
-            <ApplyHistory />
-          </TabGroupItem>
-        </TabGroup>
-        <SiPanelResizer
-          panel-side="bottom"
-          style="width: 100%; bottom: 0"
-          @resize-start="topRightPanel.onResizeStart"
-          @resize-move="topRightPanel.onResizeMove"
-          @resize-reset="topRightPanel.resetSize"
-        />
-      </div>
+              <TabGroupItem label="Applied" slug="recommendations_applied">
+                <ApplyHistory />
+              </TabGroupItem>
+            </TabGroup>
+            <SiPanelResizer
+              panel-side="bottom"
+              style="width: 100%; bottom: 0"
+              @resize-start="topRightPanel.onResizeStart"
+              @resize-move="topRightPanel.onResizeMove"
+              @resize-reset="topRightPanel.resetSize"
+            />
+          </div>
+        </template>
+      </SiCollapsible>
 
       <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
       <div class="flex flex-col flex-grow">
