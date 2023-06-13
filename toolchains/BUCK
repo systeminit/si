@@ -6,6 +6,8 @@ load(
     "system_python_toolchain",
 )
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
+load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 
 system_cxx_toolchain(
@@ -31,6 +33,16 @@ system_python_bootstrap_toolchain(
 system_rust_toolchain(
     name = "rust",
     default_edition = "2021",
+    visibility = ["PUBLIC"],
+)
+
+docker_toolchain(
+    name = "docker",
+    visibility = ["PUBLIC"],
+)
+
+git_toolchain(
+    name = "git",
     visibility = ["PUBLIC"],
 )
 

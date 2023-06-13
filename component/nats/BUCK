@@ -1,0 +1,23 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "nats",
+    srcs = {
+        "nats-server.conf": "component/nats",
+    },
+    build_args = {
+        "BASE_VERSION": "2.3.4",
+    },
+    run_docker_args = [
+        "--publish",
+        "4222:4222",
+    ],
+    run_container_args = [
+        "--config",
+        "nats-server.conf",
+        "-DVV",
+    ],
+)

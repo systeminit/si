@@ -11,6 +11,12 @@ filegroup = _filegroup
 sh_binary = _sh_binary
 
 load(
+    "@prelude-si//macros:docker.bzl",
+    _docker_image = "docker_image",
+)
+docker_image = _docker_image
+
+load(
     "@prelude-si//macros:pnpm.bzl",
     _node_pkg_bin = "node_pkg_bin",
     _npm_bin = "npm_bin",

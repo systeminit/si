@@ -1,5 +1,37 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "filegroup",
+)
+
+docker_image(
+    name = "postgres",
+    srcs = {
+        "entrypoint-wrapper.sh": ".",
+        "multiple-database-support.sh": ".",
+        "pganalyze-collector.conf.sample": ".",
+        "postgresql-additions.conf": ".",
+    },
+    build_args = {
+        "BASE_VERSION": "14.5-bullseye",
+    },
+    run_docker_args = [
+        "--env",
+        "POSTGRES_PASSWORD=bugbear",
+        "--env",
+        "PGPASSWORD=bugbear",
+        "--env",
+        "POSTGRES_USER=si",
+        "--env",
+        "POSTGRES_DB=si",
+        "--env",
+        "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth",
+        "--publish",
+        "5432:5432",
+    ],
+)
+
 filegroup(
-  name = 'postgres',
-  srcs = glob(['**/*']),
-  visibility = ["PUBLIC"]
+  name = "src",
+  srcs = glob(["**/*"]),
 )

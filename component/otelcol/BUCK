@@ -1,0 +1,20 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "otelcol",
+    srcs = {
+        "config.yaml": "component/otelcol",
+    },
+    build_args = {
+        "BASE_VERSION": "0.74.0",
+    },
+    run_docker_args = [
+        "--publish",
+        "4317:4317",
+        "--publish",
+        "55679:55679",
+    ],
+)
