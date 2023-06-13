@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-
-use clap::{builder::PossibleValuesParser, ArgAction, Parser};
+use clap::{ArgAction, Parser};
 use module_index_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "module_index";

@@ -24,9 +24,7 @@ pub enum ListModulesError {
 // TODO: figure out how to not keep this serialization logic here
 impl IntoResponse for ListModulesError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
@@ -43,7 +41,7 @@ pub struct ListModulesRequest {
 }
 
 pub async fn list_module_route(
-    Authorization(claim): Authorization,
+    Authorization(_claim): Authorization,
     DbConnection(txn): DbConnection,
     Query(request): Query<ListModulesRequest>,
 ) -> Result<Json<Value>, ListModulesError> {

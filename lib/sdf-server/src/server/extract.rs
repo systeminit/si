@@ -54,7 +54,7 @@ impl FromRequestParts<AppState> for RawAccessToken {
             .map_err(|_| unauthorized_error())?;
 
         let raw_token = full_raw_token
-            .split(" ")
+            .split(' ')
             .last()
             .ok_or_else(unauthorized_error)?;
 

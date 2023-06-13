@@ -1,33 +1,21 @@
-use std::{io, net::SocketAddr, path::Path, sync::Arc, time::Duration};
+use std::{io, net::SocketAddr, path::Path, time::Duration};
 
 use super::routes;
 
 use axum::routing::IntoMakeService;
 use axum::Router;
-use futures::{FutureExt, Stream, StreamExt};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use jwt_simple::{
-    algorithms::RS256PublicKey,
-    prelude::{JWTClaims, RSAPublicKeyLike},
-};
 use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_posthog::{PosthogClient, PosthogConfig};
-use stream_cancel::StreamExt as StreamCancelStreamExt;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    signal::{self, unix},
-    sync::{
-        broadcast,
-        mpsc::{self, UnboundedReceiver, UnboundedSender},
-        oneshot, watch,
-    },
-    task,
+    signal,
+    sync::{broadcast, mpsc, oneshot},
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{

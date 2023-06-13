@@ -1,15 +1,12 @@
 use axum::{
-    extract::{Path, Query},
+    extract::Path,
     response::{IntoResponse, Redirect, Response},
     Json,
 };
 use hyper::StatusCode;
 use s3::error::S3Error;
 use sea_orm::{DbErr, EntityTrait};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
@@ -45,7 +42,7 @@ impl IntoResponse for DownloadModuleError {
 
 pub async fn download_module_route(
     Path(module_id): Path<ModuleId>,
-    Authorization(claim): Authorization,
+    Authorization(_claim): Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
 ) -> Result<Redirect, DownloadModuleError> {

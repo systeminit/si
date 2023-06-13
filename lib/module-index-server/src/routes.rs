@@ -1,7 +1,7 @@
 use axum::{
     response::Json,
     response::{IntoResponse, Response},
-    routing::{get, post, post_service},
+    routing::{get, post},
     Router,
 };
 use hyper::StatusCode;

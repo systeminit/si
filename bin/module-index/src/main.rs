@@ -1,7 +1,3 @@
-#![recursion_limit = "256"]
-
-use std::path::PathBuf;
-
 use color_eyre::Result;
 use module_index_server::{Config, Server};
 use telemetry_application::{
@@ -69,7 +65,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let (server, initial_shutdown_broadcast_rx) =
         Server::http(config, pg_pool, jwt_public_signing_key, posthog_client)?;
-    let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
+    let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
     server.run().await?;
 

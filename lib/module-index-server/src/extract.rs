@@ -1,21 +1,15 @@
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
-use axum::{
-    async_trait,
-    extract::{FromRequestParts, Query},
-    http::request::Parts,
-    Json,
-};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
 use hyper::StatusCode;
 use s3::{Bucket as S3Bucket, Region as AwsRegion};
-use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
+use sea_orm::{DatabaseTransaction, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::jwt_key::{JwtKeyError, JwtPublicSigningKey};
-
 use super::app_state::AppState;
+use crate::jwt_key::{JwtKeyError, JwtPublicSigningKey};
 
 pub struct PosthogClient(pub super::app_state::PosthogClient);
 
@@ -41,7 +35,7 @@ impl FromRequestParts<AppState> for ExtractedS3Bucket {
         _parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let region = match (&state.s3_config().region).parse::<AwsRegion>() {
+        let region = match state.s3_config().region.parse::<AwsRegion>() {
             Ok(region) => region,
             Err(err) => {
                 return Err((
@@ -119,13 +113,6 @@ pub enum AuthError {
 pub type AuthResult<T> = Result<T, AuthError>;
 
 impl UserClaim {
-    pub fn new(user_pk: UserPk, workspace_pk: WorkspacePk) -> Self {
-        UserClaim {
-            user_pk,
-            workspace_pk,
-        }
-    }
-
     pub async fn from_bearer_token(
         public_key: JwtPublicSigningKey,
         token: impl AsRef<str>,
