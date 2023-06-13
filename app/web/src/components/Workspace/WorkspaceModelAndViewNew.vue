@@ -68,28 +68,34 @@
   >
     <div class="flex flex-col h-full">
       <span
-        class="flex flex-row items-center w-full p-3 text-neutral-400 border-b dark:border-neutral-500"
+        class="flex flex-row items-center justify-center w-full p-3 text-neutral-400 border-b dark:border-neutral-500 gap-2"
       >
-        <strong class="grow uppercase text-md">Changes</strong>
-        <strong
-          class="text-action-300 mx-2 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
-          >{{ 1 + diffs.length + fixesStore.recommendations.length }}</strong
-        >
+        <strong class="grow uppercase text-md my-2">
+          <template v-if="isHead">Applied Changes</template>
+          <template v-else>Changes</template>
+        </strong>
+        <template v-if="!isHead">
+          <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
+          <strong
+            class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
+          >
+            {{ 1 + diffs.length + fixesStore.recommendations.length }}
+          </strong>
+        </template>
       </span>
       <div
         :style="{ height: `${topRightPanel.height}px` }"
         class="relative flex-shrink-0"
       >
+        <div v-if="isHead" class="relative h-full overflow-auto">
+          <ApplyHistory />
+        </div>
         <TabGroup
+          v-else
           remember-selected-tab-key="proposed_right"
           tracking-slug="recommendations_applied"
         >
-          <TabGroupItem
-            v-if="!isHead"
-            label="Proposed"
-            slug="recommendations_proposed"
-          >
-            <ApplyChangeSetButton :recommendations="recommendationsToExecute" />
+          <TabGroupItem label="Proposed" slug="recommendations_proposed">
             <SiCollapsible
               as="div"
               content-as="ul"

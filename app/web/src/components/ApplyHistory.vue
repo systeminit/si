@@ -1,179 +1,171 @@
 <template>
-  <span>
-    <div
-      v-if="fixBatches.length === 0"
-      :class="
-        clsx(
-          'm-6 p-3 border rounded-md h-64 flex items-center font-bold justify-around text-center',
-          themeClasses('border-neutral-300', 'border-neutral-600'),
-          themeClasses('text-neutral-300', 'text-neutral-600'),
-        )
-      "
+  <div
+    v-if="fixBatches.length === 0"
+    :class="
+      clsx(
+        'm-6 p-3 border rounded-md h-64 flex items-center font-bold justify-around text-center',
+        themeClasses('border-neutral-300', 'border-neutral-600'),
+        themeClasses('text-neutral-300', 'text-neutral-600'),
+      )
+    "
+  >
+    Nothing has been applied
+  </div>
+  <div v-else>
+    <SiSearch auto-search class="border-b-0" />
+    <SiCollapsible
+      v-for="(fixBatch, batch_index) of fixBatches"
+      :key="batch_index"
+      hide-bottom-border
     >
-      Nothing has been applied
-    </div>
-    <div v-else>
-      <SiSearch auto-search class="border-b-0" />
-      <SiCollapsible
-        v-for="(fixBatch, batch_index) of fixBatches"
-        :key="batch_index"
-        hide-bottom-border
-      >
-        <template #label>
-          <div class="flex flex-row flex-wrap items-center gap-1">
-            <span class="font-bold flex flex-row items-center">
-              <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
-              <div
-                v-if="
-                  fixBatch.status === 'success' &&
-                  fixBatch.fixes.filter((f) => f.status === 'success')
-                    .length === fixBatch.fixes.length
-                "
-                class="pl-xs whitespace-nowrap"
-              >
-                All fixes succeeded
-              </div>
-              <div v-else class="pl-xs">
-                {{
-                  fixBatch.fixes.filter((f) => f.status === "success").length
-                }}
-                of {{ fixBatch.fixes.length }} fix{{
-                  fixBatch.fixes.length > 1 ? "es" : ""
-                }}
-                succeeded
-              </div>
-            </span>
-            <span
-              v-if="fixBatch.startedAt"
-              :class="
-                clsx(
-                  'text-xs italic',
-                  themeClasses('text-neutral-700', 'text-neutral-300'),
-                )
-              "
-            >
-              <Timestamp
-                size="mini"
-                show-time-if-today
-                :date="new Date(fixBatch.startedAt)"
-              />
-            </span>
-          </div>
-        </template>
-        <template #default>
-          <div class="text-sm pl-8">
-            <!-- Note(victor): Not 100% sure this should be removed, but it looks redundant. Confirm with mark.-->
-            <!--div class="text-success-500 tracking-tight font-bold">
-                {{ fixBatch.fixes.length }}
-                resource{{ fixBatch.fixes.length > 1 ? "s" : "" }} fixed
-              </div-->
+      <template #label>
+        <div class="flex flex-row flex-wrap items-center gap-1">
+          <div class="font-bold flex flex-row items-center">
+            <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
             <div
-              :class="
-                clsx(
-                  'text-xs italic',
-                  themeClasses('text-neutral-700', 'text-neutral-300'),
-                )
+              v-if="
+                fixBatch.status === 'success' &&
+                fixBatch.fixes.filter((f) => f.status === 'success').length ===
+                  fixBatch.fixes.length
               "
+              class="pl-xs whitespace-nowrap"
             >
-              <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
+              All fixes succeeded
             </div>
-            <div>By: {{ fixBatch.author }}</div>
-            <div v-if="fixBatch.startedAt" class="italic">
-              Started At:
-              <Timestamp size="long" :date="new Date(fixBatch.startedAt)" />
-            </div>
-            <div v-if="fixBatch.finishedAt" class="italic">
-              Finished At:
-              <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
+            <div v-else class="pl-xs">
+              {{ fixBatch.fixes.filter((f) => f.status === "success").length }}
+              of {{ fixBatch.fixes.length }} fix{{
+                fixBatch.fixes.length > 1 ? "es" : ""
+              }}
+              succeeded
             </div>
           </div>
+          <span
+            v-if="fixBatch.startedAt"
+            :class="
+              clsx(
+                'text-xs italic',
+                themeClasses('text-neutral-700', 'text-neutral-300'),
+              )
+            "
+          >
+            <Timestamp
+              size="mini"
+              show-time-if-today
+              :date="new Date(fixBatch.startedAt)"
+            />
+          </span>
+        </div>
+      </template>
+      <template #default>
+        <div class="text-sm pl-8">
+          <!-- Note(victor): Not 100% sure this should be removed, but it looks redundant. Confirm with mark.-->
+          <!--div class="text-success-500 tracking-tight font-bold">
+              {{ fixBatch.fixes.length }}
+              resource{{ fixBatch.fixes.length > 1 ? "s" : "" }} fixed
+            </div-->
+          <div
+            :class="
+              clsx(
+                'text-xs italic',
+                themeClasses('text-neutral-700', 'text-neutral-300'),
+              )
+            "
+          >
+            <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
+          </div>
+          <div>By: {{ fixBatch.author }}</div>
+          <div v-if="fixBatch.startedAt" class="italic">
+            Started At:
+            <Timestamp size="long" :date="new Date(fixBatch.startedAt)" />
+          </div>
+          <div v-if="fixBatch.finishedAt" class="italic">
+            Finished At:
+            <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
+          </div>
+        </div>
 
-          <ul class="pl-5 mt-2">
-            <SiCollapsible
-              v-for="(fix, fix_index) of fixBatch.fixes"
-              :key="fix_index"
-              hide-bottom-border
-              text-size="sm"
-              button-classes="py-0.5"
-              :default-open="false"
-            >
-              <template #label>
-                <StatusIndicatorIcon type="fix" :status="fix.status" />
-                <div class="flex flex-col">
-                  <div class="font-bold pl-xs">
-                    {{ `${formatTitle(fix.actionKind)} ${fix.schemaName}` }}
-                  </div>
+        <ul class="pl-5 mt-2">
+          <SiCollapsible
+            v-for="(fix, fix_index) of fixBatch.fixes"
+            :key="fix_index"
+            hide-bottom-border
+            text-size="sm"
+            button-classes="py-0.5"
+            :default-open="false"
+          >
+            <template #label>
+              <StatusIndicatorIcon type="fix" :status="fix.status" />
+              <div class="flex flex-col">
+                <div class="font-bold pl-xs">
+                  {{ `${formatTitle(fix.actionKind)} ${fix.schemaName}` }}
                 </div>
-              </template>
-              <template #default>
-                <div class="p-2 dark:text-neutral-50 text-neutral-900">
-                  <div v-if="!fix.resource"></div>
-                  <CodeViewer
-                    v-else-if="fix.resource.data"
-                    :code="JSON.stringify(fix.resource.data, null, 2)"
-                    class="dark:text-neutral-50 text-neutral-900"
-                  >
-                    <template #title>
-                      <div class="font-bold">
-                        {{ fix.resource.message ?? "Resource Code" }}
-                        <FixDetails
-                          v-if="
-                            fix.resource.logs && fix.resource.logs.length > 0
-                          "
-                          :health="fix.resource.status"
-                          :message="
-                            [
-                              `${formatTitle(fix.actionKind)} ${
-                                fix.schemaName
-                              }`,
-                              fix.resource.message ?? '',
-                            ].filter((f) => f.length > 0)
-                          "
-                          :details="fix.resource.logs"
-                        />
-                      </div>
-                    </template>
-                  </CodeViewer>
-                  <template v-else-if="fix.resource.message">
-                    {{ fix.resource.message }}
-                    <FixDetails
-                      v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                      :health="fix.resource.status"
-                      :message="
-                        [
-                          `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                          fix.resource.message ?? '',
-                        ].filter((f) => f.length > 0)
-                      "
-                      :details="fix.resource.logs"
-                    />
+              </div>
+            </template>
+            <template #default>
+              <div class="p-2 dark:text-neutral-50 text-neutral-900">
+                <div v-if="!fix.resource"></div>
+                <CodeViewer
+                  v-else-if="fix.resource.data"
+                  :code="JSON.stringify(fix.resource.data, null, 2)"
+                  class="dark:text-neutral-50 text-neutral-900"
+                >
+                  <template #title>
+                    <div class="font-bold">
+                      {{ fix.resource.message ?? "Resource Code" }}
+                      <FixDetails
+                        v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                        :health="fix.resource.status"
+                        :message="
+                          [
+                            `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
+                            fix.resource.message ?? '',
+                          ].filter((f) => f.length > 0)
+                        "
+                        :details="fix.resource.logs"
+                      />
+                    </div>
                   </template>
-                  <template v-else>
-                    {{
-                      fix.resource.status === "ok"
-                        ? "Completed successfully"
-                        : "Error"
-                    }}
-                    <FixDetails
-                      v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                      :health="fix.resource.status"
-                      :message="
-                        [
-                          `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                          fix.resource.message ?? '',
-                        ].filter((f) => f.length > 0)
-                      "
-                      :details="fix.resource.logs"
-                    />
-                  </template>
-                </div>
-              </template>
-            </SiCollapsible>
-          </ul>
-        </template>
-      </SiCollapsible>
-    </div>
-  </span>
+                </CodeViewer>
+                <template v-else-if="fix.resource.message">
+                  {{ fix.resource.message }}
+                  <FixDetails
+                    v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                    :health="fix.resource.status"
+                    :message="
+                      [
+                        `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
+                        fix.resource.message ?? '',
+                      ].filter((f) => f.length > 0)
+                    "
+                    :details="fix.resource.logs"
+                  />
+                </template>
+                <template v-else>
+                  {{
+                    fix.resource.status === "ok"
+                      ? "Completed successfully"
+                      : "Error"
+                  }}
+                  <FixDetails
+                    v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                    :health="fix.resource.status"
+                    :message="
+                      [
+                        `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
+                        fix.resource.message ?? '',
+                      ].filter((f) => f.length > 0)
+                    "
+                    :details="fix.resource.logs"
+                  />
+                </template>
+              </div>
+            </template>
+          </SiCollapsible>
+        </ul>
+      </template>
+    </SiCollapsible>
+  </div>
 </template>
 
 <script lang="ts" setup>
