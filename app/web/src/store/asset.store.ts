@@ -35,8 +35,8 @@ export interface ListedVariantDef {
   color: string;
   description: string;
   funcs: FuncSummary[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: IsoDateString;
+  updatedAt: IsoDateString;
 }
 
 export interface VariantDef extends ListedVariantDef {
@@ -183,8 +183,8 @@ export const useAssetStore = () => {
             componentType: "component",
             link: "https://www.systeminit.com/",
             funcs: [],
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             defaultVariantId: undefined,
           };
         },

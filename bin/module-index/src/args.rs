@@ -8,10 +8,10 @@ pub(crate) fn parse() -> Args {
     Args::parse()
 }
 
-/// The System Initiative API service.
+/// The System Initiative Module Index API service
 ///
-/// Super Dimension Fortress (SDF) is the central and primary API surface which handles front end
-/// calls and dispatches function executions, among other great things.
+/// This is the centralized store of "modules" - ie how users will back up and share
+/// their customizations of our system
 #[derive(Parser, Debug)]
 #[command(name = NAME, max_term_width = 100)]
 pub(crate) struct Args {

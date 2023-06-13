@@ -53,12 +53,12 @@ impl FromRequestParts<AppState> for RawAccessToken {
             .to_str()
             .map_err(|_| unauthorized_error())?;
 
+        // token looks like "Bearer asdf" so we strip off the "bearer"
         let raw_token = full_raw_token
             .split(' ')
             .last()
             .ok_or_else(unauthorized_error)?;
 
-        // token looks like "Bearer asdf" so we strip off the "bearer"
         Ok(Self(raw_token.to_owned()))
     }
 }

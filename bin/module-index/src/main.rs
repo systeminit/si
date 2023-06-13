@@ -43,8 +43,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         telemetry.disable_opentelemetry().await?;
     }
 
-    // Server::init()?;
-
     let config = Config::try_from(args)?;
 
     let jwt_public_signing_key =
@@ -56,7 +54,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     Server::run_migrations(&si_pg_pool).await?;
     drop(si_pg_pool); // close connection since we no longer need it
 
-    // this is SeaOrm's managed Pg Pool
+    // this is the SeaOrm-managed Pg Pool
     let pg_pool = Server::create_db_connection(config.pg_pool()).await?;
 
     start_tracing_level_signal_handler_task(&telemetry)?;

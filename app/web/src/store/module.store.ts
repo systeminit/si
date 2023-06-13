@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { parseISO } from "date-fns";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -44,7 +43,7 @@ export interface LocalModuleDetails {
   name: string;
   version: string;
   description: string;
-  createdAt: Date;
+  createdAt: IsoDateString;
   createdBy: string;
   schemas: string[];
   funcs: PkgFuncView[];

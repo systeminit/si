@@ -35,27 +35,27 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
 
-import { VButton, RequestStatusMessage } from "@si/vue-lib/design-system";
+import { RequestStatusMessage } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
 
 const moduleStore = useModuleStore();
 const localDetailsReq = moduleStore.getRequestStatus(
   "GET_LOCAL_MODULE_DETAILS",
 );
-const remoteDetailsReq = moduleStore.getRequestStatus(
-  "GET_REMOTE_MODULE_DETAILS",
-);
+// const remoteDetailsReq = moduleStore.getRequestStatus(
+//   "GET_REMOTE_MODULE_DETAILS",
+// );
 
 const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
-const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
+// const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
 
-async function installModule() {
-  if (!remoteDetails.value) return;
-  await moduleStore.INSTALL_REMOTE_MODULE(remoteDetails.value?.id);
-}
-async function uninstallModule() {
-  alert("Uninstall not yet supported");
-}
+// async function installModule() {
+//   if (!remoteDetails.value) return;
+//   await moduleStore.INSTALL_REMOTE_MODULE(remoteDetails.value?.id);
+// }
+// async function uninstallModule() {
+//   alert("Uninstall not yet supported");
+// }
 </script>

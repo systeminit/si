@@ -14,6 +14,7 @@
 
 <script lang="ts" setup>
 import { ref, onMounted, onBeforeUnmount, getCurrentInstance } from "vue";
+import { SafeTeleport } from "vue-safe-teleport";
 import { useTabGroupContext } from "./TabGroup.vue";
 import type { Slot } from "vue";
 

@@ -156,11 +156,9 @@
 import { computed, onBeforeMount, watch } from "vue";
 import {
   Icon,
-  RequestStatusMessage,
   Timestamp,
   ErrorMessage,
   VormInput,
-  Tiles,
   Inline,
   Stack,
   VButton,
@@ -174,10 +172,10 @@ const loadRemoteModulesReqStatus = moduleStore.getRequestStatus(
   "SEARCH_REMOTE_MODULES",
 );
 
-const localDetailsReq = moduleStore.getRequestStatus(
+const _localDetailsReq = moduleStore.getRequestStatus(
   "GET_LOCAL_MODULE_DETAILS",
 );
-const remoteDetailsReq = moduleStore.getRequestStatus(
+const _remoteDetailsReq = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_DETAILS",
 );
 const installReqStatus = moduleStore.getRequestStatus("INSTALL_REMOTE_MODULE");
@@ -188,6 +186,7 @@ const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
 const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
 const remoteSummary = computed(
   () =>
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     moduleStore.remoteModuleSummaryByName[moduleStore.urlSelectedModuleSlug!],
 );
 const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);

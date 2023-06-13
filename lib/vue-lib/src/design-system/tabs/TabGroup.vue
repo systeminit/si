@@ -108,7 +108,10 @@
       </div>
 
       <!-- the tabgroup item uses a teleport to render its default slot content here if active -->
-      <TeleportTarget :id="teleportId" class="overflow-auto flex-grow relative" />
+      <TeleportTarget
+        :id="teleportId"
+        class="overflow-auto flex-grow relative"
+      />
     </template>
   </div>
 </template>
@@ -156,6 +159,7 @@ import {
   nextTick,
 } from "vue";
 import posthog from "posthog-js";
+import { TeleportTarget } from "vue-safe-teleport";
 import { Icon, DropdownMenu, DropdownMenuItem } from "..";
 import { themeClasses } from "../utils/theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
@@ -297,7 +301,7 @@ function selectTab(slug?: string) {
         );
       }
     }
-  } 
+  }
 
   // emit new selected tab to parent in case it needs it, for example to sync the URL
   emit("update:selectedTab", selectedTabSlug.value);

@@ -56,7 +56,8 @@
     "posthog-js": "^1.51.4",
     "tailwindcss-capsize": "^3.0.3",
     "vue": "^3.3.4",
-    "vue-router": "^4.1.6"
+    "vue-router": "^4.1.6",
+    "vue-safe-teleport": "^0.1.2"
   },
   "devDependencies": {
     "@iconify/json": "^2.1.142",

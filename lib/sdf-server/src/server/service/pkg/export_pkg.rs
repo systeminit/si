@@ -63,7 +63,6 @@ pub async fn export_pkg(
     )
     .await?;
 
-    info!("Building module-index request");
     let index_client =
         module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
     let _response = dbg!(

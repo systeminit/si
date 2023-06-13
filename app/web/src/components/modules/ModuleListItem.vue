@@ -23,7 +23,7 @@
 import { computed, PropType } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { Icon } from "@si/vue-lib/design-system";
-import { ModuleId, ModuleSlug, useModuleStore } from "@/store/module.store";
+import { ModuleSlug, useModuleStore } from "@/store/module.store";
 
 const props = defineProps({
   moduleSlug: { type: String as PropType<ModuleSlug>, required: true },

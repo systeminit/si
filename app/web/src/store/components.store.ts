@@ -433,7 +433,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const fromNodeId = edge.fromNodeId;
             const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
-            connectedNodes[fromNodeId]!.push(toNodeId);
+            connectedNodes[fromNodeId]!.push(toNodeId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
           });
 
           const connectedIds: ComponentId[] = [componentId];
