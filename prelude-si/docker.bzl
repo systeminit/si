@@ -101,6 +101,8 @@ def docker_image_release_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.typ
         ctx.attrs.docker_image[DockerImageInfo].tar_archive,
         "--tags-file",
         ctx.attrs.docker_image[DockerImageInfo].tags,
+        "--metadata-file",
+        ctx.attrs.docker_image[DockerImageInfo].metadata,
     )
 
     ctx.actions.write(cli_args.as_output(), cmd)
