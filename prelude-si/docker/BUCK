@@ -8,13 +8,17 @@ export_file(
 )
 
 export_file(
-    name = "docker_build.py",
-)
-
-export_file(
     name = "docker_build_context.py",
 )
 
 export_file(
-    name = "docker_run.py",
+    name = "docker_container_run.py",
+)
+
+export_file(
+    name = "docker_image_build.py",
+)
+
+export_file(
+    name = "docker_image_push.py",
 )

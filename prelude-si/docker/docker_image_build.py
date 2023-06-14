@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Invokes a `docker build`.
+Invokes a `docker image build`.
 """
 import argparse
 import subprocess
@@ -109,6 +109,7 @@ def build_image(
 ):
     cmd = [
         "docker",
+        "image",
         "build",
     ]
     for key, value in metadata.items():
