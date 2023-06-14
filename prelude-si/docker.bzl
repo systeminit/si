@@ -2,20 +2,23 @@ load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
 load("//git:toolchain.bzl", "GitToolchainInfo")
 
-def docker_image_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+DockerImageInfo = provider(fields = {
+    "tar_archive": "artifact",
+    "metadata": "artifact",
+    "tags": "artifact",
+})
+
+def docker_image_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type, DockerImageInfo.type]]:
     docker_build_ctx = docker_build_context(ctx)
-    image_archive = build_docker_image(ctx, docker_build_ctx)
-    run_args = docker_run_args(ctx, image_archive)
+    image_info = build_docker_image(ctx, docker_build_ctx)
+    run_args = docker_run_args(ctx, image_info)
 
     return [
         DefaultInfo(
-            default_outputs = [
-                image_archive.tar_archive,
-                image_archive.metadata,
-                image_archive.tags,
-            ],
+            default_output = image_info.tar_archive,
         ),
         RunInfo(args = run_args),
+        image_info,
     ]
 
 docker_image = rule(
@@ -86,6 +89,45 @@ docker_image = rule(
     },
 )
 
+def docker_image_release_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+    cli_args = ctx.actions.declare_output("args.txt")
+
+    docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        docker_toolchain.docker_image_push[DefaultInfo].default_outputs,
+        "--archive-file",
+        ctx.attrs.docker_image[DockerImageInfo].tar_archive,
+        "--tags-file",
+        ctx.attrs.docker_image[DockerImageInfo].tags,
+    )
+
+    ctx.actions.write(cli_args.as_output(), cmd)
+
+    return [
+        DefaultInfo(default_output = cli_args),
+        RunInfo(args = cmd),
+    ]
+
+docker_image_release = rule(
+    impl = docker_image_release_impl,
+    attrs = {
+        "docker_image": attrs.dep(
+            providers = [DockerImageInfo],
+            doc = """The `docker_image` artifact to release.""",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_docker_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:docker",
+            providers = [DockerToolchainInfo],
+        ),
+    },
+)
+
 DockerBuildContext = record(
     context_tree = field("artifact"),
 )
@@ -112,16 +154,10 @@ def docker_build_context(ctx: "context") -> DockerBuildContext.type:
         context_tree = context_tree,
     )
 
-DockerImageArchive = record(
-    tar_archive = field("artifact"),
-    metadata = field("artifact"),
-    tags = field("artifact"),
-)
-
 def build_docker_image(
     ctx: "context",
     docker_build_ctx: DockerBuildContext.type,
-) -> DockerImageArchive.type:
+) -> DockerImageInfo.type:
     if ctx.attrs.full_image_name:
         image_name = ctx.attrs.full_image_name
     elif ctx.attrs.organization:
@@ -138,7 +174,7 @@ def build_docker_image(
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        docker_toolchain.docker_build[DefaultInfo].default_outputs,
+        docker_toolchain.docker_image_build[DefaultInfo].default_outputs,
         "--git-info-program",
         git_toolchain.git_info[DefaultInfo].default_outputs,
         "--archive-out-file",
@@ -164,18 +200,18 @@ def build_docker_image(
 
     ctx.actions.run(cmd, category = "docker_build")
 
-    return DockerImageArchive(
+    return DockerImageInfo(
         tar_archive = tar_archive,
         metadata = metadata,
         tags = tags,
     )
 
-def docker_run_args(ctx: "context", archive: DockerImageArchive.type) -> "cmd_args":
+def docker_run_args(ctx: "context", archive: DockerImageInfo.type) -> "cmd_args":
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        docker_toolchain.docker_run[DefaultInfo].default_outputs,
+        docker_toolchain.docker_container_run[DefaultInfo].default_outputs,
         "--tags-file",
         archive.tags,
     )

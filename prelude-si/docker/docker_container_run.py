@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Executes a `docker run`.
+Executes a `docker container run`.
 """
 import json
 import os
@@ -34,6 +34,7 @@ def main() -> int:
 
     cmd = [
         "docker",
+        "container",
         "run",
         "--rm",
         "--tty",
