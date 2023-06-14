@@ -22,3 +22,7 @@ export_file(
 export_file(
     name = "docker_image_push.py",
 )
+
+export_file(
+    name = "docker_image_promote.py",
+)

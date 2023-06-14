@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:docker.bzl",
     _docker_image = "docker_image",
+    _docker_image_promote = "docker_image_promote",
     _docker_image_release = "docker_image_release",
 )
 
@@ -13,6 +14,7 @@ def docker_image(
         license = "Apache-2.0",
         visibility = ["PUBLIC"],
         release_target = "release",
+        promote_target = "promote",
         **kwargs):
     _docker_image(
         name = name,
@@ -28,5 +30,11 @@ def docker_image(
     _docker_image_release(
         name = release_target,
         docker_image = ":{}".format(name),
+        visibility = visibility,
+    )
+
+    _docker_image_promote(
+        name = promote_target,
+        image_name = "{}/{}".format(organization, name),
         visibility = visibility,
     )
