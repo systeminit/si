@@ -12,7 +12,8 @@ use crate::{
 /// Errors that can occur when reading a module bundle from a tar file
 #[derive(Debug, Error)]
 pub enum TarReadError {
-    /// When an error occurs creating a [`Hash`] from the given [`String`]
+    /// When an error occurs creating a [`struct@Hash`] from the given
+    /// [`String`]
     #[error("Error parsing hash: {0}")]
     Hash(#[from] HashParseError),
     /// When an error occurs while reading bytes
