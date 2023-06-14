@@ -1,7 +1,7 @@
 ARG BASE_VERSION
-FROM registry.fedoraproject.org/fedora-minimal:${BASE_VERSION}
+FROM fedora:${BASE_VERSION}
 
-RUN microdnf install -y git && microdnf clean all -y
+RUN dnf -y update && dnf -y install httpd git  && dnf clean all -y
 RUN curl \
     --proto '=https' \
     --tlsv1.2 \
