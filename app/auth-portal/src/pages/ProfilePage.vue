@@ -164,7 +164,7 @@ import { tracker } from "@/lib/posthog";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
-  /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#\d{4})/;
+  /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#?[0-9]?)/;
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
