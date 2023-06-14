@@ -1,29 +1,22 @@
 <template>
-  <div class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0">
-    <section class="px-sm pb-sm">
-      <VormInput type="container">
-        <VButton
-          ref="applyButtonRef"
-          icon="tools"
-          class="w-full"
-          size="md"
-          tone="success"
-          loading-text="Applying Changes"
-          label="Apply Changes"
-          :request-status="applyChangeSetReqStatus"
-          :disabled="statusStoreUpdating"
-          @click="applyChangeSet"
-        />
-      </VormInput>
-    </section>
-  </div>
+  <VButton
+    ref="applyButtonRef"
+    icon="tools"
+    size="sm"
+    tone="success"
+    loading-text="Applying Changes"
+    label="Apply Changes"
+    :request-status="applyChangeSetReqStatus"
+    :disabled="statusStoreUpdating"
+    @click="applyChangeSet"
+  />
 </template>
 
 <script lang="ts" setup>
 import { onMounted, computed, ref } from "vue";
 import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
-import { VButton, VormInput } from "@si/vue-lib/design-system";
+import { VButton } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
