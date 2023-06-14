@@ -1,0 +1,4 @@
+ARG BASE_VERSION
+FROM jaegertracing/all-in-one:${BASE_VERSION}
+
+ENV COLLECTOR_OTLP_ENABLED=true
