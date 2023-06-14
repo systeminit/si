@@ -128,6 +128,49 @@ docker_image_release = rule(
     },
 )
 
+def docker_image_promote_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+    cli_args = ctx.actions.declare_output("args.txt")
+
+    docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        docker_toolchain.docker_image_promote[DefaultInfo].default_outputs,
+    )
+    if ctx.attrs.stable_tag:
+        cmd.add("--stable-tag")
+        cmd.add(ctx.attrs.stable_tag)
+    cmd.add(ctx.attrs.image_name)
+
+    ctx.actions.write(cli_args.as_output(), cmd)
+
+    return [
+        DefaultInfo(default_output = cli_args),
+        RunInfo(args = cmd),
+    ]
+
+docker_image_promote = rule(
+    impl = docker_image_promote_impl,
+    attrs = {
+        "image_name": attrs.string(
+            doc = """Docker image name minus tag (ex: `acme/myapp`).""",
+        ),
+        "stable_tag": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Override default stable tag name.""",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_docker_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:docker",
+            providers = [DockerToolchainInfo],
+        ),
+    },
+)
+
 DockerBuildContext = record(
     context_tree = field("artifact"),
 )
