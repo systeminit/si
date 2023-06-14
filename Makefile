@@ -42,6 +42,7 @@ COMPONENTS = \
 	bin/lang-js \
 	bin/pinga \
 	bin/council \
+	bin/module-index \
 	bin/sdf \
 	bin/veritech \
 	bin/si-discord-bot \
@@ -55,6 +56,8 @@ COMPONENTS = \
 	lib/dal \
 	lib/dal-test \
 	lib/deadpool-cyclone \
+	lib/module-index-client \
+	lib/module-index-server \
 	lib/nats-subscriber \
 	lib/object-tree \
 	lib/pinga-server \
@@ -81,6 +84,7 @@ RELEASEABLE_COMPONENTS = \
 	app/web \
 	bin/pinga \
 	bin/council \
+	bin/module-index \
 	bin/sdf \
 	bin/veritech \
 	component/nats \
@@ -91,6 +95,7 @@ RUNABLE_COMPONENTS = \
 	app/web \
 	bin/pinga \
 	bin/council \
+	bin/module-index \
 	bin/sdf \
 	bin/veritech
 
@@ -250,6 +255,10 @@ test//lib/dal-test//RTESTDEPS: test//lib/dal test//lib/sdf-server
 
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
+
+test//lib/module-index-client//RTESTDEPS: test//bin/module-index
+
+test//lib/module-index-server//RTESTDEPS: test//bin/module-index
 
 test//lib/nats-subscriber//TESTDEPS: build//lib/si-data-nats build//lib/telemetry-rs
 test//lib/nats-subscriber//RTESTDEPS: build//lib/dal
