@@ -1,0 +1,20 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "ci-base",
+    srcs = {
+        "//:flake.nix": ".",
+        "//:flake.lock": ".",
+        "//:rust-toolchain": ".",
+    },
+    build_args = {
+        "BASE_VERSION": "38",
+    },
+    run_docker_args = [
+        "--volume",
+        ".:/workdir",
+    ],
+)

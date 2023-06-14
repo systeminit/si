@@ -52,6 +52,14 @@ alias(
 )
 
 export_file(
+    name = "flake.nix",
+)
+
+export_file(
+    name = "flake.lock",
+)
+
+export_file(
     name = "package.json",
 )
 
@@ -71,6 +79,10 @@ pnpm_lock(
         "//lib/tsconfig:package.json",
         "//lib/vue-lib:package.json",
     ],
+)
+
+export_file(
+    name = "rust-toolchain",
 )
 
 workspace_node_modules(

@@ -20,7 +20,7 @@ sh_binary(
     resources = [
         ":docker-compose.yml",
         ":docker-compose.local-postgres.yml",
-        "//component/postgres:postgres",
+        "//component/postgres:src",
         ":down.sh"
     ],
     visibility = ["PUBLIC"],
