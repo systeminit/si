@@ -25,17 +25,15 @@
             <div
               v-if="
                 fixBatch.status === 'success' &&
-                fixBatch.fixes.filter((f) => f.status === 'success')
-                  .length === fixBatch.fixes.length
+                fixBatch.fixes.filter((f) => f.status === 'success').length ===
+                  fixBatch.fixes.length
               "
               class="pl-xs whitespace-nowrap"
             >
               All fixes succeeded
             </div>
             <div v-else class="pl-xs">
-              {{
-                fixBatch.fixes.filter((f) => f.status === "success").length
-              }}
+              {{ fixBatch.fixes.filter((f) => f.status === "success").length }}
               of {{ fixBatch.fixes.length }} fix{{
                 fixBatch.fixes.length > 1 ? "es" : ""
               }}
@@ -116,15 +114,11 @@
                     <div class="font-bold">
                       {{ fix.resource.message ?? "Resource Code" }}
                       <FixDetails
-                        v-if="
-                          fix.resource.logs && fix.resource.logs.length > 0
-                        "
+                        v-if="fix.resource.logs && fix.resource.logs.length > 0"
                         :health="fix.resource.status"
                         :message="
                           [
-                            `${formatTitle(fix.actionKind)} ${
-                              fix.schemaName
-                            }`,
+                            `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
                             fix.resource.message ?? '',
                           ].filter((f) => f.length > 0)
                         "
