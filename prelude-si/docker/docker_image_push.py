@@ -36,7 +36,7 @@ def main() -> int:
     load_archive(args.archive_file)
     tags = loads_tags(args.tags_file)
     upload_image(tags)
-    report_metadata(args.metadata_file)
+    report_metadata(args.metadata_file, tags)
 
     return 0
 
@@ -74,7 +74,7 @@ def upload_image(tags: List[str]):
         subprocess.run(cmd).check_returncode()
 
 
-def report_metadata(metadata_file: str):
+def report_metadata(metadata_file: str, tags: List[str]):
     with open(metadata_file) as file:
         metadata: Dict[str, str] = json.load(file)
 
@@ -84,6 +84,7 @@ def report_metadata(metadata_file: str):
         "name": "Image Name",
         "org.opencontainers.image.version": "Version",
         "org.opencontainers.image.revision": "Revision",
+        "com.systeminit.image.architecture": "Architecture",
         "com.systeminit.image.commit_url": "Commit URL",
         "com.systeminit.image.image_url": "Docker Hub Image URL",
     }
@@ -95,6 +96,13 @@ def report_metadata(metadata_file: str):
             header_max_len,
             metadata.get(key),
         ))
+    for i, tag in enumerate(tags):
+        print("    {0:<{1}} : {2}".format(
+            "Tags" if i == 0 else "",
+            header_max_len,
+            tag,
+        ))
+
 
 
 if __name__ == "__main__":

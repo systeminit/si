@@ -142,6 +142,11 @@ def docker_image_promote_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.typ
     if ctx.attrs.stable_tag:
         cmd.add("--stable-tag")
         cmd.add(ctx.attrs.stable_tag)
+    if ctx.attrs.multi_arches:
+        for multi_arch in ctx.attrs.multi_arches:
+            cmd.add("--multi-arch")
+            cmd.add(multi_arch)
+
     cmd.add(ctx.attrs.image_name)
 
     ctx.actions.write(cli_args.as_output(), cmd)
@@ -161,6 +166,13 @@ docker_image_promote = rule(
             attrs.string(),
             default = None,
             doc = """Override default stable tag name.""",
+        ),
+        "multi_arches": attrs.option(
+            attrs.list(
+                attrs.string(),
+            ),
+            default = None,
+            doc = """Override default multi-arch platforms when promoting.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",

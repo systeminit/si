@@ -3,10 +3,33 @@
 Invokes a `docker image build`.
 """
 import argparse
+import os
 import subprocess
 import json
 import sys
-from typing import Dict, List
+from enum import Enum, EnumMeta
+from typing import Any, Dict, List
+
+
+# A slightly more Rust-y feeling enum
+# Thanks to: https://stackoverflow.com/a/65225753
+class MetaEnum(EnumMeta):
+
+    def __contains__(self: type[Any], member: object) -> bool:
+        try:
+            self(member)
+        except ValueError:
+            return False
+        return True
+
+
+class BaseEnum(Enum, metaclass=MetaEnum):
+    pass
+
+
+class DockerArchitecture(BaseEnum):
+    Amd64 = "amd64"
+    Arm64v8 = "arm64v8"
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,8 +92,10 @@ def main() -> int:
     args = parse_args()
 
     git_info = load_git_info(args.git_info_program)
+    architecture = detect_architecture()
     metadata = compute_metadata(
         git_info,
+        architecture,
         args.image_name,
         args.author,
         args.source_url,
@@ -78,13 +103,15 @@ def main() -> int:
     )
 
     tags = [
-        "{}:{}".format(
+        "{}:{}-{}".format(
             metadata.get("name"),
             metadata.get("org.opencontainers.image.version"),
+            architecture.value,
         ),
-        "{}:sha-{}".format(
+        "{}:sha-{}-{}".format(
             metadata.get("name"),
             metadata.get("org.opencontainers.image.revision"),
+            architecture.value,
         ),
     ]
 
@@ -152,6 +179,25 @@ def write_archive(output: str, tags: List[str]):
     subprocess.run(cmd).check_returncode()
 
 
+# Possible machine architecture detection comes from reading the Rustup shell
+# script installer--thank you for your service!
+# See: https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
+def detect_architecture() -> DockerArchitecture:
+    machine = os.uname().machine
+
+    if (machine == "amd64" or machine == "x86_64" or machine == "x86-64"
+            or machine == "x64"):
+        return DockerArchitecture.Amd64
+    elif (machine == "arm64" or machine == "aarch64" or machine == "arm64v8"):
+        return DockerArchitecture.Arm64v8
+    else:
+        print(
+            f"xxx Failed to determine architecure or unsupported: {machine}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def load_git_info(git_info_program: str) -> Dict[str, str | int | bool]:
     result = subprocess.run([git_info_program], capture_output=True)
     result.check_returncode()
@@ -160,6 +206,7 @@ def load_git_info(git_info_program: str) -> Dict[str, str | int | bool]:
 
 def compute_metadata(
     git_info: Dict[str, str | int | bool],
+    architecture: DockerArchitecture,
     image_name: str,
     author: str,
     source_url: str,
@@ -183,9 +230,10 @@ def compute_metadata(
         build_version += "-dirty"
 
     image_url = ("https://hub.docker.com/r/{}/" +
-                 "tags?page=1&ordering=last_updated&name={}").format(
+                 "tags?page=1&ordering=last_updated&name={}-{}").format(
                      image_name,
                      build_version,
+                     architecture.value,
                  )
 
     metadata = {
@@ -197,6 +245,7 @@ def compute_metadata(
         "org.opencontainers.image.source": source_url,
         "org.opencontainers.image.revision": revision,
         "org.opencontainers.image.created": created,
+        "com.systeminit.image.architecture": architecture.value,
         "com.systeminit.image.image_url": image_url,
         "com.systeminit.image.commit_url": commit_url,
     }
