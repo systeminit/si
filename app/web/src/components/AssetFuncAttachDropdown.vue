@@ -5,20 +5,20 @@
     icon-right="chevron--down"
     :variant="menuRef?.isOpen ? 'ghost' : 'solid'"
     :request-status="requestStatus"
-    loading-text="Creating new function..."
+    loading-text="Attaching new function..."
     size="sm"
     @click="menuRef?.open"
   >
     {{ label }}
     <DropdownMenu ref="menuRef">
-      <DropdownMenuItem
-        v-for="(fnLabel, fnVariant) in CUSTOMIZABLE_FUNC_TYPES"
-        :key="fnVariant"
-        @select="emit('selectedFuncVariant', fnVariant)"
-      >
-        <template #icon><FuncSkeleton /></template>
-        {{ fnLabel.singularLabel }}
+      <DropdownMenuItem @select="emit('selectedAttachType', 'new')">
+        New function
       </DropdownMenuItem>
+      <!--
+      <DropdownMenuItem @select="emit('selectedAttachType', 'existing')">
+        Existing
+      </DropdownMenuItem> 
+      -->
     </DropdownMenu>
   </VButton>
 </template>
@@ -31,8 +31,6 @@ import {
   DropdownMenuItem,
   VButton,
 } from "@si/vue-lib/design-system";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
-import { FuncVariant, CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 
 defineProps({
   label: { type: String, required: true },
@@ -40,7 +38,7 @@ defineProps({
 });
 
 const emit = defineEmits<{
-  (e: "selectedFuncVariant", kind: FuncVariant): void;
+  (e: "selectedAttachType", type: "new" | "existing"): void;
 }>();
 
 const menuRef = ref<InstanceType<typeof DropdownMenu>>();

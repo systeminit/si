@@ -45,7 +45,7 @@ pub async fn import_pkg_from_pkg(
     pkg: &SiPkg,
     file_name: &str,
     options: Option<ImportOptions>,
-) -> PkgResult<()> {
+) -> PkgResult<InstalledPkgId> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
@@ -98,7 +98,7 @@ pub async fn import_pkg_from_pkg(
         .await?;
     }
 
-    Ok(())
+    Ok(*installed_pkg.id())
 }
 
 pub async fn import_pkg(

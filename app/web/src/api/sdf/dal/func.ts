@@ -8,6 +8,10 @@ export enum FuncVariant {
 }
 
 export const CUSTOMIZABLE_FUNC_TYPES = {
+  [FuncVariant.Action]: {
+    pluralLabel: "Actions",
+    singularLabel: "Action",
+  },
   [FuncVariant.Attribute]: {
     pluralLabel: "Attributes",
     singularLabel: "Attribute",
@@ -19,10 +23,6 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
   [FuncVariant.Confirmation]: {
     pluralLabel: "Confirmations",
     singularLabel: "Confirmation",
-  },
-  [FuncVariant.Action]: {
-    pluralLabel: "Actions",
-    singularLabel: "Action",
   },
   [FuncVariant.Qualification]: {
     pluralLabel: "Qualifications",

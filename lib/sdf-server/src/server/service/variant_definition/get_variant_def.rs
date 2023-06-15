@@ -4,11 +4,11 @@ use crate::server::tracking::track;
 use crate::service::func::list_funcs::ListedFuncView;
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
-use dal::SchemaVariant;
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
     ComponentType, StandardModel, Timestamp, Visibility,
 };
+use dal::{SchemaVariant, SchemaVariantId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -30,7 +30,7 @@ pub struct GetVariantDefResponse {
     pub link: Option<String>,
     pub description: Option<String>,
     pub definition: String,
-    pub variant_exists: bool,
+    pub default_variant_id: Option<SchemaVariantId>,
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
     #[serde(flatten)]
@@ -50,7 +50,7 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             description: def.description().map(|d| d.to_string()),
             timestamp: def.timestamp().to_owned(),
             funcs: vec![],
-            variant_exists: false, // This requires a database call, so this is a dummy value
+            default_variant_id: None,
             component_type: *def.component_type(),
         }
     }
@@ -71,20 +71,20 @@ pub async fn get_variant_def(
             request.id,
         ))?;
 
-    let variant = variant_def.existing_default_schema_variant_id(&ctx).await?;
+    let variant_id = variant_def.existing_default_schema_variant_id(&ctx).await?;
 
     let mut response: GetVariantDefResponse = variant_def.clone().into();
-    response.variant_exists = variant.is_some();
+    response.default_variant_id = variant_id;
 
-    if let Some(variant_id) = variant {
+    if let Some(variant_id) = variant_id {
         response.funcs = SchemaVariant::all_funcs(&ctx, variant_id)
             .await?
             .iter()
             .filter_map(|func| match func.try_into() {
-                Ok(variant) => Some(ListedFuncView {
+                Ok(func_variant) => Some(ListedFuncView {
                     id: func.id().to_owned(),
                     handler: func.handler().map(|handler| handler.to_owned()),
-                    variant,
+                    variant: func_variant,
                     name: func.name().into(),
                     display_name: func.display_name().map(Into::into),
                     is_builtin: func.builtin(),

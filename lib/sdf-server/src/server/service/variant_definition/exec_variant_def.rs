@@ -4,6 +4,7 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::func::intrinsics::IntrinsicFunc;
+use dal::installed_pkg::{InstalledPkgAsset, InstalledPkgAssetAssetId, InstalledPkgAssetKind};
 use dal::pkg::import_pkg_from_pkg;
 use dal::{
     schema::variant::definition::{
@@ -23,10 +24,20 @@ pub struct ExecVariantDefRequest {
     pub visibility: Visibility,
 }
 
+// Should move this to the modules service
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledPkgAssetView {
+    pub asset_id: InstalledPkgAssetAssetId,
+    pub asset_kind: InstalledPkgAssetKind,
+    pub asset_hash: String,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
     pub success: bool,
+    pub installed_pkg_assets: Vec<InstalledPkgAssetView>,
 }
 
 pub async fn exec_variant_def(
@@ -60,7 +71,7 @@ pub async fn exec_variant_def(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
-    import_pkg_from_pkg(
+    let installed_pkg_id = import_pkg_from_pkg(
         &ctx,
         &pkg,
         metadata.clone().name.as_str(),
@@ -70,6 +81,9 @@ pub async fn exec_variant_def(
         }),
     )
     .await?;
+
+    let installed_pkg_assets =
+        InstalledPkgAsset::list_for_installed_pkg_id(&ctx, installed_pkg_id).await?;
 
     track(
         &posthog_client,
@@ -91,5 +105,15 @@ pub async fn exec_variant_def(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(ExecVariantDefResponse { success: true }))
+    Ok(Json(ExecVariantDefResponse {
+        success: true,
+        installed_pkg_assets: installed_pkg_assets
+            .iter()
+            .map(|ipa| InstalledPkgAssetView {
+                asset_id: ipa.asset_id(),
+                asset_hash: ipa.asset_hash().into(),
+                asset_kind: ipa.asset_kind().to_owned(),
+            })
+            .collect(),
+    }))
 }

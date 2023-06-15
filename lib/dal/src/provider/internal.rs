@@ -591,13 +591,20 @@ impl InternalProvider {
     }
 
     /// Find all [`Self`] which are also input sockets.
-    pub async fn list_for_input_sockets(ctx: &DalContext) -> InternalProviderResult<Vec<Self>> {
+    pub async fn list_for_input_sockets(
+        ctx: &DalContext,
+        schema_variant_id: Option<SchemaVariantId>,
+    ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
-            .query(LIST_FOR_INPUT_SOCKETS, &[ctx.tenancy(), ctx.visibility()])
+            .query(
+                LIST_FOR_INPUT_SOCKETS,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
+            )
             .await?;
+
         Ok(standard_model::objects_from_rows(rows)?)
     }
 

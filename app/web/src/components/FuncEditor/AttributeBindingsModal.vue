@@ -73,13 +73,7 @@ const componentsStore = useComponentsStore();
 const { allComponents } = storeToRefs(componentsStore);
 
 const funcStore = useFuncStore();
-const {
-  schemaVariantOptions,
-  inputSourceSockets,
-  inputSourceProps,
-  schemaVariantIdForAttributePrototype,
-  outputLocationOptionsForSchemaVariant,
-} = storeToRefs(funcStore);
+const { schemaVariantOptions } = storeToRefs(funcStore);
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -165,7 +159,7 @@ const filteredComponentOptions = computed<Option[]>(() =>
 const outputLocationOptions = computed<
   { label: string; value: OutputLocation }[]
 >(() =>
-  outputLocationOptionsForSchemaVariant.value(
+  funcStore.outputLocationOptionsForSchemaVariant(
     typeof selectedVariant.value.value === "string"
       ? selectedVariant.value.value
       : nilId(),
@@ -173,28 +167,17 @@ const outputLocationOptions = computed<
 );
 
 const inputSourceOptions = computed<Option[]>(() => {
-  const selectedVariantId = selectedVariant.value.value;
+  const selectedVariantId = selectedVariant.value.value as number;
   const socketOptions =
-    inputSourceSockets.value
-      .filter(
-        (socket) =>
-          (selectedVariantId === nilId() ||
-            selectedVariantId === socket.schemaVariantId) &&
-          socket.internalProviderId,
-      )
-      .map((socket) => ({
-        label: `Input Socket: ${socket.name}`,
-        // internalProviderId will never be undefined given the condition above but the Typescript compiler
-        // is not quite smart enough to figure that out.
-        value: socket.internalProviderId ?? nilId(),
-      })) ?? [];
+    funcStore.inputSourceSockets[selectedVariantId]?.map((socket) => ({
+      label: `Input Socket: ${socket.name}`,
+      value: socket.internalProviderId,
+    })) ?? [];
 
   const propOptions =
-    inputSourceProps.value
-      .filter(
+    funcStore.inputSourceProps[selectedVariantId]
+      ?.filter(
         (prop) =>
-          (selectedVariantId === nilId() ||
-            selectedVariantId === prop.schemaVariantId) &&
           prop.internalProviderId &&
           ("propId" in selectedOutputLocation.value.value
             ? prop.propId !== selectedOutputLocation.value.value.propId
@@ -267,7 +250,7 @@ watch(
       return;
     }
 
-    const schemaVariantId = schemaVariantIdForAttributePrototype.value?.(
+    const schemaVariantId = funcStore.schemaVariantIdForAttributePrototype(
       prototype.value,
     );
 

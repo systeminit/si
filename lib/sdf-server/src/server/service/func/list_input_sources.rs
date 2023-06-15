@@ -38,6 +38,7 @@ pub struct InputSourceProp {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListInputSourcesRequest {
+    schema_variant_id: Option<SchemaVariantId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -92,7 +93,7 @@ pub async fn list_input_sources(
 ) -> FuncResult<Json<ListInputSourcesResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let input_sockets = InternalProvider::list_for_input_sockets(&ctx)
+    let input_sockets = InternalProvider::list_for_input_sockets(&ctx, request.schema_variant_id)
         .await?
         .iter()
         .map(|ip| InputSourceSocket {
@@ -102,17 +103,21 @@ pub async fn list_input_sources(
         })
         .collect();
 
-    let output_sockets = ExternalProvider::list(&ctx)
-        .await?
-        .iter()
-        .map(|ep| OutputSocket {
-            external_provider_id: *ep.id(),
-            schema_variant_id: *ep.schema_variant_id(),
-            name: ep.name().to_owned(),
-        })
-        .collect();
+    let output_sockets = match request.schema_variant_id {
+        Some(schema_variant_id) => {
+            ExternalProvider::list_for_schema_variant(&ctx, schema_variant_id).await?
+        }
+        None => ExternalProvider::list(&ctx).await?,
+    }
+    .iter()
+    .map(|ep| OutputSocket {
+        external_provider_id: *ep.id(),
+        schema_variant_id: *ep.schema_variant_id(),
+        name: ep.name().to_owned(),
+    })
+    .collect();
 
-    let props = prop_tree_to_list(&PropTree::new(&ctx, true, None).await?);
+    let props = prop_tree_to_list(&PropTree::new(&ctx, true, request.schema_variant_id).await?);
 
     Ok(Json(ListInputSourcesResponse {
         input_sockets,

@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::{pkg::PkgError, FuncError};
+use dal::{installed_pkg::InstalledPkgError, pkg::PkgError, FuncError};
 use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
@@ -33,6 +33,8 @@ pub enum SchemaVariantDefinitionError {
     CouldNotCreateSchemaVariantFromDefinition(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error(transparent)]
+    InstalledPkg(#[from] InstalledPkgError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]

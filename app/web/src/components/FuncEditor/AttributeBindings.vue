@@ -89,13 +89,7 @@ import { nilId } from "@/utils/nilId";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
-const {
-  internalProviderIdToSourceName,
-  schemaVariantOptions,
-  componentOptions,
-  schemaVariantIdForAttributePrototype,
-  outputLocationForAttributePrototype,
-} = storeToRefs(funcStore);
+const { schemaVariantOptions, componentOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
   modelValue: AttributeAssociations;
@@ -181,7 +175,8 @@ const funcArgumentsIdMap =
 
 const prototypeView = computed(() => {
   return associations.value.prototypes.map((proto) => {
-    const schemaVariantId = schemaVariantIdForAttributePrototype.value?.(proto);
+    const schemaVariantId =
+      funcStore.schemaVariantIdForAttributePrototype(proto);
     const schemaVariant =
       schemaVariantOptions.value.find((sv) => sv.value === schemaVariantId)
         ?.label ?? "none";
@@ -190,12 +185,12 @@ const prototypeView = computed(() => {
       componentOptions.value.find((c) => c.value === proto.componentId)
         ?.label ?? "all";
 
-    const outputLocation = outputLocationForAttributePrototype.value?.(proto);
+    const outputLocation = funcStore.outputLocationForAttributePrototype(proto);
 
     const args = proto.prototypeArguments.map((arg) => ({
       name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
       prop: arg.internalProviderId
-        ? internalProviderIdToSourceName.value?.(arg.internalProviderId) ??
+        ? funcStore.internalProviderIdToSourceName(arg.internalProviderId) ??
           "none"
         : "none",
     }));

@@ -108,16 +108,6 @@ export interface InputSourceProp {
   name: string;
 }
 
-export interface CreateFuncAttributeOptions {
-  type: "attributeOptions";
-  valueId: string;
-  parentValueId?: string;
-  componentId: string;
-  schemaVariantId: string;
-  schemaId: string;
-  currentFuncId: string;
-}
-
 export interface OutputLocationProp {
   label: string;
   propId: string;
@@ -129,3 +119,58 @@ export interface OutputLocationOutputSocket {
 }
 
 export type OutputLocation = OutputLocationProp | OutputLocationOutputSocket;
+
+export interface CreateFuncAttributeOutputLocationProp {
+  type: "prop";
+  propId: string;
+}
+
+export interface CreateFuncAttributeOutputLocationOutputSocket {
+  type: "outputSocket";
+  externalProviderId: string;
+}
+
+export type CreateFuncOutputLocation =
+  | CreateFuncAttributeOutputLocationOutputSocket
+  | CreateFuncAttributeOutputLocationProp;
+
+export interface CreateFuncAttributeOptions {
+  type: "attributeOptions";
+  schemaVariantId: string;
+  outputLocation: CreateFuncOutputLocation;
+}
+
+export interface CreateFuncValidationOptions {
+  type: "validationOptions";
+  schemaVariantId: string;
+  propToValidate: string;
+}
+
+export interface CreateFuncActionOptions {
+  type: "actionOptions";
+  schemaVariantId: string;
+  actionKind: ActionKind;
+}
+
+export interface CreateFuncQualificationOptions {
+  type: "qualificationOptions";
+  schemaVariantId: string;
+}
+
+export interface CreateFuncCodeGenerationOptions {
+  type: "codeGenerationOptions";
+  schemaVariantId: string;
+}
+
+export interface CreateFuncConfirmationOptions {
+  type: "confirmationOptions";
+  schemaVariantId: string;
+}
+
+export type CreateFuncOptions =
+  | CreateFuncActionOptions
+  | CreateFuncAttributeOptions
+  | CreateFuncCodeGenerationOptions
+  | CreateFuncConfirmationOptions
+  | CreateFuncQualificationOptions
+  | CreateFuncValidationOptions;

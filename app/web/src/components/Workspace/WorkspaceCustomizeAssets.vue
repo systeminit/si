@@ -26,7 +26,7 @@
       <div
         class="h-full border-t dark:border-neutral-600 relative z-20 p-8 dark:bg-neutral-800 bg-shade-0"
       >
-        <AssetFuncListPanel />
+        <AssetFuncListPanel :asset-id="assetId" />
       </div>
     </div>
   </SiPanel>

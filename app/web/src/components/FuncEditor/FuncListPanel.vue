@@ -34,7 +34,7 @@
 
       <ul class="overflow-y-auto min-h-[200px]">
         <SiCollapsible
-          v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
+          v-for="(label, variant) in CUSTOMIZABLE_FUNC_TYPES"
           :key="variant"
           as="li"
           class="w-full"
@@ -44,7 +44,7 @@
           <template #label>
             <div class="flex items-center gap-2">
               <FuncSkeleton />
-              <span> {{ fnTypeInfo.pluralLabel }} </span>
+              <span> {{ label.pluralLabel }} </span>
             </div>
           </template>
           <template #default>
