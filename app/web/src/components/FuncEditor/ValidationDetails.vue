@@ -64,11 +64,7 @@ import {
 } from "@/store/func/types";
 
 const funcStore = useFuncStore();
-const {
-  schemaVariantOptions,
-  propsAsOptionsForSchemaVariant,
-  propIdToSourceName,
-} = storeToRefs(funcStore);
+const { schemaVariantOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
   modelValue: ValidationAssociations;
@@ -91,7 +87,7 @@ const selectedVariant = ref<Option>(noneVariant);
 const selectedProp = ref<Option>(noneProp);
 
 const propOptions = computed<Option[]>(() =>
-  propsAsOptionsForSchemaVariant.value(
+  funcStore.propsAsOptionsForSchemaVariant(
     typeof selectedVariant.value.value === "string"
       ? selectedVariant.value.value
       : nilId(),
@@ -104,7 +100,7 @@ const prototypeViews = computed(() => {
       schemaVariantOptions.value.find(
         (sv) => sv.value === proto.schemaVariantId,
       )?.label ?? "none";
-    const propName = propIdToSourceName.value?.(proto.propId) ?? "none";
+    const propName = funcStore.propIdToSourceName(proto.propId) ?? "none";
 
     return {
       schemaVariantName,

@@ -23,7 +23,7 @@ use dal::{
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId, WsEventError,
 };
-use dal::{FuncDescription, FuncDescriptionContents, LeafInputLocation};
+use dal::{ExternalProviderError, FuncDescription, FuncDescriptionContents, LeafInputLocation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -51,6 +51,8 @@ pub enum FuncError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("That attribute is already set by the function named \"{0}\"")]
+    AttributePrototypeAlreadySetByFunc(String),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype missing")]
@@ -80,6 +82,8 @@ pub enum FuncError {
     #[error("editing reconciliation functions is not implemented")]
     EditingReconciliationFuncsNotImplemented,
     #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error(transparent)]
     Func(#[from] dal::FuncError),
     #[error("func argument not found")]
     FuncArgNotFound,
@@ -106,12 +110,16 @@ pub enum FuncError {
     FuncExecutionFailed(String),
     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
     FuncExecutionFailedNoPrototypes,
+    #[error("Function named \"{0}\" already exists in this changeset")]
+    FuncNameExists(String),
     #[error("Function not found")]
     FuncNotFound,
     #[error("func is not revertible")]
     FuncNotRevertible,
     #[error("Cannot create that type of function")]
     FuncNotSupported,
+    #[error("Function options are incompatible with variant")]
+    FuncOptionsAndVariantMismatch,
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("Missing required options for creating a function")]
@@ -146,6 +154,8 @@ pub enum FuncError {
     Tenancy(#[from] TenancyError),
     #[error("unexpected func variant ({0:?}) creating attribute func")]
     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
+    #[error("A validation already exists for that attribute")]
+    ValidationAlreadyExists,
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("validation prototype schema is missing")]
@@ -163,7 +173,7 @@ impl_default_error_into_response!(FuncError);
 // Variants don't map 1:1 onto FuncBackendKind, since some JsAttribute functions
 // are a special case (Qualification, CodeGeneration etc)
 #[remain::sorted]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]
 pub enum FuncVariant {
     Action,
     Attribute,
@@ -179,7 +189,7 @@ impl From<FuncVariant> for FuncBackendKind {
         match value {
             FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
             FuncVariant::Action => FuncBackendKind::JsAction,
-            FuncVariant::Validation => FuncBackendKind::Validation,
+            FuncVariant::Validation => FuncBackendKind::JsValidation,
             FuncVariant::Attribute
             | FuncVariant::CodeGeneration
             | FuncVariant::Confirmation

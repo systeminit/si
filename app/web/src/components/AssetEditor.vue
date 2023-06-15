@@ -21,7 +21,7 @@
       <!-- TODO: Populate the created by from SDF actorHistory-->
       <div><span class="font-bold">Created By: </span>System Initiative</div>
       <SiChip
-        v-if="selectedAsset.variantExists"
+        v-if="selectedAsset.defaultVariantId"
         variant="warning"
         text="read-only"
       />
@@ -30,7 +30,7 @@
       <CodeEditor
         v-model="editingAsset"
         json
-        :disabled="selectedAsset.variantExists"
+        :disabled="!!selectedAsset.defaultVariantId"
         @change="onChange"
       />
     </div>

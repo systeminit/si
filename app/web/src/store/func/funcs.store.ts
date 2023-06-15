@@ -18,7 +18,7 @@ import {
   InputSourceSocket,
   InputSourceProp,
   OutputSocket,
-  CreateFuncAttributeOptions,
+  CreateFuncOptions,
   AttributePrototypeView,
   OutputLocation,
 } from "./types";
@@ -56,6 +56,10 @@ export interface OutputLocationOption {
 
 const LOCAL_STORAGE_FUNC_IDS_KEY = "si-open-func-ids";
 
+export type InputSourceProps = { [key: string]: InputSourceProp[] };
+export type InputSourceSockets = { [key: string]: InputSourceSocket[] };
+export type OutputSockets = { [key: string]: OutputSocket[] };
+
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
@@ -69,9 +73,10 @@ export const useFuncStore = () => {
       state: () => ({
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
-        inputSourceSockets: [] as InputSourceSocket[],
-        inputSourceProps: [] as InputSourceProp[],
-        outputSockets: [] as OutputSocket[],
+        // map from schema variant ids to the input sources
+        inputSourceSockets: {} as InputSourceSockets,
+        inputSourceProps: {} as InputSourceProps,
+        outputSockets: {} as OutputSockets,
         saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
         openFuncIds: [] as FuncId[],
       }),
@@ -97,111 +102,71 @@ export const useFuncStore = () => {
 
         funcList: (state) => _.values(state.funcsById),
 
-        propForId: (state) => (propId: string) =>
-          state.inputSourceProps.find((prop) => prop.propId === propId),
-
-        outputSocketForId() {
-          return (externalProviderId: string) =>
-            this.outputSockets?.find(
-              (socket) => socket.externalProviderId === externalProviderId,
-            );
-        },
-
-        schemaVariantIdForAttributePrototype() {
-          return (prototype: AttributePrototypeView) => {
-            if (prototype.propId) {
-              return this.propForId(prototype.propId)?.schemaVariantId;
+        propForId:
+          (state) =>
+          (propId: string): InputSourceProp | undefined => {
+            for (const props of Object.values(state.inputSourceProps)) {
+              const inputSourceProp = props.find(
+                (prop) => prop.propId === propId,
+              );
+              if (inputSourceProp) {
+                return inputSourceProp;
+              }
             }
-
-            if (prototype.externalProviderId) {
-              return this.outputSocketForId(prototype.externalProviderId)
-                ?.schemaVariantId;
-            }
-          };
-        },
-
-        outputLocationForAttributePrototype() {
-          return (
-            prototype: AttributePrototypeView,
-          ): OutputLocation | undefined => {
-            if (prototype.propId) {
-              return {
-                label: this.propIdToSourceName(prototype.propId) ?? "none",
-                propId: prototype.propId,
-              };
-            }
-
-            if (prototype.externalProviderId) {
-              return {
-                label:
-                  this.externalProviderIdToSourceName(
-                    prototype.externalProviderId,
-                  ) ?? "none",
-                externalProviderId: prototype.externalProviderId,
-              };
-            }
-
             return undefined;
-          };
-        },
+          },
+
+        propForInternalProviderId:
+          (state) =>
+          (internalProviderId: string): InputSourceProp | undefined => {
+            for (const props of Object.values(state.inputSourceProps)) {
+              const inputSourceProp = props.find(
+                (prop) => prop.internalProviderId === internalProviderId,
+              );
+              if (inputSourceProp) {
+                return inputSourceProp;
+              }
+            }
+            return undefined;
+          },
+
+        inputSocketForInternalProviderId:
+          (state) =>
+          (internalProviderId: string): InputSourceSocket | undefined => {
+            for (const sockets of Object.values(state.inputSourceSockets)) {
+              const inputSourceSocket = sockets.find(
+                (socket) => socket.internalProviderId === internalProviderId,
+              );
+              if (inputSourceSocket) {
+                return inputSourceSocket;
+              }
+            }
+            return undefined;
+          },
+
+        outputSocketForId:
+          (state) =>
+          (externalProviderId: string): OutputSocket | undefined => {
+            for (const sockets of Object.values(state.outputSockets)) {
+              const outputSocket = sockets.find(
+                (socket) => socket.externalProviderId === externalProviderId,
+              );
+              if (outputSocket) {
+                return outputSocket;
+              }
+            }
+            return undefined;
+          },
 
         // Filter props by schema variant
         propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
-          state.inputSourceProps
-            .filter(
-              (prop) =>
-                schemaVariantId === nilId() ||
-                schemaVariantId === prop.schemaVariantId,
-            )
-            .map((prop) => ({
-              label: `${prop.path}${prop.name}`,
-              value: prop.propId,
-            })),
-
-        outputLocationOptionsForSchemaVariant(): (
-          schemaVariantId: string,
-        ) => OutputLocationOption[] {
-          return (schemaVariantId: string) => {
-            const propOptions = this.inputSourceProps
-              .filter(
-                (prop) =>
-                  schemaVariantId === nilId() ||
-                  schemaVariantId === prop.schemaVariantId,
-              )
-              .map((prop) => {
-                const label = this.propIdToSourceName(prop.propId) ?? "none";
-                return {
-                  label,
-                  value: {
-                    label,
-                    propId: prop.propId,
-                  },
-                };
-              });
-
-            const socketOptions = this.outputSockets
-              .filter(
-                (socket) =>
-                  schemaVariantId === nilId() ||
-                  schemaVariantId === socket.schemaVariantId,
-              )
-              .map((socket) => {
-                const label =
-                  this.externalProviderIdToSourceName(
-                    socket.externalProviderId,
-                  ) ?? "none";
-                return {
-                  label,
-                  value: {
-                    label,
-                    externalProviderId: socket.externalProviderId,
-                  },
-                };
-              });
-
-            return [...propOptions, ...socketOptions];
-          };
-        },
+          (schemaVariantId === nilId()
+            ? _.flatten(Object.values(state.inputSourceProps))
+            : state.inputSourceProps[schemaVariantId]
+          )?.map((prop) => ({
+            label: `${prop.path}${prop.name}`,
+            value: prop.propId,
+          })) ?? [],
 
         schemaVariantOptions() {
           return componentsStore.schemaVariants.map((sv) => ({
@@ -209,6 +174,7 @@ export const useFuncStore = () => {
             value: sv.id,
           }));
         },
+
         componentOptions(): { label: string; value: string }[] {
           return componentsStore.allComponents.map(
             ({ displayName, id, schemaVariantId }) => ({
@@ -219,49 +185,113 @@ export const useFuncStore = () => {
             }),
           );
         },
-        internalProviderIdToSourceName() {
-          return (internalProviderId: string) => {
-            const socket = this.inputSourceSockets?.find(
-              (socket) => socket.internalProviderId === internalProviderId,
-            );
-            if (socket) {
-              return `Input Socket: ${socket.name}`;
-            }
-
-            const prop = this.inputSourceProps.find(
-              (prop) => prop.internalProviderId === internalProviderId,
-            );
-            if (prop) {
-              return `Attribute: ${prop.path}${prop.name}`;
-            }
-
-            return undefined;
-          };
-        },
-        propIdToSourceName() {
-          return (propId: string) => {
-            const prop = this.inputSourceProps.find(
-              (prop) => prop.propId === propId,
-            );
-            if (prop) {
-              return `Attribute: ${prop.path}${prop.name}`;
-            }
-          };
-        },
-        externalProviderIdToSourceName() {
-          return (externalProviderId: string) => {
-            const outputSocket = this.outputSockets?.find(
-              (socket) => socket.externalProviderId === externalProviderId,
-            );
-            if (outputSocket) {
-              return `Output Socket: ${outputSocket.name}`;
-            }
-            return undefined;
-          };
-        },
       },
 
       actions: {
+        internalProviderIdToSourceName(internalProviderId: string) {
+          const socket =
+            this.inputSocketForInternalProviderId(internalProviderId);
+          if (socket) {
+            return `Input Socket: ${socket.name}`;
+          }
+
+          const prop = this.propForInternalProviderId(internalProviderId);
+          if (prop) {
+            return `Attribute: ${prop.path}${prop.name}`;
+          }
+
+          return undefined;
+        },
+
+        propIdToSourceName(propId: string) {
+          const prop = this.propForId(propId);
+          if (prop) {
+            return `Attribute: ${prop.path}${prop.name}`;
+          }
+        },
+
+        externalProviderIdToSourceName(externalProviderId: string) {
+          const outputSocket = this.outputSocketForId(externalProviderId);
+          if (outputSocket) {
+            return `Output Socket: ${outputSocket.name}`;
+          }
+          return undefined;
+        },
+
+        schemaVariantIdForAttributePrototype(
+          prototype: AttributePrototypeView,
+        ) {
+          if (prototype.propId) {
+            return this.propForId(prototype.propId)?.schemaVariantId;
+          }
+
+          if (prototype.externalProviderId) {
+            return this.outputSocketForId(prototype.externalProviderId)
+              ?.schemaVariantId;
+          }
+        },
+
+        outputLocationForAttributePrototype(
+          prototype: AttributePrototypeView,
+        ): OutputLocation | undefined {
+          if (prototype.propId) {
+            return {
+              label: this.propIdToSourceName(prototype.propId) ?? "none",
+              propId: prototype.propId,
+            };
+          }
+
+          if (prototype.externalProviderId) {
+            return {
+              label:
+                this.externalProviderIdToSourceName(
+                  prototype.externalProviderId,
+                ) ?? "none",
+              externalProviderId: prototype.externalProviderId,
+            };
+          }
+
+          return undefined;
+        },
+
+        outputLocationOptionsForSchemaVariant(
+          schemaVariantId: string,
+        ): OutputLocationOption[] {
+          const propOptions =
+            (schemaVariantId === nilId()
+              ? _.flatten(Object.values(this.inputSourceProps))
+              : this.inputSourceProps[schemaVariantId]
+            )?.map((prop) => {
+              const label = this.propIdToSourceName(prop.propId) ?? "none";
+              return {
+                label,
+                value: {
+                  label,
+                  propId: prop.propId,
+                },
+              };
+            }) ?? [];
+
+          const socketOptions =
+            (schemaVariantId === nilId()
+              ? _.flatten(Object.values(this.outputSockets))
+              : this.outputSockets[schemaVariantId]
+            )?.map((socket) => {
+              const label =
+                this.externalProviderIdToSourceName(
+                  socket.externalProviderId,
+                ) ?? "none";
+              return {
+                label,
+                value: {
+                  label,
+                  externalProviderId: socket.externalProviderId,
+                },
+              };
+            }) ?? [];
+          return [...propOptions, ...socketOptions];
+        },
+
         async FETCH_FUNC_LIST() {
           return new ApiRequest<{ funcs: FuncSummary[] }, Visibility>({
             url: "func/list_funcs",
@@ -345,7 +375,8 @@ export const useFuncStore = () => {
 
         async CREATE_FUNC(createFuncRequest: {
           variant: FuncVariant;
-          options?: CreateFuncAttributeOptions;
+          name?: string;
+          options?: CreateFuncOptions;
         }) {
           return new ApiRequest<FuncSummary>({
             method: "post",
@@ -357,18 +388,47 @@ export const useFuncStore = () => {
           });
         },
 
-        async FETCH_INPUT_SOURCE_LIST() {
+        async FETCH_INPUT_SOURCE_LIST(schemaVariantId?: string) {
           return new ApiRequest<{
             inputSockets: InputSourceSocket[];
             outputSockets: OutputSocket[];
             props: InputSourceProp[];
           }>({
             url: "func/list_input_sources",
-            params: { ...visibility },
+            params: { schemaVariantId, ...visibility },
             onSuccess: (response) => {
-              this.inputSourceSockets = response.inputSockets;
-              this.inputSourceProps = response.props;
-              this.outputSockets = response.outputSockets;
+              const inputSourceSockets = this.inputSourceSockets;
+              const inputSourceSocketsFromResponse = _.groupBy(
+                response.inputSockets,
+                "schemaVariantId",
+              );
+              for (const schemaVariantId in inputSourceSocketsFromResponse) {
+                inputSourceSockets[schemaVariantId] =
+                  inputSourceSocketsFromResponse[schemaVariantId] ?? [];
+              }
+              this.inputSourceSockets = inputSourceSockets;
+
+              const inputSourceProps = this.inputSourceProps;
+              const inputSourcePropsFromResponse = _.groupBy(
+                response.props,
+                "schemaVariantId",
+              );
+              for (const schemaVariantId in inputSourcePropsFromResponse) {
+                inputSourceProps[schemaVariantId] =
+                  inputSourcePropsFromResponse[schemaVariantId] ?? [];
+              }
+              this.inputSourceProps = inputSourceProps;
+
+              const outputSockets = this.outputSockets;
+              const outputSocketsFromResponse = _.groupBy(
+                response.outputSockets,
+                "schemaVariantId",
+              );
+              for (const schemaVariantId in outputSocketsFromResponse) {
+                outputSockets[schemaVariantId] =
+                  outputSocketsFromResponse[schemaVariantId] ?? [];
+              }
+              this.outputSockets = outputSockets;
             },
           });
         },

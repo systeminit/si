@@ -5,23 +5,50 @@ use crate::service::func::FuncError;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{
-    generate_name, AttributeValueId, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncId, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    generate_name, validation::prototype::context::ValidationPrototypeContext, ActionKind,
+    ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
+    DalContext, ExternalProviderId, Func, FuncBackendResponseType, FuncId, LeafInputLocation,
+    LeafKind, PropId, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
+pub enum AttributeOutputLocation {
+    #[serde(rename_all = "camelCase")]
+    OutputSocket {
+        external_provider_id: ExternalProviderId,
+    },
+    #[serde(rename_all = "camelCase")]
+    Prop { prop_id: PropId },
+}
+
+#[remain::sorted]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum CreateFuncOptions {
     #[serde(rename_all = "camelCase")]
+    ActionOptions {
+        schema_variant_id: SchemaVariantId,
+        action_kind: ActionKind,
+    },
+    #[serde(rename_all = "camelCase")]
     AttributeOptions {
-        value_id: Option<AttributeValueId>,
-        parent_value_id: Option<AttributeValueId>,
-        component_id: Option<ComponentId>,
-        schema_variant_id: Option<SchemaVariantId>,
-        schema_id: Option<SchemaId>,
-        current_func_id: Option<FuncId>,
+        schema_variant_id: SchemaVariantId,
+        output_location: AttributeOutputLocation,
+    },
+    #[serde(rename_all = "camelCase")]
+    CodeGenerationOptions { schema_variant_id: SchemaVariantId },
+    #[serde(rename_all = "camelCase")]
+    ConfirmationOptions { schema_variant_id: SchemaVariantId },
+    #[serde(rename_all = "camelCase")]
+    QualificationOptions { schema_variant_id: SchemaVariantId },
+    #[serde(rename_all = "camelCase")]
+    ValidationOptions {
+        schema_variant_id: SchemaVariantId,
+        prop_to_validate: PropId,
     },
 }
 
@@ -29,6 +56,7 @@ pub enum CreateFuncOptions {
 #[serde(rename_all = "camelCase")]
 pub struct CreateFuncRequest {
     variant: FuncVariant,
+    name: Option<String>,
     options: Option<CreateFuncOptions>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -57,40 +85,149 @@ pub static DEFAULT_ACTION_CODE: &str = include_str!("./defaults/action.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
 
-async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
+async fn create_func_stub(
+    ctx: &DalContext,
+    name: Option<String>,
+    variant: FuncVariant,
+    response_type: FuncBackendResponseType,
+    code: &str,
+    handler: &str,
+) -> FuncResult<Func> {
+    let name = name.unwrap_or(generate_name());
+    if Func::find_by_name(ctx, &name).await?.is_some() {
+        return Err(FuncError::FuncNameExists(name));
+    }
+
+    let mut func = Func::new(ctx, name, variant.into(), response_type).await?;
+
+    func.set_code_plaintext(ctx, Some(code)).await?;
+    func.set_handler(ctx, Some(handler)).await?;
+
+    Ok(func)
+}
+
+async fn create_validation_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    options: Option<CreateFuncOptions>,
+) -> FuncResult<Func> {
+    let func = create_func_stub(
         ctx,
-        generate_name(),
-        FuncBackendKind::JsValidation,
+        name,
+        FuncVariant::Validation,
         FuncBackendResponseType::Validation,
+        DEFAULT_VALIDATION_CODE,
+        DEFAULT_VALIDATION_HANDLER,
     )
     .await?;
 
-    func.set_code_plaintext(ctx, Some(DEFAULT_VALIDATION_CODE))
-        .await?;
-    func.set_handler(ctx, Some(DEFAULT_VALIDATION_HANDLER))
-        .await?;
+    if let Some(CreateFuncOptions::ValidationOptions {
+        schema_variant_id,
+        prop_to_validate,
+    }) = options
+    {
+        let mut context = ValidationPrototypeContext::builder();
+        let schema_id = *SchemaVariant::get_by_id(ctx, &schema_variant_id)
+            .await?
+            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
+                schema_variant_id,
+            ))?
+            .schema(ctx)
+            .await?
+            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
+            .id();
+
+        let context = context
+            .set_prop_id(prop_to_validate)
+            .set_schema_variant_id(schema_variant_id)
+            .set_schema_id(schema_id)
+            .to_context(ctx)
+            .await?;
+
+        // Can we have more than one validation per prop?
+        if !ValidationPrototype::find_for_context(ctx, context.to_owned())
+            .await?
+            .is_empty()
+        {
+            return Err(FuncError::ValidationAlreadyExists);
+        }
+
+        ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?;
+    }
 
     Ok(func)
 }
 
-async fn create_action_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
+async fn create_action_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    options: Option<CreateFuncOptions>,
+) -> FuncResult<Func> {
+    let func = create_func_stub(
         ctx,
-        generate_name(),
-        FuncBackendKind::JsAction,
+        name,
+        FuncVariant::Action,
         FuncBackendResponseType::Action,
+        DEFAULT_ACTION_CODE,
+        DEFAULT_ACTION_HANDLER,
     )
     .await?;
 
-    func.set_code_plaintext(ctx, Some(DEFAULT_ACTION_CODE))
+    if let Some(CreateFuncOptions::ActionOptions {
+        schema_variant_id,
+        action_kind,
+    }) = options
+    {
+        ActionPrototype::new(
+            ctx,
+            *func.id(),
+            action_kind,
+            ActionPrototypeContext { schema_variant_id },
+        )
         .await?;
-    func.set_handler(ctx, Some(DEFAULT_ACTION_HANDLER)).await?;
+    }
 
     Ok(func)
 }
 
-async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncResult<Func> {
+async fn create_leaf_prototype(
+    ctx: &DalContext,
+    func: &Func,
+    schema_variant_id: SchemaVariantId,
+    variant: FuncVariant,
+) -> FuncResult<()> {
+    let leaf_kind = match variant {
+        FuncVariant::CodeGeneration => LeafKind::CodeGeneration,
+        FuncVariant::Confirmation => LeafKind::Confirmation,
+        FuncVariant::Qualification => LeafKind::Qualification,
+        _ => return Err(FuncError::FuncOptionsAndVariantMismatch),
+    };
+
+    let input_locations = match leaf_kind {
+        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
+        LeafKind::Confirmation => vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
+        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
+    };
+
+    SchemaVariant::upsert_leaf_function(
+        ctx,
+        schema_variant_id,
+        None,
+        leaf_kind,
+        &input_locations,
+        func,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn create_attribute_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    variant: FuncVariant,
+    options: Option<CreateFuncOptions>,
+) -> FuncResult<Func> {
     let (code, handler, response_type) = match variant {
         FuncVariant::Attribute => (
             DEFAULT_ATTRIBUTE_CODE,
@@ -114,15 +251,75 @@ async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncRe
         ),
         _ => {
             return Err(FuncError::UnexpectedFuncVariantCreatingAttributeFunc(
-                variant,
+                variant.to_owned(),
             ));
         }
     };
 
-    let mut func = Func::new(ctx, generate_name(), variant.into(), response_type).await?;
+    let func = create_func_stub(ctx, name, variant, response_type, code, handler).await?;
 
-    func.set_code_plaintext(ctx, Some(code)).await?;
-    func.set_handler(ctx, Some(handler)).await?;
+    if let Some(options) = options {
+        match (variant, options) {
+            (
+                FuncVariant::Attribute,
+                CreateFuncOptions::AttributeOptions {
+                    output_location, ..
+                },
+            ) => {
+                // XXX: we need to search *up* the attribute tree to ensure that
+                // the parent of this prop is not also set by a function. But we
+                // should also hide props on the frontend if they are the
+                // children of a value that is set by a function.
+                let mut context_builder = AttributeContextBuilder::new();
+                match output_location {
+                    AttributeOutputLocation::OutputSocket {
+                        external_provider_id,
+                    } => {
+                        context_builder.set_external_provider_id(external_provider_id);
+                    }
+                    AttributeOutputLocation::Prop { prop_id } => {
+                        context_builder.set_prop_id(prop_id);
+                    }
+                }
+
+                let context = context_builder.to_context()?;
+                let mut prototype =
+                    AttributePrototype::find_for_context_and_key(ctx, context, &None)
+                        .await?
+                        .pop()
+                        .ok_or(FuncError::AttributePrototypeMissing)?;
+
+                if let Some(func) = Func::get_by_id(ctx, &prototype.func_id()).await? {
+                    if !func.is_intrinsic() {
+                        return Err(FuncError::AttributePrototypeAlreadySetByFunc(
+                            func.name().into(),
+                        ));
+                    }
+                }
+
+                prototype.set_func_id(ctx, *func.id()).await?;
+            }
+            (
+                FuncVariant::CodeGeneration,
+                CreateFuncOptions::CodeGenerationOptions { schema_variant_id },
+            ) => {
+                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
+            }
+            (
+                FuncVariant::Confirmation,
+                CreateFuncOptions::ConfirmationOptions { schema_variant_id },
+            ) => {
+                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
+            }
+            (
+                FuncVariant::Qualification,
+                CreateFuncOptions::QualificationOptions { schema_variant_id },
+            ) => {
+                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
+            }
+            (_, _) => return Err(FuncError::FuncOptionsAndVariantMismatch),
+        }
+    }
 
     Ok(func)
 }
@@ -137,15 +334,40 @@ pub async fn create_func(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let func = match request.variant {
-        FuncVariant::Attribute => create_attribute_func(&ctx, FuncVariant::Attribute).await?,
-        FuncVariant::CodeGeneration => {
-            create_attribute_func(&ctx, FuncVariant::CodeGeneration).await?
+        FuncVariant::Attribute => {
+            create_attribute_func(&ctx, request.name, FuncVariant::Attribute, request.options)
+                .await?
         }
-        FuncVariant::Confirmation => create_attribute_func(&ctx, FuncVariant::Confirmation).await?,
-        FuncVariant::Action => create_action_func(&ctx).await?,
-        FuncVariant::Validation => create_validation_func(&ctx).await?,
+        FuncVariant::CodeGeneration => {
+            create_attribute_func(
+                &ctx,
+                request.name,
+                FuncVariant::CodeGeneration,
+                request.options,
+            )
+            .await?
+        }
+        FuncVariant::Confirmation => {
+            create_attribute_func(
+                &ctx,
+                request.name,
+                FuncVariant::Confirmation,
+                request.options,
+            )
+            .await?
+        }
+        FuncVariant::Action => create_action_func(&ctx, request.name, request.options).await?,
+        FuncVariant::Validation => {
+            create_validation_func(&ctx, request.name, request.options).await?
+        }
         FuncVariant::Qualification => {
-            create_attribute_func(&ctx, FuncVariant::Qualification).await?
+            create_attribute_func(
+                &ctx,
+                request.name,
+                FuncVariant::Qualification,
+                request.options,
+            )
+            .await?
         }
         _ => unimplemented!(),
     };

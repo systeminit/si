@@ -15,6 +15,12 @@ export interface ListVariantDefsResponse {
   variantDefs: ListedVariantDef[];
 }
 
+export interface InstalledPkgAssetView {
+  assetId: string;
+  assetHash: string;
+  assetKind: string;
+}
+
 export type ComponentType =
   | "aggregationFrame"
   | "component"
@@ -36,7 +42,7 @@ export interface ListedVariantDef {
 export interface VariantDef extends ListedVariantDef {
   link?: string;
   definition: string;
-  variantExists: boolean;
+  defaultVariantId?: string;
 }
 
 const funcStore = useFuncStore();
@@ -87,6 +93,14 @@ export const useAssetStore = () => {
           state.assetList.find((asset) => asset.id === assetId),
       },
       actions: {
+        setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
+          const asset = this.assetsById[assetId];
+          if (asset) {
+            asset.defaultVariantId = schemaVariantId;
+            this.assetsById[assetId] = asset;
+          }
+        },
+
         setSelectedAssetId(selection: AssetId | null) {
           if (!selection) {
             this.selectedAssetId = null;
@@ -171,7 +185,7 @@ export const useAssetStore = () => {
             funcs: [],
             createdAt: new Date(),
             updatedAt: new Date(),
-            variantExists: false,
+            defaultVariantId: undefined,
           };
         },
 
@@ -186,7 +200,7 @@ export const useAssetStore = () => {
               ...visibility,
               ..._.omit(asset, [
                 "id",
-                "variantExists",
+                "defaultVariantId",
                 "createdAt",
                 "updatedAt",
                 "definition",
@@ -218,7 +232,7 @@ export const useAssetStore = () => {
             url: "/variant_def/save_variant_def",
             params: {
               ...visibility,
-              ..._.omit(asset, ["variantExists", "createdAt", "updatedAt"]),
+              ..._.omit(asset, ["defaultVariantId", "createdAt", "updatedAt"]),
             },
           });
         },
@@ -245,7 +259,10 @@ export const useAssetStore = () => {
         },
 
         async EXEC_ASSET(assetId: AssetId) {
-          return new ApiRequest<{ id: string }, Visibility & { id: AssetId }>({
+          return new ApiRequest<
+            { success: true; installedPkgAssets: InstalledPkgAssetView[] },
+            Visibility & { id: AssetId }
+          >({
             method: "post",
             url: "/variant_def/exec_variant_def",
             params: { ...visibility, id: assetId },

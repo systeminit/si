@@ -10,6 +10,8 @@
         class="p-sm border-b dark:border-neutral-600 flex flex-row items-center gap-2"
       >
         <VButton
+          :request-status="executeAssetReqStatus"
+          loading-text="Creating Asset..."
           label="Create Asset"
           :disabled="disabled"
           tone="action"
@@ -135,9 +137,15 @@ import {
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import ColorPicker from "./ColorPicker.vue";
 
+defineProps<{
+  assetId?: string;
+}>();
+
 const assetStore = useAssetStore();
+const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
 const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
@@ -155,18 +163,24 @@ const updateAsset = () => {
 };
 
 const disabled = computed(
-  () => assetStore.selectedAsset?.variantExists ?? false,
+  () => !!(assetStore.selectedAsset?.defaultVariantId ?? false),
 );
 
-defineProps<{
-  assetId?: string;
-}>();
-
 const executeAsset = async () => {
-  if (assetStore.selectedAsset?.id) {
-    const result = await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
+  if (assetStore.selectedAssetId) {
+    const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value.open();
+      for (const ipa of result.result.data.installedPkgAssets) {
+        if (ipa.assetKind === "schemaVariant") {
+          // there should only be one sv for an exec'd asset
+          assetStore.setSchemaVariantIdForAsset(
+            assetStore.selectedAssetId,
+            ipa.assetId,
+          );
+          await funcStore.FETCH_INPUT_SOURCE_LIST(ipa.assetId); // a new asset means new input sources
+        }
+      }
     }
   }
 };
