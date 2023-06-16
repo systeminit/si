@@ -25,17 +25,9 @@
         v-for="tab in currentTabs"
         :key="tab.type === 'asset' ? 'asset' : tab.id"
         :uncloseable="tab.type === 'asset'"
+        :label="tab.label"
         :slug="tab.type === 'asset' ? 'asset' : tab.id"
       >
-        <template #label>
-          <span v-if="tab.type === 'asset'">
-            {{ assetStore.assetListEntryById(tab.id)?.name || "error" }}
-          </span>
-          <span v-else-if="tab.type === 'func'">
-            {{ funcStore.funcsById[tab.id]?.name || "error" }}
-          </span>
-        </template>
-
         <AssetEditor
           v-if="tab.type === 'asset'"
           :key="selectedAssetId"
@@ -78,13 +70,17 @@ const selectedAssetId = computed(() => assetStore.urlSelectedAssetId);
 
 const loadAssetsRequestStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
-const currentTabs = ref<{ type: string; id: string }[]>([]);
+const currentTabs = ref<{ type: string; label: string; id: string }[]>([]);
 
 // We have to be careful about updating this list since it will cause the entire
 // tab group item list to re-render, and re-rendering will interrupt the editing
 // flow
 watch(
-  [loadAssetsRequestStatus, selectedAssetId, assetStore.openAssetFuncIds],
+  [
+    loadAssetsRequestStatus,
+    () => assetStore.urlSelectedAssetId,
+    assetStore.openAssetFuncIds,
+  ],
   ([requestStatus, assetId, openAssetFuncIds]) => {
     if (!requestStatus.isSuccess || !assetId) {
       return;
@@ -92,11 +88,14 @@ watch(
 
     const assetTab = {
       type: "asset",
+      label: assetStore.assetListEntryById(assetId)?.name ?? "error",
       id: assetId,
     };
+
     const funcTabs =
       openAssetFuncIds[assetId]?.map((funcId) => ({
         type: "func",
+        label: funcStore.funcsById[funcId]?.name ?? "error",
         id: funcId,
       })) ?? [];
 

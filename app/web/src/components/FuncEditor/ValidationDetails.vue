@@ -1,64 +1,77 @@
 <template>
   <div>
     <div class="p-3 flex flex-col gap-2">
-      <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-        Run this validation on the selected schema variant attributes below.
-      </h1>
+      <template v-if="!schemaVariantId">
+        <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+          Run this validation on the selected schema variant attributes below.
+        </h1>
 
-      <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Run on Schema Variant and Attribute:
+        <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Run on Schema Variant and Attribute:
+        </h2>
+        <SelectMenu
+          v-model="selectedVariant"
+          class="flex-auto"
+          :options="schemaVariantOptions ?? []"
+        />
+      </template>
+      <h2
+        v-if="schemaVariantId"
+        class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50"
+      >
+        Validate Attribute:
       </h2>
-      <SelectMenu
-        v-model="selectedVariant"
-        class="flex-auto"
-        :options="schemaVariantOptions ?? []"
-      />
+
       <SelectMenu
         v-model="selectedProp"
         class="flex-auto"
         :options="propOptions"
       />
       <VButton
+        v-if="!schemaVariantId"
         icon="plus"
         label="Add"
         tone="neutral"
         :disabled="disabled"
-        @click="addValidation"
+        @click="onClickAdd"
       />
     </div>
-    <h2 class="p-3 pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Currently Validating:
-    </h2>
-    <ul class="flex flex-col p-3 gap-1 list-disc list-inside">
-      <li
-        v-for="protoView in prototypeViews"
-        :key="protoView.key"
-        class="flex flex-row gap-1 items-center text-sm pb-2 pl-4"
-      >
-        <div class="pr-2" role="decoration">•</div>
-        {{ protoView.schemaVariantName }}: {{ protoView.propName }}
-        <VButton
-          class="flex-none"
-          tone="neutral"
-          variant="transparent"
-          label=""
-          icon="trash"
-          :disabled="disabled"
-          @click="deleteValidation(protoView.proto)"
-        />
-      </li>
-    </ul>
+    <template v-if="!schemaVariantId">
+      <h2 class="p-3 pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Currently Validating:
+      </h2>
+      <ul class="flex flex-col p-3 gap-1 list-disc list-inside">
+        <li
+          v-for="protoView in prototypeViews"
+          :key="protoView.key"
+          class="flex flex-row gap-1 items-center text-sm pb-2 pl-4"
+        >
+          <div class="pr-2" role="decoration">•</div>
+          {{ protoView.schemaVariantName }}: {{ protoView.propName }}
+          <VButton
+            class="flex-none"
+            tone="neutral"
+            variant="transparent"
+            label=""
+            icon="trash"
+            :disabled="disabled"
+            @click="onClickDelete(protoView.proto)"
+          />
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
 import { VButton } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import {
+  FuncAssociations,
   ValidationAssociations,
   ValidationPrototypeView,
 } from "@/store/func/types";
@@ -68,6 +81,7 @@ const { schemaVariantOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
   modelValue: ValidationAssociations;
+  schemaVariantId?: string;
   disabled?: boolean;
 }>();
 
@@ -83,8 +97,11 @@ function nilId(): string {
 const noneVariant = { label: "select schema variant", value: nilId() };
 const noneProp = { label: "select attribute to validate", value: nilId() };
 
-const selectedVariant = ref<Option>(noneVariant);
-const selectedProp = ref<Option>(noneProp);
+const selectedVariant = ref<Option>(
+  props.schemaVariantId
+    ? { label: "", value: props.schemaVariantId }
+    : noneVariant,
+);
 
 const propOptions = computed<Option[]>(() =>
   funcStore.propsAsOptionsForSchemaVariant(
@@ -93,6 +110,49 @@ const propOptions = computed<Option[]>(() =>
       : nilId(),
   ),
 );
+
+const selectedProp = ref<Option>(noneProp);
+
+watch(
+  [propOptions, () => props.schemaVariantId],
+  () => {
+    if (props.schemaVariantId) {
+      const currentlyValidating = props.modelValue.prototypes.find(
+        (proto) => proto.schemaVariantId === props.schemaVariantId,
+      );
+      if (currentlyValidating) {
+        selectedProp.value =
+          propOptions.value.find(
+            (opt) => opt.value === currentlyValidating.propId,
+          ) ?? noneProp;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(selectedProp, (newProp, oldProp) => {
+  if (props.schemaVariantId) {
+    let prototypes = props.modelValue.prototypes;
+    const currentlyValidating = prototypes.find(
+      (proto) => proto.schemaVariantId === props.schemaVariantId,
+    );
+    if (newProp.value === currentlyValidating?.propId) {
+      // nothing to do.
+      return;
+    }
+    if (oldProp.value === currentlyValidating?.propId) {
+      prototypes = deleteValidation(prototypes, currentlyValidating);
+    }
+    prototypes = addValidation(
+      prototypes,
+      props.schemaVariantId,
+      selectedProp.value.value as string,
+    );
+    emit("update:modelValue", { type: "validation", prototypes });
+    emit("change", { type: "validation", prototypes });
+  }
+});
 
 const prototypeViews = computed(() => {
   return props.modelValue.prototypes.map((proto) => {
@@ -111,28 +171,62 @@ const prototypeViews = computed(() => {
   });
 });
 
-const addValidation = () => {
-  const prototypes = Array.from(
-    new Set(
-      props.modelValue.prototypes.concat({
-        id: nilId(),
-        schemaVariantId: selectedVariant.value.value as string,
-        propId: selectedProp.value.value as string,
-      }),
-    ),
+const onClickAdd = () => {
+  const prototypes = addValidation(
+    props.modelValue.prototypes,
+    selectedVariant.value.value as string,
+    selectedProp.value.value as string,
   );
-
   emit("update:modelValue", { type: "validation", prototypes });
   emit("change", { type: "validation", prototypes });
   selectedVariant.value = noneVariant;
   selectedProp.value = noneProp;
 };
 
-const deleteValidation = (protoToDelete: ValidationPrototypeView) => {
-  const prototypes = props.modelValue.prototypes.filter(
-    (proto) => !_.isEqual(proto, protoToDelete),
+const addValidation = (
+  prototypes: ValidationPrototypeView[],
+  schemaVariantId: string,
+  propId: string,
+) => {
+  return Array.from(
+    new Set(
+      prototypes.concat({
+        id: nilId(),
+        schemaVariantId,
+        propId,
+      }),
+    ),
+  );
+};
+
+const onClickDelete = (protoToDelete: ValidationPrototypeView) => {
+  const prototypes = deleteValidation(
+    props.modelValue.prototypes,
+    protoToDelete,
   );
   emit("update:modelValue", { type: "validation", prototypes });
   emit("change", { type: "validation", prototypes });
 };
+
+const deleteValidation = (
+  prototypes: ValidationPrototypeView[],
+  protoToDelete: ValidationPrototypeView,
+) => prototypes.filter((proto) => !_.isEqual(proto, protoToDelete));
+
+const detachFunc = (): FuncAssociations | undefined => {
+  if (props.schemaVariantId) {
+    const prototypes = props.modelValue.prototypes;
+    const currentlyValidating = props.modelValue.prototypes.find(
+      (proto) => proto.schemaVariantId === props.schemaVariantId,
+    );
+    if (currentlyValidating) {
+      return {
+        type: "validation",
+        prototypes: deleteValidation(prototypes, currentlyValidating),
+      };
+    }
+  }
+};
+
+defineExpose({ detachFunc });
 </script>

@@ -42,13 +42,19 @@
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
     <AssetDetailsPanel v-if="assetId && !funcId" :asset-id="assetId" />
-    <FuncDetails v-else-if="assetId && funcId" :func-id="funcId" />
+    <FuncDetails
+      v-else-if="assetId && funcId"
+      :func-id="funcId"
+      :schema-variant-id="assetStore.assetsById[assetId]?.defaultVariantId"
+      @detached="onDetach"
+    />
   </SiPanel>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, watch } from "vue";
+import { useRouter } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
@@ -61,6 +67,7 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const assetStore = useAssetStore();
+const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
 const TOP_SPLIT_DEFAULT_HEIGHT = 700;
@@ -89,4 +96,18 @@ watch(
   },
   { immediate: true },
 );
+
+const onDetach = async () => {
+  if (assetStore.urlSelectedAssetId) {
+    await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
+    router.push({
+      name: "workspace-lab-assets",
+      params: {
+        ...router.currentRoute.value.params,
+        funcId: undefined,
+        assetId: assetStore.urlSelectedAssetId,
+      },
+    });
+  }
+};
 </script>

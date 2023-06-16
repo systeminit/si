@@ -1,29 +1,31 @@
 <template>
   <div class="p-3 flex flex-col gap-2">
-    <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-      Run this code generation function on the selected components and component
-      types below.
-    </h1>
-    <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Component:
-    </h2>
-    <RunOnSelector
-      v-model="selectedComponents"
-      thing-label="components"
-      :options="componentOptions"
-      :disabled="disabled"
-      @change="updateAssociations"
-    />
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Schema Variant:
-    </h2>
-    <RunOnSelector
-      v-model="selectedVariants"
-      thing-label="schema variants"
-      :options="schemaVariantOptions"
-      :disabled="disabled"
-      @change="updateAssociations"
-    />
+    <template v-if="!schemaVariantId">
+      <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+        Run this code generation function on the selected components and
+        component types below.
+      </h1>
+      <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Run on Component:
+      </h2>
+      <RunOnSelector
+        v-model="selectedComponents"
+        thing-label="components"
+        :options="componentOptions"
+        :disabled="disabled"
+        @change="updateAssociations"
+      />
+      <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Run on Schema Variant:
+      </h2>
+      <RunOnSelector
+        v-model="selectedVariants"
+        thing-label="schema variants"
+        :options="schemaVariantOptions"
+        :disabled="disabled"
+        @change="updateAssociations"
+      />
+    </template>
     <LeafInputs v-model="inputs" @change="updateAssociations" />
   </div>
 </template>
@@ -32,7 +34,10 @@
 import { ref, watch, toRef } from "vue";
 import { storeToRefs } from "pinia";
 import { Option } from "@/components/SelectMenu.vue";
-import { CodeGenerationAssociations } from "@/store/func/types";
+import {
+  CodeGenerationAssociations,
+  FuncAssociations,
+} from "@/store/func/types";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
@@ -43,6 +48,7 @@ const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
   modelValue: CodeGenerationAssociations;
+  schemaVariantId?: string;
   disabled?: boolean;
 }>();
 
@@ -71,17 +77,32 @@ watch(
   { immediate: true },
 );
 
-const updateAssociations = () => {
-  const associations: CodeGenerationAssociations = {
-    componentIds: selectedComponents.value.map(({ value }) => value as string),
-    schemaVariantIds: selectedVariants.value.map(
-      ({ value }) => value as string,
-    ),
-    inputs: inputs.value,
-    type: "codeGeneration",
-  };
+const getUpdatedAssocations = (
+  schemaVariantIds: string[],
+): CodeGenerationAssociations => ({
+  componentIds: selectedComponents.value.map(({ value }) => value as string),
+  schemaVariantIds,
+  inputs: inputs.value,
+  type: "codeGeneration",
+});
 
+const updateAssociations = () => {
+  const associations = getUpdatedAssocations(
+    selectedVariants.value.map(({ value }) => value as string),
+  );
   emit("update:modelValue", associations);
   emit("change", associations);
 };
+
+const detachFunc = (): FuncAssociations | undefined => {
+  if (props.schemaVariantId) {
+    return getUpdatedAssocations(
+      selectedVariants.value
+        .map(({ value }) => value as string)
+        .filter((schemaVariantId) => schemaVariantId !== props.schemaVariantId),
+    );
+  }
+};
+
+defineExpose({ detachFunc });
 </script>

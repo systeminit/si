@@ -28,7 +28,7 @@
                   class="--tone-success"
                   icon="save"
                   size="md"
-                  loading-text="Executing"
+                  loading-text="Executing..."
                   label="Execute"
                   :request-status="execFuncReqStatus"
                   success-text="Finished"
@@ -40,11 +40,22 @@
                   :disabled="!isRevertible"
                   icon="x"
                   size="md"
-                  loading-text="Reverting"
+                  loading-text="Reverting..."
                   label="Revert"
                   :request-status="revertFuncReqStatus"
                   success-text="Finished"
                   @click="revertFunc"
+                />
+
+                <VButton
+                  v-if="schemaVariantId"
+                  :loading="isDetaching"
+                  tone="destructive"
+                  icon="x"
+                  label="Detach"
+                  size="md"
+                  loading-text="Detaching..."
+                  @click="detachFunc"
                 />
               </div>
               <div class="p-2">
@@ -97,15 +108,9 @@
               editingFunc.associations &&
               editingFunc.associations.type === 'action'
             "
+            ref="detachRef"
             v-model="editingFunc.associations"
-            @change="updateFunc"
-          />
-          <QualificationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'qualification'
-            "
-            v-model="editingFunc.associations"
+            :schema-variant-id="schemaVariantId"
             @change="updateFunc"
           />
           <CodeGenerationDetails
@@ -114,6 +119,7 @@
               editingFunc.associations.type === 'codeGeneration'
             "
             v-model="editingFunc.associations"
+            :schema-variant-id="schemaVariantId"
             @change="updateFunc"
           />
           <ConfirmationDetails
@@ -121,7 +127,19 @@
               editingFunc.associations &&
               editingFunc.associations.type === 'confirmation'
             "
+            ref="detachRef"
             v-model="editingFunc.associations"
+            :schema-variant-id="schemaVariantId"
+            @change="updateFunc"
+          />
+          <QualificationDetails
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'qualification'
+            "
+            ref="detachRef"
+            v-model="editingFunc.associations"
+            :schema-variant-id="schemaVariantId"
             @change="updateFunc"
           />
           <ValidationDetails
@@ -129,7 +147,9 @@
               editingFunc.associations &&
               editingFunc.associations.type === 'validation'
             "
+            ref="detachRef"
             v-model="editingFunc.associations"
+            :schema-variant-id="schemaVariantId"
             @change="updateFunc"
           />
 
@@ -160,7 +180,9 @@
             editingFunc.associations &&
             editingFunc.associations.type === 'attribute'
           "
+          ref="detachRef"
           v-model="editingFunc.associations"
+          :schema-variant-id="schemaVariantId"
           @change="updateFunc"
         />
       </TabGroupItem>
@@ -192,19 +214,31 @@ import SiCollapsible from "@/components/SiCollapsible.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
+import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
-import ActionDetails from "./ActionDetails.vue";
 
 const props = defineProps<{
   funcId?: FuncId;
+  schemaVariantId?: string;
 }>();
 
 const funcStore = useFuncStore();
 
+const emit = defineEmits<{ (e: "detached"): void }>();
+
+type DetachType =
+  | InstanceType<typeof ActionDetails>
+  | InstanceType<typeof AttributeBindings>
+  | InstanceType<typeof CodeGenerationDetails>
+  | InstanceType<typeof ConfirmationDetails>
+  | InstanceType<typeof ValidationDetails>
+  | InstanceType<typeof QualificationDetails>;
+
+const detachRef = ref<DetachType>();
 const funcId = computed(() => props.funcId);
 
 const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
@@ -261,5 +295,21 @@ const execFuncReqStatus = funcStore.getRequestStatus(
 const execFunc = () => {
   if (!funcId.value) return;
   funcStore.SAVE_AND_EXEC_FUNC(funcId.value);
+};
+
+const isDetaching = ref(false);
+const detachFunc = async () => {
+  if (detachRef.value && "detachFunc" in detachRef.value) {
+    const associations = detachRef.value.detachFunc();
+    if (associations && editingFunc.value) {
+      isDetaching.value = true;
+      await funcStore.updateFuncMetadata({
+        ...editingFunc.value,
+        associations,
+      });
+      emit("detached");
+      isDetaching.value = false;
+    }
+  }
 };
 </script>

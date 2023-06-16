@@ -1,6 +1,9 @@
 <template>
   <div>
-    <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+    <div
+      v-if="!schemaVariantId"
+      class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
+    >
       <VButton
         :disabled="disabled"
         tone="success"
@@ -11,7 +14,7 @@
       />
     </div>
     <ul class="flex flex-col p-3 gap-1">
-      <li v-for="proto in prototypeView" :key="proto.id">
+      <li v-for="proto in prototypeViews" :key="proto.id">
         <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
           Schema Variant:
         </h1>
@@ -64,11 +67,9 @@
       </li>
 
       <AttributeBindingsModal
-        :open="isModalOpen"
-        :prototype="editingPrototype"
-        :edit="editingPrototype !== undefined"
+        ref="bindingsModalRef"
+        :schema-variant-id="schemaVariantId"
         type="save"
-        @close="closeModal()"
         @save="saveModal"
       />
     </ul>
@@ -77,11 +78,11 @@
 
 <script lang="ts" setup>
 import { computed, inject, ref, Ref, watch } from "vue";
-import { storeToRefs } from "pinia";
 import { VButton } from "@si/vue-lib/design-system";
 import {
   AttributeAssociations,
   AttributePrototypeView,
+  FuncAssociations,
 } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -89,12 +90,14 @@ import { nilId } from "@/utils/nilId";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
-const { schemaVariantOptions, componentOptions } = storeToRefs(funcStore);
 
 const props = defineProps<{
   modelValue: AttributeAssociations;
+  schemaVariantId?: string;
   disabled?: boolean;
 }>();
+
+const bindingsModalRef = ref<InstanceType<typeof AttributeBindingsModal>>();
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: AttributeAssociations): void;
@@ -111,7 +114,6 @@ watch(
   { immediate: true },
 );
 
-const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
   id: nilId(),
   componentId: nilId(),
@@ -120,11 +122,6 @@ const makeEmptyPrototype = (): AttributePrototypeView => ({
     funcArgumentId: id,
   })),
 });
-
-const isModalOpen = ref<boolean>(false);
-const closeModal = () => {
-  isModalOpen.value = false;
-};
 
 const removeBinding = (prototypeId: string) => {
   associations.value.prototypes = associations.value.prototypes.filter(
@@ -150,6 +147,10 @@ const addOrUpdateBinding = (
   return associations;
 };
 
+const closeModal = () => {
+  bindingsModalRef.value?.close();
+};
+
 const saveModal = (prototype?: AttributePrototypeView) => {
   if (prototype) {
     associations.value = addOrUpdateBinding(associations.value, prototype);
@@ -160,48 +161,72 @@ const saveModal = (prototype?: AttributePrototypeView) => {
 };
 
 const openModal = (prototypeId?: string) => {
-  // clear the prototype and then if we are editing an existing one, set it
-  editingPrototype.value = makeEmptyPrototype();
-  if (prototypeId) {
-    editingPrototype.value = associations.value.prototypes.find(
-      (proto) => proto.id === prototypeId,
-    );
+  const prototype = prototypeId
+    ? associations.value.prototypes.find((proto) => proto.id === prototypeId)
+    : makeEmptyPrototype();
+
+  if (prototype) {
+    bindingsModalRef.value?.open(prototype);
   }
-  isModalOpen.value = true;
 };
 
 const funcArgumentsIdMap =
   inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
 
-const prototypeView = computed(() => {
-  return associations.value.prototypes.map((proto) => {
-    const schemaVariantId =
-      funcStore.schemaVariantIdForAttributePrototype(proto);
-    const schemaVariant =
-      schemaVariantOptions.value.find((sv) => sv.value === schemaVariantId)
-        ?.label ?? "none";
+const prototypeViews = computed(() =>
+  associations.value.prototypes
+    .filter((proto) => {
+      const schemaVariantId =
+        funcStore.schemaVariantIdForAttributePrototype(proto);
+      return (
+        !props.schemaVariantId || schemaVariantId === props.schemaVariantId
+      );
+    })
+    .map((proto) => {
+      const schemaVariantId =
+        funcStore.schemaVariantIdForAttributePrototype(proto);
+      const schemaVariant =
+        funcStore.schemaVariantOptions.find(
+          (sv) => sv.value === schemaVariantId,
+        )?.label ?? "none";
 
-    const component =
-      componentOptions.value.find((c) => c.value === proto.componentId)
-        ?.label ?? "all";
+      const component =
+        funcStore.componentOptions.find((c) => c.value === proto.componentId)
+          ?.label ?? "all";
 
-    const outputLocation = funcStore.outputLocationForAttributePrototype(proto);
+      const outputLocation =
+        funcStore.outputLocationForAttributePrototype(proto);
 
-    const args = proto.prototypeArguments.map((arg) => ({
-      name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
-      prop: arg.internalProviderId
-        ? funcStore.internalProviderIdToSourceName(arg.internalProviderId) ??
-          "none"
-        : "none",
-    }));
+      const args = proto.prototypeArguments.map((arg) => ({
+        name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
+        prop: arg.internalProviderId
+          ? funcStore.internalProviderIdToSourceName(arg.internalProviderId) ??
+            "none"
+          : "none",
+      }));
 
+      return {
+        id: proto.id,
+        schemaVariant,
+        component,
+        outputLocation,
+        args,
+      };
+    }),
+);
+
+const detachFunc = (): FuncAssociations | undefined => {
+  if (props.schemaVariantId) {
     return {
-      id: proto.id,
-      schemaVariant,
-      component,
-      outputLocation,
-      args,
+      ...associations.value,
+      prototypes: associations.value.prototypes.filter(
+        (proto) =>
+          funcStore.schemaVariantIdForAttributePrototype(proto) !==
+          props.schemaVariantId,
+      ),
     };
-  });
-});
+  }
+};
+
+defineExpose({ detachFunc });
 </script>
