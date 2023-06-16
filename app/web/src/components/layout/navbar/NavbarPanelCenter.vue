@@ -26,12 +26,12 @@
 
     <!-- Vertical bar -->
     <div
-      v-if="!featureFlagsStore.SINGLE_MODEL_SCREEN"
+      v-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false"
       class="w-0.5 h-8 self-center mx-xs bg-white"
     ></div>
 
     <NavbarButton
-      v-if="!featureFlagsStore.SINGLE_MODEL_SCREEN"
+      v-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false"
       tooltip-text="Apply"
       :selected="route.name === 'workspace-fix'"
       :link-to="{ name: 'workspace-fix' }"
@@ -40,7 +40,7 @@
     </NavbarButton>
 
     <NavbarButton
-      v-if="!featureFlagsStore.SINGLE_MODEL_SCREEN"
+      v-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false"
       tooltip-text="Analyze"
       :selected="route.name === 'workspace-view'"
       :link-to="{ name: 'workspace-view' }"

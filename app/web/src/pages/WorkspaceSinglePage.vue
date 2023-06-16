@@ -5,7 +5,7 @@
     :change-set-id="props.changeSetId"
   />
   <WorkspaceSinglePageOld
-    v-else
+    v-else-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false"
     :workspace-pk="props.workspacePk"
     :change-set-id="props.changeSetId"
   />

@@ -56,6 +56,8 @@ import * as _ from "lodash-es";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { storeToRefs } from "pinia";
+import { useComponentsStore } from "@/store/components.store";
 import { nilId } from "@/utils/nilId";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar2.vue";
@@ -71,6 +73,7 @@ const route = useRoute();
 
 const workspacesStore = useWorkspacesStore();
 const changeSetsStore = useChangeSetsStore();
+const componentsStore = useComponentsStore();
 
 const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
@@ -79,6 +82,18 @@ const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
+
+watch(() => componentsStore.updateChangeSetRoute, (id) => {
+  console.log(id);
+  if (!id) return;
+  router.replace({
+    name: route!.name as string,
+    params: {
+      ...route.params,
+      changeSetId: id,
+    },
+  });
+}, { immediate: true });
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });

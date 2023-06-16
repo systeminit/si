@@ -1,6 +1,6 @@
 <template>
   <WorkspaceModelAndViewNew v-if="featureFlagsStore.SINGLE_MODEL_SCREEN" />
-  <WorkspaceModelAndViewOld v-else />
+  <WorkspaceModelAndViewOld v-else-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false" />
 </template>
 
 <script lang="ts" setup>

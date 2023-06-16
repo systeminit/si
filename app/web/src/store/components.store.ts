@@ -28,6 +28,7 @@ import { ActorView } from "@/api/sdf/dal/history_actor";
 import { nilId } from "@/utils/nilId";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useRoute, useRouter } from "vue-router";
 import {
   QualificationStatus,
   useQualificationsStore,
@@ -160,10 +161,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
   let changeSetId: ChangeSetId | null;
+  const changeSetsStore = useChangeSetsStore();
   if (forceChangeSetId) {
     changeSetId = forceChangeSetId;
   } else {
-    const changeSetsStore = useChangeSetsStore();
     changeSetId = changeSetsStore.selectedChangeSetId;
   }
 
@@ -201,6 +202,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedInsertSchemaId: null as SchemaId | null,
 
         refreshingStatus: {} as Record<ComponentId, boolean>,
+
+  	updateChangeSetRoute: null as ChangeSetId | null,
       }),
       getters: {
         // transforming the diagram-y data back into more generic looking data
@@ -535,6 +538,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           position: Vector2d,
           parentNodeId?: string,
         ) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest<{
             componentId: ComponentId;
             nodeId: ComponentNodeId;
@@ -549,6 +553,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // TODO: store component details rather than waiting for re-fetch
             },
           });
@@ -557,6 +562,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           from: { nodeId: ComponentNodeId; socketId: SocketId },
           to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           const tempId = `temp-edge-${+new Date()}`;
 
           return new ApiRequest<{
@@ -586,6 +592,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 }
               }
               // TODO: store component details rather than waiting for re-fetch
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
             },
             optimistic: () => {
               const nowTs = new Date().toISOString();
@@ -607,10 +614,30 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+	async CREATE_CHANGE_SET_IF_NEEDED() {
+	  if ([nilId(), null].includes(changeSetsStore.selectedChangeSetId)) {
+            const createReq = await changeSetsStore.CREATE_CHANGE_SET(
+              changeSetsStore.getGeneratedChangesetName()
+	    );
+            if (createReq.result.success) {
+              visibilityParams.visibility_change_set_pk = createReq.result.data.changeSet.pk;
+	    } else {
+	      throw new Error("no change-set, action would happen on head");
+	    }
+	  }
+	},
+
+	UPDATE_CHANGE_SET_IF_NEEDED() {
+	  if (visibilityParams.visibility_change_set_pk === changeSetsStore.selectedChangeSetId) return;
+	  this.updateChangeSetRoute = visibilityParams.visibility_change_set_pk;
+	  console.log(this.updateChangeSetRoute);
+	},
+
         async CONNECT_COMPONENT_TO_FRAME(
           childNodeId: ComponentNodeId,
           parentNodeId: ComponentNodeId,
         ) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/connect_component_to_frame",
@@ -620,6 +647,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // TODO: store component details rather than waiting for re-fetch
             },
           });
@@ -654,6 +682,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_EDGE(edgeId: EdgeId) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_connection",
@@ -663,6 +692,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
@@ -701,6 +731,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async RESTORE_EDGE(edgeId: EdgeId) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_connection",
@@ -710,6 +741,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
@@ -733,6 +765,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_COMPONENT(componentId: ComponentId) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_component",
@@ -742,6 +775,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
@@ -773,6 +807,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async RESTORE_COMPONENT(componentId: ComponentId) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_component",
@@ -782,6 +817,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+	      this.UPDATE_CHANGE_SET_IF_NEEDED();
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
           });
@@ -790,15 +826,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         // TODO: maybe want the backend to handle this bulk calls instead
         // so it can optimize how it handles updates / queueing
         async DELETE_COMPONENTS(componentIds: ComponentId[]) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           await async.eachSeries(componentIds, async (componentId) => {
             await this.DELETE_COMPONENT(componentId);
           });
+	  this.UPDATE_CHANGE_SET_IF_NEEDED();
         },
         async RESTORE_COMPONENTS(componentIds: ComponentId[]) {
+	  await this.CREATE_CHANGE_SET_IF_NEEDED();
           // TODO: maybe want the backend to handle this all at once?
           await async.eachSeries(componentIds, async (componentId) => {
             await this.RESTORE_COMPONENT(componentId);
           });
+	  this.UPDATE_CHANGE_SET_IF_NEEDED();
         },
 
         setSelectedEdgeId(selection: EdgeId | null) {

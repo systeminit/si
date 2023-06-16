@@ -7,7 +7,7 @@ export function useFeatureFlagsStore() {
   return addStoreHooks(
     defineStore("feature-flags", {
       state: () => ({
-        SINGLE_MODEL_SCREEN: false,
+        SINGLE_MODEL_SCREEN: null as null | boolean,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {

@@ -45,7 +45,6 @@
       :custom-config="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
-      :read-only="isViewMode"
       @insert-element="onDiagramInsertElement"
       @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
