@@ -33,7 +33,7 @@
         v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
         class="overflow-y-auto min-h-[200px]"
       >
-        <SiCollapsible
+        <Collapsible
           v-for="(label, variant) in CUSTOMIZABLE_FUNC_TYPES"
           :key="variant"
           as="li"
@@ -58,7 +58,7 @@
               />
             </li>
           </template>
-        </SiCollapsible>
+        </Collapsible>
       </ul>
     </ScrollArea>
     <AssetFuncAttachModal
@@ -73,6 +73,7 @@
 import { ref, computed } from "vue";
 import groupBy from "lodash-es/groupBy";
 import {
+  Collapsible,
   ScrollArea,
   RequestStatusMessage,
   Modal,
@@ -83,7 +84,6 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import FuncSkeleton from "./FuncSkeleton.vue";
-import SiCollapsible from "./SiCollapsible.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 
