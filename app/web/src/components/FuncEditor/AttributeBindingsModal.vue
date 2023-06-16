@@ -5,26 +5,28 @@
     :save-label="isCreating ? 'Add Binding' : 'Update Binding'"
     size="2xl"
     :title="modalTitle"
-    @close="emit('close')"
     @save="emit('save', editedPrototype)"
   >
     <div class="p-4 flex flex-col place-content-center">
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Schema Variant:
-      </h1>
-      <SelectMenu
-        v-model="selectedVariant"
-        class="flex-auto"
-        :options="schemaVariantOptions ?? []"
-      />
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Component:
-      </h1>
-      <SelectMenu
-        v-model="selectedComponent"
-        class="flex-auto"
-        :options="filteredComponentOptions"
-      />
+      {{ schemaVariantId }}
+      <template v-if="!schemaVariantId">
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Schema Variant:
+        </h1>
+        <SelectMenu
+          v-model="selectedVariant"
+          class="flex-auto"
+          :options="schemaVariantOptions ?? []"
+        />
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Component:
+        </h1>
+        <SelectMenu
+          v-model="selectedComponent"
+          class="flex-auto"
+          :options="filteredComponentOptions"
+        />
+      </template>
       <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
         Output location:
       </h1>
@@ -56,9 +58,9 @@
 </template>
 
 <script lang="ts" setup>
-import { inject, watch, computed, toRef, ref, Ref, PropType } from "vue";
+import { inject, watch, computed, ref, Ref } from "vue";
 import { storeToRefs } from "pinia";
-import { Modal } from "@si/vue-lib/design-system";
+import { Modal, useModal } from "@si/vue-lib/design-system";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributePrototypeView, OutputLocation } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
@@ -75,17 +77,14 @@ const { allComponents } = storeToRefs(componentsStore);
 const funcStore = useFuncStore();
 const { schemaVariantOptions } = storeToRefs(funcStore);
 
-const props = defineProps({
-  open: { type: Boolean, default: false },
-  prototype: { type: Object as PropType<AttributePrototypeView> },
-});
+const props = defineProps<{
+  schemaVariantId?: string;
+}>();
 
 const bindingsModalRef = ref<InstanceType<typeof Modal>>();
+const { open: openModal, close } = useModal(bindingsModalRef);
 
-const prototype = toRef(props, "prototype", undefined);
-const open = toRef(props, "open", false);
-
-const isCreating = computed(() => props.prototype?.id === nilId());
+const isCreating = ref(false);
 const modalTitle = computed(
   () => `${isCreating.value ? "Add" : "Update"}  Function Bindings`,
 );
@@ -112,16 +111,22 @@ const noneOutputLocation = {
 };
 const noneSource = { label: "select source", value: nilId() };
 
-const selectedVariant = ref<Option>(noneVariant);
+const selectedVariant = ref<Option>(
+  props.schemaVariantId
+    ? { label: "", value: props.schemaVariantId }
+    : noneVariant,
+);
 const selectedComponent = ref<Option>(allComponentsOption);
 const selectedOutputLocation = ref<OutputLocationOption>(noneOutputLocation);
 const editableBindings = ref<EditingBinding[]>([]);
+
+const prototypeId = ref<string | undefined>();
 
 const funcArgumentsIdMap =
   inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
 
 const editedPrototype = computed(() => ({
-  id: props.prototype?.id ?? nilId(),
+  id: prototypeId.value ?? nilId(),
   schemaVariantId: selectedVariant.value.value as string,
   componentId: selectedComponent.value.value as string,
   propId:
@@ -160,9 +165,10 @@ const outputLocationOptions = computed<
   { label: string; value: OutputLocation }[]
 >(() =>
   funcStore.outputLocationOptionsForSchemaVariant(
-    typeof selectedVariant.value.value === "string"
-      ? selectedVariant.value.value
-      : nilId(),
+    props.schemaVariantId ??
+      (typeof selectedVariant.value.value === "string"
+        ? selectedVariant.value.value
+        : nilId()),
   ),
 );
 
@@ -191,40 +197,39 @@ const inputSourceOptions = computed<Option[]>(() => {
   return socketOptions.concat(propOptions);
 });
 
-watch(
-  () => open.value,
-  (open) => {
-    if (open) {
-      bindingsModalRef?.value?.open();
-    } else {
-      bindingsModalRef?.value?.close();
-    }
-  },
-  { immediate: true },
-);
-
 // When variant changes, unset component if necessary
-watch(
-  () => selectedVariant.value,
-  (selectedVariant, oldValue) => {
-    const componentIdent = allComponents.value.find(
-      (c) => c.id === selectedComponent.value.value,
-    );
+watch(selectedVariant, (selectedVariant) => {
+  const componentIdent = allComponents.value.find(
+    (c) => c.id === selectedComponent.value.value,
+  );
 
-    if (componentIdent?.schemaVariantId !== selectedVariant.value) {
-      selectedComponent.value = allComponentsOption;
-    }
+  if (componentIdent?.schemaVariantId !== selectedVariant.value) {
+    selectedComponent.value = allComponentsOption;
+  }
 
-    // If we switched from another schema variant, unset selected output location
-    if (oldValue.value !== nilId()) {
-      selectedOutputLocation.value = noneOutputLocation;
-    }
-  },
-);
+  const currentSchemaVariantId = funcStore.schemaVariantIdForAttributePrototype(
+    {
+      id: nilId(),
+      prototypeArguments: [],
+      propId:
+        "propId" in selectedOutputLocation.value.value
+          ? selectedOutputLocation.value.value.propId
+          : undefined,
+      externalProviderId:
+        "externalProviderId" in selectedOutputLocation.value.value
+          ? selectedOutputLocation.value.value.externalProviderId
+          : undefined,
+    },
+  );
+
+  if ((selectedVariant.value as string) !== currentSchemaVariantId) {
+    selectedOutputLocation.value = noneOutputLocation;
+  }
+});
 
 // When component changes, ensure variant is set correctly
 watch(
-  () => selectedComponent.value,
+  selectedComponent,
   (selectedComponent) => {
     const componentIdent = allComponents.value.find(
       (c) => c.id === selectedComponent.value,
@@ -243,46 +248,41 @@ watch(
 );
 
 // When prototype we're editing changes, set up defaults
-watch(
-  () => props.open,
-  () => {
-    if (!prototype.value) {
-      return;
-    }
+const open = (prototype: AttributePrototypeView) => {
+  const schemaVariantId =
+    props.schemaVariantId ??
+    funcStore.schemaVariantIdForAttributePrototype(prototype);
 
-    const schemaVariantId = funcStore.schemaVariantIdForAttributePrototype(
-      prototype.value,
-    );
+  prototypeId.value = prototype.id;
 
-    selectedVariant.value =
-      schemaVariantOptions?.value.find((sv) => sv.value === schemaVariantId) ??
-      noneVariant;
-    selectedComponent.value =
-      filteredComponentOptions.value.find(
-        (c) => c.value === prototype.value?.id,
-      ) ?? allComponentsOption;
-    selectedOutputLocation.value =
-      outputLocationOptions.value.find(
-        (loc) =>
-          ("propId" in loc.value &&
-            loc.value.propId === prototype.value?.propId) ||
-          ("externalProviderId" in loc.value &&
-            loc.value.externalProviderId ===
-              prototype.value?.externalProviderId),
-      ) ?? noneOutputLocation;
+  selectedVariant.value =
+    schemaVariantOptions?.value.find((sv) => sv.value === schemaVariantId) ??
+    noneVariant;
+  selectedComponent.value =
+    filteredComponentOptions.value.find((c) => c.value === prototype.id) ??
+    allComponentsOption;
+  selectedOutputLocation.value =
+    outputLocationOptions.value.find(
+      (loc) =>
+        ("propId" in loc.value && loc.value.propId === prototype.propId) ||
+        ("externalProviderId" in loc.value &&
+          loc.value.externalProviderId === prototype.externalProviderId),
+    ) ?? noneOutputLocation;
 
-    editableBindings.value =
-      prototype.value?.prototypeArguments.map(
-        ({ id, funcArgumentId, internalProviderId }) => ({
-          id: id ?? undefined,
-          funcArgumentId,
-          binding:
-            inputSourceOptions.value.find(
-              (opt) => opt.value === internalProviderId,
-            ) ?? noneSource,
-        }),
-      ) ?? [];
-  },
-  { immediate: true },
-);
+  editableBindings.value =
+    prototype?.prototypeArguments.map(
+      ({ id, funcArgumentId, internalProviderId }) => ({
+        id: id ?? undefined,
+        funcArgumentId,
+        binding:
+          inputSourceOptions.value.find(
+            (opt) => opt.value === internalProviderId,
+          ) ?? noneSource,
+      }),
+    ) ?? [];
+
+  openModal();
+};
+
+defineExpose({ open, close });
 </script>

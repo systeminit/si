@@ -5,15 +5,13 @@
       :request-status="loadAssetReqStatus"
       show-loader-without-message
     />
-
-    <ScrollArea
-      v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
-    >
+    <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle class="border-t-0">
           <div class="flex flex-row items-center justify-between">
             <span class="pt-1">Asset Functions</span>
             <AssetFuncAttachDropdown
+              v-if="assetStore.selectedAssetId"
               :disabled="
                 !assetStore.assetsById[assetStore.selectedAssetId]
                   ?.defaultVariantId
@@ -23,9 +21,18 @@
             />
           </div>
         </SidebarSubpanelTitle>
+        <div
+          v-if="!assetStore.selectedAssetId"
+          class="w-full mt-4 text-neutral-400 dark:text-neutral-300 text-sm text-center"
+        >
+          Select an asset to see the functions attached to it.
+        </div>
       </template>
 
-      <ul class="overflow-y-auto min-h-[200px]">
+      <ul
+        v-if="assetStore.selectedAssetId && !loadAssetReqStatus.isPending"
+        class="overflow-y-auto min-h-[200px]"
+      >
         <SiCollapsible
           v-for="(label, variant) in CUSTOMIZABLE_FUNC_TYPES"
           :key="variant"

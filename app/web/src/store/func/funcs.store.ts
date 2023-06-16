@@ -469,14 +469,14 @@ export const useFuncStore = () => {
           );
         },
 
-        updateFuncMetadata(func: FuncWithDetails) {
+        async updateFuncMetadata(func: FuncWithDetails) {
           const currentCode = this.funcById(func.id)?.code ?? "";
           this.funcDetailsById[func.id] = {
             ...func,
             code: currentCode,
           };
 
-          this.UPDATE_FUNC({
+          return this.UPDATE_FUNC({
             ...func,
             code: currentCode,
           });
