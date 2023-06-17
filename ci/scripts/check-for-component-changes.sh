@@ -19,10 +19,11 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   bin/sdf/**
   lib/buck2-resources/**
   lib/config-file/**
+  lib/council-server/**
   lib/dal/**
   lib/dal-test/**
+  lib/module-index-client/**
   lib/sdf-server/**
-  lib/council-server/**
   lib/si-data-nats/**
   lib/si-data-pg/**
   lib/si-posthog-rs/**
@@ -65,6 +66,13 @@ COUNCIL_PATHS="${SDF_PATHS}
   bin/council/**
   lib/buck2-resources/**
   lib/council-server/**"
+MODULE_INDEX_PATHS="
+  .github/workflows/promote-module-index.yml
+  bin/module-index/**
+  lib/buck2-resources/**
+  lib/module-index-server/**
+  lib/module-index-client/**
+"
 
 NATS_CHANGES=false
 OTELCOL_CHANGES=false
@@ -74,6 +82,7 @@ VERITECH_CHANGES=false
 WEB_CHANGES=false
 PINGA_CHANGES=false
 COUNCIL_CHANGES=false
+MODULE_INDEX_CHANGES=false
 
 echo "::group::Changed files"
 echo "${CHANGED_PATHS}"
@@ -130,6 +139,12 @@ for changed_path in ${CHANGED_PATHS}; do
       COUNCIL_CHANGES=true
     fi
   done
+  for check_path in ${COMMON_PATHS} ${MODULE_INDEX_PATHS}; do
+    if [[ "${changed_path}" == "${check_path}"* ]]; then
+      echo "Module-Index MATCH!"
+      MODULE_INDEX_CHANGES=true
+    fi
+  done
 done
 set +x
 echo "::endgroup::"
@@ -143,6 +158,7 @@ echo "Veritech: ${VERITECH_CHANGES}"
 echo "Web:      ${WEB_CHANGES}"
 echo "Pinga:    ${PINGA_CHANGES}"
 echo "Council:    ${COUNCIL_CHANGES}"
+echo "Module-Index: ${MODULE_INDEX_CHANGES}"
 echo "::endgroup::"
 
 {
@@ -154,4 +170,5 @@ echo "::endgroup::"
   echo "app--web=${WEB_CHANGES}"
   echo "bin--pinga=${PINGA_CHANGES}"
   echo "bin--council=${COUNCIL_CHANGES}"
+  echo "bin--module-index=${MODULE_INDEX_CHANGES}"
 } >>"$GITHUB_OUTPUT"

@@ -16,6 +16,7 @@
 # All workspace member directories from `Cargo.toml`
 !bin/council
 !bin/cyclone
+!bin/module-index
 !bin/sdf
 !bin/pinga
 !bin/veritech
@@ -29,6 +30,8 @@
 !lib/dal
 !lib/dal-test
 !lib/deadpool-cyclone
+!lib/module-index-client
+!lib/module-index-server
 !lib/nats-subscriber
 !lib/object-tree
 !lib/pinga-server
