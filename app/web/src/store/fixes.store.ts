@@ -119,10 +119,8 @@ export const useFixesStore = () => {
         confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
           const obj: Record<ComponentId, Confirmation[]> = {};
           for (const confirmation of this.confirmations) {
-            if (!obj[confirmation.componentId]) {
-              obj[confirmation.componentId] = [];
-            }
-            obj[confirmation.componentId]!.push(confirmation);
+            obj[confirmation.componentId] ||= [];
+            obj[confirmation.componentId]!.push(confirmation); // eslint-disable-line @typescript-eslint/no-non-null-assertion
           }
           return obj;
         },

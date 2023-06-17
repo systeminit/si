@@ -34,6 +34,35 @@ impl FromRequestParts<AppState> for AccessBuilder {
     }
 }
 
+pub struct RawAccessToken(pub String);
+
+#[async_trait]
+impl FromRequestParts<AppState> for RawAccessToken {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let raw_token_header = &parts
+            .headers
+            .get("Authorization")
+            .ok_or_else(unauthorized_error)?;
+
+        let full_raw_token = raw_token_header
+            .to_str()
+            .map_err(|_| unauthorized_error())?;
+
+        // token looks like "Bearer asdf" so we strip off the "bearer"
+        let raw_token = full_raw_token
+            .split(' ')
+            .last()
+            .ok_or_else(unauthorized_error)?;
+
+        Ok(Self(raw_token.to_owned()))
+    }
+}
+
 pub struct HandlerContext(pub DalContextBuilder);
 
 #[async_trait]

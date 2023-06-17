@@ -22,6 +22,7 @@ pathdiff = { workspace = true }
 rand = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
@@ -39,6 +40,8 @@ tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+ulid = { workspace = true }
+url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]

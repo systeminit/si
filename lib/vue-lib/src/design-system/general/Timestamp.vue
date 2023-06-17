@@ -3,15 +3,19 @@
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
 
 export type TimestampSize = "mini" | "normal" | "long" | "extended";
 
 const props = defineProps({
-  date: { type: Date, default: new Date() },
+  date: {
+    type: [Date, String] as PropType<string | Date>,
+    default: new Date(),
+  },
   relative: { type: Boolean, default: false },
   showTimeIfToday: { type: Boolean, default: false },
   size: {
@@ -24,7 +28,13 @@ TimeAgo.addLocale(en);
 const timeAgo = new TimeAgo("en-US");
 
 const dateStr = computed(() => {
-  const d = props.date;
+  let d: Date;
+  if (_.isString(props.date)) {
+    d = parseISO(props.date);
+  } else {
+    d = props.date;
+  }
+
   if (
     !props.relative &&
     props.showTimeIfToday &&

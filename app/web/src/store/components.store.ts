@@ -53,7 +53,7 @@ type RawComponent = {
   schemaId: string;
   schemaVariantId: string;
   schemaVariantName: string;
-  schemaCategory: string; // I _think_ this will evolve into something like `packageSlug`
+  schemaCategory: string;
   color: string;
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
   position: GridPoint;
@@ -433,7 +433,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const fromNodeId = edge.fromNodeId;
             const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
-            connectedNodes[fromNodeId]!.push(toNodeId);
+            connectedNodes[fromNodeId]!.push(toNodeId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
           });
 
           const connectedIds: ComponentId[] = [componentId];

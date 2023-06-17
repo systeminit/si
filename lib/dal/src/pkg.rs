@@ -4,7 +4,7 @@ use url::ParseError;
 mod export;
 mod import;
 
-pub use export::export_pkg;
+pub use export::export_pkg_as_bytes;
 pub use export::get_component_type;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 

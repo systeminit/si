@@ -87,3 +87,13 @@ services:
         read_only: true
     entrypoint:
       - "/usr/local/bin/council"
+
+  module-index:
+    image: "fedora:latest"
+    volumes:
+      - type: bind
+        source: "${REPOPATH:-..}/target/debug/module-index"
+        target: "/usr/local/bin/module-index"
+        read_only: true
+    entrypoint:
+      - "/usr/local/bin/module-index"

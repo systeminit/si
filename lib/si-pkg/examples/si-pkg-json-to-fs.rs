@@ -1,4 +1,5 @@
-use std::{env::args, fs};
+use std::{env::args, path::Path};
+use tokio::fs;
 
 use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
 
@@ -9,14 +10,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");
 
     let spec: PkgSpec = {
-        let buf = fs::read_to_string(&input)?;
+        let buf = fs::read_to_string(&input).await?;
         serde_json::from_str(&buf)?
     };
     let pkg = SiPkg::load_from_spec(spec)?;
 
     println!("--- Writing pkg to: {dst}");
-    fs::create_dir_all(&dst)?;
-    pkg.write_to_dir(dst).await?;
+    fs::create_dir_all(&dst).await?;
+    fs::write(
+        Path::new(&dst).join(format!("{}.sipkg", pkg.metadata()?.name())),
+        pkg.write_to_bytes()?,
+    )
+    .await?;
 
     let schema = pkg.schema_by_name("kuberneteslike")?;
     dbg!(&schema);

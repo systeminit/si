@@ -93,7 +93,6 @@ import {
   VButton,
   Icon,
   VormInput,
-  VormInputOption,
   Stack,
   Modal,
   useValidatedInputGroup,
@@ -135,7 +134,7 @@ const checkFirstLoad = () => {
   window.localStorage.setItem("ran-first-load", "true");
 
   if (isFirstLoad) {
-    createModalRef.value!.open();
+    createModalRef.value?.open();
   }
 };
 

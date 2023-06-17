@@ -31,7 +31,6 @@ const props = defineProps<{
 
 // NON-REACTIVE component id. This works because the parent has a :key which rerenders if the selected component changes
 const componentsStore = useComponentsStore();
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const componentId = componentsStore.selectedComponentId;
 if (!componentId) {
   throw new Error("Do not use this component without a selectedComponentId");

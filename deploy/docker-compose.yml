@@ -101,6 +101,25 @@ services:
       - nats
     restart: "unless-stopped"
 
+  module-index:
+    image: "index.docker.io/systeminit/module-index:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - module-index
+    ports:
+      - "5157:5157"
+    environment:
+      - "SI_MODULE_INDEX__PG__HOSTNAME=postgres"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "postgres:${GATEWAY:-I like my butt}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - pg
+    restart: "unless-stopped"
+
   pg:
     image: "index.docker.io/systeminit/postgres:stable"
     environment:
@@ -108,7 +127,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth"
+      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:

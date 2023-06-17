@@ -22,7 +22,6 @@ pub use spec::{
 #[cfg(test)]
 mod tests {
     use petgraph::dot::Dot;
-    use tempfile::tempdir;
     use tokio::sync::Mutex;
 
     use crate::spec::PkgSpec;
@@ -59,20 +58,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn pkg_fs_round_trip() {
+    async fn pkg_bytes_round_trip() {
         let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         let description = spec.description.to_owned();
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
 
-        let tempdir = tempdir().expect("failed to create tempdir");
+        let pkg_data = pkg.write_to_bytes().expect("failed to serialize pkg");
 
-        pkg.write_to_dir(tempdir.path())
-            .await
-            .expect("failed to write pkg to dir");
-
-        let read_pkg = SiPkg::load_from_dir(tempdir.path())
-            .await
-            .expect("failed to load pkg from dir");
+        let read_pkg = SiPkg::load_from_bytes(pkg_data).expect("failed to load pkg from bytes");
 
         assert_eq!(
             description,

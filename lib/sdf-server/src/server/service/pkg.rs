@@ -40,6 +40,12 @@ pub enum PkgError {
     InvalidPackageFileName(String),
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Module hash not be found: {0}")]
+    ModuleHashNotFound(String),
+    #[error("Module index: {0}")]
+    ModuleIndex(#[from] module_index_client::IndexClientError),
+    #[error("Module index not configured")]
+    ModuleIndexNotConfigured,
     #[error("No packages path provided")]
     NoPackagesPath,
     #[error("Package with that name already installed: {0}")]
@@ -58,6 +64,8 @@ pub enum PkgError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -66,6 +74,8 @@ pub enum PkgError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error("Unable to parse URL: {0}")]
+    Url(#[from] url::ParseError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -151,11 +161,11 @@ pub async fn get_new_pkg_path(
     }
 }
 
-pub async fn pkg_open(builder: &DalContextBuilder, name: &str) -> PkgResult<SiPkg> {
-    let pkg_tuple = pkg_lookup(get_pkgs_path(builder).await?, name).await?;
+pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> PkgResult<SiPkg> {
+    let pkg_tuple = pkg_lookup(get_pkgs_path(builder).await?, file_name).await?;
 
     let real_pkg_path = match pkg_tuple {
-        (None, _) => return Err(PkgError::PackageNotFound(name.to_string())),
+        (None, _) => return Err(PkgError::PackageNotFound(file_name.to_string())),
         (Some(real_pkg_path), _) => real_pkg_path,
     };
 
@@ -165,7 +175,7 @@ pub async fn pkg_open(builder: &DalContextBuilder, name: &str) -> PkgResult<SiPk
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/export_pkg", post(export_pkg::export_pkg))
-        .route("/get_pkg", get(get_pkg::get_pkg))
+        .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
         .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
 }

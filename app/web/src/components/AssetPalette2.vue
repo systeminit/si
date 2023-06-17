@@ -34,7 +34,7 @@
         </template>
 
         <ul class="overflow-y-auto">
-          <SiCollapsible
+          <Collapsible
             v-for="(category, categoryIndex) in addMenuData"
             :key="categoryIndex"
             :label="category.displayName"
@@ -61,7 +61,7 @@
                 @click.right.prevent
               />
             </li>
-          </SiCollapsible>
+          </Collapsible>
         </ul>
       </ScrollArea>
     </template>
@@ -82,9 +82,8 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
-import { Icon, ScrollArea } from "@si/vue-lib/design-system";
+import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";

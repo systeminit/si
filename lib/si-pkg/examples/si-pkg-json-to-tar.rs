@@ -1,4 +1,5 @@
-use std::{env::args, fs};
+use std::env::args;
+use tokio::fs;
 
 use si_pkg::{PkgSpec, SiPkg};
 
@@ -9,13 +10,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tar_file = args.next().expect("usage: program <JSON_FILE> <TARBALL>");
 
     let spec: PkgSpec = {
-        let buf = fs::read_to_string(&input)?;
+        let buf = fs::read_to_string(&input).await?;
         serde_json::from_str(&buf)?
     };
     let pkg = SiPkg::load_from_spec(spec)?;
 
     println!("--- Writing pkg to: {tar_file}");
-    pkg.write_to_file(tar_file).await?;
+    fs::write(&tar_file, pkg.write_to_bytes()?).await?;
 
     println!("--- Done.");
     Ok(())

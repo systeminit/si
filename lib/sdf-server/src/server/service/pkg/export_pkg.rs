@@ -1,10 +1,11 @@
-use super::{get_new_pkg_path, PkgError, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use super::{PkgError, PkgResult};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{SchemaVariantId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +28,7 @@ pub struct ExportPkgResponse {
 pub async fn export_pkg(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
+    RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ExportPkgRequest>,
@@ -45,11 +47,14 @@ pub async fn export_pkg(
         return Err(PkgError::PackageExportEmpty);
     }
 
-    let new_pkg_path = get_new_pkg_path(&builder, &request.name, &request.version).await?;
+    let module_index_url = match ctx.module_index_url() {
+        Some(url) => url,
+        None => return Err(PkgError::ModuleIndexNotConfigured),
+    };
 
-    dal::pkg::export_pkg(
+    info!("Packaging module");
+    let module_payload = dal::pkg::export_pkg_as_bytes(
         &ctx,
-        &new_pkg_path,
         request.name.clone(),
         request.version.clone(),
         request.description,
@@ -57,6 +62,14 @@ pub async fn export_pkg(
         request.schema_variants.clone(),
     )
     .await?;
+
+    let index_client =
+        module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let _response = dbg!(
+        index_client
+            .upload_module(request.name.trim(), request.version.trim(), module_payload)
+            .await?
+    );
 
     track(
         &posthog_client,
@@ -67,10 +80,10 @@ pub async fn export_pkg(
                     "pkg_name": request.name,
                     "pkg_version": request.version,
                     "pkg_schema_count": request.schema_variants.len(),
-
         }),
     );
 
+    // TODO: Is this really the WsEvent we want to send right now?
     WsEvent::change_set_written(&ctx)
         .await?
         .publish_on_commit(&ctx)
@@ -80,6 +93,6 @@ pub async fn export_pkg(
 
     Ok(Json(ExportPkgResponse {
         success: true,
-        full_path: new_pkg_path.to_string_lossy().to_string(),
+        full_path: "Get this from module-index service".to_owned(),
     }))
 }

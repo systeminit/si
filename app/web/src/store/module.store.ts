@@ -1,15 +1,16 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { parseISO } from "date-fns";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
+import { ModuleIndexApiRequest } from ".";
 
 export type ModuleId = string;
 export type ModuleSlug = string;
+export type ModuleHash = string;
 
 export interface SchemaVariant {
   id: string;
@@ -27,30 +28,6 @@ export interface PkgFuncView {
   description?: string;
 }
 
-export interface Package {
-  name: string;
-  version: string;
-  description: string;
-  createdAt: Date;
-  createdBy: string;
-  schemas: string[];
-  funcs: PkgFuncView[];
-  installed: boolean;
-  hash: string;
-}
-
-export interface PkgGetResponse {
-  name: string;
-  version: string;
-  description: string;
-  createdAt: string;
-  createdBy: string;
-  schemas: string[];
-  funcs: PkgFuncView[];
-  installed: boolean;
-  hash: string;
-}
-
 export interface PkgExportRequest {
   name: string;
   version: string;
@@ -58,15 +35,43 @@ export interface PkgExportRequest {
   schemaVariants: string[];
 }
 
-export interface PackageListItem {
+export interface LocalModuleSummary {
   name: string;
-  installed: boolean;
-  hash: string;
+  hash: ModuleHash;
+}
+export interface LocalModuleDetails {
+  name: string;
+  version: string;
+  description: string;
+  createdAt: IsoDateString;
+  createdBy: string;
+  schemas: string[];
+  funcs: PkgFuncView[];
+  hash: ModuleHash;
 }
 
 export type Asset = {
   id: number;
   displayName: string;
+};
+
+export type RemoteModuleSummary = {
+  id: ModuleId;
+  name: string;
+  description: string;
+  createdAt: IsoDateString;
+  latestHash: ModuleHash;
+  latestHashCreatedAt: IsoDateString;
+  ownerDisplayName: string;
+  ownerUserId: string; // userid?
+};
+
+export type RemoteModuleDetails = RemoteModuleSummary & {
+  metadata?: {
+    schemas: string[];
+    funcs: PkgFuncView[];
+    version: string;
+  };
 };
 
 export const useModuleStore = () => {
@@ -76,77 +81,105 @@ export const useModuleStore = () => {
     visibility_change_set_pk: changeSetId ?? nilId(),
   };
   return addStoreHooks(
-    defineStore(`cs${changeSetId || "NONE"}/package`, {
+    defineStore(`cs${changeSetId || "NONE"}/modules`, {
       state: () => ({
-        packagesByName: {} as Record<ModuleId, Package>,
-        packageListByName: {} as Record<ModuleId, PackageListItem>,
+        localModulesByName: {} as Record<ModuleSlug, LocalModuleSummary>,
+        localModuleDetailsByName: {} as Record<ModuleSlug, LocalModuleDetails>,
+
+        remoteModuleSearchResults: [] as RemoteModuleSummary[],
+        remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
       }),
       getters: {
-        urlSelectedPackageSlug: () => {
+        urlSelectedModuleSlug: () => {
           const route = useRouterStore().currentRoute;
-          return route?.params?.packageSlug as ModuleSlug | undefined;
+          return route?.params?.moduleSlug as ModuleSlug | undefined;
         },
-        packageList: (state) => _.values(state.packageListByName),
-        packagesBySlug: (state) =>
-          _.keyBy(_.values(state.packageListByName), (p) => p.name),
-        selectedPackageListItem(): PackageListItem | undefined {
-          return this.packagesBySlug[this.urlSelectedPackageSlug ?? ""];
+        localModules: (state) => _.values(state.localModulesByName),
+        remoteModuleSummaryByName: (state) => {
+          return _.keyBy(state.remoteModuleSearchResults, (m) => m.name);
         },
-        selectedPackage(): Package | undefined {
-          return this.packagesByName[this.selectedPackageListItem?.name ?? ""];
+        remoteModuleDetailsByName: (state) => {
+          return _.keyBy(
+            _.values(state.remoteModuleDetailsById),
+            (m) => m.name,
+          );
         },
-        installedPackages: (state) =>
-          _.filter(state.packageListByName, (p) => p.installed),
-        notInstalledPackages: (state) =>
-          _.filter(state.packageListByName, (p) => !p.installed),
+
+        selectedModuleLocalSummary(): LocalModuleSummary | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.localModulesByName[this.urlSelectedModuleSlug];
+        },
+        selectedModuleLocalDetails(): LocalModuleDetails | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.localModuleDetailsByName[this.urlSelectedModuleSlug];
+        },
+        selectedModuleRemoteDetails(): RemoteModuleDetails | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.remoteModuleDetailsByName[this.urlSelectedModuleSlug];
+        },
       },
       actions: {
-        async GET_MODULE(pkg: PackageListItem) {
-          return new ApiRequest<PkgGetResponse>({
-            method: "get",
-            url: "/pkg/get_pkg",
-            params: { name: pkg.name, ...visibility },
-            onSuccess: (response) => {
-              this.packagesByName[pkg.name] = {
-                ...response,
-                createdAt: parseISO(response.createdAt),
-              };
-            },
-          });
-        },
-
-        async INSTALL_MODULE(pkg: PackageListItem) {
-          return new ApiRequest({
-            method: "post",
-            url: "/pkg/install_pkg",
-            params: { name: pkg.name, ...visibility },
-            onSuccess: (_response) => {
-              const pkgItem = this.packagesByName[pkg.name];
-              if (pkgItem) {
-                pkgItem.installed = true;
-                this.packagesByName[pkg.name] = pkgItem;
-              }
-              const pkgListItem = this.packageListByName[pkg.name];
-              if (pkgListItem) {
-                pkgListItem.installed = true;
-                this.packageListByName[pkg.name] = pkgListItem;
-              }
-            },
-          });
-        },
-
-        async LOAD_MODULES() {
-          return new ApiRequest<{ pkgs: PackageListItem[] }>({
+        async LOAD_LOCAL_MODULES() {
+          return new ApiRequest<{ pkgs: LocalModuleSummary[] }>({
             url: "/pkg/list_pkgs",
             params: { ...visibility },
             onSuccess: (response) => {
-              for (const pkg of response.pkgs) {
-                this.packageListByName[pkg.name] = {
-                  name: pkg.name,
-                  installed: pkg.installed,
-                  hash: pkg.hash,
-                };
-              }
+              // TODO: remove this
+              // the backend currently needs the full tar file name
+              // but we want the actual name in the module metadata
+              // easier to strip off temporarily but we'll need to change what the backend is storing
+              const modulesWithNamesFixed = _.map(response.pkgs, (m) => ({
+                ...m,
+                name: m.name.replace(/-\d\d\d\d-\d\d-\d\d\.sipkg/, ""),
+              }));
+
+              this.localModulesByName = _.keyBy(
+                modulesWithNamesFixed,
+                (m) => m.name,
+              );
+            },
+          });
+        },
+
+        async GET_LOCAL_MODULE_DETAILS(hash: ModuleHash) {
+          return new ApiRequest<LocalModuleDetails>({
+            method: "get",
+            url: "/pkg/get_module_by_hash",
+            params: { hash, ...visibility },
+            onSuccess: (response) => {
+              this.localModuleDetailsByName[response.name] = response;
+            },
+          });
+        },
+
+        async SEARCH_REMOTE_MODULES(nameQuery?: string) {
+          return new ModuleIndexApiRequest<{ modules: RemoteModuleSummary[] }>({
+            method: "get",
+            url: "/modules",
+            params: { name: nameQuery },
+            onSuccess: (response) => {
+              this.remoteModuleSearchResults = response.modules;
+            },
+          });
+        },
+        async GET_REMOTE_MODULE_DETAILS(id: ModuleId) {
+          return new ModuleIndexApiRequest<RemoteModuleDetails>({
+            method: "get",
+            url: `/modules/${id}`,
+            onSuccess: (response) => {
+              this.remoteModuleDetailsById[response.id] = response;
+            },
+          });
+        },
+
+        async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
+          return new ApiRequest<{ success: true }>({
+            method: "post",
+            url: "/pkg/install_pkg",
+            params: { id: moduleId, ...visibility },
+            onSuccess: (_response) => {
+              // response is just success, so we have to reload local modules
+              this.LOAD_LOCAL_MODULES();
             },
           });
         },
@@ -160,7 +193,7 @@ export const useModuleStore = () => {
         },
       },
       onActivated() {
-        this.LOAD_MODULES();
+        this.LOAD_LOCAL_MODULES();
       },
     }),
   )();

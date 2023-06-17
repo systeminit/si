@@ -1,4 +1,4 @@
-import Axios from "axios";
+import Axios, { AxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 
@@ -13,15 +13,14 @@ export const API_HTTP_URL = apiUrl;
 // set up websocket url, by replacing protocol and appending /ws
 export const API_WS_URL = `${API_HTTP_URL.replace(/^http/, "ws")}/ws`;
 
-const api = Axios.create({
+export const sdfApiInstance = Axios.create({
   headers: {
     "Content-Type": "application/json",
   },
   baseURL: API_HTTP_URL,
 });
 
-// add axios interceptors to add auth headers, handle logout errors, etc...
-api.interceptors.request.use((config) => {
+function injectBearerTokenAuth(config: AxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   const workspacesStore = useWorkspacesStore();
@@ -37,6 +36,22 @@ api.interceptors.request.use((config) => {
     config.headers.WorkspacePk = workspacesStore.selectedWorkspacePk;
   }
   return config;
+}
+
+sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
+
+export const authApiInstance = Axios.create({
+  headers: {
+    "Content-Type": "application/json",
+  },
+  baseURL: import.meta.env.VITE_AUTH_API_URL,
+  withCredentials: true, // needed to attach the cookie
 });
 
-export default api;
+export const moduleIndexApiInstance = Axios.create({
+  headers: {
+    "Content-Type": "application/json",
+  },
+  baseURL: import.meta.env.VITE_MODULE_INDEX_API_URL,
+});
+moduleIndexApiInstance.interceptors.request.use(injectBearerTokenAuth);

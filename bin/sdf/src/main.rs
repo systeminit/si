@@ -88,6 +88,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
 
+    let module_index_url = config.module_index_url().to_string();
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         Server::migrate_database(
             &pg_pool,
@@ -96,6 +98,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             veritech.clone(),
             &encryption_key,
             pkgs_path.to_owned(),
+            module_index_url.clone(),
         )
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
@@ -125,6 +128,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_public_signing_key,
                 posthog_client,
                 pkgs_path,
+                module_index_url,
             )?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
@@ -161,6 +165,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_public_signing_key,
                 posthog_client,
                 pkgs_path,
+                module_index_url,
             )
             .await?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();

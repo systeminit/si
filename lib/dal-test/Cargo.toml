@@ -13,6 +13,7 @@ dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
 names = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
 remain = { workspace = true }

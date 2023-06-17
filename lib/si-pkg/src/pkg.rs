@@ -1,15 +1,10 @@
 use core::fmt;
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashMap, convert::Infallible, path::Path, sync::Arc};
 
 use chrono::{DateTime, Utc};
 use object_tree::{
-    FsError, GraphError, Hash, HashedNode, NameStr, NodeChild, ObjectTree, TreeFileSystemReader,
-    TreeFileSystemWriter,
+    GraphError, Hash, HashedNode, NameStr, NodeChild, ObjectTree, TarReadError, TarWriter,
+    TarWriterError,
 };
 use petgraph::prelude::*;
 use thiserror::Error;
@@ -43,9 +38,11 @@ pub enum SiPkgError {
     #[error("Package missing required category: {0}")]
     CategoryNotFound(&'static str),
     #[error(transparent)]
-    Fs(#[from] FsError),
-    #[error(transparent)]
     Graph(#[from] GraphError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Memory(#[from] TarWriterError),
     #[error("node not found with hash={0}")]
     NodeWithHashNotFound(Hash),
     #[error("node not found with name={0}")]
@@ -62,6 +59,8 @@ pub enum SiPkgError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Spec(#[from] SpecError),
+    #[error(transparent)]
+    TarRead(#[from] TarReadError),
     #[error("unexpected pkg node type; expected={0}, actual={1}")]
     UnexpectedPkgNodeType(&'static str, &'static str),
     #[error("Validation spec missing required field: {0}")]
@@ -96,16 +95,13 @@ pub struct SiPkg {
 }
 
 impl SiPkg {
-    pub async fn load_from_file(path: impl Into<PathBuf>) -> PkgResult<Self> {
-        let tree: ObjectTree<PkgNode> = TreeFileSystemReader::tar(path).await?.read().await?;
-
-        Ok(Self {
-            tree: Arc::new(tree),
-        })
+    pub async fn load_from_file(path: impl AsRef<Path>) -> PkgResult<Self> {
+        let file_data = tokio::fs::read(&path).await?;
+        Self::load_from_bytes(file_data)
     }
 
-    pub async fn load_from_dir(path: impl Into<PathBuf>) -> PkgResult<Self> {
-        let tree: ObjectTree<PkgNode> = TreeFileSystemReader::physical(path).read().await?;
+    pub fn load_from_bytes(bytes: Vec<u8>) -> PkgResult<Self> {
+        let tree: ObjectTree<PkgNode> = ObjectTree::<PkgNode>::read_from_tar(bytes)?;
 
         Ok(Self {
             tree: Arc::new(tree),
@@ -125,19 +121,8 @@ impl SiPkg {
         })
     }
 
-    pub async fn write_to_file(&self, path: impl Into<PathBuf>) -> PkgResult<()> {
-        TreeFileSystemWriter::tar(path)
-            .await?
-            .write(&self.tree)
-            .await
-            .map_err(Into::into)
-    }
-
-    pub async fn write_to_dir(&self, path: impl AsRef<Path>) -> PkgResult<()> {
-        TreeFileSystemWriter::physical(path)
-            .write(&self.tree)
-            .await
-            .map_err(Into::into)
+    pub fn write_to_bytes(&self) -> PkgResult<Vec<u8>> {
+        Ok(TarWriter::new(&self.tree)?.bytes())
     }
 
     pub fn metadata(&self) -> PkgResult<SiPkgMetadata> {

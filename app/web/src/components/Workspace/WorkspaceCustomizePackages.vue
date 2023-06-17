@@ -11,14 +11,14 @@
     </div>
   </SiPanel>
   <div
-    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
+    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
-    <div class="inset-0 p-sm absolute">
-      <ModuleDisplay :slug="packageSlug" />
+    <div class="inset-0 p-sm absolute overflow-auto">
+      <ModuleDisplay :key="moduleSlug" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <ModuleDetailsPanel />
+    <ModuleDetailsPanel :key="moduleSlug" />
   </SiPanel>
 </template>
 
@@ -26,13 +26,13 @@
 import * as _ from "lodash-es";
 import { computed } from "vue";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
-import ModuleListPanel from "@/components/ModuleListPanel.vue";
-import ModuleDisplay from "@/components/ModuleDisplay.vue";
-import ModuleDetailsPanel from "@/components/ModuleDetailsPanel.vue";
+import ModuleListPanel from "@/components/modules/ModuleListPanel.vue";
+import ModuleDisplay from "@/components/modules/ModuleDisplay.vue";
+import ModuleDetailsPanel from "@/components/modules/ModuleDetailsPanel.vue";
+import { useModuleStore } from "@/store/module.store";
 import SiPanel from "@/components/SiPanel.vue";
-import { useModuleStore } from "../../store/module.store";
 import CustomizeTabs from "../CustomizeTabs.vue";
 
 const moduleStore = useModuleStore();
-const packageSlug = computed(() => moduleStore.urlSelectedPackageSlug);
+const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 </script>

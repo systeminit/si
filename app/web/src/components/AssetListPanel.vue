@@ -26,7 +26,7 @@
     </template>
     <template v-if="loadAssetsReqStatus.isSuccess">
       <ul class="overflow-y-auto min-h-[200px]">
-        <SiCollapsible
+        <Collapsible
           v-for="category in Object.keys(categorizedAssets)"
           :key="category"
           :label="category"
@@ -40,7 +40,7 @@
             :key="asset.id"
             :a="asset"
           />
-        </SiCollapsible>
+        </Collapsible>
       </ul>
     </template>
   </ScrollArea>
@@ -50,6 +50,7 @@
 import { onMounted, computed } from "vue";
 import { storeToRefs } from "pinia";
 import {
+  Collapsible,
   ScrollArea,
   VButton,
   RequestStatusMessage,
@@ -58,7 +59,6 @@ import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import AssetListItem from "./AssetListItem.vue";
-import SiCollapsible from "./SiCollapsible.vue";
 
 const assetStore = useAssetStore();
 const { assetList } = storeToRefs(assetStore);

@@ -1,5 +1,5 @@
 import path from "path";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { loadEnv, defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
@@ -17,6 +17,26 @@ const lessVars = readFileSync(
   "utf-8",
 );
 
+// fixes dev server handling of periods in paths
+// see https://github.com/vitejs/vite/issues/2415
+const dotPathFixPlugin = () => ({
+  name: "dot-path-fix-plugin",
+  configureServer: (server) => {
+    server.middlewares.use((req, _res, next) => {
+      const reqPath = req.url.split("?", 2)[0];
+      if (
+        !req.url.startsWith("/@") && // virtual files provided by vite plugins
+        !req.url.startsWith("/api/") && // api proxy, configured below
+        !existsSync(`./public${reqPath}`) && // files served directly from public folder
+        !existsSync(`.${reqPath}`) // actual files
+      ) {
+        req.url = "/";
+      }
+      next();
+    });
+  },
+});
+
 // see https://vitejs.dev/config/ for more info
 export default (opts: { mode: string }) => {
   // load config so we can keep the dev port to run there, and potentially other things in the future
@@ -26,6 +46,7 @@ export default (opts: { mode: string }) => {
   // defineConfig is a no-op but provides typing info for the options
   return defineConfig({
     plugins: [
+      dotPathFixPlugin(),
       vue(),
       svgLoaderPlugin(),
 
@@ -33,16 +54,17 @@ export default (opts: { mode: string }) => {
       // our Icon component knows how to deal with raw SVGs
       IconsPlugin({ compiler: "raw" }),
 
-      process.env.NODE_ENV !== "production" && checkerPlugin({
-        vueTsc: true,
-        eslint: {
-          lintCommand: packageJson.scripts.lint,
-          // I _think_ we only want to pop up an error on the screen for proper errors
-          // otherwise we can get a lot of unused var errors when you comment something out temporarily
-          dev: { logLevel: ["error"] },
-        },
-      }),
-  
+      process.env.NODE_ENV !== "production" &&
+        checkerPlugin({
+          vueTsc: true,
+          eslint: {
+            lintCommand: packageJson.scripts.lint,
+            // I _think_ we only want to pop up an error on the screen for proper errors
+            // otherwise we can get a lot of unused var errors when you comment something out temporarily
+            dev: { logLevel: ["error"] },
+          },
+        }),
+
       ViteGitRevisionPlugin({}),
     ],
     css: {

@@ -221,6 +221,7 @@ pub async fn migrate_all(
     veritech: Client,
     encryption_key: &EncryptionKey,
     pkgs_path: PathBuf,
+    module_index_url: String,
 ) -> ModelResult<()> {
     migrate(pg).await?;
     migrate_builtins(
@@ -231,6 +232,7 @@ pub async fn migrate_all(
         encryption_key,
         None,
         pkgs_path,
+        module_index_url,
     )
     .await?;
     Ok(())
@@ -244,10 +246,19 @@ pub async fn migrate_all_with_progress(
     veritech: Client,
     encryption_key: &EncryptionKey,
     pkgs_path: PathBuf,
+    module_index_url: String,
 ) -> ModelResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
-    let migrate_all = migrate_all(pg, nats, job_processor, veritech, encryption_key, pkgs_path);
+    let migrate_all = migrate_all(
+        pg,
+        nats,
+        job_processor,
+        veritech,
+        encryption_key,
+        pkgs_path,
+        module_index_url,
+    );
     tokio::pin!(migrate_all);
 
     loop {
@@ -273,6 +284,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
     Ok(pg.migrate(embedded::migrations::runner()).await?)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub async fn migrate_builtins(
     pg: &PgPool,
@@ -282,6 +294,7 @@ pub async fn migrate_builtins(
     encryption_key: &EncryptionKey,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
     pkgs_path: PathBuf,
+    module_index_url: String,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -290,6 +303,7 @@ pub async fn migrate_builtins(
         veritech,
         Arc::new(*encryption_key),
         Some(pkgs_path),
+        Some(module_index_url),
     );
     let dal_context = services_context.into_builder();
     let mut ctx = dal_context.build_default().await?;

@@ -4,7 +4,7 @@ use dal::{installed_pkg::InstalledPkg, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, PartialOrd};
 
-use super::{pkg_open, PkgResult};
+use super::{pkg_open, PkgError, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
@@ -12,7 +12,7 @@ use axum::extract::OriginalUri;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PkgGetRequest {
-    pub name: String,
+    pub hash: String,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -52,7 +52,7 @@ pub struct PkgGetResponse {
     pub installed: bool,
 }
 
-pub async fn get_pkg(
+pub async fn get_module_by_hash(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
@@ -60,7 +60,13 @@ pub async fn get_pkg(
     Query(request): Query<PkgGetRequest>,
 ) -> PkgResult<Json<PkgGetResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-    let pkg = pkg_open(&builder, &request.name).await?;
+
+    let installed_pkg = match InstalledPkg::find_by_hash(&ctx, &request.hash).await? {
+        Some(p) => p,
+        None => return Err(PkgError::ModuleHashNotFound(request.hash.to_string())),
+    };
+
+    let pkg = pkg_open(&builder, installed_pkg.name()).await?;
 
     let mut schemas: Vec<String> = pkg
         .schemas()?

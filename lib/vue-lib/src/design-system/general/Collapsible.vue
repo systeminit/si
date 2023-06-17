@@ -32,6 +32,10 @@
       >
         {{ label }}
       </span>
+
+      <div v-if="$slots.right" class="flex-shrink-0">
+        <slot name="right" />
+      </div>
     </DisclosureButton>
     <DisclosurePanel :as="contentAs">
       <slot />
@@ -40,10 +44,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useSlots, PropType, toRef } from "vue";
+import { computed, useSlots, PropType } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
 import clsx from "clsx";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "..";
 
 const props = defineProps({
   label: { type: String },
@@ -59,9 +63,6 @@ const props = defineProps({
   hideBottomBorderWhenOpen: { type: Boolean, default: false },
   hideBottomBorder: { type: Boolean, default: false },
 });
-
-// why on earth are vue props not reactive by default
-const defaultOpen = toRef(props, "defaultOpen", true);
 
 const slots = useSlots();
 const labelSlot = computed(() => slots.label?.());

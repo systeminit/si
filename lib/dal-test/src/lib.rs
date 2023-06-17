@@ -38,6 +38,7 @@ pub mod helpers;
 pub mod test_harness;
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
+const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
@@ -80,6 +81,8 @@ pub struct Config {
     pg: PgPoolConfig,
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
+    #[builder(default = "module_index_client::DEFAULT_URL.to_string()")]
+    module_index_url: String,
     cyclone_encryption_key_path: String,
     jwt_signing_public_key_path: String,
     jwt_signing_private_key_path: String,
@@ -104,6 +107,10 @@ impl Config {
         }
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
+
+        if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
+            config.module_index_url = value;
+        }
 
         Ok(config)
     }
@@ -226,6 +233,7 @@ impl TestContext {
             veritech,
             self.encryption_key.clone(),
             self.config.pkgs_path.to_owned(),
+            None,
         )
     }
 
@@ -529,6 +537,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .pkgs_path
             .to_owned()
             .expect("no pkgs path configured"),
+        test_context.config.module_index_url.clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
