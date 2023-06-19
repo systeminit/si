@@ -123,24 +123,37 @@ def _compute_targets(ctx: "bxl_ctx") -> "target_set":
 
 def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
     filtered = utarget_set()
+    has_filtered = False
 
     if ctx.cli_args.check_doc:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "check-doc", targets)
     if ctx.cli_args.check_format:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "check-format", targets)
     if ctx.cli_args.check_lint:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "check-lint", targets)
     if ctx.cli_args.test_doc:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "test-doc", targets)
     if ctx.cli_args.test_integration:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "test-integration", targets)
     if ctx.cli_args.test_unit:
+        has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter("name", "test-unit", targets)
     if ctx.cli_args.release_docker:
+        has_filtered = True
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
     if ctx.cli_args.promote_docker:
+        has_filtered = True
         # TODO(nick,fletcher): solve how to filter for promote_docker.
-         ctx.output.print("TODO cannot filter promote_docker yet, filtering out everything")
+        ctx.output.print("TODO cannot filter promote_docker yet, filtering out everything")
+
+    # If no filtering was requested, return the full, unfiltered set of targets
+    if not has_filtered:
+        filtered = targets
 
     return filtered
 
