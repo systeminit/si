@@ -173,8 +173,10 @@ import {
   DropdownMenu,
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";
-import SiLogo from "@si/vue-lib/brand-assets/si-logo.svg?component";
-import SiLogoNoBorderUrl from "@si/vue-lib/brand-assets/si-logo-no-border.svg?url";
+
+import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
+import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
+
 import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
@@ -195,7 +197,7 @@ useHead({
     style: () => `color-scheme: ${rootTheme.value};`,
     class: () => rootTheme.value,
   },
-  link: [{ rel: "icon", href: SiLogoNoBorderUrl }],
+  link: [{ rel: "icon", href: SiLogoUrl }],
 
   // set up title template and a default
   titleTemplate: "SI | %s",
@@ -317,11 +319,6 @@ const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
         animation: gradient 2s ease infinite;
         animation-direction: alternate;
       }
-    }
-
-    path:first-child {
-      fill: rgba(0, 0, 0, 0);
-      // display: none;
     }
   }
 }

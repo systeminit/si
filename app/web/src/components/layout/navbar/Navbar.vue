@@ -6,11 +6,7 @@
       <div class="flex items-center h-16">
         <!-- Left side -->
         <div class="flex items-center justify-center place-items-center h-full">
-          <img
-            class="block h-11 w-11 my-2 mr-2"
-            :src="SiLogoUrl"
-            alt="SI Logo"
-          />
+          <SiLogo class="block h-10 w-10 my-2 mr-2" />
 
           <NavbarButton tooltip-text="Workspaces">
             <template #default="{ open, hovered }">
@@ -50,7 +46,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { DropdownMenuItem } from "@si/vue-lib/design-system";
-import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo.svg?url";
+import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import SiArrow from "@/components/SiArrow.vue";
