@@ -1,6 +1,5 @@
 include ../../mk/base.mk
 include ../../mk/typescript.mk
-include ../../mk/image.mk
 
 .DEFAULT_GOAL := build
 CONTAINER_NAME := web

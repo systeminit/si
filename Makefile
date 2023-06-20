@@ -80,17 +80,6 @@ COMPONENTS = \
 # should be re-inserted into $COMPONENTS above
 #	bin/si-discord-bot \
 
-RELEASEABLE_COMPONENTS = \
-	app/web \
-	bin/pinga \
-	bin/council \
-	bin/module-index \
-	bin/sdf \
-	bin/veritech \
-	component/nats \
-	component/otelcol \
-	component/postgres
-
 RUNABLE_COMPONENTS = \
 	app/web \
 	bin/pinga \
@@ -103,10 +92,7 @@ BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 CHECKABLE = $(patsubst %,check//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
 FIXABLE = $(patsubst %,fix//%,$(COMPONENTS))
-IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
 PREPUSHABLE = $(patsubst %,prepush//%,$(COMPONENTS))
-PROMOTABLE = $(patsubst %,promote//%,$(RELEASEABLE_COMPONENTS))
-RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
 RUNABLE = $(patsubst %,run//%,$(RUNABLE_COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(COMPONENTS))
@@ -178,15 +164,6 @@ $(FIXABLE):
 	@cd $(patsubst fix//%,%,$@); $(MAKE) fix
 .PHONY: $(FIXABLE)
 
-## image: Builds all container images for relevant components
-image: $(IMAGEABLE)
-.PHONY: image
-
-## image//<cmpt>: Builds the container for <cmpt>
-$(IMAGEABLE):
-	@cd $(patsubst image//%,%,$@) && $(MAKE) image
-.PHONY: $(IMAGEABLE)
-
 ## prepush: Runs all checks & tests required before pushing commits
 prepush: check test
 .PHONY: prepush
@@ -195,16 +172,6 @@ prepush: check test
 $(PREPUSHABLE):
 	@cd $(patsubst prepush//%,%,$@); $(MAKE) prepush
 .PHONY: $(PREPUSHABLE)
-
-## promote//<cmpt>: Tags & pushes the current Git revision image as 'stable' for <cmpt>
-$(PROMOTABLE):
-	@cd $(patsubst promote//%,%,$@) && $(MAKE) promote
-.PHONY: $(PROMOTABLE)
-
-## release//<cmpt>: Builds & pushes the image for <cmpt> to the repository
-$(RELEASEABLE):
-	@cd $(patsubst release//%,%,$@) && $(MAKE) release
-.PHONY: $(RELEASEABLE)
 
 ## run//<cmpt>: Runs the default program/server for <cmpt>
 $(RUNABLE): run//% : build//% run//%//RUN
