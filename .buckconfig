@@ -9,6 +9,7 @@ none = none
 [repository_aliases]
 config = prelude
 fbcode = none
+fbcode_macros = none
 fbsource = none
 buck = none
 
