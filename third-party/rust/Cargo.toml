@@ -21,14 +21,14 @@ path = "top/main.rs"
 [dependencies]
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
-axum = { version = "0.6.18", features = ["macros", "ws", "multipart"] }
+axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
 base64 = "0.21.0"
 blake3 = "1.3.3"
 bytes = "1.4.0"
 chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
-config = { version = "0.13.3", default-features = false, features = ["toml"]}
+config = { version = "0.13.3", default-features = false, features = ["toml"] }
 convert_case = "0.6.0"
 crossbeam-channel = "0.5.8"
 deadpool = { version = "0.9.5", features = ["rt_tokio_1"] }
