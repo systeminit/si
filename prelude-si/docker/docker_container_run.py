@@ -4,6 +4,7 @@ Executes a `docker container run`.
 """
 import json
 import os
+import re
 import sys
 from typing import List, Tuple
 
@@ -40,7 +41,8 @@ def main() -> int:
         "--tty",
         "--interactive",
     ]
-    cmd.extend(docker_args)
+    for arg in docker_args:
+        cmd.append(resolve_env_vars(arg))
     cmd.append(tags[0])
     cmd.extend(args)
 
@@ -52,6 +54,23 @@ def load_tags(tags_file: str) -> List[str]:
     with open(tags_file) as file:
         tags = json.load(file)
         return tags
+
+
+def resolve_env_vars(arg: str) -> str:
+    wrapped_var_re = re.compile(r"\${([a-zA-Z_]\w*)}")
+    raw_var_re = re.compile(r"\$([a-zA-Z_]\w*)")
+    return raw_var_re.sub(
+        resolve_env_var,
+        wrapped_var_re.sub(resolve_env_var, arg),
+    )
+
+
+def resolve_env_var(match: re.Match) -> str:
+    env_var = match.group(1)
+    if env_var and os.getenv(env_var):
+        return os.getenv(env_var, "")
+    else:
+        return ""
 
 
 if __name__ == "__main__":

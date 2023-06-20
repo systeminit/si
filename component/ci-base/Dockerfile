@@ -1,22 +1,56 @@
 ARG BASE_VERSION
-FROM registry.fedoraproject.org/fedora-minimal:${BASE_VERSION}
+FROM debian:${BASE_VERSION}
 
-RUN microdnf install -y git && microdnf clean all -y
-RUN curl \
-    --proto '=https' \
-    --tlsv1.2 \
-    -sSf \
-    -L https://install.determinate.systems/nix \
-    | sh -s -- install linux --init none --no-confirm
+# hadolint ignore=DL3008
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        busybox \
+        ca-certificates \
+        curl \
+        git \
+        sudo \
+        xz-utils \
+    ; \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    useradd --create-home --shell /bin/bash --uid 2000 ci; \
+    echo 'ci ALL=(ALL:ALL) NOPASSWD: ALL' >/etc/sudoers.d/ci; \
+    mkdir -p /workdir; \
+    chown -R ci:ci /workdir
+
+ENV USER=ci
+USER ci:ci
+
+# hadolint ignore=DL3004,DL4006
+RUN set -eux; \
+    sudo install -d -m755 -o $(id -u) -g $(id -g) /nix; \
+    curl \
+            --proto '=https' \
+            --tlsv1.2 -sSf \
+            -L https://nixos.org/nix/install \
+        | sh -s -- --no-daemon; \
+    mkdir -p "$HOME/.config/nix"; \
+    { \
+        echo 'extra-nix-path = nixpkgs=flake:nixpkgs'; \
+        echo 'experimental-features = nix-command flakes'; \
+        echo 'auto-optimise-store = true'; \
+        echo 'bash-prompt-prefix = (nix:$name)\040'; \
+    } >"$HOME/.config/nix/nix.conf"; \
+    . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
+    nix-env -iA nixpkgs.nixFlakes; \
+    grep 'Nix installer' "$HOME/.profile" >>"$HOME/.bashrc"; \
+    git config --global --add safe.directory /workdir
 
 WORKDIR /workdir
 
-COPY flake.nix flake.nix
-COPY flake.lock flake.lock
-COPY rust-toolchain rust-toolchain
+COPY flake.nix flake.lock rust-toolchain ./
+COPY docker-entrypoint.sh /
 
-ENV PATH="${PATH}:/nix/var/nix/profiles/default/bin"
-RUN nix develop --command true
-RUN rm -f flake.nix flake.lock rust-toolchain
+RUN set -eux; \
+    . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
+    nix develop --build; \
+    rm -f .flake.nix flake.lock rust-toolchain
 
-ENTRYPOINT ["nix", "develop"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
