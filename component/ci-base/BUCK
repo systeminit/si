@@ -23,9 +23,5 @@ docker_image(
         "/workdir/target",
         "--volume",
         "/workdir/tmp",
-        "--volume",
-        "/workdir/third-party/rust/.cargo",
-        "--volume",
-        "/workdir/third-party/rust/vendor",
     ],
 )
