@@ -90,7 +90,7 @@ import Check2 from "~icons/octicon/check-16";
 // 3p logos
 import AwsLogo from "~icons/cib/amazon-aws";
 import CoreOsLogo from "~icons/ri/coreos-fill";
-import SiLogo from "./custom-icons/si-logo-icon.svg?raw";
+import SiLogo from "../../brand-assets/si-logo-symbol-padded.svg?raw";
 // import DockerCircleLogo from "./images/3p-logos/docker/docker-icon.svg?raw";
 import DockerLogo from "~icons/mdi/docker";
 // import KubernetesCircleLogo from "~icons/carbon/logo-kubernetes";
