@@ -1,6 +1,5 @@
 status = [
   "Merge Request Checks",
-  "Docker Image Build Summary Status",
 ]
 pr_status =[
   "Pull Request Checks",
