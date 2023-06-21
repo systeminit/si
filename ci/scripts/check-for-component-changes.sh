@@ -3,18 +3,11 @@ set -u
 
 CHANGED_PATHS="$(git diff --name-only origin/main)"
 
-COMMON_PATHS=".github/workflows/promote-image.yml
-  .github/workflows/build-docker-image.yml
-  .github/workflows/build-docker-images.yml
-  ci/scripts/check-for-component-changes.sh"
-NATS_PATHS=".github/workflows/promote-nats.yml
-  component/nats/**"
-OTELCOL_PATHS=".github/workflows/promote-otelcol.yml
-  component/otelcol/**"
-POSTGRES_PATHS=".github/workflows/promote-postgres.yml
-  component/postgres/**"
-SDF_PATHS=".github/workflows/promote-sdf.yml
-  .cargo/**
+COMMON_PATHS="ci/scripts/check-for-component-changes.sh"
+NATS_PATHS="component/nats/**"
+OTELCOL_PATHS="component/otelcol/**"
+POSTGRES_PATHS="component/postgres/**"
+SDF_PATHS=".cargo/**
   Cargo.*
   bin/sdf/**
   lib/buck2-resources/**
@@ -35,8 +28,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/veritech-client/**
   rust-toolchain
   rustfmt.toml"
-VERITECH_PATHS=".github/workflows/promote-veritech.yml
-  .cargo/**
+VERITECH_PATHS=".cargo/**
   Cargo.*
   bin/veritech/**
   lib/buck2-resources/**
@@ -52,22 +44,18 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   lib/veritech-server/**
   rust-toolchain
   rustfmt.toml"
-WEB_PATHS=".github/workflows/promote-web.yml
-  .prettierrc.js
+WEB_PATHS=".prettierrc.js
   babel.config.js
   app/web/**"
 PINGA_PATHS="${SDF_PATHS}
-  .github/workflows/promote-pinga.yml
   bin/pinga/**
   lib/buck2-resources/**
   lib/pinga-server/**"
 COUNCIL_PATHS="${SDF_PATHS}
-  .github/workflows/promote-council.yml
   bin/council/**
   lib/buck2-resources/**
   lib/council-server/**"
 MODULE_INDEX_PATHS="
-  .github/workflows/promote-module-index.yml
   bin/module-index/**
   lib/buck2-resources/**
   lib/module-index-server/**

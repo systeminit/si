@@ -1,2 +1,0 @@
-ARG BASE_VERSION
-FROM nats

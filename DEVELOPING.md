@@ -132,10 +132,6 @@ dependencies you can run: `make test//lib/si-data//TEST`.
 | `clean//<cmpt>`        | Cleans all build/test temporary work files for a specific component |
 | `run//<cmpt>`          | Runs the default program/server for a specific component with all relevant dependencies built in a suitable order|
 | `run//<cmpt>//RUN`     | Runs the default program/server for a specific component, skipping pre-run dependencies |
-| `image`                | Builds all container images for relevant components |
-| `image//<cmpt>`        | Builds the container for a specific component. Note that not all components have support for building a container image. |
-| `release//<cmpt>`      | Builds & pushes the container image for a specific component to the repository. This task is used primarily in CI. |
-| `promote//<cmpt>`      | Tags & pushes the current Git revision image as 'stable' for a specific component. This task is used primarily in CI. |
 | `ci`                   | Invokes the primary continuous integration task |
 | `down`                 | Brings down all supporting services such as databases, queues, etc. Note that this task will destroy any data currently persisted in local databases. |
 | `prepare`              | Prepares all supporting services such as databases, queues, etc. for development. Note that this task will destroy any data currently persisted in local databases. |
@@ -181,21 +177,6 @@ such as:
 |-----------------------|-------------|
 | `run`                 | Runs the default program/server for the component. Note that pre-run dependencies are not executed (see Base Makefile Targets). |
 | `start`               | Alias for `make run` |
-
-#### Releasable Component Makefile Targets
-
-A subset of components are designed to be built and packaged in Docker images
-as a means of producing a deployment artifact. These components are typically
-found under the `app/`, `bin/`, and `component/` directories, however not all
-components may have support to be built as a container image. Here are some
-additional make targets you can expect:
-
-| Target                | Description |
-|-----------------------|-------------|
-| `release`             | Builds & pushes the container image & tags to the repository. This task is used primarily in CI. |
-| `promote`             | Tags & pushes the current Git revision container image as 'stable'. This task is used primarily in CI. |
-| `image`               | Builds a container image |
-| `publish`             | Builds & pushes the image to the repository |
 
 ### Components
 
@@ -284,7 +265,7 @@ Here are some example tasks that are useful:
 - `pnpm run dev:backend`
   - runs `cargo build` at the repository root and then boots all backend services in a single terminal pane
 - individual service tasks:
-  - each script still runs the build at the root level, but boots only that service 
+  - each script still runs the build at the root level, but boots only that service
   - caching with `cargo` means each build after the first is instant
   - `pnpm run dev:sdf` (corresponds to [sdf](./bin/sdf))
   - `pnpm run dev:veritech` (corresponds to [veritech](./bin/veritech))
