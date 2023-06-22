@@ -112,7 +112,7 @@ export const useAssetStore = () => {
         },
 
         async SELECT_FUNC(assetId: AssetId, funcId: FuncId) {
-          if (!funcStore.funcsById[funcId]) {
+          if (!funcStore.funcDetailsById[funcId]) {
             await funcStore.FETCH_FUNC_DETAILS(funcId);
           }
 

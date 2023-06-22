@@ -65,6 +65,7 @@
       ref="attachModalRef"
       :schema-variant-id="assetSchemaVariantId"
       :asset-id="assetId"
+      :attach-existing="false"
     />
   </div>
 </template>
@@ -76,7 +77,6 @@ import {
   Collapsible,
   ScrollArea,
   RequestStatusMessage,
-  Modal,
 } from "@si/vue-lib/design-system";
 import { CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
@@ -106,7 +106,7 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
   props.assetId,
 );
 
-const attachModalRef = ref<InstanceType<typeof Modal>>();
+const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 const assetSchemaVariantId = computed(() =>
   props.assetId
     ? assetStore.assetsById[props.assetId]?.defaultVariantId
@@ -115,7 +115,9 @@ const assetSchemaVariantId = computed(() =>
 
 const openAttachFuncModal = (type: "new" | "existing") => {
   if (type === "new") {
-    attachModalRef.value?.open();
+    attachModalRef.value?.open(false);
+  } else {
+    attachModalRef.value?.open(true);
   }
 };
 </script>

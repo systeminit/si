@@ -14,11 +14,9 @@
       <DropdownMenuItem @select="emit('selectedAttachType', 'new')">
         New function
       </DropdownMenuItem>
-      <!--
       <DropdownMenuItem @select="emit('selectedAttachType', 'existing')">
         Existing
-      </DropdownMenuItem> 
-      -->
+      </DropdownMenuItem>
     </DropdownMenu>
   </VButton>
 </template>

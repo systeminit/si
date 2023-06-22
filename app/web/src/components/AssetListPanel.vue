@@ -1,11 +1,11 @@
 <template>
   <ScrollArea>
     <RequestStatusMessage
-      v-if="loadAssetsReqStatus.isPending"
+      v-if="loadAssetsReqStatus.isPending && assetStore.assetList.length < 1"
       :request-status="loadAssetsReqStatus"
       loading-message="Loading assets..."
     />
-    <template v-if="loadAssetsReqStatus.isSuccess" #top>
+    <template #top>
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
@@ -24,7 +24,7 @@
         Select an asset to view or edit it.
       </div>
     </template>
-    <template v-if="loadAssetsReqStatus.isSuccess">
+    <template v-if="assetStore.assetList.length > 0">
       <ul class="overflow-y-auto min-h-[200px]">
         <Collapsible
           v-for="category in Object.keys(categorizedAssets)"

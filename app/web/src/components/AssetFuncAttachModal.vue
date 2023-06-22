@@ -1,82 +1,134 @@
 <template>
-  <Modal ref="modalRef" :title="title">
-    <Stack>
-      <VormInput
-        v-model="funcVariant"
-        label="Kind"
-        type="dropdown"
-        :options="funcVariantOptions"
-      />
-      <VormInput
-        v-model="name"
-        label="Name"
-        required
-        placeholder="The name of the function"
-      />
-      <VormInput
-        v-if="funcVariant === FuncVariant.Action"
-        v-model="actionKind"
-        label="Action Kind"
-        type="dropdown"
-        :options="actionKindOptions"
-      />
-      <VormInput
-        v-if="funcVariant === FuncVariant.Attribute"
-        v-model="attributeOutputLocation"
-        label="Output Location"
-        type="dropdown"
-        required
-        :options="attributeOutputLocationOptions"
-      />
-      <VormInput
-        v-if="funcVariant === FuncVariant.Validation"
-        v-model="attrToValidate"
-        label="Attribute to Validate"
-        type="dropdown"
-        required
-        :options="validationOptions"
-      />
-      <ErrorMessage
-        v-if="createFuncReqStatus.isError"
-        :request-status="createFuncReqStatus"
-      />
-      <VButton
-        :loading="showLoading"
-        :disabled="!nameIsSet"
-        loading-text="Attaching new function..."
-        label="Attach new function"
-        tone="action"
-        icon="plus"
-        size="sm"
-        @click="attachNewFunc"
-      />
-    </Stack>
+  <Modal ref="modalRef" :title="title" :size="attachExisting ? '4xl' : 'md'">
+    <div class="flex flex-row h-96">
+      <div
+        :class="
+          clsx(
+            'flex flex-col gap-y-4 min-w-[250px]',
+            attachExisting && 'mr-3',
+            !attachExisting && 'flex-grow',
+          )
+        "
+      >
+        <VormInput
+          v-model="funcVariant"
+          label="Kind"
+          type="dropdown"
+          :options="funcVariantOptions"
+        />
+        <VormInput
+          v-if="!attachExisting"
+          v-model="name"
+          label="Name"
+          required
+          placeholder="The name of the function"
+        />
+        <VormInput
+          v-if="attachExisting"
+          v-model="selectedExistingFuncId"
+          label="Existing function"
+          type="dropdown"
+          required
+          :options="existingFuncOptions"
+        />
+        <VormInput
+          v-if="funcVariant === FuncVariant.Action && !attachExisting"
+          v-model="actionKind"
+          label="Action Kind"
+          type="dropdown"
+          :options="actionKindOptions"
+        />
+        <VormInput
+          v-if="funcVariant === FuncVariant.Attribute"
+          v-model="attributeOutputLocation"
+          label="Output Location"
+          type="dropdown"
+          required
+          :options="attributeOutputLocationOptions"
+        />
+        <VormInput
+          v-if="funcVariant === FuncVariant.Validation"
+          v-model="attrToValidate"
+          label="Attribute to Validate"
+          type="dropdown"
+          required
+          :options="validationOptions"
+        />
+        <ErrorMessage
+          v-if="createFuncReqStatus.isError"
+          :request-status="createFuncReqStatus"
+        />
+        <div class="mt-auto">
+          <VButton
+            class="w-full"
+            :loading="showLoading"
+            :disabled="!attachEnabled"
+            :loading-text="`Attaching ${existingOrNew} function...`"
+            :label="`Attach ${existingOrNew} function`"
+            tone="action"
+            icon="plus"
+            size="sm"
+            @click="onAttach"
+          />
+        </div>
+      </div>
+      <div v-if="attachExisting" class="overflow-y-scroll">
+        <div
+          v-if="!selectedExistingFuncId"
+          class="items-center justify-center text-neutral-400 dark:text-neutral-300 text-sm text-center"
+        >
+          Select an existing function to attach it to this asset
+        </div>
+        <div v-if="loadFuncDetailsReq?.value.isPending">
+          <RequestStatusMessage
+            :request-status="loadFuncDetailsReq.value"
+            show-loader-without-message
+          />
+        </div>
+        <CodeEditor
+          v-if="loadFuncDetailsReq && !loadFuncDetailsReq?.value.isPending"
+          v-model="selectedFuncCode"
+          disabled
+          typescript="yes"
+          no-lint
+          no-vim
+        />
+      </div>
+    </div>
   </Modal>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   Modal,
   useModal,
-  Stack,
   VormInput,
   VButton,
+  RequestStatusMessage,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
+import clsx from "clsx";
+import uniqBy from "lodash-es/uniqBy";
 import { FuncVariant, CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
   CreateFuncOutputLocation,
   CreateFuncOptions,
+  FuncAssociations,
+  ValidationAssociations,
+  AttributeAssociations,
 } from "@/store/func/types";
 import { ActionKind } from "@/store/fixes.store";
+import { nilId } from "@/utils/nilId";
+import CodeEditor from "./CodeEditor.vue";
 
 const props = defineProps<{
   schemaVariantId?: string;
   assetId?: string;
+  attachExisting: boolean;
 }>();
 
 const funcStore = useFuncStore();
@@ -101,11 +153,46 @@ const funcVariantOptions = Object.keys(CUSTOMIZABLE_FUNC_TYPES).map(
   }),
 );
 
+const attachExisting = ref(false);
+
 const name = ref("");
 const funcVariant = ref(FuncVariant.Action);
 
 const actionKind = ref(ActionKind.Other);
 const actionKindOptions = Object.values(ActionKind);
+
+const selectedExistingFuncId = ref<FuncId | undefined>();
+const selectedFuncCode = ref<string>("");
+const loadFuncDetailsReq = computed(() =>
+  selectedExistingFuncId.value
+    ? funcStore.getRequestStatus(
+        "FETCH_FUNC_DETAILS",
+        selectedExistingFuncId.value,
+      )
+    : undefined,
+);
+
+watch(selectedExistingFuncId, async (funcId) => {
+  if (funcId) {
+    if (!funcStore.funcDetailsById[funcId]) {
+      const result = await funcStore.FETCH_FUNC_DETAILS(funcId);
+      if (result.result.success) {
+        selectedFuncCode.value = result.result.data.code;
+      }
+    } else {
+      selectedFuncCode.value = funcStore.funcDetailsById[funcId]?.code ?? "";
+    }
+  }
+});
+
+const existingFuncOptions = computed(() =>
+  Object.values(funcStore.funcsById)
+    .filter((func) => func.variant === funcVariant.value)
+    .map((func) => ({
+      label: func.name,
+      value: func.id,
+    })),
+);
 
 // VormInput does not support object types for option values, so we do transform
 // the value into JSON and parse it back to use it
@@ -146,21 +233,43 @@ const assetName = computed(() =>
     : "none",
 );
 
+const existingOrNew = computed(() =>
+  attachExisting.value ? "existing" : "new",
+);
+
 const title = computed(() =>
   assetName.value
-    ? `Attach new function to ${assetName.value}`
-    : `Attach new function`,
+    ? `Attach ${existingOrNew.value} function to "${assetName.value}"`
+    : `Attach ${existingOrNew.value} function`,
 );
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
 
-const nameIsSet = computed(() => name.value && name.value.length > 0);
+const attachEnabled = computed(() => {
+  const nameIsSet =
+    attachExisting.value || !!(name.value && name.value.length > 0);
+  const hasOutput =
+    funcVariant.value !== FuncVariant.Attribute ||
+    !!attributeOutputLocationParsed.value;
+  const hasAttrToValidate =
+    funcVariant.value !== FuncVariant.Validation || !!attrToValidate.value;
+  const existingSelected =
+    !attachExisting.value || !!selectedExistingFuncId.value;
 
-const open = () => {
+  return nameIsSet && hasOutput && hasAttrToValidate && existingSelected;
+});
+
+const open = (existing?: boolean) => {
+  attachExisting.value = existing ?? false;
+
   name.value = "";
   funcVariant.value = FuncVariant.Action;
   actionKind.value = ActionKind.Other;
+  selectedExistingFuncId.value = undefined;
+  selectedFuncCode.value = "";
+  attrToValidate.value = undefined;
+
   attributeOutputLocationOptions.value = props.schemaVariantId
     ? funcStore
         .outputLocationOptionsForSchemaVariant(props.schemaVariantId)
@@ -169,6 +278,7 @@ const open = () => {
           value: JSON.stringify(value),
         }))
     : [];
+
   validationOptions.value = props.schemaVariantId
     ? funcStore.propsAsOptionsForSchemaVariant(props.schemaVariantId)
     : [];
@@ -228,6 +338,117 @@ const newFuncOptions = (
   }
 };
 
+const attachToLeafFunctionOrAction = (
+  schemaVariantId: string,
+  associations: FuncAssociations,
+): FuncAssociations =>
+  associations.type === "codeGeneration" ||
+  associations.type === "confirmation" ||
+  associations.type === "qualification" ||
+  associations.type === "action"
+    ? {
+        ...associations,
+        schemaVariantIds: Array.from(
+          new Set(associations.schemaVariantIds.concat([schemaVariantId])),
+        ),
+      }
+    : associations;
+
+const attachToValidationFunction = (
+  schemaVariantId: string,
+  propId: string,
+  associations: ValidationAssociations,
+): ValidationAssociations => ({
+  ...associations,
+  prototypes: uniqBy(
+    associations.prototypes.concat([{ schemaVariantId, propId }]),
+    (proto) => proto.propId,
+  ),
+});
+
+const attachToAttributeFunction = (
+  outputLocation: CreateFuncOutputLocation,
+  associations: AttributeAssociations,
+): AttributeAssociations => ({
+  ...associations,
+  prototypes: associations.prototypes.concat([
+    {
+      id: nilId(),
+      propId: "propId" in outputLocation ? outputLocation.propId : undefined,
+      externalProviderId:
+        "externalProviderId" in outputLocation
+          ? outputLocation.externalProviderId
+          : undefined,
+      prototypeArguments: [],
+      componentId: undefined,
+    },
+  ]),
+});
+
+const reloadAssetAndRoute = async (assetId: string, funcId: string) => {
+  await assetStore.LOAD_ASSET(assetId);
+  close();
+  router.push({
+    name: "workspace-lab-assets",
+    params: {
+      ...router.currentRoute.value.params,
+      funcId,
+      assetId,
+    },
+  });
+};
+
+const attachExistingFunc = async () => {
+  if (props.schemaVariantId && selectedExistingFuncId.value) {
+    const func = funcStore.funcDetailsById[selectedExistingFuncId.value];
+    if (func) {
+      let updatedAssocations: FuncAssociations | undefined;
+      const associations = func?.associations;
+      if (!associations) {
+        return;
+      }
+
+      switch (associations.type) {
+        case "action":
+        case "codeGeneration":
+        case "confirmation":
+        case "qualification":
+          updatedAssocations = attachToLeafFunctionOrAction(
+            props.schemaVariantId,
+            associations,
+          );
+          break;
+        case "attribute":
+          if (attributeOutputLocationParsed.value) {
+            updatedAssocations = attachToAttributeFunction(
+              attributeOutputLocationParsed.value,
+              associations,
+            );
+          }
+          break;
+        case "validation":
+          if (attrToValidate.value) {
+            updatedAssocations = attachToValidationFunction(
+              props.schemaVariantId,
+              attrToValidate.value,
+              associations,
+            );
+          }
+          break;
+        default:
+          break;
+      }
+      if (updatedAssocations) {
+        func.associations = updatedAssocations;
+        const result = await funcStore.updateFuncMetadata(func);
+        if (result.result.success && props.assetId) {
+          await reloadAssetAndRoute(props.assetId, func.id);
+        }
+      }
+    }
+  }
+};
+
 const attachNewFunc = async () => {
   if (props.schemaVariantId) {
     const options = newFuncOptions(funcVariant.value, props.schemaVariantId);
@@ -238,18 +459,17 @@ const attachNewFunc = async () => {
         options,
       });
       if (result.result.success && props.assetId) {
-        await assetStore.LOAD_ASSET(props.assetId);
-        close();
-        router.push({
-          name: "workspace-lab-assets",
-          params: {
-            ...router.currentRoute.value.params,
-            funcId: result.result.data.id,
-            assetId: props.assetId,
-          },
-        });
+        await reloadAssetAndRoute(props.assetId, result.result.data.id);
       }
     }
+  }
+};
+
+const onAttach = async () => {
+  if (attachExisting.value) {
+    await attachExistingFunc();
+  } else {
+    await attachNewFunc();
   }
 };
 

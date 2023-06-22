@@ -54,7 +54,6 @@ export interface ValidationAssociations {
 }
 
 export interface ValidationPrototypeView {
-  id: string;
   schemaVariantId: string;
   propId: string;
 }

@@ -165,7 +165,7 @@ const prototypeViews = computed(() => {
     return {
       schemaVariantName,
       propName,
-      key: `${proto.id}-${proto.schemaVariantId}`,
+      key: `${proto.propId}-${proto.schemaVariantId}`,
       proto: { ...proto },
     };
   });
@@ -191,7 +191,6 @@ const addValidation = (
   return Array.from(
     new Set(
       prototypes.concat({
-        id: nilId(),
         schemaVariantId,
         propId,
       }),
