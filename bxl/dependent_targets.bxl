@@ -151,15 +151,30 @@ def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
         has_filtered = True
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
     if ctx.cli_args.promote_docker:
-        has_filtered = False
-        # TODO(nick,fletcher): solve how to filter for promote_docker.
-        print("xxx TODO cannot filter promote_docker yet")
+        has_filtered = True
+        filtered = filtered + _filtered_promote_docker_targets(ctx, targets)
 
     # If no filtering was requested, return the full, unfiltered set of targets
     if not has_filtered:
         filtered = targets
 
     return filtered
+
+# Returns a filtered list of `promote-docker` targets
+#
+# Every relevant `:release` target should become a `:promote` target as the promotions are triggered
+# from merge to the main branch whereas the releases are triggered in the merge queue pipeline. In
+# other words, every necessary release has a 1:1 promotion that needs to happen later.
+def _filtered_promote_docker_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
+    release_targets = ctx.uquery().kind("docker_image_release", targets)
+
+    promote_target_strs = map(
+        lambda e: e.replace(":release", ":promote"),
+        map(lambda e: str(e.label), release_targets),
+    )
+    promote_targets = ctx.unconfigured_targets(promote_target_strs)
+
+    return promote_targets
 
 # Computes a list of targets for all targets in the project.
 def _dependent_global_file_targets(ctx: "bxl_ctx") -> "target_set":
