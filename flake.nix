@@ -4,7 +4,7 @@
   # Flake inputs
   inputs = {
     # rust-overlay is designed to work with nixos-unstable
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
