@@ -4,14 +4,17 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::change_status::ChangeStatusError;
 use dal::{
-    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, FixError,
+    change_status::ChangeStatusError, ChangeSetError as DalChangeSetError,
+    ComponentError as DalComponentError, DalContext, FixError, SchemaVariant, StandardModel,
     StandardModelError, TransactionsError, UserError, UserPk,
 };
+use module_index_client::IndexClientError;
+use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
-use crate::server::state::AppState;
+use crate::{server::state::AppState, service::pkg::PkgError};
 
 pub mod apply_change_set;
 pub mod apply_change_set2;
@@ -35,7 +38,11 @@ pub enum ChangeSetError {
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
     #[error(transparent)]
+    DalPkg(#[from] dal::pkg::PkgError),
+    #[error(transparent)]
     Fix(#[from] FixError),
+    #[error(transparent)]
+    IndexClient(#[from] IndexClientError),
     #[error("invalid user {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -45,7 +52,11 @@ pub enum ChangeSetError {
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
+    PkgService(#[from] PkgError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    UrlParse(#[from] url::ParseError),
     #[error(transparent)]
     User(#[from] UserError),
 }
@@ -91,4 +102,45 @@ pub fn routes() -> Router<AppState> {
             "/update_selected_change_set",
             post(update_selected_change_set::update_selected_change_set),
         )
+}
+
+// Ideally, this would be in a background job (and triggered directly by ChangeSet::apply_raw),
+// but we'll need to nail down exactly how the job will auth to the module-index API first.
+// Passing the user's access token into the background job processing system is kind of a
+// non-starter.
+async fn upload_workspace_backup_module(
+    ctx: DalContext,
+    access_token: String,
+) -> ChangeSetResult<()> {
+    let ctx = &ctx;
+
+    let schema_variant_ids = SchemaVariant::list(ctx)
+        .await?
+        .iter()
+        .map(|sv| *sv.id())
+        .collect();
+    let module_name = "Workspace Backup";
+    let module_version = Ulid::new().to_string();
+    let module_bytes = dal::pkg::export_pkg_as_bytes(
+        ctx,
+        module_name,
+        &module_version,
+        Some("Backup of all schema variants on HEAD."),
+        "Sally Signup",
+        schema_variant_ids,
+    )
+    .instrument(debug_span!("Generating workspace backup module"))
+    .await?;
+    let Some(module_index_url) = ctx.module_index_url() else {
+        return Err(PkgError::ModuleIndexNotConfigured.into());
+    };
+    let index_client =
+        module_index_client::IndexClient::new(module_index_url.try_into()?, &access_token);
+    let _upload_response = index_client
+        .upload_module(module_name, &module_version, module_bytes)
+        .instrument(debug_span!("Uploading module"))
+        .await?;
+
+    info!("Success");
+    Ok(())
 }

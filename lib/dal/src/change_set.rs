@@ -140,6 +140,7 @@ impl ChangeSet {
             // Before retuning, run all confirmations now that we are on head.
             Component::run_all_confirmations(ctx).await?;
         }
+
         Ok(())
     }
 
