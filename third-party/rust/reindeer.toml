@@ -9,9 +9,6 @@
 # Overview of available options:
 # https://github.com/facebookincubator/reindeer/blob/main/example/third-party/reindeer.toml
 
-# Default rustc flags added to all rules
-rustc_flags = ["--cap-lints=allow"]
-
 # Parse Rust code to work out the precise set of source files for each crate.
 # This uses `srcfiles` which only works on Rust 2018 and without some macro
 # constructions. It works in almost all cases, but you may need to have a
