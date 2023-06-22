@@ -20,8 +20,7 @@ use dal::{
     ComponentId, DalContext, ExternalProviderId, Func, FuncBackendKind, FuncBackendResponseType,
     FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
     PropKind, PrototypeListForFuncError, SchemaVariantId, StandardModel, StandardModelError,
-    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationPrototypeId, WsEventError,
+    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
 use dal::{ExternalProviderError, FuncDescription, FuncDescriptionContents, LeafInputLocation};
 use serde::{Deserialize, Serialize};
@@ -255,7 +254,6 @@ impl AttributePrototypeView {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidationPrototypeView {
-    id: ValidationPrototypeId,
     schema_variant_id: SchemaVariantId,
     prop_id: PropId,
 }
@@ -547,7 +545,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 prototypes: protos
                     .iter()
                     .map(|proto| ValidationPrototypeView {
-                        id: *proto.id(),
                         schema_variant_id: proto.context().schema_variant_id(),
                         prop_id: proto.context().prop_id(),
                     })

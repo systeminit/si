@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full ph-no-capture">
-    <div class="absolute right-xs top-xs">
+    <div v-if="!noVim" class="absolute right-xs top-xs">
       <VButton
         size="xs"
         :tone="vimEnabled ? 'success' : 'neutral'"
@@ -33,6 +33,8 @@ const props = defineProps<{
   disabled?: boolean;
   json?: boolean;
   typescript?: string | null;
+  noLint?: boolean;
+  noVim?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -116,7 +118,7 @@ const VIM_MODE_STORAGE_KEY = "SI:VIM_MODE";
 const vimEnabledDefault = (): boolean => {
   return storage.getItem(VIM_MODE_STORAGE_KEY) === "true";
 };
-const vimEnabled = ref(vimEnabledDefault());
+const vimEnabled = ref(!props.noVim && vimEnabledDefault());
 watch(vimEnabled, (useVim) => {
   storage.setItem(VIM_MODE_STORAGE_KEY, useVim ? "true" : "false");
   view.dispatch({
@@ -136,13 +138,16 @@ const mountEditor = async () => {
   const extensions = [basicSetup];
 
   if (typescript.value) {
-    const { lintSource, autocomplete } = await createTypescriptSource(
-      typescript.value,
-    );
+    if (!props.noLint) {
+      const { lintSource, autocomplete } = await createTypescriptSource(
+        typescript.value,
+      );
 
-    extensions.push(autocompleteCompartment.of(autocomplete));
-    extensions.push(lintCompartment.of(linter(lintSource)));
-    extensions.push(lintGutter());
+      extensions.push(autocompleteCompartment.of(autocomplete));
+      extensions.push(lintCompartment.of(linter(lintSource)));
+      extensions.push(lintGutter());
+    }
+
     extensions.push(language.of(javascript()));
   }
 

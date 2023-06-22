@@ -31,12 +31,14 @@
                   'flex flex-col-reverse',
                   'transform transition-all',
                   'bg-white dark:bg-neutral-900 text-shade-100 dark:text-white',
+                  'max-h-full',
                   {
                     sm: 'max-w-sm',
                     md: 'max-w-md',
                     lg: 'max-w-lg',
                     xl: 'max-w-xl',
                     '2xl': 'max-w-2xl',
+                    '4xl': 'max-w-4xl',
                   }[size],
                 )
               "
@@ -115,7 +117,7 @@ import { useThemeContainer } from "../utils/theme_tools";
 const props = defineProps({
   beginOpen: { type: Boolean, default: false },
   size: {
-    type: String as PropType<"sm" | "md" | "lg" | "xl" | "2xl">,
+    type: String as PropType<"sm" | "md" | "lg" | "xl" | "2xl" | "4xl">,
     default: "md",
   },
   title: { type: String },
