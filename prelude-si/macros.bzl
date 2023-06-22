@@ -38,6 +38,8 @@ load(
     "@prelude-si//macros:rust.bzl",
     _rust_binary = "rust_binary",
     _rust_library = "rust_library",
+    _rust_test = "rust_test",
 )
 rust_binary = _rust_binary
 rust_library = _rust_library
+rust_test = _rust_test

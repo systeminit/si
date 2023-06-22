@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_library")
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_test",
+)
 
 rust_library(
     name = "dal",
@@ -61,7 +65,6 @@ rust_library(
 
 rust_test(
     name = "test-integration",
-    edition = "2021",
     deps = [
         "//lib/dal-test:dal-test",
         "//lib/si-pkg:si-pkg",
@@ -95,5 +98,4 @@ rust_test(
         "pkgs_path": "//pkgs:pkgs",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
     },
-    visibility = ["PUBLIC"],
 )
