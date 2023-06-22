@@ -90,7 +90,7 @@ fn write_tar_entry(
     tar_entry_header.set_size(entry.len().try_into()?);
     tar_entry_header.set_cksum();
 
-    tar_builder.append(&dbg!(tar_entry_header), entry)?;
+    tar_builder.append(&tar_entry_header, entry)?;
 
     Ok(())
 }
