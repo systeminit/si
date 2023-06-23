@@ -89,6 +89,7 @@
             coreutils
             docker-compose
             gcc
+            gh
             gnumake
             jq
             libtool
