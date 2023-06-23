@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_library")
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_test",
+)
 
 rust_library(
     name = "veritech-client",
@@ -16,15 +20,31 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
-    test_unit_deps = [
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//lib/cyclone-core:cyclone-core",
+        "//lib/si-data-nats:si-data-nats",
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:base64",
+        "//third-party/rust:serde_json",
         "//third-party/rust:test-log",
+        "//third-party/rust:tokio",
         "//third-party/rust:tracing",
         "//third-party/rust:tracing-subscriber",
         "//third-party/rust:uuid",
+        ":veritech-client",
     ],
-    test_unit_resources = {
+    crate_root = "tests/integration.rs",
+    srcs = glob([
+       "tests/**/*.rs",
+    ]),
+    env = {
+        "CARGO_PKG_NAME": "integration",
+    },
+    resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:lang-js",

@@ -171,3 +171,16 @@ def rust_library(
         srcs = srcs,
         visibility = visibility,
     )
+
+def rust_test(
+        name,
+        edition = "2021",
+        visibility = ["PUBLIC"],
+        **kwargs):
+
+    native.rust_test(
+        name = name,
+        edition = edition,
+        visibility = visibility,
+        **kwargs
+    )
