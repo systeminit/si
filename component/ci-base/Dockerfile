@@ -68,6 +68,6 @@ COPY docker-entrypoint.sh /
 RUN set -eux; \
     . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
     nix develop --build; \
-    rm -f .flake.nix flake.lock rust-toolchain
+    rm -f flake.nix flake.lock rust-toolchain
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,0 +1,38 @@
+---
+version: "3"
+
+services:
+  app:
+    image: systeminit/ci-base:stable
+    environment:
+      - "SI_TEST_PG_HOSTNAME=postgres"
+      - "SI_TEST_NATS_URL=nats"
+    depends_on:
+      - postgres
+      - nats
+      - jaeger
+      - otelcol
+
+  postgres:
+    image: systeminit/postgres:stable
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
+
+  nats:
+    image: systeminit/nats:stable
+    command:
+      - "--config"
+      - "nats-server.conf"
+      - "-DVV"
+
+  jaeger:
+    image: systeminit/jaeger:stable
+
+  otelcol:
+    image: systeminit/otelcol:stable
+    depends_on:
+      - jaeger
