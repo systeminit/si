@@ -3,8 +3,8 @@ use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, ActionRunRequest, ActionRunResultSuccess,
     CycloneClient, FunctionResult, FunctionResultFailure, FunctionResultFailureError, Manager,
     Pool, ProgressMessage, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
@@ -42,6 +42,10 @@ pub enum ServerError {
     Reconciliation(#[from] deadpool_cyclone::ExecutionError<ReconciliationResultSuccess>),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
+    #[error(transparent)]
+    SchemaVariantDefinition(
+        #[from] deadpool_cyclone::ExecutionError<SchemaVariantDefinitionResultSuccess>,
+    ),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
@@ -155,6 +159,12 @@ impl Server {
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_reconciliation_requests_task(
+                self.nats.clone(),
+                self.subject_prefix.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
+            process_schema_variant_definition_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -461,6 +471,126 @@ async fn validation_request(
     Ok(())
 }
 
+async fn process_schema_variant_definition_requests_task(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
+) {
+    if let Err(err) = process_schema_variant_definition_requests(
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
+    {
+        warn!(error = ?err, "processing schema variant definition requests failed");
+    }
+}
+
+async fn process_schema_variant_definition_requests(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
+) -> ServerResult<()> {
+    let mut requests =
+        FunctionSubscriber::schema_variant_definition(&nats, subject_prefix.as_deref()).await?;
+
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process schema_variant_definition requests task received shutdown");
+                break;
+            }
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(schema_variant_definition_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next schema variant definition request had error");
+                    }
+                    None => {
+                        trace!("schema variant definition requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
+            }
+        }
+    }
+
+    // Unsubscribe from subscription
+    requests.unsubscribe().await?;
+
+    Ok(())
+}
+
+async fn schema_variant_definition_request_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<SchemaVariantDefinitionRequest>,
+) {
+    if let Err(err) = schema_variant_definition_request(nats, cyclone_pool, request).await {
+        warn!(error = ?err, "schema variant definition execution failed");
+    }
+}
+
+async fn schema_variant_definition_request(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<SchemaVariantDefinitionRequest>,
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+
+    let mut progress = client
+        .execute_schema_variant_definition(cyclone_request)
+        .await?
+        .start()
+        .await?;
+
+    while let Some(msg) = progress.next().await {
+        match msg {
+            Ok(ProgressMessage::OutputStream(output)) => {
+                publisher.publish_output(&output).await?;
+            }
+            Ok(ProgressMessage::Heartbeat) => {
+                trace!("received heartbeat message");
+            }
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
+            }
+        }
+    }
+    publisher.finalize_output().await?;
+
+    let function_result = progress.finish().await?;
+    publisher.publish_result(&function_result).await?;
+
+    Ok(())
+}
+
 async fn process_action_run_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
@@ -470,7 +600,7 @@ async fn process_action_run_requests_task(
     if let Err(err) =
         process_action_run_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
     {
-        warn!(error = ?err, "processing command run requests failed");
+        warn!(error = ?err, "processing action run requests failed");
     }
 }
 
@@ -501,10 +631,10 @@ async fn process_action_run_requests(
                         ));
                     }
                     Some(Err(err)) => {
-                        warn!(error = ?err, "next command run request had error");
+                        warn!(error = ?err, "next action run request had error");
                     }
                     None => {
-                        trace!("command run requests subscriber stream has closed");
+                        trace!("action run requests subscriber stream has closed");
                         break;
                     }
                 }
@@ -529,7 +659,7 @@ async fn action_run_request_task(
     request: Request<ActionRunRequest>,
 ) {
     if let Err(err) = action_run_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "command run execution failed");
+        warn!(error = ?err, "action run execution failed");
     }
 }
 

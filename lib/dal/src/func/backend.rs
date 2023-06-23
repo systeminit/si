@@ -19,6 +19,7 @@ pub mod integer;
 pub mod js_action;
 pub mod js_attribute;
 pub mod js_reconciliation;
+pub mod js_schema_variant_definition;
 pub mod js_validation;
 pub mod map;
 pub mod object;
@@ -81,6 +82,7 @@ pub enum FuncBackendKind {
     JsAction,
     JsAttribute,
     JsReconciliation,
+    JsSchemaVariantDefinition,
     JsValidation,
     Map,
     Object,
@@ -117,6 +119,7 @@ pub enum FuncBackendResponseType {
     Object,
     Qualification,
     Reconciliation,
+    SchemaVariantDefinition,
     String,
     Unset,
     Validation,
@@ -140,6 +143,9 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
             ResolverFunctionResponseType::Validation => FuncBackendResponseType::Validation,
             ResolverFunctionResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
+            ResolverFunctionResponseType::SchemaVariantDefinition => {
+                FuncBackendResponseType::SchemaVariantDefinition
+            }
         }
     }
 }
@@ -162,6 +168,9 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
             FuncBackendResponseType::Validation => ResolverFunctionResponseType::Validation,
             FuncBackendResponseType::Reconciliation => ResolverFunctionResponseType::Reconciliation,
+            FuncBackendResponseType::SchemaVariantDefinition => {
+                ResolverFunctionResponseType::SchemaVariantDefinition
+            }
         }
     }
 }

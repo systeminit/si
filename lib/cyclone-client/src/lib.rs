@@ -8,6 +8,7 @@ pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, EncryptionKey, EncryptionKeyError, LivenessStatus,
     LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
 };
 pub use execution::{Execution, ExecutionError};
 pub use hyper::client::connect::Connection;

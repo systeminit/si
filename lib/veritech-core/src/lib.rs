@@ -11,10 +11,11 @@
     clippy::module_name_repetitions
 )]
 
-const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
-const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
-const NATS_CONCILIATION_DEFAULT_SUBJECT: &str = "veritech.fn.reconciliation";
 const NATS_ACTION_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.actionrun";
+const NATS_CONCILIATION_DEFAULT_SUBJECT: &str = "veritech.fn.reconciliation";
+const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
+const NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT: &str = "veritech.fn.schemavariantdefinition";
+const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
 
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
@@ -40,6 +41,10 @@ pub fn nats_action_run_subject(prefix: Option<&str>) -> String {
 
 pub fn nats_reconciliation_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_CONCILIATION_DEFAULT_SUBJECT)
+}
+
+pub fn nats_schema_variant_definition_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT)
 }
 
 pub fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {

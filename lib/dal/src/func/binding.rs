@@ -19,6 +19,7 @@ use crate::{
         js_action::FuncBackendJsAction,
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
         js_reconciliation::FuncBackendJsReconciliation,
+        js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
         js_validation::FuncBackendJsValidation,
         map::FuncBackendMap,
         object::FuncBackendObject,
@@ -253,6 +254,14 @@ impl FuncBinding {
                 )
                 .await
             }
+            FuncBackendKind::JsSchemaVariantDefinition => {
+                FuncBackendJsSchemaVariantDefinition::create_and_execute(
+                    context,
+                    &func,
+                    &serde_json::Value::Null,
+                )
+                .await
+            }
             FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await,
             FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await,
             FuncBackendKind::Identity => FuncBackendIdentity::create_and_execute(&self.args).await,
@@ -342,9 +351,11 @@ impl FuncBinding {
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => {}
-            FuncBackendKind::JsAttribute
+
+            FuncBackendKind::JsAction
+            | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsReconciliation
-            | FuncBackendKind::JsAction
+            | FuncBackendKind::JsSchemaVariantDefinition
             | FuncBackendKind::JsValidation => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
