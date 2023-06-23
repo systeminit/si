@@ -566,9 +566,65 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               destination: { nodeId: string; socketId: string };
               source: { nodeId: string; socketId: string };
             };
+            forceChangesetPk?: string;
           }>({
             method: "post",
             url: "diagram/create_connection",
+            params: {
+              fromNodeId: from.nodeId,
+              fromSocketId: from.socketId,
+              toNodeId: to.nodeId,
+              toSocketId: to.socketId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // change our temporary id to the real one, only if we haven't re-fetched the diagram yet
+              if (this.edgesById[tempId]) {
+                const edge = this.edgesById[tempId];
+                if (edge) {
+                  this.edgesById[response.connection.id] = edge;
+                  delete this.edgesById[tempId];
+                }
+              }
+              // TODO: store component details rather than waiting for re-fetch
+            },
+            optimistic: () => {
+              const nowTs = new Date().toISOString();
+              this.edgesById[tempId] = {
+                id: tempId,
+                fromNodeId: from.nodeId,
+                fromSocketId: from.socketId,
+                toNodeId: to.nodeId,
+                toSocketId: to.socketId,
+                changeStatus: "added",
+                createdInfo: {
+                  timestamp: nowTs,
+                  actor: { kind: "user", label: "You" },
+                },
+              };
+              return () => {
+                delete this.edgesById[tempId];
+              };
+            },
+          });
+        },
+        async CREATE_COMPONENT_CONNECTION_2(
+          from: { nodeId: ComponentNodeId; socketId: SocketId },
+          to: { nodeId: ComponentNodeId; socketId: SocketId },
+        ) {
+          const tempId = `temp-edge-${+new Date()}`;
+
+          return new ApiRequest<{
+            connection: {
+              id: string;
+              classification: "configuration";
+              destination: { nodeId: string; socketId: string };
+              source: { nodeId: string; socketId: string };
+            };
+            forceChangesetPk?: string;
+          }>({
+            method: "post",
+            url: "diagram/create_connection_2",
             params: {
               fromNodeId: from.nodeId,
               fromSocketId: from.socketId,

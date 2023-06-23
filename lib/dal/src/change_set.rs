@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -99,6 +100,11 @@ impl ChangeSet {
             .publish_on_commit(ctx)
             .await?;
         Ok(object)
+    }
+
+    pub fn generate_name() -> impl AsRef<str> {
+        // TODO Implement this as the correct name generator
+        Alphanumeric.sample_string(&mut rand::thread_rng(), 8)
     }
 
     #[instrument(skip(ctx))]

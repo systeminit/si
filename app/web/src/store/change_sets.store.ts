@@ -7,6 +7,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
+import router from "@/router";
 import type { Recommendation } from "@/store/fixes.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -50,6 +51,21 @@ export function useChangeSetsStore() {
         selectedWorkspacePk: () => workspacePk,
       },
       actions: {
+        async setActiveChangeset(changeSetPk: string) {
+          if (!this.changeSetsById[changeSetPk]) {
+            await this.FETCH_CHANGE_SETS();
+          }
+
+          const route = router.currentRoute.value;
+          await router.push({
+            name: route.name ?? undefined,
+            params: {
+              ...route.params,
+              changeSetId: changeSetPk,
+            },
+          });
+        },
+
         async FETCH_CHANGE_SETS() {
           return new ApiRequest<{ list: LabelList<string> }>({
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
