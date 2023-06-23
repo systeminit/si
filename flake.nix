@@ -103,6 +103,7 @@
             postgresql_14
             protobuf
             reindeer
+            tilt
 
             (rustToolchain.override {
               # This really should be augmenting the extensions, instead of

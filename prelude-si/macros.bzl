@@ -43,3 +43,13 @@ load(
 rust_binary = _rust_binary
 rust_library = _rust_library
 rust_test = _rust_test
+
+load(
+    "@prelude-si//macros:tilt.bzl",
+    _tilt_docker_compose_stop = "tilt_docker_compose_stop",
+    _tilt_down = "tilt_down",
+    _tilt_up = "tilt_up",
+)
+tilt_docker_compose_stop = _tilt_docker_compose_stop
+tilt_down = _tilt_down
+tilt_up = _tilt_up
