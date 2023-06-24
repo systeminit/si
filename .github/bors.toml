@@ -1,8 +1,8 @@
 status = [
-  "Merge Request Checks",
+  "buildkite/si-merge-queue",
 ]
 pr_status =[
-  "Pull Request Checks",
+  "buildkite/si-review-pr",
 ]
 block_labels = [
   "wip"
