@@ -63,6 +63,21 @@
                   v-if="execFuncReqStatus.isError"
                   :request-status="execFuncReqStatus"
                 />
+                <ErrorMessage
+                  v-if="isConnectedToOtherAssetTypes"
+                  icon="alert-triangle"
+                  tone="warning"
+                >
+                  This function is connected to other
+                  {{
+                    (editingFunc?.associations &&
+                      editingFunc.associations?.type === "validation") ||
+                    (editingFunc?.associations &&
+                      editingFunc?.associations?.type === "attribute")
+                      ? "attributes"
+                      : "assets"
+                  }}.
+                </ErrorMessage>
               </div>
             </Stack>
           </template>
@@ -287,6 +302,30 @@ const revertFunc = async () => {
   await funcStore.REVERT_FUNC(funcId.value);
   resetEditingFunc();
 };
+
+const isConnectedToOtherAssetTypes = computed(() => {
+  if (editingFunc?.value && editingFunc?.value?.associations) {
+    const associations = editingFunc.value.associations;
+    switch (associations.type) {
+      case "codeGeneration":
+      case "confirmation":
+      case "qualification":
+        return (
+          associations.schemaVariantIds.length > 1 ||
+          associations.componentIds.length > 1
+        );
+      case "action":
+        return associations.schemaVariantIds.length > 1;
+      case "validation":
+        return associations.prototypes.length > 1;
+      case "attribute":
+        return associations.prototypes.length > 1;
+      default:
+        return false;
+    }
+  }
+  return false;
+});
 
 const execFuncReqStatus = funcStore.getRequestStatus(
   "SAVE_AND_EXEC_FUNC",
