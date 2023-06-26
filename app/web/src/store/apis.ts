@@ -1,6 +1,8 @@
-import Axios, { AxiosRequestConfig } from "axios";
+import Axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import router from "@/router";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -39,6 +41,21 @@ function injectBearerTokenAuth(config: AxiosRequestConfig) {
 }
 
 sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
+
+async function handleForcedChangesetRedirection(response: AxiosResponse) {
+  const setActiveChangeset = useChangeSetsStore().setActiveChangeset;
+
+  // TODO(victor) I made this a field with a prefix just to make it work and test the experience
+  // It probably makes sense to make this come as a header from the backend so only this interceptor needs
+  // to care about it
+  if (response.data._forceChangesetPk) {
+    await setActiveChangeset(response.data._forceChangesetPk);
+  }
+
+  return response;
+}
+
+sdfApiInstance.interceptors.response.use(handleForcedChangesetRedirection);
 
 export const authApiInstance = Axios.create({
   headers: {

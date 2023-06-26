@@ -6,10 +6,10 @@ use axum::Router;
 use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    ComponentType, DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError,
-    NodeKind, NodeMenuError, SchemaError as DalSchemaError, SchemaVariantId, StandardModelError,
-    TransactionsError,
+    node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ChangeSetError,
+    ComponentError, ComponentType, DiagramError as DalDiagramError, EdgeError,
+    InternalProviderError, NodeError, NodeKind, NodeMenuError, SchemaError as DalSchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -36,6 +36,8 @@ pub enum DiagramError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("changeset error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
@@ -136,6 +138,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
+        )
+        .route(
+            "/create_connection_2",
+            post(create_connection::create_connection_2),
         )
         .route(
             "/delete_connection",
