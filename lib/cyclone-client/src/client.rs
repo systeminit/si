@@ -1328,9 +1328,12 @@ mod tests {
             handler: "createAsset".to_string(),
             code_base64: base64_encode(
                 r#"function createAsset() {
-                    console.log('first');
-                    console.log('second');
-                    return { props: [], inputSockets: [], outputSockets: [] };
+                        console.log('first');
+                        const valueFromBuilder = new ValueFromBuilder();
+                        valueFromBuilder.setType('inputSocket');
+                        valueFromBuilder.setSocketName('test');
+                        console.log('second');
+                    return  valueFromBuilder.build();
                 }"#,
             ),
         };
