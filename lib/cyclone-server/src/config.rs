@@ -43,6 +43,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_validation: bool,
 
+    #[builder(default = "true")]
+    enable_schema_variant_definition: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -94,6 +97,12 @@ impl Config {
     #[must_use]
     pub fn enable_validation(&self) -> bool {
         self.enable_validation
+    }
+
+    /// Gets the config's enable schema_variant_definition
+    #[must_use]
+    pub fn enable_schema_variant_definition(&self) -> bool {
+        self.enable_schema_variant_definition
     }
 
     /// Gets a reference to the config's incoming stream.

@@ -634,6 +634,7 @@ interface Output {
         FuncBackendResponseType::Map => "type Output = any;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::SchemaVariantDefinition => "type Output = any",
     }
 }
 

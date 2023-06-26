@@ -17,6 +17,7 @@ use strum::IntoEnumIterator;
 
 mod description;
 mod reconciliation;
+mod schema_variant_definition;
 
 #[test]
 async fn new(ctx: &DalContext) {

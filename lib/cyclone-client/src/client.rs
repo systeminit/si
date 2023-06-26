@@ -12,8 +12,8 @@ use async_trait::async_trait;
 use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, LivenessStatus, LivenessStatusParseError,
     ReadinessStatus, ReadinessStatusParseError, ReconciliationRequest, ReconciliationResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use http::{
     request::Builder,
@@ -152,6 +152,14 @@ where
         &mut self,
         request: ValidationRequest,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>;
+
+    async fn execute_schema_variant_definition(
+        &mut self,
+        request: SchemaVariantDefinitionRequest,
+    ) -> result::Result<
+        Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
+        ClientError,
+    >;
 }
 
 impl Client<(), (), ()> {
@@ -295,6 +303,20 @@ where
     {
         Ok(execution::execute(
             self.websocket_stream("/execute/validation").await?,
+            request,
+        ))
+    }
+
+    async fn execute_schema_variant_definition(
+        &mut self,
+        request: SchemaVariantDefinitionRequest,
+    ) -> result::Result<
+        Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
+        ClientError,
+    > {
+        Ok(execution::execute(
+            self.websocket_stream("/execute/schema_variant_definition")
+                .await?,
             request,
         ))
     }
@@ -1238,6 +1260,162 @@ mod tests {
         // Start the protocol
         let mut progress = client
             .execute_reconciliation(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(_success) => {
+                // TODO(fnichol): assert some result data
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn http_execute_schema_variant_definition() {
+        let (_, key) = gen_keys();
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client = uds_client_for_running_server(
+            builder.enable_schema_variant_definition(true),
+            &tmp_socket,
+            key,
+        )
+        .await;
+
+        let req = SchemaVariantDefinitionRequest {
+            execution_id: "1234".to_string(),
+            handler: "createAsset".to_string(),
+            code_base64: base64_encode(
+                r#"function createAsset() {
+                    console.log('first');
+                    console.log('second');
+                    return { props: [], inputSockets: [], outputSockets: [] };
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_schema_variant_definition(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "first");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(_success) => {
+                // TODO(fnichol): assert some result data
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_schema_variant_definition() {
+        let (_, key) = gen_keys();
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client = uds_client_for_running_server(
+            builder.enable_schema_variant_definition(true),
+            &tmp_socket,
+            key,
+        )
+        .await;
+
+        let req = SchemaVariantDefinitionRequest {
+            execution_id: "1234".to_string(),
+            handler: "createAsset".to_string(),
+            code_base64: base64_encode(
+                r#"function createAsset() {
+                    console.log('first');
+                    console.log('second');
+                    return { props: [], inputSockets: [], outputSockets: [] };
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_schema_variant_definition(req)
             .await
             .expect("failed to establish websocket stream")
             .start()

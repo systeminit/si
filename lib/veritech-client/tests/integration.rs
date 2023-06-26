@@ -3,7 +3,8 @@ use std::env;
 use base64::{engine::general_purpose, Engine};
 use cyclone_core::{
     ComponentKind, ComponentView, FunctionResult, ResolverFunctionComponent,
-    ResolverFunctionRequest, ResolverFunctionResponseType, ValidationRequest,
+    ResolverFunctionRequest, ResolverFunctionResponseType, SchemaVariantDefinitionRequest,
+    ValidationRequest,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use test_log::test;
@@ -280,6 +281,60 @@ async fn executes_simple_validation() {
         FunctionResult::Success(success) => {
             assert_eq!(success.execution_id, "31337");
             assert!(success.valid);
+        }
+        FunctionResult::Failure(failure) => {
+            panic!("function did not succeed and should have: {failure:?}")
+        }
+    }
+}
+
+#[test(tokio::test)]
+
+async fn executes_simple_schema_variant_definition() {
+    let prefix = nats_prefix();
+    run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+    let client = client(prefix).await;
+
+    // Not going to check output here--we aren't emitting anything
+    let (tx, mut rx) = mpsc::channel(64);
+    tokio::spawn(async move {
+        while let Some(output) = rx.recv().await {
+            info!("output: {:?}", output)
+        }
+    });
+
+    let request = SchemaVariantDefinitionRequest {
+        execution_id: "8badf00d".to_string(),
+        handler: "asset".to_string(),
+        code_base64: base64_encode(
+            "function asset() {
+                    return { 
+                        props: [{kind: 'string', name: 'string_prop'}],
+                        inputSockets: [], outputSockets: []
+                    };
+                }",
+        ),
+    };
+
+    let result = client
+        .execute_schema_variant_definition(tx, &request)
+        .await
+        .expect("failed to execute schema variant definition");
+
+    match result {
+        FunctionResult::Success(success) => {
+            assert_eq!(success.execution_id, "8badf00d");
+            assert_eq!(
+                success.definition,
+                serde_json::json!({
+                    "props": [{
+                        "kind": "string",
+                        "name": "string_prop",
+                    }],
+                    "inputSockets": [],
+                    "outputSockets": []
+                })
+            );
         }
         FunctionResult::Failure(failure) => {
             panic!("function did not succeed and should have: {failure:?}")

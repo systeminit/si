@@ -4,14 +4,16 @@ export enum FunctionKind {
   WorkflowResolve = "workflowResolve",
   Validation = "validation",
   Reconciliation = "reconciliation",
+  SchemaVariantDefinition = "schemaVariantDefinition",
 }
 
 export function functionKinds(): Array<string> {
   return [
-    FunctionKind.ResolverFunction,
     FunctionKind.ActionRun,
-    FunctionKind.Validation,
     FunctionKind.Reconciliation,
+    FunctionKind.ResolverFunction,
+    FunctionKind.SchemaVariantDefinition,
+    FunctionKind.Validation,
   ];
 }
 

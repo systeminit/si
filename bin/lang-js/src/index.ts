@@ -5,10 +5,11 @@ import { Command } from "commander";
 import Debug from "debug";
 import { failureExecution, FunctionKind, functionKinds } from "./function";
 import { makeConsole } from "./sandbox/console";
-import { executeResolverFunction } from "./resolver_function";
 import { executeActionRun } from "./action_run";
-import { executeValidation } from "./validation";
 import { executeReconciliation } from "./reconciliation";
+import { executeResolverFunction } from "./resolver_function";
+import { executeSchemaVariantDefinition } from "./schema_variant_definition";
+import { executeValidation } from "./validation";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -70,17 +71,20 @@ async function main() {
     }
 
     switch (kind) {
-      case FunctionKind.ResolverFunction:
-        await executeResolverFunction(request);
-        break;
       case FunctionKind.ActionRun:
         await executeActionRun(request);
+        break;
+      case FunctionKind.Reconciliation:
+        await executeReconciliation(request);
+        break;
+      case FunctionKind.ResolverFunction:
+        await executeResolverFunction(request);
         break;
       case FunctionKind.Validation:
         await executeValidation(request);
         break;
-      case FunctionKind.Reconciliation:
-        await executeReconciliation(request);
+      case FunctionKind.SchemaVariantDefinition:
+        await executeSchemaVariantDefinition(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

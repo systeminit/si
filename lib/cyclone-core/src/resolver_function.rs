@@ -37,6 +37,7 @@ pub enum ResolverFunctionResponseType {
     Object,
     Qualification,
     Reconciliation,
+    SchemaVariantDefinition,
     String,
     #[default]
     Unset,

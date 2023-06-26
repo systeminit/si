@@ -13,7 +13,8 @@ use cyclone_core::{
     process::{self, ShutdownError},
     ActionRunRequest, ActionRunResultSuccess, CanonicalCommand, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess,
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, ValidationRequest,
+    ValidationResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -197,6 +198,23 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.execute_reconciliation(request).await;
+        self.count_request();
+
+        result
+    }
+
+    async fn execute_schema_variant_definition(
+        &mut self,
+        request: SchemaVariantDefinitionRequest,
+    ) -> result::Result<
+        Execution<TcpStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
+        ClientError,
+    > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_schema_variant_definition(request).await;
         self.count_request();
 
         result

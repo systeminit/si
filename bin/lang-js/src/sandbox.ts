@@ -80,6 +80,10 @@ export function createSandbox(
         ...commonSandbox(executionId),
         ...reconciliationSandbox,
       };
+    case FunctionKind.SchemaVariantDefinition:
+      return {
+        ...commonSandbox(executionId)
+      };
     default:
       throw new UnknownSandboxKind(kind);
   }

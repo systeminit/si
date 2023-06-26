@@ -28,7 +28,8 @@ pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, ComponentView, FunctionResult, FunctionResultFailure,
     FunctionResultFailureError, OutputStream, ProgressMessage, ReconciliationRequest,
     ReconciliationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceStatus, ValidationRequest, ValidationResultSuccess,
+    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    ValidationRequest, ValidationResultSuccess,
 };
 
 /// [`Instance`] implementations.

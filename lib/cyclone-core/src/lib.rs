@@ -21,6 +21,7 @@ mod progress;
 mod readiness;
 mod reconciliation;
 mod resolver_function;
+mod schema_variant_definition;
 mod sensitive_container;
 mod validation;
 
@@ -38,6 +39,9 @@ pub use reconciliation::{ReconciliationRequest, ReconciliationResultSuccess};
 pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
     ResolverFunctionResultSuccess,
+};
+pub use schema_variant_definition::{
+    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
 };
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
 pub use validation::{ValidationRequest, ValidationResultSuccess};
