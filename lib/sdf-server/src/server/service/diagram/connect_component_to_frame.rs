@@ -4,9 +4,9 @@ use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
-    node::NodeId, AttributeReadContext, AttributeValue, Component, Connection, DalContext, Edge,
-    EdgeError, ExternalProvider, InternalProvider, InternalProviderId, Node, PropId, StandardModel,
-    Visibility, WsEvent,
+    node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk, Component,
+    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider,
+    InternalProviderId, Node, PropId, StandardModel, Visibility, WsEvent,
 };
 use dal::{ComponentType, Socket};
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,8 @@ pub struct CreateFrameConnectionRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateFrameConnectionResponse {
     pub connection: Connection,
+    #[serde(rename = "_forceChangesetPk")] // TODO(victor) find a way to return this as a header
+    pub force_changeset_pk: Option<ChangeSetPk>,
 }
 
 /// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
@@ -116,7 +118,10 @@ pub async fn connect_component_to_frame(
 
     ctx.commit().await?;
 
-    Ok(Json(CreateFrameConnectionResponse { connection }))
+    Ok(Json(CreateFrameConnectionResponse {
+        connection,
+        force_changeset_pk: None,
+    }))
 }
 
 // Create all valid connections between parent and child sockets
@@ -298,4 +303,112 @@ pub async fn connect_component_sockets_to_frame(
     }
 
     Ok(())
+}
+
+/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
+/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
+/// Creating a change set if on head.
+pub async fn connect_component_to_frame2(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
+    Json(request): Json<CreateFrameConnectionRequest>,
+) -> DiagramResult<Json<CreateFrameConnectionResponse>> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
+
+    // Connect children to parent through frame edge
+    let from_socket = Socket::find_frame_socket_for_node(
+        &ctx,
+        request.child_node_id,
+        SocketEdgeKind::ConfigurationOutput,
+    )
+    .await?;
+    let to_socket = Socket::find_frame_socket_for_node(
+        &ctx,
+        request.parent_node_id,
+        SocketEdgeKind::ConfigurationInput,
+    )
+    .await?;
+
+    let connection = Connection::new(
+        &ctx,
+        request.child_node_id,
+        *from_socket.id(),
+        request.parent_node_id,
+        *to_socket.id(),
+        EdgeKind::Symbolic,
+    )
+    .await?;
+
+    connect_component_sockets_to_frame(&ctx, request.parent_node_id, request.child_node_id).await?;
+
+    let child_comp = Node::get_by_id(&ctx, &request.child_node_id)
+        .await?
+        .ok_or(DiagramError::NodeNotFound(request.child_node_id))?
+        .component(&ctx)
+        .await?
+        .ok_or(DiagramError::ComponentNotFound)?;
+
+    let child_schema = child_comp
+        .schema(&ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    let parent_comp = Node::get_by_id(&ctx, &request.parent_node_id)
+        .await?
+        .ok_or(DiagramError::NodeNotFound(request.parent_node_id))?
+        .component(&ctx)
+        .await?
+        .ok_or(DiagramError::ComponentNotFound)?;
+
+    let parent_schema = parent_comp
+        .schema(&ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        "component_connected_to_frame",
+        serde_json::json!({
+                    "parent_component_id": parent_comp.id(),
+                    "parent_component_schema_name": parent_schema.name(),
+                    "parent_socket_id": to_socket.id(),
+                    "parent_socket_name": to_socket.name(),
+                    "child_component_id": child_comp.id(),
+                    "child_component_schema_name": child_schema.name(),
+                    "child_socket_id": from_socket.id(),
+                    "child_socket_name": from_socket.name(),
+        }),
+    );
+
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
+
+    ctx.commit().await?;
+
+    Ok(Json(CreateFrameConnectionResponse {
+        connection,
+        force_changeset_pk,
+    }))
 }

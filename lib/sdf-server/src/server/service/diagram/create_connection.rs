@@ -141,7 +141,8 @@ pub async fn create_connection(
 
 /// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
 /// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
-pub async fn create_connection_2(
+/// Creating change set if on head
+pub async fn create_connection2(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
