@@ -29,7 +29,7 @@
     <div class="flex-grow relative overflow-auto">
       <CodeEditor
         v-model="editingAsset"
-        json
+        :typescript="selectedAsset?.types"
         :disabled="
           !!selectedAsset.defaultVariantId || changeSetsStore.headSelected
         "
@@ -62,7 +62,7 @@ const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
 );
 
-const editingAsset = ref<string>(selectedAsset.value?.definition ?? "");
+const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
 
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
@@ -72,23 +72,20 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 watch(
   () => selectedAsset.value,
   async (selectedAsset) => {
-    if (editingAsset.value !== selectedAsset?.definition) {
-      editingAsset.value = selectedAsset?.definition ?? "";
+    if (editingAsset.value !== selectedAsset?.code) {
+      editingAsset.value = selectedAsset?.code ?? "";
     }
   },
   { immediate: true },
 );
 
 const onChange = () => {
-  if (
-    !selectedAsset.value ||
-    selectedAsset.value.definition === editingAsset.value
-  ) {
+  if (!selectedAsset.value || selectedAsset.value.code === editingAsset.value) {
     return;
   }
   assetStore.SAVE_ASSET({
     ...selectedAsset.value,
-    definition: editingAsset.value,
+    code: editingAsset.value,
   });
 };
 </script>

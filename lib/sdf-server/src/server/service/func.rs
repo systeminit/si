@@ -305,6 +305,10 @@ pub enum FuncAssociations {
         inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
+    SchemaVariantDefinitions {
+        schema_variant_ids: Vec<SchemaVariantId>,
+    },
+    #[serde(rename_all = "camelCase")]
     Validation {
         prototypes: Vec<ValidationPrototypeView>,
     },
@@ -558,7 +562,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             });
             (associations, input_type)
         }
-
         _ => (None, String::new()),
     };
 
@@ -587,7 +590,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
 // TODO FIXME(paulo): cleanup code repetition
 
-fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
+pub fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
     // TODO: avoid any, follow prop graph and build actual type
     // TODO: Could be generated automatically from some rust types, but which?
     match ty {
@@ -640,7 +643,11 @@ interface Output {
         FuncBackendResponseType::Map => "type Output = any;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
-        FuncBackendResponseType::SchemaVariantDefinition => "type Output = any",
+        FuncBackendResponseType::SchemaVariantDefinition => concat!(
+            include_str!("./ts_types/asset_types.d.ts"),
+            "\n",
+            "type Output = any;"
+        ),
     }
 }
 

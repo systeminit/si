@@ -1,12 +1,13 @@
 use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::func::compile_return_types;
 use crate::service::func::list_funcs::ListedFuncView;
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    ComponentType, StandardModel, Timestamp, Visibility,
+    ComponentType, Func, StandardModel, Timestamp, Visibility,
 };
 use dal::{SchemaVariant, SchemaVariantId};
 use serde::{Deserialize, Serialize};
@@ -29,10 +30,12 @@ pub struct GetVariantDefResponse {
     pub color: String,
     pub link: Option<String>,
     pub description: Option<String>,
-    pub definition: String,
+    pub code: String,
+    pub handler: String,
     pub default_variant_id: Option<SchemaVariantId>,
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
+    pub types: String,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -46,12 +49,14 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             category: def.category().to_string(),
             color: def.color().to_string(),
             link: def.link().map(|link| link.to_string()),
-            definition: def.definition().to_string(),
             description: def.description().map(|d| d.to_string()),
+            code: "".to_string(), //TODO @stack72
             timestamp: def.timestamp().to_owned(),
             funcs: vec![],
             default_variant_id: None,
             component_type: *def.component_type(),
+            handler: "".to_string(), //TODO @stack72
+            types: "".to_string(),
         }
     }
 }
@@ -73,8 +78,25 @@ pub async fn get_variant_def(
 
     let variant_id = variant_def.existing_default_schema_variant_id(&ctx).await?;
 
+    let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
+        SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
+    )?;
+
     let mut response: GetVariantDefResponse = variant_def.clone().into();
     response.default_variant_id = variant_id;
+
+    response.code =
+        asset_func
+            .code_plaintext()?
+            .ok_or(SchemaVariantDefinitionError::FuncIsEmpty(
+                variant_def.func_id(),
+            ))?;
+    response.handler = asset_func
+        .handler()
+        .ok_or(SchemaVariantDefinitionError::FuncHasNoHandler(
+            variant_def.func_id(),
+        ))?
+        .into();
 
     if let Some(variant_id) = variant_id {
         response.funcs = SchemaVariant::all_funcs(&ctx, variant_id)
@@ -86,13 +108,19 @@ pub async fn get_variant_def(
                     handler: func.handler().map(|handler| handler.to_owned()),
                     variant: func_variant,
                     name: func.name().into(),
-                    display_name: func.display_name().map(Into::into),
+                    display_name: func
+                        .display_name()
+                        .map(Into::into)
+                        .or_else(|| Some(func.name().to_string())),
                     is_builtin: func.builtin(),
                 }),
                 Err(_) => None,
             })
             .collect();
     }
+
+    let types = compile_return_types(*asset_func.backend_response_type());
+    response.types = types.to_string();
 
     track(
         &posthog_client,

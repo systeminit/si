@@ -40,6 +40,18 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("could not build qual spec");
 
+    let scaffold_func_a = "function createAsset() {
+                return new AssetBuilder().build();
+            }";
+    let scaffold_func_spec_a = FuncSpec::builder()
+        .name("si:scaffoldFunc")
+        .code_plaintext(scaffold_func_a)
+        .handler("createAsset")
+        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .build()
+        .expect("could not build schema variant definition spec");
+
     let schema_a = SchemaSpec::builder()
         .name("Tyrone Slothrop")
         .category("Banana Puddings")
@@ -48,6 +60,7 @@ async fn test_install_pkg(ctx: &DalContext) {
             SchemaVariantSpec::builder()
                 .name("Pig Bodine")
                 .color("baddad")
+                .func_unique_id(scaffold_func_spec_a.unique_id)
                 .domain_prop(
                     PropSpec::builder()
                         .name("ImpolexG")
@@ -83,6 +96,18 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("able to build validation func spec");
 
+    let scaffold_func_b = "function createAsset() {
+                return new AssetBuilder().build();
+            }";
+    let scaffold_func_spec_b = FuncSpec::builder()
+        .name("si:scaffoldFunc")
+        .code_plaintext(scaffold_func_b)
+        .handler("createAsset")
+        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .build()
+        .expect("could not build schema variant definition spec");
+
     let schema_b = SchemaSpec::builder()
         .name("Roger Mexico")
         .ui_hidden(false)
@@ -91,6 +116,7 @@ async fn test_install_pkg(ctx: &DalContext) {
             SchemaVariantSpec::builder()
                 .name("The Light Bulb Conspiracy")
                 .color("baddad")
+                .func_unique_id(scaffold_func_spec_b.unique_id)
                 .socket(
                     SocketSpec::builder()
                         .name("AC Power")
@@ -198,6 +224,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .func(func_spec)
         .func(identity_func_spec.clone())
         .func(qualification_func_spec)
+        .func(scaffold_func_spec_a)
         .build()
         .expect("able to build package spec");
 
@@ -211,6 +238,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .func(identity_func_spec.clone())
         .schema(schema_a)
         .schema(schema_b)
+        .func(scaffold_func_spec_b)
         .build()
         .expect("able to build package spec");
 

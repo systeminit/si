@@ -11,6 +11,7 @@ use si_pkg::{
     ValidationSpecKind,
 };
 
+use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::{
     func::{argument::FuncArgument, backend::validation::FuncBackendValidationArgs},
     prop_tree::{PropTree, PropTreeNode},
@@ -550,6 +551,20 @@ async fn build_variant_spec(
         .for_each(|si_prop_func_spec| {
             variant_spec_builder.si_prop_func(si_prop_func_spec);
         });
+
+    let schema_variant_definition =
+        SchemaVariantDefinition::get_by_schema_variant_id(ctx, variant.id())
+            .await?
+            .ok_or(PkgError::MissingSchemaVariantDefinition(*variant.id()))?;
+
+    let asset_func_unique_id = func_specs
+        .get(&schema_variant_definition.func_id())
+        .ok_or(PkgError::MissingExportedFunc(
+            schema_variant_definition.func_id(),
+        ))?
+        .unique_id;
+
+    variant_spec_builder.func_unique_id(asset_func_unique_id);
 
     let variant_spec = variant_spec_builder.build()?;
 

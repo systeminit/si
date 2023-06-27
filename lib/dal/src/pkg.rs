@@ -111,6 +111,8 @@ pub enum PkgError {
     MissingItemPropForMapProp(PropId),
     #[error("Cannot find installed prop {0}")]
     MissingProp(PropId),
+    #[error("Cannot find schema_variant_definition {0}")]
+    MissingSchemaVariantDefinition(SchemaVariantId),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error(transparent)]
@@ -131,6 +133,8 @@ pub enum PkgError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
     SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
+    #[error("schema variant not found: {0}")]
+    SchemaVariantNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

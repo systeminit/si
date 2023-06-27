@@ -5,7 +5,7 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    StandardModel, Visibility, WsEvent,
+    Func, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,8 @@ pub struct SaveVariantDefRequest {
     pub category: String,
     pub color: String,
     pub link: Option<String>,
-    pub definition: String,
+    pub code: String,
+    pub handler: String,
     pub description: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -44,7 +45,6 @@ pub async fn save_variant_def(
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
-
     variant_def.set_name(&ctx, request.name.clone()).await?;
     variant_def
         .set_menu_name(&ctx, request.menu_name.clone())
@@ -57,9 +57,14 @@ pub async fn save_variant_def(
     variant_def
         .set_description(&ctx, request.description)
         .await?;
-    variant_def
-        .set_definition(&ctx, request.definition.clone())
+
+    let mut asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
+        SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
+    )?;
+    asset_func
+        .set_code_plaintext(&ctx, Some(&request.code))
         .await?;
+    asset_func.set_handler(&ctx, Some(request.handler)).await?;
 
     track(
         &posthog_client,
@@ -70,7 +75,7 @@ pub async fn save_variant_def(
                     "variant_def_category": request.category,
                     "variant_def_name": request.name,
                     "variant_def_menu_name": request.menu_name,
-                    "variant_def_definition":  request.definition,
+                    // "variant_def_definition":  request.definition,
         }),
     );
 

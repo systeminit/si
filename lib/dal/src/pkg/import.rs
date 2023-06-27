@@ -38,6 +38,7 @@ type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
 pub struct ImportOptions {
     pub schemas: Option<Vec<String>>,
     pub no_definitions: bool,
+    pub skip_import_funcs: Option<FuncMap>,
 }
 
 pub async fn import_pkg_from_pkg(
@@ -68,7 +69,27 @@ pub async fn import_pkg_from_pkg(
             file_name
         );
         let unique_id = func_spec.unique_id();
-        let func = create_func(ctx, func_spec, *installed_pkg.id()).await?;
+
+        let func = if let Some(Some(func)) = options
+            .skip_import_funcs
+            .as_ref()
+            .map(|skip_funcs| skip_funcs.get(&unique_id))
+        {
+            InstalledPkgAsset::new(
+                ctx,
+                InstalledPkgAssetTyped::new_for_func(
+                    *func.id(),
+                    *installed_pkg.id(),
+                    func_spec.hash().to_string(),
+                ),
+            )
+            .await?;
+
+            func.to_owned()
+        } else {
+            create_func(ctx, func_spec, *installed_pkg.id()).await?
+        };
+
         funcs_by_unique_id.insert(unique_id, func);
     }
 
@@ -90,14 +111,7 @@ pub async fn import_pkg_from_pkg(
             file_name
         );
 
-        create_schema(
-            ctx,
-            schema_spec,
-            *installed_pkg.id(),
-            &funcs_by_unique_id,
-            options.no_definitions,
-        )
-        .await?;
+        create_schema(ctx, schema_spec, *installed_pkg.id(), &funcs_by_unique_id).await?;
     }
 
     Ok(*installed_pkg.id())
@@ -184,7 +198,6 @@ async fn create_schema(
     schema_spec: SiPkgSchema<'_>,
     installed_pkg_id: InstalledPkgId,
     func_map: &FuncMap,
-    no_definitions: bool,
 ) -> PkgResult<()> {
     let hash = schema_spec.hash().to_string();
     let existing_schema =
@@ -226,24 +239,21 @@ async fn create_schema(
     .await?;
 
     for variant_spec in schema_spec.variants()? {
-        create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map).await?;
-    }
+        let func_unique_id = variant_spec.func_unique_id();
+        let schema_variant_id =
+            create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map)
+                .await?;
 
-    let mut maybe_identity_func_unique_id = None;
-    for (unique_id, func) in func_map.iter() {
-        if func.name() == "si:identity" {
-            maybe_identity_func_unique_id = Some(*unique_id);
-            break;
-        }
-    }
+        let asset_func = func_map
+            .get(&func_unique_id)
+            .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?;
 
-    if !no_definitions {
         create_schema_variant_definition(
             ctx,
-            schema_spec,
-            maybe_identity_func_unique_id
-                .ok_or(PkgError::MissingIntrinsicFunc("si:identity".into()))?,
+            schema_spec.clone(),
             installed_pkg_id,
+            schema_variant_id,
+            asset_func,
         )
         .await?;
     }
@@ -254,8 +264,9 @@ async fn create_schema(
 async fn create_schema_variant_definition(
     ctx: &DalContext,
     schema_spec: SiPkgSchema<'_>,
-    identity_func_unique_id: FuncUniqueId,
     installed_pkg_id: InstalledPkgId,
+    schema_variant_id: SchemaVariantId,
+    asset_func: &Func,
 ) -> PkgResult<()> {
     let hash = schema_spec.hash().to_string();
     let existing_definition = InstalledPkgAsset::list_for_kind_and_hash(
@@ -268,22 +279,34 @@ async fn create_schema_variant_definition(
 
     let definition = match existing_definition {
         None => {
-            let spec = schema_spec.to_spec().await?;
-            let (definition, metadata) =
-                SchemaVariantDefinitionJson::from_spec(spec, identity_func_unique_id)?;
+            let maybe_schema_variant_definition =
+                SchemaVariantDefinition::get_by_func_id(ctx, *asset_func.id()).await?;
+            let mut schema_variant_definition = match maybe_schema_variant_definition {
+                None => {
+                    let spec = schema_spec.to_spec().await?;
+                    let metadata = SchemaVariantDefinitionJson::metadata_from_spec(spec)?;
 
-            SchemaVariantDefinition::new(
-                ctx,
-                metadata.name,
-                metadata.menu_name,
-                metadata.category,
-                metadata.link,
-                metadata.color,
-                metadata.component_kind,
-                metadata.description,
-                serde_json::to_string_pretty(&definition)?,
-            )
-            .await?
+                    SchemaVariantDefinition::new(
+                        ctx,
+                        metadata.name,
+                        metadata.menu_name,
+                        metadata.category,
+                        metadata.link,
+                        metadata.color,
+                        metadata.component_kind,
+                        metadata.description,
+                        *asset_func.id(),
+                    )
+                    .await?
+                }
+                Some(schema_variant_definition) => schema_variant_definition,
+            };
+
+            schema_variant_definition
+                .set_schema_variant_id(ctx, Some(schema_variant_id))
+                .await?;
+
+            schema_variant_definition
         }
         Some(existing_definition) => {
             match existing_definition.as_installed_schema_variant_definition()? {
@@ -395,7 +418,7 @@ async fn create_leaf_function(
         None => {
             return Err(PkgError::MissingFuncUniqueId(
                 leaf_func.func_unique_id().to_string(),
-            ))
+            ));
         }
     };
 
@@ -564,7 +587,7 @@ async fn create_schema_variant(
     variant_spec: SiPkgSchemaVariant<'_>,
     installed_pkg_id: InstalledPkgId,
     func_map: &FuncMap,
-) -> PkgResult<()> {
+) -> PkgResult<SchemaVariantId> {
     let hash = variant_spec.hash().to_string();
     let existing_schema_variant =
         InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::SchemaVariant, &hash)
@@ -732,7 +755,7 @@ async fn create_schema_variant(
     )
     .await?;
 
-    Ok(())
+    Ok(variant_id)
 }
 
 async fn set_default_value(

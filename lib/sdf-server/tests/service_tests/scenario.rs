@@ -411,7 +411,6 @@ impl ScenarioHarness {
         asset_id: SchemaVariantDefinitionId,
         asset_name: String,
         menu_name: Option<String>,
-        schema_definition: &str,
     ) {
         let request = SaveVariantDefRequest {
             id: asset_id,
@@ -420,7 +419,8 @@ impl ScenarioHarness {
             category: "".to_string(),
             color: "#FFFF00".to_string(),
             link: Some("https://www.systeminit.com/".to_string()),
-            definition: schema_definition.to_string(),
+            code: "".to_string(),
+            handler: "".to_string(),
             description: None,
             visibility: *ctx.visibility(),
         };

@@ -76,7 +76,7 @@ impl MigrationDriver {
             .build()?;
 
         let fallout_entries_to_galaxies_transform_code =
-        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+            "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
           let galaxies = [];
           let entries = input.entries;
 
@@ -114,6 +114,17 @@ impl MigrationDriver {
             )
             .build()?;
 
+        let starfield_scaffold_func = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+        let starfield_authoring_schema_func = FuncSpec::builder()
+            .name("test:scaffoldStarfieldAsset")
+            .code_plaintext(starfield_scaffold_func)
+            .handler("createAsset")
+            .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+            .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+            .build()?;
+
         let starfield_schema = SchemaSpec::builder()
             .name("starfield")
             .category("test exclusive")
@@ -122,6 +133,7 @@ impl MigrationDriver {
                 SchemaVariantSpec::builder()
                     .color("#ffffff")
                     .name("v0")
+                    .func_unique_id(starfield_authoring_schema_func.unique_id)
                     .domain_prop(
                         PropSpec::builder()
                             .name("name")
@@ -237,6 +249,7 @@ impl MigrationDriver {
             .func(starfield_create_action_func)
             .func(starfield_confirmation_func)
             .func(fallout_entries_to_galaxies_transform_func)
+            .func(starfield_authoring_schema_func)
             .schema(starfield_schema)
             .build()?;
 

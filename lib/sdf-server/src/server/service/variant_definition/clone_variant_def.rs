@@ -53,7 +53,7 @@ pub async fn create_variant_def(
             Err(e) => {
                 return Err(
                     DalSchemaVariantDefinitionError::CouldNotCheckForDefaultVariant(e.to_string()),
-                )?
+                )?;
             }
         }
     }
@@ -69,7 +69,7 @@ pub async fn create_variant_def(
         variant_def.color().to_owned(),
         *variant_def.component_kind(),
         variant_def.description().map(|d| d.to_string()),
-        variant_def.definition().to_string(),
+        variant_def.func_id(),
     )
     .await?;
 

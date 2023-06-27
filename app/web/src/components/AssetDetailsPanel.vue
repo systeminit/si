@@ -53,6 +53,15 @@
           @blur="updateAsset"
         />
         <VormInput
+          id="handler"
+          v-model="assetStore.selectedAsset.handler"
+          type="text"
+          :disabled="disabled"
+          label="Entrypoint"
+          placeholder="Optionally, give the asset a shorter name for display here..."
+          @blur="updateAsset"
+        />
+        <VormInput
           id="category"
           v-model="assetStore.selectedAsset.category"
           type="text"

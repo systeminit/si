@@ -42,8 +42,10 @@ export interface ListedVariantDef {
 
 export interface VariantDef extends ListedVariantDef {
   link?: string;
-  definition: string;
   defaultVariantId?: string;
+  code: string;
+  handler: string;
+  types?: string;
 }
 
 const funcStore = useFuncStore();
@@ -112,6 +114,7 @@ export const useAssetStore = () => {
             LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
           ) as AssetId;
         },
+
         setSelectedAssetId(selection: AssetId | null) {
           if (!selection) {
             this.selectedAssetId = null;
@@ -187,7 +190,8 @@ export const useAssetStore = () => {
                 ? " omg has such a long name the name is so long you can't even believe how long it is!"
                 : ""
             }`,
-            definition: "",
+            code: "",
+            handler: "",
             color: this.generateMockColor(),
             description: "",
             category: "",
@@ -214,7 +218,6 @@ export const useAssetStore = () => {
                 "defaultVariantId",
                 "createdAt",
                 "updatedAt",
-                "definition",
               ]),
             },
           });

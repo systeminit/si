@@ -44,6 +44,7 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
         "src/server/service/func/defaults/*.ts",
+        "src/server/service/ts_types/*.ts",
     ]),
     extra_test_targets = [":test-integration"],
 )

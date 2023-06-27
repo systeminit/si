@@ -62,3 +62,11 @@ UNION ALL
               ON funcs.id = action_prototypes.func_id
   WHERE action_prototypes.schema_variant_id = $3
     AND funcs.code_sha256 != '0')
+
+UNION ALL
+
+(SELECT row_to_json(funcs.*) as object
+  FROM schema_variant_definitions_v1($1, $2) svd
+       JOIN funcs_v1($1, $2) funcs
+            ON svd.func_id = funcs.id
+  WHERE svd.schema_variant_id = $3)

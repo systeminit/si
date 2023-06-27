@@ -6,14 +6,13 @@ use axum::Json;
 use dal::{
     component::ComponentKind,
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    StandardModel, Visibility, WsEvent,
+    Func, FuncBackendKind, FuncBackendResponseType, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_ASSET_CODE: &str = r#"{
-  "props": [],
-  "inputSockets": [],
-  "outputSockets": []
+const DEFAULT_ASSET_CODE: &str = r#"function createAsset() {
+  const asset = new AssetBuilder();
+  return asset.build()
 }"#;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -45,16 +44,28 @@ pub async fn create_variant_def(
 ) -> SchemaVariantDefinitionResult<Json<CreateVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    let mut asset_func = Func::new(
+        &ctx,
+        request.name.clone(),
+        FuncBackendKind::JsSchemaVariantDefinition,
+        FuncBackendResponseType::SchemaVariantDefinition,
+    )
+    .await?;
+    asset_func.set_handler(&ctx, Some("createAsset")).await?;
+    asset_func
+        .set_code_plaintext(&ctx, Some(DEFAULT_ASSET_CODE))
+        .await?;
+
     let variant_def = SchemaVariantDefinition::new(
         &ctx,
         request.name,
-        request.menu_name,
+        request.menu_name.clone(),
         request.category,
         request.link,
         request.color,
         ComponentKind::Standard,
         request.description,
-        DEFAULT_ASSET_CODE.to_string(),
+        *asset_func.id(),
     )
     .await?;
 
