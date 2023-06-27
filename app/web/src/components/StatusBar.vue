@@ -172,10 +172,12 @@
 import * as _ from "lodash-es";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { Icon, useThemeContainer } from "@si/vue-lib/design-system";
 import SiPanel from "@/components/SiPanel.vue";
+import { nilId } from "@/utils/nilId";
+import { useRoute } from "vue-router";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/components/StatusBarTabs/Qualification/QualificationTab.vue";
 import ChangeSetTabPanel from "@/components/StatusBarTabs/Changes/ChangesTabPanel.vue";
@@ -193,11 +195,10 @@ const selectedTab = ref(0);
 const panelOpen = ref(false);
 const panelRef = ref();
 
-const currentRoute = useRoute();
+const changeSetStore = useChangeSetsStore();
+
 const isViewMode = computed(
-  () =>
-    currentRoute.name === "workspace-view" ||
-    currentRoute.name === "workspace-fix",
+  () => changeSetStore.selectedChangeSetId === nilId(),
 );
 
 const changeTab = (index: number) => {

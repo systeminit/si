@@ -235,7 +235,6 @@
             <ComponentDetails
               v-if="selectedComponent"
               :key="selectedComponent.id"
-              :is-view-mode="isViewMode"
               @delete="triggerDeleteSelection"
               @restore="triggerRestoreSelection"
             />
@@ -408,14 +407,7 @@ watch(recommendations, (r) => {
   }
 });
 
-// TODO: we'll very likely split view mode from compose mode again, so this is just temporary
-// but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
 const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
-const isViewMode = computed(
-  (_) =>
-    isHead.value ||
-    changeSetStore.getRequestStatus("APPLY_CHANGE_SET2").value.isPending,
-);
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
@@ -521,8 +513,8 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
       e.toSocketId === toSocketId,
   );
 
-  if (equivalentEdge && !isViewMode.value) {
-    await componentsStore.RESTORE_EDGE(equivalentEdge!.id);
+  if (equivalentEdge) {
+    await componentsStore.RESTORE_EDGE2(equivalentEdge!.id);
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION2(
       {

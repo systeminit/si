@@ -47,10 +47,10 @@ use sdf_server::service::{
             GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
         },
         insert_property_editor_value::{
-            InsertPropertyEditorValueRequest, InsertPropertyEditorValueResponse,
+            ForceChangeSet as InsertPropertyEditorValueResponse, InsertPropertyEditorValueRequest,
         },
         update_property_editor_value::{
-            UpdatePropertyEditorValueRequest, UpdatePropertyEditorValueResponse,
+            ForceChangeSet as UpdatePropertyEditorValueResponse, UpdatePropertyEditorValueRequest,
         },
     },
     diagram::{
@@ -309,10 +309,9 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let response: UpdatePropertyEditorValueResponse = self
+        let _response: UpdatePropertyEditorValueResponse = self
             .query_post("/api/component/update_property_editor_value", &request)
             .await;
-        assert!(response.success)
     }
 
     /// Insert a "value" into a map or an array corresponding to a given path and
@@ -333,10 +332,9 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let response: InsertPropertyEditorValueResponse = self
+        let _response: InsertPropertyEditorValueResponse = self
             .query_post("/api/component/insert_property_editor_value", &request)
             .await;
-        assert!(response.success)
     }
 
     /// Get the latest [`PropertyValues`] for a given [`Component`](dal::Component).
