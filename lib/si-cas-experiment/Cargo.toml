@@ -1,0 +1,11 @@
+[package]
+name = "si-cas-experiment"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+thiserror = { workspace = true }
+ulid = { workspace = true }
+

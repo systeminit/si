@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-cas-experiment",
+    deps = [
+         "//third-party/rust:ulid",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
+
+# rust_test(
+#     name = "test-integration",
+#     srcs = glob(["tests/**/*.rs"]),
+#     crate_root = "tests/integration.rs",
+#     deps = [
+#     ],
+#     visibility = ["PUBLIC"],
+# )
