@@ -40,6 +40,12 @@
 
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
       <template v-else>
+        <div
+          v-if="changeSetsStore.creatingChangeSet"
+          class="text-center text-2xl z-100 absolute w-full h-full bg-black bg-opacity-70"
+        >
+          <LoadingMessage message="Creating Change-Set..." />
+        </div>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="changeSetId" />
         </div>
@@ -53,7 +59,7 @@
 import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
-import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, LoadingMessage } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { nilId } from "@/utils/nilId";
@@ -84,6 +90,8 @@ const changeSetsReqStatus =
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
 
 function handleUrlChange() {
+  changeSetsStore.creatingChangeSet = false;
+
   if (!route.name || !changeSetsReqStatus.value.isSuccess) return;
 
   const changeSetId = route.params.changeSetId as string | undefined;

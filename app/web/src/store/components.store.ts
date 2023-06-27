@@ -157,13 +157,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
+  const changeSetsStore = useChangeSetsStore();
+
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
   let changeSetId: ChangeSetId | null;
   if (forceChangeSetId) {
     changeSetId = forceChangeSetId;
   } else {
-    const changeSetsStore = useChangeSetsStore();
     changeSetId = changeSetsStore.selectedChangeSetId;
   }
 
@@ -558,6 +559,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           position: Vector2d,
           parentNodeId?: string,
         ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest<{
             componentId: ComponentId;
             nodeId: ComponentNodeId;
@@ -635,6 +640,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           from: { nodeId: ComponentNodeId; socketId: SocketId },
           to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           const tempId = `temp-edge-${+new Date()}`;
 
           return new ApiRequest<{
@@ -707,6 +716,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           childNodeId: ComponentNodeId,
           parentNodeId: ComponentNodeId,
         ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/connect_component_to_frame2",
@@ -797,6 +810,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_EDGE2(edgeId: EdgeId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_connection2",
@@ -876,6 +893,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async RESTORE_EDGE2(edgeId: EdgeId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_connection2",
@@ -949,6 +970,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_COMPONENT2(componentId: ComponentId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_component2",
@@ -1003,6 +1028,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async RESTORE_COMPONENT2(componentId: ComponentId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_component2",

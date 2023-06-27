@@ -28,6 +28,7 @@ export function useChangeSetsStore() {
         changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
         selectedChangeSetId: null as ChangeSetId | null,
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
+        creatingChangeSet: false as boolean,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
