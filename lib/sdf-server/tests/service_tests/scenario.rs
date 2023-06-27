@@ -26,9 +26,7 @@ use dal::{
 use names::{Generator, Name};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
 use sdf_server::service::dev::{AuthorSingleSchemaRequest, AuthorSingleSchemaResponse};
-use sdf_server::service::diagram::delete_component::{
-    DeleteComponentRequest, DeleteComponentResponse,
-};
+use sdf_server::service::diagram::delete_component::{DeleteComponentRequest, ForceChangeSet};
 use sdf_server::service::diagram::get_diagram::GetDiagramRequest;
 use sdf_server::service::variant_definition::create_variant_def::{
     CreateVariantDefRequest, CreateVariantDefResponse,
@@ -489,10 +487,9 @@ impl ScenarioHarness {
             component_id,
             visibility: *ctx.visibility(),
         };
-        let response: DeleteComponentResponse = self
+        let _response: ForceChangeSet = self
             .query_post("/api/diagram/delete_component", &request)
             .await;
-        assert!(response.success)
     }
 
     pub async fn author_single_schema_with_default_variant(

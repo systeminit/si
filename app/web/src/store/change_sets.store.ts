@@ -53,7 +53,7 @@ export function useChangeSetsStore() {
       actions: {
         async setActiveChangeset(changeSetPk: string) {
           // We need to force refetch changesets since there's a race condition in which redirects
-          // will be triggered but the frontend won't have refreshed the list of changesets 
+          // will be triggered but the frontend won't have refreshed the list of changesets
           if (!this.changeSetsById[changeSetPk]) {
             await this.FETCH_CHANGE_SETS();
           }

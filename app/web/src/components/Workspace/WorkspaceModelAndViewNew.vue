@@ -10,7 +10,6 @@
       </div>
 
       <SiPanelResizer
-        v-if="!isViewMode"
         panel-side="bottom"
         :style="{ top: `${topLeftPanel.height}px` }"
         class="w-full"
@@ -19,7 +18,7 @@
         @resize-reset="topLeftPanel.resetSize"
       />
 
-      <div v-if="!isViewMode" class="relative flex-grow">
+      <div class="relative flex-grow">
         <AssetPalette class="border-t dark:border-neutral-600" />
       </div>
     </div>
@@ -319,7 +318,6 @@
 import * as _ from "lodash-es";
 import { computed, ref, watch } from "vue";
 import plur from "plur";
-import clsx from "clsx";
 import {
   Collapsible,
   VButton,
@@ -370,7 +368,6 @@ import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
-import ReadOnlyBanner from "../ReadOnlyBanner.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
@@ -524,10 +521,10 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
       e.toSocketId === toSocketId,
   );
 
-  if (equivalentEdge) {
+  if (equivalentEdge && !isViewMode.value) {
     await componentsStore.RESTORE_EDGE(equivalentEdge!.id);
   } else {
-    await componentsStore.CREATE_COMPONENT_CONNECTION_2(
+    await componentsStore.CREATE_COMPONENT_CONNECTION2(
       {
         nodeId: fromNodeId,
         socketId: fromSocketId,
@@ -563,7 +560,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   }
 
   // TODO These ids should be number from the start.
-  const createReq = await componentsStore.CREATE_COMPONENT(
+  const createReq = await componentsStore.CREATE_COMPONENT2(
     schemaId,
     e.position,
     parentId,
@@ -686,10 +683,10 @@ function onConfirmDelete() {
 
 async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
-    await componentsStore.DELETE_EDGE(selectedEdgeId.value);
+    await componentsStore.DELETE_EDGE2(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
     for (const componentId of selectedComponentIds.value) {
-      await componentsStore.DELETE_COMPONENT(componentId);
+      await componentsStore.DELETE_COMPONENT2(componentId);
     }
   }
   componentsStore.setSelectedComponentId(null);
@@ -697,7 +694,7 @@ async function executeDeleteSelection() {
 
 async function triggerRestoreSelection() {
   if (selectedEdgeId.value) {
-    await componentsStore.RESTORE_EDGE(selectedEdgeId.value);
+    await componentsStore.RESTORE_EDGE2(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
     // Block restoring child of deleted frame
     const parentIds = _.compact(
@@ -720,7 +717,7 @@ async function triggerRestoreSelection() {
       return;
     }
 
-    await componentsStore.RESTORE_COMPONENTS(selectedComponentIds.value);
+    await componentsStore.RESTORE_COMPONENTS2(selectedComponentIds.value);
   }
 }
 
@@ -807,7 +804,7 @@ function onGroupElements({ group, elements }: GroupEvent) {
   }
 
   for (const element of elements) {
-    componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
+    componentsStore.CONNECT_COMPONENT_TO_FRAME2(element.def.id, group.def.id);
   }
 }
 
@@ -842,65 +839,64 @@ const typeDisplayName = (action = "delete") => {
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
-  if (!isViewMode.value) {
-    if (selectedEdgeId.value) {
-      // single selected edge
-      if (selectedEdge.value?.changeStatus === "deleted") {
-        items.push({
-          label: "Restore edge",
-          icon: "trash-restore",
-          onSelect: triggerRestoreSelection,
-        });
-      } else {
-        items.push({
-          label: "Delete edge",
-          icon: "trash",
-          onSelect: triggerDeleteSelection,
-        });
-      }
-    } else if (selectedComponentId.value && selectedComponent.value) {
-      // single selected component
-      if (selectedComponent.value.changeStatus === "deleted") {
-        items.push({
-          label: `Restore ${typeDisplayName()} "${
-            selectedComponent.value.displayName
-          }"`,
-          icon: "trash-restore",
-          onSelect: triggerRestoreSelection,
-        });
-      } else {
-        items.push({
-          label: `Delete ${typeDisplayName()} "${
-            selectedComponent.value.displayName
-          }"`,
-          icon: "trash",
-          onSelect: triggerDeleteSelection,
-        });
-      }
-    } else if (selectedComponentIds.value.length) {
-      // Multiple selected components
-      if (deletableSelectedComponents.value.length > 0) {
-        items.push({
-          label: `Delete ${deletableSelectedComponents.value.length} ${plur(
-            typeDisplayName("delete"),
-            deletableSelectedComponents.value.length,
-          )}`,
-          icon: "trash",
-          onSelect: triggerDeleteSelection,
-        });
-      }
-      if (restorableSelectedComponents.value.length > 0) {
-        items.push({
-          label: `Restore ${restorableSelectedComponents.value.length} ${plur(
-            typeDisplayName("restore"),
-            restorableSelectedComponents.value.length,
-          )}`,
-          icon: "trash-restore",
-          onSelect: triggerRestoreSelection,
-        });
-      }
+  if (selectedEdgeId.value) {
+    // single selected edge
+    if (selectedEdge.value?.changeStatus === "deleted") {
+      items.push({
+        label: "Restore edge",
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
+    } else {
+      items.push({
+        label: "Delete edge",
+        icon: "trash",
+        onSelect: triggerDeleteSelection,
+      });
+    }
+  } else if (selectedComponentId.value && selectedComponent.value) {
+    // single selected component
+    if (selectedComponent.value.changeStatus === "deleted") {
+      items.push({
+        label: `Restore ${typeDisplayName()} "${
+          selectedComponent.value.displayName
+        }"`,
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
+    } else {
+      items.push({
+        label: `Delete ${typeDisplayName()} "${
+          selectedComponent.value.displayName
+        }"`,
+        icon: "trash",
+        onSelect: triggerDeleteSelection,
+      });
+    }
+  } else if (selectedComponentIds.value.length) {
+    // Multiple selected components
+    if (deletableSelectedComponents.value.length > 0) {
+      items.push({
+        label: `Delete ${deletableSelectedComponents.value.length} ${plur(
+          typeDisplayName("delete"),
+          deletableSelectedComponents.value.length,
+        )}`,
+        icon: "trash",
+        onSelect: triggerDeleteSelection,
+      });
+    }
+    if (restorableSelectedComponents.value.length > 0) {
+      items.push({
+        label: `Restore ${restorableSelectedComponents.value.length} ${plur(
+          typeDisplayName("restore"),
+          restorableSelectedComponents.value.length,
+        )}`,
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
     }
   }
+
   if (selectedComponent.value?.resource.data) {
     items.push({
       label: "Refresh resource",
