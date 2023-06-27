@@ -9,6 +9,7 @@ import {
   PropertyEditorValues,
   PropertyEditorProp,
 } from "@/api/sdf/dal/property_editor";
+import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -193,6 +194,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             | { update: UpdatePropertyEditorValueArgs }
             | { insert: InsertPropertyEditorValueArgs },
         ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           const isInsert = "insert" in updatePayload;
 
           // If the valueid for this update does not exist in the values tree,
@@ -230,6 +235,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
         },
 
         async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           const statusStore = useStatusStore();
           statusStore.markUpdateStarted();
 

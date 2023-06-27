@@ -1,6 +1,7 @@
 use axum::Json;
 use dal::{
-    AttributeContext, AttributeValue, AttributeValueId, ComponentId, PropId, Visibility, WsEvent,
+    AttributeContext, AttributeValue, AttributeValueId, ChangeSet, ChangeSetPk, ComponentId,
+    PropId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,16 +22,33 @@ pub struct InsertPropertyEditorValueRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct InsertPropertyEditorValueResponse {
-    pub success: bool,
+pub struct ForceChangeSet {
+    #[serde(rename = "_forceChangesetPk")] // TODO(victor) find a way to return this as a header
+    pub force_changeset_pk: Option<ChangeSetPk>,
 }
 
 pub async fn insert_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<InsertPropertyEditorValueRequest>,
-) -> ComponentResult<Json<InsertPropertyEditorValueResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> ComponentResult<Json<ForceChangeSet>> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
 
     let attribute_context = AttributeContext::builder()
         .set_prop_id(request.prop_id)
@@ -52,5 +70,5 @@ pub async fn insert_property_editor_value(
 
     ctx.commit().await?;
 
-    Ok(Json(InsertPropertyEditorValueResponse { success: true }))
+    Ok(Json(ForceChangeSet { force_changeset_pk }))
 }
