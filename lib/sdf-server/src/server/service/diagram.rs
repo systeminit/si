@@ -169,12 +169,20 @@ pub fn routes() -> Router<AppState> {
             post(delete_component::delete_component2),
         )
         .route(
+            "/delete_components",
+            post(delete_component::delete_components),
+        )
+        .route(
             "/restore_component",
             post(restore_component::restore_component),
         )
         .route(
             "/restore_component2",
             post(restore_component::restore_component2),
+        )
+        .route(
+            "/restore_components",
+            post(restore_component::restore_components),
         )
         .route(
             "/connect_component_to_frame",
