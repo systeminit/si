@@ -7,6 +7,7 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFuncStore, FuncSummary, FuncId } from "./func/funcs.store";
 import { useRouterStore } from "./router.store";
+import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 
 export type AssetId = string;
 export type AssetSlug = string;
@@ -57,6 +58,8 @@ export type AssetCreateRequest = Omit<
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
 
+const LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY = "si-open-asset-id";
+
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
   (asset.menuName ?? "").length === 0 ? asset.name : asset.menuName;
 
@@ -83,7 +86,11 @@ export const useAssetStore = () => {
         },
         urlSelectedAssetId(): AssetId | undefined {
           const route = useRouterStore().currentRoute;
-          return route?.params?.assetId as AssetId | undefined;
+          const id = route?.params?.assetId as string;
+          if (id) {
+            storage.setItem(LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY, id);
+          }
+          return id as AssetId | undefined;
         },
         urlSelectedFuncId(): FuncId | undefined {
           const route = useRouterStore().currentRoute;
@@ -100,7 +107,9 @@ export const useAssetStore = () => {
             this.assetsById[assetId] = asset;
           }
         },
-
+        getLastSelectedAssetId(): AssetId | undefined {
+          return storage.getItem(LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY) as AssetId;
+        },
         setSelectedAssetId(selection: AssetId | null) {
           if (!selection) {
             this.selectedAssetId = null;

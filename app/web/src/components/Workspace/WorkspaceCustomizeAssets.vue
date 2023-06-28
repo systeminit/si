@@ -52,8 +52,7 @@
 </template>
 
 <script lang="ts" setup>
-import * as _ from "lodash-es";
-import { computed, watch } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
@@ -97,6 +96,18 @@ watch(
   { immediate: true },
 );
 
+onMounted(async () => {
+  if (!assetId.value && assetStore.getLastSelectedAssetId()) {
+    router.push({
+      name: "workspace-lab-assets",
+      params: {
+        ...router.currentRoute.value.params,
+        assetId: assetStore.getLastSelectedAssetId(),
+      },
+    });
+  }
+});
+
 const onDetach = async () => {
   if (assetStore.urlSelectedAssetId) {
     await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
@@ -104,7 +115,7 @@ const onDetach = async () => {
       name: "workspace-lab-assets",
       params: {
         ...router.currentRoute.value.params,
-        funcId: undefined,
+        funcId: assetStore.urlSelectedFuncId,
         assetId: assetStore.urlSelectedAssetId,
       },
     });
