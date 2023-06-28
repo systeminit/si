@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -11,8 +10,8 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, Visibility,
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -26,6 +25,8 @@ pub enum ChangeSetError {
     Component(#[from] ComponentError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("invalid user actor pk")]
+    InvalidActor(UserPk),
     #[error(transparent)]
     LabelList(#[from] LabelListError),
     #[error(transparent)]
@@ -38,6 +39,8 @@ pub enum ChangeSetError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    User(#[from] UserError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
@@ -102,9 +105,17 @@ impl ChangeSet {
         Ok(object)
     }
 
-    pub fn generate_name() -> impl AsRef<str> {
-        // TODO Implement this as the correct name generator
-        Alphanumeric.sample_string(&mut rand::thread_rng(), 8)
+    pub async fn generate_name(ctx: &DalContext) -> ChangeSetResult<String> {
+        let user = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
+                .await?
+                .ok_or(ChangeSetError::InvalidActor(*user_pk))?
+                .name()
+                .to_owned(),
+            HistoryActor::SystemInit => "si".to_owned(),
+        };
+        let now = Utc::now();
+        Ok(format!("{user}/{}", now.format("%H:%M %Y-%m-%d")))
     }
 
     #[instrument(skip(ctx))]
