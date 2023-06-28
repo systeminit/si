@@ -43,7 +43,7 @@ impl LamportClock {
 
     pub fn merge(&mut self, other: &LamportClock) {
         if self.who == other.who && self.counter < other.counter {
-            self.counter = other.counter.clone();
+            self.counter = other.counter;
         }
     }
 }
@@ -129,28 +129,60 @@ impl VectorClock {
     pub fn fork(&self, who: impl Into<String>) -> CasResult<VectorClock> {
         let mut forked = self.clone();
         let who = who.into();
-        forked.who = Some(who.clone());
+        forked.who = Some(who);
         forked.inc()?;
         Ok(forked)
     }
+
+    pub fn already_seen(&self, other: &VectorClock) -> CasResult<bool> {
+        let them = match &other.who {
+            Some(w) => w,
+            None => return Err(CasError::NoWho)
+        };
+
+        if let Some(local_view) = self.clock_entries.get(them) {
+            // "Other" is newer than the last time we have seen anything from them.
+            if local_view < other.clock_entries.get(them).unwrap() {
+                return Ok(false);
+            }
+        } else {
+            // We haven't seen "other" at all.
+            return Ok(false);
+        }
+
+        // We've seen at least everything that other is reporting to have seen.
+        Ok(true)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CompareRecommendation {
+    Same,
+    TakeRight,
+    YouFigureItOut,
+    TakeLeft,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct Function {
+    pub last_synced_content_hash: String,
     pub content_hash: String,
     pub vector_clock: VectorClock,
 }
 
 impl Function {
     pub fn new(content_hash: impl Into<String>, who: impl Into<String>) -> Function {
+        let content_hash = content_hash.into();
+
         Function {
-            content_hash: content_hash.into(),
+            last_synced_content_hash: content_hash.clone(),
+            content_hash,
             vector_clock: VectorClock::new(who),
         }
     }
 
-    pub fn id(&self) -> &Ulid {
-        &self.vector_clock.id
+    pub fn id(&self) -> Ulid {
+        self.vector_clock.id
     }
 
     pub fn update(
@@ -165,8 +197,55 @@ impl Function {
 
     pub fn merge(&mut self, func: &Function) -> CasResult<()> {
         self.vector_clock.merge(&func.vector_clock)?;
+        self.last_synced_content_hash = func.content_hash.clone();
         self.content_hash = func.content_hash.clone();
         Ok(())
+    }
+
+    pub fn receive(&self, who: impl Into<String>) -> CasResult<Function> {
+        let func = Function {
+            last_synced_content_hash: self.content_hash.clone(),
+            content_hash: self.content_hash.clone(),
+            vector_clock: self.vector_clock.fork(who)?,
+        };
+        Ok(func)
+    }
+
+    pub fn compare_and_recommend(&self, other: &Function) -> CasResult<CompareRecommendation> {
+        // Not comparing apples to apples.
+        if self.id() != other.id() {
+            return Err(CasError::WrongMergeId);
+        }
+
+        // Both us and other have ended up at the same content hash, regardless of path.
+        if self.content_hash == other.content_hash {
+            return Ok(CompareRecommendation::Same);
+        }
+
+        if self.vector_clock.already_seen(&other.vector_clock)? {
+            return Ok(CompareRecommendation::TakeLeft);
+        }
+
+        if other.vector_clock.already_seen(&self.vector_clock)? {
+            return Ok(CompareRecommendation::TakeRight);
+        }
+
+        if self.content_hash == self.last_synced_content_hash {
+            return Ok(CompareRecommendation::TakeRight);
+        }
+
+        Ok(CompareRecommendation::YouFigureItOut)
+
+        //if remote's vector clock has no new additions after the one that we share
+        // compare hash
+        //  -- if hashes are the same, no changes, do nothing (but figure out clock?)
+        //  -- if hashes are different, take yours as remote hasn't changed
+
+        //if remote's vector clock HAS new additions after the one that we share
+        //compare hash
+        // -- if both hashes are different, you figure it out
+        // -- if only the remote hash changed, take it (how do we know this)
+        // -- if hashes are the same, do nothing (but figure out clock?)
     }
 }
 
@@ -187,13 +266,13 @@ impl Module {
     }
 
     pub fn add(&mut self, func: Function) {
-        self.funcs.insert(func.id().clone(), func);
+        self.funcs.insert(func.id(), func);
     }
 
-    pub fn function(&mut self, function_id: &Ulid) -> CasResult<&mut Function> {
+    pub fn function(&mut self, function_id: Ulid) -> CasResult<&mut Function> {
         let func = self
             .funcs
-            .get_mut(function_id)
+            .get_mut(&function_id)
             .ok_or(CasError::NoContentHash)?;
         Ok(func)
     }
@@ -224,8 +303,6 @@ mod test {
         let lc_adam = LamportClock::new("adam");
         let lc_nick = LamportClock::new("nick");
         assert_eq!(lc_adam.partial_cmp(&lc_nick), None);
-        assert_eq!(lc_adam < lc_nick, false);
-        assert_eq!(lc_adam > lc_nick, false);
     }
 
     #[test]
@@ -326,10 +403,76 @@ mod test {
         jacob_abc_func.update("easyas123", "jacob").unwrap();
 
         // Jacob shares his edited function with Adam, and Adam accepts it
-        adam_abc_func.merge(&jacob_abc_func).unwrap();
+        adam_abc_func.merge(jacob_abc_func).unwrap();
 
         // Adam updates his module to the new version
         adam_jackson5_module.add(adam_abc_func.clone());
 
+    }
+
+    #[test]
+    fn receive_unchanged_function() {
+        // Brit create function
+        let brit_function = Function::new("original content", "brit");
+        // Nick receive function
+        let nick_copy = brit_function.receive("nick").unwrap();
+        // Nick receive function again
+
+        // *No changes to apply!*
+        assert_eq!(
+            nick_copy.compare_and_recommend(&brit_function).unwrap(),
+            CompareRecommendation::Same
+        );
+    }
+
+    #[test]
+    fn receive_updated_function() {
+        // Brit create function
+        let mut brit_function = Function::new("original content", "brit");
+        // Nick receive function
+        let nick_copy = brit_function.receive("nick").unwrap();
+        // Brit update function
+        brit_function.update("poop", "brit").unwrap();
+        // Nick receive new function
+        // *No changes to keep, suggest taking new version*
+        assert_eq!(
+            nick_copy.compare_and_recommend(&brit_function).unwrap(),
+            CompareRecommendation::TakeRight,
+        );
+    }
+
+    #[test]
+    fn change_function_receive_unchanged_function() {
+        // Brit create function
+        let brit_function = Function::new("original content", "Brit");
+        // Nick receive function
+        let mut nick_copy = brit_function.receive("nick").unwrap();
+        // Nick update function
+        nick_copy.update("new content", "nick").unwrap();
+        // Nick receive unchanged function
+        // *Local changes, suggest keeping*
+        assert_eq!(
+            nick_copy.compare_and_recommend(&brit_function).unwrap(),
+            CompareRecommendation::TakeLeft,
+        );
+    }
+
+    #[test]
+    fn change_function_receive_changed_function() {
+        // Brit create function
+        let mut brit_function = Function::new("original content", "Brit");
+        // Nick receive function
+        let mut nick_copy = brit_function.receive("nick").unwrap();
+        // Brit change function
+        brit_function.update("new content", "Brit").unwrap();
+        // Nick change function
+        nick_copy.update("other new content", "nick").unwrap();
+        // Nick receive changed function
+
+        // *Changes in both, you figure it out*
+        assert_eq!(
+            nick_copy.compare_and_recommend(&brit_function).unwrap(),
+            CompareRecommendation::YouFigureItOut,
+        );
     }
 }
