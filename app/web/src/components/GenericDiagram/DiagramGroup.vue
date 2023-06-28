@@ -121,9 +121,9 @@
         :key="socket.uniqueKey"
         :socket="socket"
         :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :draw-edge-state="drawEdgeState"
-        :node-width="nodeWidth"
+        :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+        :drawEdgeState="drawEdgeState"
+        :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
         @hover:end="onSocketHoverEnd(socket)"
       />
@@ -143,9 +143,9 @@
         :key="socket.uniqueKey"
         :socket="socket"
         :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :draw-edge-state="drawEdgeState"
-        :node-width="nodeWidth"
+        :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+        :drawEdgeState="drawEdgeState"
+        :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
         @hover:end="onSocketHoverEnd(socket)"
       />
@@ -280,12 +280,12 @@
     <DiagramIcon
       v-if="isAdded || isModified"
       :icon="isAdded ? 'plus' : 'tilde'"
-      :bg-color="
+      :bgColor="
         isAdded
           ? diagramConfig?.toneColors?.success
           : diagramConfig?.toneColors?.warning
       "
-      circle-bg
+      circleBg
       :color="theme === 'dark' ? '#000' : '#FFF'"
       :size="GROUP_HEADER_ICON_SIZE"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"

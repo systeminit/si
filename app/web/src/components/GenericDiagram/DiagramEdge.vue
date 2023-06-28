@@ -55,8 +55,8 @@
           :color="
             theme === 'dark' ? COLOR_PALETTE.shade[100] : COLOR_PALETTE.shade[0]
           "
-          circle-bg
-          :bg-color="diagramConfig?.toneColors?.success"
+          circleBg
+          :bgColor="diagramConfig?.toneColors?.success"
           :size="20"
         />
       </template>

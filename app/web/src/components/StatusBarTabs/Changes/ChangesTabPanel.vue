@@ -2,9 +2,9 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <StatusBarTabPanelComponentList
-      :component-list="componentsList"
-      :selected-filter="selectedFilter"
-      :filter-options="filterOptions"
+      :componentList="componentsList"
+      :selectedFilter="selectedFilter"
+      :filterOptions="filterOptions"
       @filter="changeSelectedFilter"
     >
       <template #icon="{ component }">
@@ -26,7 +26,7 @@
 
     <div v-else class="w-full h-full flex flex-col bg-shade-100">
       <template v-if="diffReqStatus.isError">
-        <ErrorMessage :request-status="diffReqStatus" />
+        <ErrorMessage :requestStatus="diffReqStatus" />
       </template>
       <template v-else-if="diffReqStatus.isSuccess && selectedComponentDiff">
         <div
@@ -47,7 +47,7 @@
               font-size="13px"
               class="text-neutral-50 mx-2"
               :code="selectedComponentDiff.current.code"
-              :code-language="selectedComponentDiff.current.language"
+              :codeLanguage="selectedComponentDiff.current.language"
             >
               <template #title>
                 <span class="text-lg">Current</span>
@@ -60,7 +60,7 @@
                 font-size="13px"
                 class="text-neutral-50 mx-2"
                 :code="selectedComponentDiff.diffs[0]?.code"
-                :code-language="selectedComponentDiff.diffs[0]?.language"
+                :codeLanguage="selectedComponentDiff.diffs[0]?.language"
               >
                 <template #title>
                   <span class="text-lg">Diff</span>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <WidgetHeader
-      :collapsed-paths="props.collapsedPaths"
+      :collapsedPaths="props.collapsedPaths"
       :name="props.name"
       :path="props.path"
       @toggle-collapsed="setCollapsed($event)"

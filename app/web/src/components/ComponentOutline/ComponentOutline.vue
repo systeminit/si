@@ -2,17 +2,17 @@
   <div ref="outlineRef" class="flex flex-col absolute inset-0">
     <RequestStatusMessage
       v-if="fetchComponentsReq.isPending && !rootComponents.length"
-      :request-status="fetchComponentsReq"
-      loading-message="Loading..."
+      :requestStatus="fetchComponentsReq"
+      loadingMessage="Loading..."
     />
     <template v-else-if="fetchComponentsReq.isError">
-      <ErrorMessage :request-status="fetchComponentsReq" />
+      <ErrorMessage :requestStatus="fetchComponentsReq" />
     </template>
     <template v-else>
       <ScrollArea>
         <template v-if="rootComponents.length" #top>
           <!-- search bar - dont need to show if no components -->
-          <SiSearch auto-search @search="onSearchUpdated" />
+          <SiSearch autoSearch @search="onSearchUpdated" />
         </template>
 
         <!-- filtered / search mode -->
@@ -20,7 +20,7 @@
           <ComponentOutlineNode
             v-for="component in filteredComponents"
             :key="component.id"
-            :component-id="component.id"
+            :componentId="component.id"
           />
         </template>
 
@@ -35,7 +35,7 @@
             <ComponentOutlineNode
               v-for="component in rootComponents"
               :key="component.id"
-              :component-id="component.id"
+              :componentId="component.id"
             />
           </template>
         </template>

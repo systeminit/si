@@ -5,7 +5,7 @@
         <VormInput
           class="flex-grow"
           type="dropdown"
-          :model-value="selectedChangeSetId"
+          :modelValue="selectedChangeSetId"
           label="Change Set"
           placeholder="no changeset selected"
           :options="changeSetDropdownOptions"
@@ -21,9 +21,9 @@
             ref="mergeButtonRef"
             icon="git-merge"
             size="md"
-            loading-text="Merging"
+            loadingText="Merging"
             label="Merge"
-            :request-status="applyChangeSetReqStatus"
+            :requestStatus="applyChangeSetReqStatus"
             :disabled="statusStoreUpdating"
             @click="applyChangeSet"
           />
@@ -52,7 +52,7 @@
             v-model="createChangeSetName"
             label="Change set name"
             required
-            required-message="Please choose a name for your change set!"
+            requiredMessage="Please choose a name for your change set!"
           />
           <div class="flex flex-row-reverse gap-sm">
             <VButton
@@ -60,8 +60,8 @@
               tone="success"
               icon="plus-circle"
               label="Create change set"
-              loading-text="Creating Change Set"
-              :request-status="createChangeSetReqStatus"
+              loadingText="Creating Change Set"
+              :requestStatus="createChangeSetReqStatus"
               class="flex-grow"
               submit
             />
@@ -70,7 +70,7 @@
       </form>
     </Modal>
 
-    <Modal ref="selectModalRef" no-exit title="Select Change Set">
+    <Modal ref="selectModalRef" noExit title="Select Change Set">
       <Stack>
         <p>
           Select the Change Set you would like to resume working in, or select
@@ -78,8 +78,8 @@
         </p>
         <VormInput
           type="dropdown"
-          no-label
-          :model-value="selectedChangeSetId"
+          noLabel
+          :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
           placeholder="Select an existing change set"
           class="flex-grow"

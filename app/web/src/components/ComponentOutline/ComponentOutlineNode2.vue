@@ -126,7 +126,7 @@
       <ComponentOutlineNode
         v-for="child in childComponents"
         :key="child.id"
-        :component-id="child.id"
+        :componentId="child.id"
       />
     </div>
   </div>

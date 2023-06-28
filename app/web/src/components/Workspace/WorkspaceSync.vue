@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="workflow-left" side="left" :min-size="315">
+  <SiPanel rememberSizeKey="workflow-left" side="left" :minSize="315">
     <ComponentOutlineSync />
   </SiPanel>
 
@@ -8,18 +8,18 @@
     <RecommendationProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
-      :custom-config="diagramCustomConfig"
+      :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
-      read-only
-      delete-icon="trash"
+      readOnly
+      deleteIcon="trash"
       @hover-element="onDiagramHoverElement"
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
-  <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">
+  <SiPanel rememberSizeKey="workflow-right" side="right" :minSize="280">
     <SyncExecutor />
   </SiPanel>
 </template>

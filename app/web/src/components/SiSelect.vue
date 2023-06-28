@@ -40,9 +40,9 @@
         </ListboxButton>
 
         <transition
-          leave-active-class="transition ease-in duration-100"
-          leave-from-class="opacity-100"
-          leave-to-class="opacity-0"
+          leaveActiveClass="transition ease-in duration-100"
+          leaveFromClass="opacity-100"
+          leaveToClass="opacity-0"
         >
           <ListboxOptions
             :class="dropdownClasses"

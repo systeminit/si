@@ -35,6 +35,7 @@
   },
   "scripts": {
     "lint": "eslint src --ext .ts,.js,.cjs,.vue",
+    "lint:strict": "npm run lint --max-warnings=0",
     "lint:fix": "pnpm run lint --fix"
   },
   "dependencies": {

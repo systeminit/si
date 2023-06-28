@@ -28,8 +28,8 @@
         v-if="featureFlagsStore.SINGLE_MODEL_SCREEN"
         icon="refresh"
         variant="ghost"
-        loading-icon="refresh-active"
-        loading-text="Refreshing..."
+        loadingIcon="refresh-active"
+        loadingText="Refreshing..."
         :loading="refreshing"
         class="ml-2"
         @click="onClickRefreshButton"
@@ -39,19 +39,19 @@
     </div>
 
     <Transition
-      enter-active-class="duration-300 ease-out"
-      enter-from-class="transform opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="delay-1000 duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="transform opacity-0"
+      enterActiveClass="duration-300 ease-out"
+      enterFromClass="transform opacity-0"
+      enterToClass="opacity-100"
+      leaveActiveClass="delay-1000 duration-200 ease-in"
+      leaveFromClass="opacity-100"
+      leaveToClass="transform opacity-0"
     >
       <div
         v-show="computedProgressPercent < 1"
         v-if="computedProgressPercent !== undefined"
         class="mt-2 flex gap-5"
       >
-        <ProgressBar :progress-percent="computedProgressPercent" />
+        <ProgressBar :progressPercent="computedProgressPercent" />
         <span class="whitespace-nowrap flex-shrink-0">
           <slot name="barLabel">
             <template v-if="totalCount === Infinity">

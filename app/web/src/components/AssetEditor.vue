@@ -1,8 +1,8 @@
 <template>
   <RequestStatusMessage
     v-if="loadAssetReqStatus.isPending"
-    :request-status="loadAssetReqStatus"
-    show-loader-without-message
+    :requestStatus="loadAssetReqStatus"
+    showLoaderWithoutMessage
   />
   <div v-else-if="assetId && selectedAsset" class="p-sm flex flex-col h-full">
     <div class="flex flex-row items-center gap-2 flex-none pb-sm">

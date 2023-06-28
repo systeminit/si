@@ -14,14 +14,14 @@
       </div>
       <SiSearch
         v-model="textSearch"
-        auto-search
+        autoSearch
         placeholder="search modules"
         @search="triggerSearch"
       />
     </template>
 
-    <Collapsible label="Local / Installed" default-open>
-      <ErrorMessage :request-status="loadLocalModulesReqStatus" />
+    <Collapsible label="Local / Installed" defaultOpen>
+      <ErrorMessage :requestStatus="loadLocalModulesReqStatus" />
       <template v-if="loadLocalModulesReqStatus.isPending">
         Loading local modules...
       </template>
@@ -36,13 +36,13 @@
         <ModuleListItem
           v-for="p in moduleStore.localModules"
           :key="p.name"
-          :module-slug="p.name"
+          :moduleSlug="p.name"
         />
       </template>
     </Collapsible>
 
-    <Collapsible label="Remote" default-open>
-      <ErrorMessage :request-status="searchRemoteModulesReqStatus" />
+    <Collapsible label="Remote" defaultOpen>
+      <ErrorMessage :requestStatus="searchRemoteModulesReqStatus" />
       <template v-if="searchRemoteModulesReqStatus.isPending">
         Loading remote modules...
       </template>
@@ -57,7 +57,7 @@
         <ModuleListItem
           v-for="p in moduleStore.remoteModuleSearchResults"
           :key="p.id"
-          :module-slug="p.name"
+          :moduleSlug="p.name"
         />
       </template>
     </Collapsible>

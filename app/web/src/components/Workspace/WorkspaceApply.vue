@@ -1,25 +1,25 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="workflow-left" side="left" :min-size="315">
+  <SiPanel rememberSizeKey="workflow-left" side="left" :minSize="315">
     <RecommendationPicker />
   </SiPanel>
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
     <RecommendationProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
-      :custom-config="diagramCustomConfig"
+      :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
-      read-only
-      delete-icon="trash"
+      readOnly
+      deleteIcon="trash"
       @hover-element="onDiagramHoverElement"
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
-  <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">
-    <TabGroup start-selected-tab-slug="apply-history">
+  <SiPanel rememberSizeKey="workflow-right" side="right" :minSize="280">
+    <TabGroup startSelectedTabSlug="apply-history">
       <TabGroupItem label="Apply History" slug="apply-history">
         <ApplyHistory />
       </TabGroupItem>

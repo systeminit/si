@@ -24,9 +24,9 @@
     </template>
     <ErrorMessage
       v-else-if="loadFuncDetailsReq.isError"
-      :request-status="loadFuncDetailsReq"
+      :requestStatus="loadFuncDetailsReq"
     />
-    <LoadingMessage v-else no-message />
+    <LoadingMessage v-else noMessage />
   </div>
 </template>
 

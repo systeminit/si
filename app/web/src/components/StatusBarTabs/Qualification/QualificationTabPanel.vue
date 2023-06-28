@@ -2,9 +2,9 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <StatusBarTabPanelComponentList
-      :component-list="filteredComponentsList"
-      :selected-filter="selectedFilter"
-      :filter-options="filterOptions"
+      :componentList="filteredComponentsList"
+      :selectedFilter="selectedFilter"
+      :filterOptions="filterOptions"
       @filter="changeSelectedFilter"
     >
       <template #icon="{ component }">
@@ -33,7 +33,7 @@
     </div>
     <QualificationViewerMultiple
       v-if="selectedComponent"
-      :component-id="selectedComponent.id"
+      :componentId="selectedComponent.id"
     />
     <div
       v-else

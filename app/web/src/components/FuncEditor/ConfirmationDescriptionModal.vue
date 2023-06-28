@@ -3,7 +3,7 @@
     ref="descriptionsModalRef"
     title="Edit Confirmation Descriptions"
     type="save"
-    save-label="Save descriptions"
+    saveLabel="Save descriptions"
     @save="saveDescriptions"
   >
     <Stack spacing="sm">

@@ -26,7 +26,7 @@
     <div class="relative flex-grow">
       <GenericDiagram
         ref="diagramRef"
-        :custom-config="customDiagramConfig"
+        :customConfig="customDiagramConfig"
         :nodes="nodes"
         :edges="edges"
         @update:zoom="onUpdateZoom"

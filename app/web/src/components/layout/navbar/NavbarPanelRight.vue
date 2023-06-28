@@ -1,12 +1,12 @@
 <template>
   <div class="flex items-center h-full">
-    <NavbarButton tooltip-text="Copy link" @click="copyURL">
+    <NavbarButton tooltipText="Copy link" @click="copyURL">
       <Icon name="link" />
     </NavbarButton>
 
     <SiThemeSwitcher />
 
-    <NavbarButton tooltip-text="Profile">
+    <NavbarButton tooltipText="Profile">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
           <img
@@ -22,13 +22,13 @@
 
       <template #dropdownContent>
         <DropdownMenuItem
-          link-to-named-route="logout"
+          linkToNamedRoute="logout"
           icon="logout"
           label="Logout"
         />
         <DropdownMenuItem
           v-if="isDevMode"
-          link-to-named-route="workspace-dev-dashboard"
+          linkToNamedRoute="workspace-dev-dashboard"
           icon="cat"
           label="Dev Dashboard"
         />

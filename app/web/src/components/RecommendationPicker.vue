@@ -1,9 +1,9 @@
 <template>
-  <TabGroup start-selected-tab-slug="apply">
+  <TabGroup startSelectedTabSlug="apply">
     <TabGroupItem label="Apply" slug="apply">
       <ScrollArea>
         <template #top>
-          <SiSearch auto-search placeholder="search recommendations" />
+          <SiSearch autoSearch placeholder="search recommendations" />
           <div
             class="w-full flex-none text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"
           >
@@ -16,8 +16,8 @@
               class="ml-2"
               type="checkbox"
               label="Select All"
-              no-label
-              :model-value="allSelected"
+              noLabel
+              :modelValue="allSelected"
               @update:model-value="selectAll"
               >Select All
             </VormInput>
@@ -91,12 +91,12 @@
         <div class="relative w-full h-full overflow-y-auto">
           <TransitionGroup
             tag="ul"
-            enter-active-class="duration-500 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="duration-300 ease-in delay-2000"
-            leave-from-class="opacity-100 "
-            leave-to-class="opacity-0"
+            enterActiveClass="duration-500 ease-out"
+            enterFromClass="opacity-0"
+            enterToClass="opacity-100"
+            leaveActiveClass="duration-300 ease-in delay-2000"
+            leaveFromClass="opacity-100 "
+            leaveToClass="opacity-0"
           >
             <li
               v-for="recommendation in recommendations"
@@ -110,7 +110,7 @@
                     `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
                   ]
                 "
-                :icon-delay-after-exec="2500"
+                :iconDelayAfterExec="2500"
                 @toggle="
                   (c) => {
                     recommendationSelection[

@@ -5,7 +5,7 @@
       <Icon name="loader" size="xl" />
     </template>
     <template v-else-if="loadUserReqStatus.isError">
-      <ErrorMessage :request-status="loadUserReqStatus" />
+      <ErrorMessage :requestStatus="loadUserReqStatus" />
     </template>
     <template v-else-if="draftUser">
       <div class="flex gap-xl">
@@ -39,7 +39,7 @@
         <form class="grow my-md p-md">
           <Stack spacing="lg">
             <Stack>
-              <ErrorMessage :request-status="updateUserReqStatus" />
+              <ErrorMessage :requestStatus="updateUserReqStatus" />
               <VormInput label="Profile Image" type="container">
                 <div
                   v-if="draftUser.pictureUrl"
@@ -74,7 +74,7 @@
               placeholder="Leave blank to have no profile picture"
 -->
               </VormInput>
-              <Tiles columns="2" spacing="sm" columns-mobile="1">
+              <Tiles columns="2" spacing="sm" columnsMobile="1">
                 <VormInput
                   v-model="draftUser.firstName"
                   label="First Name"
@@ -110,7 +110,7 @@
                 placeholder="ex: devopsdude42"
                 required
                 :regex="GITHUB_USERNAME_REGEX"
-                regex-message="Invalid github username"
+                regexMessage="Invalid github username"
               />
               <VormInput
                 v-model="draftUser.discordUsername"
@@ -119,15 +119,15 @@
                 placeholder="ex: eggscellent#1234"
                 required
                 :regex="DISCORD_TAG_REGEX"
-                regex-message="Invalid discord tag"
+                regexMessage="Invalid discord tag"
               />
 
               <VButton
-                icon-right="chevron--right"
+                iconRight="chevron--right"
                 :disabled="validationState.isError"
-                :request-status="updateUserReqStatus"
-                loading-text="Saving your profile..."
-                success-text="Updated your profile!"
+                :requestStatus="updateUserReqStatus"
+                loadingText="Saving your profile..."
+                successText="Updated your profile!"
                 tone="action"
                 variant="solid"
                 @click="saveHandler"

@@ -9,8 +9,8 @@
 
       <div class="flex">
         <SiButtonIcon
-          tooltip-text="Copy code to clipboard"
-          ignore-text-color
+          tooltipText="Copy code to clipboard"
+          ignoreTextColor
           icon="clipboard-copy"
           @click="copyCodeToClipboard"
         />

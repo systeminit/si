@@ -32,8 +32,8 @@
           :key="categoryIndex"
           :label="category.displayName"
           as="li"
-          content-as="ul"
-          default-open
+          contentAs="ul"
+          defaultOpen
           class="select-none"
         >
           <li

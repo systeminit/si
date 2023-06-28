@@ -1,11 +1,11 @@
 <template>
   <div>
     <LoadingMessage
-      :request-status="requestStatus"
-      :request-message="loadingMessage"
-      :no-message="showLoaderWithoutMessage"
+      :requestStatus="requestStatus"
+      :requestMessage="loadingMessage"
+      :noMessage="showLoaderWithoutMessage"
     />
-    <ErrorMessage :request-status="requestStatus" />
+    <ErrorMessage :requestStatus="requestStatus" />
   </div>
 </template>
 

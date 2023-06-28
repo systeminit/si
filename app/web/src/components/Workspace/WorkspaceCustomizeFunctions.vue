@@ -1,10 +1,10 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
+  <SiPanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <div class="flex flex-col h-full">
       <ChangeSetPanel />
 
-      <CustomizeTabs tab-content-slug="functions">
+      <CustomizeTabs tabContentSlug="functions">
         <FuncListPanel />
       </CustomizeTabs>
     </div>
@@ -16,10 +16,10 @@
       <FuncEditorTabs />
     </div>
   </div>
-  <SiPanel remember-size-key="func-details" side="right" :min-size="200">
+  <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
     <FuncDetails
       :key="funcStore.urlSelectedFuncId"
-      :func-id="funcStore.urlSelectedFuncId"
+      :funcId="funcStore.urlSelectedFuncId"
     />
   </SiPanel>
 </template>

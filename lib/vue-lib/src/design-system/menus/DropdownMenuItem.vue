@@ -12,7 +12,7 @@
       )
     "
     role="menuitem"
-    :tab-index="disabled === true ? undefined : -1"
+    :tabIndex="disabled === true ? undefined : -1"
     :aria-disabled="disabled === true ? true : undefined"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"

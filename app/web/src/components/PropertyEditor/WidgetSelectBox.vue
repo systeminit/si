@@ -7,10 +7,10 @@
           v-model="currentValue"
           :options="props.options"
           :title="props.name"
-          :doc-link="docLink"
+          :docLink="docLink"
           :validations="validations"
           :disabled="disabled"
-          always-validate
+          alwaysValidate
           @change="setField"
         />
       </div>

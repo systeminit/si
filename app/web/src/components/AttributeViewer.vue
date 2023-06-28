@@ -3,7 +3,7 @@
     <ReadOnlyBanner v-if="disabled" class="border-b-2" />
     <PropertyEditor
       v-if="editorContext"
-      :editor-context="editorContext"
+      :editorContext="editorContext"
       :disabled="props.disabled"
       @updated-property="updateProperty"
       @add-to-array="addToArray"

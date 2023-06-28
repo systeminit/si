@@ -1,8 +1,8 @@
 <template>
   <RequestStatusMessage
     v-if="localDetailsReq.isPending"
-    :request-status="localDetailsReq"
-    show-loader-without-message
+    :requestStatus="localDetailsReq"
+    showLoaderWithoutMessage
   />
   <div v-else-if="localDetails" class="flex flex-col">
     <div

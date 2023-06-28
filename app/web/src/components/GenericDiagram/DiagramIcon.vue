@@ -14,7 +14,7 @@ it from the diagram config's registry of icons */
       }"
     />
     <KonvaSvgImage
-      :raw-svg="rawSvg"
+      :rawSvg="rawSvg"
       :color="color"
       :config="{ width, height }"
       :spin="icon === 'loader' || spin"

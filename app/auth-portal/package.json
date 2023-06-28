@@ -11,7 +11,7 @@
     "build:analyze": "RUN_BUILD_ANALYZER=1 pnpm run build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.js,.cjs,.vue",
-    "lint:strict": "STRICT_LINT=1 pnpm run lint",
+    "lint:strict": "pnpm run lint --max-warnings=0",
     "lint:fix": "pnpm run lint --fix",
     "deploy": "pnpm run build && netlify deploy --dir=dist --prod"
   },

@@ -8,7 +8,7 @@
         <div class="flex items-center justify-center place-items-center h-full">
           <SiLogo class="block h-10 w-10 my-2 mr-2" />
 
-          <NavbarButton tooltip-text="Workspaces">
+          <NavbarButton tooltipText="Workspaces">
             <template #default="{ open, hovered }">
               <div class="flex-col flex text-left gap-xs">
                 <div class="text-xs font-medium capsize pt-2xs">WORKSPACE:</div>

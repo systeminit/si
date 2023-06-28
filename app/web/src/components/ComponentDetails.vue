@@ -12,7 +12,7 @@
       <br />
       NODE ID = {{ selectedComponent.nodeId }}
     </div>
-    <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
+    <ComponentCard :componentId="selectedComponent.id" class="m-xs" />
 
     <div
       v-if="currentStatus && currentStatus.isUpdating"
@@ -26,7 +26,7 @@
     </div>
     <div v-else class="flex flex-row items-center">
       <DetailsPanelTimestamps
-        :change-status="selectedComponent.changeStatus"
+        :changeStatus="selectedComponent.changeStatus"
         :created="selectedComponent.createdInfo"
         :modified="selectedComponent.updatedInfo"
         :deleted="selectedComponent.deletedInfo"
@@ -37,8 +37,8 @@
           icon="refresh"
           size="sm"
           variant="ghost"
-          loading-icon="refresh-active"
-          loading-text="Refreshing..."
+          loadingIcon="refresh-active"
+          loadingText="Refreshing..."
           :loading="refreshing"
           @click="onClickRefreshButton"
         >
@@ -69,11 +69,11 @@
     <template v-else>
       <div class="flex-grow relative">
         <TabGroup
-          :start-selected-tab-slug="isHead ? 'resource' : 'attributes'"
-          :remember-selected-tab-key="`component_details_${
+          :startSelectedTabSlug="isHead ? 'resource' : 'attributes'"
+          :rememberSelectedTabKey="`component_details_${
             isHead ? 'view' : 'model'
           }`"
-          tracking-slug="component_details"
+          trackingSlug="component_details"
         >
           <TabGroupItem label="Attributes" slug="attributes">
             <AttributeViewer
@@ -84,7 +84,7 @@
           <TabGroupItem label="Code" slug="code">
             <template v-if="codeReqStatus.isPending"> Loading code...</template>
             <template v-else-if="codeReqStatus.isError">
-              <ErrorMessage :request-status="codeReqStatus" />
+              <ErrorMessage :requestStatus="codeReqStatus" />
             </template>
             <template
               v-else-if="codeReqStatus.isSuccess && selectedComponentCode"

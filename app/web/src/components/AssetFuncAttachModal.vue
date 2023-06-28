@@ -56,14 +56,14 @@
         />
         <ErrorMessage
           v-if="createFuncReqStatus.isError"
-          :request-status="createFuncReqStatus"
+          :requestStatus="createFuncReqStatus"
         />
         <div class="mt-auto">
           <VButton
             class="w-full"
             :loading="showLoading"
             :disabled="!attachEnabled"
-            :loading-text="`Attaching ${existingOrNew} function...`"
+            :loadingText="`Attaching ${existingOrNew} function...`"
             :label="`Attach ${existingOrNew} function`"
             tone="action"
             icon="plus"
@@ -81,8 +81,8 @@
         </div>
         <div v-if="loadFuncDetailsReq?.value.isPending">
           <RequestStatusMessage
-            :request-status="loadFuncDetailsReq.value"
-            show-loader-without-message
+            :requestStatus="loadFuncDetailsReq.value"
+            showLoaderWithoutMessage
           />
         </div>
         <CodeEditor
@@ -90,8 +90,8 @@
           v-model="selectedFuncCode"
           disabled
           typescript="yes"
-          no-lint
-          no-vim
+          noLint
+          noVim
         />
       </div>
     </div>

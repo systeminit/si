@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
+  <SiPanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <div class="flex flex-col h-full">
       <div
         :style="{ height: `${topSplitSizer.height}px` }"
@@ -10,13 +10,13 @@
           class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
         />
 
-        <CustomizeTabs tab-content-slug="assets">
-          <AssetListPanel :asset-id="assetId" />
+        <CustomizeTabs tabContentSlug="assets">
+          <AssetListPanel :assetId="assetId" />
         </CustomizeTabs>
       </div>
 
       <SiPanelResizer
-        panel-side="bottom"
+        panelSide="bottom"
         :style="{ top: `${topSplitSizer.height}px` }"
         class="w-full"
         @resize-start="topSplitSizer.onResizeStart"
@@ -26,7 +26,7 @@
       <div
         class="h-full border-t dark:border-neutral-600 relative z-20 p-8 dark:bg-neutral-800 bg-shade-0"
       >
-        <AssetFuncListPanel :asset-id="assetId" />
+        <AssetFuncListPanel :assetId="assetId" />
       </div>
     </div>
   </SiPanel>
@@ -34,18 +34,15 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
     <div class="left-2 right-2 top-2 bottom-2 absolute">
-      <AssetEditorTabs
-        :selected-asset-id="assetId"
-        :selected-func-id="funcId"
-      />
+      <AssetEditorTabs :selectedAssetId="assetId" :selectedFuncId="funcId" />
     </div>
   </div>
-  <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <AssetDetailsPanel v-if="assetId && !funcId" :asset-id="assetId" />
+  <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
+    <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
     <FuncDetails
       v-else-if="assetId && funcId"
-      :func-id="funcId"
-      :schema-variant-id="assetStore.assetsById[assetId]?.defaultVariantId"
+      :funcId="funcId"
+      :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
       @detached="onDetach"
     />
   </SiPanel>

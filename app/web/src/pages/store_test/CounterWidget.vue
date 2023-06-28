@@ -1,6 +1,6 @@
 <template>
   <div class="rounded-md bg-neutral-800 p-sm">
-    <Inline align-y="center">
+    <Inline alignY="center">
       <div>{{ id }}</div>
       <VButton icon="plus-circle" @click="counterStore.increment" />
       <VButton icon="minus-circle" @click="counterStore.decrement" />

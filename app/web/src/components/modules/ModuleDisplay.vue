@@ -20,7 +20,7 @@
       loading local modules...
     </div>
     <div v-else-if="loadLocalModulesReqStatus.isError">
-      <ErrorMessage :request-status="loadLocalModulesReqStatus" />
+      <ErrorMessage :requestStatus="loadLocalModulesReqStatus" />
     </div>
     <div v-else-if="loadLocalModulesReqStatus.isSuccess">
       <template v-if="localSummary">
@@ -122,9 +122,9 @@
               Module is not currently installed locally
             </ErrorMessage>
 
-            <ErrorMessage :request-status="installReqStatus" />
+            <ErrorMessage :requestStatus="installReqStatus" />
             <VButton
-              :request-status="installReqStatus"
+              :requestStatus="installReqStatus"
               @click="installButtonHandler"
             >
               Install this module

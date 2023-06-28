@@ -1,13 +1,13 @@
 <template>
   <WorkspaceSinglePageNew
     v-if="featureFlagsStore.SINGLE_MODEL_SCREEN"
-    :workspace-pk="props.workspacePk"
-    :change-set-id="props.changeSetId"
+    :workspacePk="props.workspacePk"
+    :changeSetId="props.changeSetId"
   />
   <WorkspaceSinglePageOld
     v-else
-    :workspace-pk="props.workspacePk"
-    :change-set-id="props.changeSetId"
+    :workspacePk="props.workspacePk"
+    :changeSetId="props.changeSetId"
   />
 </template>
 

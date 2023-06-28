@@ -26,7 +26,7 @@
     <SiPanelResizer
       v-if="resizeable"
       class="si-panel__resizer"
-      :panel-side="side"
+      :panelSide="side"
       @resize-start="onResizeStart"
       @resize-move="onResizeMove"
       @resize-reset="resetSize"

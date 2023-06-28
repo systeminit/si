@@ -106,14 +106,14 @@
             </VButton>
           </template>
         </header>
-        <DropdownMenu ref="profileMenuRef" force-align-right>
+        <DropdownMenu ref="profileMenuRef" forceAlignRight>
           <DropdownMenuItem
             v-if="route.name !== 'review-legal'"
             icon="user-circle"
-            link-to-named-route="profile"
+            linkToNamedRoute="profile"
             >Profile
           </DropdownMenuItem>
-          <DropdownMenuItem icon="logout" link-to-named-route="logout"
+          <DropdownMenuItem icon="logout" linkToNamedRoute="logout"
             >Log out
           </DropdownMenuItem>
         </DropdownMenu>

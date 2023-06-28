@@ -6,11 +6,11 @@
           :id="fieldId"
           v-model="currentValue"
           :title="props.name"
-          :doc-link="docLink"
+          :docLink="docLink"
           :validations="validations"
           :disabled="disabled"
-          :text-area="props.textArea"
-          always-validate
+          :textArea="props.textArea"
+          alwaysValidate
           @blur="setField"
           @keyup.enter="triggerBlur($event)"
         />

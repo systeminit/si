@@ -8,8 +8,8 @@
           class="flex-grow font-bold"
           size="sm"
           type="dropdown"
-          no-label
-          :model-value="selectedChangeSetId"
+          noLabel
+          :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
           @update:model-value="onSelectChangeSet"
         />
@@ -41,7 +41,7 @@
             v-model="createChangeSetName"
             label="Change set name"
             required
-            required-message="Please choose a name for your change set!"
+            requiredMessage="Please choose a name for your change set!"
           />
           <div class="flex flex-row-reverse gap-sm">
             <VButton
@@ -49,8 +49,8 @@
               tone="success"
               icon="plus-circle"
               label="Create change set"
-              loading-text="Creating Change Set"
-              :request-status="createChangeSetReqStatus"
+              loadingText="Creating Change Set"
+              :requestStatus="createChangeSetReqStatus"
               class="flex-grow"
               submit
             />

@@ -3,9 +3,9 @@
     <TabGroup
       ref="tabGroupRef"
       closeable
-      first-tab-margin-left="none"
-      remember-selected-tab-key="asset-editor"
-      start-selected-tab-slug="asset"
+      firstTabMarginLeft="none"
+      rememberSelectedTabKey="asset-editor"
+      startSelectedTabSlug="asset"
       @close-tab="onTabClose"
       @update:selected-tab="onTabChange"
     >
@@ -13,8 +13,8 @@
         <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
           <RequestStatusMessage
             v-if="loadAssetsRequestStatus.isPending"
-            :request-status="loadAssetsRequestStatus"
-            show-loader-without-message
+            :requestStatus="loadAssetsRequestStatus"
+            showLoaderWithoutMessage
           />
           <template v-else-if="loadAssetsRequestStatus.isSuccess">
             Select an asset, to edit it...
@@ -31,13 +31,13 @@
         <AssetEditor
           v-if="tab.type === 'asset'"
           :key="selectedAssetId"
-          :asset-id="selectedAssetId"
+          :assetId="selectedAssetId"
         />
 
         <FuncEditor
           v-else-if="tab.type === 'func'"
           :key="tab.id"
-          :func-id="tab.id"
+          :funcId="tab.id"
         />
       </TabGroupItem>
     </TabGroup>

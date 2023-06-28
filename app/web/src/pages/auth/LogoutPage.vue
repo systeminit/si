@@ -1,5 +1,5 @@
 <template>
-  <AppLayout page-mode="modal" class="font-medium">
+  <AppLayout pageMode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
       <AuthPageHeader title="Logging out"></AuthPageHeader>
 

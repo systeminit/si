@@ -4,11 +4,11 @@
       <TransitionChild
         as="template"
         enter="duration-300 ease-out"
-        enter-from="opacity-0"
-        enter-to="opacity-100"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
         leave="duration-200 ease-in"
-        leave-from="opacity-100"
-        leave-to="opacity-0"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
       >
         <div class="fixed inset-0 bg-shade-100 bg-opacity-60" />
       </TransitionChild>
@@ -18,11 +18,11 @@
           <TransitionChild
             as="template"
             enter="duration-300 ease-out"
-            enter-from="opacity-0 scale-95"
-            enter-to="opacity-100 scale-100"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
             leave="duration-200 ease-in"
-            leave-from="opacity-100 scale-100"
-            leave-to="opacity-0 scale-95"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
           >
             <DialogPanel
               :class="
@@ -51,7 +51,7 @@
                 <div v-if="type === 'save'" class="py-3 flex justify-between">
                   <VButton
                     tone="destructive"
-                    button-rank="tertiary"
+                    buttonRank="tertiary"
                     icon="trash"
                     label="Cancel"
                     size="xs"

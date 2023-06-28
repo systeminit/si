@@ -2,16 +2,16 @@
   <div>
     <RequestStatusMessage
       v-if="loadAssetReqStatus.isPending"
-      :request-status="loadAssetReqStatus"
-      show-loader-without-message
+      :requestStatus="loadAssetReqStatus"
+      showLoaderWithoutMessage
     />
     <div v-else-if="assetStore.selectedAsset && assetId" class="flex flex-col">
       <div
         class="p-sm border-b dark:border-neutral-600 flex flex-row items-center gap-2"
       >
         <VButton
-          :request-status="executeAssetReqStatus"
-          loading-text="Creating Asset..."
+          :requestStatus="executeAssetReqStatus"
+          loadingText="Creating Asset..."
           label="Create Asset"
           :disabled="disabled"
           tone="action"
@@ -30,7 +30,7 @@
       <div class="p-2">
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
-          :request-status="executeAssetReqStatus"
+          :requestStatus="executeAssetReqStatus"
         />
       </div>
       <div class="p-sm flex flex-col">

@@ -1,5 +1,5 @@
 <template>
-  <Disclosure v-slot="{ open }" :as="as" :default-open="defaultOpen">
+  <Disclosure v-slot="{ open }" :as="as" :defaultOpen="defaultOpen">
     <DisclosureButton
       :class="
         clsx(

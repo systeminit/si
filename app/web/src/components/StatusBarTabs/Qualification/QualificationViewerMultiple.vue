@@ -12,7 +12,7 @@
       >
         <QualificationViewerSingle
           :qualification="qualification"
-          :component-id="props.componentId"
+          :componentId="props.componentId"
         />
       </div>
     </div>

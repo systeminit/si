@@ -1,5 +1,5 @@
 <template>
-  <SiButtonIcon tooltip-text="Unset field" icon="x-circle" class="ml-xs mt-8" />
+  <SiButtonIcon tooltipText="Unset field" icon="x-circle" class="ml-xs mt-8" />
 </template>
 
 <script setup lang="ts">

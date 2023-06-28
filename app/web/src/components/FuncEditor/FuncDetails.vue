@@ -10,13 +10,13 @@
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
       !loadFuncDetailsReqStatus.isRequested
     "
-    no-message
+    noMessage
   />
   <div
     v-else-if="selectedFuncId && editingFunc"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
-    <TabGroup remember-selected-tab-key="func_details">
+    <TabGroup rememberSelectedTabKey="func_details">
       <TabGroupItem label="Properties" slug="properties">
         <ScrollArea>
           <template #top>
@@ -28,10 +28,10 @@
                   class="--tone-success"
                   icon="save"
                   size="md"
-                  loading-text="Executing..."
+                  loadingText="Executing..."
                   label="Execute"
-                  :request-status="execFuncReqStatus"
-                  success-text="Finished"
+                  :requestStatus="execFuncReqStatus"
+                  successText="Finished"
                   @click="execFunc"
                 />
 
@@ -40,10 +40,10 @@
                   :disabled="!isRevertible"
                   icon="x"
                   size="md"
-                  loading-text="Reverting..."
+                  loadingText="Reverting..."
                   label="Revert"
-                  :request-status="revertFuncReqStatus"
-                  success-text="Finished"
+                  :requestStatus="revertFuncReqStatus"
+                  successText="Finished"
                   @click="revertFunc"
                 />
 
@@ -54,14 +54,14 @@
                   icon="x"
                   label="Detach"
                   size="md"
-                  loading-text="Detaching..."
+                  loadingText="Detaching..."
                   @click="detachFunc"
                 />
               </div>
               <div class="p-2">
                 <ErrorMessage
                   v-if="execFuncReqStatus.isError"
-                  :request-status="execFuncReqStatus"
+                  :requestStatus="execFuncReqStatus"
                 />
                 <ErrorMessage
                   v-if="isConnectedToOtherAssetTypes"
@@ -82,7 +82,7 @@
             </Stack>
           </template>
 
-          <Collapsible label="Attributes" default-open>
+          <Collapsible label="Attributes" defaultOpen>
             <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this function a Name, Entrypoint and brief description
@@ -125,7 +125,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
-            :schema-variant-id="schemaVariantId"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
           <CodeGenerationDetails
@@ -134,7 +134,7 @@
               editingFunc.associations.type === 'codeGeneration'
             "
             v-model="editingFunc.associations"
-            :schema-variant-id="schemaVariantId"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
           <ConfirmationDetails
@@ -144,7 +144,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
-            :schema-variant-id="schemaVariantId"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
           <QualificationDetails
@@ -154,7 +154,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
-            :schema-variant-id="schemaVariantId"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
           <ValidationDetails
@@ -164,14 +164,14 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
-            :schema-variant-id="schemaVariantId"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
 
           <Collapsible
             v-if="editingFunc.variant === FuncVariant.Attribute"
             label="Arguments"
-            default-open
+            defaultOpen
           >
             <FuncArguments
               v-if="
@@ -197,7 +197,7 @@
           "
           ref="detachRef"
           v-model="editingFunc.associations"
-          :schema-variant-id="schemaVariantId"
+          :schemaVariantId="schemaVariantId"
           @change="updateFunc"
         />
       </TabGroupItem>

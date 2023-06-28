@@ -13,7 +13,7 @@
     "watch": "pnpm run build:watch",
     "lint": "eslint src --ext .ts,.js,.cjs,.vue",
     "lint:fix": "pnpm run lint --fix",
-    "lint:strict": "STRICT_LINT=1 npm run lint",
+    "lint:strict": "npm run lint --max-warnings=0",
     "lint:summary": "pnpm run lint --format summary-chart",
     "fmt": "pnpm run lint:fix",
     "fmt:check": "pnpm run lint",

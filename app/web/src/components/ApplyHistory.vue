@@ -12,11 +12,11 @@
     Nothing has been applied
   </div>
   <div v-else>
-    <SiSearch auto-search class="border-b-0" />
+    <SiSearch autoSearch class="border-b-0" />
     <Collapsible
       v-for="(fixBatch, batch_index) of fixBatches"
       :key="batch_index"
-      hide-bottom-border
+      hideBottomBorder
     >
       <template #label>
         <div class="flex flex-row flex-wrap items-center gap-1">
@@ -51,7 +51,7 @@
           >
             <Timestamp
               size="mini"
-              show-time-if-today
+              showTimeIfToday
               :date="new Date(fixBatch.startedAt)"
             />
           </span>
@@ -89,10 +89,10 @@
           <Collapsible
             v-for="(fix, fix_index) of fixBatch.fixes"
             :key="fix_index"
-            hide-bottom-border
-            text-size="sm"
-            button-classes="py-0.5"
-            :default-open="false"
+            hideBottomBorder
+            textSize="sm"
+            buttonClasses="py-0.5"
+            :defaultOpen="false"
           >
             <template #label>
               <StatusIndicatorIcon type="fix" :status="fix.status" />

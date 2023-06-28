@@ -2,8 +2,8 @@
   <ScrollArea>
     <RequestStatusMessage
       v-if="loadAssetsReqStatus.isPending && assetStore.assetList.length < 1"
-      :request-status="loadAssetsReqStatus"
-      loading-message="Loading assets..."
+      :requestStatus="loadAssetsReqStatus"
+      loadingMessage="Loading assets..."
     />
     <template #top>
       <div
@@ -17,7 +17,7 @@
           @click="newAsset"
         />
       </div>
-      <SiSearch auto-search placeholder="search assets" />
+      <SiSearch autoSearch placeholder="search assets" />
       <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
       >
@@ -31,8 +31,8 @@
           :key="category"
           :label="category"
           as="li"
-          content-as="ul"
-          default-open
+          contentAs="ul"
+          defaultOpen
           class="select-none"
         >
           <AssetListItem
