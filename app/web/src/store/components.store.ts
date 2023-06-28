@@ -1053,23 +1053,80 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             await this.DELETE_COMPONENT(componentId);
           });
         },
-        // TODO: maybe want the backend to handle this bulk calls instead
-        // so it can optimize how it handles updates / queueing
+
         async DELETE_COMPONENTS2(componentIds: ComponentId[]) {
-          await async.eachSeries(componentIds, async (componentId) => {
-            await this.DELETE_COMPONENT2(componentId);
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest({
+            method: "post",
+            url: "diagram/delete_components",
+            keyRequestStatusBy: componentIds,
+            params: {
+              componentIds,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
+            optimistic: () => {
+	      for (const componentId of componentIds) {
+                const component = this.rawComponentsById[componentId];
+                if (component) {
+                  this.rawComponentsById[componentId] = {
+                    ...component,
+                    changeStatus: "deleted",
+                    deletedInfo: {
+                      timestamp: new Date().toISOString(),
+                      actor: { kind: "user", label: "You" },
+                    },
+                  };
+                }
+	      }
+
+              // TODO: optimistically delete connected edges?
+              // not super important...
+              return () => {
+	        for (const componentId of componentIds) {
+                  const component = this.rawComponentsById[componentId];
+                  const originalStatus = component?.changeStatus;
+                  if (component && originalStatus) {
+                    this.rawComponentsById[componentId] = {
+                      ...component,
+                      changeStatus: originalStatus,
+                      deletedInfo: undefined,
+                    };
+                  }
+		}
+              };
+            },
           });
         },
+
         async RESTORE_COMPONENTS(componentIds: ComponentId[]) {
           // TODO: maybe want the backend to handle this all at once?
           await async.eachSeries(componentIds, async (componentId) => {
             await this.RESTORE_COMPONENT(componentId);
           });
         },
+
         async RESTORE_COMPONENTS2(componentIds: ComponentId[]) {
-          // TODO: maybe want the backend to handle this all at once?
-          await async.eachSeries(componentIds, async (componentId) => {
-            await this.RESTORE_COMPONENT2(componentId);
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
+          return new ApiRequest({
+            method: "post",
+            url: "diagram/restore_components",
+            keyRequestStatusBy: componentIds,
+            params: {
+              componentIds,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
           });
         },
 

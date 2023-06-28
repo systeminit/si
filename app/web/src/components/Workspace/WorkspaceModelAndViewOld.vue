@@ -466,9 +466,7 @@ async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
     await componentsStore.DELETE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
-    for (const componentId of selectedComponentIds.value) {
-      await componentsStore.DELETE_COMPONENT(componentId);
-    }
+    await componentsStore.DELETE_COMPONENTS(selectedComponentIds.value);
   }
   componentsStore.setSelectedComponentId(null);
 }
