@@ -1071,7 +1071,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-	      for (const componentId of componentIds) {
+              for (const componentId of componentIds) {
                 const component = this.rawComponentsById[componentId];
                 if (component) {
                   this.rawComponentsById[componentId] = {
@@ -1083,12 +1083,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     },
                   };
                 }
-	      }
+              }
 
               // TODO: optimistically delete connected edges?
               // not super important...
               return () => {
-	        for (const componentId of componentIds) {
+                for (const componentId of componentIds) {
                   const component = this.rawComponentsById[componentId];
                   const originalStatus = component?.changeStatus;
                   if (component && originalStatus) {
@@ -1098,7 +1098,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       deletedInfo: undefined,
                     };
                   }
-		}
+                }
               };
             },
           });

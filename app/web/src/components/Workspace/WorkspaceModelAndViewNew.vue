@@ -514,7 +514,7 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
   );
 
   if (equivalentEdge) {
-    await componentsStore.RESTORE_EDGE2(equivalentEdge!.id);
+    await componentsStore.RESTORE_EDGE2(equivalentEdge?.id);
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION2(
       {

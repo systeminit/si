@@ -1,13 +1,13 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFuncStore, FuncSummary, FuncId } from "./func/funcs.store";
 import { useRouterStore } from "./router.store";
-import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 
 export type AssetId = string;
 export type AssetSlug = string;
@@ -108,7 +108,9 @@ export const useAssetStore = () => {
           }
         },
         getLastSelectedAssetId(): AssetId | undefined {
-          return storage.getItem(LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY) as AssetId;
+          return storage.getItem(
+            LOCAL_STORAGE_LAST_SELECTED_ASSET_ID_KEY,
+          ) as AssetId;
         },
         setSelectedAssetId(selection: AssetId | null) {
           if (!selection) {
