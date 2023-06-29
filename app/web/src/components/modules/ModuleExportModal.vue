@@ -51,11 +51,11 @@
       </ul>
       <ErrorMessage
         v-if="exportPkgReqStatus.isError"
-        :request-status="exportPkgReqStatus"
+        :requestStatus="exportPkgReqStatus"
       />
       <VButton
-        :request-status="exportPkgReqStatus"
-        loading-text="Exporting..."
+        :requestStatus="exportPkgReqStatus"
+        loadingText="Exporting..."
         label="Export"
         tone="action"
         icon="plus"

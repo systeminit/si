@@ -15,8 +15,8 @@
               class="flex-grow font-bold"
               size="sm"
               type="dropdown"
-              no-label
-              :model-value="workspacesStore.selectedWorkspacePk"
+              noLabel
+              :modelValue="workspacesStore.selectedWorkspacePk"
               :options="workspaceDropdownOptions"
             />
           </div>

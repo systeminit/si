@@ -68,7 +68,7 @@
 
       <AttributeBindingsModal
         ref="bindingsModalRef"
-        :schema-variant-id="schemaVariantId"
+        :schemaVariantId="schemaVariantId"
         type="save"
         @save="saveModal"
       />

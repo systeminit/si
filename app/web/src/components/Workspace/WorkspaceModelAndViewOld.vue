@@ -1,12 +1,12 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
+  <SiPanel rememberSizeKey="changeset-and-asset" side="left" :minSize="250">
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!isViewMode" />
       <div class="grow relative">
         <TabGroup
-          remember-selected-tab-key="diagram_left"
-          tracking-slug="diagram_outline"
+          rememberSelectedTabKey="diagram_left"
+          trackingSlug="diagram_outline"
         >
           <TabGroupItem
             v-if="!isViewMode"
@@ -34,16 +34,16 @@
         )
       "
     >
-      <ReadOnlyBanner show-refresh-all-button />
+      <ReadOnlyBanner showRefreshAllButton />
     </div>
     <GlobalStatusOverlay v-else />
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
-      :custom-config="diagramCustomConfig"
+      :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
-      :read-only="isViewMode"
+      :readOnly="isViewMode"
       @insert-element="onDiagramInsertElement"
       @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
@@ -59,10 +59,10 @@
   </div>
 
   <SiPanel
-    remember-size-key="details-panel"
+    rememberSizeKey="details-panel"
     side="right"
-    :default-size="380"
-    :min-size="300"
+    :defaultSize="380"
+    :minSize="300"
   >
     <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
     <template v-if="selectedEdge">
@@ -110,7 +110,7 @@
     <Stack spacing="sm">
       <template v-if="selectedEdge">
         <p>You're about to delete the following edge:</p>
-        <EdgeCard :edge-id="selectedEdge.id" />
+        <EdgeCard :edgeId="selectedEdge.id" />
       </template>
       <template v-else>
         <p>You're about to delete the following component(s):</p>
@@ -118,7 +118,7 @@
           <ComponentCard
             v-for="component in deletableSelectedComponents"
             :key="component.id"
-            :component-id="component.id"
+            :componentId="component.id"
           />
         </Stack>
       </template>

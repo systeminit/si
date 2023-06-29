@@ -8,10 +8,10 @@
           class="flex-grow"
           :options="options"
           :title="name"
-          :doc-link="docLink"
+          :docLink="docLink"
           :disabled="disabled"
           :validations="validations"
-          always-validate
+          alwaysValidate
           @change="setField"
         />
       </div>

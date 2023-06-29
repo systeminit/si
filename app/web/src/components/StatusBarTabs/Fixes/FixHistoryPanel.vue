@@ -94,7 +94,7 @@
               : ''
           "
           class="text-neutral-50"
-          title-classes=""
+          titleClasses=""
         >
           <template #title>
             <StatusIndicatorIcon

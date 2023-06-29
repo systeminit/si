@@ -6,10 +6,10 @@
           :id="fieldId"
           v-model="currentValue"
           :title="props.name"
-          :doc-link="docLink"
+          :docLink="docLink"
           :validations="validations"
           :disabled="disabled"
-          always-validate
+          alwaysValidate
           @blur="setField"
           @keyup.enter="triggerBlur($event)"
         />

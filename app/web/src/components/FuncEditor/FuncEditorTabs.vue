@@ -2,9 +2,9 @@
   <TabGroup
     ref="tabGroupRef"
     closeable
-    first-tab-margin-left="none"
-    remember-selected-tab-key="func-editor"
-    :start-selected-tab-slug="funcStore.urlSelectedFuncId"
+    firstTabMarginLeft="none"
+    rememberSelectedTabKey="func-editor"
+    :startSelectedTabSlug="funcStore.urlSelectedFuncId"
     @close-tab="closeFunc"
     @update:selected-tab="onTabChange"
   >
@@ -12,8 +12,8 @@
       <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
         <RequestStatusMessage
           v-if="loadFuncsReqStatus.isPending"
-          :request-status="loadFuncsReqStatus"
-          show-loader-without-message
+          :requestStatus="loadFuncsReqStatus"
+          showLoaderWithoutMessage
         />
         <template v-else-if="loadFuncsReqStatus.isSuccess">
           Select a function to edit it.
@@ -33,7 +33,7 @@
       <FuncEditor
         v-if="funcStore.funcsById[openFuncId]"
         :key="openFuncId"
-        :func-id="openFuncId"
+        :funcId="openFuncId"
       />
       <template v-else>
         <div

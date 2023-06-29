@@ -9,18 +9,18 @@
         <!-- search bar - dont need to show if no components -->
         <SiSearch
           v-if="rootComponents.length"
-          auto-search
+          autoSearch
           @search="onSearchUpdated"
         />
       </template>
 
       <RequestStatusMessage
         v-if="fetchComponentsReq.isPending && !rootComponents.length"
-        :request-status="fetchComponentsReq"
-        loading-message="Loading..."
+        :requestStatus="fetchComponentsReq"
+        loadingMessage="Loading..."
       />
       <template v-else-if="fetchComponentsReq.isError">
-        <ErrorMessage :request-status="fetchComponentsReq" />
+        <ErrorMessage :requestStatus="fetchComponentsReq" />
       </template>
       <template v-else>
         <!-- filtered / search mode -->
@@ -28,7 +28,7 @@
           <ComponentOutlineNode
             v-for="component in filteredComponents"
             :key="component.id"
-            :component-id="component.id"
+            :componentId="component.id"
           />
         </template>
 
@@ -50,7 +50,7 @@
             <ComponentOutlineNode
               v-for="component in rootComponents"
               :key="component.id"
-              :component-id="component.id"
+              :componentId="component.id"
             />
           </template>
         </template>

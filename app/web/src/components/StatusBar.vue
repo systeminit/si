@@ -1,20 +1,20 @@
 <template>
   <SiPanel
     ref="panelRef"
-    remember-size-key="status-bar"
+    rememberSizeKey="status-bar"
     side="bottom"
-    :min-resize="0"
-    :max-resize="0.8"
+    :minResize="0"
+    :maxResize="0.8"
     :class="clsx(!panelOpen && 'h-12', themeContainerClasses)"
     :resizeable="panelOpen"
-    :default-size="320"
-    :min-size="280"
+    :defaultSize="320"
+    :minSize="280"
   >
     <!-- TODO - we should replace this with our own TabGroup component eventually -->
     <TabGroup
       class="flex flex-col w-full h-full bg-neutral-900 text-white"
       as="div"
-      :selected-index="selectedTab"
+      :selectedIndex="selectedTab"
       @change="changeTab"
     >
       <TabList
@@ -104,12 +104,12 @@
         </div>
       </TabList>
       <Transition
-        enter-active-class="transition duration-100 ease-out"
-        enter-from-class="transform scale-95 opacity-0"
-        enter-to-class="transform scale-100 opacity-100"
-        leave-active-class="transition duration-75 ease-out"
-        leave-from-class="transform scale-100 opacity-100"
-        leave-to-class="transform scale-95 opacity-0"
+        enterActiveClass="transition duration-100 ease-out"
+        enterFromClass="transform scale-95 opacity-0"
+        enterToClass="transform scale-100 opacity-100"
+        leaveActiveClass="transition duration-75 ease-out"
+        leaveFromClass="transform scale-100 opacity-100"
+        leaveToClass="transform scale-95 opacity-0"
       >
         <TabPanels
           v-if="panelOpen"

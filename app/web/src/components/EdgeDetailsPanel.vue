@@ -1,7 +1,7 @@
 <template>
   <div v-if="selectedEdge" class="flex flex-col h-full">
     <div class="p-xs border-b dark:border-neutral-600">
-      <Inline align-y="center">
+      <Inline alignY="center">
         <Icon size="md" name="plug" class="shrink-0 mr-2xs" />
         <div class="font-bold capsize">Connection Details</div>
       </Inline>
@@ -13,10 +13,10 @@
       </div>
 
       <div class="p-xs">
-        <EdgeCard :edge-id="selectedEdge.id" />
+        <EdgeCard :edgeId="selectedEdge.id" />
       </div>
       <DetailsPanelTimestamps
-        :change-status="selectedEdge.changeStatus"
+        :changeStatus="selectedEdge.changeStatus"
         :created="selectedEdge.createdInfo"
         :deleted="selectedEdge.deletedInfo"
       />

@@ -3,12 +3,12 @@
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
       Add the names of the arguments to this function and their types.
     </h1>
-    <Inline align-y="center">
+    <Inline alignY="center">
       <VormInput
         id="newArg"
         v-model="newArg.name"
         type="text"
-        no-label
+        noLabel
         placeholder="New argument name..."
         :disabled="disabled"
       />
@@ -26,12 +26,12 @@
       />
     </Inline>
     <ul>
-      <Inline v-for="arg in editingArgs" :key="arg.id" align-y="center">
+      <Inline v-for="arg in editingArgs" :key="arg.id" alignY="center">
         <VormInput
           :id="`arg-name-${arg.id}`"
           v-model="arg.name"
           type="text"
-          no-label
+          noLabel
           placeholder="Argument name"
           :disabled="disabled"
           @blur="saveArguments"

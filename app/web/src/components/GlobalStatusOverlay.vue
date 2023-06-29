@@ -2,10 +2,10 @@
   <ProgressBarOverlay
     :title="statusStore.globalStatusMessage"
     :detail="statusStore.globalStatusDetailMessage"
-    :done-count="statusStore.globalStatus?.componentsCountCurrent"
-    :total-count="statusStore.globalStatus?.componentsCountTotal"
-    bar-label="Updated"
-    :progress-percent="progressPercent"
+    :doneCount="statusStore.globalStatus?.componentsCountCurrent"
+    :totalCount="statusStore.globalStatus?.componentsCountTotal"
+    barLabel="Updated"
+    :progressPercent="progressPercent"
   />
 </template>
 

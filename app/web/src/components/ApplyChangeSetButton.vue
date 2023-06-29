@@ -4,9 +4,9 @@
     icon="tools"
     size="sm"
     tone="success"
-    loading-text="Applying Changes"
+    loadingText="Applying Changes"
     label="Apply Changes"
-    :request-status="applyChangeSetReqStatus"
+    :requestStatus="applyChangeSetReqStatus"
     :disabled="statusStoreUpdating"
     @click="applyChangeSet"
   />

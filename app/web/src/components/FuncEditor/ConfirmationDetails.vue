@@ -10,7 +10,7 @@
       </h2>
       <RunOnSelector
         v-model="selectedVariants"
-        thing-label="asset type"
+        thingLabel="asset type"
         :options="schemaVariantOptions"
         :disabled="props.disabled"
         @change="updateAssociations"
@@ -21,7 +21,7 @@
     <ConfirmationDescriptionModal
       ref="descriptionsModal"
       v-model="funcDescriptions"
-      :schema-variants="selectedVariants"
+      :schemaVariants="selectedVariants"
       @change="updateAssociations"
     />
   </div>

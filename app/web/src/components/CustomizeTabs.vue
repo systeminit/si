@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex-grow">
     <TabGroup
-      :start-selected-tab-slug="tabContentSlug"
+      :startSelectedTabSlug="tabContentSlug"
       @update:selected-tab="onTabChange"
     >
       <TabGroupItem slug="assets" label="ASSETS">

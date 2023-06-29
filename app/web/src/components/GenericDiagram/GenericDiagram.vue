@@ -23,7 +23,7 @@ overflow hidden */
       </div>
     </div>
     <DiagramControls
-      :zoom-level="zoomLevel"
+      :zoomLevel="zoomLevel"
       @update:zoom="setZoom"
       @open:help="helpModalRef.open()"
     />
@@ -40,23 +40,23 @@ overflow hidden */
       @click.right="onRightClick"
     >
       <DiagramGridBackground
-        :grid-min-x="gridMinX"
-        :grid-max-x="gridMaxX"
-        :grid-min-y="gridMinY"
-        :grid-max-y="gridMaxY"
-        :zoom-level="zoomLevel"
+        :gridMinX="gridMinX"
+        :gridMaxX="gridMaxX"
+        :gridMinY="gridMinY"
+        :gridMaxY="gridMaxY"
+        :zoomLevel="zoomLevel"
       />
       <v-layer>
         <DiagramGroup
           v-for="group in groups"
           :key="group.uniqueKey"
           :group="group"
-          :temp-position="movedElementPositions[group.uniqueKey]"
-          :temp-size="resizedElementSizes[group.uniqueKey]"
-          :connected-edges="connectedEdgesByElementKey[group.uniqueKey]"
-          :draw-edge-state="drawEdgeState"
-          :is-hovered="elementIsHovered(group)"
-          :is-selected="elementIsSelected(group)"
+          :tempPosition="movedElementPositions[group.uniqueKey]"
+          :tempSize="resizedElementSizes[group.uniqueKey]"
+          :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+          :drawEdgeState="drawEdgeState"
+          :isHovered="elementIsHovered(group)"
+          :isSelected="elementIsSelected(group)"
           @hover:start="(meta) => onElementHoverStart(group, meta)"
           @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
@@ -65,12 +65,12 @@ overflow hidden */
           v-for="node in nodes"
           :key="node.uniqueKey"
           :node="node"
-          :temp-position="movedElementPositions[node.uniqueKey]"
-          :connected-edges="connectedEdgesByElementKey[node.uniqueKey]"
-          :draw-edge-state="drawEdgeState"
-          :is-hovered="elementIsHovered(node)"
-          :is-selected="elementIsSelected(node)"
-          :delete-icon="deleteIcon"
+          :tempPosition="movedElementPositions[node.uniqueKey]"
+          :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
+          :drawEdgeState="drawEdgeState"
+          :isHovered="elementIsHovered(node)"
+          :isSelected="elementIsSelected(node)"
+          :deleteIcon="deleteIcon"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
@@ -79,10 +79,10 @@ overflow hidden */
           v-for="edge in edges"
           :key="edge.uniqueKey"
           :edge="edge"
-          :from-point="getSocketLocationInfo(edge.fromSocketKey)?.center"
-          :to-point="getSocketLocationInfo(edge.toSocketKey)?.center"
-          :is-hovered="elementIsHovered(edge)"
-          :is-selected="elementIsSelected(edge)"
+          :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+          :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+          :isHovered="elementIsHovered(edge)"
+          :isSelected="elementIsSelected(edge)"
           @hover:start="onElementHoverStart(edge)"
           @hover:end="onElementHoverEnd(edge)"
         />
@@ -90,9 +90,9 @@ overflow hidden */
           v-for="group in groups"
           :key="group.uniqueKey"
           :group="group"
-          :temp-position="movedElementPositions[group.uniqueKey]"
-          :temp-size="resizedElementSizes[group.uniqueKey]"
-          :delete-icon="deleteIcon"
+          :tempPosition="movedElementPositions[group.uniqueKey]"
+          :tempSize="resizedElementSizes[group.uniqueKey]"
+          :deleteIcon="deleteIcon"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
 
@@ -139,8 +139,8 @@ overflow hidden */
         <!-- new edge being drawn -->
         <DiagramNewEdge
           v-if="drawEdgeActive"
-          :from-point="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
-          :to-point="
+          :fromPoint="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
+          :toPoint="
             getSocketLocationInfo(drawEdgeToSocketKey)?.center || gridPointerPos
           "
         />

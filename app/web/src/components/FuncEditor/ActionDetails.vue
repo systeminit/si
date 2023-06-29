@@ -16,7 +16,7 @@
       </h2>
       <RunOnSelector
         v-model="selectedVariants"
-        thing-label="assets of type"
+        thingLabel="assets of type"
         :options="schemaVariantOptions"
         :disabled="disabled"
         @change="updateAssociations"

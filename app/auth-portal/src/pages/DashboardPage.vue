@@ -12,14 +12,14 @@
       <Icon name="loader" />
     </template>
     <template v-else-if="loadWorkspacesReqStatus.isError">
-      <ErrorMessage :request-status="loadWorkspacesReqStatus" />
+      <ErrorMessage :requestStatus="loadWorkspacesReqStatus" />
     </template>
     <template v-else-if="loadWorkspacesReqStatus.isSuccess">
       <Stack class="mt-lg">
         <WorkspaceLinkWidget
           v-for="workspace in workspaces"
           :key="workspace.id"
-          :workspace-id="workspace.id"
+          :workspaceId="workspace.id"
         />
       </Stack>
     </template>

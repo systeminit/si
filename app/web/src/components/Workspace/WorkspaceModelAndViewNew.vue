@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
+  <SiPanel rememberSizeKey="changeset-and-asset" side="left" :minSize="250">
     <div class="flex flex-col h-full">
       <div
         :style="{ height: `${topLeftPanel.height}px` }"
@@ -10,7 +10,7 @@
       </div>
 
       <SiPanelResizer
-        panel-side="bottom"
+        panelSide="bottom"
         :style="{ top: `${topLeftPanel.height}px` }"
         class="w-full"
         @resize-start="topLeftPanel.onResizeStart"
@@ -41,7 +41,7 @@
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
-      :custom-config="diagramCustomConfig"
+      :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
       @insert-element="onDiagramInsertElement"
@@ -59,17 +59,17 @@
   </div>
 
   <SiPanel
-    remember-size-key="details-panel"
+    rememberSizeKey="details-panel"
     side="right"
-    :default-size="380"
-    :min-size="300"
+    :defaultSize="380"
+    :minSize="300"
   >
     <div class="flex flex-col h-full">
       <Collapsible
         as="div"
-        content-as="span"
-        :default-open="false"
-        hide-bottom-border-when-open
+        contentAs="span"
+        :defaultOpen="false"
+        hideBottomBorderWhenOpen
       >
         <template #label>
           <span
@@ -101,15 +101,15 @@
           </div>
           <TabGroup
             v-else
-            remember-selected-tab-key="proposed_right"
-            tracking-slug="recommendations_applied"
+            rememberSelectedTabKey="proposed_right"
+            trackingSlug="recommendations_applied"
           >
             <TabGroupItem label="Proposed" slug="recommendations_proposed">
               <Collapsible
                 as="div"
-                content-as="ul"
-                :default-open="false"
-                hide-bottom-border-when-open
+                contentAs="ul"
+                :defaultOpen="false"
+                hideBottomBorderWhenOpen
               >
                 <template #label>
                   <div class="flex flex-col min-w-0 grow">
@@ -138,9 +138,9 @@
                 v-for="diff in diffs"
                 :key="diff.componentId"
                 as="div"
-                content-as="ul"
-                :default-open="false"
-                hide-bottom-border-when-open
+                contentAs="ul"
+                :defaultOpen="false"
+                hideBottomBorderWhenOpen
               >
                 <template #label>
                   <div class="flex flex-col min-w-0 grow">
@@ -211,7 +211,7 @@
             </TabGroupItem>
           </TabGroup>
           <SiPanelResizer
-            panel-side="bottom"
+            panelSide="bottom"
             style="width: 100%; bottom: 0"
             @resize-start="topRightPanel.onResizeStart"
             @resize-move="topRightPanel.onResizeMove"
@@ -277,7 +277,7 @@
     <Stack spacing="sm">
       <template v-if="selectedEdge">
         <p>You're about to delete the following edge:</p>
-        <EdgeCard :edge-id="selectedEdge.id" />
+        <EdgeCard :edgeId="selectedEdge.id" />
       </template>
       <template v-else>
         <p>You're about to delete the following component(s):</p>
@@ -285,7 +285,7 @@
           <ComponentCard
             v-for="component in deletableSelectedComponents"
             :key="component.id"
-            :component-id="component.id"
+            :componentId="component.id"
           />
         </Stack>
       </template>

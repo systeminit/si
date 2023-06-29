@@ -1,9 +1,9 @@
 <template>
   <Collapsible
     as="div"
-    content-as="ul"
-    :default-open="false"
-    hide-bottom-border-when-open
+    contentAs="ul"
+    :defaultOpen="false"
+    hideBottomBorderWhenOpen
   >
     <template #label>
       <div

@@ -10,7 +10,7 @@
       </h2>
       <RunOnSelector
         v-model="selectedComponents"
-        thing-label="components"
+        thingLabel="components"
         :options="componentOptions"
         :disabled="disabled"
         @change="updateAssociations"
@@ -20,7 +20,7 @@
       </h2>
       <RunOnSelector
         v-model="selectedVariants"
-        thing-label="schema variants"
+        thingLabel="schema variants"
         :options="schemaVariantOptions"
         :disabled="disabled"
         @change="updateAssociations"

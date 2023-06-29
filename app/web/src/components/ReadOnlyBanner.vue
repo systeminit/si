@@ -31,8 +31,8 @@
       v-if="showRefreshAllButton"
       icon="refresh"
       variant="ghost"
-      loading-icon="refresh-active"
-      loading-text="Refreshing..."
+      loadingIcon="refresh-active"
+      loadingText="Refreshing..."
       :loading="refreshing"
       @click="onClickRefreshButton"
       >Resources</VButton

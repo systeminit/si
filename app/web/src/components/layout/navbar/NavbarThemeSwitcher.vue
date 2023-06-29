@@ -1,6 +1,6 @@
 <template>
   <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
-  <NavbarButton ref="buttonRef" tooltip-text="Change theme">
+  <NavbarButton ref="buttonRef" tooltipText="Change theme">
     <Icon :name="currentTheme === 'light' ? 'sun' : 'moon'" />
 
     <template #dropdownContent>

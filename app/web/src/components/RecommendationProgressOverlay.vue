@@ -3,9 +3,9 @@
     v-if="fixesStore.runningFixBatch"
     :title="fixState.summary"
     :detail="fixState.highlightedSummary"
-    :done-count="fixState.executed"
-    :total-count="fixState.total"
-    :bar-label="fixState.mode === 'syncing' ? 'Synced' : 'Applied'"
+    :doneCount="fixState.executed"
+    :totalCount="fixState.total"
+    :barLabel="fixState.mode === 'syncing' ? 'Synced' : 'Applied'"
   />
   <GlobalStatusOverlay v-else />
 </template>

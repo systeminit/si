@@ -10,7 +10,7 @@
       </div>
       <ErrorMessage
         v-else-if="workspacesReqStatus.isError"
-        :request-status="workspacesReqStatus"
+        :requestStatus="workspacesReqStatus"
       />
       <div
         v-else-if="workspacesReqStatus.isSuccess"

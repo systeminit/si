@@ -3,9 +3,9 @@
     class="flex items-center justify-center place-items-center mx-auto h-full"
   >
     <NavbarButton
-      tooltip-text="Model"
+      tooltipText="Model"
       :selected="route.name === 'workspace-compose'"
-      :link-to="{
+      :linkTo="{
         name: 'workspace-compose',
         params: { changeSetId: 'auto' },
       }"
@@ -14,9 +14,9 @@
     </NavbarButton>
 
     <NavbarButton
-      tooltip-text="Customize"
+      tooltipText="Customize"
       :selected="route.matched.some((r) => r.name === 'workspace-lab')"
-      :link-to="{
+      :linkTo="{
         name: 'workspace-lab',
         params: { changeSetId: 'auto' },
       }"
@@ -32,18 +32,18 @@
 
     <NavbarButton
       v-if="!featureFlagsStore.SINGLE_MODEL_SCREEN"
-      tooltip-text="Apply"
+      tooltipText="Apply"
       :selected="route.name === 'workspace-fix'"
-      :link-to="{ name: 'workspace-fix' }"
+      :linkTo="{ name: 'workspace-fix' }"
     >
       <Icon name="tools" />
     </NavbarButton>
 
     <NavbarButton
       v-if="!featureFlagsStore.SINGLE_MODEL_SCREEN"
-      tooltip-text="Analyze"
+      tooltipText="Analyze"
       :selected="route.name === 'workspace-view'"
-      :link-to="{ name: 'workspace-view' }"
+      :linkTo="{ name: 'workspace-view' }"
     >
       <Icon name="eye" />
     </NavbarButton>

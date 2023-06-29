@@ -2,10 +2,10 @@
   <VButton
     tone="action"
     icon="plus"
-    icon-right="chevron--down"
+    iconRight="chevron--down"
     :variant="menuRef?.isOpen ? 'ghost' : 'solid'"
-    :request-status="requestStatus"
-    loading-text="Creating new function..."
+    :requestStatus="requestStatus"
+    loadingText="Creating new function..."
     size="sm"
     @click="menuRef?.open"
   >

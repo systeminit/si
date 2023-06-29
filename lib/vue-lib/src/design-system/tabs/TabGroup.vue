@@ -94,7 +94,7 @@
         >
           <Icon name="dots-vertical" />
         </div>
-        <DropdownMenu ref="overflowMenuRef" force-align-right>
+        <DropdownMenu ref="overflowMenuRef" forceAlignRight>
           <DropdownMenuItem
             v-for="tab in orderedTabs"
             :key="tab.props.slug"

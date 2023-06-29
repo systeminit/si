@@ -1,5 +1,5 @@
 <template>
-  <AppLayout page-mode="modal" class="font-medium">
+  <AppLayout pageMode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
       <AuthPageHeader title="Authenticating">
         Validating your credentials
@@ -12,7 +12,7 @@
             <a :href="LOGIN_URL">Return to login</a>
           </template>
           <template v-else-if="authReqStatus.isError">
-            <ErrorMessage :request-status="authReqStatus" />
+            <ErrorMessage :requestStatus="authReqStatus" />
             <a :href="LOGIN_URL">Return to login</a>
           </template>
           <template v-else-if="authReqStatus.isPending">

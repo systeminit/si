@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <Confetti :active="runConfetti" start-top no-loop />
+    <Confetti :active="runConfetti" startTop noLoop />
 
     <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
       <RichText>
@@ -69,9 +69,9 @@
 
             <Transition
               class="duration-500"
-              enter-from-class="transform opacity-0"
-              enter-to-class="opacity-100"
-              leave-to-class="opacity-0"
+              enterFromClass="transform opacity-0"
+              enterToClass="opacity-100"
+              leaveToClass="opacity-0"
             >
               <WorkspaceLinkWidget
                 v-if="
@@ -95,7 +95,7 @@
           </RichText>
           <VButton
             class="w-full mt-lg"
-            icon-right="arrow--right"
+            iconRight="arrow--right"
             variant="solid"
             tone="action"
             @click="stepContinueHandler"

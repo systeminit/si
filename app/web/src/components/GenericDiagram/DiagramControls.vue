@@ -20,7 +20,7 @@
     >
       {{ roundedZoomPercent }}%
 
-      <DropdownMenu ref="zoomMenuRef" force-above>
+      <DropdownMenu ref="zoomMenuRef" forceAbove>
         <DropdownMenuItem
           v-for="zoomOptionAmount in ZOOM_LEVEL_OPTIONS"
           :key="zoomOptionAmount"

@@ -30,7 +30,7 @@
 
       <Stack>
         <h2>API</h2>
-        <ErrorMessage :request-status="apiVersionReqStatus" />
+        <ErrorMessage :requestStatus="apiVersionReqStatus" />
         <template v-if="apiVersionReqStatus.isPending">Loading...</template>
         <template
           v-else-if="apiVersionReqStatus.isSuccess && apiSha && apiBranch"

@@ -1,11 +1,11 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
+  <SiPanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <div class="flex flex-col h-full">
       <ChangeSetPanel
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-      <CustomizeTabs tab-content-slug="packages">
+      <CustomizeTabs tabContentSlug="packages">
         <ModuleListPanel />
       </CustomizeTabs>
     </div>
@@ -17,7 +17,7 @@
       <ModuleDisplay :key="moduleSlug" />
     </div>
   </div>
-  <SiPanel remember-size-key="func-details" side="right" :min-size="200">
+  <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
     <ModuleDetailsPanel :key="moduleSlug" />
   </SiPanel>
 </template>

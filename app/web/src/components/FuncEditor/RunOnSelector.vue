@@ -4,7 +4,7 @@
       <SelectMenu
         v-model="optionsState"
         class="w-4/5"
-        :none-selected-label="`select ${thingLabel}...`"
+        :noneSelectedLabel="`select ${thingLabel}...`"
         :options="options"
         :disabled="disabled"
       />

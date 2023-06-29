@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-row h-full w-full">
-    <StatusBarTabPanelComponentList :component-list="props.componentList" />
+    <StatusBarTabPanelComponentList :componentList="props.componentList" />
     <div
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
     >

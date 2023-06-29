@@ -2,8 +2,8 @@
   <div>
     <RequestStatusMessage
       v-if="loadAssetReqStatus.isPending"
-      :request-status="loadAssetReqStatus"
-      show-loader-without-message
+      :requestStatus="loadAssetReqStatus"
+      showLoaderWithoutMessage
     />
     <ScrollArea>
       <template #top>
@@ -38,8 +38,8 @@
           :key="variant"
           as="li"
           class="w-full"
-          content-as="ul"
-          default-open
+          contentAs="ul"
+          defaultOpen
         >
           <template #label>
             <div class="flex items-center gap-2">
@@ -54,7 +54,7 @@
                 :func="func"
                 color="#921ed6"
                 context="workspace-lab-assets"
-                :selected-func-id="funcStore.selectedFuncId"
+                :selectedFuncId="funcStore.selectedFuncId"
               />
             </li>
           </template>
@@ -63,9 +63,9 @@
     </ScrollArea>
     <AssetFuncAttachModal
       ref="attachModalRef"
-      :schema-variant-id="assetSchemaVariantId"
-      :asset-id="assetId"
-      :attach-existing="false"
+      :schemaVariantId="assetSchemaVariantId"
+      :assetId="assetId"
+      :attachExisting="false"
     />
   </div>
 </template>

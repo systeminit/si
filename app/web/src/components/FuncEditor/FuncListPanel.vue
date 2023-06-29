@@ -2,8 +2,8 @@
   <div>
     <RequestStatusMessage
       v-if="!funcList.length"
-      :request-status="loadFuncsReqStatus"
-      loading-message="Loading functions..."
+      :requestStatus="loadFuncsReqStatus"
+      loadingMessage="Loading functions..."
     />
     <ScrollArea v-if="funcList.length">
       <template #top>
@@ -12,16 +12,16 @@
         >
           <NewFuncDropdown
             label="Function"
-            :fn-types="CREATE_OPTIONS"
+            :fnTypes="CREATE_OPTIONS"
             @selected-func-variant="createNewFunc"
           />
         </div>
         <ErrorMessage
           v-if="createFuncReqStatus.isError"
-          :request-status="createFuncReqStatus"
+          :requestStatus="createFuncReqStatus"
         />
         <SiSearch
-          auto-search
+          autoSearch
           placeholder="search functions"
           @search="onSearch"
         />
@@ -38,8 +38,8 @@
           :key="variant"
           as="li"
           class="w-full"
-          content-as="ul"
-          default-open
+          contentAs="ul"
+          defaultOpen
         >
           <template #label>
             <div class="flex items-center gap-2">
@@ -53,7 +53,7 @@
                 :func="func"
                 color="#921ed6"
                 context="workspace-lab-functions"
-                :selected-func-id="funcStore.selectedFuncId"
+                :selectedFuncId="funcStore.selectedFuncId"
               />
             </li>
           </template>

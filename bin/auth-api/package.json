@@ -10,7 +10,7 @@
     "boot": "node --experimental-specifier-resolution=node ./dist/main.js",
     "boot-ts": "node --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
     "lint": "eslint src test --ext .ts,.cjs",
-    "lint:strict": "STRICT_LINT=1 pnpm run lint",
+    "lint:strict": "pnpm run lint --max-warnings=0",
     "lint:fix": "pnpm run lint --fix",
     "db:reset": "prisma migrate reset --force && prisma migrate deploy && prisma generate",
     "docker:build:aws": "cd ../.. && docker buildx build --output type=docker --platform=linux/amd64 -f bin/auth-api/Dockerfile . -t si/si-auth-api",

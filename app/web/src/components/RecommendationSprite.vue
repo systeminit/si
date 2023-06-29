@@ -9,17 +9,17 @@
           : '',
       )
     "
-    content-as="ul"
-    :default-open="false"
-    hide-bottom-border-when-open
+    contentAs="ul"
+    :defaultOpen="false"
+    hideBottomBorderWhenOpen
   >
     <template #prefix>
       <VormInput
         v-if="enableCheckbox"
-        :model-value="selected"
+        :modelValue="selected"
         type="checkbox"
         class="flex-none pl-1"
-        no-label
+        noLabel
         @click.stop
         @update:model-value="
           (c) => {

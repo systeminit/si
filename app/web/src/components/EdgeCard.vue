@@ -1,13 +1,13 @@
 <template>
   <div v-if="fromComponent && toComponent">
-    <ComponentCard :component-id="fromComponent.id" />
+    <ComponentCard :componentId="fromComponent.id" />
     <div class="_connection-label text-xs italic">
       <!-- currently output and input socket always have the same label/name -->
       <span class="capsize">{{ fromSocket?.name }}</span>
       <!-- <div>to</div>
         <span class="capsize">{{ toSocket?.name }}</span> -->
     </div>
-    <ComponentCard :component-id="toComponent.id" />
+    <ComponentCard :componentId="toComponent.id" />
   </div>
 </template>
 

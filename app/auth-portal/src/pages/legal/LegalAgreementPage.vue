@@ -64,7 +64,7 @@
               variant="soft"
               tone="shade"
               size="sm"
-              :link-to="{
+              :linkTo="{
                 name: 'print-legal',
                 params: { docVersion: CURRENT_VERSION, docSlug: doc.slug },
               }"
@@ -82,7 +82,7 @@
             variant="solid"
             icon="arrow--right"
             :disabled="disableContinueButton"
-            :request-status="agreeTosReqStatus"
+            :requestStatus="agreeTosReqStatus"
             @click="agreeButtonHandler"
           >
             Agree & Continue

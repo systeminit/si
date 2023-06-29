@@ -2,7 +2,7 @@
   <Modal
     ref="bindingsModalRef"
     type="save"
-    :save-label="isCreating ? 'Add Binding' : 'Update Binding'"
+    :saveLabel="isCreating ? 'Add Binding' : 'Update Binding'"
     size="2xl"
     :title="modalTitle"
     @save="emit('save', editedPrototype)"

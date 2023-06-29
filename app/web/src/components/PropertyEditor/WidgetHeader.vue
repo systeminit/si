@@ -11,8 +11,8 @@
   >
     <div class="flex justify-start pr-xs">
       <SiButtonIcon
-        ignore-text-color
-        :tooltip-text="isCollapsed ? 'Expand' : 'Collapse'"
+        ignoreTextColor
+        :tooltipText="isCollapsed ? 'Expand' : 'Collapse'"
         :icon="isCollapsed ? 'chevron--right' : 'chevron--down'"
       />
     </div>
