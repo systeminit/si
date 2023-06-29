@@ -1,0 +1,37 @@
+---
+version: "3"
+
+services:
+  postgres:
+    image: systeminit/postgres:stable
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
+    ports:
+      - "5432:5432"
+
+  nats:
+    image: systeminit/nats:stable
+    command:
+      - "--config"
+      - "nats-server.conf"
+      - "-DVV"
+    ports:
+      - "4222:4222"
+
+  jaeger:
+    image: systeminit/jaeger:stable
+    ports:
+      - "5317:4317"
+      - "16686:16686"
+
+  otelcol:
+    image: systeminit/otelcol:stable
+    ports:
+      - "4317:4317"
+      - "55679:55679"
+    depends_on:
+      - jaeger

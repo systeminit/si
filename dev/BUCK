@@ -1,0 +1,42 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "tilt_docker_compose_stop",
+    "tilt_down",
+    "tilt_up",
+)
+
+python_bootstrap_binary(
+    name = "healthcheck",
+    main = "healthcheck.py",
+    visibility = ["PUBLIC"],
+)
+
+alias(
+    name = "dev",
+    actual = ":up",
+)
+
+# Bring up the full set of services for development
+tilt_up(
+    name = "up",
+)
+
+# Bring up only platform services such as PostgreSQL, NATS, etc.
+tilt_up(
+    name = "platform",
+    args = [
+        "platform"
+    ],
+)
+
+# Stop any remaining/running services while attempting to preserve persistent state
+tilt_docker_compose_stop(
+    name = "stop",
+    docker_compose_file = "docker-compose.platform.yml",
+)
+
+# Bring down any remaining/running services
+tilt_down(
+    name = "down",
+)
