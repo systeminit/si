@@ -701,7 +701,11 @@ mod test {
 
         // Adam updates one of the functions
         let a_func_rudder_id = adam_workspace.edit_function(&a_func_paddle_id, "rudder");
-        let a_module_id = adam_workspace.replace_func_in_module(&a_module_id, &a_func_paddle_id, &a_func_rudder_id);
+        let a_module_id = adam_workspace.replace_func_in_module(
+            &a_module_id,
+            &a_func_paddle_id,
+            &a_func_rudder_id,
+        );
 
         // Adam shares updated module with brit
         let a_module_shared_2 = adam_workspace.share_module(&a_module_id);
@@ -727,5 +731,43 @@ mod test {
     // Adam updates the same function in his workspace
     // Adam shares the updated module with brit
     // Brit gets notified there is a decision to be made
+    #[test]
+    fn detect_when_a_decision_must_be_made() {
+        let mut adam_workspace = Workspace::new();
+        let a_func_poop_id = adam_workspace.create_function("poop");
+        let a_func_canoe_id = adam_workspace.create_function("canoe");
+        let a_func_paddle_id = adam_workspace.create_function("paddle");
+        let a_module_id = adam_workspace.create_module("fun");
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_poop_id);
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_canoe_id);
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_paddle_id);
+
+        // Adam shares module with brit
+        let a_module_shared_1 = adam_workspace.share_module(&a_module_id);
+
+        // Brit installs Adam's module
+        let mut brit_workspace = Workspace::new();
+        brit_workspace.install_module(a_module_shared_1);
+
+        // Brit edits one of Adam's functions locally
+        let b_func_id = brit_workspace.edit_function(&a_func_paddle_id, "bucket");
+
+        // Adam updates the same function in his workspace and shares module with brit
+        let a_func_gunwale_id = adam_workspace.edit_function(&a_func_paddle_id, "gunwale");
+        let a_module_id = adam_workspace.replace_func_in_module(
+            &a_module_id,
+            &a_func_paddle_id,
+            &a_func_gunwale_id,
+        );
+        let a_module_shared_2 = adam_workspace.share_module(&a_module_id);
+
+        // Brit installs adam's update
+        brit_workspace.install_module(a_module_shared_2);
+        brit_workspace.detect_possible_function_reference_updates();
+
+        // Everything with the same vector clock id
+        // if the entry is less than the one for a(f3), then its possible
+
+    }
 
 }
