@@ -137,7 +137,7 @@ impl VectorClock {
     pub fn already_seen(&self, other: &VectorClock) -> CasResult<bool> {
         let them = match &other.who {
             Some(w) => w,
-            None => return Err(CasError::NoWho)
+            None => return Err(CasError::NoWho),
         };
 
         if let Some(local_view) = self.clock_entries.get(them) {
@@ -170,6 +170,14 @@ pub struct Function {
     pub vector_clock: VectorClock,
 }
 
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Eq for Function {}
+
 impl Function {
     pub fn new(content_hash: impl Into<String>, who: impl Into<String>) -> Function {
         let content_hash = content_hash.into();
@@ -181,7 +189,11 @@ impl Function {
         }
     }
 
-    pub fn id(&self) -> Ulid {
+    pub fn id(&self) -> String {
+        format!("{0}-{1}", self.content_hash, self.lineage_id())
+    }
+
+    pub fn lineage_id(&self) -> Ulid {
         self.vector_clock.id
     }
 
@@ -255,30 +267,150 @@ impl Function {
 
 #[derive(Debug, Default, Clone)]
 pub struct Module {
-    pub id: Ulid,
+    pub content_hash: Ulid,
+    pub vector_clock: VectorClock,
     pub name: String,
-    pub funcs: HashMap<Ulid, Function>,
+    pub funcs: HashMap<String, Function>,
 }
 
 impl Module {
-    pub fn new(name: impl Into<String>) -> Module {
+    pub fn new(name: impl Into<String>, workspace_id: impl Into<String>) -> Module {
+        let workspace_id = workspace_id.into();
         Module {
-            id: Ulid::new(),
+            content_hash: Ulid::new(),
+            vector_clock: VectorClock::new(workspace_id),
             name: name.into(),
             funcs: HashMap::new(),
         }
     }
 
-    pub fn add(&mut self, func: Function) {
-        self.funcs.insert(func.id(), func);
+    pub fn id(&self) -> String {
+        format!("{0}-{1}", self.content_hash, self.lineage_id())
     }
 
-    pub fn function(&mut self, function_id: Ulid) -> CasResult<&mut Function> {
+    pub fn lineage_id(&self) -> Ulid {
+        self.vector_clock.id
+    }
+
+    pub fn add(&mut self, func: Function) {
+        self.funcs.insert(func.id(), func);
+        self.content_hash = Ulid::new();
+        self.vector_clock.inc().unwrap();
+    }
+
+    pub fn remove(&mut self, func_id: impl AsRef<str>) {
+        let func_id = func_id.as_ref();
+        self.funcs.remove(func_id);
+        self.content_hash = Ulid::new();
+        self.vector_clock.inc().unwrap();
+    }
+
+    pub fn replace(&mut self, old_func_id: impl AsRef<str>, new_func: Function) {
+        self.remove(old_func_id);
+        self.add(new_func);
+    }
+
+    pub fn function(&mut self, function_id: impl Into<String>) -> CasResult<&mut Function> {
+        let function_id = function_id.into();
         let func = self
             .funcs
             .get_mut(&function_id)
             .ok_or(CasError::NoContentHash)?;
         Ok(func)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Workspace {
+    pub id: Ulid,
+    pub modules: HashMap<String, Module>,
+    pub funcs: HashMap<String, Function>,
+}
+
+impl Workspace {
+    pub fn new() -> Workspace {
+        Workspace {
+            id: Ulid::new(),
+            modules: HashMap::new(),
+            funcs: HashMap::new(),
+        }
+    }
+
+    pub fn share_module(&mut self, module_id: impl Into<String>) -> Module {
+        let module_id = module_id.into();
+        self.modules.get(&module_id).unwrap().clone()
+    }
+
+    pub fn install_module(&mut self, module: Module) {
+        for (id, func) in module.funcs.iter() {
+            self.funcs.insert(id.clone(), func.clone());
+        }
+        self.modules.insert(module.id().clone(), module);
+    }
+
+    pub fn create_module(&mut self, name: impl Into<String>) -> String {
+        let name = name.into();
+        let module = Module::new(name, self.id);
+        let module_id = module.id();
+        self.modules.insert(module_id.clone(), module);
+        module_id
+    }
+
+    pub fn add_func_to_module(
+        &mut self,
+        module_id: impl Into<String>,
+        func_id: impl Into<String>,
+    ) -> String {
+        let module_id = module_id.into();
+        let func_id = func_id.into();
+        let func = self.funcs.get(&func_id).unwrap().clone();
+        let mut new_module = self.modules.get(&module_id).unwrap().clone();
+        new_module.add(func);
+        let new_module_id = new_module.id();
+        self.modules.insert(new_module.id(), new_module);
+        new_module_id
+    }
+
+    pub fn replace_func_in_module(
+        &mut self,
+        module_id: impl Into<String>,
+        base_func_id: impl Into<String>,
+        new_func_id: impl Into<String>,
+    ) -> String {
+        let module_id = module_id.into();
+        let base_func_id = base_func_id.into();
+        let new_func_id = new_func_id.into();
+        let new_func = self.funcs.get(&new_func_id).unwrap().clone();
+
+        let mut new_module = self.modules.get(&module_id).unwrap().clone();
+        new_module.replace(&base_func_id, new_func);
+        let new_module_id = new_module.id();
+        self.modules.insert(new_module.id(), new_module);
+        new_module_id
+    }
+
+    pub fn create_function(&mut self, content_hash: impl Into<String>) -> String {
+        let content_hash = content_hash.into();
+        let func = Function::new(content_hash, self.id);
+        let func_id = func.id();
+        self.funcs.insert(func_id.clone(), func);
+        func_id
+    }
+
+    pub fn edit_function(
+        &mut self,
+        base_func_id: impl Into<String>,
+        updated_content_hash: impl Into<String>,
+    ) -> String {
+        let base_func_id = base_func_id.into();
+        let updated_content_hash = updated_content_hash.into();
+
+        let mut base_func = self.funcs.get(&base_func_id).unwrap().clone();
+        base_func.update(updated_content_hash, self.id).unwrap();
+
+        let base_func_id = base_func.id().clone();
+        self.funcs.insert(base_func.id(), base_func);
+        base_func_id
     }
 }
 
@@ -396,7 +528,7 @@ mod test {
         let mut adam_abc_func = Function::new("abc123", "adam");
 
         // Adam publishes that function in a module
-        let mut adam_jackson5_module = Module::new("jackson5");
+        let mut adam_jackson5_module = Module::new("jackson5", "poop");
         adam_jackson5_module.add(adam_abc_func.clone());
 
         // Jacob installs the module
@@ -411,72 +543,189 @@ mod test {
 
         // Adam updates his module to the new version
         adam_jackson5_module.add(adam_abc_func.clone());
-
     }
 
     #[test]
-    fn receive_unchanged_function() {
-        // Brit create function
-        let brit_function = Function::new("original content", "brit");
-        // Nick receive function
-        let nick_copy = brit_function.receive("nick").unwrap();
-        // Nick receive function again
+    fn workspace_create_func() {
+        let mut workspace = Workspace::new();
+        let func = workspace.create_function("parliament");
+        let has_parliament = workspace
+            .funcs
+            .values()
+            .find(|f| f.content_hash == "parliament")
+            .unwrap();
+        assert_eq!(has_parliament.id(), func);
+    }
 
-        // *No changes to apply!*
+    #[test]
+    fn workspace_create_module() {
+        let mut workspace = Workspace::new();
+        let funkytown_module_id = workspace.create_module("funkytown");
         assert_eq!(
-            nick_copy.compare_and_recommend(&brit_function).unwrap(),
-            CompareRecommendation::Same
+            workspace.modules.get(&funkytown_module_id).unwrap().name,
+            "funkytown"
         );
     }
 
     #[test]
-    fn receive_updated_function() {
-        // Brit create function
-        let mut brit_function = Function::new("original content", "brit");
-        // Nick receive function
-        let nick_copy = brit_function.receive("nick").unwrap();
-        // Brit update function
-        brit_function.update("poop", "brit").unwrap();
-        // Nick receive new function
-        // *No changes to keep, suggest taking new version*
-        assert_eq!(
-            nick_copy.compare_and_recommend(&brit_function).unwrap(),
-            CompareRecommendation::TakeRight,
-        );
+    fn workspace_add_func_to_module() {
+        let mut workspace = Workspace::new();
+        let p_func_id = workspace.create_function("parliament");
+        let funkytown_module_id = workspace.create_module("funkytown");
+        let funkytown_module_id =
+            workspace.add_func_to_module(funkytown_module_id.clone(), p_func_id.clone());
+        workspace
+            .modules
+            .get(&funkytown_module_id)
+            .unwrap()
+            .funcs
+            .get(&p_func_id)
+            .unwrap();
+        assert_eq!(workspace.modules.len(), 2);
     }
 
     #[test]
-    fn change_function_receive_unchanged_function() {
-        // Brit create function
-        let brit_function = Function::new("original content", "Brit");
-        // Nick receive function
-        let mut nick_copy = brit_function.receive("nick").unwrap();
-        // Nick update function
-        nick_copy.update("new content", "nick").unwrap();
-        // Nick receive unchanged function
-        // *Local changes, suggest keeping*
-        assert_eq!(
-            nick_copy.compare_and_recommend(&brit_function).unwrap(),
-            CompareRecommendation::TakeLeft,
-        );
+    fn workspace_share_module() {
+        let mut workspace = Workspace::new();
+        let p_func_id = workspace.create_function("parliament");
+        let funkytown_module_id = workspace.create_module("funkytown");
+        workspace.add_func_to_module(&funkytown_module_id, p_func_id);
+        let shared_funkytown_module = workspace.share_module(&funkytown_module_id);
+        assert_eq!(shared_funkytown_module.id(), funkytown_module_id);
     }
 
     #[test]
-    fn change_function_receive_changed_function() {
-        // Brit create function
-        let mut brit_function = Function::new("original content", "Brit");
-        // Nick receive function
-        let mut nick_copy = brit_function.receive("nick").unwrap();
-        // Brit change function
-        brit_function.update("new content", "Brit").unwrap();
-        // Nick change function
-        nick_copy.update("other new content", "nick").unwrap();
-        // Nick receive changed function
+    fn workspace_install_module() {
+        let mut workspace = Workspace::new();
+        let p_func_id = workspace.create_function("parliament");
+        let funkytown_module_id = dbg!(workspace.create_module("funkytown"));
+        let funkytown_module_id =
+            dbg!(workspace.add_func_to_module(&funkytown_module_id, p_func_id.clone()));
+        let shared_funkytown_module = workspace.share_module(&funkytown_module_id);
 
-        // *Changes in both, you figure it out*
-        assert_eq!(
-            nick_copy.compare_and_recommend(&brit_function).unwrap(),
-            CompareRecommendation::YouFigureItOut,
-        );
+        let mut other_workspace = Workspace::new();
+        other_workspace.install_module(shared_funkytown_module);
+        other_workspace
+            .modules
+            .get(&funkytown_module_id)
+            .unwrap()
+            .funcs
+            .get(&p_func_id)
+            .unwrap();
+        other_workspace.funcs.get(&p_func_id).unwrap();
     }
+
+    #[test]
+    fn workspace_edit_function() {
+        let mut workspace = Workspace::new();
+        let p_func_id = workspace.create_function("parliament");
+        let edited_p_func_id = workspace.edit_function(&p_func_id, "atomic dog");
+        let p_func = workspace.funcs.get(&p_func_id).unwrap();
+        assert_eq!(p_func.content_hash, "parliament");
+        let edited_p_func = workspace.funcs.get(&edited_p_func_id).unwrap();
+        assert_eq!(edited_p_func.content_hash, "atomic dog");
+    }
+
+    #[test]
+    fn workspace_with_lots_of_modules() {
+        // Jacob has a workspace
+        let mut jacob_workspace = Workspace::new();
+
+        // Jacob writes a function
+        let j_func_id = jacob_workspace.create_function("parliament");
+
+        // Jacob create a module that includes the function
+        let j_module_id = jacob_workspace.create_module("parliamentary republic");
+        let j_module_id = jacob_workspace.add_func_to_module(&j_module_id, &j_func_id);
+
+        dbg!(&jacob_workspace);
+        // Jacob publishes the module
+        let shared_j_module = jacob_workspace.share_module(&j_module_id);
+
+        // Brit installs Jacob's module
+        let mut brit_workspace = Workspace::new();
+        brit_workspace.install_module(shared_j_module.clone());
+
+        // Nick installs Jacob's module
+        let mut nick_workspace = Workspace::new();
+        nick_workspace.install_module(shared_j_module.clone());
+
+        // Nick edits the function he received from Jacob's module
+        let nick_func_id = nick_workspace.edit_function(&j_func_id, "atomic dog");
+
+        // Nick creates a module that includes his edited function
+        let nick_module_id = nick_workspace.create_module("nicks parliamentary republic");
+        let nick_module_id = nick_workspace.add_func_to_module(&nick_module_id, &nick_func_id);
+
+        // Nick publishes his module
+        let shared_nick_module = nick_workspace.share_module(&nick_module_id);
+
+        // Brit installs Nick's module
+        //  -> brit has two functions, one from Jacob and one from Nick
+        brit_workspace.install_module(shared_nick_module);
+
+        // Jacob updates his function
+        let j_updated_func_id = jacob_workspace.edit_function(&j_func_id, "woof");
+        let updated_j_module_id =
+            jacob_workspace.add_func_to_module(&j_module_id, &j_updated_func_id);
+
+        // Jacob publishes his module
+        let shared_j_updated_module = jacob_workspace.share_module(&updated_j_module_id);
+
+        // Brit installs Jacob's updated module
+        brit_workspace.install_module(shared_j_updated_module);
+
+        //  -> Brit has jacob's updated function, but nicks version remains untouched - she now has 3 total
+        assert_eq!(brit_workspace.modules.len(), 3);
+        assert_eq!(brit_workspace.funcs.len(), 3);
+    }
+
+    #[test]
+    fn updating_a_module_with_no_workspace_changes() {
+        // Adam writes a module with 3 functions
+        let mut adam_workspace = Workspace::new();
+        let a_func_poop_id = adam_workspace.create_function("poop");
+        let a_func_canoe_id = adam_workspace.create_function("canoe");
+        let a_func_paddle_id = adam_workspace.create_function("paddle");
+        let a_module_id = adam_workspace.create_module("fun");
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_poop_id);
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_canoe_id);
+        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_paddle_id);
+
+        // Adam shares module with brit
+        let a_module_shared_1 = adam_workspace.share_module(&a_module_id);
+
+        // Brit installs Adam's updated module
+        let mut brit_workspace = Workspace::new();
+        brit_workspace.install_module(a_module_shared_1);
+
+        // Adam updates one of the functions
+        let a_func_rudder_id = adam_workspace.edit_function(&a_func_paddle_id, "rudder");
+        let a_module_id = adam_workspace.replace_func_in_module(&a_module_id, &a_func_paddle_id, &a_func_rudder_id);
+
+        // Adam shares updated module with brit
+        let a_module_shared_2 = adam_workspace.share_module(&a_module_id);
+
+        brit_workspace.install_module(a_module_shared_2.clone());
+
+        // Brit has 4 functions and 2 modules
+        assert_eq!(brit_workspace.modules.len(), 2);
+        assert_eq!(brit_workspace.funcs.len(), 4);
+
+        let mut nick_workspace = Workspace::new();
+        nick_workspace.install_module(a_module_shared_2);
+        assert_eq!(brit_workspace.modules.len(), 2);
+        dbg!(&adam_workspace);
+        dbg!(&nick_workspace);
+        assert_eq!(nick_workspace.funcs.len(), 3);
+    }
+
+    // Adam writes a module with 3 different functions
+    // Adam shares the module with brit
+    // Brit installs adam's module
+    // Brit edits one of adam's functions locally
+    // Adam updates the same function in his workspace
+    // Adam shares the updated module with brit
+    // Brit gets notified there is a decision to be made
+
 }
