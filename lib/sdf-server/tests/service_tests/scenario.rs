@@ -26,7 +26,7 @@ use dal::{
 use names::{Generator, Name};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
 use sdf_server::service::dev::{AuthorSingleSchemaRequest, AuthorSingleSchemaResponse};
-use sdf_server::service::diagram::delete_component::{DeleteComponentRequest, ForceChangeSet};
+use sdf_server::service::diagram::delete_component::DeleteComponentRequest;
 use sdf_server::service::diagram::get_diagram::GetDiagramRequest;
 use sdf_server::service::variant_definition::create_variant_def::{
     CreateVariantDefRequest, CreateVariantDefResponse,
@@ -46,12 +46,8 @@ use sdf_server::service::{
         get_property_editor_values::{
             GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
         },
-        insert_property_editor_value::{
-            ForceChangeSet as InsertPropertyEditorValueResponse, InsertPropertyEditorValueRequest,
-        },
-        update_property_editor_value::{
-            ForceChangeSet as UpdatePropertyEditorValueResponse, UpdatePropertyEditorValueRequest,
-        },
+        insert_property_editor_value::InsertPropertyEditorValueRequest,
+        update_property_editor_value::UpdatePropertyEditorValueRequest,
     },
     diagram::{
         create_connection::{CreateConnectionRequest, CreateConnectionResponse},
@@ -309,7 +305,7 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let _response: UpdatePropertyEditorValueResponse = self
+        let _response: () = self
             .query_post("/api/component/update_property_editor_value", &request)
             .await;
     }
@@ -332,7 +328,7 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let _response: InsertPropertyEditorValueResponse = self
+        let _response: () = self
             .query_post("/api/component/insert_property_editor_value", &request)
             .await;
     }
@@ -485,7 +481,7 @@ impl ScenarioHarness {
             component_id,
             visibility: *ctx.visibility(),
         };
-        let _response: ForceChangeSet = self
+        let _response: () = self
             .query_post("/api/diagram/delete_component", &request)
             .await;
     }

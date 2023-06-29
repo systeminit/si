@@ -66,6 +66,8 @@ pub enum ComponentError {
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("hyper error: {0}")]
+    Http(#[from] axum::http::Error),
     #[error("identity func not found")]
     IdentityFuncNotFound,
     #[error("internal provider error: {0}")]

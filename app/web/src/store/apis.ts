@@ -47,8 +47,8 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
   // TODO(victor) I made this a field with a prefix just to make it work and test the experience
   // It probably makes sense to make this come as a header from the backend so only this interceptor needs
   // to care about it
-  if (response.data._forceChangesetPk) {
-    await setActiveChangeset(response.data._forceChangesetPk);
+  if (response.headers.force_changeset_pk) {
+    await setActiveChangeset(response.headers.force_changeset_pk);
   }
 
   return response;

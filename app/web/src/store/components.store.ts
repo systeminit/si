@@ -536,6 +536,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           position: Vector2d,
           parentNodeId?: string,
         ) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest<{
             componentId: ComponentId;
             nodeId: ComponentNodeId;
@@ -554,37 +558,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CREATE_COMPONENT2(
-          schemaId: string,
-          position: Vector2d,
-          parentNodeId?: string,
+        async CREATE_COMPONENT_CONNECTION(
+          from: { nodeId: ComponentNodeId; socketId: SocketId },
+          to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest<{
-            componentId: ComponentId;
-            nodeId: ComponentNodeId;
-          }>({
-            method: "post",
-            url: "diagram/create_node2",
-            params: {
-              schemaId,
-              parentId: parentNodeId,
-              x: position.x.toString(),
-              y: position.y.toString(),
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // TODO: store component details rather than waiting for re-fetch
-            },
-          });
-        },
-        async CREATE_COMPONENT_CONNECTION(
-          from: { nodeId: ComponentNodeId; socketId: SocketId },
-          to: { nodeId: ComponentNodeId; socketId: SocketId },
-        ) {
           const tempId = `temp-edge-${+new Date()}`;
 
           return new ApiRequest<{
@@ -636,93 +617,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CREATE_COMPONENT_CONNECTION2(
-          from: { nodeId: ComponentNodeId; socketId: SocketId },
-          to: { nodeId: ComponentNodeId; socketId: SocketId },
-        ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
-
-          const tempId = `temp-edge-${+new Date()}`;
-
-          return new ApiRequest<{
-            connection: {
-              id: string;
-              classification: "configuration";
-              destination: { nodeId: string; socketId: string };
-              source: { nodeId: string; socketId: string };
-            };
-            forceChangesetPk?: string;
-          }>({
-            method: "post",
-            url: "diagram/create_connection2",
-            params: {
-              fromNodeId: from.nodeId,
-              fromSocketId: from.socketId,
-              toNodeId: to.nodeId,
-              toSocketId: to.socketId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // change our temporary id to the real one, only if we haven't re-fetched the diagram yet
-              if (this.edgesById[tempId]) {
-                const edge = this.edgesById[tempId];
-                if (edge) {
-                  this.edgesById[response.connection.id] = edge;
-                  delete this.edgesById[tempId];
-                }
-              }
-              // TODO: store component details rather than waiting for re-fetch
-            },
-            optimistic: () => {
-              const nowTs = new Date().toISOString();
-              this.edgesById[tempId] = {
-                id: tempId,
-                fromNodeId: from.nodeId,
-                fromSocketId: from.socketId,
-                toNodeId: to.nodeId,
-                toSocketId: to.socketId,
-                changeStatus: "added",
-                createdInfo: {
-                  timestamp: nowTs,
-                  actor: { kind: "user", label: "You" },
-                },
-              };
-              return () => {
-                delete this.edgesById[tempId];
-              };
-            },
-          });
-        },
         async CONNECT_COMPONENT_TO_FRAME(
           childNodeId: ComponentNodeId,
           parentNodeId: ComponentNodeId,
         ) {
-          return new ApiRequest<{ node: DiagramNode }>({
-            method: "post",
-            url: "diagram/connect_component_to_frame",
-            params: {
-              childNodeId,
-              parentNodeId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // TODO: store component details rather than waiting for re-fetch
-            },
-          });
-        },
-        async CONNECT_COMPONENT_TO_FRAME2(
-          childNodeId: ComponentNodeId,
-          parentNodeId: ComponentNodeId,
-        ) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
-            url: "diagram/connect_component_to_frame2",
+            url: "diagram/connect_component_to_frame",
             params: {
               childNodeId,
               parentNodeId,
@@ -763,6 +668,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_EDGE(edgeId: EdgeId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_connection",
@@ -809,58 +718,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        async DELETE_EDGE2(edgeId: EdgeId) {
+        async RESTORE_EDGE(edgeId: EdgeId) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest({
-            method: "post",
-            url: "diagram/delete_connection2",
-            keyRequestStatusBy: edgeId,
-            params: {
-              edgeId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // this.componentDiffsById[componentId] = response.componentDiff;
-            },
-            optimistic: () => {
-              const edge = this.edgesById[edgeId];
-
-              if (edge?.changeStatus === "added") {
-                const originalEdge = this.edgesById[edgeId];
-                delete this.edgesById[edgeId];
-                this.selectedEdgeId = null;
-                return () => {
-                  if (originalEdge) {
-                    this.edgesById[edgeId] = originalEdge;
-                  }
-                  this.selectedEdgeId = edgeId;
-                };
-              } else if (edge) {
-                const originalStatus = edge.changeStatus;
-                edge.changeStatus = "deleted";
-                edge.deletedInfo = {
-                  timestamp: new Date().toISOString(),
-                  actor: { kind: "user", label: "You" },
-                };
-                this.edgesById[edgeId] = edge;
-
-                return () => {
-                  this.edgesById[edgeId] = {
-                    ...edge,
-                    changeStatus: originalStatus,
-                    deletedInfo: undefined,
-                  };
-                  this.selectedEdgeId = edgeId;
-                };
-              }
-            },
-          });
-        },
-
-        async RESTORE_EDGE(edgeId: EdgeId) {
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_connection",
@@ -892,43 +754,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        async RESTORE_EDGE2(edgeId: EdgeId) {
+        async DELETE_COMPONENT(componentId: ComponentId) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest({
-            method: "post",
-            url: "diagram/restore_connection2",
-            keyRequestStatusBy: edgeId,
-            params: {
-              edgeId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // this.componentDiffsById[componentId] = response.componentDiff;
-            },
-            optimistic: () => {
-              const originalEdge = this.edgesById[edgeId];
-              if (originalEdge) {
-                this.edgesById[edgeId] = {
-                  ...originalEdge,
-                  changeStatus: "unmodified",
-                  deletedInfo: undefined,
-                };
-              }
-
-              return () => {
-                if (originalEdge) {
-                  this.edgesById[edgeId] = originalEdge;
-                }
-                this.selectedEdgeId = edgeId;
-              };
-            },
-          });
-        },
-
-        async DELETE_COMPONENT(componentId: ComponentId) {
           return new ApiRequest({
             method: "post",
             url: "diagram/delete_component",
@@ -968,52 +798,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-
-        async DELETE_COMPONENT2(componentId: ComponentId) {
+        async RESTORE_COMPONENT(componentId: ComponentId) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest({
-            method: "post",
-            url: "diagram/delete_component2",
-            keyRequestStatusBy: componentId,
-            params: {
-              componentId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // this.componentDiffsById[componentId] = response.componentDiff;
-            },
-            optimistic: () => {
-              const component = this.rawComponentsById[componentId];
-              const originalStatus = component?.changeStatus;
-              if (component) {
-                this.rawComponentsById[componentId] = {
-                  ...component,
-                  changeStatus: "deleted",
-                  deletedInfo: {
-                    timestamp: new Date().toISOString(),
-                    actor: { kind: "user", label: "You" },
-                  },
-                };
-              }
-
-              // TODO: optimistically delete connected edges?
-              // not super important...
-              return () => {
-                if (component && originalStatus) {
-                  this.rawComponentsById[componentId] = {
-                    ...component,
-                    changeStatus: originalStatus,
-                    deletedInfo: undefined,
-                  };
-                }
-              };
-            },
-          });
-        },
-        async RESTORE_COMPONENT(componentId: ComponentId) {
           return new ApiRequest({
             method: "post",
             url: "diagram/restore_component",
@@ -1027,34 +816,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async RESTORE_COMPONENT2(componentId: ComponentId) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
 
-          return new ApiRequest({
-            method: "post",
-            url: "diagram/restore_component2",
-            keyRequestStatusBy: componentId,
-            params: {
-              componentId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // this.componentDiffsById[componentId] = response.componentDiff;
-            },
-          });
-        },
-
-        // TODO: maybe want the backend to handle this bulk calls instead
-        // so it can optimize how it handles updates / queueing
         async DELETE_COMPONENTS(componentIds: ComponentId[]) {
-          await async.eachSeries(componentIds, async (componentId) => {
-            await this.DELETE_COMPONENT(componentId);
-          });
-        },
-
-        async DELETE_COMPONENTS2(componentIds: ComponentId[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
@@ -1105,13 +868,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async RESTORE_COMPONENTS(componentIds: ComponentId[]) {
-          // TODO: maybe want the backend to handle this all at once?
-          await async.eachSeries(componentIds, async (componentId) => {
-            await this.RESTORE_COMPONENT(componentId);
-          });
-        },
-
-        async RESTORE_COMPONENTS2(componentIds: ComponentId[]) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;

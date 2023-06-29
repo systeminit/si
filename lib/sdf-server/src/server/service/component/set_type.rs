@@ -1,10 +1,7 @@
 use axum::extract::OriginalUri;
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 
-use dal::{
-    ChangeSet, ChangeSetPk, Component, ComponentId, ComponentType, StandardModel, Visibility,
-    WsEvent,
-};
+use dal::{ChangeSet, Component, ComponentId, ComponentType, StandardModel, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -21,20 +18,13 @@ pub struct SetTypeRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ForceChangeSet {
-    #[serde(rename = "_forceChangesetPk")] // TODO(victor) find a way to return this as a header
-    pub force_changeset_pk: Option<ChangeSetPk>,
-}
-
 pub async fn set_type(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SetTypeRequest>,
-) -> ComponentResult<Json<ForceChangeSet>> {
+) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut force_changeset_pk = None;
@@ -88,5 +78,9 @@ pub async fn set_type(
 
     ctx.commit().await?;
 
-    Ok(Json(ForceChangeSet { force_changeset_pk }))
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+    Ok(response.body(axum::body::Empty::new())?)
 }
