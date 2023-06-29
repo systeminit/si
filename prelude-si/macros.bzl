@@ -18,18 +18,22 @@ docker_image = _docker_image
 
 load(
     "@prelude-si//macros:pnpm.bzl",
+    _eslint = "eslint",
     _node_pkg_bin = "node_pkg_bin",
     _npm_bin = "npm_bin",
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
+    _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _vite_app = "vite_app",
     _workspace_node_modules = "workspace_node_modules",
 )
+eslint = _eslint
 node_pkg_bin = _node_pkg_bin
 npm_bin = _npm_bin
 package_node_modules = _package_node_modules
 pnpm_lock = _pnpm_lock
+typescript_check = _typescript_check
 typescript_dist = _typescript_dist
 vite_app = _vite_app
 workspace_node_modules = _workspace_node_modules

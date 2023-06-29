@@ -12,6 +12,8 @@
   "dependencies": {},
   "devDependencies": {
     "@si/tsconfig": "workspace:*",
-    "@si/eslint-config": "workspace:*"
+    "@si/eslint-config": "workspace:*",
+    "eslint": "^8.36.0",
+    "typescript": "^4.9.5"
   }
 }

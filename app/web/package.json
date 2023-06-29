@@ -89,6 +89,7 @@
     "@types/validator": "^13.7.2",
     "@vitejs/plugin-vue": "^4.0.0",
     "cypress": "^9.6.0",
+    "eslint": "^8.36.0",
     "faker": "^6.6.6",
     "unplugin-icons": "^0.14.14",
     "vite": "^4.1.4",

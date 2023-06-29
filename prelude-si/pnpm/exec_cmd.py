@@ -41,7 +41,6 @@ def main() -> int:
     for arg in args.args:
         cmd.append(compute_path(arg, cwd))
 
-    print("--- Running: cmd='{}', cwd={}".format(" ".join(cmd), cwd))
     exit_code = subprocess.call(cmd, cwd=cwd)
 
     if exit_code == 0:
@@ -59,7 +58,6 @@ def main() -> int:
         for copy_tree in copy_trees:
             src, dst = copy_tree
 
-            print(f"  - Copying tree: src='{src}', dst={dst}, cwd={cwd}")
             shutil.copytree(
                 src,
                 dst,
