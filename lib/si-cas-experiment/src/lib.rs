@@ -222,18 +222,22 @@ impl Function {
             return Ok(CompareRecommendation::Same);
         }
 
+        // We have already seen everything in "other", and have local changes.
         if self.vector_clock.already_seen(&other.vector_clock)? {
             return Ok(CompareRecommendation::TakeLeft);
         }
 
+        // "Other" has already seen everything we've done.
         if other.vector_clock.already_seen(&self.vector_clock)? {
             return Ok(CompareRecommendation::TakeRight);
         }
 
+        // We haven't made any local changes, "other" has newer stuff.
         if self.content_hash == self.last_synced_content_hash {
             return Ok(CompareRecommendation::TakeRight);
         }
 
+        // We have made changes, and "other" has newer stuff.
         Ok(CompareRecommendation::YouFigureItOut)
 
         //if remote's vector clock has no new additions after the one that we share
