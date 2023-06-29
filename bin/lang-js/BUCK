@@ -1,15 +1,15 @@
 load(
     "@prelude-si//:macros.bzl",
+    "eslint",
     "export_file",
     "node_pkg_bin",
-    "npm_bin",
+    "typescript_check",
     "typescript_dist",
     "package_node_modules",
 )
-load("@prelude-si//:pnpm.bzl",
-     "pnpm_task_library",
-     "pnpm_task_binary",
-     "pnpm_task_test",
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_test",
 )
 
 export_file(
@@ -20,19 +20,18 @@ package_node_modules(
     name = "node_modules",
 )
 
-npm_bin(
-    name = "tsc",
-)
-
-npm_bin(
-    name = "pkg",
-)
-
 filegroup(
     name = "src",
     srcs = glob([
         "src/**/*.ts",
         "tsconfig.json",
+    ]),
+)
+
+filegroup(
+    name = "test",
+    srcs = glob([
+        "tests/**/*",
     ]),
 )
 
@@ -46,30 +45,27 @@ node_pkg_bin(
     extra_srcs = ["bin-placeholder.js"],
 )
 
-pnpm_task_library(
-    name = "build-lint",
-    command = "lint",
-    srcs = glob(["src/**/*.ts", "tsconfig.json"]),
-    deps = [
-        "//:node_modules",
-    ],
-    path = "bin/lang-js",
-    visibility = ["PUBLIC"],
+eslint(
+    name = "check-lint",
+    directories = ["src", "tests"],
+    srcs = [":src", ":test"] + glob([".eslint*"]),
 )
 
-pnpm_task_binary(
-    name = "lint",
-    command = "lint",
-    srcs = glob(["src/**/*.ts"]),
-    path = "bin/lang-js",
-    deps = [
-        "//:node_modules"
-    ],
-    visibility = ["PUBLIC"],
+typescript_check(
+    name = "check-type",
+    srcs = [":src"],
 )
+
+#
+#
+#
+# TODO(fnichol): DEAL
+#
+#
+#
 
 pnpm_task_test(
-    name = "test",
+    name = "zzz-test",
     command = "test",
     deps = [
         ":dist",

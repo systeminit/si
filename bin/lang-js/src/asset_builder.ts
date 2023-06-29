@@ -231,12 +231,14 @@ export type PropWidgetDefinitionKind =
 
 export interface PropWidgetDefinition {
     kind: PropWidgetDefinitionKind;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     options: Record<string, any>;
 }
 
 export interface IPropWidgetDefinitionBuilder {
     setKind(kind: string): this;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     addOption(key: string, value: any): this;
 
     build(): PropWidgetDefinition;
@@ -255,6 +257,7 @@ export class PropWidgetDefinitionBuilder
         return this;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     addOption(key: string, value: any): this {
         this.propWidget.options[key] = value;
         return this;
@@ -359,6 +362,7 @@ export interface PropDefinition {
     widget?: PropWidgetDefinition;
     valueFrom?: ValueFrom;
     hidden?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue?: any;
     validations?: Validation[];
     mapKeyFuncs?: MapKeyFunc[];
@@ -383,6 +387,7 @@ export interface IPropBuilder {
 
     setHidden(hidden: boolean): this;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setDefaultValue(value: any): this;
 
     addValidation(validation: Validation): this;
@@ -445,6 +450,7 @@ export class PropBuilder implements IPropBuilder {
         return this.prop;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setDefaultValue(value: any): this {
         this.prop.defaultValue = value;
         return this;

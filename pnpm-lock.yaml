@@ -75,6 +75,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^4.0.0
         version: 4.0.0(vite@4.1.4)(vue@3.3.4)
+      eslint:
+        specifier: ^8.36.0
+        version: 8.36.0
       netlify-cli:
         specifier: ^13.2.2
         version: 13.2.2(@types/node@18.15.11)(typescript@4.9.5)
@@ -92,7 +95,7 @@ importers:
         version: 4.1.4(@types/node@18.15.11)(less@4.1.3)
       vite-plugin-checker:
         specifier: ^0.5.6
-        version: 0.5.6(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7)
+        version: 0.5.6(eslint@8.36.0)(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7)
       vite-plugin-markdown:
         specifier: ^2.2.0-2
         version: 2.2.0-2(vite@4.1.4)
@@ -283,6 +286,9 @@ importers:
       cypress:
         specifier: ^9.6.0
         version: 9.7.0
+      eslint:
+        specifier: ^8.36.0
+        version: 8.36.0
       faker:
         specifier: ^6.6.6
         version: 6.6.6
@@ -294,7 +300,7 @@ importers:
         version: 4.1.4(@types/node@18.15.11)(less@4.1.3)
       vite-plugin-checker:
         specifier: ^0.5.6
-        version: 0.5.6(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7)
+        version: 0.5.6(eslint@8.36.0)(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7)
       vite-svg-loader:
         specifier: ^3.4.0
         version: 3.6.0
@@ -452,6 +458,9 @@ importers:
       chai-subset:
         specifier: ^1.6.0
         version: 1.6.0
+      eslint:
+        specifier: ^8.36.0
+        version: 8.36.0
       nock:
         specifier: ^13.3.1
         version: 13.3.1
@@ -606,6 +615,12 @@ importers:
       '@si/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      eslint:
+        specifier: ^8.36.0
+        version: 8.36.0
+      typescript:
+        specifier: ^4.9.5
+        version: 4.9.5
 
   lib/tsconfig: {}
 
@@ -687,6 +702,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.8
         version: 10.4.13(postcss@8.4.21)
+      eslint:
+        specifier: ^8.36.0
+        version: 8.36.0
       postcss:
         specifier: ^8.4.16
         version: 8.4.21
@@ -708,6 +726,9 @@ importers:
       vite-svg-loader:
         specifier: ^3.4.0
         version: 3.6.0
+      vue-tsc:
+        specifier: ^1.1.7
+        version: 1.1.7
 
 packages:
 
@@ -1477,8 +1498,8 @@ packages:
     dependencies:
       ajv: 6.12.6
       debug: 4.3.4
-      espree: 9.4.1
-      globals: 13.17.0
+      espree: 9.5.0
+      globals: 13.20.0
       ignore: 5.2.0
       import-fresh: 3.3.0
       js-yaml: 4.1.0
@@ -15474,7 +15495,7 @@ packages:
       extsprintf: 1.3.0
     dev: true
 
-  /vite-plugin-checker@0.5.6(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7):
+  /vite-plugin-checker@0.5.6(eslint@8.36.0)(typescript@4.9.5)(vite@4.1.4)(vue-tsc@1.1.7):
     resolution: {integrity: sha512-ftRyON0gORUHDxcDt2BErmsikKSkfvl1i2DoP6Jt2zDO9InfvM6tqO1RkXhSjkaXEhKPea6YOnhFaZxW3BzudQ==}
     engines: {node: '>=14.16'}
     peerDependencies:
@@ -15510,6 +15531,7 @@ packages:
       chalk: 4.1.2
       chokidar: 3.5.3
       commander: 8.3.0
+      eslint: 8.36.0
       fast-glob: 3.2.12
       fs-extra: 11.1.0
       lodash.debounce: 4.0.8
@@ -15721,8 +15743,8 @@ packages:
       eslint: 8.36.0
       eslint-scope: 7.1.1
       eslint-visitor-keys: 3.3.0
-      espree: 9.4.1
-      esquery: 1.4.0
+      espree: 9.5.0
+      esquery: 1.5.0
       lodash: 4.17.21
       semver: 7.3.8
     transitivePeerDependencies:
@@ -15768,6 +15790,16 @@ packages:
     dependencies:
       de-indent: 1.0.2
       he: 1.2.0
+    dev: true
+
+  /vue-tsc@1.1.7:
+    resolution: {integrity: sha512-TYuWJMQmwaV9kC1oWvw6fSHlymJpsD1ad4GaYqvUloph7E2QiVEXZyZe+lf0pHHayyltZp0Z+ZqcLuXoru8lzA==}
+    hasBin: true
+    peerDependencies:
+      typescript: '*'
+    dependencies:
+      '@volar/vue-language-core': 1.1.7
+      '@volar/vue-typescript': 1.1.7
     dev: true
 
   /vue-tsc@1.1.7(typescript@4.9.5):

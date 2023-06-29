@@ -1,30 +1,75 @@
 load(
     "@prelude-si//:macros.bzl",
+    "eslint",
     "export_file",
+    "package_node_modules",
+    "typescript_check",
 )
-load("@prelude-si//:pnpm.bzl", "pnpm_task_library", "pnpm_task_binary")
+load(
+    "@prelude-si//:pnpm.bzl",
+    "pnpm_task_library",
+    "pnpm_task_binary",
+)
 
 export_file(
     name = "package.json",
 )
 
-export_file(
-    name = "dotenv",
-    src = "./.env",
-    mode = "reference",
-    visibility = ["PUBLIC"],
+package_node_modules(
+    name = "node_modules",
+    package_name = "@si/auth-api",
 )
 
-pnpm_task_library(
-    name = "build-lint",
-    command = "lint",
-    srcs = glob(["src/**/*", "tsconfig.json"]),
-    deps = [
-        "//:node_modules",
-    ],
-    path = "bin/auth-api",
-    visibility = ["PUBLIC"],
+filegroup(
+    name = "src",
+    srcs = glob([
+        "src/**/*",
+        "tsconfig-build.json",
+        "tsconfig.json",
+    ]),
 )
+
+filegroup(
+    name = "test",
+    srcs = glob([
+        "test/**/*",
+        "test/**/.*",
+    ]),
+)
+
+prod_deps_srcs = {
+    "lib/ts-lib": "//lib/ts-lib:src",
+}
+
+dev_deps_srcs = {
+    "lib/eslint-config": "//lib/eslint-config:src",
+    "lib/tsconfig": "//lib/tsconfig:src",
+}
+
+eslint(
+    name = "check-lint",
+    directories = ["src", "test"],
+    srcs = [":src", ":test"] + glob([".eslint*"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
+)
+
+# TODO(fnichol): likely prisma needs to be run first to generate the source in `.prisma/client`
+# (whereever that lives)
+# typescript_check(
+#     name = "check-type",
+#     srcs = [":src"],
+#     prod_deps_srcs = prod_deps_srcs,
+#     dev_deps_srcs = dev_deps_srcs,
+# )
+
+#
+#
+#
+# TODO(fnichol): DEAL
+#
+#
+#
 
 pnpm_task_library(
     name = "build",
@@ -32,32 +77,9 @@ pnpm_task_library(
     srcs = glob(["src/**/*", "tsconfig.json"]),
     deps = [
         "//:node_modules",
-        ":build-lint",
     ],
     path = "bin/auth-api",
     outs = ["dist"],
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_binary(
-    name = "lint",
-    command = "lint",
-    srcs = glob(["src/**/*"]),
-    path = "bin/auth-api",
-    deps = [
-        "//:node_modules",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_binary(
-    name = "lint-strict",
-    command = "lint:strict",
-    srcs = glob(["src/**/*"]),
-    path = "bin/auth-api",
-    deps = [
-        "//:node_modules",
-    ],
     visibility = ["PUBLIC"],
 )
 

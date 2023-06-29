@@ -1,5 +1,264 @@
-load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
-load("//pnpm:toolchain.bzl", "PnpmToolchainInfo")
+load(
+    "@prelude//decls/common.bzl",
+    "buck",
+)
+load(
+    "@prelude//test/inject_test_run_info.bzl",
+    "inject_test_run_info",
+)
+load(
+    "@prelude//python:toolchain.bzl",
+    "PythonToolchainInfo",
+)
+load(
+    "@prelude//tests:re_utils.bzl",
+    "get_re_executor_from_props",
+)
+load(
+    "//pnpm:toolchain.bzl",
+    "PnpmToolchainInfo",
+)
+
+def _npm_test_impl(
+    ctx: "context",
+    program_run_info: RunInfo.type,
+    program_args: "cmd_args",
+    test_info_type: str.type,
+) -> [[
+    DefaultInfo.type,
+    RunInfo.type,
+    ExternalRunnerTestInfo.type,
+]]:
+    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
+    package_build_ctx = package_build_context(ctx)
+
+    if ctx.attrs.pnpm_exec_cmd_override:
+        exec_cmd = cmd_args(
+            "pnpm",
+            "exec",
+            ctx.attrs.pnpm_exec_cmd_override,
+        )
+    else:
+        exec_cmd = cmd_args(program_run_info, format = "{}::abspath")
+
+    run_cmd_args = cmd_args([
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        pnpm_toolchain.exec_cmd[DefaultInfo].default_outputs,
+        "--cwd",
+        cmd_args([package_build_ctx.srcs_tree, ctx.label.package], delimiter = "/"),
+        "--",
+        exec_cmd,
+    ])
+    run_cmd_args.add(program_args)
+
+    args_file = ctx.actions.write("args.txt", run_cmd_args)
+
+    # Setup a RE executor based on the `remote_execution` param.
+    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+
+    return inject_test_run_info(
+        ctx,
+        ExternalRunnerTestInfo(
+            type = test_info_type,
+            command = [run_cmd_args],
+            env = ctx.attrs.env,
+            labels = ctx.attrs.labels,
+            contacts = ctx.attrs.contacts,
+            default_executor = re_executor,
+            # We implicitly make this test via the project root, instead of
+            # the cell root (e.g. fbcode root).
+            run_from_project_root = re_executor != None,
+            use_project_relative_paths = re_executor != None,
+        ),
+    ) + [
+        DefaultInfo(default_output = args_file),
+    ]
+
+def eslint_impl(ctx: "context") -> [[
+    DefaultInfo.type,
+    RunInfo.type,
+    ExternalRunnerTestInfo.type,
+]]:
+    args = cmd_args()
+    args.add(ctx.attrs.directories)
+    args.add("--ext")
+    args.add(",".join(ctx.attrs.extensions))
+    if ctx.attrs.warnings == False:
+        args.add("--max-warnings=0")
+    args.add(ctx.attrs.args)
+
+    return _npm_test_impl(
+        ctx,
+        ctx.attrs.eslint[RunInfo],
+        args,
+        "eslint",
+    )
+
+eslint = rule(
+    impl = eslint_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """List of package source files to track.""",
+        ),
+        "prod_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent prod package paths to source files to track.""",
+        ),
+        "dev_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent dev package paths to source files from to track.""",
+        ),
+        "eslint": attrs.dep(
+            providers = [RunInfo],
+            doc = """eslint dependency.""",
+        ),
+        "directories": attrs.list(
+            attrs.string(),
+            default = ["src", "test"],
+            doc = """Directories under which to check.""",
+        ),
+        "extensions": attrs.list(
+            attrs.string(),
+            default = [".ts", ".js", ".cjs", ".vue"],
+            doc = """File extensions to search for.""",
+        ),
+        "args": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Extra arguments passed to eslint.""",
+        ),
+        "warnings": attrs.bool(
+            default = False,
+            doc = """If `False`, then exit non-zero (treat warnings as errors).""",
+        ),
+        "package_node_modules": attrs.source(
+            doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
+        ),
+        "env": attrs.dict(
+            key = attrs.string(),
+            value = attrs.arg(),
+            sorted = False,
+            default = {},
+            doc = """Set environment variables for this rule's invocation of eslint. The environment
+            variable values may include macros which are expanded.""",
+        ),
+        "labels": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "contacts": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "remote_execution": buck.re_opts_for_tests_arg(),
+        "_inject_test_env": attrs.default_only(
+            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    },
+)
+
+def typescript_check_impl(ctx: "context") -> [[
+    DefaultInfo.type,
+    RunInfo.type,
+    ExternalRunnerTestInfo.type,
+]]:
+    args = cmd_args()
+    args.add("--noEmit")
+    args.add(ctx.attrs.args)
+
+    return _npm_test_impl(
+        ctx,
+        ctx.attrs.tsc[RunInfo],
+        args,
+        "tsc",
+    )
+
+typescript_check = rule(
+    impl = typescript_check_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """List of package source files to track.""",
+        ),
+        "prod_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent prod package paths to source files to track.""",
+        ),
+        "dev_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent dev package paths to source files from to track.""",
+        ),
+        "tsc": attrs.dep(
+            providers = [RunInfo],
+            doc = """tsc dependency.""",
+        ),
+        "args": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Extra arguments passed to tsc.""",
+        ),
+        "package_node_modules": attrs.source(
+            doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
+        ),
+        "env": attrs.dict(
+            key = attrs.string(),
+            value = attrs.arg(),
+            sorted = False,
+            default = {},
+            doc = """Set environment variables for this rule's invocation of eslint. The environment
+            variable values may include macros which are expanded.""",
+        ),
+        "labels": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "contacts": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "remote_execution": buck.re_opts_for_tests_arg(),
+        "_inject_test_env": attrs.default_only(
+            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    },
+)
 
 def node_pkg_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
     bin_name = ctx.attrs.bin_name or ctx.attrs.name

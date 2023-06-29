@@ -1,8 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
+    "eslint",
     "export_file",
-    "npm_bin",
     "package_node_modules",
+    "typescript_check",
     "vite_app",
 )
 load(
@@ -20,10 +21,6 @@ package_node_modules(
     name = "node_modules",
 )
 
-npm_bin(
-    name = "vite",
-)
-
 filegroup(
     name = "src",
     srcs = glob([
@@ -39,49 +36,48 @@ filegroup(
     ]),
 )
 
+prod_deps_srcs = {
+    "lib/ts-lib": "//lib/ts-lib:src",
+    "lib/vue-lib": "//lib/vue-lib:src",
+}
+
+dev_deps_srcs = {
+    "lib/eslint-config": "//lib/eslint-config:src",
+    "lib/tsconfig": "//lib/tsconfig:src",
+}
+
 vite_app(
     name = "web",
     srcs = [":src"],
-    prod_deps_srcs = {
-        "lib/ts-lib": "//lib/ts-lib:src",
-        "lib/vue-lib": "//lib/vue-lib:src",
-    },
-    dev_deps_srcs = {
-        "lib/eslint-config": "//lib/eslint-config:src",
-        "lib/tsconfig": "//lib/tsconfig:src",
-    },
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
-export_file(
-    name = "dotenv",
-    src = "./.env",
-    mode = "reference",
+eslint(
+    name = "check-lint",
+    srcs = [":src"] + glob([".eslint*"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
-pnpm_task_library(
-    name = "build-lint",
-    command = "lint",
+typescript_check(
+    name = "check-type",
     srcs = [":src"],
-    deps = [
-        "//:node_modules",
-    ],
-    path = "app/web",
-    visibility = ["PUBLIC"],
+    tsc_bin = "vue-tsc",
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
-pnpm_task_binary(
-    name = "lint",
-    command = "lint",
-    srcs = glob(["src/**/*"]),
-    path = "app/web",
-    deps = [
-        "//:node_modules",
-    ],
-    visibility = ["PUBLIC"],
-)
+#
+#
+#
+# TODO(fnichol): DEAL
+#
+#
+#
 
 pnpm_task_binary(
-    name = "lint-fix",
+    name = "fix-lint",
     command = "lint:fix",
     srcs = glob(["src/**/*"]),
     path = "app/web",
@@ -110,7 +106,7 @@ pnpm_task_binary(
 )
 
 pnpm_task_test(
-    name = "test",
+    name = "test-unit",
     command = "test",
     deps = [
         "//:node_modules",

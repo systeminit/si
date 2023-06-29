@@ -1,17 +1,50 @@
 load(
     "@prelude-si//:macros.bzl",
+    "eslint",
     "export_file",
     "filegroup",
+    "package_node_modules",
+    "typescript_check",
 )
 
 export_file(
     name = "package.json",
 )
 
+package_node_modules(
+    name = "node_modules",
+    package_name = "@si/vue-lib",
+)
+
 filegroup(
     name = "src",
     srcs = glob([
         "src/**/*",
-        "tsconfig.json"
+        "tsconfig.json",
+        "tsconfig.node.json",
     ]),
+)
+
+prod_deps_srcs = {
+    "lib/ts-lib": "//lib/ts-lib:src",
+}
+
+dev_deps_srcs = {
+    "lib/eslint-config": "//lib/eslint-config:src",
+    "lib/tsconfig": "//lib/tsconfig:src",
+}
+
+eslint(
+    name = "check-lint",
+    srcs = [":src"] + glob([".eslint*"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
+)
+
+typescript_check(
+    name = "check-type",
+    srcs = [":src"],
+    tsc_bin = "vue-tsc",
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
