@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import async from "async";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
