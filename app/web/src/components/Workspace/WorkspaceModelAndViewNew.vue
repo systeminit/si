@@ -514,9 +514,9 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
   );
 
   if (equivalentEdge) {
-    await componentsStore.RESTORE_EDGE2(equivalentEdge?.id);
+    await componentsStore.RESTORE_EDGE(equivalentEdge.id);
   } else {
-    await componentsStore.CREATE_COMPONENT_CONNECTION2(
+    await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
         nodeId: fromNodeId,
         socketId: fromSocketId,
@@ -552,7 +552,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   }
 
   // TODO These ids should be number from the start.
-  const createReq = await componentsStore.CREATE_COMPONENT2(
+  const createReq = await componentsStore.CREATE_COMPONENT(
     schemaId,
     e.position,
     parentId,
@@ -675,16 +675,16 @@ function onConfirmDelete() {
 
 async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
-    await componentsStore.DELETE_EDGE2(selectedEdgeId.value);
+    await componentsStore.DELETE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
-    await componentsStore.DELETE_COMPONENTS2(selectedComponentIds.value);
+    await componentsStore.DELETE_COMPONENTS(selectedComponentIds.value);
   }
   componentsStore.setSelectedComponentId(null);
 }
 
 async function triggerRestoreSelection() {
   if (selectedEdgeId.value) {
-    await componentsStore.RESTORE_EDGE2(selectedEdgeId.value);
+    await componentsStore.RESTORE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
     // Block restoring child of deleted frame
     const parentIds = _.compact(
@@ -707,7 +707,7 @@ async function triggerRestoreSelection() {
       return;
     }
 
-    await componentsStore.RESTORE_COMPONENTS2(selectedComponentIds.value);
+    await componentsStore.RESTORE_COMPONENTS(selectedComponentIds.value);
   }
 }
 
@@ -794,7 +794,7 @@ function onGroupElements({ group, elements }: GroupEvent) {
   }
 
   for (const element of elements) {
-    componentsStore.CONNECT_COMPONENT_TO_FRAME2(element.def.id, group.def.id);
+    componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
   }
 }
 

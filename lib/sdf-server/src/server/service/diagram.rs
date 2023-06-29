@@ -60,6 +60,8 @@ pub enum DiagramError {
     FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
+    #[error("invalid header name {0}")]
+    Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for socket id: {0}")]
@@ -96,6 +98,8 @@ pub enum DiagramError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
+    #[error("serde error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("socket not found")]
@@ -131,7 +135,6 @@ pub fn routes() -> Router<AppState> {
             post(get_node_add_menu::get_node_add_menu),
         )
         .route("/create_node", post(create_node::create_node))
-        .route("/create_node2", post(create_node::create_node2))
         .route(
             "/set_node_position",
             post(set_node_position::set_node_position),
@@ -141,32 +144,16 @@ pub fn routes() -> Router<AppState> {
             post(create_connection::create_connection),
         )
         .route(
-            "/create_connection2",
-            post(create_connection::create_connection2),
-        )
-        .route(
             "/delete_connection",
             post(delete_connection::delete_connection),
-        )
-        .route(
-            "/delete_connection2",
-            post(delete_connection::delete_connection2),
         )
         .route(
             "/restore_connection",
             post(restore_connection::restore_connection),
         )
         .route(
-            "/restore_connection2",
-            post(restore_connection::restore_connection2),
-        )
-        .route(
             "/delete_component",
             post(delete_component::delete_component),
-        )
-        .route(
-            "/delete_component2",
-            post(delete_component::delete_component2),
         )
         .route(
             "/delete_components",
@@ -177,20 +164,12 @@ pub fn routes() -> Router<AppState> {
             post(restore_component::restore_component),
         )
         .route(
-            "/restore_component2",
-            post(restore_component::restore_component2),
-        )
-        .route(
             "/restore_components",
             post(restore_component::restore_components),
         )
         .route(
             "/connect_component_to_frame",
             post(connect_component_to_frame::connect_component_to_frame),
-        )
-        .route(
-            "/connect_component_to_frame2",
-            post(connect_component_to_frame::connect_component_to_frame2),
         )
         .route(
             "/list_schema_variants",

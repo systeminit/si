@@ -1,7 +1,7 @@
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use dal::{
-    AttributeContext, AttributeValue, AttributeValueId, ChangeSet, ChangeSetPk, ComponentId,
-    PropId, Visibility, WsEvent,
+    AttributeContext, AttributeValue, AttributeValueId, ChangeSet, ComponentId, PropId, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,18 +20,11 @@ pub struct InsertPropertyEditorValueRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ForceChangeSet {
-    #[serde(rename = "_forceChangesetPk")] // TODO(victor) find a way to return this as a header
-    pub force_changeset_pk: Option<ChangeSetPk>,
-}
-
 pub async fn insert_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<InsertPropertyEditorValueRequest>,
-) -> ComponentResult<Json<ForceChangeSet>> {
+) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut force_changeset_pk = None;
@@ -70,5 +63,9 @@ pub async fn insert_property_editor_value(
 
     ctx.commit().await?;
 
-    Ok(Json(ForceChangeSet { force_changeset_pk }))
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+    Ok(response.body(axum::body::Empty::new())?)
 }
