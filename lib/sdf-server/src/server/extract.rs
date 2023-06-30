@@ -27,9 +27,10 @@ impl FromRequestParts<AppState> for AccessBuilder {
         let Authorization(claim) = Authorization::from_request_parts(parts, state).await?;
         let Tenancy(tenancy) = tenancy_from_claim(&claim).await?;
 
-        Ok(Self(context::AccessBuilder::new(
+        Ok(Self(context::AccessBuilder::new_maybe_blocking(
             tenancy,
             dal::HistoryActor::from(claim.user_pk),
+            state.for_tests(),
         )))
     }
 }
@@ -73,7 +74,11 @@ impl FromRequestParts<AppState> for HandlerContext {
         _parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let builder = state.services_context().clone().into_inner().into_builder();
+        let builder = state
+            .services_context()
+            .clone()
+            .into_inner()
+            .into_builder_maybe_blocking(state.for_tests());
         Ok(Self(builder))
     }
 }

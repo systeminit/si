@@ -125,3 +125,39 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
     }
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }
+
+pub async fn api_request_auth_no_response<Req: Serialize>(
+    app: Router,
+    method: Method,
+    uri: impl AsRef<str>,
+    auth_token: impl AsRef<str>,
+    request: &Req,
+) {
+    let auth_token = auth_token.as_ref();
+    let uri = uri.as_ref();
+    let api_request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
+
+    let api_request = api_request
+        .body(Body::from(
+            serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
+        ))
+        .expect("cannot create api request");
+    let response = app.oneshot(api_request).await.expect("cannot send request");
+    let status = response.status();
+    let body = hyper::body::to_bytes(response.into_body())
+        .await
+        .expect("cannot read body");
+    if status != StatusCode::OK {
+        dbg!(&body);
+        assert_eq!(
+            StatusCode::OK, // expected,
+            status,         // actual
+        );
+    }
+
+    assert_eq!(body, "", "response is not empty");
+}

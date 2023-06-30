@@ -1,7 +1,6 @@
 use axum::Router;
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
-use std::{thread, time};
 
 use crate::service_tests::scenario::ScenarioHarness;
 
@@ -82,7 +81,6 @@ async fn authoring_flow_asset(
         .await;
 
     harness.publish_asset(&ctx, asset.asset_id).await;
-    thread::sleep(time::Duration::from_secs(10));
 
     // Let's add the new schema to our test harness cache
     harness.add_schemas(&ctx, &[schema_name]).await;

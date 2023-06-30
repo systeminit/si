@@ -2,7 +2,7 @@ use std::{io, path::Path, sync::Arc};
 
 use dal::{
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobInfo},
+        consumer::{JobConsumer, JobConsumerError, JobConsumerMetadata, JobInfo},
         definition::{FixesJob, RefreshJob},
         producer::BlockingJobError,
     },
@@ -490,10 +490,14 @@ async fn execute_job(
     _id: JobInvocationId,
     _metadata: &Arc<ServerMetadata>,
     _messaging_destination: Arc<String>,
-    ctx_builder: DalContextBuilder,
+    mut ctx_builder: DalContextBuilder,
     request: Request<JobInfo>,
 ) -> Result<()> {
     let (job_info, _) = request.into_parts();
+    if job_info.access_builder().blocking() {
+        ctx_builder.set_blocking();
+    }
+
     let current_span = tracing::Span::current();
     if !current_span.is_disabled() {
         tracing::Span::current().record("job_info.id", &job_info.id);

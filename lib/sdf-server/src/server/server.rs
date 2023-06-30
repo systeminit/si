@@ -327,11 +327,42 @@ where
     }
 }
 
+pub fn build_service_for_tests(
+    services_context: ServicesContext,
+    jwt_public_signing_key: JwtPublicSigningKey,
+    signup_secret: SensitiveString,
+    posthog_client: PosthogClient,
+) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+    build_service_inner(
+        services_context,
+        jwt_public_signing_key,
+        signup_secret,
+        posthog_client,
+        true,
+    )
+}
+
 pub fn build_service(
     services_context: ServicesContext,
     jwt_public_signing_key: JwtPublicSigningKey,
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
+) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+    build_service_inner(
+        services_context,
+        jwt_public_signing_key,
+        signup_secret,
+        posthog_client,
+        false,
+    )
+}
+
+fn build_service_inner(
+    services_context: ServicesContext,
+    jwt_public_signing_key: JwtPublicSigningKey,
+    signup_secret: SensitiveString,
+    posthog_client: PosthogClient,
+    for_tests: bool,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -343,6 +374,7 @@ pub fn build_service(
         posthog_client,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
+        for_tests,
     );
 
     let routes = routes(state)

@@ -150,7 +150,9 @@ impl DependentValuesUpdate {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         ctx.update_without_deleted_visibility();
 
-        let ctx_builder = ctx.services_context().into_builder();
+        let ctx_builder = ctx
+            .services_context()
+            .into_builder_maybe_blocking(ctx.blocking());
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
         // Avoid lingering transaction while we wait to create attribute values

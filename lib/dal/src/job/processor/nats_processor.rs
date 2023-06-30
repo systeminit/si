@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use futures::StreamExt;
+use serde::Deserialize;
 use si_data_nats::NatsClient;
+use std::collections::hash_map::Entry;
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
@@ -10,7 +12,7 @@ use crate::{
         producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
         queue::JobQueue,
     },
-    DalContext,
+    AccessBuilder, DalContext,
 };
 
 use super::{JobQueueProcessor, JobQueueProcessorError, JobQueueProcessorResult};
@@ -63,9 +65,27 @@ impl JobQueueProcessor for NatsProcessor {
     }
 
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
-        let job_info: JobInfo = job
+        let mut job_info: JobInfo = job
             .try_into()
             .map_err(|e: JobProducerError| BlockingJobError::JobProducer(e.to_string()))?;
+
+        // Updates AccessBuilder to block on commit
+        // Note: Sadly because jobs were originally abstracted around Faktory we can't really have type-safety
+        // Over the arguments, but they are all structured the same way. In the future we should update the
+        // job's data-structures so they can be more strict and ergonomic.
+        match job_info.custom.extra.entry("access_builder".to_owned()) {
+            Entry::Vacant(_) => return Err(BlockingJobError::NoAccessBuilder)?,
+            Entry::Occupied(mut entry) => {
+                let mut access_builder = AccessBuilder::deserialize(entry.get())
+                    .map_err(|err| BlockingJobError::Serde(err.to_string()))?;
+                access_builder.set_blocking();
+                entry.insert(
+                    serde_json::to_value(access_builder)
+                        .map_err(|err| BlockingJobError::Serde(err.to_string()))?,
+                );
+            }
+        }
+
         let job_reply_inbox = self.client.new_inbox();
         let mut reply_subscription = self
             .client

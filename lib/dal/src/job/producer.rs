@@ -34,6 +34,8 @@ pub enum BlockingJobError {
     JobProducer(String),
     #[error("A nats error occurred: {0}")]
     Nats(String),
+    #[error("no access builder found in job info")]
+    NoAccessBuilder,
     #[error("serde error: {0}")]
     Serde(String),
     #[error("A transactions error occurred: {0}")]
