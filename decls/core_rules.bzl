@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//http_archive/exec_deps.bzl", "HttpArchiveExecDeps")
 load(":common.bzl", "OnDuplicateEntry", "buck", "prelude_rule", "validate_uri")
 load(":genrule_common.bzl", "genrule_common")
 load(":remote_common.bzl", "remote_common")
@@ -33,7 +34,6 @@ alias = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -199,7 +199,6 @@ command_alias = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "resources": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
             "_target_os_type": buck.target_os_type_arg(),
         }
@@ -216,7 +215,6 @@ config_setting = prelude_rule(
         {
             "constraint_values": attrs.list(attrs.configuration_label(), default = []),
             "values": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -249,7 +247,6 @@ configured_alias = prelude_rule(
             # If `configured_actual` is `None`, fallback to this unconfigured dep.
             "platform": attrs.option(attrs.configuration_label(), default = None),
             "propagate_flavors": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -260,9 +257,7 @@ constraint_setting = prelude_rule(
     examples = None,
     further = None,
     attrs = (
-        # @unsorted-dict-items
         {
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -276,7 +271,6 @@ constraint_value = prelude_rule(
         # @unsorted-dict-items
         {
             "constraint_setting": attrs.configuration_label(),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -394,7 +388,6 @@ export_file = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -412,7 +405,6 @@ external_test_runner = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -461,7 +453,6 @@ filegroup = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -675,7 +666,6 @@ genrule = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "need_android_tools": attrs.bool(default = False),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             "_exec_os_type": buck.exec_os_type_arg(),
         }
     ),
@@ -710,6 +700,7 @@ http_archive = prelude_rule(
           name = 'thrift-compiler-bin',
           out = 'thrift',
           cmd = 'cp $(location :thrift-archive)/bin/thrift $OUT',
+          executable = True,
         )
 
         genrule(
@@ -726,10 +717,6 @@ http_archive = prelude_rule(
         remote_common.urls_arg() |
         remote_common.sha256_arg() |
         {
-            "vpnless_urls": attrs.list(attrs.string(), default = [], doc = """
-                Additional URLs from which this resource can be downloaded when
-                  off VPN. Meta-internal only.
-            """),
             "out": attrs.option(attrs.string(), default = None, doc = """
                 An optional name to call the directory that the downloaded artifact is
                  extracted into. Buck will generate a default name if one is not
@@ -772,29 +759,15 @@ http_archive = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha1": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
-            # Exec deps are not supported in an anon_target. But http_archive is
-            # too useful to use in anon targets, so the following is a hack to
-            # make it usable.
-            #
-            # When anon targets work better, replace with the following:
-            #
-            #     "_create_exclusion_list": attrs.default_only(attrs.exec_dep(default = "prelude//http_archive/tools:create_exclusion_list")),
-            #     "_exec_os_type": buck.exec_os_type_arg(),
-            #
-            # The hack is that the following exec dep attributes have a correct
-            # default value for ordinary usage of http_archive from BUCK files,
-            # but anon targets can explicitly set them to None and get
-            # reasonable behavior.
-            #
-            # We'd use `attrs.option(attrs.exec_dep(...), default = "...")`
-            # except that is not allowed, because explicitly passing None in an
-            # attribute value does not set the optional to None, it means set to
-            # the default value.
-            "_create_exclusion_list": attrs.list(attrs.exec_dep(), default = ["prelude//http_archive/tools:create_exclusion_list"]),
-            "_exec_os_type": attrs.list(attrs.exec_dep(), default = ["prelude//os_lookup/targets:os_lookup"]),
-            # Should not exist, only here as part of the anon target workaround.
-            "_override_exec_platform_name": attrs.option(attrs.string(), default = None),
+            "exec_deps": attrs.dep(providers = [HttpArchiveExecDeps], default = "prelude//http_archive/tools:exec_deps", doc = """
+                When using http_archive as an anon target, the rule invoking the
+                anon target needs to mirror this attribute into its own
+                attributes, and forward the provider into the anon target
+                invocation.
+
+                When using http_archive normally not as an anon target, the
+                default value is always fine.
+            """),
         }
     ),
 )
@@ -853,6 +826,7 @@ http_file = prelude_rule(
           name = 'thrift-compiler-bin',
           url = 'https://internal-mirror.example.com/bin/thrift-compiler',
           sha256 = 'c24932ccabb66fffb2d7122298f7f1f91e0b1f14e05168e3036333f84bdf58dc',
+          executable = True,
         )
 
         ```
@@ -892,7 +866,6 @@ http_file = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha1": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -907,7 +880,6 @@ platform = prelude_rule(
         {
             "constraint_values": attrs.list(attrs.configuration_label(), default = []),
             "deps": attrs.list(attrs.configuration_label(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1025,7 +997,6 @@ remote_file = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "sha256": attrs.option(attrs.string(), default = None),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1121,7 +1092,6 @@ test_suite = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1139,7 +1109,6 @@ versioned_alias = prelude_rule(
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "versions": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )
@@ -1387,7 +1356,6 @@ worker_tool = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
             # FIXME: prelude// should be standalone (not refer to fbsource//)
             "_worker_tool_runner": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/tools/worker:worker_tool_runner")),
         }
@@ -1495,7 +1463,6 @@ zip_file = prelude_rule(
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "within_view": attrs.option(attrs.option(attrs.list(attrs.string())), default = None),
         }
     ),
 )

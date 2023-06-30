@@ -9,7 +9,7 @@
 Example usage:
 $ cat inputs.manifest
 [["foo.py", "input/foo.py", "//my_rule:foo"]]
-$ compile.py --output=out-dir --ignore-errors inputs.manifest
+$ compile.py --output=out-dir --bytecode-manifest=output.manifest --ignore-errors inputs.manifest
 $ find out-dir -type f
 out-dir/foo.pyc
 """
@@ -20,8 +20,8 @@ import argparse
 import errno
 import json
 import os
-import py_compile
 import sys
+from py_compile import compile, PycInvalidationMode
 
 
 if sys.version_info[0] == 3:
@@ -61,10 +61,20 @@ def _mkdirs(dirpath):
 def main(argv):
     parser = argparse.ArgumentParser(fromfile_prefix_chars="@")
     parser.add_argument("-o", "--output", required=True)
+    parser.add_argument(
+        "--bytecode-manifest", required=True, type=argparse.FileType("w")
+    )
     parser.add_argument("-f", "--format", default=DEFAULT_FORMAT)
-    parser.add_argument("-i", "--ignore-errors", action="store_true")
+    parser.add_argument(
+        "--invalidation-mode",
+        type=str,
+        default=PycInvalidationMode.UNCHECKED_HASH.name,
+        choices=[m.name for m in PycInvalidationMode],
+    )
     parser.add_argument("manifests", nargs="*")
     args = parser.parse_args(argv[1:])
+    invalidation_mode = PycInvalidationMode.__members__[args.invalidation_mode]
+    bytecode_manifest = []
 
     _mkdirs(args.output)
 
@@ -80,15 +90,18 @@ def main(argv):
             if ext != ".py":
                 continue
             module = base.replace(os.sep, ".")
-            pyc = os.path.join(args.output, get_pyc_path(module, args.format))
+            dest_pyc = get_pyc_path(module, args.format)
+            pyc = os.path.join(args.output, dest_pyc)
             _mkdirs(os.path.dirname(pyc))
-            py_compile.compile(
+            compile(
                 src,
                 cfile=pyc,
                 dfile=get_py_path(module),
-                doraise=not args.ignore_errors,
-                invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH,
+                doraise=True,
+                invalidation_mode=invalidation_mode,
             )
+            bytecode_manifest.append((dest_pyc, pyc, src))
+    json.dump(bytecode_manifest, args.bytecode_manifest, indent=2)
 
 
 sys.exit(main(sys.argv))

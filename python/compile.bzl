@@ -5,22 +5,36 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load(
-    ":manifest.bzl",
-    "ManifestInfo",  # @unused Used as a type
-)
+load(":manifest.bzl", "ManifestInfo")
 load(":toolchain.bzl", "PythonToolchainInfo")
+
+PycInvalidationMode = enum(
+    "UNCHECKED_HASH",
+    "CHECKED_HASH",
+    # timestamp isn't supported at the moment
+    # "TIMESTAMP",
+)
 
 def compile_manifests(
         ctx: "context",
+        manifests: [ManifestInfo.type]) -> {PycInvalidationMode.type: ManifestInfo.type}:
+    return {
+        mode: compile_manifests_for_mode(ctx, manifests, mode)
+        for mode in [PycInvalidationMode("UNCHECKED_HASH"), PycInvalidationMode("CHECKED_HASH")]
+    }
+
+def compile_manifests_for_mode(
+        ctx: "context",
         manifests: [ManifestInfo.type],
-        ignore_errors: bool.type = False) -> "artifact":
-    output = ctx.actions.declare_output("bytecode", dir = True)
+        invalidation_mode: PycInvalidationMode.type = PycInvalidationMode("UNCHECKED_HASH")) -> ManifestInfo.type:
+    output = ctx.actions.declare_output("bytecode_{}".format(invalidation_mode.value), dir = True)
+    bytecode_manifest = ctx.actions.declare_output("bytecode_{}.manifest".format(invalidation_mode.value))
     cmd = cmd_args(ctx.attrs._python_toolchain[PythonToolchainInfo].host_interpreter)
     cmd.add(ctx.attrs._python_toolchain[PythonToolchainInfo].compile)
     cmd.add(cmd_args(output.as_output(), format = "--output={}"))
-    if ignore_errors:
-        cmd.add("--ignore-errors")
+    cmd.add(cmd_args(bytecode_manifest.as_output(), format = "--bytecode-manifest={}"))
+    cmd.add("--invalidation-mode={}".format(invalidation_mode.value))
+
     for manifest in manifests:
         cmd.add(manifest.manifest)
         cmd.hidden([a for a, _ in manifest.artifacts])
@@ -31,5 +45,6 @@ def compile_manifests(
         # env var.
         env = {"PYTHONHASHSEED": "7"},
         category = "py_compile",
+        identifier = invalidation_mode.value,
     )
-    return output
+    return ManifestInfo(manifest = bytecode_manifest, artifacts = [(output, "bytecode")])

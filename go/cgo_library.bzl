@@ -44,7 +44,7 @@ load(
 )
 load(":compile.bzl", "GoPkgCompileInfo", "compile", "get_filtered_srcs", "get_inherited_compile_pkgs")
 load(":link.bzl", "GoPkgLinkInfo", "get_inherited_link_pkgs")
-load(":packages.bzl", "go_attr_pkg_name", "merge_pkgs")
+load(":packages.bzl", "GoPkg", "go_attr_pkg_name", "merge_pkgs")
 load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_cmd_args")
 
 # A map of expected linkages for provided link style
@@ -67,6 +67,9 @@ def _cgo(
     pre_args = pre.set.project_as_args("args")
     pre_include_dirs = pre.set.project_as_args("include_dirs")
 
+    # If you change this dir or naming convention, please
+    # update the corresponding logic in `fbgolist`.
+    # Otherwise editing and linting for Go will break.
     gen_dir = "cgo_gen"
 
     go_srcs = []
@@ -179,16 +182,33 @@ def cgo_library_impl(ctx: "context") -> ["provider"]:
         all_srcs.add(get_filtered_srcs(ctx, ctx.attrs.go_srcs))
 
     # Build Go library.
-    lib = compile(
+    static_pkg = compile(
         ctx,
         pkg_name,
         all_srcs,
         deps = ctx.attrs.deps + ctx.attrs.exported_deps,
+        shared = False,
     )
+    shared_pkg = compile(
+        ctx,
+        pkg_name,
+        all_srcs,
+        deps = ctx.attrs.deps + ctx.attrs.exported_deps,
+        shared = True,
+    )
+    pkgs = {
+        pkg_name: GoPkg(
+            shared = shared_pkg,
+            static = static_pkg,
+        ),
+    }
 
-    pkgs = {pkg_name: lib}
+    # We need to keep pre-processed cgo source files,
+    # because they are required for any editing and linting (like VSCode+gopls)
+    # to work with cgo. And when nearly every FB service client is cgo,
+    # we need to support it well.
     return [
-        DefaultInfo(default_output = lib),
+        DefaultInfo(default_output = static_pkg, other_outputs = go_srcs),
         GoPkgCompileInfo(pkgs = merge_pkgs([
             pkgs,
             get_inherited_compile_pkgs(ctx.attrs.exported_deps),

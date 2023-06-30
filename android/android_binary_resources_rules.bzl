@@ -6,7 +6,7 @@
 # of this source tree.
 
 load("@prelude//:resources.bzl", "gather_resources")
-load("@prelude//android:aapt2_link.bzl", "get_aapt2_link")
+load("@prelude//android:aapt2_link.bzl", "get_aapt2_link", "get_module_manifest_in_proto_format")
 load("@prelude//android:android_manifest.bzl", "generate_android_manifest")
 load("@prelude//android:android_providers.bzl", "AndroidBinaryResourcesInfo", "AndroidResourceInfo", "ExopackageResourcesInfo")
 load("@prelude//android:android_resource.bzl", "aapt2_compile")
@@ -43,9 +43,8 @@ def get_android_binary_resources_info(
     )
 
     android_manifest = _get_manifest(ctx, android_packageable_info, manifest_entries)
-    module_manifests = _get_module_manifests(ctx, android_packageable_info, manifest_entries, apk_module_graph_file)
 
-    aapt2_link_info = get_aapt2_link(
+    non_proto_format_aapt2_link_info, proto_format_aapt2_link_info = get_aapt2_link(
         ctx,
         ctx.attrs._android_toolchain[AndroidToolchainInfo],
         [resource_info.aapt2_compile_output for resource_info in resource_infos if resource_info.aapt2_compile_output != None],
@@ -54,7 +53,6 @@ def get_android_binary_resources_info(
         no_auto_version = getattr(ctx.attrs, "no_auto_version_resources", False),
         no_version_transitions = getattr(ctx.attrs, "no_version_transitions_resources", False),
         no_auto_add_overlay = getattr(ctx.attrs, "no_auto_add_overlay_resources", False),
-        use_proto_format = use_proto_format,
         no_resource_removal = True,
         package_id_offset = 0,
         should_keep_raw_values = getattr(ctx.attrs, "aapt2_keep_raw_values", False),
@@ -67,6 +65,17 @@ def get_android_binary_resources_info(
         min_sdk = aapt2_min_sdk,
         preferred_density = aapt2_preferred_density,
     )
+
+    module_manifests = _get_module_manifests(
+        ctx,
+        android_packageable_info,
+        manifest_entries,
+        apk_module_graph_file,
+        use_proto_format,
+        non_proto_format_aapt2_link_info.primary_resources_apk,
+    )
+
+    aapt2_link_info = proto_format_aapt2_link_info if use_proto_format else non_proto_format_aapt2_link_info
 
     prebuilt_jars = [packaging_dep.jar for packaging_dep in java_packaging_deps if packaging_dep.is_prebuilt_jar]
 
@@ -452,7 +461,9 @@ def _get_module_manifests(
         ctx: "context",
         android_packageable_info: "AndroidPackageableInfo",
         manifest_entries: dict.type,
-        apk_module_graph_file: ["artifact", None]) -> ["artifact"]:
+        apk_module_graph_file: ["artifact", None],
+        use_proto_format: bool.type,
+        primary_resources_apk: "artifact") -> ["artifact"]:
     if not apk_module_graph_file:
         return []
 
@@ -480,6 +491,9 @@ def _get_module_manifests(
 
         merged_module_manifests = {}
         for module_name in apk_module_graph_info.module_list:
+            if is_root_module(module_name):
+                continue
+
             merged_module_manifest, _ = generate_android_manifest(
                 ctx,
                 android_toolchain.generate_manifest[RunInfo],
@@ -488,6 +502,15 @@ def _get_module_manifests(
                 module_to_manifests.get(module_name, []),
                 manifest_entries.get("placeholders", {}),
             )
+
+            if use_proto_format:
+                merged_module_manifest = get_module_manifest_in_proto_format(
+                    ctx,
+                    android_toolchain,
+                    merged_module_manifest,
+                    primary_resources_apk,
+                    module_name,
+                )
 
             merged_module_manifests["assets/{}/AndroidManifest.xml".format(module_name)] = merged_module_manifest
 

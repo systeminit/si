@@ -18,9 +18,10 @@ AndroidBinaryNativeLibsInfo = record(
     apk_under_test_prebuilt_native_library_dirs = ["PrebuiltNativeLibraryDir"],
     apk_under_test_shared_libraries = ["SharedLibrary"],
     exopackage_info = ["ExopackageNativeInfo", None],
-    native_lib_assets = ["artifact"],
+    root_module_native_lib_assets = ["artifact"],
+    non_root_module_native_lib_assets = ["artifact"],
     native_libs_for_primary_apk = ["artifact"],
-    unstripped_libs = ["artifact"],
+    unstripped_libs = {"artifact": str.type},
 )
 
 AndroidBinaryResourcesInfo = record(
@@ -182,7 +183,8 @@ ExopackageResourcesInfo = record(
 DexFilesInfo = record(
     primary_dex = "artifact",
     primary_dex_class_names = ["artifact", None],
-    secondary_dex_dirs = ["artifact"],
+    root_module_secondary_dex_dirs = ["artifact"],
+    non_root_module_secondary_dex_dirs = ["artifact"],
     secondary_dex_exopackage_info = [ExopackageDexInfo.type, None],
     proguard_text_files_path = ["artifact", None],
 )
