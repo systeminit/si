@@ -9,7 +9,7 @@ export interface IValueFromBuilder {
 
     setSocketName(name: string): this;
 
-    addPropPath(path: string): this;
+    setPropPath(path: string[]): this;
 
     build(): ValueFrom;
 }
@@ -38,16 +38,12 @@ export class ValueFromBuilder implements IValueFromBuilder {
         return this;
     }
 
-    addPropPath(path: string): this {
+    setPropPath(path: string[]): this {
         if (this.valueFrom.type !== "prop") {
             return this;
         }
 
-        if (!this.valueFrom.propPath) {
-            this.valueFrom.propPath = [];
-        }
-
-        this.valueFrom.propPath.push(path);
+        this.valueFrom.propPath = path;
         return this;
     }
 
@@ -259,6 +255,10 @@ export class PropWidgetDefinitionBuilder
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     addOption(key: string, value: any): this {
+        if (!this.propWidget.options){
+            this.propWidget.options = {};
+        }
+
         this.propWidget.options[key] = value;
         return this;
     }
