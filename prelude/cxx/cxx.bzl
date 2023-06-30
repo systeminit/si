@@ -41,6 +41,7 @@ load(
     "create_linkable_node",
 )
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "create_shared_libraries", "merge_shared_libraries")
+load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executor_from_props",
@@ -238,7 +239,7 @@ def _prebuilt_item(
         return item
 
     if platform_items != None:
-        items = cxx_by_platform(ctx, platform_items)
+        items = dedupe(cxx_by_platform(ctx, platform_items))
         if len(items) == 0:
             return None
         if len(items) != 1:
@@ -379,7 +380,7 @@ def prebuilt_cxx_library_impl(ctx: "context") -> ["provider"]:
                         shlink_args.extend(exported_linker_flags)
                         shlink_args.extend(non_exported_linker_flags)
                         shlink_args.extend(get_link_whole_args(linker_type, [lib]))
-                        shared_lib, _, _ = cxx_link_into_shared_library(
+                        link_result = cxx_link_into_shared_library(
                             ctx,
                             soname,
                             [
@@ -389,6 +390,7 @@ def prebuilt_cxx_library_impl(ctx: "context") -> ["provider"]:
                                 get_link_args(inherited_exported_link, LinkStyle("shared")),
                             ],
                         )
+                        shared_lib = link_result.linked_object
 
                 if shared_lib:
                     out = shared_lib.output
@@ -410,6 +412,9 @@ def prebuilt_cxx_library_impl(ctx: "context") -> ["provider"]:
                         # Generate a shared library interface if the rule supports it.
                         if ctx.attrs.supports_shared_library_interface and cxx_use_shlib_intfs(ctx):
                             shared_lib_for_linking = cxx_mk_shlib_intf(ctx, ctx.attrs.name, shared_lib.output)
+                        if ctx.attrs._target_os_type[OsLookup].platform == "windows" and ctx.attrs.import_lib != None:
+                            shared_lib_for_linking = ctx.attrs.import_lib
+
                         linkable = SharedLibLinkable(lib = shared_lib_for_linking)
 
                     # Provided means something external to the build will provide

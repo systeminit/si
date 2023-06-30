@@ -23,6 +23,7 @@ load("@prelude//erlang:erlang.bzl", _erlang_application = "erlang_application", 
 load("@prelude//python:toolchain.bzl", _python = "python")
 load("@prelude//user:all.bzl", _user_rules = "rules")
 load("@prelude//utils:utils.bzl", "expect")
+load(":open_source.bzl", "is_open_source")
 load(":paths.bzl", "paths")
 load(":rules.bzl", __rules__ = "rules")
 
@@ -253,13 +254,19 @@ def _python_library_macro_stub(
         **kwargs
     )
 
-def _versioned_alias_macro_stub(versions = {}, **kwargs):
+def _versioned_alias_macro_stub(versions = {}, target_compatible_with = [], **kwargs):
     project = paths.basename(package_name())
+    if read_config("fbcode", "tp2_compatible_with") == "true":
+        target_compatible_with += select({"DEFAULT": ["ovr_config//:none"]} | {
+            _tp2_constraint(project, version): []
+            for version in versions
+        })
     __rules__["alias"](
         actual = select({
             _tp2_constraint(project, version): actual
             for version, actual in versions.items()
         }),
+        target_compatible_with = target_compatible_with,
         **kwargs
     )
 
@@ -303,6 +310,7 @@ def _apple_watchos_bundle_macro_stub(**kwargs):
 def _apple_test_macro_stub(**kwargs):
     apple_test_macro_impl(
         apple_test_rule = __rules__["apple_test"],
+        apple_resource_bundle_rule = _user_rules["apple_resource_bundle"],
         **kwargs
     )
 
@@ -335,6 +343,13 @@ def _swift_toolchain_macro_stub(**kwargs):
 def _cxx_toolchain_macro_stub(inherit_target_platform = False, **kwargs):
     if inherit_target_platform:
         rule = cxx_toolchain_inheriting_target_platform
+        if not is_open_source():
+            cache_links = kwargs.get("cache_links")
+            kwargs["cache_links"] = select({
+                "DEFAULT": cache_links,
+                "ovr_config//build_mode:fbcode-build-info-mode-full": False,
+                "ovr_config//build_mode:fbcode-build-info-mode-stable": True,
+            })
     else:
         rule = __rules__["cxx_toolchain"]
     cxx_toolchain_macro_impl(

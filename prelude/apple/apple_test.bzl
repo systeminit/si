@@ -7,7 +7,12 @@
 
 load("@prelude//apple:apple_library.bzl", "AppleLibraryAdditionalParams", "apple_library_rule_constructor_params_and_swift_providers")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
+# @oss-disable: load("@prelude//apple/meta_only:apple_test_re_capabilities.bzl", "apple_test_re_capabilities") 
 load("@prelude//apple/swift:swift_compilation.bzl", "get_swift_anonymous_targets", "uses_explicit_modules")
+load(
+    "@prelude//cxx:argsfiles.bzl",
+    "CompileArgsfile",  # @unused Used as a type
+)
 load(
     "@prelude//cxx:compile.bzl",
     "CxxSrcWithFlags",  # @unused Used as a type
@@ -63,7 +68,7 @@ def apple_test_impl(ctx: "context") -> [["provider"], "promise"]:
                     shared_library_flags = ["-bundle"],
                 ),
                 generate_sub_targets = CxxRuleSubTargetParams(
-                    compilation_database = False,
+                    compilation_database = True,
                     headers = False,
                     link_group_map = False,
                 ),
@@ -96,7 +101,7 @@ def apple_test_impl(ctx: "context") -> [["provider"], "promise"]:
 
         binary_part = AppleBundlePart(source = test_binary, destination = AppleBundleDestination("executables"), new_name = ctx.attrs.name)
         part_list_output = get_apple_bundle_part_list(ctx, AppleBundlePartListConstructorParams(binaries = [binary_part]))
-        assemble_bundle(ctx, xctest_bundle, part_list_output.parts, part_list_output.info_plist_part)
+        assemble_bundle(ctx, xctest_bundle, part_list_output.parts, part_list_output.info_plist_part, None)
 
         sub_targets = cxx_library_output.sub_targets
         (debuginfo,) = sub_targets[DEBUGINFO_SUBTARGET]
@@ -154,11 +159,9 @@ def _get_test_info(ctx: "context", xctest_bundle: "artifact", test_host_app_bund
     else:
         local_enabled = False
         remote_enabled = True
-        remote_execution_properties = {
-            "platform": "ios-simulator-pure-re",
-            "subplatform": "iPhone 8.iOS 15.0",
-            "xcode-version": "xcodestable",
-        }
+        # @oss-disable: requires_ios_booted_simulator = ctx.attrs.test_host_app != None or ctx.attrs.ui_test_target_app != None 
+        # @oss-disable: remote_execution_properties = apple_test_re_capabilities(use_unbooted_simulator = not requires_ios_booted_simulator) 
+        remote_execution_properties = None # @oss-enable
 
     return ExternalRunnerTestInfo(
         type = "custom",  # We inherit a label via the macro layer that overrides this.
@@ -210,13 +213,13 @@ def _get_bundle_loader_flags(binary: ["cmd_args", None]) -> [""]:
     return []
 
 def _xcode_populate_attributes(
-        ctx,
+        ctx: "context",
         srcs: [CxxSrcWithFlags.type],
-        argsfiles_by_ext: {str.type: "artifact"},
+        argsfiles: {str.type: CompileArgsfile.type},
         xctest_bundle: "artifact",
         test_host_app_binary: ["cmd_args", None],
         **_kwargs) -> {str.type: ""}:
-    data = apple_populate_xcode_attributes(ctx = ctx, srcs = srcs, argsfiles_by_ext = argsfiles_by_ext, product_name = ctx.attrs.name)
+    data = apple_populate_xcode_attributes(ctx = ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name)
     data["output"] = xctest_bundle
     if test_host_app_binary:
         data["test_host_app_binary"] = test_host_app_binary

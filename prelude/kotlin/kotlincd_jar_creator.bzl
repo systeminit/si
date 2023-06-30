@@ -61,7 +61,8 @@ def create_jar_artifact_kotlincd(
         is_building_android_binary: bool.type,
         friend_paths: ["dependency"],
         kotlin_compiler_plugins: dict.type,
-        extra_kotlinc_arguments: [str.type]) -> "JavaCompileOutputs":
+        extra_kotlinc_arguments: [str.type],
+        extra_non_source_only_abi_kotlinc_arguments: [str.type]) -> "JavaCompileOutputs":
     resources_map = get_resources_map(
         java_toolchain = java_toolchain,
         package = label.package,
@@ -110,6 +111,7 @@ def create_jar_artifact_kotlincd(
             shouldVerifySourceOnlyAbiConstraints = actual_abi_generation_mode == AbiGenerationMode("source_only"),
             shouldGenerateAnnotationProcessingStats = True,
             extraKotlincArguments = extra_kotlinc_arguments,
+            extraNonSourceOnlyAbiKotlincArguments = extra_non_source_only_abi_kotlinc_arguments,
             shouldRemoveKotlinCompilerFromClassPath = True,
         )
 
@@ -220,7 +222,7 @@ def create_jar_artifact_kotlincd(
         proto = declare_prefixed_output(actions, actions_identifier, "jar_command.proto.json")
         proto_with_inputs = actions.write_json(proto, encoded_command, with_inputs = True)
 
-        exe = prepare_cd_exe(
+        exe, local_only = prepare_cd_exe(
             qualified_name,
             java = java_toolchain.java[RunInfo],
             compiler = kotlin_toolchain.kotlinc[DefaultInfo].default_outputs[0],
@@ -228,6 +230,7 @@ def create_jar_artifact_kotlincd(
             debug_port = kotlin_toolchain.kotlincd_debug_port,
             debug_target = kotlin_toolchain.kotlincd_debug_target,
             extra_jvm_args = kotlin_toolchain.kotlincd_jvm_args,
+            extra_jvm_args_target = kotlin_toolchain.kotlincd_jvm_args_target,
         )
 
         args = cmd_args()
@@ -289,6 +292,8 @@ def create_jar_artifact_kotlincd(
             identifier = actions_identifier,
             dep_files = dep_files,
             exe = exe,
+            local_only = local_only,
+            low_pass_filter = False,
         )
 
     library_classpath_jars_tag = actions.artifact_tag()

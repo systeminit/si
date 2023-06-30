@@ -25,11 +25,14 @@ load("@prelude//cxx:prebuilt_cxx_library_group.bzl", "prebuilt_cxx_library_group
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
 
 # Erlang
-load("@prelude//erlang:erlang.bzl", _erlang_extra_attributes = "attributes", _erlang_implemented_rules = "implemented_rules")
-load("@prelude//go:cgo_library.bzl", "cgo_library_impl")
-load("@prelude//go:coverage.bzl", "GoCoverageMode")
+load("@prelude//erlang:erlang.bzl", _erlang_implemented_rules = "implemented_rules")
+
+# Git
+load("@prelude//git:git_fetch.bzl", "git_fetch_impl")
 
 # Go
+load("@prelude//go:cgo_library.bzl", "cgo_library_impl")
+load("@prelude//go:coverage.bzl", "GoCoverageMode")
 load("@prelude//go:go_binary.bzl", "go_binary_impl")
 load("@prelude//go:go_exported_library.bzl", "go_exported_library_impl")
 load("@prelude//go:go_library.bzl", "go_library_impl")
@@ -90,6 +93,8 @@ load("@prelude//decls/core_rules.bzl", "core_rules")
 load("@prelude//decls/cxx_rules.bzl", "cxx_rules")
 load("@prelude//decls/d_rules.bzl", "d_rules")
 load("@prelude//decls/dotnet_rules.bzl", "dotnet_rules")
+load("@prelude//decls/erlang_rules.bzl", "erlang_rules")
+load("@prelude//decls/git_rules.bzl", "git_rules")
 load("@prelude//decls/go_rules.bzl", "go_rules")
 load("@prelude//decls/groovy_rules.bzl", "groovy_rules")
 load("@prelude//decls/halide_rules.bzl", "halide_rules")
@@ -129,6 +134,8 @@ rule_decl_records = [
     cxx_rules,
     d_rules,
     dotnet_rules,
+    erlang_rules,
+    git_rules,
     go_rules,
     groovy_rules,
     halide_rules,
@@ -183,6 +190,9 @@ extra_implemented_rules = struct(
     cxx_python_extension = cxx_python_extension_impl,
     prebuilt_cxx_library = prebuilt_cxx_library_impl,
     prebuilt_cxx_library_group = prebuilt_cxx_library_group_impl,
+
+    #git
+    git_fetch = git_fetch_impl,
 
     #go
     cgo_library = cgo_library_impl,
@@ -439,6 +449,11 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_haskell_toolchain": toolchains_common.haskell(),
     },
+    "haskell_ghci": {
+        "template_deps": attrs.list(attrs.exec_dep(providers = [HaskellLibraryProvider]), default = []),
+        "_cxx_toolchain": toolchains_common.cxx(),
+        "_haskell_toolchain": toolchains_common.haskell(),
+    },
     "haskell_ide": {
         "include_projects": attrs.list(attrs.dep(), default = []),
         "_haskell_toolchain": toolchains_common.haskell(),
@@ -461,10 +476,11 @@ inlined_extra_attributes = {
         "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
         "public_system_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
         "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
-        "supports_python_dlopen": attrs.option(attrs.bool(), default = None),
+        "supports_python_dlopen": attrs.bool(default = True),
         "versioned_header_dirs": attrs.option(attrs.versioned(attrs.list(attrs.source(allow_directory = True))), default = None),
         "_cxx_toolchain": toolchains_common.cxx(),
         "_omnibus_environment": omnibus_environment_attr(),
+        "_target_os_type": buck.target_os_type_arg(),
     },
 
     #python
@@ -522,7 +538,6 @@ all_extra_attributes = _merge_dictionaries([
     _android_extra_attributes,
     _apple_extra_attributes,
     _config_extra_attributes,
-    _erlang_extra_attributes,
     _java_extra_attributes,
     _js_extra_attributes,
     _julia_extra_attributes,
@@ -559,6 +574,7 @@ extra_attributes = struct(**all_extra_attributes)
 
 # Configuration transitions to pass `cfg` for builtin rules.
 transitions = {
+    "android_binary": constraint_overrides_transition,
     "python_binary": constraint_overrides_transition,
     "python_test": constraint_overrides_transition,
 }

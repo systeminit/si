@@ -9,6 +9,10 @@
 # Overview of available options:
 # https://github.com/facebookincubator/reindeer/blob/main/example/third-party/reindeer.toml
 
+# Build dependencies through http_archive downloaded from crates.io, rather than
+# vendoring sources into this repo.
+vendor = false
+
 # Parse Rust code to work out the precise set of source files for each crate.
 # This uses `srcfiles` which only works on Rust 2018 and without some macro
 # constructions. It works in almost all cases, but you may need to have a

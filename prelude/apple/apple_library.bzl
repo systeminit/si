@@ -18,6 +18,12 @@ load(
     "get_swiftmodule_linkable",
     "uses_explicit_modules",
 )
+load("@prelude//apple/swift:swift_types.bzl", "SWIFT_EXTENSION")
+load(
+    "@prelude//cxx:argsfiles.bzl",
+    "CompileArgsfile",  # @unused Used as a type
+    "CompileArgsfiles",
+)
 load("@prelude//cxx:cxx_library.bzl", "cxx_library_parameterized")
 load(
     "@prelude//cxx:cxx_library_utility.bzl",
@@ -27,7 +33,6 @@ load(
 load("@prelude//cxx:cxx_sources.bzl", "get_srcs_with_flags")
 load(
     "@prelude//cxx:cxx_types.bzl",
-    "CxxAdditionalArgsfileParams",  # @unused Used as a type
     "CxxRuleAdditionalParams",
     "CxxRuleConstructorParams",
     "CxxRuleProviderParams",
@@ -135,7 +140,15 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: "context", pa
     else:
         modulemap_pre = None
 
-    swift_compile = compile_swift(ctx, swift_srcs, deps_providers, exported_hdrs, modulemap_pre, params.extra_swift_compiler_flags)
+    swift_compile = compile_swift(
+        ctx,
+        swift_srcs,
+        True,  # parse_as_library
+        deps_providers,
+        exported_hdrs,
+        modulemap_pre,
+        params.extra_swift_compiler_flags,
+    )
     swift_object_files = [swift_compile.object_file] if swift_compile else []
 
     swift_pre = CPreprocessor()
@@ -167,8 +180,6 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: "context", pa
         swift_shared_external_debug_info = swift_static_external_debug_info
     else:
         swift_shared_external_debug_info = _get_swift_shared_external_debug_info(swift_dependency_info) if swift_dependency_info else []
-
-    swift_argsfile = swift_compile.swift_argsfile if swift_compile else None
 
     modular_pre = CPreprocessor(
         uses_modules = ctx.attrs.uses_modules,
@@ -216,7 +227,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: "context", pa
         srcs = cxx_srcs,
         additional = CxxRuleAdditionalParams(
             srcs = swift_srcs,
-            argsfiles = [swift_argsfile] if swift_argsfile else [],
+            argsfiles = swift_compile.argsfiles if swift_compile else CompileArgsfiles(),
             # We need to add any swift modules that we include in the link, as
             # these will end up as `N_AST` entries that `dsymutil` will need to
             # follow.
@@ -234,7 +245,7 @@ def apple_library_rule_constructor_params_and_swift_providers(ctx: "context", pa
         strip_executable = ctx.attrs.stripped,
         strip_args_factory = apple_strip_args,
         force_link_group_linking = params.force_link_group_linking,
-        cxx_populate_xcode_attributes_func = lambda local_ctx, **kwargs: _xcode_populate_attributes(ctx = local_ctx, swift_argsfile = swift_argsfile, populate_xcode_attributes_func = params.populate_xcode_attributes_func, **kwargs),
+        cxx_populate_xcode_attributes_func = lambda local_ctx, **kwargs: _xcode_populate_attributes(ctx = local_ctx, populate_xcode_attributes_func = params.populate_xcode_attributes_func, **kwargs),
         generate_sub_targets = params.generate_sub_targets,
         generate_providers = params.generate_providers,
         # Some apple rules rely on `static` libs *not* following dependents.
@@ -252,7 +263,7 @@ def _filter_swift_srcs(ctx: "context") -> (["CxxSrcWithFlags"], ["CxxSrcWithFlag
     cxx_srcs = []
     swift_srcs = []
     for s in get_srcs_with_flags(ctx):
-        if s.file.extension == ".swift":
+        if s.file.extension == SWIFT_EXTENSION:
             swift_srcs.append(s)
         else:
             cxx_srcs.append(s)
@@ -312,12 +323,9 @@ def _get_linker_flags(ctx: "context") -> "cmd_args":
 def _xcode_populate_attributes(
         ctx,
         srcs: ["CxxSrcWithFlags"],
-        argsfiles_by_ext: {str.type: "artifact"},
-        swift_argsfile: [CxxAdditionalArgsfileParams.type, None],
+        argsfiles: {str.type: CompileArgsfile.type},
         populate_xcode_attributes_func: "function",
         **_kwargs) -> {str.type: ""}:
-    if swift_argsfile:
-        argsfiles_by_ext[swift_argsfile.extension] = swift_argsfile.file
-
-    data = populate_xcode_attributes_func(ctx, srcs = srcs, argsfiles_by_ext = argsfiles_by_ext, product_name = ctx.attrs.name)
+    # Overwrite the product name
+    data = populate_xcode_attributes_func(ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name)
     return data
