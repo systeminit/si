@@ -163,11 +163,20 @@ pub enum CompareRecommendation {
     TakeLeft,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum UtilizationStatus {
+    #[default]
+    Active,
+    Inactive,
+    Deployed,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Function {
     pub last_synced_content_hash: String,
     pub content_hash: String,
     pub vector_clock: VectorClock,
+    pub utilization: UtilizationStatus,
 }
 
 impl PartialEq for Function {
@@ -186,6 +195,7 @@ impl Function {
             last_synced_content_hash: content_hash.clone(),
             content_hash,
             vector_clock: VectorClock::new(who),
+            utilization: UtilizationStatus::Active,
         }
     }
 
@@ -219,6 +229,7 @@ impl Function {
             last_synced_content_hash: self.content_hash.clone(),
             content_hash: self.content_hash.clone(),
             vector_clock: self.vector_clock.fork(who)?,
+            utilization: UtilizationStatus::Active,
         };
         Ok(func)
     }
@@ -271,6 +282,7 @@ pub struct Module {
     pub vector_clock: VectorClock,
     pub name: String,
     pub funcs: HashMap<String, Function>,
+    pub deps: FuncDeps,
 }
 
 impl Module {
@@ -281,6 +293,7 @@ impl Module {
             vector_clock: VectorClock::new(workspace_id),
             name: name.into(),
             funcs: HashMap::new(),
+            deps: FuncDeps::new(),
         }
     }
 
@@ -290,6 +303,11 @@ impl Module {
 
     pub fn lineage_id(&self) -> Ulid {
         self.vector_clock.id
+    }
+
+    pub fn clear(&mut self) {
+        self.funcs = HashMap::new();
+        self.deps = FuncDeps::new();
     }
 
     pub fn add(&mut self, func: Function) {
@@ -318,6 +336,167 @@ impl Module {
             .ok_or(CasError::NoContentHash)?;
         Ok(func)
     }
+
+    pub fn get_function(&self, function_id: impl AsRef<str>) -> &Function {
+        let function_id = function_id.as_ref();
+        self.funcs.get(function_id).unwrap()
+    }
+
+    pub fn add_function_dep(
+        &mut self,
+        root_id: impl AsRef<str>,
+        target_id: impl AsRef<str>,
+        requires_id: impl AsRef<str>,
+    ) {
+        let root = self.get_function(root_id).clone();
+        let target = self.get_function(target_id).clone();
+        let requires = self.get_function(requires_id).clone();
+        self.deps.add(&root, &target, &requires);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Schema {
+    pub id: Ulid,
+    pub name: String,
+    pub funcs: HashMap<String, Function>,
+    pub content_hash: Ulid,
+    pub vector_clock: VectorClock,
+}
+
+impl Schema {
+    pub fn new(name: impl Into<String>, workspace_id: impl Into<String>) -> Schema {
+        let name = name.into();
+        let workspace_id = workspace_id.into();
+        Schema {
+            id: Ulid::new(),
+            name,
+            funcs: HashMap::new(),
+            content_hash: Ulid::new(),
+            vector_clock: VectorClock::new(workspace_id),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FuncDep {
+    pub target_id: String, // func_id
+    pub target_lineage: Ulid,
+    pub requires_id: String, // func_id
+    pub requires_lineage: Ulid,
+    pub root_id: String,
+    pub root_lineage: Ulid,
+}
+
+impl FuncDep {
+    pub fn new(
+        root_id: impl Into<String>,
+        root_lineage: Ulid,
+        target_id: impl Into<String>,
+        target_lineage: Ulid,
+        requires_id: impl Into<String>,
+        requires_lineage: Ulid,
+    ) -> FuncDep {
+        let target_id = target_id.into();
+        let requires_id = requires_id.into();
+        let root_id = root_id.into();
+        FuncDep {
+            target_id,
+            target_lineage,
+            requires_id,
+            requires_lineage,
+            root_id,
+            root_lineage,
+        }
+    }
+
+    pub fn new_from_funcs(root: &Function, target: &Function, requires: &Function) -> FuncDep {
+        FuncDep::new(
+            root.id(),
+            root.lineage_id(),
+            target.id(),
+            target.lineage_id(),
+            requires.id(),
+            requires.lineage_id(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct FuncDeps {
+    deps: Vec<FuncDep>,
+}
+
+impl FuncDeps {
+    pub fn new() -> FuncDeps {
+        FuncDeps { deps: Vec::new() }
+    }
+
+    pub fn add(&mut self, root: &Function, target: &Function, requires: &Function) {
+        if self
+            .deps
+            .iter()
+            .find(|d| {
+                d.target_id == target.id()
+                    && d.requires_id == requires.id()
+                    && d.root_id == root.id()
+            })
+            .is_none()
+        {
+            self.deps
+                .push(FuncDep::new_from_funcs(root, target, requires));
+        }
+    }
+
+    pub fn add_raw(&mut self, func_dep: FuncDep) {
+        if self
+            .deps
+            .iter()
+            .find(|d| {
+                d.target_id == func_dep.target_id
+                    && d.requires_id == func_dep.requires_id
+                    && d.root_id == func_dep.root_id
+            })
+            .is_none()
+        {
+            self.deps
+                .push(func_dep);
+        }
+    }
+
+    pub fn list_for_root_id(&self, root_id: impl AsRef<str>) -> Vec<&FuncDep> {
+        let root_id = root_id.as_ref();
+        self.deps
+            .iter()
+            .filter(|d| d.root_id == root_id)
+            .collect()
+    }
+
+    pub fn get_deps(&self, target_id: impl AsRef<str>) -> Vec<&FuncDep> {
+        let target_id = target_id.as_ref();
+        self.deps
+            .iter()
+            .filter(|d| d.target_id == target_id)
+            .collect()
+    }
+
+    pub fn swap_deps(
+        &mut self,
+        root_id: impl AsRef<str>,
+        from_id: impl AsRef<str>,
+        to_id: impl Into<String>,
+        to_lineage: Ulid,
+    ) {
+        let from_id = from_id.as_ref();
+        let root_id = root_id.as_ref();
+        let to_id = to_id.into();
+        for dep in self.deps.iter_mut() {
+            if &dep.target_id == from_id && dep.root_id == root_id {
+                dep.target_id = to_id.clone();
+                dep.target_lineage = to_lineage;
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -325,6 +504,7 @@ pub struct Workspace {
     pub id: Ulid,
     pub modules: HashMap<String, Module>,
     pub funcs: HashMap<String, Function>,
+    pub func_deps: FuncDeps,
 }
 
 impl Workspace {
@@ -333,6 +513,7 @@ impl Workspace {
             id: Ulid::new(),
             modules: HashMap::new(),
             funcs: HashMap::new(),
+            func_deps: FuncDeps::new(),
         }
     }
 
@@ -345,6 +526,9 @@ impl Workspace {
         for (id, func) in module.funcs.iter() {
             self.funcs.insert(id.clone(), func.clone());
         }
+        for dep in module.deps.deps.iter() {
+            self.func_deps.add_raw(dep.clone());
+        }
         self.modules.insert(module.id().clone(), module);
     }
 
@@ -354,6 +538,45 @@ impl Workspace {
         let module_id = module.id();
         self.modules.insert(module_id.clone(), module);
         module_id
+    }
+
+    pub fn update_module_from_root_func_and_children(&mut self, module_id: impl Into<String>, root_func_id: impl Into<String>) -> String {
+        let module_id = module_id.into();
+        let root_func_id = root_func_id.into();
+        let root_func = self.funcs.get(&root_func_id).unwrap().clone();
+        let mut new_module = self.modules.get(&module_id).unwrap().clone();
+        new_module.clear();
+        new_module.add(root_func);
+        let deps = self.func_deps.list_for_root_id(root_func_id);
+        for dep in deps {
+            new_module.deps.add_raw(dep.clone());
+            let dep_target_func = self.funcs.get(&dep.target_id).unwrap();
+            new_module.add(dep_target_func.clone());
+            let dep_requires_func = self.funcs.get(&dep.requires_id).unwrap();
+            new_module.add(dep_requires_func.clone());
+        }
+        let new_module_id = new_module.id();
+        self.modules.insert(new_module.id(), new_module);
+        new_module_id
+    }
+
+    pub fn add_root_func_and_children_to_module(&mut self, module_id: impl Into<String>, root_func_id: impl Into<String>) -> String {
+        let module_id = module_id.into();
+        let root_func_id = root_func_id.into();
+        let root_func = self.funcs.get(&root_func_id).unwrap().clone();
+        let mut new_module = self.modules.get(&module_id).unwrap().clone();
+        new_module.add(root_func);
+        let deps = self.func_deps.list_for_root_id(root_func_id);
+        for dep in deps {
+            new_module.deps.add_raw(dep.clone());
+            let dep_target_func = self.funcs.get(&dep.target_id).unwrap();
+            new_module.add(dep_target_func.clone());
+            let dep_requires_func = self.funcs.get(&dep.requires_id).unwrap();
+            new_module.add(dep_requires_func.clone());
+        }
+        let new_module_id = new_module.id();
+        self.modules.insert(new_module.id(), new_module);
+        new_module_id
     }
 
     pub fn add_func_to_module(
@@ -411,6 +634,41 @@ impl Workspace {
         let base_func_id = base_func.id().clone();
         self.funcs.insert(base_func.id(), base_func);
         base_func_id
+    }
+
+    pub fn get_function(&self, func_id: impl AsRef<str>) -> &Function {
+        let func_id = func_id.as_ref();
+        self.funcs.get(func_id).unwrap()
+    }
+
+    pub fn add_function_dep(
+        &mut self,
+        root_id: impl AsRef<str>,
+        target_id: impl AsRef<str>,
+        requires_id: impl AsRef<str>,
+    ) {
+        let root = self.get_function(root_id).clone();
+        let target = self.get_function(target_id).clone();
+        let requires = self.get_function(requires_id).clone();
+        self.func_deps.add(&root, &target, &requires);
+    }
+
+    pub fn get_function_deps(&self, target_id: impl AsRef<str>) -> Vec<&FuncDep> {
+        self.func_deps.get_deps(target_id)
+    }
+
+    pub fn swap_function_deps(
+        &mut self,
+        root_id: impl AsRef<str>,
+        from_id: impl AsRef<str>,
+        to_id: impl AsRef<str>,
+    ) {
+        let root_id = root_id.as_ref();
+        let from_id = from_id.as_ref();
+        let to_id = to_id.as_ref();
+        let to_func = self.get_function(to_id);
+        self.func_deps
+            .swap_deps(root_id, from_id, to_func.id(), to_func.lineage_id());
     }
 }
 
@@ -724,23 +982,21 @@ mod test {
         assert_eq!(nick_workspace.funcs.len(), 3);
     }
 
-    // Adam writes a module with 3 different functions
-    // Adam shares the module with brit
-    // Brit installs adam's module
-    // Brit edits one of adam's functions locally
-    // Adam updates the same function in his workspace
-    // Adam shares the updated module with brit
-    // Brit gets notified there is a decision to be made
     #[test]
-    fn detect_when_a_decision_must_be_made() {
+    fn function_deps_and_roots() {
+        // Adam writes 3 functions
         let mut adam_workspace = Workspace::new();
         let a_func_poop_id = adam_workspace.create_function("poop");
         let a_func_canoe_id = adam_workspace.create_function("canoe");
         let a_func_paddle_id = adam_workspace.create_function("paddle");
+
+        // Adam makes them depend on each other, with a_func_poop_id as the 'root' (ie: schema variant!)
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_canoe_id, &a_func_poop_id);
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_paddle_id, &a_func_canoe_id);
+
+        // Adam creates a module and adds the functions to it by traversing the root
         let a_module_id = adam_workspace.create_module("fun");
-        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_poop_id);
-        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_canoe_id);
-        let a_module_id = adam_workspace.add_func_to_module(&a_module_id, &a_func_paddle_id);
+        let a_module_id = adam_workspace.add_root_func_and_children_to_module(&a_module_id, &a_func_poop_id);
 
         // Adam shares module with brit
         let a_module_shared_1 = adam_workspace.share_module(&a_module_id);
@@ -750,24 +1006,92 @@ mod test {
         brit_workspace.install_module(a_module_shared_1);
 
         // Brit edits one of Adam's functions locally
-        let b_func_id = brit_workspace.edit_function(&a_func_paddle_id, "bucket");
+        let b_func_bucket_id = brit_workspace.edit_function(&a_func_paddle_id, "bucket");
+        // Brit updates the dependencies on the poop function root to use her new function instead of the one we just used
+        brit_workspace.swap_function_deps(&a_func_poop_id, &a_func_paddle_id, &b_func_bucket_id);
 
         // Adam updates the same function in his workspace and shares module with brit
         let a_func_gunwale_id = adam_workspace.edit_function(&a_func_paddle_id, "gunwale");
-        let a_module_id = adam_workspace.replace_func_in_module(
-            &a_module_id,
-            &a_func_paddle_id,
-            &a_func_gunwale_id,
-        );
+        // Adam updates the dependencies on the poop function root to use his new function
+        adam_workspace.swap_function_deps(&a_func_poop_id, &a_func_paddle_id, &a_func_gunwale_id);
+        // Adam updates the module
+        let a_module_id = adam_workspace.update_module_from_root_func_and_children(&a_module_id, &a_func_poop_id);
+        // Adam shares updated module with brit
         let a_module_shared_2 = adam_workspace.share_module(&a_module_id);
 
         // Brit installs adam's update
         brit_workspace.install_module(a_module_shared_2);
-        brit_workspace.detect_possible_function_reference_updates();
 
-        // Everything with the same vector clock id
-        // if the entry is less than the one for a(f3), then its possible
+        dbg!(&brit_workspace);
+        panic!();
+        // A schema variant is made when a function in a schemas tree change, or when a schema changes
+        //   - there are migration functions that move between things
+        //   - schema variants have vector clocks
+        //   - a schema variant is active if it is the newest of its line
+        //   - a schema variant is active if it has any components
+        //   - a schema variant is active if it has any local modifications and has not been manually deactivated
+        // A function has dependencies only in the context of a schema variant
+        //   - so it can have different dependencies in different context
+        // A module that exports only a function cannot bring its deps, because it has none
+        //   - so when it is imported, we must search every schema variant for deps on the functions lineage
+        //   - and suggest updating it, which would generate a cascade of new variants
+        // A module that exports a schema variant does bring all the deps
+        //   - so when it is imported, we import the new schema variant
+        //   - and we ask if you want to move to the new schema variant
+        //   - if you have local edits on the same schema variant tree, we ask you waht you want to do
 
     }
 
+    #[test]
+    fn workspace_add_function_deps() {
+        let mut adam_workspace = Workspace::new();
+        let a_func_poop_id = adam_workspace.create_function("poop");
+        let a_func_canoe_id = adam_workspace.create_function("canoe");
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_canoe_id, &a_func_poop_id);
+        assert!(adam_workspace
+            .func_deps
+            .deps
+            .iter()
+            .find(|d| d.target_id == a_func_canoe_id && d.requires_id == a_func_poop_id)
+            .is_some());
+        assert_eq!(adam_workspace.func_deps.deps.len(), 1);
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_canoe_id, &a_func_poop_id);
+        // Should be idempotent
+        assert_eq!(adam_workspace.func_deps.deps.len(), 1);
+    }
+
+    #[test]
+    fn workspace_get_function_deps() {
+        let mut adam_workspace = Workspace::new();
+        let a_func_poop_id = adam_workspace.create_function("poop");
+        let a_func_canoe_id = adam_workspace.create_function("canoe");
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_canoe_id, &a_func_poop_id);
+        let poop_deps = adam_workspace.get_function_deps(&a_func_poop_id);
+        assert_eq!(poop_deps.len(), 0);
+        let canoe_deps = adam_workspace.get_function_deps(&a_func_canoe_id);
+        assert_eq!(canoe_deps.len(), 1);
+        assert_eq!(&canoe_deps[0].target_id, &a_func_canoe_id);
+        assert_eq!(&canoe_deps[0].requires_id, &a_func_poop_id);
+
+        let a_func_paddle_id = adam_workspace.create_function("paddle");
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_paddle_id, &a_func_canoe_id);
+        let paddle_deps = adam_workspace.get_function_deps(&a_func_paddle_id);
+        assert_eq!(paddle_deps.len(), 1);
+    }
+
+    #[test]
+    fn workspace_swap_function_deps() {
+        let mut adam_workspace = Workspace::new();
+        let a_func_poop_id = adam_workspace.create_function("poop");
+        let a_func_canoe_id = adam_workspace.create_function("canoe");
+        let a_func_paddle_id = adam_workspace.create_function("paddle");
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_canoe_id, &a_func_poop_id);
+        adam_workspace.add_function_dep(&a_func_poop_id, &a_func_paddle_id, &a_func_canoe_id);
+        let b_func_canoe_id = adam_workspace.edit_function(&a_func_canoe_id, "wagon");
+        adam_workspace.swap_function_deps(&a_func_poop_id, &a_func_canoe_id, &b_func_canoe_id);
+        let canoe_deps = adam_workspace.get_function_deps(&b_func_canoe_id);
+        assert_eq!(canoe_deps.len(), 1);
+        assert_eq!(&canoe_deps[0].target_id, &b_func_canoe_id);
+        assert_eq!(&canoe_deps[0].requires_id, &a_func_poop_id);
+    }
 }
