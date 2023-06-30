@@ -60,10 +60,6 @@ load(
     "linkables",
 )
 load("@prelude//linking:shared_libraries.bzl", "merge_shared_libraries", "traverse_shared_library_info")
-load(
-    "@prelude//utils:types.bzl",
-    "unchecked",  # @unused Used as a type
-)
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
 load("@prelude//paths.bzl", "paths")
 load("@prelude//resources.bzl", "gather_resources")
@@ -77,7 +73,6 @@ load(
     ":manifest.bzl",
     "create_dep_manifest_for_source_map",
     "create_manifest_for_extensions",
-    "create_manifest_for_source_dir",
     "create_manifest_for_source_map",
 )
 load(":native_python_util.bzl", "merge_cxx_extension_info")
@@ -89,7 +84,7 @@ load(
     "py_resources",
     "qualify_srcs",
 )
-load(":source_db.bzl", "create_source_db", "create_source_db_no_deps")
+load(":source_db.bzl", "create_dbg_source_db", "create_source_db", "create_source_db_no_deps")
 load(":toolchain.bzl", "NativeLinkStrategy", "PackageStyle", "PythonPlatformInfo", "PythonToolchainInfo", "get_platform_attr")
 
 OmnibusMetadataInfo = provider(fields = ["omnibus_libs", "omnibus_graph"])
@@ -106,9 +101,12 @@ def _package_style(ctx: "context") -> PackageStyle.type:
 
 # We do a lot of merging extensions, so don't use O(n) type annotations
 def _merge_extensions(
-        extensions: unchecked({str.type: ("_a", "label")}),
-        incoming_label: unchecked("label"),
-        incoming_extensions: unchecked({str.type: "_a"})) -> None:
+        # {str.type: ("_a", "label")}
+        extensions,
+        # "label"
+        incoming_label,
+        # {str.type: "_a"}
+        incoming_extensions) -> None:
     """
     Merges a incoming_extensions into `extensions`. Fails if duplicate dests exist.
     """
@@ -202,6 +200,8 @@ def _get_shared_only_groups(shared_only_libs: [LinkableProviders.type]) -> [Grou
 
     # Add link group specs for dlopen-able libs.
     for dep in shared_only_libs:
+        if dep.linkable_graph == None:
+            continue
         groups.append(
             Group(
                 name = str(dep.linkable_graph.nodes.value.label.raw_target()),
@@ -218,7 +218,6 @@ def _get_shared_only_groups(shared_only_libs: [LinkableProviders.type]) -> [Grou
                 ),
             ),
         )
-
     return groups
 
 def _get_link_group_info(
@@ -312,11 +311,7 @@ def python_executable(
     bytecode_manifest = None
     if srcs:
         src_manifest = create_manifest_for_source_map(ctx, "srcs", srcs)
-        bytecode_manifest = create_manifest_for_source_dir(
-            ctx,
-            "bytecode",
-            compile_manifests(ctx, [src_manifest]),
-        )
+        bytecode_manifest = compile_manifests(ctx, [src_manifest])
 
     dep_manifest = None
     python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
@@ -343,18 +338,22 @@ def python_executable(
     source_db = create_source_db(ctx, src_manifest, python_deps)
     source_db_no_deps = create_source_db_no_deps(ctx, srcs)
 
+    dbg_source_db = create_dbg_source_db(ctx, src_manifest, python_deps)
+
     exe = convert_python_library_to_executable(
         ctx,
         main_module,
         info_to_interface(library_info),
         flatten(raw_deps),
         compile,
+        dbg_source_db,
     )
     if python_toolchain.emit_dependency_metadata:
         exe.sub_targets["dep-report"] = [create_dep_report(ctx, python_toolchain, main_module, library_info)]
     if dep_manifest:
         exe.sub_targets["dep-manifest"] = [DefaultInfo(default_output = dep_manifest.manifest, other_outputs = dep_manifest.artifacts)]
     exe.sub_targets.update({
+        "dbg-source-db": [dbg_source_db],
         "source-db": [source_db],
         "source-db-no-deps": [source_db_no_deps, library_info],
     })
@@ -381,7 +380,8 @@ def convert_python_library_to_executable(
         main_module: "string",
         library: PythonLibraryInterface.type,
         deps: ["dependency"],
-        compile: bool.type = False) -> PexProviders.type:
+        compile: bool.type = False,
+        dbg_source_db: [DefaultInfo.type, None] = None) -> PexProviders.type:
     extra = {}
 
     python_toolchain = ctx.attrs._python_toolchain[PythonToolchainInfo]
@@ -396,6 +396,7 @@ def convert_python_library_to_executable(
     }
 
     extensions = {}
+    extra_artifacts = {}
     extra_manifests = None
     for manifest in library.iter_manifests():
         if manifest.extensions:
@@ -578,16 +579,19 @@ def convert_python_library_to_executable(
         preload_names = [paths.join("runtime", "lib", n) for n in preload_names]
 
         # TODO expect(len(executable_info.runtime_files) == 0, "OH NO THERE ARE RUNTIME FILES")
-        artifacts = dict(extension_info.artifacts)
+        extra_artifacts.update(dict(extension_info.artifacts))
         native_libs["runtime/bin/{}".format(ctx.attrs.executable_name)] = LinkedObject(
             output = executable_info.binary,
             dwp = executable_info.dwp,
         )
-        artifacts["static_extension_finder.py"] = ctx.attrs.static_extension_finder
-        extra_manifests = create_manifest_for_source_map(ctx, "extension_stubs", artifacts)
 
+        extra_artifacts["static_extension_finder.py"] = ctx.attrs.static_extension_finder
     else:
         native_libs = {name: shared_lib.lib for name, shared_lib in library.shared_libraries().items()}
+
+    if dbg_source_db:
+        extra_artifacts["dbg-db.json"] = dbg_source_db.default_outputs[0]
+    extra_manifests = create_manifest_for_source_map(ctx, "extra_manifests", extra_artifacts)
 
     # Combine sources and extensions into a map of all modules.
     pex_modules = PexModules(

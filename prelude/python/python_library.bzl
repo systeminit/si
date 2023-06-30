@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:artifacts.bzl", "unpack_artifact_map")
 load("@prelude//:paths.bzl", "paths")
 load(
     "@prelude//:resources.bzl",
@@ -31,12 +32,11 @@ load(
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "merge_shared_libraries")
 load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
 load("@prelude//utils:utils.bzl", "expect", "flatten", "from_named_set")
-load(":compile.bzl", "compile_manifests")
+load(":compile.bzl", "PycInvalidationMode", "compile_manifests")
 load(
     ":manifest.bzl",
     "ManifestInfo",  # @unused Used as a type
     "create_dep_manifest_for_source_map",
-    "create_manifest_for_source_dir",
     "create_manifest_for_source_map",
 )
 load(
@@ -103,7 +103,7 @@ def create_python_library_info(
         label: "label",
         srcs: [ManifestInfo.type, None] = None,
         src_types: [ManifestInfo.type, None] = None,
-        bytecode: [ManifestInfo.type, None] = None,
+        bytecode: [{PycInvalidationMode.type: ManifestInfo.type}, None] = None,
         dep_manifest: [ManifestInfo.type, None] = None,
         resources: [(ManifestInfo.type, ["_arglike"]), None] = None,
         extensions: [{str.type: LinkedObject.type}, None] = None,
@@ -211,26 +211,7 @@ def py_attr_resources(ctx: "context") -> {str.type: ("artifact", ["_arglike"])}:
     a tuple of the resource artifact and any "other" outputs exposed by it.
     """
 
-    resources = {}
-
-    for name, resource in _attr_resources(ctx).items():
-        if type(resource) == "artifact":
-            # If this is a artifact, there are no "other" artifacts.
-            other = []
-        else:
-            # Otherwise, this is a dependency, so extract the resource and other
-            # resources from the `DefaultInfo` provider.
-            info = resource[DefaultInfo]
-            expect(
-                len(info.default_outputs) == 1,
-                "expected exactly one default output from {} ({})"
-                    .format(resource, info.default_outputs),
-            )
-            [resource] = info.default_outputs
-            other = info.other_outputs
-        resources[name] = (resource, other)
-
-    return resources
+    return unpack_artifact_map(_attr_resources(ctx))
 
 def py_resources(
         ctx: "context",
@@ -292,11 +273,10 @@ def python_library_impl(ctx: "context") -> ["provider"]:
     src_type_manifest = create_manifest_for_source_map(ctx, "type_stubs", src_types) if src_types else None
 
     # Compile bytecode.
-    bytecode_manifest = None
+    bytecode = None
     if src_manifest != None:
         bytecode = compile_manifests(ctx, [src_manifest])
-        sub_targets["compile"] = [DefaultInfo(default_output = bytecode)]
-        bytecode_manifest = create_manifest_for_source_dir(ctx, "bytecode", bytecode)
+        sub_targets["compile"] = [DefaultInfo(default_output = bytecode[PycInvalidationMode("UNCHECKED_HASH")].artifacts[0][0])]
         sub_targets["src-manifest"] = [DefaultInfo(default_output = src_manifest.manifest, other_outputs = [a for a, _ in src_manifest.artifacts])]
         if python_toolchain.emit_dependency_metadata:
             dep_manifest = create_dep_manifest_for_source_map(ctx, python_toolchain, qualified_srcs)
@@ -313,7 +293,7 @@ def python_library_impl(ctx: "context") -> ["provider"]:
         srcs = src_manifest,
         src_types = src_type_manifest,
         resources = py_resources(ctx, resources) if resources else None,
-        bytecode = bytecode_manifest,
+        bytecode = bytecode,
         dep_manifest = dep_manifest,
         deps = deps,
         shared_libraries = shared_libraries,

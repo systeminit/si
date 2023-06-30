@@ -11,6 +11,7 @@ load(
     "@prelude//utils:utils.bzl",
     "flatten",
 )
+load(":argsfiles.bzl", "CompileArgsfile", "CompileArgsfiles")
 load(":attr_selection.bzl", "cxx_by_language_ext")
 load(
     ":compiler.bzl",
@@ -64,20 +65,6 @@ DepFileType = enum(
     "asm",
 )
 
-# Information on argsfiles created for Cxx compilation.
-_CxxCompileArgsfile = record(
-    # The generated argsfile
-    file = field("artifact"),
-    # This argfile as a command form that would use the argfile
-    cmd_form = field("cmd_args"),
-    # The args that was written to the argfile
-    argfile_args = field("cmd_args"),
-    # The args in their prisitine form without shell quoting
-    args = field("cmd_args"),
-    # Hidden args necessary for the argsfile to reference
-    hidden_args = field([["artifacts", "cmd_args"]]),
-)
-
 _HeadersDepFiles = record(
     # An executable to wrap the actual command with for post-processing of dep
     # files into the format that Buck2 recognizes (i.e. one artifact per line).
@@ -97,7 +84,7 @@ _CxxCompileCommand = record(
     # The compiler and any args which are independent of the rule.
     base_compile_cmd = field("cmd_args"),
     # The argsfile of arguments from the rule and it's dependencies.
-    argsfile = field(_CxxCompileArgsfile.type),
+    argsfile = field(CompileArgsfile.type),
     headers_dep_files = field([_HeadersDepFiles.type, None]),
     compiler_type = field(str.type),
 )
@@ -115,21 +102,12 @@ CxxSrcCompileCommand = record(
     args = field(["_arg"]),
 )
 
-CxxCompileCommandArgsFiles = record(
-    # Argsfiles used to compile these source files.
-    info = field(DefaultInfo.type, default = DefaultInfo()),
-    # Each argsfile by the file extension for which it is used.
-    by_ext = field({str.type: "artifact"}, default = {}),
-)
-
 # Output of creating compile commands for Cxx source files.
 CxxCompileCommandOutput = record(
     # List of compile commands for each source file.
     src_compile_cmds = field([CxxSrcCompileCommand.type], default = []),
-    # Argsfiles used for build actions
-    relative_argsfiles = field(CxxCompileCommandArgsFiles.type, CxxCompileCommandArgsFiles()),
-    # Argsfiles with absolute paths used for extra outputs.
-    absolute_argsfiles = field(CxxCompileCommandArgsFiles.type, CxxCompileCommandArgsFiles()),
+    # Argsfiles generated for compiling these source files.
+    argsfiles = field(CompileArgsfiles.type, default = CompileArgsfiles()),
     # List of compile commands for use in compilation database generation.
     comp_db_compile_cmds = field([CxxSrcCompileCommand.type], default = []),
 )
@@ -255,44 +233,20 @@ def create_compile_cmds(
         src_compile_command = CxxSrcCompileCommand(src = src.file, cxx_compile_cmd = cxx_compile_cmd, args = src_args, index = src.index)
         src_compile_cmds.append(src_compile_command)
 
-    relative_argsfiles = _get_argsfile_output(ctx, argsfile_by_ext, impl_params.additional.argsfiles, "argsfiles")
-
-    #TODO(chatatap): Handle additional absolute argsfiles (swift?)
-    absolute_argsfiles = _get_argsfile_output(ctx, abs_argsfile_by_ext, [], "abs-argsfiles") if absolute_path_prefix else CxxCompileCommandArgsFiles()
+    argsfile_by_ext.update(impl_params.additional.argsfiles.relative)
+    abs_argsfile_by_ext.update(impl_params.additional.argsfiles.absolute)
 
     if header_only:
         return CxxCompileCommandOutput(comp_db_compile_cmds = src_compile_cmds)
     else:
         return CxxCompileCommandOutput(
             src_compile_cmds = src_compile_cmds,
-            relative_argsfiles = relative_argsfiles,
-            absolute_argsfiles = absolute_argsfiles,
+            argsfiles = CompileArgsfiles(
+                relative = argsfile_by_ext,
+                absolute = abs_argsfile_by_ext,
+            ),
             comp_db_compile_cmds = src_compile_cmds,
         )
-
-def _get_argsfile_output(ctx: "context", argsfile_by_ext: {str.type: _CxxCompileArgsfile.type}, additional_argsfiles: ["CxxAdditionalArgsfileParams"], summary_name: str.type) -> CxxCompileCommandArgsFiles.type:
-    argsfiles = []
-    argsfile_names = cmd_args()
-    dependent_outputs = []
-    argsfile_artifacts_by_ext = {}
-    for ext, argsfile in argsfile_by_ext.items():
-        argsfiles.append(argsfile.file)
-        argsfile_names.add(cmd_args(argsfile.file).ignore_artifacts())
-        dependent_outputs.extend(argsfile.hidden_args)
-        argsfile_artifacts_by_ext[ext] = argsfile.file
-
-    for argsfile in additional_argsfiles:
-        argsfiles.append(argsfile.file)
-        argsfile_names.add(cmd_args(argsfile.file).ignore_artifacts())
-        dependent_outputs.extend(argsfile.hidden_args)
-        argsfile_artifacts_by_ext[argsfile.extension] = argsfile.file
-
-    argsfiles_summary = ctx.actions.write(summary_name, argsfile_names)
-
-    return CxxCompileCommandArgsFiles(
-        info = DefaultInfo(default_outputs = [argsfiles_summary] + argsfiles, other_outputs = dependent_outputs),
-        by_ext = argsfile_artifacts_by_ext,
-    )
 
 def compile_cxx(
         ctx: "context",
@@ -475,7 +429,13 @@ def _add_compiler_info_flags(compiler_info: "_compiler_info", ext: CxxExtension.
         # Clang's asm compiler doesn't support colorful output, so we skip this there.
         cmd.add(get_flags_for_colorful_output(compiler_info.compiler_type))
 
-def _mk_argsfile(ctx: "context", compiler_info: "_compiler_info", preprocessor: CPreprocessorInfo.type, ext: CxxExtension.type, headers_tag: "artifact_tag", absolute_path_prefix: [str.type, None]) -> _CxxCompileArgsfile.type:
+def _mk_argsfile(
+        ctx: "context",
+        compiler_info: "_compiler_info",
+        preprocessor: CPreprocessorInfo.type,
+        ext: CxxExtension.type,
+        headers_tag: "artifact_tag",
+        absolute_path_prefix: [str.type, None]) -> CompileArgsfile.type:
     """
     Generate and return an {ext}.argsfile artifact and command args that utilize the argsfile.
     """
@@ -509,23 +469,32 @@ def _mk_argsfile(ctx: "context", compiler_info: "_compiler_info", preprocessor: 
     if absolute_path_prefix:
         args.replace_regex("\\./", absolute_path_prefix + "/")
 
-    shell_quoted_args = cmd_args(args, quote = "shell")
+    # Create a copy of the args so that we can continue to modify it later.
+    args_without_file_prefix_args = cmd_args(args)
 
     # Put file_prefix_args in argsfile directly, make sure they do not appear when evaluating $(cxxppflags)
     # to avoid "argument too long" errors
     if absolute_path_prefix:
-        shell_quoted_args.add(cmd_args(preprocessor.set.project_as_args("abs_file_prefix_args")))
+        args.add(cmd_args(preprocessor.set.project_as_args("abs_file_prefix_args")))
     else:
-        shell_quoted_args.add(cmd_args(preprocessor.set.project_as_args("file_prefix_args")))
+        args.add(cmd_args(preprocessor.set.project_as_args("file_prefix_args")))
+
+    shell_quoted_args = cmd_args(args, quote = "shell")
 
     file_name = ext.value + ("-abs.argsfile" if absolute_path_prefix else ".argsfile")
-    argfile, _ = ctx.actions.write(file_name, shell_quoted_args, allow_args = True)
+    argsfile, _ = ctx.actions.write(file_name, shell_quoted_args, allow_args = True)
 
-    hidden_args = [args]
+    input_args = [args]
 
-    cmd_form = cmd_args(argfile, format = "@{}").hidden(hidden_args)
+    cmd_form = cmd_args(argsfile, format = "@{}").hidden(input_args)
 
-    return _CxxCompileArgsfile(file = argfile, cmd_form = cmd_form, argfile_args = shell_quoted_args, args = args, hidden_args = hidden_args)
+    return CompileArgsfile(
+        file = argsfile,
+        cmd_form = cmd_form,
+        input_args = input_args,
+        args = shell_quoted_args,
+        args_without_file_prefix_args = args_without_file_prefix_args,
+    )
 
 def _attr_compiler_flags(ctx: "context", ext: str.type) -> [""]:
     return (

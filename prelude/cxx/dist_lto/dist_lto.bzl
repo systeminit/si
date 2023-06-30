@@ -36,6 +36,43 @@ load(
 )
 load("@prelude//utils:utils.bzl", "is_all")
 
+_BitcodeLinkData = record(
+    name = str,
+    initial_object = "artifact",
+    bc_file = "artifact",
+    plan = "artifact",
+    opt_object = "artifact",
+)
+
+_ArchiveLinkData = record(
+    name = str,
+    manifest = "artifact",
+    # A file containing paths to artifacts that are known to reside in opt_objects_dir.
+    opt_manifest = "artifact",
+    objects_dir = "artifact",
+    opt_objects_dir = "artifact",
+    indexes_dir = "artifact",
+    plan = "artifact",
+    link_whole = bool,
+    prepend = bool,
+)
+
+_DataType = enum(
+    "bitcode",
+    "archive",
+    "cmd_args",
+)
+
+_IndexLinkData = record(
+    data_type = _DataType.type,
+    link_data = field([_BitcodeLinkData.type, _ArchiveLinkData.type]),
+)
+
+_PrePostFlags = record(
+    pre_flags = list,
+    post_flags = list,
+)
+
 def cxx_dist_link(
         ctx: "context",
         links: ["LinkArgs"],
@@ -43,13 +80,13 @@ def cxx_dist_link(
         output: "artifact",
         linker_map: ["artifact", None] = None,
         # A category suffix that will be added to the category of the link action that is generated.
-        category_suffix: [str.type, None] = None,
+        category_suffix: [str, None] = None,
         # An identifier that will uniquely name this link action in the context of a category. Useful for
         # differentiating multiple link actions in the same rule.
-        identifier: [str.type, None] = None,
+        identifier: [str, None] = None,
         # This action will only happen if split_dwarf is enabled via the toolchain.
-        generate_dwp: bool.type = True,
-        executable_link: bool.type = True) -> LinkedObject.type:
+        generate_dwp: bool = True,
+        executable_link: bool = True) -> LinkedObject.type:
     """
     Perform a distributed thin-lto link into the supplied output
 
@@ -65,13 +102,13 @@ def cxx_dist_link(
     that is easy for us to consume from within bzl.
     """
 
-    def make_cat(c: str.type) -> str.type:
+    def make_cat(c: str) -> str:
         """ Used to make sure categories for our actions include the provided suffix """
         if category_suffix != None:
             return c + "_" + category_suffix
         return c
 
-    def make_id(i: str.type) -> str.type:
+    def make_id(i: str) -> str:
         """ Used to make sure identifiers for our actions include the provided identifier """
         if identifier != None:
             return identifier + "_" + i
@@ -79,7 +116,7 @@ def cxx_dist_link(
 
     recorded_outputs = {}
 
-    def name_for_obj(link_name: str.type, object_artifact: "artifact") -> str.type:
+    def name_for_obj(link_name: str, object_artifact: "artifact") -> str:
         """ Creates a unique name/path we can use for a particular object file input """
         prefix = "{}/{}".format(link_name, object_artifact.short_path)
 
@@ -94,7 +131,7 @@ def cxx_dist_link(
 
     names = {}
 
-    def name_for_link(info: "LinkInfo") -> str.type:
+    def name_for_link(info: "LinkInfo") -> str:
         """ Creates a unique name for a LinkInfo that we are consuming """
         name = info.name or "unknown"
         if name not in names:
@@ -121,43 +158,6 @@ def cxx_dist_link(
     lto_prepare = cxx_toolchain.dist_lto_tools_info.prepare
     lto_copy = cxx_toolchain.dist_lto_tools_info.copy
 
-    BitcodeLinkData = record(
-        name = str.type,
-        initial_object = "artifact",
-        bc_file = "artifact",
-        plan = "artifact",
-        opt_object = "artifact",
-    )
-
-    ArchiveLinkData = record(
-        name = str.type,
-        manifest = "artifact",
-        # A file containing paths to artifacts that are known to reside in opt_objects_dir.
-        opt_manifest = "artifact",
-        objects_dir = "artifact",
-        opt_objects_dir = "artifact",
-        indexes_dir = "artifact",
-        plan = "artifact",
-        link_whole = bool.type,
-        prepend = bool.type,
-    )
-
-    DataType = enum(
-        "bitcode",
-        "archive",
-        "cmd_args",
-    )
-
-    IndexLinkData = record(
-        data_type = DataType.type,
-        link_data = field([BitcodeLinkData.type, ArchiveLinkData.type]),
-    )
-
-    PrePostFlags = record(
-        pre_flags = list.type,
-        post_flags = list.type,
-    )
-
     PREPEND_ARCHIVE_NAMES = [
         # T130644072: If linked with `--whole-archive`, Clang builtins must be at the
         # front of the argument list to avoid conflicts with identically-named Rust
@@ -179,14 +179,14 @@ def cxx_dist_link(
     pre_post_flags = {}
 
     # buildifier: disable=uninitialized
-    def add_linkable(idx: int.type, linkable: [ArchiveLinkable.type, SharedLibLinkable.type, ObjectsLinkable.type, FrameworksLinkable.type]):
+    def add_linkable(idx: int, linkable: [ArchiveLinkable.type, SharedLibLinkable.type, ObjectsLinkable.type, FrameworksLinkable.type]):
         if idx not in linkables_index:
             linkables_index[idx] = [linkable]
         else:
             linkables_index[idx].append(linkable)
 
     # buildifier: disable=uninitialized
-    def add_pre_post_flags(idx: int.type, flags: PrePostFlags.type):
+    def add_pre_post_flags(idx: int, flags: _PrePostFlags.type):
         if idx not in pre_post_flags:
             pre_post_flags[idx] = [flags]
         else:
@@ -205,7 +205,7 @@ def cxx_dist_link(
         link_name = name_for_link(link)
         idx = len(index_link_data)
 
-        add_pre_post_flags(idx, PrePostFlags(
+        add_pre_post_flags(idx, _PrePostFlags(
             pre_flags = link.pre_flags,
             post_flags = link.post_flags,
         ))
@@ -219,9 +219,9 @@ def cxx_dist_link(
                     plan_output = ctx.actions.declare_output(name + ".opt.plan")
                     opt_output = ctx.actions.declare_output(name + ".opt.o")
 
-                    data = IndexLinkData(
-                        data_type = DataType("bitcode"),
-                        link_data = BitcodeLinkData(
+                    data = _IndexLinkData(
+                        data_type = _DataType("bitcode"),
+                        link_data = _BitcodeLinkData(
                             name = name,
                             initial_object = obj,
                             bc_file = bc_output,
@@ -261,9 +261,9 @@ def cxx_dist_link(
                 ])
                 ctx.actions.run(prepare_args, category = make_cat("thin_lto_prepare"), identifier = name)
 
-                data = IndexLinkData(
-                    data_type = DataType("archive"),
-                    link_data = ArchiveLinkData(
+                data = _IndexLinkData(
+                    data_type = _DataType("archive"),
+                    link_data = _ArchiveLinkData(
                         name = name,
                         manifest = archive_manifest,
                         opt_manifest = archive_opt_manifest,
@@ -288,19 +288,19 @@ def cxx_dist_link(
     def dynamic_plan(link_plan: "artifact", index_argsfile_out: "artifact", final_link_index: "artifact"):
         def plan(ctx, artifacts, outputs):
             # buildifier: disable=uninitialized
-            def add_pre_flags(idx: int.type):
+            def add_pre_flags(idx: int):
                 if idx in pre_post_flags:
                     for flags in pre_post_flags[idx]:
                         index_args.add(flags.pre_flags)
 
             # buildifier: disable=uninitialized
-            def add_post_flags(idx: int.type):
+            def add_post_flags(idx: int):
                 if idx in pre_post_flags:
                     for flags in pre_post_flags[idx]:
                         index_args.add(flags.post_flags)
 
             # buildifier: disable=uninitialized
-            def add_linkables_args(idx: int.type):
+            def add_linkables_args(idx: int):
                 if idx in linkables_index:
                     object_link_arg = cmd_args()
                     for linkable in linkables_index[idx]:
@@ -321,10 +321,10 @@ def cxx_dist_link(
 
                 link_data = artifact.link_data
 
-                if artifact.data_type == DataType("bitcode"):
+                if artifact.data_type == _DataType("bitcode"):
                     index_meta.add(link_data.initial_object, outputs[link_data.bc_file].as_output(), outputs[link_data.plan].as_output(), str(idx), "", "", "")
 
-                elif artifact.data_type == DataType("archive"):
+                elif artifact.data_type == _DataType("archive"):
                     manifest = artifacts[link_data.manifest].read_json()
 
                     if not manifest["objects"]:
@@ -425,7 +425,7 @@ def cxx_dist_link(
     # opt actions, but an action needs to re-run whenever the analysis that
     # produced it re-runs. And so, with a single dynamic_output, we'd need to
     # re-run all actions when any of the plans changed.
-    def dynamic_optimize(name: str.type, initial_object: "artifact", bc_file: "artifact", plan: "artifact", opt_object: "artifact"):
+    def dynamic_optimize(name: str, initial_object: "artifact", bc_file: "artifact", plan: "artifact", opt_object: "artifact"):
         def optimize_object(ctx, artifacts, outputs):
             plan_json = artifacts[plan].read_json()
 
@@ -469,7 +469,7 @@ def cxx_dist_link(
 
         ctx.actions.dynamic_output(dynamic = [plan], inputs = [], outputs = [opt_object], f = optimize_object)
 
-    def dynamic_optimize_archive(archive: ArchiveLinkData.type):
+    def dynamic_optimize_archive(archive: _ArchiveLinkData.type):
         def optimize_archive(ctx, artifacts, outputs):
             plan_json = artifacts[archive.plan].read_json()
             if "objects" not in plan_json or not plan_json["objects"] or is_all(lambda e: not e["is_bc"], plan_json["objects"]):
@@ -534,7 +534,7 @@ def cxx_dist_link(
 
     for artifact in index_link_data:
         link_data = artifact.link_data
-        if artifact.data_type == DataType("bitcode"):
+        if artifact.data_type == _DataType("bitcode"):
             dynamic_optimize(
                 name = link_data.name,
                 initial_object = link_data.initial_object,
@@ -542,7 +542,7 @@ def cxx_dist_link(
                 plan = link_data.plan,
                 opt_object = link_data.opt_object,
             )
-        elif artifact.data_type == DataType("archive"):
+        elif artifact.data_type == _DataType("archive"):
             dynamic_optimize_archive(link_data)
 
     linker_argsfile_out = ctx.actions.declare_output(output.basename + ".thinlto.link.argsfile")
@@ -584,7 +584,7 @@ def cxx_dist_link(
 
         # buildifier: disable=uninitialized
         for artifact in index_link_data:
-            if artifact.data_type == DataType("archive"):
+            if artifact.data_type == _DataType("archive"):
                 link_cmd.hidden(artifact.link_data.opt_objects_dir)
         link_cmd.add(cmd_args(final_link_argfile, format = "@{}"))
         link_cmd.add(cmd_args(final_link_index, format = "@{}"))

@@ -582,7 +582,7 @@ def _create_link_group(
     inputs.extend(get_filtered_links(filtered_labels_to_links_map, public_nodes))
 
     # link the rule
-    result, _, _ = cxx_link_shared_library(
+    link_result = cxx_link_shared_library(
         ctx,
         ctx.actions.declare_output(paths.join("__link_groups__", spec.name)),
         name = spec.name if spec.is_shared_lib else None,
@@ -591,7 +591,7 @@ def _create_link_group(
         identifier = spec.name,
         enable_distributed_thinlto = spec.group.attrs.enable_distributed_thinlto,
     )
-    return result
+    return link_result.linked_object
 
 def _stub_library(ctx: "context", name: str.type, extra_ldflags: [""] = []) -> LinkInfos.type:
     output = ctx.actions.declare_output(name + ".stub")
@@ -733,7 +733,11 @@ def create_link_groups(
             other_roots = other_roots,
             linkable_graph_node_map = linkable_graph_node_map,
             public_nodes = public_nodes,
-            linker_flags = linker_flags,
+            linker_flags = (
+                linker_flags +
+                link_group_spec.group.attrs.exported_linker_flags +
+                link_group_spec.group.attrs.linker_flags
+            ),
             link_group_mappings = link_group_mappings,
             link_group_preferred_linkage = link_group_preferred_linkage,
             # TODO(agallagher): Should we support alternate link strategies
@@ -764,7 +768,10 @@ def create_link_groups(
             library = None if not link_group_spec.is_shared_lib else LinkGroupLib(
                 shared_libs = {link_group_spec.name: link_group_lib},
                 shared_link_infos = LinkInfos(
-                    default = wrap_link_info(link_info, pre_flags = link_group_spec.group.attrs.linker_flags),
+                    default = wrap_link_info(
+                        link_info,
+                        pre_flags = link_group_spec.group.attrs.exported_linker_flags,
+                    ),
                 ),
             ),
         )

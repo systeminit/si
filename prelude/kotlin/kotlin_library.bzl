@@ -352,6 +352,7 @@ def build_kotlin_library(
                 friend_paths = ctx.attrs.friend_paths,
                 kotlin_compiler_plugins = ctx.attrs.kotlin_compiler_plugins,
                 extra_kotlinc_arguments = ctx.attrs.extra_kotlinc_arguments,
+                extra_non_source_only_abi_kotlinc_arguments = ctx.attrs.extra_non_source_only_abi_kotlinc_arguments,
             )
 
             if outputs and outputs.annotation_processor_output:
@@ -382,7 +383,13 @@ def build_kotlin_library(
             )
             extra_sub_targets = extra_sub_targets | class_to_src_map_sub_targets
 
-            default_info = get_default_info(ctx.attrs._java_toolchain[JavaToolchainInfo], outputs, extra_sub_targets = extra_sub_targets)
+            default_info = get_default_info(
+                ctx.actions,
+                ctx.attrs._java_toolchain[JavaToolchainInfo],
+                outputs,
+                java_packaging_info,
+                extra_sub_targets = extra_sub_targets,
+            )
             return JavaProviders(
                 java_library_info = java_library_info,
                 java_library_intellij_info = intellij_info,

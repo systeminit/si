@@ -37,17 +37,33 @@ def _system_cxx_toolchain_impl(ctx):
     A very simple toolchain that is hardcoded to the current environment.
     """
     archiver = "ar"
+    asm_compiler = ctx.attrs.compiler
+    asm_compiler_type = ctx.attrs.compiler_type
     linker = ctx.attrs.linker
     linker_type = "gnu"
     supports_pic = True
+    binary_extension = ""
+    object_file_extension = "o"
+    static_library_extension = "a"
+    shared_library_name_format = "lib{}.so"
+    shared_library_versioned_name_format = "lib{}.so.{}"
     additional_linker_flags = []
     if host_info().os.is_macos:
         linker_type = "darwin"
     elif host_info().os.is_windows:
         archiver = "llvm-ar"
+        asm_compiler = "ml64.exe"
+        asm_compiler_type = "windows_ml64"
         linker = _windows_linker_wrapper(ctx)
         linker_type = "windows"
         supports_pic = False
+        binary_extension = "exe"
+        object_file_extension = "obj"
+        static_library_extension = "lib"
+        shared_library_name_format = "{}.dll"
+        shared_library_versioned_name_format = "{}.dll"
+    elif ctx.attrs.linker == "g++" or ctx.attrs.cxx_compiler == "g++":
+        pass
     else:
         additional_linker_flags = ["-fuse-ld=lld"]
 
@@ -73,11 +89,11 @@ def _system_cxx_toolchain_impl(ctx):
                 shlib_interfaces = "disabled",
                 link_style = LinkStyle(ctx.attrs.link_style),
                 link_weight = 1,
-                binary_extension = "",
-                object_file_extension = "o",
-                shared_library_name_format = "lib{}.so",
-                shared_library_versioned_name_format = "lib{}.so.{}",
-                static_library_extension = "a",
+                binary_extension = binary_extension,
+                object_file_extension = object_file_extension,
+                shared_library_name_format = shared_library_name_format,
+                shared_library_versioned_name_format = shared_library_versioned_name_format,
+                static_library_extension = static_library_extension,
                 force_full_hybrid_if_capable = False,
                 is_pdb_generated = is_pdb_generated(linker_type, ctx.attrs.link_flags),
                 supports_pic = supports_pic,
@@ -108,8 +124,8 @@ def _system_cxx_toolchain_impl(ctx):
                 compiler_type = ctx.attrs.compiler_type,
             ),
             asm_compiler_info = CCompilerInfo(
-                compiler = RunInfo(args = [ctx.attrs.compiler]),
-                compiler_type = ctx.attrs.compiler_type,
+                compiler = RunInfo(args = [asm_compiler]),
+                compiler_type = asm_compiler_type,
             ),
             header_mode = HeaderMode("symlink_tree_only"),
             cpp_dep_tracking_mode = ctx.attrs.cpp_dep_tracking_mode,
