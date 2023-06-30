@@ -53,7 +53,7 @@ pub enum ServerError {
     #[error(transparent)]
     Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
-    WrongCycloneSpec(&'static str, CycloneSpec),
+    WrongCycloneSpec(&'static str, Box<CycloneSpec>),
 }
 
 type ServerResult<T> = Result<T, ServerError>;
@@ -88,9 +88,10 @@ impl Server {
                 // Ok(Server { nats, cyclone_pool })
                 unimplemented!("get ready for a surprise!!")
             }
-            wrong @ CycloneSpec::LocalUds(_) => {
-                Err(ServerError::WrongCycloneSpec("LocalHttp", wrong.clone()))
-            }
+            wrong @ CycloneSpec::LocalUds(_) => Err(ServerError::WrongCycloneSpec(
+                "LocalHttp",
+                Box::new(wrong.clone()),
+            )),
         }
     }
 
@@ -123,9 +124,10 @@ impl Server {
                     shutdown_rx: graceful_shutdown_rx,
                 })
             }
-            wrong @ CycloneSpec::LocalHttp(_) => {
-                Err(ServerError::WrongCycloneSpec("LocalUds", wrong.clone()))
-            }
+            wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
+                "LocalUds",
+                Box::new(wrong.clone()),
+            )),
         }
     }
 

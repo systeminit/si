@@ -9,6 +9,7 @@ load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
+load("@prelude-si//rust:toolchain.bzl", "rust_clippy_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -33,6 +34,7 @@ system_python_bootstrap_toolchain(
 system_rust_toolchain(
     name = "rust",
     default_edition = "2021",
+    clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
 )
 
@@ -48,5 +50,10 @@ git_toolchain(
 
 pnpm_toolchain(
     name = "pnpm",
+    visibility = ["PUBLIC"],
+)
+
+rust_clippy_toolchain(
+    name = "rust_clippy",
     visibility = ["PUBLIC"],
 )

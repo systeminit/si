@@ -259,6 +259,7 @@ fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
 
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
 pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
@@ -272,6 +273,10 @@ pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
+    #[allow(clippy::disallowed_methods)] // Used in development with a local auth services
+    //
+    // TODO(fnichol): this environment variable should be at least prefixed with `SI_` for
+    // consistency and discoverability.
     let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
         resources
             .get_ends_with("dev.jwt_signing_public_key.pem")
@@ -311,6 +316,10 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 }
 
 fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
+    #[allow(clippy::disallowed_methods)] // Used in development with a local auth services
+    //
+    // TODO(fnichol): this environment variable should be at least prefixed with `SI_` for
+    // consistency and discoverability.
     let jwt_signing_public_key_path = if env::var("LOCAL_AUTH_STACK").is_ok() {
         Path::new(&dir)
             .join("../../config/keys/dev.jwt_signing_public_key.pem")

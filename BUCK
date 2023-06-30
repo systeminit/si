@@ -57,6 +57,10 @@ alias(
 )
 
 export_file(
+    name = "clippy.toml",
+)
+
+export_file(
     name = "flake.nix",
 )
 

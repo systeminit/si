@@ -51,7 +51,7 @@ pub enum ServerError {
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
-    PgPool(#[from] PgPoolError),
+    PgPool(#[from] Box<PgPoolError>),
     #[error(transparent)]
     Posthog(#[from] si_posthog::PosthogError),
     #[error("failed to setup signal handler")]
@@ -62,6 +62,12 @@ pub enum ServerError {
     Uds(#[from] UdsIncomingStreamError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
+}
+
+impl From<PgPoolError> for ServerError {
+    fn from(value: PgPoolError) -> Self {
+        Self::PgPool(Box::new(value))
+    }
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;

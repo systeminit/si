@@ -45,6 +45,8 @@ fn find_first_file_candidate(
             "checking environment variable; var={}",
             env_var.as_ref().to_string_lossy().as_ref()
         );
+        #[allow(clippy::disallowed_methods)] // This method explicitly checks env vars as its
+        // strategy
         if let Ok(value) = env::var(env_var) {
             let env_candidate = Path::new(&value);
             if env_candidate.is_file() {
@@ -106,6 +108,7 @@ fn find_first_file_candidate(
     for (goal, file_format) in &goals {
         for prefix in ["/usr/local/etc", "/etc"] {
             let mut root_candidate = Path::new(prefix).join(app_name).join(goal);
+            #[allow(clippy::disallowed_methods)] // This is a supported env var which we must check
             if let Ok(fs_root) = env::var("FS_ROOT") {
                 root_candidate = Path::new(&fs_root).join(root_candidate);
             }

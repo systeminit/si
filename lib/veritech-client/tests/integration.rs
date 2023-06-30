@@ -18,6 +18,7 @@ use veritech_server::{
 
 fn nats_config(subject_prefix: String) -> NatsConfig {
     let mut config = NatsConfig::default();
+    #[allow(clippy::disallowed_methods)] // Used only in tests & so prefixed with `SI_TEST_`
     if let Ok(value) = env::var("SI_TEST_NATS_URL") {
         config.url = value;
     }
@@ -75,6 +76,7 @@ fn base64_encode(input: impl AsRef<[u8]>) -> String {
     general_purpose::STANDARD_NO_PAD.encode(input)
 }
 
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
 #[test(tokio::test)]
 async fn executes_simple_resolver_function() {
     let prefix = nats_prefix();
@@ -122,6 +124,7 @@ async fn executes_simple_resolver_function() {
     }
 }
 
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
 #[test(tokio::test)]
 async fn type_checks_resolve_function() {
     let prefix = nats_prefix();
@@ -249,6 +252,7 @@ async fn type_checks_resolve_function() {
     }
 }
 
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
 #[test(tokio::test)]
 async fn executes_simple_validation() {
     let prefix = nats_prefix();
@@ -288,8 +292,8 @@ async fn executes_simple_validation() {
     }
 }
 
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
 #[test(tokio::test)]
-
 async fn executes_simple_schema_variant_definition() {
     let prefix = nats_prefix();
     run_veritech_server_for_uds_cyclone(prefix.clone()).await;
@@ -308,7 +312,7 @@ async fn executes_simple_schema_variant_definition() {
         handler: "asset".to_string(),
         code_base64: base64_encode(
             "function asset() {
-                    return { 
+                    return {
                         props: [{kind: 'string', name: 'string_prop'}],
                         inputSockets: [], outputSockets: []
                     };

@@ -135,6 +135,8 @@ fn expand_tracing_init() -> TokenStream {
         let event_filter = {
             use ::dal_test::tracing_subscriber::fmt::format::FmtSpan;
 
+            // Used exclusively in tests & prefixed with `SI_TEST_`
+            #[allow(clippy::disallowed_methods)]
             match ::std::env::var(#span_events_env_var) {
                 Ok(value) => {
                     value

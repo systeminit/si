@@ -215,6 +215,8 @@ pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
 
 fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
     if let Some(log_env_var) = config.log_env_var.as_deref() {
+        #[allow(clippy::disallowed_methods)] // We use consistently named env var names, always
+        // prefixed with `SI_`
         if let Ok(value) = env::var(log_env_var.to_uppercase()) {
             if !value.is_empty() {
                 return TracingLevel::custom(value);
@@ -222,6 +224,8 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
         }
     }
     if let Some(log_env_var) = config.secondary_log_env_var.as_deref() {
+        #[allow(clippy::disallowed_methods)] // We use consistently named env var names, always
+        // prefixed with `SI_`
         if let Ok(value) = env::var(log_env_var.to_uppercase()) {
             if !value.is_empty() {
                 return TracingLevel::custom(value);
@@ -238,6 +242,8 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
 
 fn default_span_events_fmt(config: &TelemetryConfig) -> Result<FmtSpan> {
     if let Some(log_span_events_env_var) = config.log_span_events_env_var.as_deref() {
+        #[allow(clippy::disallowed_methods)] // We use consistently named env var names, always
+        // prefixed with `SI_`
         if let Ok(value) = env::var(log_span_events_env_var.to_uppercase()) {
             if !value.is_empty() {
                 return fmt_span_from_str(&value);
@@ -245,6 +251,8 @@ fn default_span_events_fmt(config: &TelemetryConfig) -> Result<FmtSpan> {
         }
     }
     if let Some(log_env_var) = config.secondary_log_span_events_env_var.as_deref() {
+        #[allow(clippy::disallowed_methods)] // We use consistently named env var names, always
+        // prefixed with `SI_`
         if let Ok(value) = env::var(log_env_var.to_uppercase()) {
             if !value.is_empty() {
                 return fmt_span_from_str(&value);

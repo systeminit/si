@@ -188,6 +188,9 @@ mod tests {
     #[ignore]
     #[test]
     fn test_safe_canonically_join() -> Result<(), CanonicalFileError> {
+        // TODO(fnichol): see above, likely we should not be using an environment variable for this
+        // test
+        #[allow(clippy::disallowed_methods)]
         let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
 
         let test_data = vec![
