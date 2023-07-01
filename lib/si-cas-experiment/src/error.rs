@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{workspace::WorkspacePk, schema::SchemaPk, change_set::ChangeSetPk};
+use crate::{workspace::WorkspacePk, schema::SchemaPk, change_set::ChangeSetPk, dag::Conflict};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum DagError {
@@ -18,6 +18,16 @@ pub enum DagError {
     CannotMergeVectorClocksForDifferentObjects,
     #[error("missing node weight")]
     MissingNodeWeight,
+    #[error("cannot find an object by a pk")]
+    CannotFindObjectByPk,
+    #[error("object mismatch")]
+    ObjectMismatch,
+    #[error("vector clock not found")]
+    VectorClockNotFound,
+    #[error("mistmatched update object types")]
+    MismatchedUpdateObject,
+    #[error("must fix conflicts before merging: {0:?}")]
+    MergeHasConflicts(Vec<Conflict>),
 }
 
 pub type DagResult<T> = Result<T, DagError>;

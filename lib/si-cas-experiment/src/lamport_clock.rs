@@ -1,29 +1,29 @@
 use std::sync::{Arc, Mutex};
 
+use once_cell::sync::Lazy;
 use ulid::{Generator, Ulid};
 
 use crate::change_set::ChangeSetPk;
 
+static GENERATOR: Lazy<Arc<Mutex<Generator>>> = Lazy::new(|| Arc::new(Mutex::new(Generator::new())));
+
 #[derive(Clone)]
 pub struct LamportClock {
-    gen: Arc<Mutex<Generator>>,
     pub change_set_pk: ChangeSetPk,
     pub counter: Ulid,
 }
 
 impl LamportClock {
     pub fn new(change_set_pk: ChangeSetPk) -> LamportClock {
-        let gen = Arc::new(Mutex::new(Generator::new()));
-        let counter = gen.lock().unwrap().generate().unwrap();
+        let counter = GENERATOR.lock().unwrap().generate().unwrap();
         LamportClock {
-            gen,
             change_set_pk,
             counter,
         }
     }
 
     pub fn inc(&mut self) {
-        let next = self.gen.lock().unwrap().generate().unwrap();
+        let next = GENERATOR.lock().unwrap().generate().unwrap();
         self.counter = next;
     }
 

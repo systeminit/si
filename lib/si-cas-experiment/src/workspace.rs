@@ -1,11 +1,39 @@
+//use std::ops::Deref;
+
 use ulid::Ulid;
 
 use crate::{OriginId, ContentHash};
 
+//#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Copy, Hash)]
+//pub struct WorkspacePk(Ulid);
+//
+//impl WorkspacePk {
+//    pub fn new() -> WorkspacePk {
+//        WorkspacePk(Ulid::new())
+//    }
+//
+//    pub fn inner(self) -> Ulid {
+//        self.0
+//    }
+//}
+//
+//impl Deref for WorkspacePk {
+//    type Target = Ulid;
+//    fn deref(&self) -> &Ulid {
+//        &self.0
+//    }
+//}
+//
+//impl std::fmt::Display for WorkspacePk {
+//    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//       write!(f, "{}", self.0)
+//    }
+//}
+
 pub type WorkspacePk = Ulid;
 pub type WorkspaceId = Ulid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Workspace {
     pub id: WorkspaceId,
     pub pk: WorkspacePk,
@@ -35,7 +63,7 @@ impl Workspace {
         }
     }
 
-    pub fn id(&self) -> WorkspacePk {
+    pub fn id(&self) -> WorkspaceId {
         self.id
     }
 

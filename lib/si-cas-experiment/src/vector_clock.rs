@@ -33,6 +33,8 @@ impl VectorClock {
 
     pub fn merge(&mut self, change_set_pk: ChangeSetPk, other: &VectorClock) -> DagResult<()> {
         if self.object_id != other.object_id {
+            dbg!(&self);
+            dbg!(&other);
             return Err(DagError::CannotMergeVectorClocksForDifferentObjects);
         }
         for (other_key, other_value) in other.clock_entries.iter() {
@@ -53,7 +55,7 @@ impl VectorClock {
 
     // We are 'newer' than the other clock if we have seen all of the other clocks
     // change sets, and we are newer than they are.
-    pub fn already_seen(&self, other: &VectorClock) -> bool {
+    pub fn is_newer(&self, other: &VectorClock) -> bool {
         let mut is_newer = true;
         for other_clock in other.clock_entries.values() {
             if let Some(my_clock) = self.clock_entries.get(&other_clock.change_set_pk) {
@@ -66,6 +68,11 @@ impl VectorClock {
         }
         is_newer
     }
+
+    // The clock was changed if there is an entry in the vector for a change set pk
+    pub fn was_changed_in_changeset(&self, change_set_pk: ChangeSetPk) -> bool {
+        self.clock_entries.get(&change_set_pk).is_some()
+    }
 }
 
 #[cfg(test)]
@@ -77,10 +84,10 @@ mod test {
         let object_id = Ulid::new();
         let mut vector_clock_a = VectorClock::new(object_id, ChangeSetPk::new());
         let vector_clock_b = vector_clock_a.fork(ChangeSetPk::new()).unwrap();
-        assert_eq!(vector_clock_b.already_seen(&vector_clock_a), true);
-        assert_eq!(vector_clock_a.already_seen(&vector_clock_b), false);
+        assert_eq!(vector_clock_b.is_newer(&vector_clock_a), true);
+        assert_eq!(vector_clock_a.is_newer(&vector_clock_b), false);
         let change_set_pk = ChangeSetPk::new();
         vector_clock_a.merge(change_set_pk, &vector_clock_b).unwrap();
-        assert_eq!(vector_clock_a.already_seen(&vector_clock_b), true);
+        assert_eq!(vector_clock_a.is_newer(&vector_clock_b), true);
     }
 }

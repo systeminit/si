@@ -5,7 +5,7 @@ use crate::{OriginId, ContentHash};
 pub type SchemaId = Ulid;
 pub type SchemaPk = Ulid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Schema {
     pub id: SchemaId,
     pub pk: SchemaPk,

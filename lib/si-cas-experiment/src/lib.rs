@@ -1,12 +1,3 @@
-//use std::{
-//    collections::HashMap,
-//    fmt::Debug,
-//    sync::{Arc, Mutex},
-//};
-//
-//use error::{CasError, CasResult};
-//use ulid::{Generator, Ulid};
-
 use ulid::Ulid;
 
 pub type ContentHash = blake3::Hash;
@@ -20,6 +11,12 @@ pub mod index_and_entry;
 pub mod change_set;
 pub mod workspace;
 pub mod schema;
+
+// TODO
+// - Rebase
+// - Fork into a new function
+// - Export a module as a change set
+// - Import a module as a new change set, then reconcile
 
 // * Function
 //   * contentHash: ..
