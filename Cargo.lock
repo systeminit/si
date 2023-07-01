@@ -4310,6 +4310,10 @@ dependencies = [
 name = "si-cas-experiment"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "petgraph",
+ "serde",
+ "serde_json",
  "thiserror",
  "ulid",
 ]

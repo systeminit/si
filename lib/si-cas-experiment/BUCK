@@ -4,6 +4,7 @@ rust_library(
     name = "si-cas-experiment",
     deps = [
          "//third-party/rust:ulid",
+         "//third-party/rust:petgraph",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
