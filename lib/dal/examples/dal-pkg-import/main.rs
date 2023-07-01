@@ -1,9 +1,9 @@
 use std::{env, path::Path, sync::Arc};
-use tokio::fs;
 
+use buck2_resources::Buck2Resources;
 use dal::{
-    pkg::export_pkg_as_bytes, DalContext, JobQueueProcessor, NatsProcessor, Schema,
-    ServicesContext, Tenancy, Workspace,
+    pkg::import_pkg, DalContext, JobQueueProcessor, NatsProcessor, ServicesContext, Tenancy,
+    Workspace,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -11,50 +11,23 @@ use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
-const USAGE: &str =
-    "usage: program <PKG_FILE> <NAME> <VERSION> <CREATED_BY> <SCHEMA_NAME,SCHEMA_NAME[,...]>";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut args = env::args();
-    let tar_file = args.nth(1).expect(USAGE);
-    let name = args.next().expect(USAGE);
-    let version = args.next().expect(USAGE);
-    let created_by = args.next().expect(USAGE);
-    let schema_names = args.next().expect(USAGE);
-    let schema_names = schema_names.split(',');
-
-    let description = format!("{name} package, created by {created_by}.");
+    let tar_file = args.nth(1).expect("usage: program <PKG_FILE>");
 
     let mut ctx = ctx().await?;
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
-    let mut variant_ids = Vec::new();
-    for schema_name in schema_names {
-        variant_ids.push(Schema::default_schema_variant_id_for_name(&ctx, schema_name).await?);
-    }
-
-    println!("--- Exporting pkg: {tar_file}");
-    fs::write(
-        &tar_file,
-        export_pkg_as_bytes(
-            &ctx,
-            name,
-            version,
-            Some(description),
-            created_by,
-            variant_ids,
-        )
-        .await?,
-    )
-    .await?;
+    println!("--- Importing pkg: {tar_file}");
+    import_pkg(&ctx, Path::new(&tar_file)).await?;
 
     println!("--- Committing database transaction");
     ctx.commit().await?;
     println!("  - Committed.");
 
-    println!("--- Export complete.");
+    println!("--- Import complete.");
     Ok(())
 }
 
@@ -97,9 +70,16 @@ fn create_veritech_client(nats: NatsClient) -> VeritechClient {
     VeritechClient::new(nats)
 }
 
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
 async fn load_encryption_key() -> Result<EncryptionKey> {
-    let path = Path::new(&env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../lib/cyclone-server/src/dev.encryption.key");
+    let path = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        Buck2Resources::read()?.get_ends_with("dev.encryption.key")?
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        Path::new(&dir).join("../../lib/cyclone-server/src/dev.encryption.key")
+    } else {
+        unimplemented!("not running with Buck2 or Cargo, unsupported")
+    };
+
     EncryptionKey::load(path).await.map_err(Into::into)
 }
 

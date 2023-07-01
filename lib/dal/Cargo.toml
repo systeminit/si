@@ -48,6 +48,7 @@ url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
 dal-test = { path = "../../lib/dal-test" }
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
