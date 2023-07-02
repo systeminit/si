@@ -12,11 +12,34 @@ pub mod change_set;
 pub mod workspace;
 pub mod schema;
 
+// STATUS
+// Things are looking pretty good! You can see in the rebase tests that we can create
+// change sets, rebase them, and merge them. We get notified of conflicts (you have to
+// resolve them yourself, but clear enough for now.)
+//
+// When you merge, we automatically rebase you, and it has to be a fast forward.
+//
 // TODO
-// - Rebase
-// - Fork into a new function
-// - Export a module as a change set
-// - Import a module as a new change set, then reconcile
+// - Add functions as dependencies of schemas, so that we can see things work when
+//   there are many more objects. I think this will be straightforward, if a pain
+//   because of all the boilerplate. :)
+// - Add the ability to 'copy' a schema, copying all its edges, but giving it a new id.
+//   This would simulate creating a new 'schema variant'
+// - Check that when you update a function that's used in both schemas, it updates in both
+//   places. This should happen already from the rebase function. If you don't want to be
+//   automatically updated when a new function updates, you have to 'copy' the function
+//   and start a new lineage, just like a schema.
+// - Add modules. My thinking was that a module could be basically a pointer to a schema.
+//   You can then 'share' the schema from 'main' by capturing a 'detached' change set with
+//   the schema inside of it.
+// - You can then 'install' the module into a dag, which means 'create a change set' that
+//   has the content in it. This implies that the 'id' is now stable *across workspaces*,
+//   and it is created on first creation (regardless of the workspace it came from).
+// - Watch the rebase semantic handle the rest of the hard bits of reconciling local changes.
+// - Figure out how in the world this mechanism gets most easily ported to our existing kit
+//
+// Love,
+// Adam
 
 // * Function
 //   * contentHash: ..

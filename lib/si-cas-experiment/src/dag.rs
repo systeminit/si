@@ -119,6 +119,7 @@ impl SiDag {
                                         updates.push(Update::new(
                                             SiNodeKind::Workspace(*dest_pk),
                                             SiNodeKind::Workspace(our_object.pk()),
+                                            false,
                                         ));
                                     }
                                 }
@@ -127,32 +128,177 @@ impl SiDag {
                         }
                     }
                 }
-                _ => {}
+                SiNode {
+                    kind: SiNodeKind::Schema(dest_pk),
+                } => {
+                    let mut found_lineage = false;
+                    for our_object_kind in self
+                        .find_all_objects_of_lineage_by_pk_in_change_set(change_set_pk, *dest_pk)?
+                    {
+                        match our_object_kind {
+                            SiObjectKind::Schema(our_object) => {
+                                found_lineage = true;
+                                let ours_is_newer =
+                                    //self.clock_is_newer(our_object.pk(), *dest_pk)?;
+                                    self.clock_is_newer(our_object.pk(), *dest_pk)?;
+                                // If our object is newer, we can merge our object - just let it happen!
+                                if !ours_is_newer {
+                                    // And we have changed the object in this change set
+                                    if self.clock_was_changed_in_changeset(
+                                        our_object.pk(),
+                                        change_set_pk,
+                                    )? {
+                                        // Is the only thing newer about the new object the
+                                        // clock for the change set we are in? if so it isn't
+                                        // a conflict
+                                        if !self.clock_is_newer_for_change_set(
+                                            *dest_pk,
+                                            our_object.pk(),
+                                            change_set_pk,
+                                        )? {
+                                            // We need to notify that this object is a conflict
+                                            conflicts.push(Conflict::new(
+                                                SiNodeKind::Schema(*dest_pk),
+                                                SiNodeKind::Schema(our_object.pk()),
+                                                change_set_pk,
+                                            ));
+                                        }
+                                    } else {
+                                        // If we have not modified the object in this change set
+                                        // We need to update our changeset to have the updated object from the base
+                                        updates.push(Update::new(
+                                            SiNodeKind::Schema(*dest_pk),
+                                            SiNodeKind::Schema(our_object.pk()),
+                                            false,
+                                        ));
+                                    }
+                                }
+                            }
+                            _ => return Err(DagError::ObjectMismatch),
+                        }
+                    }
+                    if !found_lineage {
+                        updates.push(Update::new(
+                            SiNodeKind::Schema(*dest_pk),
+                            SiNodeKind::Schema(*dest_pk),
+                            true,
+                        ));
+                    }
+                }
             }
         }
 
         // Process updates!
         for update in updates {
             match update.from_object {
-                SiNodeKind::Workspace(from_workspace_pk) => {
-                    if let SiNodeKind::Workspace(to_workspace_pk) = update.to_object {
+                SiNodeKind::Workspace(from_pk) => {
+                    if let SiNodeKind::Workspace(mut to_pk) = update.to_object {
                         // Make our change set version a strict superset
-                        let from_workspace = self.get_workspace(from_workspace_pk)?.clone();
+                        let from_object = self.get_workspace(from_pk)?.clone();
+                        let from_object_pk = from_object.pk();
 
-                        // This happens automatically the workspace, since workspaces are
-                        // kind of special.
-                        self.modify_workspace(change_set_pk, |to_ws| {
-                            to_ws.name = from_workspace.name;
-                            Ok(())
-                        })?;
+                        if update.create {
+                            to_pk = self.modify_workspace(change_set_pk, |_to_ws| Ok(()))?;
+                        } else {
+                            to_pk = self.modify_workspace(change_set_pk, |to_ws| {
+                                to_ws.name = from_object.name;
+                                Ok(())
+                            })?;
+                        }
 
                         // Merge the vector clocks
-                        self.vector_clock_merge(to_workspace_pk, from_workspace_pk, change_set_pk)?;
+                        self.vector_clock_merge(to_pk, from_pk, change_set_pk)?;
+
+                        // Copy the outgoing edges
+                        let from_idx = self.get_workspace_node_index(from_object_pk)?;
+                        let to_idx = self.get_workspace_node_index(to_pk)?;
+                        let mut to_update = Vec::new();
+                        for down_node_idx in
+                            self.graph.neighbors_directed(from_idx, Direction::Outgoing)
+                        {
+                            let existing_edge_idx = self
+                                .graph
+                                .find_edge(from_idx, down_node_idx)
+                                .expect("you had it a minute ago");
+                            let existing_edge_weight = self
+                                .graph
+                                .edge_weight(existing_edge_idx)
+                                .expect("you def have an edge weight");
+                            let new_edge_weight = existing_edge_weight.clone();
+                            to_update.push((to_idx, down_node_idx, new_edge_weight));
+                        }
+                        for (to_idx, down_node_idx, new_edge_weight) in to_update.into_iter() {
+                            self.graph
+                                .update_edge(to_idx, down_node_idx, new_edge_weight);
+                        }
                     } else {
                         return Err(DagError::MismatchedUpdateObject);
                     }
                 }
-                _ => todo!(),
+                SiNodeKind::Schema(from_pk) => {
+                    if let SiNodeKind::Schema(mut to_pk) = update.to_object {
+                        // Make our change set version a strict superset
+                        let from_object = self.get_schema_by_pk(from_pk)?.clone();
+                        let from_object_pk = from_object.pk();
+
+                        if update.create {
+                            to_pk = self.modify_schema(change_set_pk, to_pk, |_to_s| Ok(()))?;
+                        } else {
+                            to_pk = self.modify_schema(change_set_pk, to_pk, |to_s| {
+                                to_s.name = from_object.name;
+                                Ok(())
+                            })?;
+                        }
+
+                        // Merge the vector clocks
+                        self.vector_clock_merge(to_pk, from_pk, change_set_pk)?;
+
+                        //// Copy the outgoing edges
+                        let from_idx = self.get_schema_node_index(from_object_pk)?;
+                        let to_idx = self.get_schema_node_index(to_pk)?;
+                        let mut to_update = Vec::new();
+                        for down_node_idx in
+                            self.graph.neighbors_directed(from_idx, Direction::Outgoing)
+                        {
+                            let existing_edge_idx = self
+                                .graph
+                                .find_edge(from_idx, down_node_idx)
+                                .expect("you had it a minute ago");
+                            let existing_edge_weight = self
+                                .graph
+                                .edge_weight(existing_edge_idx)
+                                .expect("you def have an edge weight");
+                            let new_edge_weight = existing_edge_weight.clone();
+                            to_update.push((to_idx, down_node_idx, new_edge_weight));
+                        }
+                        for (to_idx, down_node_idx, new_edge_weight) in to_update.into_iter() {
+                            self.graph
+                                .update_edge(to_idx, down_node_idx, new_edge_weight);
+                        }
+
+                        //// Copy the incoming edges
+                        let mut to_update = Vec::new();
+                        for up_node_idx in
+                            self.graph.neighbors_directed(from_idx, Direction::Incoming)
+                        {
+                            let existing_edge_idx = self
+                                .graph
+                                .find_edge(up_node_idx, from_idx)
+                                .expect("you had it a minute ago");
+                            let existing_edge_weight = self
+                                .graph
+                                .edge_weight(existing_edge_idx)
+                                .expect("you def have an edge weight");
+                            let new_edge_weight = existing_edge_weight.clone();
+                            to_update.push((up_node_idx, to_idx, new_edge_weight));
+                        }
+                        for (up_node_idx, to_idx, new_edge_weight) in to_update.into_iter() {
+                            self.graph.update_edge(up_node_idx, to_idx, new_edge_weight);
+                        }
+                    } else {
+                        return Err(DagError::MismatchedUpdateObject);
+                    }
+                }
             }
         }
 
@@ -164,6 +310,38 @@ impl SiDag {
 
         // Return any conflicts
         Ok(conflicts)
+    }
+
+    pub fn all_objects_in_head_for_change_set_name(
+        &self,
+        name: impl Into<String>,
+    ) -> DagResult<Vec<SiObjectKind>> {
+        let name = name.into();
+        let workspace_pk = self.get_head_for_change_set_name(name)?;
+        let workspace_idx = self.get_workspace_node_index(workspace_pk)?;
+        let mut found = Vec::new();
+        let mut bfs = Bfs::new(&self.graph, workspace_idx);
+        while let Some(node_index) = bfs.next(&self.graph) {
+            match self
+                .graph
+                .node_weight(node_index)
+                .ok_or(DagError::MissingNodeWeight)?
+            {
+                SiNode {
+                    kind: SiNodeKind::Workspace(pk),
+                } => {
+                    let o = self.get_workspace(*pk)?;
+                    found.push(SiObjectKind::Workspace(o.clone()));
+                }
+                SiNode {
+                    kind: SiNodeKind::Schema(pk),
+                } => {
+                    let o = self.get_schema_by_pk(*pk)?;
+                    found.push(SiObjectKind::Schema(o.clone()));
+                }
+            }
+        }
+        Ok(found)
     }
 
     pub fn find_all_objects_of_lineage_by_pk_in_change_set(
@@ -325,6 +503,69 @@ impl SiDag {
         self.update_head(change_set_pk, new_workspace_pk);
 
         Ok(new_workspace_pk)
+    }
+
+    pub fn modify_schema<L>(
+        &mut self,
+        change_set_pk: ChangeSetPk,
+        schema_pk: SchemaPk,
+        lambda: L,
+    ) -> DagResult<SchemaPk>
+    where
+        L: FnOnce(&mut Schema) -> DagResult<()>,
+    {
+        let workspace_pk = self.get_head_for_change_set_pk(change_set_pk)?;
+        let base_object = self.get_schema_by_pk(schema_pk)?;
+        let base_index = self.get_schema_node_index(schema_pk)?;
+        let new_vector_clock = self
+            .vector_clocks
+            .get(&schema_pk)
+            .ok_or(DagError::VectorClockNotFound)?
+            .clone();
+
+        let mut new_schema = base_object.clone();
+        new_schema.pk = SchemaPk::new();
+        let new_schema_pk = new_schema.pk();
+        let new_index = self
+            .graph
+            .add_node(SiNode::new(SiNodeKind::Schema(new_schema.pk())));
+        self.vector_clocks.insert(new_schema_pk, new_vector_clock);
+
+        // Anything you want to do to the schema happens here
+        lambda(&mut new_schema)?;
+
+        self.schemas
+            .insert(new_schema.pk(), IndexAndEntry::new(new_index, new_schema));
+
+        let mut edges_to_make: Vec<NodeIndex> = Vec::new();
+        for node_idx in self
+            .graph
+            .neighbors_directed(base_index, Direction::Outgoing)
+        {
+            edges_to_make.push(node_idx);
+        }
+        for node_idx in edges_to_make {
+            self.graph
+                .update_edge(new_index, node_idx, SiEdge::new(SiEdgeKind::Uses));
+        }
+
+        let mut edges_to_make: Vec<NodeIndex> = Vec::new();
+        for node_idx in self
+            .graph
+            .neighbors_directed(base_index, Direction::Incoming)
+        {
+            edges_to_make.push(node_idx);
+        }
+        for node_idx in edges_to_make {
+            self.graph
+                .update_edge(node_idx, new_index, SiEdge::new(SiEdgeKind::Uses));
+        }
+
+        self.update_schema_content_hash(new_schema_pk)?;
+
+        self.vector_clock_increment(new_schema_pk, change_set_pk);
+
+        Ok(new_schema_pk)
     }
 
     pub fn update_head(&mut self, change_set_pk: ChangeSetPk, workspace_pk: WorkspacePk) {
@@ -566,6 +807,23 @@ impl SiDag {
         Ok(left_vc.is_newer(&right_vc))
     }
 
+    pub fn clock_is_newer_for_change_set(
+        &self,
+        left: Ulid,
+        right: Ulid,
+        change_set_pk: ChangeSetPk,
+    ) -> DagResult<bool> {
+        let left_vc = self
+            .vector_clocks
+            .get(&left)
+            .ok_or(DagError::VectorClockNotFound)?;
+        let right_vc = self
+            .vector_clocks
+            .get(&right)
+            .ok_or(DagError::VectorClockNotFound)?;
+        Ok(left_vc.newer_for_change_set(change_set_pk, &right_vc))
+    }
+
     pub fn clock_was_changed_in_changeset(
         &self,
         object_id: Ulid,
@@ -614,13 +872,15 @@ impl Conflict {
 pub struct Update {
     pub from_object: SiNodeKind,
     pub to_object: SiNodeKind,
+    pub create: bool,
 }
 
 impl Update {
-    pub fn new(from_object: SiNodeKind, to_object: SiNodeKind) -> Update {
+    pub fn new(from_object: SiNodeKind, to_object: SiNodeKind, create: bool) -> Update {
         Update {
             from_object,
             to_object,
+            create,
         }
     }
 }
@@ -665,6 +925,22 @@ impl SiEdge {
 pub enum SiObjectKind {
     Workspace(Workspace),
     Schema(Schema),
+}
+
+impl SiObjectKind {
+    pub fn id(&self) -> Ulid {
+        match self {
+            SiObjectKind::Workspace(w) => w.id(),
+            SiObjectKind::Schema(s) => s.id(),
+        }
+    }
+
+    pub fn pk(&self) -> Ulid {
+        match self {
+            SiObjectKind::Workspace(w) => w.pk(),
+            SiObjectKind::Schema(s) => s.pk(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -754,36 +1030,6 @@ mod test {
 
         let new_head_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
         assert_eq!(modified_workspace_pk, new_head_workspace_pk);
-    }
-
-    #[test]
-    fn not_rebased_merge_fails() {
-        // Create a new dag
-        let mut dag = SiDag::new("poop");
-
-        // Get the head workspace
-        let head_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
-
-        // Create a pair of change sets
-        let killswitch_change_set_pk =
-            dag.create_change_set("killswitch", "main", head_workspace_pk);
-        let slayer_change_set_pk = dag.create_change_set("slayer", "main", head_workspace_pk);
-
-        // Modify the workspace in the killswitch change set
-        let _modified_workspace_pk = dag
-            .modify_workspace(killswitch_change_set_pk, |w| {
-                w.name = "back to the future".to_string();
-                Ok(())
-            })
-            .unwrap();
-
-        dag.merge_change_set(killswitch_change_set_pk).unwrap();
-
-        // Should fail
-        assert_eq!(
-            dag.merge_change_set(slayer_change_set_pk).unwrap_err(),
-            DagError::MustRebase
-        );
     }
 
     #[test]
@@ -903,34 +1149,88 @@ mod test {
         assert_eq!(search_result[0], SiObjectKind::Schema(audioslave.clone()));
     }
 
-    //#[test]
-    //fn change_set_create() {
-    //    // Create a new workspace, update the dag
-    //    let mut dag = SiDag::new("poop");
-    //    let change_set_id = dag.create_change_set("floop");
-    //}
+    #[test]
+    fn merge_complex_change_set() {
+        // Create a new dag
+        let mut dag = SiDag::new("funtimes");
 
-    //#[test]
-    //fn add_schema_to_workspace() {
-    //    // Create the universe
-    //    let mut dag = SiDag::new();
+        // Get the head workspace
+        let head_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
 
-    //    // Create a new workspace; it is empty.
-    //    let first_workspace_id = dag.create_workspace("Dr Who");
+        // Create three change sets
+        let killswitch_change_set_pk =
+            dag.create_change_set("killswitch", "main", head_workspace_pk);
+        let slayer_change_set_pk = dag.create_change_set("slayer", "main", head_workspace_pk);
+        let boygenius_change_set_pk = dag.create_change_set("boygenius", "main", head_workspace_pk);
 
-    //    // Create a new schema in our workspace.
-    //    let schema_id = dag.create_schema(first_workspace_id, "The 1975").unwrap();
+        // Modify the workspace in the boygenius change set
+        // Add some schemas to the workspace, then merge it, and confirm we have everything on main
+        let _modified_workspace_pk = dag
+            .modify_workspace(boygenius_change_set_pk, |w| {
+                w.name = "boygenius".to_string();
+                Ok(())
+            })
+            .unwrap();
 
-    //    // We now have two workspaces
-    //    assert_eq!(dag.workspaces.len(), 2);
+        let phoebe_schema_pk = dag
+            .create_schema(boygenius_change_set_pk, "phoebe")
+            .unwrap();
+        let julien_schema_pk = dag
+            .create_schema(boygenius_change_set_pk, "julien")
+            .unwrap();
+        let lucy_schema_pk = dag.create_schema(boygenius_change_set_pk, "lucy").unwrap();
+        dag.merge_change_set(boygenius_change_set_pk).unwrap();
+        let main_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
+        let objects = dag.all_objects_in_head_for_change_set_name("main").unwrap();
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == main_workspace_pk)
+            .is_some());
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == phoebe_schema_pk)
+            .is_some());
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == julien_schema_pk)
+            .is_some());
+        assert!(objects.iter().find(|o| o.pk() == lucy_schema_pk).is_some());
 
-    //    //let schema = dag.get_schema(schema_id).unwrap();
-    //    //assert_eq!(schema_id, schema.id());
-    //    //let workspace_schemas = dag
-    //    //    .get_workspace_schemas(workspace_id)
-    //    //    .expect("cannot get workspace schemas");
-    //    //assert_eq!(workspace_schemas.len(), 1);
-    //    //assert_eq!(workspace_schemas[0].id(), schema.id());
-    //    //assert_eq!(workspace_schemas[0].name, "The 1975");
-    //}
+        // Rebase slayer on main, and confirm the objects are all there
+        let conflicts = dag.rebase_change_set(slayer_change_set_pk).unwrap();
+        assert_eq!(conflicts.len(), 0);
+        let objects = dag
+            .all_objects_in_head_for_change_set_name("slayer")
+            .unwrap();
+        let slayer_workspace_pk = dag.get_head_for_change_set_name("slayer").unwrap();
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == slayer_workspace_pk)
+            .is_some());
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == phoebe_schema_pk)
+            .is_some());
+        assert!(objects
+            .iter()
+            .find(|o| o.pk() == julien_schema_pk)
+            .is_some());
+        assert!(objects.iter().find(|o| o.pk() == lucy_schema_pk).is_some());
+
+        let main_phoebe_clock = dbg!(dag.vector_clocks.get(&phoebe_schema_pk).unwrap());
+
+        // Change the name of a schema on slayer
+        let new_phoebe_schema_pk = dag
+            .modify_schema(slayer_change_set_pk, phoebe_schema_pk, |s| {
+                s.name = "jennifer".to_string();
+                Ok(())
+            })
+            .unwrap();
+        let main_phoebe_clock = dbg!(dag.vector_clocks.get(&phoebe_schema_pk).unwrap());
+        let new_phoebe_clock = dbg!(dag.vector_clocks.get(&new_phoebe_schema_pk).unwrap());
+        dbg!(new_phoebe_clock.is_newer(&main_phoebe_clock));
+
+        // Merge slayer - it's clean!
+        dag.merge_change_set(slayer_change_set_pk).unwrap();
+    }
 }

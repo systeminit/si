@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use ulid::Ulid;
 
 use crate::{
-    lamport_clock::LamportClock, change_set::ChangeSetPk, error::{DagResult, DagError},
+    change_set::ChangeSetPk,
+    error::{DagError, DagResult},
+    lamport_clock::LamportClock,
 };
 
 // We keep a vector clock of every changeset that has impacted our given object id
@@ -69,6 +71,16 @@ impl VectorClock {
         is_newer
     }
 
+    pub fn newer_for_change_set(&self, change_set_pk: ChangeSetPk, other: &VectorClock) -> bool {
+        let is_newer = false;
+        if let Some(my_lc) = self.clock_entries.get(&change_set_pk) {
+            if let Some(other_lc) = other.clock_entries.get(&change_set_pk) {
+                return my_lc > other_lc;
+            }
+        }
+        is_newer
+    }
+
     // The clock was changed if there is an entry in the vector for a change set pk
     pub fn was_changed_in_changeset(&self, change_set_pk: ChangeSetPk) -> bool {
         self.clock_entries.get(&change_set_pk).is_some()
@@ -87,7 +99,9 @@ mod test {
         assert_eq!(vector_clock_b.is_newer(&vector_clock_a), true);
         assert_eq!(vector_clock_a.is_newer(&vector_clock_b), false);
         let change_set_pk = ChangeSetPk::new();
-        vector_clock_a.merge(change_set_pk, &vector_clock_b).unwrap();
+        vector_clock_a
+            .merge(change_set_pk, &vector_clock_b)
+            .unwrap();
         assert_eq!(vector_clock_a.is_newer(&vector_clock_b), true);
     }
 }
