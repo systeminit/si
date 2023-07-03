@@ -40,7 +40,7 @@ jobs:
       - name: Build Veritech
         run: make build//bin/veritech
       - name: Create Whiskers
-        run: cargo test --package sdf-server --test api service_tests::scenario::model_and_fix_flow_whiskers::model_and_fix_flow_whiskers -- --ignored --exact
+        run: cargo test --package sdf-server --test api service_tests::scenario::model_and_fix_flow_whiskers::model_and_fix_flow_whiskers -- --ignored --exact --nocapture
         env:
           SI_TEST_BUILTIN_SCHEMAS: "region,ami,key pair,ec2 instance,security group,ingress,docker image,butane"
   author:
