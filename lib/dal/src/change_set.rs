@@ -150,10 +150,10 @@ impl ChangeSet {
             .publish_on_commit(ctx)
             .await?;
 
-        if run_confirmations {
-            // Update the visibility.
-            ctx.update_visibility(Visibility::new_head(false));
+        // Update the visibility.
+        ctx.update_visibility(Visibility::new_head(false));
 
+        if run_confirmations {
             // Before retuning, run all confirmations now that we are on head.
             Component::run_all_confirmations(ctx).await?;
         }

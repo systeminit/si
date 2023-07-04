@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryFrom};
+use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use crate::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
-        producer::{JobMeta, JobProducer, JobProducerResult},
+        producer::{JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionKind, Component, ComponentId, DalContext, StandardModel, Visibility,
     WsEvent,
@@ -52,30 +52,8 @@ impl RefreshJob {
 }
 
 impl JobProducer for RefreshJob {
-    fn args(&self) -> JobProducerResult<serde_json::Value> {
+    fn arg(&self) -> JobProducerResult<serde_json::Value> {
         Ok(serde_json::to_value(RefreshJobArgs::from(self.clone()))?)
-    }
-
-    fn meta(&self) -> JobProducerResult<JobMeta> {
-        let mut custom = HashMap::new();
-        custom.insert(
-            "access_builder".to_string(),
-            serde_json::to_value(self.access_builder)?,
-        );
-        custom.insert(
-            "visibility".to_string(),
-            serde_json::to_value(self.visibility)?,
-        );
-
-        Ok(JobMeta {
-            retry: Some(0),
-            custom,
-            ..JobMeta::default()
-        })
-    }
-
-    fn identity(&self) -> String {
-        serde_json::to_string(self).expect("Cannot serialize RefreshJob")
     }
 }
 
@@ -130,21 +108,12 @@ impl TryFrom<JobInfo> for RefreshJob {
     type Error = JobConsumerError;
 
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        if job.args().len() != 3 {
-            return Err(JobConsumerError::InvalidArguments(
-                r#"[{ component_ids: Vec<ComponentId> }, <AccessBuilder>, <Visibility>]"#
-                    .to_string(),
-                job.args().to_vec(),
-            ));
-        }
-        let args: RefreshJobArgs = serde_json::from_value(job.args()[0].clone())?;
-        let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
-        let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
+        let args = RefreshJobArgs::deserialize(&job.arg)?;
 
         Ok(Self {
             component_ids: args.component_ids,
-            access_builder,
-            visibility,
+            access_builder: job.access_builder,
+            visibility: job.visibility,
             job: Some(job),
         })
     }

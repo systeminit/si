@@ -332,14 +332,12 @@ pub(crate) trait FnSetupExpander {
             return ident.clone();
         }
 
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
+        let services_context = self.setup_services_context();
+        let services_context = services_context.as_ref();
 
         let var = Ident::new("pinga_server", Span::call_site());
         self.code_extend(quote! {
-            let #var = ::dal_test::pinga_server(
-                #dal_context_builder.services_context(),
-            )?;
+            let #var = ::dal_test::pinga_server(&#services_context)?;
         });
         self.set_pinga_server(Some(Arc::new(var)));
 
@@ -453,9 +451,11 @@ pub(crate) trait FnSetupExpander {
         let services_context = services_context.as_ref();
 
         let var = Ident::new("dal_context_builder", Span::call_site());
+
         self.code_extend(quote! {
-            let #var = #services_context.into_builder();
+            let #var = #services_context.clone().into_builder(false);
         });
+
         self.set_dal_context_builder(Some(Arc::new(var)));
 
         self.dal_context_builder().unwrap().clone()
@@ -477,10 +477,8 @@ pub(crate) trait FnSetupExpander {
                     .build_default()
                     .await
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
-                let r = ::dal_test::helpers::workspace_signup(
-                    &ctx,
-                ).await?;
-                ctx.commit()
+                let r = ::dal_test::helpers::workspace_signup(&ctx).await?;
+                ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit workspace_signup")?;
 

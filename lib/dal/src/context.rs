@@ -62,12 +62,7 @@ impl ServicesContext {
     }
 
     /// Consumes and returns [`DalContextBuilder`].
-    pub fn into_builder(self) -> DalContextBuilder {
-        self.into_builder_maybe_blocking(false)
-    }
-
-    /// Consumes and returns [`DalContextBuilder`].
-    pub fn into_builder_maybe_blocking(self, blocking: bool) -> DalContextBuilder {
+    pub fn into_builder(self, blocking: bool) -> DalContextBuilder {
         DalContextBuilder {
             services_context: self,
             blocking,
@@ -118,10 +113,6 @@ enum ConnectionState {
 impl ConnectionState {
     fn new_from_conns(conns: Connections) -> Self {
         Self::Connections(conns)
-    }
-
-    fn new_from_txns(txns: Transactions) -> Self {
-        Self::Transactions(txns)
     }
 
     fn take(&mut self) -> Self {
@@ -216,10 +207,10 @@ pub struct DalContext {
 impl DalContext {
     /// Takes a reference to a [`ServicesContext`] and returns a builder to construct a
     /// `DalContext`.
-    pub fn builder(services_context: ServicesContext) -> DalContextBuilder {
+    pub fn builder(services_context: ServicesContext, blocking: bool) -> DalContextBuilder {
         DalContextBuilder {
             services_context,
-            blocking: false,
+            blocking,
         }
     }
 
@@ -230,7 +221,6 @@ impl DalContext {
         } else {
             let mut guard = self.conns_state.lock().await;
             *guard = guard.take().commit().await?;
-            panic!("regular commit on tests");
         }
 
         Ok(())
@@ -242,15 +232,6 @@ impl DalContext {
 
     pub fn services_context(&self) -> ServicesContext {
         self.services_context.clone()
-    }
-
-    pub fn request_context(&self) -> RequestContext {
-        RequestContext {
-            tenancy: *self.tenancy(),
-            visibility: *self.visibility(),
-            history_actor: *self.history_actor(),
-            blocking: self.blocking,
-        }
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and
@@ -275,28 +256,6 @@ impl DalContext {
         Ok(())
     }
 
-    /// Updates this context with all new values from a [`RequestContext`].
-    pub fn update_from_request_context(&mut self, request_ctx: RequestContext) {
-        self.tenancy = request_ctx.tenancy;
-        self.visibility = request_ctx.visibility;
-        self.history_actor = request_ctx.history_actor;
-        self.blocking = request_ctx.blocking;
-    }
-
-    /// Clones a new context from this one with the same metadata, but with different connections
-    pub async fn clone_with_new_connections(&self) -> Result<Self, TransactionsError> {
-        Self::builder(self.services_context())
-            .build(self.request_context())
-            .await
-    }
-
-    /// Clones a new context from this one with all new values from a  [`RequestContext`].
-    pub fn clone_from_request_context(&self, request_ctx: RequestContext) -> Self {
-        let mut new = self.clone();
-        new.update_from_request_context(request_ctx);
-        new
-    }
-
     /// Updates this context with a new [`HistoryActor`].
     pub fn update_history_actor(&mut self, history_actor: HistoryActor) {
         self.history_actor = history_actor;
@@ -313,7 +272,6 @@ impl DalContext {
     pub fn update_access_builder(&mut self, access_builder: AccessBuilder) {
         self.tenancy = access_builder.tenancy;
         self.history_actor = access_builder.history_actor;
-        self.blocking = access_builder.blocking;
     }
 
     /// Runs a block of code with a custom [`Visibility`] DalContext using the same transactions
@@ -527,7 +485,7 @@ impl DalContext {
     }
 
     pub fn access_builder(&self) -> AccessBuilder {
-        AccessBuilder::new_maybe_blocking(self.tenancy, self.history_actor, self.blocking)
+        AccessBuilder::new(self.tenancy, self.history_actor)
     }
 }
 
@@ -541,35 +499,6 @@ pub struct RequestContext {
     pub visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     pub history_actor: HistoryActor,
-    /// Determines if regular commits block until the jobs get executed.
-    /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
-    /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
-    blocking: bool,
-}
-
-impl RequestContext {
-    /// Get a reference to the request context's tenancy.
-    #[must_use]
-    pub fn tenancy(&self) -> &Tenancy {
-        &self.tenancy
-    }
-
-    /// Get the request context's visibility.
-    #[must_use]
-    pub fn visibility(&self) -> &Visibility {
-        &self.visibility
-    }
-
-    /// Get a reference to the request context's history actor.
-    #[must_use]
-    pub fn history_actor(&self) -> &HistoryActor {
-        &self.history_actor
-    }
-
-    #[must_use]
-    pub fn blocking(&self) -> bool {
-        self.blocking
-    }
 }
 
 impl Default for RequestContext {
@@ -580,7 +509,6 @@ impl Default for RequestContext {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
-            blocking: false,
         }
     }
 }
@@ -592,38 +520,14 @@ pub struct AccessBuilder {
     tenancy: Tenancy,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     history_actor: HistoryActor,
-    /// Determines if regular commits block until the jobs get executed.
-    /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
-    /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
-    blocking: bool,
 }
 
 impl AccessBuilder {
     /// Constructs a new instance given a tenancy and a [`HistoryActor`].
     pub fn new(tenancy: Tenancy, history_actor: HistoryActor) -> Self {
-        Self::new_maybe_blocking(tenancy, history_actor, false)
-    }
-
-    /// Constructs a new instance given a tenancy and a [`HistoryActor`].
-    pub fn new_maybe_blocking(
-        tenancy: Tenancy,
-        history_actor: HistoryActor,
-        blocking: bool,
-    ) -> Self {
         Self {
             tenancy,
             history_actor,
-            blocking,
-        }
-    }
-
-    /// Builds and returns a new [`RequestContext`] using the default [`Visibility`].
-    pub fn build_head(self) -> RequestContext {
-        RequestContext {
-            tenancy: self.tenancy,
-            visibility: Visibility::new_head(false),
-            history_actor: self.history_actor,
-            blocking: self.blocking,
         }
     }
 
@@ -633,22 +537,13 @@ impl AccessBuilder {
             tenancy: self.tenancy,
             visibility,
             history_actor: self.history_actor,
-            blocking: self.blocking,
         }
-    }
-
-    pub fn set_blocking(&mut self) {
-        self.blocking = true;
-    }
-
-    pub fn blocking(&self) -> bool {
-        self.blocking
     }
 }
 
 impl From<DalContext> for AccessBuilder {
     fn from(ctx: DalContext) -> Self {
-        Self::new_maybe_blocking(ctx.tenancy, ctx.history_actor, ctx.blocking)
+        Self::new(ctx.tenancy, ctx.history_actor)
     }
 }
 
@@ -664,49 +559,33 @@ pub struct DalContextBuilder {
 }
 
 impl DalContextBuilder {
-    /// Contructs and returns a new [`DalContext`] using the given [`RequestContext`] and
-    /// an existing [`Connections`].
-    pub async fn build_with_conns(
-        &self,
-        request_context: RequestContext,
-        conns: Connections,
-    ) -> Result<DalContext, TransactionsError> {
+    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
+    pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
+        let conns = self.connections().await?;
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
-            tenancy: request_context.tenancy,
-            visibility: request_context.visibility,
-            history_actor: request_context.history_actor,
+            tenancy: Tenancy::new_empty(),
+            visibility: Visibility::new_head(false),
+            history_actor: HistoryActor::SystemInit,
         })
     }
 
-    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`] and
-    /// the given [`Transactions`].
-    pub fn build_default_with_txns(&self, txns: Transactions) -> DalContext {
-        self.build_with_txns(RequestContext::default(), txns)
-    }
-
-    /// Contructs and returns a new [`DalContext`] using the given [`RequestContext`] and
-    /// an existing [`Transactions`].
-    pub fn build_with_txns(
+    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    pub async fn build_head(
         &self,
-        request_context: RequestContext,
-        txns: Transactions,
-    ) -> DalContext {
-        DalContext {
+        access_builder: AccessBuilder,
+    ) -> Result<DalContext, TransactionsError> {
+        let conns = self.connections().await?;
+        Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
-            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_txns(txns))),
-            tenancy: request_context.tenancy,
-            visibility: request_context.visibility,
-            history_actor: request_context.history_actor,
-        }
-    }
-
-    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
-    pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
-        self.build(RequestContext::default()).await
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+            tenancy: access_builder.tenancy,
+            history_actor: access_builder.history_actor,
+            visibility: Visibility::new_head(false),
+        })
     }
 
     /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
@@ -715,7 +594,14 @@ impl DalContextBuilder {
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
-        self.build_with_conns(request_context, conns).await
+        Ok(DalContext {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+            tenancy: request_context.tenancy,
+            visibility: request_context.visibility,
+            history_actor: request_context.history_actor,
+        })
     }
 
     /// Gets a reference to the PostgreSQL connection pool.
@@ -876,12 +762,6 @@ impl Transactions {
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
-    }
-
-    /// Consumes all inner transactions and committing all changes made within them.
-    pub async fn commit(self) -> Result<(), TransactionsError> {
-        let _ = self.commit_into_conns().await?;
-        Ok(())
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them, and returns

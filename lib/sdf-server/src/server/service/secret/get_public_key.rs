@@ -8,9 +8,9 @@ pub type GetPublicKeyResponse = PublicKey;
 
 pub async fn get_public_key(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
 ) -> SecretResult<Json<GetPublicKeyResponse>> {
-    let ctx = builder.build(request_ctx.build_head()).await?;
+    let ctx = builder.build_head(access_builder).await?;
 
     let response: GetPublicKeyResponse = PublicKey::get_current(&ctx).await?;
 

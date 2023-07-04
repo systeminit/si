@@ -1,5 +1,3 @@
-use std::{collections::HashMap, fmt};
-
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -8,13 +6,12 @@ use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
-use ulid::Ulid;
 
 use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
-    job::producer::BlockingJobError, status::StatusUpdaterError, AccessBuilder,
-    ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError, ComponentId,
-    DalContext, DalContextBuilder, FixBatchId, FixResolverError, StandardModelError,
+    job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
+    AccessBuilder, ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError,
+    ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError, StandardModelError,
     TransactionsError, Visibility, WsEventError,
 };
 
@@ -51,6 +48,8 @@ pub enum JobConsumerError {
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]
     Io(#[from] ::std::io::Error),
+    #[error(transparent)]
+    JobProducer(#[from] JobProducerError),
     #[error("missing fix execution batch for id: {0}")]
     MissingFixBatch(FixBatchId),
     #[error(transparent)]
@@ -91,78 +90,11 @@ pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 pub struct JobInfo {
     pub id: String,
     pub kind: String,
-    pub queue: Option<String>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub enqueued_at: Option<DateTime<Utc>>,
-    pub at: Option<DateTime<Utc>>,
-    pub args: Vec<Value>,
-    pub retry: Option<isize>,
-    pub custom: JobConsumerCustomPayload,
-}
-
-impl JobInfo {
-    pub fn args(&self) -> &[Value] {
-        &self.args
-    }
-
-    pub fn kind(&self) -> &str {
-        &self.kind
-    }
-}
-
-impl JobConsumerMetadata for JobInfo {
-    fn type_name(&self) -> String {
-        self.kind.clone()
-    }
-
-    fn access_builder(&self) -> AccessBuilder {
-        serde_json::from_value(
-            self.args
-                .get(1)
-                .cloned()
-                .ok_or(JobConsumerError::ArgNotFound(self.clone(), 1))
-                .expect("unable to get access builder"),
-        )
-        .expect("unable to deserialize access builder")
-    }
-
-    fn visibility(&self) -> Visibility {
-        serde_json::from_value(
-            self.args
-                .get(2)
-                .cloned()
-                .ok_or(JobConsumerError::ArgNotFound(self.clone(), 2))
-                .expect("unable to get access builder"),
-        )
-        .expect("unable to deserialize access builder")
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct JobInvocationId(Ulid);
-
-impl JobInvocationId {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for JobInvocationId {
-    fn default() -> Self {
-        Self(Ulid::new())
-    }
-}
-
-impl fmt::Display for JobInvocationId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct JobConsumerCustomPayload {
-    #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    pub created_at: DateTime<Utc>,
+    pub arg: Value,
+    pub access_builder: AccessBuilder,
+    pub visibility: Visibility,
+    pub blocking: bool,
 }
 
 #[async_trait]

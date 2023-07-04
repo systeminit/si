@@ -101,13 +101,13 @@ async fn authoring_flow_asset(
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "si-demo-schema",
+                "name": "systeminit/whiskers",
                 "type": "component",
                 "color": "#FFFF00",
                 "protected": false,
             },
             "domain": {
-                "image": "si-demo-schema",
+                "image": "systeminit/whiskers",
             },
         }], // expected
         my_asset

@@ -70,7 +70,7 @@ impl ResourceScheduler {
             // First we're building a ctx with no tenancy at head, then updating it with a
             // workspace head request context
 
-            let builder = self.services_context.clone().into_builder();
+            let builder = self.services_context.clone().into_builder(false);
             let mut ctx = builder.build_default().await?;
 
             ctx.update_tenancy(*component.tenancy());
@@ -100,7 +100,7 @@ impl ResourceScheduler {
     /// Gets a list of all the resources in the database.
     #[instrument(skip_all, level = "debug")]
     pub async fn components(&self) -> ResourceSchedulerResult<Vec<Component>> {
-        let builder = self.services_context.clone().into_builder();
+        let builder = self.services_context.clone().into_builder(false);
         let mut ctx = builder.build_default().await?;
         ctx.update_with_deleted_visibility();
 

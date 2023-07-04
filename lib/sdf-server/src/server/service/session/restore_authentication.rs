@@ -14,10 +14,10 @@ pub struct RestoreAuthenticationResponse {
 
 pub async fn restore_authentication(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
-    let ctx = builder.build(request_ctx.build_head()).await?;
+    let ctx = builder.build_head(access_builder).await?;
 
     let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk)
         .await?
