@@ -37,11 +37,11 @@
           <div v-if="!rootComponents.length" class="flex flex-col items-center">
             <NoComponents class="items-center" />
             <div class="text-xl text-neutral-400 mt-2">Drag & Drop</div>
-            <div class="px-xs pt-lg text-neutral-400 text-center italic">
-              Assets on to the canvas to the right to start modeling your
+            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+              Drag & Drop assets on to the canvas and start modeling your
               infrastructure
             </div>
-            <div class="px-xs pt-lg text-neutral-400 text-center italic">
+            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
               Assets are reusable infrastructure components such as key pairs,
               docker images EC2 instances etc.
             </div>

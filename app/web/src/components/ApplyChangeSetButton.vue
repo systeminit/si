@@ -55,6 +55,7 @@ onMounted(() => {
 const applyChangeSet = async () => {
   if (!route.name) return;
   await changeSetsStore.APPLY_CHANGE_SET2(props.recommendations);
+  window.localStorage.setItem("applied-changes", "true");
   router.replace({
     name: route.name,
     params: {

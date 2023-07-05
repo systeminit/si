@@ -30,14 +30,14 @@
               "
               class="pl-xs whitespace-nowrap"
             >
-              All fixes succeeded
+              All actions applied
             </div>
             <div v-else class="pl-xs">
               {{ fixBatch.fixes.filter((f) => f.status === "success").length }}
-              of {{ fixBatch.fixes.length }} fix{{
-                fixBatch.fixes.length > 1 ? "es" : ""
+              of {{ fixBatch.fixes.length }} action{{
+                fixBatch.fixes.length > 1 ? "s" : ""
               }}
-              succeeded
+              applied
             </div>
           </span>
           <span

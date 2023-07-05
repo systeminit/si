@@ -66,9 +66,10 @@
   >
     <div class="flex flex-col h-full">
       <Collapsible
+        :key="`${openCollapsible}`"
         as="div"
         contentAs="span"
-        :defaultOpen="false"
+        :defaultOpen="openCollapsible"
         hideBottomBorderWhenOpen
       >
         <template #label>
@@ -315,7 +316,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, ref, watch } from "vue";
+import { onMounted, computed, ref, watch } from "vue";
 import plur from "plur";
 import {
   Collapsible,
@@ -408,6 +409,26 @@ watch(recommendations, (r) => {
 });
 
 const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
+
+const openCollapsible = ref(false);
+
+onMounted(() => {
+  if (isHead.value) {
+    openCollapsible.value = !!window.localStorage.getItem("applied-changes");
+    window.localStorage.removeItem("applied-changes");
+  } else {
+    openCollapsible.value = false;
+  }
+});
+
+watch(isHead, () => {
+  if (isHead.value) {
+    openCollapsible.value =
+      openCollapsible.value || !!window.localStorage.getItem("applied-changes");
+  } else {
+    openCollapsible.value = false;
+  }
+});
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
@@ -904,6 +925,7 @@ const refreshResourceForSelectedComponent = () => {
 };
 
 const SUB_PANEL_DEFAULT_HEIGHT = 450;
+const DIAGRAM_SUB_PANEL_DEFAULT_HEIGHT = 350;
 const SUB_PANEL_MIN_HEIGHT = 150;
 
 // TODO: Move panels to their own components after they stabilize a bit
@@ -913,7 +935,7 @@ const topRightPanel = defaultSizer(
 );
 
 const topLeftPanel = defaultSizer(
-  SUB_PANEL_DEFAULT_HEIGHT,
+  DIAGRAM_SUB_PANEL_DEFAULT_HEIGHT,
   SUB_PANEL_MIN_HEIGHT,
 );
 </script>
