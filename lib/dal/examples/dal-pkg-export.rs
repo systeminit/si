@@ -76,7 +76,7 @@ async fn ctx() -> Result<DalContext> {
         None,
     );
 
-    Ok(DalContext::builder(services_context)
+    Ok(DalContext::builder(services_context, false)
         .build_default()
         .await?)
 }

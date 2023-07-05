@@ -1,7 +1,7 @@
 use super::{SessionError, SessionResult};
 use crate::server::extract::HandlerContext;
 use axum::Json;
-use dal::{AccessBuilder, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
+use dal::{HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -86,16 +86,7 @@ pub async fn auth_connect(
 
     let res_body = res.json::<AuthApiConnectResponse>().await?;
 
-    let mut ctx = builder
-        .build(
-            AccessBuilder::new(
-                // Empty tenancy means things can be written, but won't ever be read by whatever uses the standard model
-                Tenancy::new_empty(),
-                HistoryActor::SystemInit,
-            )
-            .build_head(),
-        )
-        .await?;
+    let mut ctx = builder.build_default().await?;
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk(&ctx, res_body.user.id).await?;
     let user = match maybe_user {

@@ -22,13 +22,13 @@ pub struct ApplyChangeSetResponse {
 
 pub async fn apply_change_set(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
-    let mut ctx = builder.build(request_ctx.build_head()).await?;
+    let mut ctx = builder.build_head(access_builder).await?;
 
     let mut change_set = ChangeSet::get_by_pk(&ctx, &request.change_set_pk)
         .await?
@@ -48,11 +48,8 @@ pub async fn apply_change_set(
     ctx.commit().await?;
 
     tokio::task::spawn(
-        super::upload_workspace_backup_module(
-            builder.build(request_ctx.build_head()).await?,
-            raw_access_token,
-        )
-        .instrument(info_span!("Workspace backup module upload")),
+        super::upload_workspace_backup_module(ctx, raw_access_token)
+            .instrument(info_span!("Workspace backup module upload")),
     );
 
     Ok(Json(ApplyChangeSetResponse { change_set }))

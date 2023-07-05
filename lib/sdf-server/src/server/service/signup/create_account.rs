@@ -1,7 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{RequestContext, Workspace};
+use dal::Workspace;
 use telemetry::prelude::*;
 
 use crate::{
@@ -37,7 +37,7 @@ pub async fn create_account(
         return Err(SignupError::InvalidSignupSecret);
     }
 
-    let mut ctx = builder.build(RequestContext::default()).await?;
+    let mut ctx = builder.build_default().await?;
 
     let _nw = Workspace::signup(
         &mut ctx,

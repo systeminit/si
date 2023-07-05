@@ -1,10 +1,9 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
 use ulid::Ulid;
 
-use super::consumer::{JobConsumerCustomPayload, JobConsumerMetadata, JobInfo};
+use super::consumer::{JobConsumerMetadata, JobInfo};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -18,9 +17,7 @@ pub enum JobProducerError {
 pub type JobProducerResult<T> = Result<T, JobProducerError>;
 
 pub trait JobProducer: std::fmt::Debug + Send + JobConsumerMetadata {
-    fn args(&self) -> JobProducerResult<serde_json::Value>;
-    fn meta(&self) -> JobProducerResult<JobMeta>;
-    fn identity(&self) -> String;
+    fn arg(&self) -> JobProducerResult<serde_json::Value>;
 }
 
 pub type BlockingJobResult = Result<(), BlockingJobError>;
@@ -34,69 +31,38 @@ pub enum BlockingJobError {
     JobProducer(String),
     #[error("A nats error occurred: {0}")]
     Nats(String),
+    #[error("no access builder found in job info")]
+    NoAccessBuilder,
     #[error("serde error: {0}")]
     Serde(String),
     #[error("A transactions error occurred: {0}")]
     Transactions(String),
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct JobMeta {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub retry: Option<isize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub at: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    #[serde(default = "HashMap::default")]
-    pub custom: HashMap<String, serde_json::Value>,
-}
-
-impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
-    type Error = JobProducerError;
-
-    fn try_from(job_producer: Box<dyn JobProducer + Send + Sync>) -> Result<Self, Self::Error> {
-        let job_producer_meta = job_producer.meta()?;
-
-        Ok(JobInfo {
+impl JobInfo {
+    pub fn new(job_producer: Box<dyn JobProducer + Send + Sync>) -> JobProducerResult<Self> {
+        Ok(Self {
             id: Ulid::new().to_string(),
             kind: job_producer.type_name(),
-            queue: None,
-            created_at: Some(Utc::now()),
-            enqueued_at: None,
-            at: job_producer_meta.at,
-            args: vec![
-                job_producer.args()?,
-                serde_json::to_value(job_producer.access_builder())?,
-                serde_json::to_value(job_producer.visibility())?,
-            ],
-            retry: job_producer_meta.retry,
-            custom: JobConsumerCustomPayload {
-                extra: job_producer_meta.custom,
-            },
-        })
-    }
-}
-
-impl JobProducer for JobInfo {
-    fn args(&self) -> JobProducerResult<serde_json::Value> {
-        self.args
-            .get(0)
-            .cloned()
-            .ok_or(JobProducerError::ArgNotFound(self.clone(), 0))
-    }
-    fn meta(&self) -> JobProducerResult<JobMeta> {
-        Ok(JobMeta {
-            at: self.at,
-            retry: self.retry,
-            custom: self.custom.extra.clone(),
+            created_at: Utc::now(),
+            arg: job_producer.arg()?,
+            access_builder: job_producer.access_builder(),
+            visibility: job_producer.visibility(),
+            blocking: false,
         })
     }
 
-    fn identity(&self) -> String {
-        serde_json::to_string(&serde_json::json!({
-            "args": self.args,
-            "kind": self.kind,
-        }))
-        .expect("Cannot serialize JobInfo")
+    pub fn new_blocking(
+        job_producer: Box<dyn JobProducer + Send + Sync>,
+    ) -> JobProducerResult<Self> {
+        Ok(Self {
+            id: Ulid::new().to_string(),
+            kind: job_producer.type_name(),
+            created_at: Utc::now(),
+            arg: job_producer.arg()?,
+            access_builder: job_producer.access_builder(),
+            visibility: job_producer.visibility(),
+            blocking: true,
+        })
     }
 }

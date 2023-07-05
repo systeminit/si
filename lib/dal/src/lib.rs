@@ -118,7 +118,6 @@ pub use func::{
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
-pub use job::consumer::JobInvocationId;
 pub use job::definition::DependentValuesUpdate;
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
@@ -305,7 +304,7 @@ pub async fn migrate_builtins(
         Some(pkgs_path),
         Some(module_index_url),
     );
-    let dal_context = services_context.into_builder();
+    let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
 
     let workspace = Workspace::builtin(&ctx).await?;

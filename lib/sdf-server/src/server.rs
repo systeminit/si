@@ -4,7 +4,7 @@ pub use config::{
 };
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor};
 pub use routes::{routes, AppError};
-pub use server::{build_service, Server};
+pub use server::{build_service, build_service_for_tests, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;

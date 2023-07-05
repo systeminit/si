@@ -342,7 +342,7 @@ impl SdfTestFnSetupExpander {
         self.code_extend(quote! {
             let #var = {
                 let s_ctx = #test_context.create_services_context().await;
-                let (service, _, _) = ::sdf_server::build_service(
+                let (service, _, _) = ::sdf_server::build_service_for_tests(
                     s_ctx,
                     #jwt_public_signing_key.clone(),
                     #signup_secret.clone(),

@@ -120,7 +120,7 @@ impl StatusReceiver {
                             let context_clone = services_context.clone();
                             tokio::spawn(
                                 async move {
-                                    Self::process(context_clone.into_builder(), request).await.expect("Task failed successfully")
+                                    Self::process(context_clone.into_builder(false), request).await.expect("Task failed successfully")
                                 }
                             );
                         }

@@ -11,7 +11,7 @@ use crate::{
     job::consumer::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
-    job::producer::{JobMeta, JobProducer, JobProducerResult},
+    job::producer::{JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
@@ -60,32 +60,10 @@ impl DependentValuesUpdate {
 }
 
 impl JobProducer for DependentValuesUpdate {
-    fn args(&self) -> JobProducerResult<serde_json::Value> {
+    fn arg(&self) -> JobProducerResult<serde_json::Value> {
         Ok(serde_json::to_value(DependentValuesUpdateArgs::from(
             self.clone(),
         ))?)
-    }
-
-    fn meta(&self) -> JobProducerResult<JobMeta> {
-        let mut custom = HashMap::new();
-        custom.insert(
-            "access_builder".to_string(),
-            serde_json::to_value(self.access_builder)?,
-        );
-        custom.insert(
-            "visibility".to_string(),
-            serde_json::to_value(self.visibility)?,
-        );
-
-        Ok(JobMeta {
-            retry: Some(0),
-            custom,
-            ..JobMeta::default()
-        })
-    }
-
-    fn identity(&self) -> String {
-        serde_json::to_string(self).expect("Cannot serialize DependentValueUpdate")
     }
 }
 
@@ -120,7 +98,7 @@ impl JobConsumer for DependentValuesUpdate {
             } else {
                 "council".to_string()
             };
-        let jid = council_server::Id::from_string(&self.job.as_ref().unwrap().id)?;
+        let jid = council_server::Id::from_string(&self.job_id().unwrap())?;
         let mut council = council_server::Client::new(
             ctx.nats_conn().clone(),
             &council_subject,
@@ -150,7 +128,7 @@ impl DependentValuesUpdate {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         ctx.update_without_deleted_visibility();
 
-        let ctx_builder = ctx.services_context().into_builder();
+        let ctx_builder = ctx.services_context().into_builder(ctx.blocking());
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
         // Avoid lingering transaction while we wait to create attribute values
@@ -404,21 +382,11 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
     type Error = JobConsumerError;
 
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        if job.args().len() != 3 {
-            return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "attribute_values": <Vec<AttributeValueId>> }, <AccessBuilder>, <Visibility>]"#
-                    .to_string(),
-                job.args().to_vec(),
-            ));
-        }
-        let args: DependentValuesUpdateArgs = serde_json::from_value(job.args()[0].clone())?;
-        let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
-        let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
-
+        let args = DependentValuesUpdateArgs::deserialize(&job.arg)?;
         Ok(Self {
             attribute_values: args.attribute_values,
-            access_builder,
-            visibility,
+            access_builder: job.access_builder,
+            visibility: job.visibility,
             job: Some(job),
         })
     }

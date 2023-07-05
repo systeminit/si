@@ -7,8 +7,7 @@ use dal::{
         producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
-    JobFailureError, JobInvocationId, JobQueueProcessor, NatsProcessor, ServicesContext,
-    TransactionsError,
+    JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError, Subscription};
@@ -291,7 +290,10 @@ impl Subscriber {
             None,
             None,
         );
-        let ctx_builder = DalContext::builder(services_context);
+
+        // Make non blocking context here, and update it for each job
+        // Since the any blocking job should block on its child jobs
+        let ctx_builder = DalContext::builder(services_context, false);
 
         let messaging_destination = Arc::new(subject.clone());
 
@@ -376,11 +378,8 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
 
             match job.request {
                 Ok(request) => {
-                    let invocation_id = JobInvocationId::new();
-
                     // Spawn a task and process the request
                     let join_handle = task::spawn(execute_job_task(
-                        invocation_id,
                         job.metadata,
                         job.messaging_destination,
                         job.ctx_builder,
@@ -412,7 +411,6 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
     fields(
         job.id = request.payload.id,
         job.instance = metadata.job_instance,
-        job.invocation_id = %id,
         job.invoked_name = request.payload.kind,
         job.invoked_args = Empty,
         job.invoked_provider = metadata.job_invoked_provider,
@@ -427,18 +425,18 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
     )
 )]
 async fn execute_job_task(
-    id: JobInvocationId,
     metadata: Arc<ServerMetadata>,
     messaging_destination: Arc<String>,
     ctx_builder: DalContextBuilder,
     request: Request<JobInfo>,
 ) {
     let span = Span::current();
+    let id = request.payload.id.clone();
 
-    let args_str = serde_json::to_string(&request.payload.args().to_vec())
-        .unwrap_or_else(|_| "args failed to serialize".to_string());
+    let arg_str = serde_json::to_string(&request.payload.arg)
+        .unwrap_or_else(|_| "arg failed to serialize".to_string());
 
-    span.record("job.invoked_args", args_str);
+    span.record("job.invoked_arg", arg_str);
     span.record("messaging.destination", messaging_destination.as_str());
     span.record(
         "otel.name",
@@ -447,7 +445,6 @@ async fn execute_job_task(
 
     let maybe_reply_channel = request.reply_mailbox.clone();
     let reply_message = match execute_job(
-        id,
         &metadata,
         messaging_destination,
         ctx_builder.clone(),
@@ -487,23 +484,35 @@ async fn execute_job_task(
 }
 
 async fn execute_job(
-    _id: JobInvocationId,
     _metadata: &Arc<ServerMetadata>,
     _messaging_destination: Arc<String>,
-    ctx_builder: DalContextBuilder,
+    mut ctx_builder: DalContextBuilder,
     request: Request<JobInfo>,
 ) -> Result<()> {
     let (job_info, _) = request.into_parts();
+    if job_info.blocking {
+        ctx_builder.set_blocking();
+    }
+
     let current_span = tracing::Span::current();
     if !current_span.is_disabled() {
         tracing::Span::current().record("job_info.id", &job_info.id);
-        tracing::Span::current().record("job_info.kind", job_info.kind());
-        let args_str = serde_json::to_string(&job_info.args().to_vec())?;
-        tracing::Span::current().record("job_info.args", args_str);
+        tracing::Span::current().record("job_info.kind", &job_info.kind);
+        let arg_str = serde_json::to_string(&job_info.arg)?;
+        tracing::Span::current().record("job_info.arg", arg_str);
+        tracing::Span::current().record(
+            "job_info.access_builder",
+            serde_json::to_string(&job_info.access_builder)?,
+        );
+        tracing::Span::current().record(
+            "job_info.visibility",
+            serde_json::to_string(&job_info.visibility)?,
+        );
+        tracing::Span::current().record("job_info.blocking", job_info.blocking);
     }
 
     let job =
-        match job_info.kind() {
+        match job_info.kind.as_str() {
             stringify!(DependentValuesUpdate) => {
                 Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
                     as Box<dyn JobConsumer + Send + Sync>
@@ -519,7 +528,7 @@ async fn execute_job(
 
     if let Err(err) = job.run_job(ctx_builder.clone()).await {
         // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
-        record_job_failure(ctx_builder.clone(), job, err).await?;
+        record_job_failure(ctx_builder, job, err).await?;
     }
 
     info!("Finished processing job");

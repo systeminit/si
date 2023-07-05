@@ -24,9 +24,14 @@ async fn get_components_metadata(
         .finalize(&ctx, None)
         .await
         .expect("could not finalize schema variant");
+    ctx.blocking_commit()
+        .await
+        .expect("cannot commit transaction");
 
     let _component = create_component_for_schema_variant(&ctx, schema_variant.id()).await;
-    ctx.commit().await.expect("cannot commit transaction");
+    ctx.blocking_commit()
+        .await
+        .expect("cannot commit transaction");
 
     let request = GetComponentsMetadataRequest { visibility };
 

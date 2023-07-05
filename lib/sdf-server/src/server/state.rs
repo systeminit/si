@@ -14,6 +14,7 @@ pub struct AppState {
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
+    for_tests: bool,
 
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
     // that will trigger the read side and... shutdown. Cool, no?
@@ -29,6 +30,7 @@ impl AppState {
         posthog_client: impl Into<PosthogClient>,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
+        for_tests: bool,
     ) -> Self {
         Self {
             services_context: services_context.into(),
@@ -36,6 +38,7 @@ impl AppState {
             jwt_public_signing_key: jwt_public_signing_key.into(),
             posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
+            for_tests,
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }
     }
@@ -50,6 +53,10 @@ impl AppState {
 
     pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
         &self.jwt_public_signing_key
+    }
+
+    pub fn for_tests(&self) -> bool {
+        self.for_tests
     }
 }
 

@@ -41,7 +41,7 @@ impl NatsProcessor {
 
     async fn push_all_jobs(&self) -> JobQueueProcessorResult<()> {
         while let Some(element) = self.queue.fetch_job().await {
-            let job_info: JobInfo = element.try_into()?;
+            let job_info = JobInfo::new(element)?;
 
             if let Err(err) = self
                 .client
@@ -63,9 +63,11 @@ impl JobQueueProcessor for NatsProcessor {
     }
 
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
-        let job_info: JobInfo = job
-            .try_into()
+        let mut job_info = JobInfo::new_blocking(job)
             .map_err(|e: JobProducerError| BlockingJobError::JobProducer(e.to_string()))?;
+
+        job_info.blocking = true;
+
         let job_reply_inbox = self.client.new_inbox();
         let mut reply_subscription = self
             .client

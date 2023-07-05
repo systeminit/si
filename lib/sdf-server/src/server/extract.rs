@@ -8,7 +8,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder},
-    RequestContext, User, UserClaim,
+    User, UserClaim,
 };
 use hyper::StatusCode;
 
@@ -73,7 +73,11 @@ impl FromRequestParts<AppState> for HandlerContext {
         _parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let builder = state.services_context().clone().into_inner().into_builder();
+        let builder = state
+            .services_context()
+            .clone()
+            .into_inner()
+            .into_builder(state.for_tests());
         Ok(Self(builder))
     }
 }
@@ -118,10 +122,7 @@ impl FromRequestParts<AppState> for Authorization {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
-        let mut ctx = builder
-            .build(RequestContext::default())
-            .await
-            .map_err(internal_error)?;
+        let mut ctx = builder.build_default().await.map_err(internal_error)?;
         let jwt_public_signing_key = state.jwt_public_signing_key().clone();
 
         let headers = &parts.headers;
@@ -155,10 +156,7 @@ impl FromRequestParts<AppState> for WsAuthorization {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let HandlerContext(builder) = HandlerContext::from_request_parts(parts, state).await?;
-        let mut ctx = builder
-            .build(RequestContext::default())
-            .await
-            .map_err(internal_error)?;
+        let mut ctx = builder.build_default().await.map_err(internal_error)?;
         let jwt_public_signing_key = state.jwt_public_signing_key().clone();
 
         let query: Query<HashMap<String, String>> = Query::from_request_parts(parts, state)

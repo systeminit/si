@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::{thread, time};
 
 use axum::Router;
 use dal::{
@@ -221,10 +220,6 @@ async fn model_and_fix_flow_whiskers(
             Some(serde_json::json!["us-east-2"]),
         )
         .await;
-
-    // This is a temporary measure to allow dependent values updates to finish
-    let pinga_sleep = time::Duration::from_secs(90);
-    thread::sleep(pinga_sleep);
 
     // Check AMI, Key Pair and Security Group.
     assert_eq!(
@@ -521,9 +516,6 @@ async fn model_and_fix_flow_whiskers(
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
-    // This is a temporary measure to allow dependent values updates to finish
-    thread::sleep(pinga_sleep);
-
     // Prepare the fixes
     let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
 
@@ -577,9 +569,6 @@ async fn model_and_fix_flow_whiskers(
     // Run fixes from the requests.
     let fix_batch_id = harness.run_fixes(&mut ctx, fix_requests).await;
 
-    let fixes_sleep = time::Duration::from_secs(180);
-    thread::sleep(fixes_sleep);
-
     // Check that they succeeded.
     let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
@@ -608,7 +597,6 @@ async fn model_and_fix_flow_whiskers(
 
     // // let's refresh the resources and check what they are
     // harness.refresh_resources(&mut ctx).await;
-    // thread::sleep(time::Duration::from_secs(120));
     //
     // // check that we have some resources
     // let _x = dbg!(docker
@@ -632,16 +620,10 @@ async fn model_and_fix_flow_whiskers(
         .await;
     harness.delete_component(&ctx, ingress.component_id).await;
 
-    // This is a temporary measure to allow dependent values updates to finish
-    thread::sleep(pinga_sleep);
-
     // Let's apply the changeset to ensure we delete the components
     harness
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
-
-    // This is a temporary measure to allow dependent values updates to finish
-    thread::sleep(pinga_sleep);
 
     // Prepare the fixes
     let (delete_confirmations, delete_recommendations) = harness.list_confirmations(&mut ctx).await;
@@ -686,9 +668,6 @@ async fn model_and_fix_flow_whiskers(
     // Let's delete the non-SG group first
     let fix_batch_id = harness.run_fixes(&mut ctx, delete_requests).await;
 
-    // This allows the fixes to finish
-    thread::sleep(fixes_sleep);
-
     // Check that they succeeded.
     let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
@@ -701,14 +680,8 @@ async fn model_and_fix_flow_whiskers(
         fix_batch_history_view.status
     );
 
-    // This allows the fixes to finish
-    thread::sleep(fixes_sleep);
-
     // Delete the SG
     let fix_batch_id = harness.run_fixes(&mut ctx, delete_sg_requests).await;
-
-    // This allows the fixes to finish
-    thread::sleep(fixes_sleep);
 
     // Check that they succeeded.
     let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;

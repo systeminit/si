@@ -64,7 +64,9 @@ use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use telemetry::prelude::warn;
 
-use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
+use crate::service_tests::{
+    api_request_auth_json_body, api_request_auth_no_response, api_request_auth_query,
+};
 
 /// This _private_ struct is a wrapper around metadata related to a [`Component`](dal::Component)
 /// for use in scenario tests.
@@ -305,8 +307,7 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let _response: () = self
-            .query_post("/api/component/update_property_editor_value", &request)
+        self.query_post_no_response("/api/component/update_property_editor_value", &request)
             .await;
     }
 
@@ -328,8 +329,7 @@ impl ScenarioHarness {
             key: property_value.key.clone(),
             visibility: *ctx.visibility(),
         };
-        let _response: () = self
-            .query_post("/api/component/insert_property_editor_value", &request)
+        self.query_post_no_response("/api/component/insert_property_editor_value", &request)
             .await;
     }
 
@@ -481,8 +481,7 @@ impl ScenarioHarness {
             component_id,
             visibility: *ctx.visibility(),
         };
-        let _response: () = self
-            .query_post("/api/diagram/delete_component", &request)
+        self.query_post_no_response("/api/diagram/delete_component", &request)
             .await;
     }
 
@@ -578,6 +577,18 @@ impl ScenarioHarness {
         request: &Req,
     ) -> Res {
         api_request_auth_query(self.app.clone(), uri, &self.auth_token, request).await
+    }
+
+    /// Send a "POST" method query to the backend expecting an empty response
+    async fn query_post_no_response<Req: Serialize>(&self, uri: impl AsRef<str>, request: &Req) {
+        api_request_auth_no_response(
+            self.app.clone(),
+            Method::POST,
+            uri,
+            &self.auth_token,
+            request,
+        )
+        .await;
     }
 
     /// Send a "POST" method query to the backend.

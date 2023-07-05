@@ -19,11 +19,11 @@ pub struct UpdateSelectedChangeSetResponse {
 
 pub async fn update_selected_change_set(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
+    AccessBuilder(access_builder): AccessBuilder,
     Authorization(_claim): Authorization,
     Json(request): Json<UpdateSelectedChangeSetRequest>,
 ) -> ChangeSetResult<Json<UpdateSelectedChangeSetResponse>> {
-    let ctx = builder.build(request_ctx.build_head()).await?;
+    let ctx = builder.build_head(access_builder).await?;
 
     let change_set = ChangeSet::get_by_pk(&ctx, &request.next_change_set_pk)
         .await?
