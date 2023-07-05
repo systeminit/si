@@ -7,6 +7,7 @@
         class="relative flex flex-col flex-shrink-0"
       >
         <ChangeSetPanel
+          v-if="!FF_SINGLE_MODEL_SCREEN"
           class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
         />
 
@@ -38,13 +39,30 @@
     </div>
   </div>
   <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
-    <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
-    <FuncDetails
-      v-else-if="assetId && funcId"
-      :funcId="funcId"
-      :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
-      @detached="onDetach"
-    />
+    <div
+      v-if="FF_SINGLE_MODEL_SCREEN"
+      class="flex flex-col h-full items-center"
+    >
+      <ApplyChangeSetButton class="w-10/12 m-4" :recommendations="[]" />
+      <SidebarSubpanelTitle>Asset Details</SidebarSubpanelTitle>
+
+      <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
+      <FuncDetails
+        v-else-if="assetId && funcId"
+        :funcId="funcId"
+        :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
+        @detached="onDetach"
+      />
+    </div>
+    <template v-else>
+      <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
+      <FuncDetails
+        v-else-if="assetId && funcId"
+        :funcId="funcId"
+        :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
+        @detached="onDetach"
+      />
+    </template>
   </SiPanel>
 </template>
 
@@ -53,6 +71,9 @@ import { computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAssetStore } from "@/store/asset.store";
 import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
@@ -61,6 +82,11 @@ import AssetEditorTabs from "../AssetEditorTabs.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
+const FF_SINGLE_MODEL_SCREEN = computed(
+  () => featureFlagsStore.SINGLE_MODEL_SCREEN,
+);
 
 const assetStore = useAssetStore();
 const router = useRouter();
