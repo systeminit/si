@@ -3,6 +3,7 @@
   <SiPanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <div class="flex flex-col h-full">
       <ChangeSetPanel
+        v-if="!FF_SINGLE_MODEL_SCREEN"
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
       <CustomizeTabs tabContentSlug="packages">
@@ -18,7 +19,19 @@
     </div>
   </div>
   <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
-    <ModuleDetailsPanel :key="moduleSlug" />
+    <div
+      v-if="FF_SINGLE_MODEL_SCREEN"
+      class="flex flex-col h-full items-center"
+    >
+      <ApplyChangeSetButton
+        class="w-10/12 mx-auto my-4"
+        :recommendations="[]"
+      />
+      <SidebarSubpanelTitle>Module Details</SidebarSubpanelTitle>
+      <ModuleDetailsPanel :key="moduleSlug" class="w-full" />
+    </div>
+
+    <ModuleDetailsPanel v-else :key="moduleSlug" />
   </SiPanel>
 </template>
 
@@ -31,7 +44,15 @@ import ModuleDisplay from "@/components/modules/ModuleDisplay.vue";
 import ModuleDetailsPanel from "@/components/modules/ModuleDetailsPanel.vue";
 import { useModuleStore } from "@/store/module.store";
 import SiPanel from "@/components/SiPanel.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
+const FF_SINGLE_MODEL_SCREEN = computed(
+  () => featureFlagsStore.SINGLE_MODEL_SCREEN,
+);
 
 const moduleStore = useModuleStore();
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
