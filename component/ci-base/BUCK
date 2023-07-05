@@ -12,9 +12,10 @@ docker_image(
         "docker-entrypoint.sh": ".",
     },
     build_args = {
-        "BASE_VERSION": "12-slim",
+        "BASE_VERSION": "3",
     },
     run_docker_args = [
+        "--privileged",
         "--volume",
         "$PWD:/workdir",
         "--volume",
@@ -23,5 +24,7 @@ docker_image(
         "/workdir/target",
         "--volume",
         "/workdir/tmp",
+        "--volume",
+        "/var/run/docker.sock:/var/run/docker.sock",
     ],
 )
