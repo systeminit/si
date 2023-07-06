@@ -1,5 +1,6 @@
 <template>
   <VButton
+    v-if="!changeSetsStore.headSelected"
     ref="applyButtonRef"
     icon="tools"
     size="sm"

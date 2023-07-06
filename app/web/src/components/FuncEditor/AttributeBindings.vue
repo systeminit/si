@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      v-if="!schemaVariantId"
+      v-if="!schemaVariantId && !changeSetsStore.headSelected"
       class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
     >
       <VButton
@@ -46,7 +46,10 @@
             <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
           </li>
         </ul>
-        <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+        <div
+          v-if="!changeSetsStore.headSelected"
+          class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
+        >
           <VButton
             :disabled="disabled"
             tone="neutral"
@@ -87,8 +90,10 @@ import {
 import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
 
 const props = defineProps<{

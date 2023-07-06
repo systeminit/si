@@ -1,7 +1,18 @@
 <template>
   <div class="w-full h-full ph-no-capture">
-    <div v-if="!noVim" class="absolute right-xs top-xs">
+    <div v-if="!noVim" class="absolute right-xs top-xs flex gap-xs">
       <VButton
+        v-if="disabled"
+        size="xs"
+        tone="warning"
+        icon="read-only"
+        variant="ghost"
+        class="pointer-events-none"
+      >
+        Read-only
+      </VButton>
+      <VButton
+        v-else
         size="xs"
         :tone="vimEnabled ? 'success' : 'neutral'"
         icon="logo-vim"

@@ -24,7 +24,7 @@
     <TabGroup rememberSelectedTabKey="func_details">
       <TabGroupItem label="Properties" slug="properties">
         <ScrollArea>
-          <template #top>
+          <template v-if="!changeSetsStore.headSelected" #top>
             <Stack>
               <div
                 class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
@@ -88,7 +88,7 @@
           </template>
 
           <Collapsible label="Attributes" defaultOpen>
-            <div class="p-3 flex flex-col gap-2">
+            <Stack class="p-3">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this function a Name, Entrypoint and brief description
                 below.
@@ -121,7 +121,7 @@
                 label="Description"
                 @blur="updateFunc"
               />
-            </div>
+            </Stack>
           </Collapsible>
           <ActionDetails
             v-if="
@@ -130,6 +130,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -139,6 +140,7 @@
               editingFunc.associations.type === 'codeGeneration'
             "
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -149,6 +151,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -159,6 +162,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -169,6 +173,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -230,10 +235,12 @@ import {
   Stack,
   ErrorMessage,
   ScrollArea,
+  useDisabledBySelfOrParent,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -358,4 +365,11 @@ const detachFunc = async () => {
     }
   }
 };
+
+const changeSetsStore = useChangeSetsStore();
+
+useDisabledBySelfOrParent(
+  computed(() => changeSetsStore.headSelected),
+  true,
+);
 </script>

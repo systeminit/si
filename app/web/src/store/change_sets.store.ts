@@ -42,6 +42,7 @@ export function useChangeSetsStore() {
           state.selectedChangeSetId
             ? state.changeSetsById[state.selectedChangeSetId] ?? null
             : null,
+        headSelected: (state) => state.selectedChangeSetId === changeSetIdNil(),
 
         selectedChangeSetWritten: (state) =>
           state.selectedChangeSetId

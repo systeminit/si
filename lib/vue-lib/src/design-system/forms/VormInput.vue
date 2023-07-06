@@ -445,6 +445,8 @@ const optionsFromProps = computed((): OptionsAsArray => {
     if (!_.isObject(props.options[0])) {
       return _.map(props.options, (value) => ({
         value,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         label: value.toString(),
       }));
     }
@@ -687,7 +689,7 @@ defineExpose({
     --bg-color: @colors-neutral-100;
 
     &.--theme-dark {
-      --text-color: @colors-neutral-500;
+      --text-color: @colors-neutral-400;
       --text-color-muted: @colors-neutral-500;
       --bg-color: @colors-neutral-900;
     }

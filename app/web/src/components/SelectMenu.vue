@@ -1,5 +1,9 @@
 <template>
-  <Listbox v-model="selectedOptions" :disabled="disabled" as="div">
+  <Listbox
+    v-model="selectedOptions"
+    :disabled="disabledBySelfOrParent"
+    as="div"
+  >
     <div class="relative">
       <ListboxButton
         class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-1.5 pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
@@ -67,14 +71,14 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, toRefs } from "vue";
 import {
   Listbox,
   ListboxButton,
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, useDisabledBySelfOrParent } from "@si/vue-lib/design-system";
 
 export interface Option {
   label: string;
@@ -89,6 +93,10 @@ const props = defineProps<{
   noneSelectedLabel?: string; // this is only valid in the multiple select case
   disabled?: boolean;
 }>();
+
+const { disabled } = toRefs(props);
+
+const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);
 
 const isSelected = (option: Option, selected: boolean) =>
   selected ||

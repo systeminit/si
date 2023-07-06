@@ -1,12 +1,13 @@
 <template>
-  <div>
+  <div class="p-xs">
     <RequestStatusMessage
       v-if="loadAssetReqStatus.isPending"
       :requestStatus="loadAssetReqStatus"
       showLoaderWithoutMessage
     />
-    <div v-else-if="assetStore.selectedAsset && assetId" class="flex flex-col">
+    <div v-else-if="assetStore.selectedAsset && assetId">
       <div
+        v-if="!changeSetsStore.headSelected"
         class="p-sm border-b dark:border-neutral-600 flex flex-row items-center gap-2"
       >
         <VButton
@@ -27,13 +28,12 @@
           @click="cloneAsset"
         />
       </div>
-      <div class="p-2">
+
+      <Stack>
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
           :requestStatus="executeAssetReqStatus"
         />
-      </div>
-      <div class="p-sm flex flex-col">
         <VormInput
           id="name"
           v-model="assetStore.selectedAsset.name"
@@ -43,8 +43,6 @@
           placeholder="Give this asset a name here..."
           @blur="updateAsset"
         />
-      </div>
-      <div class="p-sm flex flex-col">
         <VormInput
           id="menuName"
           v-model="assetStore.selectedAsset.menuName"
@@ -54,8 +52,6 @@
           placeholder="Optionally, give the asset a shorter name for display here..."
           @blur="updateAsset"
         />
-      </div>
-      <div class="p-sm flex flex-col">
         <VormInput
           id="category"
           v-model="assetStore.selectedAsset.category"
@@ -65,8 +61,6 @@
           placeholder="Pick a category for this asset"
           @blur="updateAsset"
         />
-      </div>
-      <div class="p-sm flex flex-col">
         <VormInput
           id="componentType"
           v-model="assetStore.selectedAsset.componentType"
@@ -76,8 +70,6 @@
           label="Component Type"
           @change="updateAsset"
         />
-      </div>
-      <div class="p-sm flex flex-col">
         <VormInput
           id="description"
           v-model="assetStore.selectedAsset.description"
@@ -87,32 +79,25 @@
           placeholder="Provide a brief description of this asset here..."
           @blur="updateAsset"
         />
-      </div>
-      <div class="p-sm">
-        <label class="pl-[1px] text-sm font-bold" for="color">Color</label>
-        <div class="mt-1 block">
+        <VormInput type="container" label="color" :disabled="disabled">
           <ColorPicker
             id="color"
             v-model="assetStore.selectedAsset.color"
+            :disabled="disabled"
             @change="updateAsset"
           />
-        </div>
-      </div>
-      <div class="p-sm flex flex-col">
+        </VormInput>
+
         <VormInput
           id="link"
           v-model="assetStore.selectedAsset.link"
+          type="url"
           :disabled="disabled"
           label="Documentation Link"
           placeholder="Enter a link to the documentation for this asset here..."
           @blur="updateAsset"
         />
-        <div class="text-md text-action-500 font-bold">
-          <a :href="assetStore.selectedAsset.link" target="_blank">
-            Documentation Link
-          </a>
-        </div>
-      </div>
+      </Stack>
     </div>
     <div
       v-else
@@ -135,15 +120,18 @@ import {
   RequestStatusMessage,
   Modal,
   ErrorMessage,
+  Stack,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import ColorPicker from "./ColorPicker.vue";
 
 defineProps<{
   assetId?: string;
 }>();
 
+const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");

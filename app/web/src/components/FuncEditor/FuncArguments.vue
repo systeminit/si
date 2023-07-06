@@ -3,7 +3,7 @@
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
       Add the names of the arguments to this function and their types.
     </h1>
-    <Inline alignY="center">
+    <Inline v-if="!changeSetsStore.headSelected" alignY="center">
       <VormInput
         id="newArg"
         v-model="newArg.name"
@@ -45,7 +45,7 @@
         <VButton
           label="Delete"
           tone="destructive"
-          :disabled="disabled"
+          :disabled="disabled || changeSetsStore.headSelected"
           @click="deleteArgument(arg.name)"
         />
       </Inline>
@@ -60,7 +60,9 @@ import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributeAssociations } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
+const changeSetsStore = useChangeSetsStore();
 const generateKindOptions = () => {
   const options: Option[] = [];
   for (const kind in FuncArgumentKind) {
