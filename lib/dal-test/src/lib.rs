@@ -91,6 +91,8 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
+                                         // all are prefixed with `SI_TEST_`
     fn create_default(pg_dbname: &'static str) -> Result<Self> {
         let mut config = {
             let mut builder = ConfigBuilder::default();
@@ -560,6 +562,10 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 }
 
 fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
+    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
+    // all are prefixed with `SI_TEST_`
+    //
+    // TODO(fnichol): remove conditional schema execution
     match env::var(ENV_VAR_BUILTIN_SCHEMAS) {
         Ok(found_value) => {
             let mut builtin_schemas = HashSet::new();
@@ -614,6 +620,7 @@ async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::disallowed_methods)] // Used to determine if running in testing
 fn detect_and_configure_testing(builder: &mut ConfigBuilder) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         detect_and_configure_testing_for_buck2(builder)

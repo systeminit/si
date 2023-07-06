@@ -442,6 +442,7 @@ fn default_enable_endpoint() -> bool {
     true
 }
 
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
 pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)

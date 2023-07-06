@@ -1,26 +1,32 @@
 load(
     "@prelude-si//:cargo.bzl",
-    _cargo_clippy = "cargo_clippy",
     _cargo_clippy_fix = "cargo_clippy_fix",
     _cargo_doc = "cargo_doc",
     _cargo_doc_check = "cargo_doc_check",
     _cargo_fmt = "cargo_fmt",
-    _cargo_fmt_check = "cargo_fmt_check",
+)
+load(
+    "@prelude-si//:rust.bzl",
+    _clippy_check = "clippy_check",
+    _rustfmt_check = "rustfmt_check",
 )
 load(
     "@prelude-si//macros:native.bzl",
     _alias = "alias",
+    _test_suite = "test_suite",
 )
 
 def rust_binary(
         name,
         srcs,
         deps,
+        crate_root = "src/main.rs",
         edition = "2021",
         resources = [],
         test_unit_deps = [],
         test_unit_srcs = [],
         test_unit_resources = {},
+        extra_test_targets = [],
         visibility = ["PUBLIC"],
         **kwargs):
 
@@ -29,6 +35,7 @@ def rust_binary(
         edition = edition,
         srcs = srcs,
         deps = deps,
+        crate_root = crate_root,
         resources = resources,
         visibility = visibility,
         **kwargs
@@ -44,9 +51,16 @@ def rust_binary(
         edition = edition,
         srcs = srcs + test_unit_srcs,
         deps = deps + test_unit_deps,
+        crate_root = crate_root,
         resources = test_unit_resources,
         visibility = visibility,
         **kwargs
+    )
+
+    _test_suite(
+        name = "test",
+        tests = [":test-unit"] + extra_test_targets,
+        visibility = visibility,
     )
 
     _cargo_doc_check(
@@ -56,17 +70,51 @@ def rust_binary(
         visibility = visibility,
     )
 
-    _cargo_fmt_check(
+    _rustfmt_check(
         name = "check-format",
-        crate = name,
         srcs = srcs,
+        crate_root = crate_root,
         visibility = visibility,
     )
 
-    _cargo_clippy(
+    _clippy_check(
+        name = "check-lint-bin",
+        clippy_txt_dep = ":{}[clippy.txt]".format(name),
+        visibility = visibility,
+    )
+
+    _clippy_check(
+        name = "check-lint-unit",
+        clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
+        visibility = visibility,
+    )
+
+    extra_check_lint_targets = []
+    for extra_test_target in extra_test_targets:
+        check_name = "check-lint-{}".format(extra_test_target.replace("test-", ""))
+        _clippy_check(
+            name = check_name,
+            clippy_txt_dep = "{}[clippy.txt]".format(extra_test_target),
+            visibility = visibility,
+        )
+        extra_check_lint_targets.append(":{}".format(check_name))
+
+    _test_suite(
         name = "check-lint",
-        crate = name,
-        srcs = srcs,
+        tests = [
+            ":check-lint-bin",
+            ":check-lint-unit",
+        ] + extra_check_lint_targets,
+        visibility = visibility,
+    )
+
+    _test_suite(
+        name = "check",
+        tests = [
+            ":check-doc",
+            ":check-format",
+            ":check-lint-bin",
+        ],
         visibility = visibility,
     )
 
@@ -95,11 +143,13 @@ def rust_library(
         name,
         srcs,
         deps,
+        crate_root = "src/lib.rs",
         edition = "2021",
         resources = [],
         test_unit_deps = [],
         test_unit_srcs = [],
         test_unit_resources = {},
+        extra_test_targets = [],
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
@@ -109,6 +159,7 @@ def rust_library(
         edition = edition,
         srcs = srcs,
         deps = deps,
+        crate_root = crate_root,
         resources = resources,
         proc_macro = proc_macro,
         visibility = visibility,
@@ -125,9 +176,16 @@ def rust_library(
         edition = edition,
         srcs = srcs + test_unit_srcs,
         deps = deps + test_unit_deps,
+        crate_root = crate_root,
         resources = test_unit_resources,
         visibility = visibility,
         **kwargs
+    )
+
+    _test_suite(
+        name = "test",
+        tests = [":test-unit"] + extra_test_targets,
+        visibility = visibility,
     )
 
     _cargo_doc_check(
@@ -137,17 +195,51 @@ def rust_library(
         visibility = visibility,
     )
 
-    _cargo_fmt_check(
+    _rustfmt_check(
         name = "check-format",
-        crate = name,
         srcs = srcs,
+        crate_root = crate_root,
         visibility = visibility,
     )
 
-    _cargo_clippy(
+    _clippy_check(
+        name = "check-lint-lib",
+        clippy_txt_dep = ":{}[clippy.txt]".format(name),
+        visibility = visibility,
+    )
+
+    _clippy_check(
+        name = "check-lint-unit",
+        clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
+        visibility = visibility,
+    )
+
+    extra_check_lint_targets = []
+    for extra_test_target in extra_test_targets:
+        check_name = "check-lint-{}".format(extra_test_target.replace(":", "").replace("test-", ""))
+        _clippy_check(
+            name = check_name,
+            clippy_txt_dep = "{}[clippy.txt]".format(extra_test_target),
+            visibility = visibility,
+        )
+        extra_check_lint_targets.append(":{}".format(check_name))
+
+    _test_suite(
         name = "check-lint",
-        crate = name,
-        srcs = srcs,
+        tests = [
+            ":check-lint-lib",
+            ":check-lint-unit",
+        ] + extra_check_lint_targets,
+        visibility = visibility,
+    )
+
+    _test_suite(
+        name = "check",
+        tests = [
+            ":check-doc",
+            ":check-format",
+            ":check-lint-lib",
+        ],
         visibility = visibility,
     )
 

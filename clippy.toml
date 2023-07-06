@@ -1,0 +1,6 @@
+disallowed-methods = [
+    { path = "std::env::var", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+    { path = "std::env::vars", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+    { path = "std::env::var_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+    { path = "std::env::vars_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+]

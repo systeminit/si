@@ -17,3 +17,8 @@ def sh_binary(
         visibility = ["PUBLIC"],
         **kwargs):
     native.sh_binary(visibility = visibility, **kwargs)
+
+def test_suite(
+        visibility = ["PUBLIC"],
+        **kwargs):
+    native.test_suite(visibility = visibility, **kwargs)

@@ -477,6 +477,7 @@ mod tests {
             .into_temp_path()
     }
 
+    #[allow(clippy::disallowed_methods)] // Used to determine if running in development
     fn lang_server_path() -> String {
         if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
             let resources = Buck2Resources::read().expect("failed to read buck2 resources");
@@ -573,6 +574,7 @@ mod tests {
         general_purpose::STANDARD_NO_PAD.encode(input)
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_watch() {
         let (_, key) = gen_keys();
@@ -602,6 +604,7 @@ mod tests {
         progress.stop().await.expect("failed to stop protocol");
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_watch() {
         let (_, key) = gen_keys();
@@ -636,6 +639,7 @@ mod tests {
         progress.stop().await.expect("failed to stop protocol");
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_liveness() {
         let (_, key) = gen_keys();
@@ -647,6 +651,7 @@ mod tests {
         assert_eq!(response, LivenessStatus::Ok);
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_liveness() {
         let (_, key) = gen_keys();
@@ -659,6 +664,7 @@ mod tests {
         assert_eq!(response, LivenessStatus::Ok);
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_readiness() {
         let (_, key) = gen_keys();
@@ -670,6 +676,7 @@ mod tests {
         assert_eq!(response, ReadinessStatus::Ready);
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_readiness() {
         let (_, key) = gen_keys();
@@ -682,6 +689,7 @@ mod tests {
         assert_eq!(response, ReadinessStatus::Ready);
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_ping() {
         let (_, key) = gen_keys();
@@ -697,6 +705,7 @@ mod tests {
             .expect("failed to start protocol")
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_ping_not_enabled() {
         let (_, key) = gen_keys();
@@ -710,6 +719,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_ping() {
         let (_, key) = gen_keys();
@@ -727,6 +737,7 @@ mod tests {
             .expect("failed to start protocol")
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_ping_not_enabled() {
         let (_, key) = gen_keys();
@@ -742,6 +753,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_resolver() {
         let (_, key) = gen_keys();
@@ -829,6 +841,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_resolver() {
         let (_, key) = gen_keys();
@@ -995,6 +1008,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_validation() {
         let (_, key) = gen_keys();
@@ -1004,6 +1018,7 @@ mod tests {
         execute_validation(client).await
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_validation() {
         let (_, key) = gen_keys();
@@ -1015,6 +1030,7 @@ mod tests {
         execute_validation(client).await
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_action_run() {
         let (_, key) = gen_keys();
@@ -1087,6 +1103,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_action_run() {
         let (_, key) = gen_keys();
@@ -1162,6 +1179,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_reconciliation() {
         let (_, key) = gen_keys();
@@ -1235,6 +1253,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_reconciliation() {
         let (_, key) = gen_keys();
@@ -1311,6 +1330,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn http_execute_schema_variant_definition() {
         let (_, key) = gen_keys();
@@ -1392,6 +1412,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test)]
     async fn uds_execute_schema_variant_definition() {
         let (_, key) = gen_keys();

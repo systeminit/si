@@ -1,0 +1,21 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "dal-pkg-import",
+    srcs = ["main.rs"],
+    crate_root = "main.rs",
+    deps = [
+        "//lib/buck2-resources:buck2-resources",
+        "//lib/dal:dal",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/veritech-client:veritech-client",
+        "//third-party/rust:tokio",
+    ],
+    resources = {
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+    }
+)

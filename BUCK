@@ -57,6 +57,10 @@ alias(
 )
 
 export_file(
+    name = "clippy.toml",
+)
+
+export_file(
     name = "flake.nix",
 )
 
@@ -88,6 +92,10 @@ pnpm_lock(
 
 export_file(
     name = "rust-toolchain",
+)
+
+export_file(
+    name = "rustfmt.toml",
 )
 
 workspace_node_modules(

@@ -229,6 +229,9 @@ impl TelemetryClient for NoopClient {
 
 impl TelemetryLevel for NoopClient {
     fn is_debug_or_lower(&self) -> bool {
+        #[allow(clippy::disallowed_methods)] // NoopClient is only used in testing and this
+        // environment variable is prefixed with `SI_TEST_` to denote that it's only for testing
+        // purposes.
         env::var("SI_TEST_VERBOSE").is_ok()
     }
 }

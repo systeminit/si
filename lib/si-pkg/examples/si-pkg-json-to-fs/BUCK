@@ -1,0 +1,15 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "si-pkg-json-to-fs",
+    srcs = ["main.rs"],
+    crate_root = "main.rs",
+    deps = [
+        "//lib/si-pkg:si-pkg",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+    ],
+)

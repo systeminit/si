@@ -1,0 +1,17 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "nats-subscribe",
+    srcs = ["main.rs"],
+    crate_root = "main.rs",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tracing-subscriber",
+    ],
+)

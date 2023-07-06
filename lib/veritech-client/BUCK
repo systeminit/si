@@ -20,6 +20,7 @@ rust_library(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
+    extra_test_targets = [":test-integration"],
 )
 
 rust_test(

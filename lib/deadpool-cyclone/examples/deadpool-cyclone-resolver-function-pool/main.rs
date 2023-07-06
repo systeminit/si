@@ -1,9 +1,11 @@
 use std::{
     env, io,
+    path::Path,
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
 };
 
+use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
     instance::{
         cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
@@ -32,12 +34,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         None => 4,
     };
 
-    let spec = LocalUdsInstance::spec()
-        .try_cyclone_cmd_path("../../target/debug/cyclone")?
-        .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
-        .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")?
-        .resolver()
-        .build()?;
+    let spec = spec()?;
     let manager = Manager::new(spec);
     let pool = Pool::builder(manager).max_size(64).build()?;
 
@@ -138,4 +135,62 @@ async fn execute(
     }
 
     Ok(())
+}
+
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
+fn spec() -> Result<LocalUdsInstanceSpec, Box<(dyn std::error::Error + 'static)>> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        let resources = Buck2Resources::read()?;
+        let cyclone_cmd_path = resources
+            .get_ends_with("cyclone")?
+            .to_string_lossy()
+            .to_string();
+        let cyclone_decryption_key_path = resources
+            .get_ends_with("dev.decryption.key")?
+            .to_string_lossy()
+            .to_string();
+        let lang_server_cmd_path = resources
+            .get_ends_with("lang-js")?
+            .to_string_lossy()
+            .to_string();
+
+        LocalUdsInstance::spec()
+            .try_cyclone_cmd_path(cyclone_cmd_path)?
+            .cyclone_decryption_key_path(cyclone_decryption_key_path)
+            .try_lang_server_cmd_path(lang_server_cmd_path)?
+            .ping()
+            .build()
+            .map_err(Into::into)
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        let cyclone_cmd_path = Path::new(&dir)
+            .join("../../target/debug/cyclone")
+            .canonicalize()
+            .expect("failed to canonicalize local dev build of <root>/target/debug/cyclone")
+            .to_string_lossy()
+            .to_string();
+        let cyclone_decryption_key_path = Path::new(&dir)
+        .join("../../lib/cyclone-server/src/dev.decryption.key")
+        .canonicalize()
+        .expect(
+            "failed to canonicalize local key at <root>/lib/cyclone-server/src/dev.decryption.key",
+        )
+        .to_string_lossy()
+        .to_string();
+        let lang_server_cmd_path = Path::new(&dir)
+            .join("../../bin/lang-js/target/lang-js")
+            .canonicalize()
+            .expect("failed to canonicalize local dev build of <root>/bin/lang-js/target/lang-js")
+            .to_string_lossy()
+            .to_string();
+
+        LocalUdsInstance::spec()
+            .try_cyclone_cmd_path(cyclone_cmd_path)?
+            .cyclone_decryption_key_path(cyclone_decryption_key_path)
+            .try_lang_server_cmd_path(lang_server_cmd_path)?
+            .ping()
+            .build()
+            .map_err(Into::into)
+    } else {
+        unimplemented!("not running with Buck2 or Cargo, unsupported")
+    }
 }

@@ -1,0 +1,15 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "si-pkg-read-from-fs",
+    srcs = ["main.rs"],
+    crate_root = "main.rs",
+    deps = [
+        "//lib/si-pkg:si-pkg",
+        "//third-party/rust:petgraph",
+        "//third-party/rust:tokio",
+    ],
+)

@@ -1,4 +1,0 @@
-# We are temporarily increasing the size of the large error threshold
-# this is due to changes in Rust 1.67.0 clippy warnings
-# https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
-large-error-threshold = 256

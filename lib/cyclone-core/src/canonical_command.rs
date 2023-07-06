@@ -122,6 +122,7 @@ fn find_command(program: impl AsRef<OsStr>) -> Result<PathBuf, CanonicalCommandE
     if path.is_file() {
         Ok(path.to_path_buf())
     } else {
+        #[allow(clippy::disallowed_methods)] // We use `$PATH` lookup to find the command
         env::split_paths(&env::var("PATH").unwrap_or_else(|_| "".to_string()))
             .map(|path| path.join(program.as_ref()))
             .find(|candidate| candidate.is_file())

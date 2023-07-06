@@ -128,7 +128,7 @@ pub enum FuncError {
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
+    PgPool(#[from] Box<si_data_pg::PgPoolError>),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("prop for value not found")]
@@ -163,6 +163,12 @@ pub enum FuncError {
     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
+}
+
+impl From<si_data_pg::PgPoolError> for FuncError {
+    fn from(value: si_data_pg::PgPoolError) -> Self {
+        Self::PgPool(Box::new(value))
+    }
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

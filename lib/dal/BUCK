@@ -61,6 +61,7 @@ rust_library(
     test_unit_deps = [
         "//third-party/rust:tempfile",
     ],
+    extra_test_targets = [":test-integration"],
 )
 
 rust_test(

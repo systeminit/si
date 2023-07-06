@@ -2,6 +2,15 @@ use std::{borrow::Cow, fmt, ops::Deref, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
+// mod bad {
+//     fn nothing() {
+//         if None == Some("ok") {
+//             println!("huh")
+//         }
+//     }
+//
+// }
+
 /// A display/debug redacting [`String`].
 ///
 /// The [`SensitiveString`] type is wrapper around the standard `String` type, except that it will
