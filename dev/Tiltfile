@@ -14,6 +14,7 @@ groups = {
         "pinga",
         "veritech",
         "sdf",
+        "module-index",
     ],
     "frontend": [
         "web",
@@ -67,6 +68,22 @@ docker_compose("./docker-compose.platform.yml")
 compose_services = ["jaeger", "nats", "otelcol", "postgres"]
 for service in compose_services:
     dc_resource(service, labels = ["platform"])
+
+# Locally build and run `module-index`
+module_index_target = "//bin/module-index:module-index"
+local_resource(
+    "module-index",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(module_index_target),
+    serve_cmd = "buck2 run {}".format(module_index_target),
+    allow_parallel = True,
+    resource_deps = [
+        "otelcol",
+        "postgres"
+    ],
+    deps = _buck2_dep_inputs(module_index_target),
+    trigger_mode = trigger_mode
+)
 
 # Locally build and run `council`
 council_target = "//bin/council:council"
