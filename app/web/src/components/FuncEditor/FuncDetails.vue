@@ -14,7 +14,12 @@
   />
   <div
     v-else-if="selectedFuncId && editingFunc"
-    class="absolute h-full w-full flex flex-col overflow-hidden"
+    :class="
+      clsx(
+        singleModelScreen ? 'relative' : 'absolute',
+        'h-full w-full flex flex-col overflow-hidden',
+      )
+    "
   >
     <TabGroup rememberSelectedTabKey="func_details">
       <TabGroupItem label="Properties" slug="properties">
@@ -226,6 +231,7 @@ import {
   ErrorMessage,
   ScrollArea,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import FuncArguments from "./FuncArguments.vue";
@@ -239,6 +245,7 @@ import QualificationDetails from "./QualificationDetails.vue";
 const props = defineProps<{
   funcId?: FuncId;
   schemaVariantId?: string;
+  singleModelScreen?: boolean;
 }>();
 
 const funcStore = useFuncStore();

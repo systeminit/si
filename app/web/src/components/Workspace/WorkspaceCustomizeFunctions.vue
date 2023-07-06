@@ -19,7 +19,7 @@
   <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div
       v-if="FF_SINGLE_MODEL_SCREEN"
-      class="flex flex-col h-full items-center"
+      class="absolute w-full flex flex-col h-full"
     >
       <ApplyChangeSetButton class="w-10/12 m-4" :recommendations="[]" />
       <SidebarSubpanelTitle>Function Details</SidebarSubpanelTitle>
@@ -27,6 +27,7 @@
       <FuncDetails
         :key="funcStore.urlSelectedFuncId"
         :funcId="funcStore.urlSelectedFuncId"
+        singleModelScreen
       />
     </div>
     <FuncDetails

@@ -41,16 +41,22 @@
   <SiPanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div
       v-if="FF_SINGLE_MODEL_SCREEN"
-      class="flex flex-col h-full items-center"
+      class="absolute w-full flex flex-col h-full items-center"
     >
       <ApplyChangeSetButton class="w-10/12 m-4" :recommendations="[]" />
-      <SidebarSubpanelTitle>Asset Details</SidebarSubpanelTitle>
+      <SidebarSubpanelTitle v-if="assetId && !funcId"
+        >Asset Details</SidebarSubpanelTitle
+      >
+      <SidebarSubpanelTitle v-if="assetId && funcId"
+        >Asset Function Details</SidebarSubpanelTitle
+      >
 
       <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
       <FuncDetails
         v-else-if="assetId && funcId"
         :funcId="funcId"
         :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
+        singleModelScreen
         @detached="onDetach"
       />
     </div>
