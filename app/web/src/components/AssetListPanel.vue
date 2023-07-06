@@ -7,6 +7,7 @@
     />
     <template #top>
       <div
+        v-if="!changeSetsStore.headSelected"
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <VButton
@@ -21,7 +22,8 @@
       <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
       >
-        Select an asset to view or edit it.
+        Select an asset to view
+        {{ !changeSetsStore.headSelected ? "or edit" : "" }} it.
       </div>
     </template>
     <template v-if="assetStore.assetList.length > 0">
@@ -58,8 +60,10 @@ import {
 import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import AssetListItem from "./AssetListItem.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const { assetList } = storeToRefs(assetStore);
 const router = useRouter();

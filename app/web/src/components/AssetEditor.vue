@@ -30,7 +30,9 @@
       <CodeEditor
         v-model="editingAsset"
         json
-        :disabled="!!selectedAsset.defaultVariantId"
+        :disabled="
+          !!selectedAsset.defaultVariantId || changeSetsStore.headSelected
+        "
         @change="onChange"
       />
     </div>
@@ -46,6 +48,7 @@ import { ref, watch, computed } from "vue";
 import { Timestamp, RequestStatusMessage } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import SiChip from "@/components/SiChip.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
@@ -53,6 +56,7 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,

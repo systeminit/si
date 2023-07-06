@@ -2,6 +2,7 @@
   <ScrollArea>
     <template #top>
       <div
+        v-if="!changeSetsStore.headSelected"
         class="p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <VButton
@@ -76,9 +77,11 @@ import {
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useModuleStore } from "@/store/module.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import ModuleListItem from "./ModuleListItem.vue";
 import ModuleExportModal from "./ModuleExportModal.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
   moduleStore.getRequestStatus("LOAD_LOCAL_MODULES");

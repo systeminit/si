@@ -51,6 +51,7 @@ import EyeOff from "~icons/heroicons-solid/eye-off";
 import ClipboardCopy from "~icons/heroicons-solid/clipboard-copy";
 import Refresh from "~icons/heroicons-solid/refresh";
 import Pencil from "~icons/heroicons-outline/pencil";
+import PencilOff from "~icons/material-symbols/edit-off-outline";
 import Cube from "~icons/heroicons-outline/cube";
 import Clock from "~icons/heroicons-solid/clock";
 import ExclamationCircle from "~icons/heroicons-solid/exclamation-circle";
@@ -160,6 +161,7 @@ export const ICONS = Object.freeze({
   plug: Plug,
   plus: Plus,
   "plus-circle": PlusCircle,
+  "read-only": PencilOff,
   refresh: Refresh,
   "refresh-active": Refresh,
   resize: Resize,
