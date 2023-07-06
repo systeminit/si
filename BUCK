@@ -94,6 +94,10 @@ export_file(
     name = "rust-toolchain",
 )
 
+export_file(
+    name = "rustfmt.toml",
+)
+
 workspace_node_modules(
     name = "node_modules",
 )

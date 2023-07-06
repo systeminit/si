@@ -6,6 +6,7 @@ load(
 rust_binary(
     name = "nats-publish",
     srcs = ["main.rs"],
+    crate_root = "main.rs",
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",

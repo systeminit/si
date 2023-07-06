@@ -9,7 +9,7 @@ load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
-load("@prelude-si//rust:toolchain.bzl", "rust_clippy_toolchain")
+load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -53,7 +53,8 @@ pnpm_toolchain(
     visibility = ["PUBLIC"],
 )
 
-rust_clippy_toolchain(
-    name = "rust_clippy",
+si_rust_toolchain(
+    name = "si_rust",
+    rustfmt_toml = "root//:rustfmt.toml",
     visibility = ["PUBLIC"],
 )

@@ -6,3 +6,11 @@ load(
 export_file(
     name = "clippy_output.py",
 )
+
+export_file(
+    name = "crate_context.py",
+)
+
+export_file(
+    name = "rustfmt_check.py",
+)

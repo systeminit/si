@@ -4,11 +4,11 @@ load(
     _cargo_doc = "cargo_doc",
     _cargo_doc_check = "cargo_doc_check",
     _cargo_fmt = "cargo_fmt",
-    _cargo_fmt_check = "cargo_fmt_check",
 )
 load(
     "@prelude-si//:rust.bzl",
     _clippy_check = "clippy_check",
+    _rustfmt_check = "rustfmt_check",
 )
 load(
     "@prelude-si//macros:native.bzl",
@@ -20,6 +20,7 @@ def rust_binary(
         name,
         srcs,
         deps,
+        crate_root = "src/main.rs",
         edition = "2021",
         resources = [],
         test_unit_deps = [],
@@ -34,6 +35,7 @@ def rust_binary(
         edition = edition,
         srcs = srcs,
         deps = deps,
+        crate_root = crate_root,
         resources = resources,
         visibility = visibility,
         **kwargs
@@ -49,6 +51,7 @@ def rust_binary(
         edition = edition,
         srcs = srcs + test_unit_srcs,
         deps = deps + test_unit_deps,
+        crate_root = crate_root,
         resources = test_unit_resources,
         visibility = visibility,
         **kwargs
@@ -67,10 +70,10 @@ def rust_binary(
         visibility = visibility,
     )
 
-    _cargo_fmt_check(
+    _rustfmt_check(
         name = "check-format",
-        crate = name,
         srcs = srcs,
+        crate_root = crate_root,
         visibility = visibility,
     )
 
@@ -140,6 +143,7 @@ def rust_library(
         name,
         srcs,
         deps,
+        crate_root = "src/lib.rs",
         edition = "2021",
         resources = [],
         test_unit_deps = [],
@@ -155,6 +159,7 @@ def rust_library(
         edition = edition,
         srcs = srcs,
         deps = deps,
+        crate_root = crate_root,
         resources = resources,
         proc_macro = proc_macro,
         visibility = visibility,
@@ -171,6 +176,7 @@ def rust_library(
         edition = edition,
         srcs = srcs + test_unit_srcs,
         deps = deps + test_unit_deps,
+        crate_root = crate_root,
         resources = test_unit_resources,
         visibility = visibility,
         **kwargs
@@ -189,10 +195,10 @@ def rust_library(
         visibility = visibility,
     )
 
-    _cargo_fmt_check(
+    _rustfmt_check(
         name = "check-format",
-        crate = name,
         srcs = srcs,
+        crate_root = crate_root,
         visibility = visibility,
     )
 

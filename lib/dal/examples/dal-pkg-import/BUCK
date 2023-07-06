@@ -6,6 +6,7 @@ load(
 rust_binary(
     name = "dal-pkg-import",
     srcs = ["main.rs"],
+    crate_root = "main.rs",
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
