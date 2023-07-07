@@ -55,7 +55,6 @@
                 :func="func"
                 color="#921ed6"
                 context="workspace-lab-functions"
-                :selectedFuncId="funcStore.selectedFuncId"
               />
             </li>
           </template>

@@ -99,14 +99,12 @@ watch(
 // when editor value changes, update our draft value
 function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
-  console.log("editor value changed");
   const newEditorValue = update.view.state.doc.toString();
   if (newEditorValue !== draftValue.value) {
     draftValue.value = newEditorValue;
   }
 }
 function emitUpdatedValue() {
-  console.log("emit new value");
   emit("update:modelValue", draftValue.value);
   emit("change", draftValue.value);
 }
