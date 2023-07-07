@@ -23,12 +23,12 @@ The following  platforms are supported: macOS, Linux (GNU), [WSL2](https://learn
 **Platform Notes:**
 - Using macOS `aarch64 (arm64)` requires on Rosetta 2 (install it with `softwareupdate --install-rosetta`)
 - macOS users: you may need to run `xcode-select --install` before proceeding
-- Linux users: [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or 
+- Linux users: [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or
   configured to work with `nix`
 
 ### Install development dependencies
 
-Once a platform is chosen, we can install the dependencies for using the flake.
+Once a platform is chosen, we can install the dependencies required for using the Nix flake.
 _This section will install software on your computer and mutate your running environment!_
 
 - `nix` with flakes enabled (enabled by defualt when using the recommended
@@ -36,42 +36,16 @@ _This section will install software on your computer and mutate your running env
 - `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
   corresponding to your native architecture (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside
   WSL2)
-- (optional, but recommended) [`direnv`](https://direnv.net) version `>= 2.30` hooked into your shell
-
-With `nix` and `docker` set up, you will have (at least) the following available in the flake environment:
-
-* automake
-* make
-* aws-cli
-* bash
-* butane
-* coreutils
-* git
-* kubeval
-* libtool
-* protobuf
-* skopeo
-* jq
-* wget
-* pnpm
-* buck2
-* reindeer
-
-Along with any necessary compiler and development toolchains.
+- [`direnv`](https://direnv.net) version `>= 2.30` hooked into your shell
 
 ### How to run commands
 
 _For the remainder of the tutorial, all commands need to be run from the `nix` environment._
 
-If `direnv` is installed and [hooked into your shell](https://direnv.net/docs/hook.html), you can `cd` into
+With `direnv` installed and [hooked into your shell](https://direnv.net/docs/hook.html), you can `cd` into
 the repository and `nix` will boostrap the environment for you using the flake.
 Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
 execute a command, or use the environment in whatever way your prefer.
-
-You can install it with [your package manager of choice](https://direnv.net/docs/installation.html), but at least
-version `2.30.x` must be used for the flake integration to work properly.
-If you're unsure which installation method to use or your package manager does not provide a compatible version, you
-can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 
 ### Configure dependencies
 
@@ -118,32 +92,26 @@ This will give you an output with a list of remediations to take before running 
 
 ### Run System Initiative
 
-Now we have the source code, the dependencies and checked that the system is ready to run it, you can run a development 
-environment of System Initiative. This development environment is made up of the following components:
+Now we have the source code, the dependencies and checked that the system is ready to run it, you can run a development
+environment of System Initiative.
 
-* Council
-* Veritech
-* Pinga
-* SDF
-* Web
-
-It also requires 4 support services, all of which we run out of docker:
+Please note that the development environment runs some supporting "platform" services, all of which we run out of docker:
 
 * [PostgreSQL](www.postgresql.org)
 * [NATS](https://nats.io/)
 * [The OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
 * [Jaeger](https://www.jaegertracing.io/)
 
-_Ensure you do not have any of these services currently running - you should stop any existing versions of these
-services you may have_.
+As such, ensure you do not have any of these services currently running - you should stop any existing versions of these
+services you may have.
 
-To run the development stack, please run:
+To run a development environment, please run the following:
 
 ```shell
 buck2 run dev:up
 ```
 
-This will use a [tilt file](https://tilt.dev/) to bring up the correct services in the correct order. You can follow the 
+This will use a [tilt file](https://tilt.dev/) to bring up the correct services in the correct order. You can follow the
 prompt in the terminal to open the tilt console. The tile console will show what services are running. When tilt tells us
 that 10/10 services are running, the System Initiative is fully running.
 
@@ -159,10 +127,10 @@ future, you can always access your workspace through the <router-link to="/dashb
 
 ### Stopping the Development Environment
 
-To stop the development environment, please use `ctrl+c` in the terminal running the `buck2` command. Note that this 
+To stop the development environment, please use `ctrl+c` in the terminal running the `buck2` command. Note that this
 will leave the platform services running (such as PostgreSQL, NATS, the OpenTelemetry collector, etc.). To stop those
 platform services, you can run the command:
 
 ```shell
-$ buck2 run :down
+$ buck2 run dev:down
 ```

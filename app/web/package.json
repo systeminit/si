@@ -19,7 +19,6 @@
     "fmt:check": "pnpm run lint",
     "check": "pnpm run lint:strict && npm run build:check",
     "dev": "pnpm run start",
-    "dev:frontend": "pnpm run dev",
     "start": "vite",
     "serve": "vite preview --port 8081",
     "test": "echo 'Sorry, no tests yet!'",

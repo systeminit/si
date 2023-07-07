@@ -15,11 +15,11 @@ Job Queue Executor integrated with [Nats](https://nats.io/).
 Run pinga:
 
 ```
-cargo run
+buck2 run :pinga
 ```
 
 You can also use the following command in the global workspace:
 
 ```
-make pinga-run
+buck2 run bin/pinga
 ```

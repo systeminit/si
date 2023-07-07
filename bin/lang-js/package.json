@@ -25,7 +25,6 @@
     "build:watch": "npm run clean && tsc --watch",
     "package": "pnpm run build && pkg . --output ./target/lang-js",
     "package:nobuild": "pkg . --output ./target/lang-js",
-    "jsbuild:backend": "pnpm package",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js --ignore-path .gitignore src",
     "lint:fix": "eslint --fix",

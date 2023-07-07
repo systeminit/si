@@ -1,7 +1,0 @@
----
-version: "3"
-
-services:
-  pg:
-    environment:
-      - PGA_SYSTEM_ID=production

@@ -32,16 +32,6 @@ alias(
 )
 
 alias(
-    name = "prepare",
-    actual = "//component/deploy:prepare",
-)
-
-alias(
-    name = "down",
-    actual = "//component/deploy:down",
-)
-
-alias(
     name = "web",
     actual = "//app/web:dev",
 )

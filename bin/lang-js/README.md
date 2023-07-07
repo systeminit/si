@@ -7,7 +7,7 @@ This directory contains `lang-js`.
 Here is an example of testing `lang-js` locally:
 
 ```bash
-DEBUG=* npm run dev -- ${CHECK_NAME} < examples/${FILE_NAME}
+DEBUG=* buck2 run :lang-js -- ${CHECK_NAME} < examples/${FILE_NAME}
 ```
 
 ## Encoding the Code
@@ -50,14 +50,8 @@ Then, we can create a `json` file in the same directory that's in a format that 
 
 Finally, we can run our function in `lang-js` directly.
 
-> Ensure that `lang-js` has been built by running the following `make` target in the repository root:
->
-> ```bash
-> make build//bin/lang-js
-> ```
-
 When we run our function in `lang-js`, let's set the debug flag to see what's going on!
 
 ```bash
-cat examples/commandRunFail.json | DEBUG=* target/lang-js commandRun
+cat examples/commandRunFail.json | DEBUG=* buck2 run :lang-js -- commandRun
 ```
