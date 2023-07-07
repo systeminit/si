@@ -2,7 +2,7 @@
 
 use ulid::Ulid;
 
-use crate::{OriginId, ContentHash};
+use crate::{ContentHash, OriginId};
 
 //#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Copy, Hash)]
 //pub struct WorkspacePk(Ulid);

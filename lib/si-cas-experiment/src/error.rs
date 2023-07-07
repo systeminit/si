@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{workspace::WorkspacePk, schema::SchemaPk, change_set::ChangeSetPk, dag::Conflict};
+use crate::{change_set::ChangeSetPk, dag::Conflict, schema::SchemaPk, workspace::WorkspacePk};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum DagError {

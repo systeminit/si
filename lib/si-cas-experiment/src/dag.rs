@@ -47,7 +47,7 @@ impl SiDag {
 
     pub fn merge_change_set(&mut self, change_set_pk: ChangeSetPk) -> DagResult<()> {
         let conflicts = self.rebase_change_set(change_set_pk)?;
-        if conflicts.len() > 0 {
+        if !conflicts.is_empty() {
             Err(DagError::MergeHasConflicts(conflicts))
         } else {
             let to_merge_change_set = self.get_change_set_by_pk(change_set_pk)?;
@@ -83,11 +83,11 @@ impl SiDag {
         let mut conflicts = Vec::new();
         let mut updates = Vec::new();
         let mut bfs = Bfs::new(&self.graph, destination_workspace_idx);
-        while let Some(node_index) = bfs.next(&self.graph) {
-            match self
+        while let Some(node_index) = dbg!(bfs.next(&self.graph)) {
+            match dbg!(self
                 .graph
                 .node_weight(node_index)
-                .ok_or(DagError::MissingNodeWeight)?
+                .ok_or(DagError::MissingNodeWeight)?)
             {
                 SiNode {
                     kind: SiNodeKind::Workspace(dest_pk),
@@ -140,7 +140,7 @@ impl SiDag {
                                 found_lineage = true;
                                 let ours_is_newer =
                                     //self.clock_is_newer(our_object.pk(), *dest_pk)?;
-                                    self.clock_is_newer(our_object.pk(), *dest_pk)?;
+                                    dbg!(self.clock_is_newer(dbg!(our_object.pk()), dbg!(*dest_pk))?);
                                 // If our object is newer, we can merge our object - just let it happen!
                                 if !ours_is_newer {
                                     // And we have changed the object in this change set
@@ -302,7 +302,7 @@ impl SiDag {
             }
         }
 
-        if conflicts.len() > 0 {
+        if !conflicts.is_empty() {
             self.conflicts.insert(change_set_pk, conflicts.clone());
         } else {
             self.conflicts.remove(&change_set_pk);
@@ -357,7 +357,7 @@ impl SiDag {
             return self
                 .find_all_objects_of_lineage_by_id_in_change_set(change_set_pk, schema.id());
         }
-        return Err(DagError::CannotFindObjectByPk);
+        Err(DagError::CannotFindObjectByPk)
     }
 
     // Super inefficient, but - prototypes!
@@ -414,19 +414,17 @@ impl SiDag {
     }
 
     pub fn get_change_set_by_pk(&self, change_set_pk: ChangeSetPk) -> DagResult<&ChangeSet> {
-        Ok(self
-            .change_sets
+        self.change_sets
             .get(&change_set_pk)
-            .ok_or(DagError::ChangeSetNotFound(change_set_pk))?)
+            .ok_or(DagError::ChangeSetNotFound(change_set_pk))
     }
 
     pub fn get_change_set_by_name(&self, name: impl Into<String>) -> DagResult<&ChangeSet> {
         let name = name.into();
-        Ok(self
-            .change_sets
+        self.change_sets
             .values()
             .find(|cs| cs.name == name)
-            .ok_or(DagError::ChangeSetNameNotFound(name))?)
+            .ok_or(DagError::ChangeSetNameNotFound(name))
     }
 
     pub fn get_head_for_change_set_pk(&self, change_set_pk: ChangeSetPk) -> DagResult<WorkspacePk> {
@@ -505,6 +503,7 @@ impl SiDag {
         Ok(new_workspace_pk)
     }
 
+    // TODO: This should really error if the schema isn't reachable from the provided change_set/workspace.
     pub fn modify_schema<L>(
         &mut self,
         change_set_pk: ChangeSetPk,
@@ -514,7 +513,6 @@ impl SiDag {
     where
         L: FnOnce(&mut Schema) -> DagResult<()>,
     {
-        let workspace_pk = self.get_head_for_change_set_pk(change_set_pk)?;
         let base_object = self.get_schema_by_pk(schema_pk)?;
         let base_index = self.get_schema_node_index(schema_pk)?;
         let new_vector_clock = self
@@ -523,8 +521,13 @@ impl SiDag {
             .ok_or(DagError::VectorClockNotFound)?
             .clone();
 
-        let mut new_schema = base_object.clone();
-        new_schema.pk = SchemaPk::new();
+        let mut new_schema = Schema {
+            id: base_object.id(),
+            pk: SchemaPk::new(),
+            name: base_object.name.clone(),
+            origin_id: base_object.origin_id,
+            content_hash: base_object.content_hash,
+        };
         let new_schema_pk = new_schema.pk();
         let new_index = self
             .graph
@@ -537,6 +540,7 @@ impl SiDag {
         self.schemas
             .insert(new_schema.pk(), IndexAndEntry::new(new_index, new_schema));
 
+        // Outgoing edges are things we depend on. We do not affect their content hash.
         let mut edges_to_make: Vec<NodeIndex> = Vec::new();
         for node_idx in self
             .graph
@@ -549,6 +553,9 @@ impl SiDag {
                 .update_edge(new_index, node_idx, SiEdge::new(SiEdgeKind::Uses));
         }
 
+        // Incoming edges are things that depend upon us. We **DO** affect their content hash.
+        // We need to be associated with the new CoW version of them, **not** to the current/old version
+        // that the old version of "us" was associated with.
         let mut edges_to_make: Vec<NodeIndex> = Vec::new();
         for node_idx in self
             .graph
@@ -584,10 +591,28 @@ impl SiDag {
                 if let Ok(o) = self.get_schema_by_pk(object_pk) {
                     self.vector_clocks
                         .insert(object_pk, VectorClock::new(o.id(), change_set_pk));
-                    return;
                 }
             }
         }
+    }
+
+    pub fn is_node_index_in_change_set(
+        &self,
+        change_set_pk: ChangeSetPk,
+        node_index: NodeIndex,
+    ) -> DagResult<bool> {
+        let workspace_node_index =
+            self.get_workspace_node_index(self.get_head_for_change_set_pk(change_set_pk)?)?;
+        // A* may not be the best algorithm to find out "Is this node reachable from the root we're talking about?",
+        // but it's reasonably fast, and very well understood.
+        Ok(petgraph::algo::astar(
+            &self.graph,
+            workspace_node_index,
+            |node| node == node_index,
+            |_| 1,
+            |_| 0,
+        )
+        .is_some())
     }
 
     pub fn vector_clock_merge(
@@ -622,19 +647,17 @@ impl SiDag {
     }
 
     pub fn get_workspace(&self, workspace_pk: WorkspacePk) -> DagResult<&Workspace> {
-        Ok(self
-            .workspaces
+        self.workspaces
             .get(&workspace_pk)
             .map(|e| e.entry())
-            .ok_or(DagError::WorkspaceNotFound(workspace_pk))?)
+            .ok_or(DagError::WorkspaceNotFound(workspace_pk))
     }
 
     pub fn get_workspace_node_index(&self, workspace_pk: WorkspacePk) -> DagResult<NodeIndex> {
-        Ok(self
-            .workspaces
+        self.workspaces
             .get(&workspace_pk)
             .map(|e| e.node_index())
-            .ok_or(DagError::WorkspaceNotFound(workspace_pk))?)
+            .ok_or(DagError::WorkspaceNotFound(workspace_pk))
     }
 
     // Through change set
@@ -669,19 +692,17 @@ impl SiDag {
     }
 
     pub fn get_schema_by_pk(&self, pk: SchemaPk) -> DagResult<&Schema> {
-        Ok(self
-            .schemas
+        self.schemas
             .get(&pk)
             .map(|e| e.entry())
-            .ok_or(DagError::SchemaNotFound(pk))?)
+            .ok_or(DagError::SchemaNotFound(pk))
     }
 
     pub fn get_schema_node_index(&self, pk: SchemaPk) -> DagResult<NodeIndex> {
-        Ok(self
-            .schemas
+        self.schemas
             .get(&pk)
             .map(|e| e.node_index())
-            .ok_or(DagError::SchemaNotFound(pk))?)
+            .ok_or(DagError::SchemaNotFound(pk))
     }
 
     // Through change set
@@ -804,7 +825,7 @@ impl SiDag {
             .vector_clocks
             .get(&right)
             .ok_or(DagError::VectorClockNotFound)?;
-        Ok(left_vc.is_newer(&right_vc))
+        Ok(left_vc.is_newer(right_vc))
     }
 
     pub fn clock_is_newer_for_change_set(
@@ -821,7 +842,7 @@ impl SiDag {
             .vector_clocks
             .get(&right)
             .ok_or(DagError::VectorClockNotFound)?;
-        Ok(left_vc.newer_for_change_set(change_set_pk, &right_vc))
+        Ok(left_vc.newer_for_change_set(change_set_pk, right_vc))
     }
 
     pub fn clock_was_changed_in_changeset(
@@ -984,7 +1005,6 @@ mod test {
         let og_id = killswitch_workspace_og.id();
         let og_pk = killswitch_workspace_og.pk();
         let og_hash = killswitch_workspace_og.content_hash;
-        drop(killswitch_workspace_pk);
 
         // Add a schema to the change set
         let schema_pk = dag.create_schema(change_set_pk, "jesse leach").unwrap();
@@ -1158,7 +1178,7 @@ mod test {
         let head_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
 
         // Create three change sets
-        let killswitch_change_set_pk =
+        let _killswitch_change_set_pk =
             dag.create_change_set("killswitch", "main", head_workspace_pk);
         let slayer_change_set_pk = dag.create_change_set("slayer", "main", head_workspace_pk);
         let boygenius_change_set_pk = dag.create_change_set("boygenius", "main", head_workspace_pk);
@@ -1179,45 +1199,30 @@ mod test {
             .create_schema(boygenius_change_set_pk, "julien")
             .unwrap();
         let lucy_schema_pk = dag.create_schema(boygenius_change_set_pk, "lucy").unwrap();
+        // Should merge cleanly; change set has not modified any existing data.
         dag.merge_change_set(boygenius_change_set_pk).unwrap();
+
         let main_workspace_pk = dag.get_head_for_change_set_name("main").unwrap();
         let objects = dag.all_objects_in_head_for_change_set_name("main").unwrap();
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == main_workspace_pk)
-            .is_some());
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == phoebe_schema_pk)
-            .is_some());
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == julien_schema_pk)
-            .is_some());
-        assert!(objects.iter().find(|o| o.pk() == lucy_schema_pk).is_some());
+        assert!(objects.iter().any(|o| o.pk() == main_workspace_pk));
+        assert!(objects.iter().any(|o| o.pk() == phoebe_schema_pk));
+        assert!(objects.iter().any(|o| o.pk() == julien_schema_pk));
+        assert!(objects.iter().any(|o| o.pk() == lucy_schema_pk));
 
         // Rebase slayer on main, and confirm the objects are all there
         let conflicts = dag.rebase_change_set(slayer_change_set_pk).unwrap();
-        assert_eq!(conflicts.len(), 0);
+        // Should be a fast-forward, since this change set hasn't changed anything since it was created.
+        assert!(conflicts.is_empty());
         let objects = dag
             .all_objects_in_head_for_change_set_name("slayer")
             .unwrap();
         let slayer_workspace_pk = dag.get_head_for_change_set_name("slayer").unwrap();
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == slayer_workspace_pk)
-            .is_some());
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == phoebe_schema_pk)
-            .is_some());
-        assert!(objects
-            .iter()
-            .find(|o| o.pk() == julien_schema_pk)
-            .is_some());
-        assert!(objects.iter().find(|o| o.pk() == lucy_schema_pk).is_some());
+        assert!(objects.iter().any(|o| o.pk() == slayer_workspace_pk));
+        assert!(objects.iter().any(|o| o.pk() == phoebe_schema_pk));
+        assert!(objects.iter().any(|o| o.pk() == julien_schema_pk));
+        assert!(objects.iter().any(|o| o.pk() == lucy_schema_pk));
 
-        let main_phoebe_clock = dbg!(dag.vector_clocks.get(&phoebe_schema_pk).unwrap());
+        let _main_phoebe_clock = dbg!(dag.vector_clocks.get(&phoebe_schema_pk).unwrap());
 
         // Change the name of a schema on slayer
         let new_phoebe_schema_pk = dag
@@ -1228,9 +1233,244 @@ mod test {
             .unwrap();
         let main_phoebe_clock = dbg!(dag.vector_clocks.get(&phoebe_schema_pk).unwrap());
         let new_phoebe_clock = dbg!(dag.vector_clocks.get(&new_phoebe_schema_pk).unwrap());
-        dbg!(new_phoebe_clock.is_newer(&main_phoebe_clock));
+        dbg!(new_phoebe_clock.is_newer(main_phoebe_clock));
 
         // Merge slayer - it's clean!
         dag.merge_change_set(slayer_change_set_pk).unwrap();
+    }
+
+    #[test]
+    fn changes_are_only_reachable_from_the_change_set_that_made_them_until_merged() {
+        // Create DAG
+        let mut dag = SiDag::new("change sets compartmentalize");
+        // Create bootstrap change set
+        let bootstrap_change_set_pk = dag.create_change_set(
+            "bootstrap",
+            "main",
+            dag.get_head_for_change_set_name("main").unwrap(),
+        );
+        // Create 2 schemas
+        let og_schema_a_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema A")
+            .unwrap();
+        let og_schema_b_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema B")
+            .unwrap();
+        // Merge bootstrap change set
+        dag.merge_change_set(bootstrap_change_set_pk).unwrap();
+        // Create change set
+        let silo_change_set_pk = dag.create_change_set(
+            "silo",
+            "main",
+            dag.get_head_for_change_set_name("main").unwrap(),
+        );
+        // Modify schema A in the change set
+        let schema_pk = dag
+            .modify_schema(silo_change_set_pk, og_schema_a_pk, |s| {
+                s.name = "Silo modified Schema A".to_string();
+                Ok(())
+            })
+            .unwrap();
+        // Make sure modified schema isn't in "main"
+        assert!(!dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(schema_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure modified schema is in the change set
+        assert!(dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(schema_pk).unwrap()
+            )
+            .unwrap());
+        // Make sure the unmodified schema is in "main"
+        assert!(dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(og_schema_b_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the unmodified schema is in the change set
+        assert!(dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(og_schema_b_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the OG schema A is in "main"
+        assert!(dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(og_schema_a_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the OG schema A is not in the change set
+        assert!(!dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(og_schema_a_pk).unwrap()
+            )
+            .unwrap());
+
+        // Merge the change set
+        dag.merge_change_set(silo_change_set_pk).unwrap();
+
+        // Make sure modified schema is in "main"
+        assert!(dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(schema_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure modified schema is in the change set
+        assert!(dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(schema_pk).unwrap()
+            )
+            .unwrap());
+        // Make sure the unmodified schema is in "main"
+        assert!(dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(og_schema_b_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the unmodified schema is in the change set
+        assert!(dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(og_schema_b_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the OG schema A is not in "main"
+        assert!(!dag
+            .is_node_index_in_change_set(
+                dag.get_change_set_by_name("main").unwrap().pk(),
+                dag.get_schema_node_index(og_schema_a_pk).unwrap(),
+            )
+            .unwrap());
+        // Make sure the OG schema A is not in the change set
+        assert!(!dag
+            .is_node_index_in_change_set(
+                silo_change_set_pk,
+                dag.get_schema_node_index(og_schema_a_pk).unwrap()
+            )
+            .unwrap());
+    }
+
+    #[test]
+    fn rebase_change_set_with_conflicts() {
+        // Create DAG
+        let mut dag = SiDag::new("disconsonant");
+        // Create bootstrap change set
+        let bootstrap_change_set_pk = dag.create_change_set(
+            "bootstrap",
+            "main",
+            dag.get_head_for_change_set_name("main").unwrap(),
+        );
+        // Create 4 schemas
+        // Will be updated only on main
+        let og_schema_a_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema A")
+            .unwrap();
+        // Will be updated on both main, and new
+        let og_schema_b_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema B")
+            .unwrap();
+        // Will be updated only on new
+        let og_schema_c_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema C")
+            .unwrap();
+        // Will not be modified
+        let og_schema_d_pk = dag
+            .create_schema(bootstrap_change_set_pk, "OG Schema D")
+            .unwrap();
+        dag.merge_change_set(bootstrap_change_set_pk).unwrap();
+        println!("Schemas in main");
+        for schema in dag
+            .get_workspace_schemas(dag.get_change_set_by_name("main").unwrap().pk())
+            .unwrap()
+        {
+            dbg!(schema.id, schema.pk, &schema.name, &schema.content_hash);
+        }
+        // Create change set "new"
+        let new_change_set_pk = dag.create_change_set(
+            "new",
+            "main",
+            dag.get_head_for_change_set_name("main").unwrap(),
+        );
+
+        // Modify schemas on "main"
+        let main_modification_change_set_pk = dag.create_change_set(
+            "main modification",
+            "main",
+            dag.get_head_for_change_set_name("main").unwrap(),
+        );
+        // Modify Schema A
+        let main_modified_schema_a_pk = dag
+            .modify_schema(main_modification_change_set_pk, og_schema_a_pk, |s| {
+                s.name = "Schema A modified on main".to_string();
+                Ok(())
+            })
+            .unwrap();
+        // Modify Schema B in "main"
+        let main_modified_schema_b_pk = dag
+            .modify_schema(main_modification_change_set_pk, og_schema_b_pk, |s| {
+                s.name = "Schema B modified on main".to_string();
+                Ok(())
+            })
+            .unwrap();
+        // Merge changes to "main"
+        dag.merge_change_set(main_modification_change_set_pk)
+            .unwrap();
+        println!("Schemas in main");
+        for schema in dag
+            .get_workspace_schemas(dag.get_change_set_by_name("main").unwrap().pk())
+            .unwrap()
+        {
+            dbg!(schema.id, schema.pk, &schema.name, &schema.content_hash);
+        }
+
+        // Modify Schema B in "new"
+        let new_modified_schema_b_pk = dag
+            .modify_schema(new_change_set_pk, og_schema_b_pk, |s| {
+                s.name = "Schema B modified on new".to_string();
+                Ok(())
+            })
+            .unwrap();
+        // Modify Schema C in "new"
+        let new_modified_schema_c_pk = dag
+            .modify_schema(new_change_set_pk, og_schema_c_pk, |s| {
+                s.name = "Schema C modified on new".to_string();
+                Ok(())
+            })
+            .unwrap();
+        // Schema D is untouched
+        println!("Schemas in new");
+        for schema in dag
+            .get_workspace_schemas(dag.get_change_set_by_name("new").unwrap().pk())
+            .unwrap()
+        {
+            dbg!(schema.id, schema.pk, &schema.name, &schema.content_hash);
+        }
+        // Rebase "new"
+        let conflicts = dbg!(dag.rebase_change_set(new_change_set_pk).unwrap());
+
+        dbg!(
+            og_schema_a_pk,
+            og_schema_b_pk,
+            og_schema_c_pk,
+            og_schema_d_pk,
+            main_modified_schema_a_pk,
+            main_modified_schema_b_pk,
+            new_modified_schema_b_pk,
+            new_modified_schema_c_pk,
+            new_change_set_pk
+        );
+        // Only Schema B conflicts
+        panic!();
     }
 }

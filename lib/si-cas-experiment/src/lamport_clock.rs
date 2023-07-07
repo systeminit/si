@@ -5,7 +5,8 @@ use ulid::{Generator, Ulid};
 
 use crate::change_set::ChangeSetPk;
 
-static GENERATOR: Lazy<Arc<Mutex<Generator>>> = Lazy::new(|| Arc::new(Mutex::new(Generator::new())));
+static GENERATOR: Lazy<Arc<Mutex<Generator>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Generator::new())));
 
 #[derive(Clone)]
 pub struct LamportClock {
@@ -62,4 +63,3 @@ impl std::fmt::Debug for LamportClock {
             .finish()
     }
 }
-

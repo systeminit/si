@@ -1,6 +1,6 @@
 use ulid::Ulid;
 
-use crate::{OriginId, ContentHash};
+use crate::{ContentHash, OriginId};
 
 pub type SchemaId = Ulid;
 pub type SchemaPk = Ulid;
@@ -42,4 +42,3 @@ impl Schema {
         self.pk
     }
 }
-

@@ -96,12 +96,12 @@ mod test {
         let object_id = Ulid::new();
         let mut vector_clock_a = VectorClock::new(object_id, ChangeSetPk::new());
         let vector_clock_b = vector_clock_a.fork(ChangeSetPk::new()).unwrap();
-        assert_eq!(vector_clock_b.is_newer(&vector_clock_a), true);
-        assert_eq!(vector_clock_a.is_newer(&vector_clock_b), false);
+        assert!(vector_clock_b.is_newer(&vector_clock_a));
+        assert!(!vector_clock_a.is_newer(&vector_clock_b));
         let change_set_pk = ChangeSetPk::new();
         vector_clock_a
             .merge(change_set_pk, &vector_clock_b)
             .unwrap();
-        assert_eq!(vector_clock_a.is_newer(&vector_clock_b), true);
+        assert!(vector_clock_a.is_newer(&vector_clock_b));
     }
 }

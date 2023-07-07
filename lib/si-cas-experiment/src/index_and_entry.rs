@@ -19,4 +19,3 @@ impl<T> IndexAndEntry<T> {
         &self.entry
     }
 }
-

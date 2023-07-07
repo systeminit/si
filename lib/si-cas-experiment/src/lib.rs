@@ -3,14 +3,14 @@ use ulid::Ulid;
 pub type ContentHash = blake3::Hash;
 pub type OriginId = Ulid;
 
-pub mod error;
-pub mod dag;
-pub mod lamport_clock;
-pub mod vector_clock;
-pub mod index_and_entry;
 pub mod change_set;
-pub mod workspace;
+pub mod dag;
+pub mod error;
+pub mod index_and_entry;
+pub mod lamport_clock;
 pub mod schema;
+pub mod vector_clock;
+pub mod workspace;
 
 // STATUS
 // Things are looking pretty good! You can see in the rebase tests that we can create
