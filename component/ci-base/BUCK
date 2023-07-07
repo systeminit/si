@@ -12,7 +12,9 @@ docker_image(
         "docker-entrypoint.sh": ".",
     },
     build_args = {
-        "BASE_VERSION": "3",
+        "BASE_VERSION": "12-slim",
+        "USER_UID": "2000",
+        "USER_GID": "2000",
     },
     run_docker_args = [
         "--privileged",
