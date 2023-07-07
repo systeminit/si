@@ -30,44 +30,41 @@ async fn authoring_flow_asset(
 
     // Update the asset with the schema
     // harness.update_asset(&ctx, )
-    let _asset_definition = r#"
-    {
-      "props": [
-        {
-          "name": "image",
-          "kind": "string",
-          "valueFrom": {
-            "kind": "prop",
-            "prop_path": ["root", "si", "name"]
-          },
-          "widget": {
-            "kind": "text"
-          }
-        },
-        {
-          "name": "exposedPorts",
-          "kind": "array",
-          "entry": {
-            "name": "ExposedPort",
-            "kind": "string",
-            "widget": {
-              "kind": "text"
-            }
-          }
-        }
-      ],
-      "inputSockets": [
-        {
-          "name": "Docker Hub Credential",
-          "arity": "many"
-        }
-      ],
-      "outputSockets": [
-        {
-          "name": "Exposed Ports",
-          "arity": "many"
-        }
-      ]
+    let asset_definition = r#"function createAsset() {
+        const imageProp = new PropBuilder()
+            .setKind("string")
+            .setName("image")
+            .setValueFrom(new ValueFromBuilder().setKind("prop").setPropPath(["root", "si", "name"]).build())
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+            .build();
+    
+        const portsProp = new PropBuilder()
+            .setKind("array")
+            .setName("ExposedPorts")
+            .setEntry(new PropBuilder()
+                        .setName("ExposedPort")
+                        .setKind("string")
+                        .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                        .build())
+            .build();
+    
+        const portsSocket = new SocketDefinitionBuilder()
+            .setName("Exposed Ports")
+            .setArity("many")
+            .build();
+    
+        const credentialSocket = new SocketDefinitionBuilder()
+            .setName("Docker Hub Credential")
+            .setArity("many")
+            .build();
+    
+    
+        return new AssetBuilder()
+            .addProp(imageProp)
+            .addProp(portsProp)
+            .addInputSocket(credentialSocket)
+            .addOutputSocket(portsSocket)
+            .build();
     }"#;
 
     harness
@@ -76,7 +73,7 @@ async fn authoring_flow_asset(
             asset.asset_id,
             schema_name.to_string(),
             None,
-            //TO-DO: @stack72 - update this test to ensure it matches the new authoring!!
+            asset_definition.to_string(),
         )
         .await;
 
