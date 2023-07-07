@@ -503,6 +503,70 @@ impl SiDag {
         Ok(new_workspace_pk)
     }
 
+    pub fn workspace_replace_schema(
+        &mut self,
+        change_set_pk: ChangeSetPk,
+        old_schema_pk: SchemaPk,
+        new_schema_pk: SchemaPk,
+    ) -> DagResult<WorkspacePk> {
+        let workspace_pk = self.get_head_for_change_set_pk(change_set_pk)?;
+        let base_object = self.get_workspace(workspace_pk)?;
+        let base_index = self.get_workspace_node_index(workspace_pk)?;
+        let new_vector_clock = self
+            .vector_clocks
+            .get(&workspace_pk)
+            .ok_or(DagError::VectorClockNotFound)?
+            .clone();
+
+        let mut new_workspace = base_object.clone();
+        new_workspace.pk = WorkspacePk::new();
+        let new_workspace_pk = new_workspace.pk();
+        let new_index = self
+            .graph
+            .add_node(SiNode::new(SiNodeKind::Workspace(new_workspace.pk())));
+        self.vector_clocks
+            .insert(new_workspace_pk, new_vector_clock);
+
+        self.workspaces.insert(
+            new_workspace.pk(),
+            IndexAndEntry::new(new_index, new_workspace),
+        );
+
+        let old_schema_node_index = self
+            .schemas
+            .get(&old_schema_pk)
+            .ok_or(DagError::SchemaNotFound(old_schema_pk))?
+            .node_index;
+        let new_schema_node_index = self
+            .schemas
+            .get(&new_schema_pk)
+            .ok_or(DagError::SchemaNotFound(new_schema_pk))?
+            .node_index;
+        let mut edges_to_make = vec![new_schema_node_index];
+        for node_idx in self
+            .graph
+            .neighbors_directed(base_index, Direction::Outgoing)
+        {
+            // We don't want to carry over the edge to the old "version" of the schema.
+            if node_idx == old_schema_node_index {
+                continue;
+            }
+            edges_to_make.push(node_idx);
+        }
+        for node_idx in edges_to_make {
+            self.graph
+                .add_edge(new_index, node_idx, SiEdge::new(SiEdgeKind::Uses));
+        }
+
+        self.update_workspace_content_hash(new_workspace_pk)?;
+
+        self.vector_clock_increment(new_workspace_pk, change_set_pk);
+
+        self.update_head(change_set_pk, new_workspace_pk);
+
+        Ok(new_workspace_pk)
+    }
+
     // TODO: This should really error if the schema isn't reachable from the provided change_set/workspace.
     pub fn modify_schema<L>(
         &mut self,
@@ -521,18 +585,14 @@ impl SiDag {
             .ok_or(DagError::VectorClockNotFound)?
             .clone();
 
-        let mut new_schema = Schema {
-            id: base_object.id(),
-            pk: SchemaPk::new(),
-            name: base_object.name.clone(),
-            origin_id: base_object.origin_id,
-            content_hash: base_object.content_hash,
-        };
+        let mut new_schema = base_object.clone();
+        new_schema.pk = SchemaPk::new();
         let new_schema_pk = new_schema.pk();
         let new_index = self
             .graph
             .add_node(SiNode::new(SiNodeKind::Schema(new_schema.pk())));
         self.vector_clocks.insert(new_schema_pk, new_vector_clock);
+        println!("{:?}", petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel]));
 
         // Anything you want to do to the schema happens here
         lambda(&mut new_schema)?;
@@ -552,23 +612,13 @@ impl SiDag {
             self.graph
                 .update_edge(new_index, node_idx, SiEdge::new(SiEdgeKind::Uses));
         }
+        println!("{:?}", petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel]));
 
-        // Incoming edges are things that depend upon us. We **DO** affect their content hash.
-        // We need to be associated with the new CoW version of them, **not** to the current/old version
-        // that the old version of "us" was associated with.
-        let mut edges_to_make: Vec<NodeIndex> = Vec::new();
-        for node_idx in self
-            .graph
-            .neighbors_directed(base_index, Direction::Incoming)
-        {
-            edges_to_make.push(node_idx);
-        }
-        for node_idx in edges_to_make {
-            self.graph
-                .update_edge(node_idx, new_index, SiEdge::new(SiEdgeKind::Uses));
-        }
+        // Incoming edges need a new "thing" created to reference us, since outgoing edges are
+        // considered to be part of the "thing" itself (since they affect the things content hash).
 
         self.update_schema_content_hash(new_schema_pk)?;
+        self.workspace_replace_schema(change_set_pk, schema_pk, new_schema_pk)?;
 
         self.vector_clock_increment(new_schema_pk, change_set_pk);
 
@@ -770,20 +820,17 @@ impl SiDag {
 
         self.set_schema_content_hash(schema_pk, hasher.finalize())?;
 
-        let mut workspaces_to_update = Vec::new();
         // Trigger recalulating the other content hashes
         for node_idx in self.graph.neighbors_directed(index, Direction::Incoming) {
             match self.graph.node_weight(node_idx) {
                 Some(SiNode {
-                    kind: SiNodeKind::Workspace(workspace_pk),
+                    kind: SiNodeKind::Workspace(_),
                 }) => {
-                    workspaces_to_update.push(*workspace_pk);
+                    // Knowing which workspace to update, and updating it is handled
+                    // by the actual "modification" of the schema. Nothing to do here.
                 }
-                _ => continue,
+                incoming_node => unimplemented!("Updating edge for {incoming_node:?} that depends on a schema ({schema_pk:?}) is not implemented."),
             }
-        }
-        for workspace_pk in workspaces_to_update {
-            self.update_workspace_content_hash(workspace_pk)?;
         }
 
         Ok(())
@@ -1216,7 +1263,9 @@ mod test {
         let objects = dag
             .all_objects_in_head_for_change_set_name("slayer")
             .unwrap();
-        let slayer_workspace_pk = dag.get_head_for_change_set_name("slayer").unwrap();
+        println!("{:?}", petgraph::dot::Dot::with_config(&dag.graph, &[petgraph::dot::Config::EdgeNoLabel]));
+        let slayer_workspace_pk = dbg!(dag.get_head_for_change_set_name("slayer").unwrap());
+        dbg!(dag.get_head_for_change_set_name("main").unwrap());
         assert!(objects.iter().any(|o| o.pk() == slayer_workspace_pk));
         assert!(objects.iter().any(|o| o.pk() == phoebe_schema_pk));
         assert!(objects.iter().any(|o| o.pk() == julien_schema_pk));
@@ -1256,14 +1305,17 @@ mod test {
         let og_schema_b_pk = dag
             .create_schema(bootstrap_change_set_pk, "OG Schema B")
             .unwrap();
+        println!("{:?}", petgraph::dot::Dot::with_config(&dag.graph, &[petgraph::dot::Config::EdgeNoLabel]));
         // Merge bootstrap change set
         dag.merge_change_set(bootstrap_change_set_pk).unwrap();
+        println!("{:?}", petgraph::dot::Dot::with_config(&dag.graph, &[petgraph::dot::Config::EdgeNoLabel]));
         // Create change set
         let silo_change_set_pk = dag.create_change_set(
             "silo",
             "main",
             dag.get_head_for_change_set_name("main").unwrap(),
         );
+        println!("{:?}", petgraph::dot::Dot::with_config(&dag.graph, &[petgraph::dot::Config::EdgeNoLabel]));
         // Modify schema A in the change set
         let schema_pk = dag
             .modify_schema(silo_change_set_pk, og_schema_a_pk, |s| {
@@ -1272,6 +1324,9 @@ mod test {
             })
             .unwrap();
         // Make sure modified schema isn't in "main"
+        println!("{:?}", petgraph::dot::Dot::with_config(&dag.graph, &[petgraph::dot::Config::EdgeNoLabel]));
+        dbg!(dag.get_workspace_schemas(dag.get_change_set_by_name("main").unwrap().pk()).unwrap());
+        dbg!(dag.get_workspace_schemas(dag.get_change_set_by_name("silo").unwrap().pk()).unwrap());
         assert!(!dag
             .is_node_index_in_change_set(
                 dag.get_change_set_by_name("main").unwrap().pk(),
