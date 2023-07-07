@@ -16,5 +16,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: >
             Thank you for opening a pull request to SI. Please wait while a maintainer reviews your PR.
-            
-            **Note for the maintainer:** To run the build, please comment */run-build* on the PR.
