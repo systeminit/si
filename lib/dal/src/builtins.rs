@@ -31,7 +31,7 @@ mod func;
 pub mod schema;
 
 pub const SI_AWS_PKG: &str = "si-aws-2023-07-06.sipkg";
-pub const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-07-06.sipkg";
+pub const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-07-07.sipkg";
 pub const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-07-06.sipkg";
 pub const SI_COREOS_PKG: &str = "si-coreos-2023-07-06.sipkg";
 pub const SI_GENERIC_FRAME_PKG: &str = "si-generic-frame-2023-07-06.sipkg";
