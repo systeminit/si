@@ -9,7 +9,9 @@ use object_tree::{
 };
 use url::Url;
 
-use crate::{node::SchemaVariantChild, SchemaVariantSpec, SchemaVariantSpecComponentType};
+use crate::{
+    node::SchemaVariantChild, FuncUniqueId, SchemaVariantSpec, SchemaVariantSpecComponentType,
+};
 
 use super::PkgNode;
 
@@ -17,6 +19,7 @@ const KEY_COLOR_STR: &str = "color";
 const KEY_LINK_STR: &str = "link";
 const KEY_NAME_STR: &str = "name";
 const KEY_COMPONENT_TYPE_STR: &str = "component_type";
+const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantNode {
@@ -24,6 +27,7 @@ pub struct SchemaVariantNode {
     pub link: Option<Url>,
     pub color: Option<String>,
     pub component_type: SchemaVariantSpecComponentType,
+    pub func_unique_id: FuncUniqueId,
 }
 
 impl NameStr for SchemaVariantNode {
@@ -42,6 +46,11 @@ impl WriteBytes for SchemaVariantNode {
         )?;
         write_key_value_line(writer, KEY_COLOR_STR, self.color.as_deref().unwrap_or(""))?;
         write_key_value_line(writer, KEY_COMPONENT_TYPE_STR, self.component_type)?;
+        write_key_value_line(
+            writer,
+            KEY_FUNC_UNIQUE_ID_STR,
+            self.func_unique_id.to_string(),
+        )?;
 
         Ok(())
     }
@@ -69,11 +78,16 @@ impl ReadBytes for SchemaVariantNode {
         let component_type = SchemaVariantSpecComponentType::from_str(&component_type_str)
             .map_err(GraphError::parse)?;
 
+        let func_unique_id_str = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
+        let func_unique_id =
+            FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?;
+
         Ok(Self {
             name,
             link,
             color,
             component_type,
+            func_unique_id,
         })
     }
 }
@@ -89,6 +103,7 @@ impl NodeChild for SchemaVariantSpec {
                 link: self.link.as_ref().cloned(),
                 color: self.color.as_ref().cloned(),
                 component_type: self.component_type,
+                func_unique_id: self.func_unique_id,
             }),
             vec![
                 Box::new(SchemaVariantChild::ActionFuncs(self.action_funcs.clone()))

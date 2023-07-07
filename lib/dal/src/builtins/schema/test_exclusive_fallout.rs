@@ -61,6 +61,17 @@ impl MigrationDriver {
             .response_type(FuncSpecBackendResponseType::Action)
             .build()?;
 
+        let fallout_scaffold_func = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+        let fallout_authoring_schema_func = FuncSpec::builder()
+            .name("test:scaffoldFalloutAsset")
+            .code_plaintext(fallout_scaffold_func)
+            .handler("createAsset")
+            .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+            .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+            .build()?;
+
         let fallout_schema = SchemaSpec::builder()
             .name("fallout")
             .category("test exclusive")
@@ -69,6 +80,7 @@ impl MigrationDriver {
                 SchemaVariantSpec::builder()
                     .color("#ffffff")
                     .name("v0")
+                    .func_unique_id(fallout_authoring_schema_func.unique_id)
                     .domain_prop(
                         PropSpec::builder()
                             .name("name")
@@ -163,6 +175,7 @@ impl MigrationDriver {
             .func(identity_func_spec)
             .func(fallout_create_action_func)
             .func(fallout_confirmation_func)
+            .func(fallout_authoring_schema_func)
             .schema(fallout_schema)
             .build()?;
 

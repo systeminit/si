@@ -30,7 +30,7 @@ async fn authoring_flow_asset(
 
     // Update the asset with the schema
     // harness.update_asset(&ctx, )
-    let asset_definition = r#"
+    let _asset_definition = r#"
     {
       "props": [
         {
@@ -76,7 +76,7 @@ async fn authoring_flow_asset(
             asset.asset_id,
             schema_name.to_string(),
             None,
-            asset_definition,
+            //TO-DO: @stack72 - update this test to ensure it matches the new authoring!!
         )
         .await;
 

@@ -1,3 +1,4 @@
+use crate::FuncUniqueId;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
@@ -70,6 +71,9 @@ pub struct SchemaVariantSpec {
     #[builder(private, default = "Self::default_resource_value()")]
     pub resource_value: PropSpec,
 
+    #[builder(setter(into))]
+    pub func_unique_id: FuncUniqueId,
+
     #[builder(setter(each(name = "action_func"), into), default)]
     pub action_funcs: Vec<ActionFuncSpec>,
 
@@ -91,6 +95,7 @@ impl SchemaVariantSpec {
         SchemaVariantSpecBuilder::default()
     }
 }
+
 impl SchemaVariantSpecBuilder {
     fn default_domain() -> PropSpec {
         PropSpec::Object {

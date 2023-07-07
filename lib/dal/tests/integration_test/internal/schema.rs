@@ -4,7 +4,6 @@ use dal_test::{test, test_harness::create_schema};
 
 pub mod ui_menu;
 pub mod variant;
-pub mod variant_definition;
 
 #[test]
 async fn new(ctx: &DalContext) {

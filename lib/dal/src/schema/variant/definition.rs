@@ -13,7 +13,7 @@ use crate::prop::PropPath;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, ComponentType, DalContext, HistoryEventError,
+    standard_model, standard_model_accessor, ComponentType, DalContext, FuncId, HistoryEventError,
     NatsError, PgError, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, SocketArity,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
@@ -131,8 +131,9 @@ pub struct SchemaVariantDefinition {
     component_kind: ComponentKind,
     component_type: ComponentType,
     link: Option<String>,
-    definition: String,
+    func_id: FuncId,
     description: Option<String>,
+    schema_variant_id: Option<SchemaVariantId>,
 }
 
 impl_standard_model! {
@@ -145,26 +146,6 @@ impl_standard_model! {
 }
 
 impl SchemaVariantDefinition {
-    #[instrument(skip_all)]
-    pub async fn new_from_structs(
-        ctx: &DalContext,
-        metadata: SchemaVariantDefinitionMetadataJson,
-        definition: SchemaVariantDefinitionJson,
-    ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
-        SchemaVariantDefinition::new(
-            ctx,
-            metadata.name,
-            metadata.menu_name,
-            metadata.category,
-            metadata.link,
-            metadata.color,
-            metadata.component_kind,
-            metadata.description,
-            serde_json::to_string_pretty(&definition)?,
-        )
-        .await
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
@@ -175,7 +156,7 @@ impl SchemaVariantDefinition {
         color: String,
         component_kind: ComponentKind,
         description: Option<String>,
-        definition: String,
+        func_id: FuncId,
     ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
         let row = ctx
             .txns()
@@ -203,13 +184,51 @@ impl SchemaVariantDefinition {
                     &link,
                     &color,
                     &component_kind.as_ref(),
-                    &definition,
+                    &func_id,
                     &description,
                 ],
             )
             .await?;
 
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
+    pub async fn get_by_func_id(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> SchemaVariantDefinitionResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT row_to_json(svd.*) AS object
+                    FROM schema_variant_definitions_v1($1, $2) as svd
+                    WHERE func_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &func_id],
+            )
+            .await?;
+
+        Ok(standard_model::object_option_from_row_option(row)?)
+    }
+
+    pub async fn get_by_schema_variant_id(
+        ctx: &DalContext,
+        schema_variant_id: &SchemaVariantId,
+    ) -> SchemaVariantDefinitionResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT row_to_json(svd.*) AS object
+                    FROM schema_variant_definitions_v1($1, $2) as svd
+                    WHERE schema_variant_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), schema_variant_id],
+            )
+            .await?;
+
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     pub async fn existing_default_schema_variant_id(
@@ -240,7 +259,12 @@ impl SchemaVariantDefinition {
     );
     standard_model_accessor!(link, Option<String>, SchemaVariantDefinitionResult);
     standard_model_accessor!(description, Option<String>, SchemaVariantDefinitionResult);
-    standard_model_accessor!(definition, String, SchemaVariantDefinitionResult);
+    standard_model_accessor!(func_id, Pk(FuncId), SchemaVariantDefinitionResult);
+    standard_model_accessor!(
+        schema_variant_id,
+        Option<Pk(SchemaVariantId)>,
+        SchemaVariantDefinitionResult
+    );
     standard_model_accessor!(
         component_type,
         Enum(ComponentType),
@@ -339,7 +363,7 @@ impl SchemaVariantDefinitionMetadataJson {
             Err(_) => {
                 return Err(SchemaVariantDefinitionError::CouldNotGetUiMenu(
                     *schema.id(),
-                ))
+                ));
             }
         };
 
@@ -394,27 +418,12 @@ pub struct SchemaVariantDefinitionJson {
     pub doc_links: Option<HashMap<String, String>>,
 }
 
-impl TryFrom<SchemaVariantDefinition> for SchemaVariantDefinitionJson {
-    type Error = SchemaVariantDefinitionError;
-
-    fn try_from(value: SchemaVariantDefinition) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(&value.definition)?)
-    }
-}
-
-impl TryFrom<&SchemaVariantDefinition> for SchemaVariantDefinitionJson {
-    type Error = SchemaVariantDefinitionError;
-
-    fn try_from(value: &SchemaVariantDefinition) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(&value.definition)?)
-    }
-}
-
 impl SchemaVariantDefinitionJson {
     pub fn to_spec(
         &self,
         metadata: SchemaVariantDefinitionMetadataJson,
         identity_func_unique_id: FuncUniqueId,
+        asset_func_spec_unique_id: FuncUniqueId,
     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
         builder.name("v0");
@@ -439,13 +448,14 @@ impl SchemaVariantDefinitionJson {
             builder.socket(output_socket.to_spec(false)?);
         }
 
+        builder.func_unique_id(asset_func_spec_unique_id);
+
         Ok(builder.build()?)
     }
 
-    pub fn from_spec(
+    pub fn metadata_from_spec(
         schema_spec: SchemaSpec,
-        identity_func_unique_id: FuncUniqueId,
-    ) -> SchemaVariantDefinitionResult<(Self, SchemaVariantDefinitionMetadataJson)> {
+    ) -> SchemaVariantDefinitionResult<SchemaVariantDefinitionMetadataJson> {
         if schema_spec.variants.len() > 1 {
             return Err(SchemaVariantDefinitionError::MoreThanOneVariant);
         }
@@ -466,67 +476,7 @@ impl SchemaVariantDefinitionJson {
             description: None, // XXX - does this exist?
         };
 
-        let mut props = vec![];
-        if let PropSpec::Object { entries, .. } = &variant_spec.domain {
-            for entry in entries {
-                props.push(PropDefinition::from_spec(
-                    entry.to_owned(),
-                    identity_func_unique_id,
-                )?);
-            }
-        }
-
-        let mut resource_props = vec![];
-        if let PropSpec::Object { entries, .. } = &variant_spec.resource_value {
-            for entry in entries {
-                resource_props.push(PropDefinition::from_spec(
-                    entry.to_owned(),
-                    identity_func_unique_id,
-                )?);
-            }
-        }
-
-        let definition = SchemaVariantDefinitionJson {
-            props,
-            resource_props,
-            si_prop_value_froms: variant_spec
-                .si_prop_funcs
-                .iter()
-                .filter_map(|si_prop_func| {
-                    SiPropValueFrom::maybe_from_spec(
-                        si_prop_func.kind,
-                        Some(si_prop_func.inputs.to_owned()),
-                        Some(si_prop_func.func_unique_id),
-                        identity_func_unique_id,
-                    )
-                })
-                .collect(),
-            input_sockets: variant_spec
-                .sockets
-                .iter()
-                .filter_map(|sock| match sock.kind {
-                    SocketSpecKind::Input => Some(SocketDefinition::from_spec(
-                        sock.to_owned(),
-                        identity_func_unique_id,
-                    )),
-                    _ => None,
-                })
-                .collect(),
-            output_sockets: variant_spec
-                .sockets
-                .iter()
-                .filter_map(|sock| match sock.kind {
-                    SocketSpecKind::Output => Some(SocketDefinition::from_spec(
-                        sock.to_owned(),
-                        identity_func_unique_id,
-                    )),
-                    _ => None,
-                })
-                .collect(),
-            doc_links: None,
-        };
-
-        Ok((definition, metadata))
+        Ok(metadata)
     }
 }
 
@@ -1025,6 +975,7 @@ impl ValueFrom {
 
 /// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SiPropValueFrom {
     kind: SiPropFuncSpecKind,
     value_from: ValueFrom,
@@ -1037,15 +988,5 @@ impl SiPropValueFrom {
             func_unique_id: identity_func_unique_id,
             inputs: vec![self.value_from.to_spec()],
         }
-    }
-
-    fn maybe_from_spec(
-        kind: SiPropFuncSpecKind,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        identity_func_unique_id: FuncUniqueId,
-    ) -> Option<Self> {
-        ValueFrom::maybe_from_spec(inputs, func_unique_id, identity_func_unique_id)
-            .map(|value_from| SiPropValueFrom { kind, value_from })
     }
 }

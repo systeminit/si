@@ -13,8 +13,9 @@ use super::{
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
-    AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
+    AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecPropRoot,
 };
 
 #[derive(Clone, Debug)]
@@ -23,6 +24,7 @@ pub struct SiPkgSchemaVariant<'a> {
     link: Option<Url>,
     color: Option<String>,
     component_type: SchemaVariantSpecComponentType,
+    func_unique_id: FuncUniqueId,
 
     hash: Hash,
 
@@ -72,7 +74,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SCHEMA_VARIANT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 
@@ -83,6 +85,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
             component_type: schema_variant_node.component_type,
             hash: schema_variant_hashed_node.hash(),
             source: Source::new(graph, node_idx),
+            func_unique_id: schema_variant_node.func_unique_id,
         };
 
         Ok(schema_variant)
@@ -102,6 +105,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn component_type(&self) -> SchemaVariantSpecComponentType {
         self.component_type
+    }
+
+    pub fn func_unique_id(&self) -> FuncUniqueId {
+        self.func_unique_id
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);
@@ -290,7 +297,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     _ => {
                         return Err(SiPkgError::prop_tree_invalid(
                             "Leaf prop (String, Number, Boolean) cannot have children",
-                        ))
+                        ));
                     }
                 }
             }
@@ -345,6 +352,8 @@ impl<'a> SiPkgSchemaVariant<'a> {
         for si_prop_func in self.si_prop_funcs()? {
             builder.si_prop_func(si_prop_func.try_into()?);
         }
+
+        builder.func_unique_id(self.func_unique_id);
 
         self.build_prop_specs(SchemaVariantSpecPropRoot::Domain, &mut builder)
             .await?;

@@ -1,11 +1,12 @@
+export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 export interface ValueFrom {
-    type: string;
-    socketName?: string;
-    propPath?: string[];
+    kind: ValueFromKind;
+    socket_name?: string;
+    prop_path?: string[];
 }
 
 export interface IValueFromBuilder {
-    setType(type: string): this;
+    setKind(kind: ValueFromKind): this;
 
     setSocketName(name: string): this;
 
@@ -21,29 +22,29 @@ export class ValueFromBuilder implements IValueFromBuilder {
         this.valueFrom = <ValueFrom>{};
     }
 
-    setType(type: string): this {
-        this.valueFrom.type = type;
+    setKind(kind: ValueFromKind): this {
+        this.valueFrom.kind = kind;
         return this;
     }
 
     setSocketName(name: string): this {
         if (
-            this.valueFrom.type !== "inputSocket" &&
-            this.valueFrom.type !== "outputSocket"
+            this.valueFrom.kind !== "inputSocket" &&
+            this.valueFrom.kind !== "outputSocket"
         ) {
             return this;
         }
 
-        this.valueFrom.socketName = name;
+        this.valueFrom.socket_name = name;
         return this;
     }
 
     setPropPath(path: string[]): this {
-        if (this.valueFrom.type !== "prop") {
+        if (this.valueFrom.kind !== "prop") {
             return this;
         }
 
-        this.valueFrom.propPath = path;
+        this.valueFrom.prop_path = path;
         return this;
     }
 
@@ -52,11 +53,10 @@ export class ValueFromBuilder implements IValueFromBuilder {
     }
 }
 
-export type SocketDefinitionType = "many" | "one";
-
+export type SocketDefinitionArityType = "many" | "one";
 export interface SocketDefinition {
     name: string;
-    arity: SocketDefinitionType;
+    arity: SocketDefinitionArityType;
     uiHidden?: boolean;
     valueFrom?: ValueFrom;
 }
@@ -64,7 +64,7 @@ export interface SocketDefinition {
 export interface ISocketDefinitionBuilder {
     setName(name: string): this;
 
-    setArity(arity: SocketDefinitionType): this;
+    setArity(arity: SocketDefinitionArityType): this;
 
     setUiHidden(hidden: boolean): this;
 
@@ -84,7 +84,7 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
         return this.socket;
     }
 
-    setArity(arity: SocketDefinitionType): this {
+    setArity(arity: SocketDefinitionArityType): this {
         this.socket.arity = arity;
         return this;
     }
@@ -215,7 +215,7 @@ export class ValidationBuilder implements IValidationBuilder {
 
 export type PropWidgetDefinitionKind =
     | "array"
-    | "checkBox"
+    | "checkbox"
     | "color"
     | "comboBox"
     | "header"
@@ -225,17 +225,22 @@ export type PropWidgetDefinitionKind =
     | "text"
     | "textArea";
 
+export interface Option {
+    label: string,
+    value: string,
+}
+
 export interface PropWidgetDefinition {
     kind: PropWidgetDefinitionKind;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    options: Record<string, any>;
+    options: Option[];
 }
 
 export interface IPropWidgetDefinitionBuilder {
     setKind(kind: string): this;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addOption(key: string, value: any): this;
+    addOption(key: string, value: string): this;
 
     build(): PropWidgetDefinition;
 }
@@ -254,12 +259,15 @@ export class PropWidgetDefinitionBuilder
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addOption(key: string, value: any): this {
+    addOption(key: string, value: string): this {
         if (!this.propWidget.options){
-            this.propWidget.options = {};
+            this.propWidget.options = [];
         }
 
-        this.propWidget.options[key] = value;
+        this.propWidget.options.push(<Option>{
+            label: key,
+            value: value,
+        });
         return this;
     }
 
@@ -358,7 +366,7 @@ export interface PropDefinition {
     docLinkRef?: string;
     docLink?: string;
     children?: PropDefinition[];
-    entry?: PropDefinition[];
+    entry?: PropDefinition;
     widget?: PropWidgetDefinition;
     valueFrom?: ValueFrom;
     hidden?: boolean;
@@ -379,7 +387,7 @@ export interface IPropBuilder {
 
     addChild(child: PropDefinition): this;
 
-    addEntry(entry: PropDefinition): this;
+    setEntry(entry: PropDefinition): this;
 
     setWidget(widget: PropWidgetDefinition): this;
 
@@ -417,16 +425,12 @@ export class PropBuilder implements IPropBuilder {
         return this;
     }
 
-    addEntry(entry: PropDefinition): this {
-        if (this.prop.kind !== "array") {
+    setEntry(entry: PropDefinition): this {
+        if (this.prop.kind !== "array" && this.prop.kind !== "map")  {
             return this;
         }
 
-        if (!this.prop.entry) {
-            this.prop.entry = [];
-        }
-
-        this.prop.entry.push(entry);
+        this.prop.entry = entry;
         return this;
     }
 

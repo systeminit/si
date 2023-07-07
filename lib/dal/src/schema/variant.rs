@@ -11,7 +11,7 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::prop::PropPath;
 use crate::provider::internal::InternalProviderError;
-use crate::schema::variant::definition::SchemaVariantDefinitionError;
+use crate::schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId};
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::root_prop::SiPropChild;
 use crate::standard_model::{object_from_row, option_object_from_row};
@@ -180,6 +180,7 @@ pub struct SchemaVariant {
     name: String,
     /// The [`RootProp`](crate::RootProp) for [`self`](Self).
     root_prop_id: Option<PropId>,
+    schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     link: Option<String>,
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
     // components are not created unless the variant has been finalized at least once.
@@ -410,6 +411,11 @@ impl SchemaVariant {
     standard_model_accessor!(root_prop_id, Option<Pk(PropId)>, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
     standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
+    standard_model_accessor!(
+        schema_variant_definition_id,
+        Option<Pk(SchemaVariantDefinitionId)>,
+        SchemaVariantResult
+    );
 
     pub async fn color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
         let attribute_value = Component::find_si_child_attribute_value(
