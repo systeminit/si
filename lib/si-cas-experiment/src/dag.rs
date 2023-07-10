@@ -1256,16 +1256,12 @@ impl SiDag {
     ) -> DagResult<bool> {
         let workspace_node_index =
             self.get_workspace_node_index(self.get_head_for_change_set_pk(change_set_pk)?)?;
-        // A* may not be the best algorithm to find out "Is this node reachable from the root we're talking about?",
-        // but it's reasonably fast, and very well understood.
-        Ok(petgraph::algo::astar(
+        Ok(petgraph::algo::has_path_connecting(
             &self.graph,
             workspace_node_index,
-            |node| node == node_index,
-            |_| 1,
-            |_| 0,
-        )
-        .is_some())
+            node_index,
+            None,
+        ))
     }
 
     pub fn vector_clock_merge(
