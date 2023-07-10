@@ -2,132 +2,134 @@
 
 This is a monolithic repository containing the source for System Initiative (SI).
 
-## Environment Setup
+## Quickstart
 
-Running SI locally can be done in a variety of ways, but the officially supported method is to use the [Nix Flake](flake.nix)
-at the root of the repository.
-This section will focus on getting your environment ready to get SI up and running.
+Running SI locally can be done in a variety of ways, but this abbreviated section will focus on a single method for
+getting your environment ready to run the stack.
+For more information regarding environment setup and running SI locally, see [DEVELOPING](DEVELOPING.md).
 
 ### Choose a Supported Platform
 
-Using the flake requires using one of the following platforms:
+Let's start by choosing an officially supported platform.
 
-
-| Architecture    | Operating System                                                                           |
-|-----------------|--------------------------------------------------------------------------------------------|
-| x86_64 (amd64)  | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
-| aarch64 (arm64) | macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
+| Architecture    | Operating System                                                                     |
+|-----------------|--------------------------------------------------------------------------------------|
+| x86_64 (amd64)  | macOS, Linux, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
+| aarch64 (arm64) | macOS, Linux, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
 
 **Platform Notes:**
-* Using macOS `aarch64 (arm64)` requires on Rosetta 2 (install it with `softwareupdate --install-rosetta`)
-* [NixOS](https://nixos.org/) will not likely work at this time (though, this may be desired in the future)
+* Using macOS aarch64 (arm64) requires Rosetta 2 to be installed (install it with `softwareupdate --install-rosetta`)
+* [NixOS](https://nixos.org/) and Linux with MUSL instead of GNU will not likely work at this time (though, both may be desired in the future)
 * [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or configured to work with `nix`
-* Linux with MUSL instead of GNU *might* work, but it is untested
+* Systemd may need to be enabled on WSL2
 
-### Installation
+### Install Dependencies
 
-Once a platform is chosen, we can install the dependencies for using the flake.
+Install dependencies on your chosen platform.
 
-1) `nix` with flakes enabled
-2) `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
-3) (optional, but recommended) [`direnv`](https://direnv.net) version `>= 2.30` hooked into your shell
+- **1)** `nix` with flakes enabled
+- **2)** `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
+- **3a)** [`direnv`](https://direnv.net) version `>= 2.30` installed
+- **3b)** [`direnv` hooked into your shell](https://direnv.net/docs/hook.html)
 
-For `nix`, we highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
-official installer; one reason being that the former will enable flakes by default.
+For `nix`, we highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer.
 
-For `docker`, the Docker Desktop version corresponding to your native architecture should be used on macOS.
+For `docker`, the Docker Desktop version corresponding to your native architecture should be used.
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
-Native Linux or Linux VM users might be able to use `podman` a drop in replacement for `docker`, though this is untested.
 
-For `direnv`, we recommend using it for both ease of running commands and editor integration.
-You can install it with [your package manager of choice](https://direnv.net/docs/installation.html), but at least
-version `2.30.x` must be used for the flake integration to work properly.
-If you're unsure which installation method to use or your package manager does not provide a compatible version, you
-can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
+For `direnv`, you can install it with [your package manager of choice](https://direnv.net/docs/installation.html).
+However, if you're unsure which installation method to use or your package manager does not provide a compatible version,
+you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 
-### Running Commands
+> We recommend using [the upstream docs for hooking `direnv` into your shell](https://direnv.net/docs/hook.html), but here is an example on how to do it
+> on a system where `zsh` is the default shell.
+> In this example, the following is added to the end of `~/.zshrc`.
+> 
+> ```zsh
+> if [ $(command -v direnv) ]; then
+>    eval "$(direnv hook zsh)"
+> fi
+> ```
+
+### Enter the Repository Directory
 
 All commands need to be run from the `nix` environment.
-If `direnv` is installed and [hooked into your shell](https://direnv.net/docs/hook.html), you can `cd` into
+Since `direnv` is installed _and_ hooked into your shell, you can `cd` into
 the repository and `nix` will boostrap the environment for you using the flake.
-Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
-execute a command, or use the environment in whatever way your prefer.
 
-### Configuration
+_Please note: you may notice a large download of dependencies when entering the repository for the first time._
 
-You must authenticate to the AWS console and Docker Hub to ensure System Initiative will work properly.
+### Configure Providers
 
-AWS authentication is required so SI can deploy and manage your infrastructure. Run the following command:
+Configuring providers is optional for using SI, but may be required depending on the types of assets used.
+
+#### AWS
+
+If you are using AWS assets, authentication with the `aws` CLI is required for SI to deploy and manage your infrastructure.
 
 ```bash
 aws configure
 ```
 
-Docker Hub authentication is not strictly needed if you only access public docker images, but to avoid being rate-limited when qualifying images, you should probably authenticate with the following command:
+#### Docker Hub
+
+Docker Hub authentication is not strictly needed if you only access public docker images, but to avoid being rate-limited when qualifying images, we recommend authenticating with the `docker` CLI.
 
 ```bash
 docker login
 ```
 
-## Running
+### Running the Stack
 
-You must make sure these docker images are running: `postgresql`, `nats`, `opentelemetry`. To do this run the following command:
+We use [**buck2**](https://github.com/facebook/buck2) to run the stack, run and build individual services and libraries, perform lints and tests, etc.
 
-*If you have any of these services running locally you should stop them to avoid ports conflicting*
+_Before continuing, you should stop any locally running services to avoid conflicting ports with the stack.
+Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Jaeger and OpenTelemetry._
 
-*Note: This will delete all of the SI's docker image database's content*
-
-```bash
-make prepare
-```
-
-Wait for the docker images to be pulled and executed before proceeding.
-
-System Initiative requires 5 processes running to properly execute: `veritech`, `council`, `pinga`, `sdf` and `web`.
-
-*If you can't or don't want to run the processes directly, you can use Nix to encapsulate them. Check [DEVELOPING](./DEVELOPING.md) for more information.*
-
-*Check the section [Architecture](#architecture) for more details about each process.*
-
-Run these in order, each in a new terminal session:
+Check if you are ready to run the stack before continuing.
 
 ```bash
-make run//bin/veritech
+buck2 run dev:healthcheck
 ```
 
-Wait for `veritech` to finish initializing, otherwise the system might behave weirdly, as custom functions execution will fail.
+Once ready, we can build relevant services and run the entire stack locally.
 
-The following should be started in order, but the previous doesn't need to be fully initialized for the subsequent to start.
+_Please note: if you have run SI before, the following command will delete all contents of the database.
+[Reach out to us in our Discord server if you have any questions](https://discord.com/invite/system-init)._
 
 ```bash
-make run//bin/council
+buck2 run dev:up
 ```
+
+Once Tilt starts, you can check on the status of all services by accessing the UI through the given port on your local host (e.g. [http://localhost:10350/](http://localhost:10350/)).
+Every service should eventually have a green checkmark next to them, which ensures that they are in "ready" states.
+
+_Please note: database migrations may take some time to complete._
+
+If you would like to learn more on what's running, check out the [Architecture](#architecture) section.
+
+### Troubleshooting in Tilt
+
+If some services failed to start, you can restart them on the Tilt dashboard.
+
+- A backend service fails (e.g. `sdf`): restart them in the following order: `veritech`, `council`, `pinga`, `sdf`
+- A frontend service fails (e.g. `web`): restart the service individually
+- A dependent service fails (e.g. PostgreSQL): tear down the stack and restart
+
+### Tearing Down the Stack
+
+The following command will stop all running services and containers.
+It will also remove the containers and, consequentially, the data held in them.
 
 ```bash
-make run//bin/pinga
+buck2 run dev:down
 ```
+
+Alternatively, if you wish to keep your data for later use, you can stop the containers without removing them.
 
 ```bash
-make run//bin/sdf
+buck2 run dev:stop
 ```
-
-```bash
-make run//app/web
-```
-
-After everything is initialized, access it through: http://localhost:8080
-
-*Note: initial compilation times may be long, depending on the machine used*
-
-## Tearing Down the Stack
-
-Stop all `make` targets and run the following command:
-
-```bash
-make down
-```
-
-The above target will not only stop all running containers, but will remove them as well.
 
 ## Additional Information For Environment Setup and Running the Stack
 
@@ -159,19 +161,24 @@ There are other components and paradigms that aren't displayed, but this diagram
 └──────────┘   └──────────────────┘   └─────────┘      └───────────────────┘
 ```
 
-### Definitions for Architectural Components
+#### Internal Definitions
 
 - **[web](./app/web/):** the primary frontend web application for SI
 - **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
 - **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
 - **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats`
 - **[council](./bin/council/):** the DependentValuesUpdate job's synchronization service, used by `dal` via `nats` to avoid race conditions when updating attribute values
-- **[postgres](https://postgresql.org):** the database for storing SI data
-- **[nats](https://nats.io):** the messaging system used everywhere in SI, by `pinga`, `council`, `dal` and `sdf` (for multicast websocket events)
 - **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments
 - **[deadpool-cyclone](./lib/deadpool-cyclone/):** a library used for managing a pool of `cyclone` instances of varying "types" (i.e. HTTP, UDS)
 - **[cyclone](./bin/cyclone/):** the manager for a secure execution runtime environment (e.g. `lang-js`)
 - **[lang-js](./bin/lang-js/):** a secure-ish (don't trust it) execution runtime environment for JS functions
+
+#### External Definitions
+
+- **[postgres](https://postgresql.org):** the database for storing SI data
+- **[nats](https://nats.io):** the messaging system used everywhere in SI, by `pinga`, `council`, `dal` and `sdf` (for multicast websocket events)
+
+#### Additional Notes
 
 It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
 While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.
