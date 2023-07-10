@@ -36,6 +36,7 @@ pub struct GetVariantDefResponse {
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
     pub types: String,
+    pub is_locked: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -57,6 +58,7 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             component_type: *def.component_type(),
             handler: "".to_string(), //TODO @stack72
             types: "".to_string(),
+            is_locked: false,
         }
     }
 }
@@ -76,14 +78,15 @@ pub async fn get_variant_def(
             request.id,
         ))?;
 
-    let variant_id = variant_def.existing_default_schema_variant_id(&ctx).await?;
-
+    let variant_id = variant_def.schema_variant_id().copied();
+    let is_locked = !variant_def.list_components(&ctx).await?.is_empty();
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
     )?;
 
     let mut response: GetVariantDefResponse = variant_def.clone().into();
     response.default_variant_id = variant_id;
+    response.is_locked = is_locked;
 
     response.code =
         asset_func
