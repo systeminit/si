@@ -9,6 +9,7 @@ pub mod error;
 pub mod index_and_entry;
 pub mod lamport_clock;
 pub mod schema;
+pub mod function;
 pub mod vector_clock;
 pub mod workspace;
 
@@ -20,12 +21,12 @@ pub mod workspace;
 // When you merge, we automatically rebase you, and it has to be a fast forward.
 //
 // TODO
-// - Add functions as dependencies of schemas, so that we can see things work when
+// X Add functions as dependencies of schemas, so that we can see things work when
 //   there are many more objects. I think this will be straightforward, if a pain
 //   because of all the boilerplate. :)
-// - Add the ability to 'copy' a schema, copying all its edges, but giving it a new id.
+// X Add the ability to 'copy' a schema, copying all its edges, but giving it a new id.
 //   This would simulate creating a new 'schema variant'
-// - Check that when you update a function that's used in both schemas, it updates in both
+// X Check that when you update a function that's used in both schemas, it updates in both
 //   places. This should happen already from the rebase function. If you don't want to be
 //   automatically updated when a new function updates, you have to 'copy' the function
 //   and start a new lineage, just like a schema.

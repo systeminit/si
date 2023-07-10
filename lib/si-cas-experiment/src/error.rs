@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{change_set::ChangeSetPk, dag::Conflict, schema::SchemaPk, workspace::WorkspacePk};
+use crate::{change_set::ChangeSetPk, dag::Conflict, schema::SchemaPk, workspace::WorkspacePk, function::FunctionPk};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum DagError {
@@ -8,6 +8,8 @@ pub enum DagError {
     WorkspaceNotFound(WorkspacePk),
     #[error("the schema was not found {0}")]
     SchemaNotFound(SchemaPk),
+    #[error("the function was not found {0}")]
+    FunctionNotFound(FunctionPk),
     #[error("the change set was not found {0}")]
     ChangeSetNotFound(ChangeSetPk),
     #[error("the change set name was not found {0}")]

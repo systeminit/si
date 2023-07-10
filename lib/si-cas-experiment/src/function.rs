@@ -1,31 +1,31 @@
 use ulid::Ulid;
 
-use crate::{ContentHash, OriginId};
+use crate::{OriginId, ContentHash};
 
-pub type SchemaId = Ulid;
-pub type SchemaPk = Ulid;
+pub type FunctionId = Ulid;
+pub type FunctionPk = Ulid;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Schema {
-    pub id: SchemaId,
-    pub pk: SchemaPk,
+pub struct Function {
+    pub id: FunctionId,
+    pub pk: FunctionPk,
     pub name: String,
     pub origin_id: OriginId,
     pub content_hash: ContentHash,
 }
 
-impl Schema {
-    pub fn new(name: impl Into<String>) -> Schema {
+impl Function {
+    pub fn new(name: impl Into<String>) -> Function {
         let name = name.into();
-        let id = SchemaId::new();
-        let pk = SchemaPk::new();
+        let id = FunctionId::new();
+        let pk = FunctionPk::new();
         let origin_id = OriginId::new();
         let mut hasher = blake3::Hasher::new();
         hasher.update(name.as_bytes());
         hasher.update(origin_id.to_string().as_bytes());
         let content_hash = hasher.finalize();
 
-        Schema {
+        Function {
             name,
             id,
             pk,
@@ -33,30 +33,31 @@ impl Schema {
             content_hash,
         }
     }
-    pub fn create_copy(schema:Schema) -> Schema {
-        let name = schema.name;
-        let id = SchemaId::new();
-        let pk = SchemaPk::new();
-        let origin_id = schema.origin_id;
+    pub fn create_copy(func:Function) -> Function{
+        let name = func.name;
+        let id = FunctionId::new();
+        let pk = FunctionPk::new();
+        let origin_id = func.origin_id;
         let mut hasher = blake3::Hasher::new();
         hasher.update(name.as_bytes());
         hasher.update(origin_id.to_string().as_bytes());
         let content_hash = hasher.finalize();
 
-        Schema {
+        Function {
             name,
             id,
             pk,
             origin_id,
-            content_hash,
+            content_hash
         }
     }
 
-    pub fn id(&self) -> SchemaId {
+    pub fn id(&self) -> FunctionId {
         self.id
     }
 
-    pub fn pk(&self) -> SchemaPk {
+    pub fn pk(&self) -> FunctionPk {
         self.pk
     }
 }
+
