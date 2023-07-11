@@ -24,69 +24,93 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, toRef, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
 import { Compartment, EditorState } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { ViewUpdate, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
+import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
+import { json as CodemirrorJsonLang } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import { createTypescriptSource } from "@/utils/typescriptLinter";
 
-const props = defineProps<{
-  modelValue: string;
-  disabled?: boolean;
-  json?: boolean;
-  typescript?: string | null;
-  noLint?: boolean;
-  noVim?: boolean;
-}>();
+const props = defineProps({
+  modelValue: { type: String, required: true },
+  disabled: { type: Boolean },
+  json: Boolean,
+  typescript: { type: String },
+  noLint: Boolean,
+  noVim: Boolean,
+  debounceUpdate: { type: Boolean, default: true },
+});
 
 const emit = defineEmits<{
-  (e: "update:modelValue", v: string): void;
-  (e: "change", v: string): void;
-  (e: "vimModeWrite"): void;
+  "update:modelValue": [v: string];
+  change: [v: string];
+  explicitSave: [];
 }>();
 
-const editorMount = ref();
-let view: EditorView;
+const editorMount = ref(); // div (template ref) where we will mount the editor
+let view: EditorView; // instance of the CodeMirror editor
 
-const modelValue = toRef(props, "modelValue", "");
-const disabled = toRef(props, "disabled", false);
-const useJson = toRef(props, "json", false);
-const typescript = toRef(props, "typescript", null);
-const currentCode = ref<string>(modelValue.value ?? "");
+// our local copy of code
+const draftValue = ref(props.modelValue || "");
 
+// if v-model value changes, update our local draft
 watch(
-  () => modelValue.value,
-  async (currentMv) => {
-    currentCode.value = currentMv ?? "";
-    const currentDoc = view?.state.doc.toString();
-
-    // We only care about this if the code changes from outside the editor itself
-    // and we didn't just switch to a new doc. This condition prevents a cycle
-    // with the updateListener
-    if (currentDoc === currentCode.value || typeof view === "undefined") {
-      return;
+  () => props.modelValue,
+  () => {
+    if (draftValue.value !== props.modelValue) {
+      draftValue.value = props.modelValue || "";
     }
-
-    const updateTransaction = view.state.update({
-      changes: {
-        from: 0,
-        to: view.state.doc.length,
-        insert: currentCode.value,
-      },
-    });
-    view.update([updateTransaction]);
   },
 );
 
+// when our draft value changes, make sure editor is in sync, and emit (debounced) update event
+watch(
+  () => draftValue.value,
+  () => {
+    const currentEditorValue = view?.state.doc.toString();
+
+    // update the code in the code mirror instance value (if it's not matching)
+    if (view && currentEditorValue !== draftValue.value) {
+      view.update([
+        view.state.update({
+          changes: {
+            from: 0,
+            to: view.state.doc.length,
+            insert: draftValue.value,
+          },
+        }),
+      ]);
+    }
+
+    if (props.debounceUpdate) debouncedEmitUpdatedValue();
+    else emitUpdatedValue();
+  },
+);
+
+// when editor value changes, update our draft value
+function onEditorValueUpdated(update: ViewUpdate) {
+  if (!update.docChanged) return;
+  const newEditorValue = update.view.state.doc.toString();
+  if (newEditorValue !== draftValue.value) {
+    draftValue.value = newEditorValue;
+  }
+}
+function emitUpdatedValue() {
+  emit("update:modelValue", draftValue.value);
+  emit("change", draftValue.value);
+}
+const debouncedEmitUpdatedValue = _.debounce(emitUpdatedValue, 3000);
+
+// set up all compartments
 const language = new Compartment();
 const readOnly = new Compartment();
 const themeCompartment = new Compartment();
@@ -95,17 +119,18 @@ const autocompleteCompartment = new Compartment();
 const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
 
+// Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
   appTheme.value === "dark" ? gruvboxDark : basicLight,
 );
 
-// Vim style: https://github.com/replit/codemirror-vim/blob/d7d9ec2ab438571f500dfd21b37da733fdba47fe/src/index.ts#L25-L42
 const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
   return EditorView.theme({
     "&": { height: "100%" },
     ".cm-scroller": { overflow: "auto" },
+    // Vim style: https://github.com/replit/codemirror-vim/blob/d7d9ec2ab438571f500dfd21b37da733fdba47fe/src/index.ts#L25-L42
     ".cm-vim-panel, .cm-vim-panel input": {
       padding: "0px 10px",
       fontSize: "14px",
@@ -124,34 +149,30 @@ watch(codeMirrorTheme, () => {
   });
 });
 
-// TODO(nick,zack): put the vim mode logic into a library (maybe?)
+// VIM MODE ////////////////////////////////////////////////////////////////////////////////////////
 const VIM_MODE_STORAGE_KEY = "SI:VIM_MODE";
-const vimEnabledDefault = (): boolean => {
-  return storage.getItem(VIM_MODE_STORAGE_KEY) === "true";
-};
-const vimEnabled = ref(!props.noVim && vimEnabledDefault());
+const vimEnabled = ref(
+  !props.noVim && storage.getItem(VIM_MODE_STORAGE_KEY) === "true",
+);
 watch(vimEnabled, (useVim) => {
   storage.setItem(VIM_MODE_STORAGE_KEY, useVim ? "true" : "false");
   view.dispatch({
     effects: [vimCompartment.reconfigure(useVim ? vim({ status: true }) : [])],
   });
 });
+// Emit when the user writes (i.e. ":w") in vim mode.
+Vim.defineEx("write", "w", onLocalSave);
 
+// Initialization /////////////////////////////////////////////////////////////////////////////////
 const mountEditor = async () => {
-  currentCode.value = modelValue.value ?? "";
-  const updateListener = EditorView.updateListener.of((update) => {
-    if (!update.docChanged) return;
-    const updatedCode = update.view.state.doc.toString();
-    emit("update:modelValue", updatedCode);
-    emit("change", updatedCode);
-  });
+  if (!editorMount.value) return;
 
   const extensions = [basicSetup];
 
-  if (typescript.value) {
+  if (props.typescript) {
     if (!props.noLint) {
       const { lintSource, autocomplete } = await createTypescriptSource(
-        typescript.value,
+        props.typescript,
       );
 
       extensions.push(autocompleteCompartment.of(autocomplete));
@@ -159,30 +180,29 @@ const mountEditor = async () => {
       extensions.push(lintGutter());
     }
 
-    extensions.push(language.of(javascript()));
+    extensions.push(language.of(CodemirrorJsLang()));
   }
 
-  if (useJson.value) {
-    extensions.push(language.of(json()));
+  if (props.json) {
+    extensions.push(language.of(CodemirrorJsonLang()));
   }
 
   const editorState = EditorState.create({
-    doc: currentCode.value,
+    doc: draftValue.value,
     extensions: extensions.concat([
-      keymap.of([indentWithTab]),
       themeCompartment.of(codeMirrorTheme.value),
       styleExtensionCompartment.of(styleExtension.value),
-      keymap.of([indentWithTab]),
-      readOnly.of(EditorState.readOnly.of(disabled.value)),
+      keymap.of([
+        indentWithTab,
+        { key: "ctrl-s", run: onLocalSave },
+        { key: "cmd-s", run: onLocalSave },
+      ]),
+
+      readOnly.of(EditorState.readOnly.of(props.disabled)),
       vimCompartment.of(vimEnabled.value ? vim({ status: true }) : []),
-      updateListener,
+      EditorView.updateListener.of(onEditorValueUpdated),
       EditorView.lineWrapping,
     ]),
-  });
-
-  // Emit when the user writes (i.e. ":w") in vim mode.
-  Vim.defineEx("write", "w", () => {
-    emit("vimModeWrite");
   });
 
   view = new EditorView({
@@ -191,11 +211,13 @@ const mountEditor = async () => {
   });
 };
 
-onMounted(() => {
-  if (editorMount.value) {
-    mountEditor();
-  }
-});
+watch(editorMount, mountEditor, { immediate: true });
+
+function onLocalSave() {
+  emitUpdatedValue();
+  emit("explicitSave");
+  return true; // codemirror needs this when used as a "command"
+}
 </script>
 
 <style>

@@ -128,7 +128,6 @@ import CodeEditor from "./CodeEditor.vue";
 const props = defineProps<{
   schemaVariantId?: string;
   assetId?: string;
-  attachExisting: boolean;
 }>();
 
 const funcStore = useFuncStore();

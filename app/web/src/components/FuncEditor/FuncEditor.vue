@@ -20,7 +20,7 @@
         :typescript="selectedFuncDetails?.types"
         :disabled="changeSetsStore.headSelected"
         @change="updateFuncCode"
-        @vim-mode-write="execFunc"
+        @explicitSave="execFunc"
       />
     </template>
     <ErrorMessage
