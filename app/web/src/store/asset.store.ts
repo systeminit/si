@@ -274,7 +274,7 @@ export const useAssetStore = () => {
 
         async EXEC_ASSET(assetId: AssetId) {
           return new ApiRequest<
-            { success: true; installedPkgAssets: InstalledPkgAssetView[] },
+            { success: true; schemaVariantId: string },
             Visibility & { id: AssetId }
           >({
             method: "post",

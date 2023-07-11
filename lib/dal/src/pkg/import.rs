@@ -37,8 +37,10 @@ type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
 #[derive(Clone, Debug, Default)]
 pub struct ImportOptions {
     pub schemas: Option<Vec<String>>,
-    pub no_definitions: bool,
     pub skip_import_funcs: Option<FuncMap>,
+    /// If set to `true`, the importer will install the assets from the module
+    /// but will not make a record of the install as an "installed module".
+    pub no_record: bool,
 }
 
 pub async fn import_pkg_from_pkg(
@@ -46,7 +48,7 @@ pub async fn import_pkg_from_pkg(
     pkg: &SiPkg,
     file_name: &str,
     options: Option<ImportOptions>,
-) -> PkgResult<InstalledPkgId> {
+) -> PkgResult<(Option<InstalledPkgId>, Vec<SchemaVariantId>)> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
@@ -57,9 +59,18 @@ pub async fn import_pkg_from_pkg(
         return Err(PkgError::PackageAlreadyInstalled(root_hash));
     }
 
-    // TODO: store pkg.metadata()?.name() instead of file_name, but we'll need to also store the file name
-    // unless we stop using the .sipkg file completely after install
-    let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
+    // TODO: store pkg.metadata()?.name() instead of file_name, but we'll need
+    // to also store the file name unless we stop using the .sipkg file
+    // completely after install
+    let installed_pkg_id = if options.no_record {
+        Some(
+            *InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string())
+                .await?
+                .id(),
+        )
+    } else {
+        None
+    };
 
     let mut funcs_by_unique_id = FuncMap::new();
     for func_spec in pkg.funcs()? {
@@ -75,26 +86,28 @@ pub async fn import_pkg_from_pkg(
             .as_ref()
             .map(|skip_funcs| skip_funcs.get(&unique_id))
         {
-            InstalledPkgAsset::new(
-                ctx,
-                InstalledPkgAssetTyped::new_for_func(
-                    *func.id(),
-                    *installed_pkg.id(),
-                    func_spec.hash().to_string(),
-                ),
-            )
-            .await?;
+            if let Some(installed_pkg_id) = installed_pkg_id {
+                InstalledPkgAsset::new(
+                    ctx,
+                    InstalledPkgAssetTyped::new_for_func(
+                        *func.id(),
+                        installed_pkg_id,
+                        func_spec.hash().to_string(),
+                    ),
+                )
+                .await?;
+            }
 
             func.to_owned()
         } else {
-            create_func(ctx, func_spec, *installed_pkg.id()).await?
+            create_func(ctx, func_spec, installed_pkg_id).await?
         };
 
         funcs_by_unique_id.insert(unique_id, func);
     }
 
-    // TODO: gather up a record of what wasn't installed and why (the id of the package that
-    // already contained the schema or variant)
+    let mut installed_schema_variant_ids = vec![];
+
     for schema_spec in pkg.schemas()? {
         match &options.schemas {
             None => {}
@@ -111,10 +124,13 @@ pub async fn import_pkg_from_pkg(
             file_name
         );
 
-        create_schema(ctx, schema_spec, *installed_pkg.id(), &funcs_by_unique_id).await?;
+        let (_, schema_variant_ids) =
+            create_schema(ctx, schema_spec, installed_pkg_id, &funcs_by_unique_id).await?;
+
+        installed_schema_variant_ids.extend(schema_variant_ids);
     }
 
-    Ok(*installed_pkg.id())
+    Ok((installed_pkg_id, installed_schema_variant_ids))
 }
 
 pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> PkgResult<SiPkg> {
@@ -130,7 +146,7 @@ pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Pk
 async fn create_func(
     ctx: &DalContext,
     func_spec: SiPkgFunc<'_>,
-    installed_pkg_id: InstalledPkgId,
+    installed_pkg_id: Option<InstalledPkgId>,
 ) -> PkgResult<Func> {
     let hash = func_spec.hash().to_string();
     let existing_func =
@@ -184,11 +200,13 @@ async fn create_func(
         }
     };
 
-    InstalledPkgAsset::new(
-        ctx,
-        InstalledPkgAssetTyped::new_for_func(*func.id(), installed_pkg_id, hash),
-    )
-    .await?;
+    if let Some(installed_pkg_id) = installed_pkg_id {
+        InstalledPkgAsset::new(
+            ctx,
+            InstalledPkgAssetTyped::new_for_func(*func.id(), installed_pkg_id, hash),
+        )
+        .await?;
+    }
 
     Ok(func)
 }
@@ -196,9 +214,9 @@ async fn create_func(
 async fn create_schema(
     ctx: &DalContext,
     schema_spec: SiPkgSchema<'_>,
-    installed_pkg_id: InstalledPkgId,
+    installed_pkg_id: Option<InstalledPkgId>,
     func_map: &FuncMap,
-) -> PkgResult<()> {
+) -> PkgResult<(SchemaId, Vec<SchemaVariantId>)> {
     let hash = schema_spec.hash().to_string();
     let existing_schema =
         InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::Schema, &hash)
@@ -232,17 +250,21 @@ async fn create_schema(
 
     // Even if the asset is already installed, we write a record of the asset installation so that
     // we can track the installed packages that share schemas.
-    InstalledPkgAsset::new(
-        ctx,
-        InstalledPkgAssetTyped::new_for_schema(*schema.id(), installed_pkg_id, hash),
-    )
-    .await?;
+    if let Some(installed_pkg_id) = installed_pkg_id {
+        InstalledPkgAsset::new(
+            ctx,
+            InstalledPkgAssetTyped::new_for_schema(*schema.id(), installed_pkg_id, hash),
+        )
+        .await?;
+    }
 
+    let mut installed_schema_variant_ids = vec![];
     for variant_spec in schema_spec.variants()? {
         let func_unique_id = variant_spec.func_unique_id();
         let schema_variant_id =
             create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map)
                 .await?;
+        installed_schema_variant_ids.push(schema_variant_id);
 
         let asset_func = func_map
             .get(&func_unique_id)
@@ -258,13 +280,13 @@ async fn create_schema(
         .await?;
     }
 
-    Ok(())
+    Ok((*schema.id(), installed_schema_variant_ids))
 }
 
 async fn create_schema_variant_definition(
     ctx: &DalContext,
     schema_spec: SiPkgSchema<'_>,
-    installed_pkg_id: InstalledPkgId,
+    installed_pkg_id: Option<InstalledPkgId>,
     schema_variant_id: SchemaVariantId,
     asset_func: &Func,
 ) -> PkgResult<()> {
@@ -323,15 +345,17 @@ async fn create_schema_variant_definition(
         }
     };
 
-    InstalledPkgAsset::new(
-        ctx,
-        InstalledPkgAssetTyped::new_for_schema_variant_definition(
-            *definition.id(),
-            installed_pkg_id,
-            hash,
-        ),
-    )
-    .await?;
+    if let Some(installed_pkg_id) = installed_pkg_id {
+        InstalledPkgAsset::new(
+            ctx,
+            InstalledPkgAssetTyped::new_for_schema_variant_definition(
+                *definition.id(),
+                installed_pkg_id,
+                hash,
+            ),
+        )
+        .await?;
+    }
 
     Ok(())
 }
@@ -585,7 +609,7 @@ async fn create_schema_variant(
     ctx: &DalContext,
     schema: &mut Schema,
     variant_spec: SiPkgSchemaVariant<'_>,
-    installed_pkg_id: InstalledPkgId,
+    installed_pkg_id: Option<InstalledPkgId>,
     func_map: &FuncMap,
 ) -> PkgResult<SchemaVariantId> {
     let hash = variant_spec.hash().to_string();
@@ -749,11 +773,13 @@ async fn create_schema_variant(
         }
     };
 
-    InstalledPkgAsset::new(
-        ctx,
-        InstalledPkgAssetTyped::new_for_schema_variant(variant_id, installed_pkg_id, hash),
-    )
-    .await?;
+    if let Some(installed_pkg_id) = installed_pkg_id {
+        InstalledPkgAsset::new(
+            ctx,
+            InstalledPkgAssetTyped::new_for_schema_variant(variant_id, installed_pkg_id, hash),
+        )
+        .await?;
+    }
 
     Ok(variant_id)
 }

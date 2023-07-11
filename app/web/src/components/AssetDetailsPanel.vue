@@ -134,6 +134,7 @@ import {
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { nilId } from "@/utils/nilId";
 import ColorPicker from "./ColorPicker.vue";
 
 defineProps<{
@@ -168,15 +169,13 @@ const executeAsset = async () => {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value.open();
-      for (const ipa of result.result.data.installedPkgAssets) {
-        if (ipa.assetKind === "schemaVariant") {
-          // there should only be one sv for an exec'd asset
-          assetStore.setSchemaVariantIdForAsset(
-            assetStore.selectedAssetId,
-            ipa.assetId,
-          );
-          await funcStore.FETCH_INPUT_SOURCE_LIST(ipa.assetId); // a new asset means new input sources
-        }
+      const { schemaVariantId } = result.result.data;
+      if (schemaVariantId !== nilId()) {
+        assetStore.setSchemaVariantIdForAsset(
+          assetStore.selectedAssetId,
+          schemaVariantId,
+        );
+        await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
       }
     }
   }
