@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="component"
+    ref="nodeRef"
     class="component-outline-node"
     :data-component-id="componentId"
   >
@@ -97,17 +98,25 @@
             "
           >
             <template v-if="component.changeStatus !== 'deleted'">
-              <StatusIndicatorIcon
+              <StatusIconWithPopover
                 type="confirmation"
                 :status="confirmationStatus"
                 size="md"
-              />
+                :popoverPosition="popoverPosition"
+              >
+                Confirmation Data
+              </StatusIconWithPopover>
+
               <div class="bg-neutral-500 w-[1px] h-4 mx-xs" />
-              <StatusIndicatorIcon
+
+              <StatusIconWithPopover
                 type="qualification"
                 :status="qualificationStatus"
                 size="md"
-              />
+                :popoverPosition="popoverPosition"
+              >
+                Qualification Data
+              </StatusIconWithPopover>
             </template>
 
             <!-- change status -->
@@ -133,7 +142,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, ref } from "vue";
+import { computed, PropType, ref, watch, onBeforeUnmount } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
@@ -141,6 +150,7 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
+import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 
@@ -152,6 +162,8 @@ const props = defineProps({
 
 const rootCtx = useComponentOutlineContext2();
 const { filterModeActive } = rootCtx;
+
+const nodeRef = ref<HTMLElement>();
 
 const isOpen = ref(true);
 
@@ -211,5 +223,33 @@ const parentBreadcrumbsText = computed(() => {
     parentIds,
     (parentId) => componentsStore.componentsById[parentId]?.displayName,
   ).join(" > ");
+});
+
+// POPOVER CODE
+const popoverPosition = ref<{ x: number; y: number } | undefined>();
+const popoverResize = _.debounce(() => {
+  if (!nodeRef.value) {
+    popoverPosition.value = undefined;
+    return;
+  }
+
+  const nodeRect = nodeRef.value.getBoundingClientRect();
+  popoverPosition.value = {
+    x: Math.floor(nodeRect.right),
+    y: Math.floor(nodeRect.top),
+  };
+}, 50);
+const resizeObserver = new ResizeObserver(popoverResize);
+
+watch(nodeRef, () => {
+  if (nodeRef.value) {
+    resizeObserver.observe(nodeRef.value);
+  } else {
+    resizeObserver.disconnect();
+  }
+});
+
+onBeforeUnmount(() => {
+  resizeObserver.disconnect();
 });
 </script>
