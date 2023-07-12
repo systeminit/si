@@ -35,6 +35,10 @@ export { default as DropdownMenuItem } from "./menus/DropdownMenuItem.vue";
 export { default as Modal } from "./modals/Modal.vue";
 export * from "./modals/modal_utils";
 
+// ./panels
+export { default as ResizablePanel } from "./panels/ResizablePanel.vue";
+export { default as PanelResizingHandle } from "./panels/PanelResizingHandle.vue";
+
 // ./tabs
 export { default as TabGroup } from "./tabs/TabGroup.vue";
 export { default as TabGroupItem } from "./tabs/TabGroupItem.vue";

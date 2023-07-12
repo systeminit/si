@@ -3,7 +3,7 @@
     v-if="fixBatches.length === 0"
     :class="
       clsx(
-        'm-6 p-3 border rounded-md h-64 flex items-center font-bold justify-around text-center',
+        'm-6 p-3 border rounded-md flex items-center font-bold justify-around text-center',
         themeClasses('border-neutral-300', 'border-neutral-600'),
         themeClasses('text-neutral-300', 'text-neutral-600'),
       )

@@ -1,12 +1,12 @@
 <template>
-  <Disclosure v-slot="{ open }" :as="as" :defaultOpen="defaultOpen">
-    <DisclosureButton
+  <div>
+    <div
       :class="
         clsx(
           buttonClasses,
-          'flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center',
+          'flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center cursor-pointer',
           !hideBottomBorder &&
-            !(hideBottomBorderWhenOpen && open) && [
+            !(hideBottomBorderWhenOpen && isOpen) && [
               'border-b',
               themeClasses('border-neutral-200', 'border-neutral-600'),
             ],
@@ -17,17 +17,18 @@
           }[textSize],
         )
       "
+      @click="toggleIsOpen"
     >
       <slot name="prefix" />
       <Icon
-        :name="open ? 'chevron--down' : 'chevron--right'"
+        :name="isOpen ? 'chevron--down' : 'chevron--right'"
         size="sm"
         class="mr-1.5 dark:text-white flex-shrink-0 block"
       />
 
       <slot name="label" />
       <span
-        v-if="labelSlot === undefined || showLabelAndSlot"
+        v-if="!$slots.label || showLabelAndSlot"
         class="whitespace-nowrap overflow-hidden overflow-ellipsis"
       >
         {{ label }}
@@ -36,16 +37,16 @@
       <div v-if="$slots.right" class="flex-shrink-0">
         <slot name="right" />
       </div>
-    </DisclosureButton>
-    <DisclosurePanel :as="contentAs">
+    </div>
+
+    <div v-if="isOpen" :class="contentClasses">
       <slot />
-    </DisclosurePanel>
-  </Disclosure>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, useSlots, PropType } from "vue";
-import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
+import { PropType, ref } from "vue";
 import clsx from "clsx";
 import { Icon, themeClasses } from "..";
 
@@ -55,6 +56,7 @@ const props = defineProps({
   as: { type: String },
   contentAs: { type: String },
   buttonClasses: { type: String, default: "" },
+  contentClasses: { type: String },
   defaultOpen: { type: Boolean, default: true },
   textSize: {
     type: String as PropType<"sm" | "md" | "lg">,
@@ -64,6 +66,11 @@ const props = defineProps({
   hideBottomBorder: { type: Boolean, default: false },
 });
 
-const slots = useSlots();
-const labelSlot = computed(() => slots.label?.());
+const isOpen = ref(props.defaultOpen);
+
+function toggleIsOpen() {
+  isOpen.value = !isOpen.value;
+}
+
+defineExpose({ isOpen });
 </script>
