@@ -1,6 +1,10 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel rememberSizeKey="changeset-and-asset" side="left" :minSize="250">
+  <ResizablePanel
+    rememberSizeKey="changeset-and-asset"
+    side="left"
+    :minSize="250"
+  >
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!isViewMode" />
       <div class="grow relative">
@@ -21,7 +25,7 @@
         </TabGroup>
       </div>
     </div>
-  </SiPanel>
+  </ResizablePanel>
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
     <div
@@ -58,7 +62,7 @@
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
 
-  <SiPanel
+  <ResizablePanel
     rememberSizeKey="details-panel"
     side="right"
     :defaultSize="380"
@@ -92,7 +96,7 @@
         <template v-else>Click something on the diagram to select it.</template>
       </div>
     </template>
-  </SiPanel>
+  </ResizablePanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
     <Stack spacing="sm">
@@ -160,6 +164,7 @@ import {
   TabGroupItem,
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  ResizablePanel,
 } from "@si/vue-lib/design-system";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
@@ -169,7 +174,6 @@ import {
   useComponentsStore,
 } from "@/store/components.store";
 
-import SiPanel from "@/components/SiPanel.vue";
 import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";

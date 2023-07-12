@@ -1,6 +1,6 @@
 <template>
   <div
-    ref="panel"
+    ref="panelRef"
     :class="
       clsx(
         'si-panel',
@@ -23,7 +23,7 @@
       }),
     }"
   >
-    <SiPanelResizer
+    <PanelResizingHandle
       v-if="resizeable"
       class="si-panel__resizer"
       :panelSide="side"
@@ -32,7 +32,42 @@
       @resize-reset="resetSize"
     />
     <div class="si-panel__inner absolute w-full h-full">
+      <!-- most uses will just have a single child -->
       <slot />
+
+      <!-- but here we give the option for 2 resizable child sections within -->
+      <div
+        v-if="$slots.subpanel1"
+        :style="{
+          height: disableSubpanelResizing
+            ? 'auto'
+            : `${subpanelSplitPercent * 100}%`,
+        }"
+        class="relative overflow-hidden"
+      >
+        <slot name="subpanel1" />
+      </div>
+      <PanelResizingHandle
+        v-if="$slots.subpanel1 && $slots.subpanel2 && !disableSubpanelResizing"
+        :panelSide="isTopOrBottom ? 'left' : 'top'"
+        :class="isTopOrBottom ? 'h-full' : 'w-full'"
+        :style="{ top: `${subpanelSplitPercent * 100}%` }"
+        @resize-start="onSubpanelResizeStart"
+        @resize-move="onSubpanelResizeMove"
+        @resize-reset="onSubpanelResizeReset"
+      />
+
+      <div
+        v-if="$slots.subpanel2"
+        :style="{
+          height: disableSubpanelResizing
+            ? 'auto'
+            : `${100 - subpanelSplitPercent * 100}%`,
+        }"
+        class="relative overflow-hidden"
+      >
+        <slot name="subpanel2" />
+      </div>
     </div>
   </div>
 </template>
@@ -41,7 +76,7 @@
 import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import SiPanelResizer from "./SiPanelResizer.vue";
+import PanelResizingHandle from "./PanelResizingHandle.vue";
 
 const props = defineProps({
   rememberSizeKey: { type: String, required: true },
@@ -57,13 +92,15 @@ const props = defineProps({
   maxSizeRatio: { type: Number, default: 0.45 },
   maxSize: { type: Number },
   defaultSize: { type: Number, default: 320 },
+  disableSubpanelResizing: { type: Boolean },
+  defaultSubpanelSplit: { type: Number, default: 0.5 },
 });
 
 const isTopOrBottom = computed(
   () => props.side === "top" || props.side === "bottom",
 );
 
-const panel = ref();
+const panelRef = ref<HTMLDivElement>();
 const currentSize = ref(0);
 
 const setSize = (newSize: number) => {
@@ -93,13 +130,21 @@ const setSize = (newSize: number) => {
   }
   currentSize.value = finalSize;
   if (finalSize === props.defaultSize) {
-    window.localStorage.removeItem(localStorageKey.value);
+    window.localStorage.removeItem(primarySizeLocalStorageKey.value);
   } else {
-    window.localStorage.setItem(localStorageKey.value, `${finalSize}`);
+    window.localStorage.setItem(
+      primarySizeLocalStorageKey.value,
+      `${finalSize}`,
+    );
   }
 };
 
-const localStorageKey = computed(() => `${props.rememberSizeKey}-size`);
+const primarySizeLocalStorageKey = computed(
+  () => `${props.rememberSizeKey}-size`,
+);
+const subpanelSplitLocalStorageKey = computed(
+  () => `${props.rememberSizeKey}-split`,
+);
 
 const beginResizeValue = ref(0);
 const onResizeStart = () => {
@@ -127,14 +172,66 @@ const onWindowResize = () => {
 const debounceForResize = _.debounce(onWindowResize, 20);
 const windowResizeObserver = new ResizeObserver(debounceForResize);
 
+// subpanel resizing
+const subpanelSplitPercent = ref(props.defaultSubpanelSplit);
+
+onMounted(() => {
+  const storedSplit = window.localStorage.getItem(
+    subpanelSplitLocalStorageKey.value,
+  );
+  if (storedSplit) subpanelSplitPercent.value = parseFloat(storedSplit);
+});
+
+const totalAvailableSize = ref(0);
+const subpanel1SizePx = computed(
+  () => totalAvailableSize.value * subpanelSplitPercent.value,
+);
+let subpanelResizeStartPanel1Size: number;
+function onSubpanelResizeStart() {
+  const boundingRect = panelRef.value?.getBoundingClientRect();
+  if (!boundingRect) return;
+  totalAvailableSize.value = isTopOrBottom.value
+    ? boundingRect.width
+    : boundingRect.height;
+  subpanelResizeStartPanel1Size = subpanel1SizePx.value;
+}
+function onSubpanelResizeMove(delta: number) {
+  const newPanel1SizePx = subpanelResizeStartPanel1Size - delta;
+  setSubpanelSplit(newPanel1SizePx / totalAvailableSize.value);
+}
+function onSubpanelResizeReset() {
+  setSubpanelSplit(props.defaultSubpanelSplit);
+}
+function setSubpanelSplit(newSplitPercent: number) {
+  if (newSplitPercent < 0.2) {
+    subpanelSplitPercent.value = 0.2;
+  } else if (newSplitPercent > 0.8) {
+    subpanelSplitPercent.value = 0.8;
+  } else {
+    subpanelSplitPercent.value = newSplitPercent;
+  }
+
+  if (subpanelSplitPercent.value === props.defaultSubpanelSplit) {
+    window.localStorage.removeItem(subpanelSplitLocalStorageKey.value);
+  } else {
+    window.localStorage.setItem(
+      subpanelSplitLocalStorageKey.value,
+      `${subpanelSplitPercent.value}`,
+    );
+  }
+}
+
 onMounted(() => {
   if (props.resizeable) {
-    const storedSize = window.localStorage.getItem(localStorageKey.value);
+    const storedSize = window.localStorage.getItem(
+      primarySizeLocalStorageKey.value,
+    );
     if (storedSize) setSize(parseInt(storedSize));
     else setSize(props.defaultSize);
   } else {
-    window.localStorage.removeItem(localStorageKey.value);
+    window.localStorage.removeItem(primarySizeLocalStorageKey.value);
   }
+
   windowResizeObserver.observe(document.body);
 });
 
