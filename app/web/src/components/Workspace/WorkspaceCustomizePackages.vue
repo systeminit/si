@@ -6,9 +6,11 @@
         v-if="!FF_SINGLE_MODEL_SCREEN"
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-      <CustomizeTabs tabContentSlug="packages">
-        <ModuleListPanel />
-      </CustomizeTabs>
+      <div class="relative flex-grow">
+        <CustomizeTabs tabContentSlug="packages">
+          <ModuleListPanel />
+        </CustomizeTabs>
+      </div>
     </div>
   </ResizablePanel>
   <div
