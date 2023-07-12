@@ -92,6 +92,10 @@ Check if you are ready to run the stack before continuing.
 buck2 run dev:healthcheck
 ```
 
+You may notice some checks related to resource limits.
+On macOS and in WSL2 in particular, we recommend significantly increasing the file descriptor limit for `buck2` to work as intended (e.g. `ulimit -n 10240`).
+_Please note: the new file descriptor limit may not persist to future sessions._
+
 Once ready, we can build relevant services and run the entire stack locally.
 
 _Please note: if you have run SI before, the following command will delete all contents of the database.
