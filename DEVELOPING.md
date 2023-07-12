@@ -31,6 +31,8 @@ section for more information.
 For aarch64 (arm64) users, [Rosetta 2](https://support.apple.com/en-us/HT211861) must be installed.
 You can either install it via directions from the official support page or by running `softwareupdate --install-rosetta`.
 
+On macOS, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
+
 #### Linux
 
 Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) architectures.
@@ -45,6 +47,27 @@ Using native Windows is not supported at this time, but may be desired in the fu
 However, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows 10 and Windows 11 is officially supported on
 both x86_64 (amd64) and aarch64 (arm64) architectures.
 In order to work with `nix`, `systemd` may need to be enabled in your WSL2 distro of choice.
+
+On WSL2, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
+
+#### File Descriptor Limit
+
+On some systems, you may need to significantly increasing the file descriptor limit for `buck2`.
+This is because `buck2` opens many more files than either `cargo` or `pnpm` do.
+Not only that, but when using Tilt to build and run concurrent services, even more files are opened than they would be for sequential builds.
+
+Increasing the file descriptor limit is possible via the `ulimit` command.
+To see all limits, execute the following command:
+
+```bash
+ulimit -a
+```
+
+Here is an example of a significant limit increase, where the argument provided after the flag represents the new desired number of file descriptors:
+
+```bash
+ulimit -n 10240
+```
 
 ### Dependencies
 
