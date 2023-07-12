@@ -23,10 +23,7 @@
       v-if="FF_SINGLE_MODEL_SCREEN"
       class="flex flex-col h-full items-center"
     >
-      <ApplyChangeSetButton
-        class="w-10/12 mx-auto my-4"
-        :recommendations="[]"
-      />
+      <ApplyChangeSetButton class="w-10/12 mx-auto my-4" />
       <SidebarSubpanelTitle>Module Details</SidebarSubpanelTitle>
       <ModuleDetailsPanel :key="moduleSlug" class="w-full" />
     </div>

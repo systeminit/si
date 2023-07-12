@@ -81,9 +81,7 @@
               <template v-else>Changes</template>
             </strong>
             <template v-if="!isHead">
-              <ApplyChangeSetButton
-                :recommendations="recommendationsToExecute"
-              />
+              <ApplyChangeSetButton />
               <strong
                 class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
               >
@@ -182,19 +180,15 @@
               </Collapsible>
 
               <li
-                v-for="recommendation in fixesStore.recommendations"
-                :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
+                v-for="(obj, key) in fixesStore.recommendationsSelection"
+                :key="key"
               >
                 <RecommendationSprite
-                  :key="`${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`"
-                  :recommendation="recommendation"
-                  :selected="
-                    recommendationSelection[
-                      `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`
-                    ]
-                  "
+                  :key="key"
+                  :recommendation="obj.recommendation"
+                  :selected="obj.selected"
                   @click.stop
-                  @toggle="toggleRecommendation($event, recommendation)"
+                  @toggle="toggleRecommendation($event, obj.recommendation)"
                 />
               </li>
               <li
@@ -328,7 +322,6 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
-import { storeToRefs } from "pinia";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {
@@ -386,28 +379,6 @@ const diffs = computed(() => {
   return arr;
 });
 
-const recommendationSelection = ref<Record<string, boolean>>({});
-const recommendationsToExecute = computed(() => {
-  return fixesStore.recommendations.filter((recommendation) => {
-    const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-    return recommendationSelection.value[key] ? recommendation : null;
-  });
-});
-const { recommendations } = storeToRefs(fixesStore);
-watch(recommendations, (r) => {
-  const keys = new Set(...Object.keys(recommendationSelection.value));
-  for (const recommendation of r) {
-    const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-    keys.delete(key);
-    recommendationSelection.value[key] =
-      recommendationSelection.value[key] ?? true;
-  }
-
-  for (const key of keys) {
-    delete recommendationSelection.value[key];
-  }
-});
-
 const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
 
 const openCollapsible = ref(false);
@@ -433,9 +404,12 @@ watch(isHead, () => {
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-const toggleRecommendation = (c: boolean, recommendation: Recommendation) => {
+const toggleRecommendation = (
+  selected: boolean,
+  recommendation: Recommendation,
+) => {
   const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-  recommendationSelection.value[key] = c;
+  fixesStore.recommendationsSelection[key] = { recommendation, selected };
 };
 
 const componentsStore = useComponentsStore();

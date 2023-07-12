@@ -111,8 +111,17 @@ export const useFixesStore = () => {
         fixBatches: [] as Array<FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
+        recommendationsSelection: {} as Record<
+          string,
+          { recommendation: Recommendation; selected: boolean }
+        >,
       }),
       getters: {
+        enabledRecommendations(): Recommendation[] {
+          return _.values(this.recommendationsSelection)
+            .filter(({ selected }) => selected)
+            .map(({ recommendation }) => recommendation);
+        },
         allComponents(): ComponentId[] {
           return _.uniq(this.confirmations.map((c) => c.componentId));
         },
@@ -245,6 +254,14 @@ export const useFixesStore = () => {
             onSuccess: ({ confirmations, recommendations }) => {
               this.confirmations = confirmations;
               this.recommendations = recommendations;
+              this.recommendationsSelection = {};
+              for (const recommendation of this.recommendations) {
+                const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
+                this.recommendationsSelection[key] = {
+                  recommendation,
+                  selected: true,
+                };
+              }
 
               this.populatingFixes =
                 confirmations.some((c) => c.status === "neverStarted") ||
