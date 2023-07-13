@@ -1,4 +1,4 @@
-use crate::{Tenancy, TransactionsError};
+use crate::{standard_model_accessor_ro, Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -7,6 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
 use veritech_client::{FunctionResultFailure, OutputStream};
 
+use crate::standard_model::object_from_row;
 use crate::{
     pk, DalContext, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError,
     StandardModel, StandardModelError, Timestamp,
@@ -252,6 +253,22 @@ impl FuncExecution {
         Ok(object)
     }
 
+    pub async fn get_latest_execution_by_func_id(
+        ctx: &DalContext,
+        func_id: &FuncId,
+    ) -> FuncExecutionResult<Self> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT row_to_json(fe.*) as object FROM func_executions fe WHERE func_id = $1 ORDER BY updated_at LIMIT 1",
+                &[func_id],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
+    }
+
     pub fn func_binding_return_value_id(&self) -> Option<FuncBindingReturnValueId> {
         self.func_binding_return_value_id
     }
@@ -263,4 +280,7 @@ impl FuncExecution {
     pub fn unprocessed_value(&self) -> Option<&serde_json::Value> {
         self.unprocessed_value.as_ref()
     }
+
+    standard_model_accessor_ro!(func_id, FuncId);
+    standard_model_accessor_ro!(function_failure, Option<FunctionResultFailure>);
 }

@@ -1,8 +1,8 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel rememberSizeKey="workflow-left" side="left" :minSize="315">
+  <ResizablePanel rememberSizeKey="workflow-left" side="left" :minSize="315">
     <ComponentOutlineSync />
-  </SiPanel>
+  </ResizablePanel>
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
     <RecommendationProgressOverlay />
@@ -19,9 +19,9 @@
     />
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
-  <SiPanel rememberSizeKey="workflow-right" side="right" :minSize="280">
+  <ResizablePanel rememberSizeKey="workflow-right" side="right" :minSize="280">
     <SyncExecutor />
-  </SiPanel>
+  </ResizablePanel>
 </template>
 
 <script lang="ts" setup>
@@ -30,10 +30,10 @@ import { computed, ref } from "vue";
 import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  ResizablePanel,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import RecommendationProgressOverlay from "@/components/RecommendationProgressOverlay.vue";
-import SiPanel from "@/components/SiPanel.vue";
 import SyncExecutor from "@/components/SyncExecutor.vue";
 import ComponentOutlineSync from "../ComponentOutlineSync.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";

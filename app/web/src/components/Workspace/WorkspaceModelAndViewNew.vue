@@ -1,28 +1,17 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <SiPanel rememberSizeKey="changeset-and-asset" side="left" :minSize="250">
-    <div class="flex flex-col h-full">
-      <div
-        :style="{ height: `${topLeftPanel.height}px` }"
-        class="relative flex-shrink-0"
-      >
-        <ComponentOutline class="" @right-click-item="onOutlineRightClick" />
-      </div>
-
-      <SiPanelResizer
-        panelSide="bottom"
-        :style="{ top: `${topLeftPanel.height}px` }"
-        class="w-full"
-        @resize-start="topLeftPanel.onResizeStart"
-        @resize-move="topLeftPanel.onResizeMove"
-        @resize-reset="topLeftPanel.resetSize"
-      />
-
-      <div class="relative flex-grow">
-        <AssetPalette class="border-t dark:border-neutral-600" />
-      </div>
-    </div>
-  </SiPanel>
+  <ResizablePanel
+    rememberSizeKey="changeset-and-asset"
+    side="left"
+    :minSize="250"
+  >
+    <template #subpanel1>
+      <ComponentOutline class="" @right-click-item="onOutlineRightClick" />
+    </template>
+    <template #subpanel2>
+      <AssetPalette class="border-t dark:border-neutral-600" />
+    </template>
+  </ResizablePanel>
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
     <!--div
@@ -58,19 +47,19 @@
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
 
-  <SiPanel
+  <ResizablePanel
     rememberSizeKey="details-panel"
     side="right"
     :defaultSize="380"
     :minSize="300"
+    :disableSubpanelResizing="!changesPanelRef?.isOpen"
   >
-    <div class="flex flex-col h-full">
+    <template #subpanel1>
       <Collapsible
-        :key="`${openCollapsible}`"
-        as="div"
-        contentAs="span"
+        ref="changesPanelRef"
+        contentClasses="grow relative"
         :defaultOpen="openCollapsible"
-        hideBottomBorderWhenOpen
+        class="flex flex-col h-full"
       >
         <template #label>
           <span
@@ -91,131 +80,116 @@
           </span>
         </template>
 
-        <div
-          :style="{ height: `${topRightPanel.height}px` }"
-          class="relative flex-shrink-0"
+        <ApplyHistory v-if="isHead" />
+        <TabGroup
+          v-else
+          rememberSelectedTabKey="proposed_right"
+          trackingSlug="recommendations_applied"
         >
-          <div v-if="isHead" class="relative h-full overflow-auto">
-            <ApplyHistory />
-          </div>
-          <TabGroup
-            v-else
-            rememberSelectedTabKey="proposed_right"
-            trackingSlug="recommendations_applied"
-          >
-            <TabGroupItem label="Proposed" slug="recommendations_proposed">
-              <Collapsible
-                as="div"
-                contentAs="ul"
-                :defaultOpen="false"
-                hideBottomBorderWhenOpen
-              >
-                <template #label>
-                  <div class="flex flex-col min-w-0 grow">
-                    <span class="font-bold truncate flex flex-row">
-                      <span>Change Set Created</span>
-                    </span>
+          <TabGroupItem label="Proposed" slug="recommendations_proposed">
+            <Collapsible
+              as="div"
+              contentAs="ul"
+              :defaultOpen="false"
+              hideBottomBorderWhenOpen
+            >
+              <template #label>
+                <div class="flex flex-col min-w-0 grow">
+                  <span class="font-bold truncate flex flex-row">
+                    <span>Change Set Created</span>
+                  </span>
 
-                    <span class="truncate flex flex-row text-neutral-400">
-                      {{
-                        isHead ? "head" : changeSetStore.selectedChangeSet?.name
-                      }}
-                    </span>
-                  </div>
-                </template>
-
-                <template #default>
-                  <div class="px-5 text-neutral-400">
+                  <span class="truncate flex flex-row text-neutral-400">
                     {{
                       isHead ? "head" : changeSetStore.selectedChangeSet?.name
                     }}
-                  </div>
-                </template>
-              </Collapsible>
+                  </span>
+                </div>
+              </template>
 
-              <Collapsible
-                v-for="diff in diffs"
-                :key="diff.componentId"
-                as="div"
-                contentAs="ul"
-                :defaultOpen="false"
-                hideBottomBorderWhenOpen
-              >
-                <template #label>
-                  <div class="flex flex-col min-w-0 grow">
-                    <span class="font-bold truncate flex flex-row">
-                      <span v-if="diff.status === 'added'">Added</span>
-                      <span v-if="diff.status === 'deleted'">Removed</span>
-                      <span v-if="diff.status === 'modified'">Modified</span>
-                      <span
-                        >&nbsp;{{
-                          componentsStore.componentsById[diff.componentId]
-                            ?.schemaName
-                        }}
-                        Asset
-                        {{
-                          componentsStore.componentsById[diff.componentId]
-                            ?.displayName
-                        }}</span
-                      >
-                    </span>
+              <template #default>
+                <div class="px-5 text-neutral-400">
+                  {{ isHead ? "head" : changeSetStore.selectedChangeSet?.name }}
+                </div>
+              </template>
+            </Collapsible>
 
-                    <span class="truncate flex flex-row text-neutral-400">
+            <Collapsible
+              v-for="diff in diffs"
+              :key="diff.componentId"
+              as="div"
+              contentAs="ul"
+              :defaultOpen="false"
+              hideBottomBorderWhenOpen
+            >
+              <template #label>
+                <div class="flex flex-col min-w-0 grow">
+                  <span class="font-bold truncate flex flex-row">
+                    <span v-if="diff.status === 'added'">Added</span>
+                    <span v-if="diff.status === 'deleted'">Removed</span>
+                    <span v-if="diff.status === 'modified'">Modified</span>
+                    <span
+                      >&nbsp;{{
+                        componentsStore.componentsById[diff.componentId]
+                          ?.schemaName
+                      }}
+                      Asset
                       {{
                         componentsStore.componentsById[diff.componentId]
                           ?.displayName
-                      }}
-                    </span>
-                  </div>
-                </template>
+                      }}</span
+                    >
+                  </span>
 
-                <template #default>
-                  <div class="px-5 text-neutral-400">
+                  <span class="truncate flex flex-row text-neutral-400">
                     {{
                       componentsStore.componentsById[diff.componentId]
                         ?.displayName
                     }}
-                  </div>
-                </template>
-              </Collapsible>
-
-              <li
-                v-for="(obj, key) in fixesStore.recommendationsSelection"
-                :key="key"
-              >
-                <RecommendationSprite
-                  :key="key"
-                  :recommendation="obj.recommendation"
-                  :selected="obj.selected"
-                  @click.stop
-                  @toggle="toggleRecommendation($event, obj.recommendation)"
-                />
-              </li>
-              <li
-                v-if="fixesStore.recommendations.length === 0"
-                class="p-4 italic !delay-0 !duration-0 hidden first:block"
-              >
-                <div class="pb-sm">
-                  No recommendations are available at this time.
+                  </span>
                 </div>
-              </li>
-            </TabGroupItem>
+              </template>
 
-            <TabGroupItem label="Applied" slug="recommendations_applied">
-              <ApplyHistory />
-            </TabGroupItem>
-          </TabGroup>
-          <SiPanelResizer
-            panelSide="bottom"
-            style="width: 100%; bottom: 0"
-            @resize-start="topRightPanel.onResizeStart"
-            @resize-move="topRightPanel.onResizeMove"
-            @resize-reset="topRightPanel.resetSize"
-          />
-        </div>
+              <template #default>
+                <div class="px-5 text-neutral-400">
+                  {{
+                    componentsStore.componentsById[diff.componentId]
+                      ?.displayName
+                  }}
+                </div>
+              </template>
+            </Collapsible>
+
+            <li
+              v-for="(obj, key) in fixesStore.recommendationsSelection"
+              :key="key"
+            >
+              <RecommendationSprite
+                :key="key"
+                :recommendation="obj.recommendation"
+                :selected="obj.selected"
+                @click.stop
+                @toggle="toggleRecommendation($event, obj.recommendation)"
+              />
+            </li>
+            <li
+              v-if="fixesStore.recommendations.length === 0"
+              class="p-4 italic !delay-0 !duration-0 hidden first:block"
+            >
+              <div class="pb-sm">
+                No recommendations are available at this time.
+              </div>
+            </li>
+          </TabGroupItem>
+
+          <TabGroupItem label="Applied" slug="recommendations_applied">
+            <ApplyHistory />
+          </TabGroupItem>
+        </TabGroup>
       </Collapsible>
+    </template>
 
-      <!-- {{ selectedComponentId }} {{ selectedEdgeId }} -->
+    <template #subpanel2>
       <div class="flex flex-col flex-grow">
         <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
 
@@ -253,8 +227,8 @@
           </template>
         </div>
       </div>
-    </div>
-  </SiPanel>
+    </template>
+  </ResizablePanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
     <Stack spacing="sm">
@@ -310,7 +284,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { onMounted, computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import plur from "plur";
 import {
   Collapsible,
@@ -321,6 +295,7 @@ import {
   TabGroupItem,
   DropdownMenu,
   DropdownMenuItemObjectDef,
+  ResizablePanel,
 } from "@si/vue-lib/design-system";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
@@ -331,11 +306,9 @@ import {
 } from "@/store/components.store";
 import NoAssets from "@/assets/images/no-assets.svg?component";
 
-import SiPanel from "@/components/SiPanel.vue";
 import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
-import SiPanelResizer, { defaultSizer } from "@/components/SiPanelResizer.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { nilId } from "@/utils/nilId";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -381,21 +354,12 @@ const diffs = computed(() => {
 
 const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
 
-const openCollapsible = ref(false);
+const openCollapsible = ref(true);
 
 onMounted(() => {
   if (isHead.value) {
     openCollapsible.value = !!window.localStorage.getItem("applied-changes");
     window.localStorage.removeItem("applied-changes");
-  } else {
-    openCollapsible.value = false;
-  }
-});
-
-watch(isHead, () => {
-  if (isHead.value) {
-    openCollapsible.value =
-      openCollapsible.value || !!window.localStorage.getItem("applied-changes");
   } else {
     openCollapsible.value = false;
   }
@@ -794,7 +758,6 @@ function onGroupElements({ group, elements }: GroupEvent) {
 }
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
-  // TODO: make actually do something, probably also want to handle different types
   contextMenuRef.value?.open(rightClickEventInfo.e, true);
 }
 
@@ -898,24 +861,5 @@ const refreshResourceForSelectedComponent = () => {
   }
 };
 
-const SUB_PANEL_DEFAULT_HEIGHT = 450;
-const DIAGRAM_SUB_PANEL_DEFAULT_HEIGHT = 350;
-const SUB_PANEL_MIN_HEIGHT = 150;
-
-// TODO: Move panels to their own components after they stabilize a bit
-const topRightPanel = defaultSizer(
-  SUB_PANEL_DEFAULT_HEIGHT,
-  SUB_PANEL_MIN_HEIGHT,
-);
-
-const topLeftPanel = defaultSizer(
-  DIAGRAM_SUB_PANEL_DEFAULT_HEIGHT,
-  SUB_PANEL_MIN_HEIGHT,
-);
+const changesPanelRef = ref<InstanceType<typeof Collapsible>>();
 </script>
-
-<style lang="less" scoped>
-li {
-  list-style-type: none;
-}
-</style>

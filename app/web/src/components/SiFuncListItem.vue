@@ -2,7 +2,7 @@
   <RouterLink
     class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
     :class="
-      selectedFuncId === func.id
+      storeSelectedFuncId === func.id
         ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
         : ''
     "
@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
-import { useFuncStore, FuncSummary, FuncId } from "@/store/func/funcs.store";
+import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import { trackEvent } from "@/utils/tracking";
 import SiChip from "./SiChip.vue";
 
@@ -34,12 +34,11 @@ const props = defineProps<{
   color?: string;
   func: FuncSummary;
   context: string;
-  selectedFuncId?: FuncId;
 }>();
 
 const route = useRoute();
 const funcStore = useFuncStore();
-const { selectedFuncId } = storeToRefs(funcStore);
+const { selectedFuncId: storeSelectedFuncId } = storeToRefs(funcStore);
 const trackFunctionSelected = () => {
   trackEvent("function_selected_for_edit", {
     func_id: props.func.id,

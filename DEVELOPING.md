@@ -1,25 +1,125 @@
 # Developing
 
-This document contains information related to developing and running the SI stack.
-However, since it cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more
-information.
+This document contains knowledge-base-esque information related to running and developing the System Initiative software.
+Since this document cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more information.
 
 ## Table of Contents
 
-- [Additional Notes on Environment Setup and Running the Stack](#additional-notes-on-environment-setup-and-running-the-stack)
+- [Development Environment](#development-environment)
 - [Learning About SI Concepts](#learning-about-si-concepts)
 - [Repository Structure](#repository-structure)
 - [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
 
-## Additional Notes on Environment Setup and Running the Stack
+## Development Environment
 
-Before navigating this section, see the instructions in the root [README](./README.md).
+Developing SI locally can be done in a variety of ways, but the officially supported method is to use the [Nix Flake](flake.nix)
+at the root of the repository.
 
-#### Note on Using Direnv
+### Supported Platforms
 
-[Direnv](https://direnv.net/) with [nix-direnv](https://github.com/nix-community/nix-direnv) can automatically set up
-your shell, which means you don't need to enter a subshell with `nix develop`, or prefix all commands with
-`nix develop --command`. There are also plugins to integrate direnv with common editors.
+Using the flake requires using one of the below platforms.
+It is possible that the System Initiative software can be developed on even more platforms, but these platforms have
+been validated to work with `nix` and the corresponding flake.
+
+#### macOS
+
+macOS (Darwin) is officially supported on both x86_64 (amd64) (also known as "Intel") and aarch64 (arm64) (also known as
+"Apple Silicon") architectures.
+We do not specify the minimum version of macOS that must be used, so we recommend looking at the [Dependencies](#dependences)
+section for more information.
+
+For aarch64 (arm64) users, [Rosetta 2](https://support.apple.com/en-us/HT211861) must be installed.
+You can either install it via directions from the official support page or by running `softwareupdate --install-rosetta`.
+
+On macOS, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
+
+#### Linux
+
+Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) architectures.
+[NixOS](https://nixos.org/) is not supported at this time, but may be desired in the future.
+Linux with MUSL instead of GNU is also not currently supported.
+For Fedora, RHEL-derivative and other [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) users, SELinux
+will likely need to be set to `permissive` mode or configured to work with `nix`.
+
+#### Windows
+
+Using native Windows is not supported at this time, but may be desired in the future.
+However, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows 10 and Windows 11 is officially supported on
+both x86_64 (amd64) and aarch64 (arm64) architectures.
+In order to work with `nix`, `systemd` may need to be enabled in your WSL2 distro of choice.
+
+On WSL2, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
+
+#### File Descriptor Limit
+
+On some systems, you may need to significantly increasing the file descriptor limit for `buck2`.
+This is because `buck2` opens many more files than either `cargo` or `pnpm` do.
+Not only that, but when using Tilt to build and run concurrent services, even more files are opened than they would be for sequential builds.
+
+Increasing the file descriptor limit is possible via the `ulimit` command.
+To see all limits, execute the following command:
+
+```bash
+ulimit -a
+```
+
+Here is an example of a significant limit increase, where the argument provided after the flag represents the new desired number of file descriptors:
+
+```bash
+ulimit -n 10240
+```
+
+### Dependencies
+
+For all supported platforms, there are two dependencies that must be installed, `nix` (preferably from [Zero to Nix](https://zero-to-nix.com/start/install)) and `docker`.
+
+#### Nix
+
+We use `nix` as our package manager for the repository.
+It ensures that our developers are all using the same versions of all packages and libraries for developing SI.
+
+Regardless of how `nix` is installed, it must have the [flakes](https://nixos.wiki/wiki/Flakes) feature enabled.
+We highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
+official installer; one reason being that the former will enable flakes by default.
+
+> You can use `direnv` (version >= 2.30) with our [Nix flake](./flake.nix) for both ease of running commands
+> and for editor integration.
+> 
+> For more information, see the **Direnv** section.
+
+#### Docker
+
+We use `docker` to run our dependent services for the SI stack.
+It can either be installed via [Docker Desktop](https://www.docker.com/products/docker-desktop/) or
+directly via [Docker Engine](https://docs.docker.com/engine/).
+
+For Docker Desktop, the version corresponding to your native architecture should be used (e.g. install the aarch64
+(arm64) version on a Apple-Silicon-equipped MacBook Pro).
+
+WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine (i.e. installing and using 
+`docker` within the distro and not interacting with the host).
+
+#### (Optional) Direnv
+
+[Direnv](https://direnv.net/) (version >= 2.30) with [nix-direnv](https://github.com/nix-community/nix-direnv) can
+automatically set up  your shell, which means you don't need to enter a subshell with `nix develop`, or prefix all
+commands with `nix develop --command`.
+
+You can install it with [your package manager of choice](https://direnv.net/docs/installation.html), but if you're
+unsure which installation method to use or your package manager does not provide a compatible version, you
+can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
+
+We recommend using [the upstream docs for hooking `direnv` into your shell](https://direnv.net/docs/hook.html), but here
+is an example on how to do it on a system where `zsh` is the default shell.
+In this example, the following is added to the end of `~/.zshrc`.
+
+```zsh
+if [ $(command -v direnv) ]; then
+   eval "$(direnv hook zsh)"
+fi
+```
+
+There are also plugins to integrate `direnv` with common editors.
 
 **Editor plugin support:**
 
@@ -28,6 +128,16 @@ your shell, which means you don't need to enter a subshell with `nix develop`, o
 - Emacs: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
 - (Neo)Vim: [direnv.vim](https://github.com/direnv/direnv.vim)
 - Visual Studio Code: [direnv](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
+
+### How to Run Commands
+
+All commands need to be run from the `nix` environment.
+There are two primary options to do so:
+
+1. If `direnv` is installed _and_ hooked into your shell, you can `cd` into
+   the repository and `nix` will boostrap the environment for you using the flake.
+2. Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
+   execute a command, or use the environment in whatever way your prefer.
 
 ### Troubleshooting Potential Service Conflicts
 
@@ -80,132 +190,12 @@ may prove useful as well.
 While there are other directories in the project, these are primarily where
 most of the interesting source code lives and how they are generally organized:
 
-| Directory    | Description |
-|--------------|-------------|
-| `app/`       | Components that build web front ends, GUIs, or other desktop applications |
-| `bin/`       | Components that are intended to produce a program, CLI, server, etc. |
-| `component/` | Components that tend to produce primarily Docker container images and other ancillary tooling |
-| `lib/`       | Components that are supporting libraries and packages |
-| `mk/`        | Common Makefile targets and shared make behaviors |
-
-### Makefile
-
-A Makefile driven by the `make` program constitutes the primary build, test,
-and release system for this project. While not perfect and not unique to
-solving this class of problem, as they say "it gets the job done".
-
-#### Base Makefile Targets
-
-The `Makefile` at the root of the project is responsible for providing high
-level targets that will apply to all child components of the project as well as
-specialized tasks as required by the continuous integration system (CI) and our
-deployment and delivery system. Lastly, it provides common verb-prefixed tasks
-that will trigger tasks for each component where relevant.
-
-The following is a set of make targets provided by the base Makefile. A
-shortened summary of these is available by running `make help` at the root of
-the project.
-
-In tasks where `<cmpt>` is used, this is short for "component" and refers
-specifically to the path to the component. For example, to build the SDF server
-binary which can be found in `bin/sdf`, you can run: `make build//bin/sdf`.
-Similarly, to run the test suite for `lib/si-data` while skipping pre-test
-dependencies you can run: `make test//lib/si-data//TEST`.
-
-| Target                 | Description |
-|------------------------|-------------|
-| `help`                 | Displays a list of useful make targets with descriptions |
-| `build`                | Builds all components with all relevant dependencies in a suitable order |
-| `build//<cmpt>`        | Builds a specific component with all relevant dependencies in a suitable order |
-| `build//<cmpt>//BUILD` | Builds a specific component, skipping pre-build dependencies. These targets may be useful once the dependencies are already built and you want to rebuild only the component. |
-| `check`                | Checks all components' linting, formatting, & other rules |
-| `check//<cmpt>`        | Checks a specific component's linting, formatting, & other rules |
-| `fix`                  | Updates all linting fixes & formatting for all components. Note that source files will likely be updated as a result. |
-| `fix//<cmpt>`          | Updates linting fixes & formatting for a specific component. Note that source files will likely be updated as a result. |
-| `test`                 | Tests all components with all relevant dependencies in a suitable order |
-| `test//<cmpt>`         | Tests a specific component with all relevant dependencies in a suitable order |
-| `test//<cmpt>//TEST`   | Tests a specific component, skipping pre-test dependencies. These targets may be useful once the dependencies are already built and you want to re-test only the component. |
-| `prepush`              | Runs all checks & tests for all components |
-| `prepush//<cmpt>`      | Runs all checks & tests for a specific component |
-| `watch//<cmpt>`        | Runs the default watch task for a specific component |
-| `clean`                | Cleans all build/test temporary work files |
-| `clean//<cmpt>`        | Cleans all build/test temporary work files for a specific component |
-| `run//<cmpt>`          | Runs the default program/server for a specific component with all relevant dependencies built in a suitable order|
-| `run//<cmpt>//RUN`     | Runs the default program/server for a specific component, skipping pre-run dependencies |
-| `ci`                   | Invokes the primary continuous integration task |
-| `down`                 | Brings down all supporting services such as databases, queues, etc. Note that this task will destroy any data currently persisted in local databases. |
-| `prepare`              | Prepares all supporting services such as databases, queues, etc. for development. Note that this task will destroy any data currently persisted in local databases. |
-| `list`                 | Prints a comprehensive list of Make targets, one per line |
-
-#### Common Component Makefile Targets
-
-In the root directory for each sub-component in this project there will be
-another Makefile which provides a common set of project-specific tasks. No
-matter if the component is Rust code, TypeScript based, or even a Docker image
-component, these common targets will usually be present. In this way there
-shouldn't be anything dramatically new to learn when exploring another
-component in our project.
-
-The inspiration for the common/baseline make targets can be found in Joyent's
-[Engineering Guide](https://github.com/Joyent/eng/blob/master/docs/index.md) in
-the
-[Makefile](https://github.com/Joyent/eng/blob/master/docs/index.md#makefile)
-section.
-
-| Target                | Description |
-|-----------------------|-------------|
-| `help`                | Displays a list of useful make targets with descriptions |
-| `build`               | Builds the component. Note that pre-build dependencies are not executed (see Base Makefile Targets). |
-| `check-format`        | Checks all code formatting for the component |
-| `check-lint`          | Checks all code linting for the component |
-| `check`               | Checks all component's linting, formatting, & other rules |
-| `fix-format`          | Updates code formatting for the component. Note that source files will likely be updated as a result. |
-| `fix-lint`            | Updates code with linting fixes for the component. Note that source files will likely be updated as a result. |
-| `fix`                 | Updates all linting fixes & formatting for the component. Note that source files will likely be updated as a result. |
-| `test`                | Tests the component. Note that pre-test dependencies are not executed (see Base Makefile Targets). |
-| `prepush`             | Runs all checks & tests required before pushing commits related to the component |
-| `watch`               | Runs the default watch task for the component |
-| `clean`               | Cleans all build/test temporary work files for the component |
-
-#### Runnable Component Makefile Targets
-
-For each "runnable" component (that is, typically most components found under
-the `app/` and `bin/` directories), there will be some additional make targets
-such as:
-
-| Target                | Description |
-|-----------------------|-------------|
-| `run`                 | Runs the default program/server for the component. Note that pre-run dependencies are not executed (see Base Makefile Targets). |
-| `start`               | Alias for `make run` |
-
-### Components
-
-"Components" correspond to binaries, libraries, releasable bits and services required to run the SI stack.
-
-There are some components found under `component/` that are thin wrappers around external dependencies.
-They exist for building `docker` images and/or for supporting tooling that is ancillary to the project.
-
-#### Rust-Based Components
-
-Generally speaking, most of our Rust crates are members of a single [Cargo
-workspace] present at the root of the project in `Cargo.toml`. This means that
-all member crates will share the same `Cargo.lock` and output directory (i.e.
-the `target/` directory at the root of the project). The member crate locations
-are usually found under `bin/` for crates which exist primarily to build a
-binary program and under `lib/` for so-called library crates.
-
-[Cargo workspace]: https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html
-
-#### TypeScript-Based Components
-
-Components which are composed primarily of TypeScript code are currently using
-[npm] for package, dependency, and project management. These components are
-usually found under `bin/` for components which are intended to produce a
-program/CLI/server, under `lib/` for components which are supporting
-libraries/packages, and finally under `app/` for components which may build web
-front ends, GUI, or other desktop applications.
-
-[npm]: https://docs.npmjs.com/cli
+| Directory    | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `app/`       | Web front ends, GUIs, or other desktop applications            |
+| `bin/`       | Backend programs, CLIs, servers, etc.                          |
+| `component/` | Docker container images and other ancillary tooling            |
+| `lib/`       | Supporting libraries and packages for services or applications ||
 
 ## Preparing Changes and Running Tests
 
@@ -217,69 +207,3 @@ Moreover, please sign your commits using `git commit -s`.
 You can amend an existing commit with `git commit -s --amend`, if needed.
 
 Please see [the relevant document](docs/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.
-
-## Using `pnpm` for Your Development Workflow
-
-If `Makefiles` and direct `cargo` and `npm` commands aren't your thing, you can use [`pnpm`](https://pnpm.io) for your
-development workflow.
-
-First, ensure we have `pnpm` [installed](https://pnpm.io/installation).
-You will likely want shell tab completion, which can be installed via the following command:
-
-```shell
-pnpm install-completion
-```
-
-You will then need to install JS dependencies for the whole project.
-
-```shell
-# full option
-pnpm install
-
-# shorthand option
-pnpm i
-```
-
-### Running the Stack with `pnpm`
-
-We'll need to ensure our core services are running first when running the entire stack.
-
-```shell
-# This command triggers "make prepare" with awareness to architecture and OS (e.g. will ensure we run PostgreSQL locally
-# on Apple Silicon machines)
-pnpm run docker:deps
-```
-
-You can run tasks similarly to how you would with `npm`.
-
-```shell
-# full option (works with tab complete)
-pnpm run <taskname>
-
-# shorthand option (does not work with tab complete)
-pnpm <taskname>
-```
-
-Here are some example tasks that are useful:
-
-- `pnpm run dev:backend`
-  - runs `cargo build` at the repository root and then boots all backend services in a single terminal pane
-- individual service tasks:
-  - each script still runs the build at the root level, but boots only that service
-  - caching with `cargo` means each build after the first is instant
-  - `pnpm run dev:sdf` (corresponds to [sdf](./bin/sdf))
-  - `pnpm run dev:veritech` (corresponds to [veritech](./bin/veritech))
-  - `pnpm run dev:pinga` (corresponds to [pinga](./bin/pinga))
-  - `pnpm run dev:council` (corresponds to [council](./bin/council))
-- `pnpm run dev:frontend`
-  - boots frontend for development; uses vite with auto-reload and HMR enabled
-
-### Adding New Crates with `pnpm`
-
-Ensure that `pnpm` will work with our new changes by running the following command:
-
-```shell
-node ./scripts/generate-rust-package-json.js
-```
-
-This generates new `package.json` and lockfiles for our new and affected crates alike.

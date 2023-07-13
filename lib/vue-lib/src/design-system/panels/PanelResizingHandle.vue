@@ -3,11 +3,18 @@
     :class="
       clsx(
         'si-panel-resizer',
-        'z-30 absolute',
+        'absolute',
+        isHandleVisible ? 'z-40' : 'z-30',
         panelIsVertical
-          ? ['h-full cursor-col-resize w-1 z-40']
-          : ['w-full cursor-row-resize h-1'],
-        isHovered
+          ? [
+              'h-full cursor-col-resize',
+              isHandleVisible ? 'w-[4px]' : 'w-[3px]',
+            ]
+          : [
+              'w-full cursor-row-resize',
+              isHandleVisible ? 'h-[4px]' : 'h-[3px]',
+            ],
+        isHandleVisible
           ? 'bg-neutral-400 dark:bg-neutral-500'
           : 'bg-neutral-300 dark:bg-neutral-600',
         {
@@ -27,7 +34,9 @@
           showResizeHoverAreas
             ? 'bg-destructive-500 opacity-25'
             : 'bg-transparent',
-          panelIsVertical ? ['h-full w-8'] : ['w-full h-8'],
+          panelIsVertical
+            ? ['h-full', isHandleVisible ? 'w-8' : 'w-1']
+            : ['w-full', isHandleVisible ? 'h-8' : 'h-1'],
           {
             left: 'left-0.5 translate-x-[-50%]',
             right: 'right-0.5 translate-x-[50%]',
@@ -49,6 +58,7 @@
           'w-3 h-16 rounded-full',
           'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
           !panelIsVertical && 'rotate-90',
+          !isHandleVisible && 'hidden',
         )
       "
     >
@@ -61,9 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, PropType, ref, reactive } from "vue";
+import { computed, onBeforeUnmount, PropType, ref } from "vue";
 import clsx from "clsx";
-import { Icon } from "@si/vue-lib/design-system";
+import Icon from "../icons/Icon.vue";
 
 const props = defineProps({
   panelSide: {
@@ -88,6 +98,8 @@ const dragStartMouseX = ref(0);
 const dragStartMouseY = ref(0);
 const isHovered = ref(false);
 const isResizing = ref(false);
+
+const isHandleVisible = computed(() => isHovered.value || isResizing.value);
 
 const onMouseDown = (e: MouseEvent) => {
   isResizing.value = true;
@@ -119,30 +131,4 @@ onBeforeUnmount(() => {
   window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("mouseup", onMouseUp);
 });
-</script>
-
-<script lang="ts">
-// Handles the most common resizing case
-export const defaultSizer = (defaultHeight: number, minHeight: number) => {
-  const sizer = reactive({
-    height: defaultHeight,
-    beginResizeValue: 0,
-
-    onResizeStart() {
-      sizer.beginResizeValue = sizer.height;
-    },
-
-    onResizeMove(delta: number) {
-      const adjustedDetla = -delta;
-      const newHeight = sizer.beginResizeValue + adjustedDetla;
-
-      sizer.height = Math.max(newHeight, minHeight);
-    },
-
-    resetSize() {
-      sizer.height = defaultHeight;
-    },
-  });
-  return sizer;
-};
 </script>

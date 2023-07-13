@@ -1,5 +1,5 @@
 <template>
-  <SiPanel
+  <ResizablePanel
     ref="panelRef"
     rememberSizeKey="status-bar"
     side="bottom"
@@ -165,7 +165,7 @@
         </TabPanels>
       </Transition>
     </TabGroup>
-  </SiPanel>
+  </ResizablePanel>
 </template>
 
 <script lang="ts" setup>
@@ -173,9 +173,12 @@ import * as _ from "lodash-es";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, useThemeContainer } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  useThemeContainer,
+  ResizablePanel,
+} from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
-import SiPanel from "@/components/SiPanel.vue";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";

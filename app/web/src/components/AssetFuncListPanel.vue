@@ -54,7 +54,6 @@
                 :func="func"
                 color="#921ed6"
                 context="workspace-lab-assets"
-                :selectedFuncId="funcStore.selectedFuncId"
               />
             </li>
           </template>
@@ -65,7 +64,6 @@
       ref="attachModalRef"
       :schemaVariantId="assetSchemaVariantId"
       :assetId="assetId"
-      :attachExisting="false"
     />
   </div>
 </template>
@@ -80,7 +78,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { useFuncStore } from "@/store/func/funcs.store";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -92,7 +89,6 @@ const props = defineProps<{ assetId?: string }>();
 
 const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
-const funcStore = useFuncStore();
 
 const funcsByVariant = computed(() =>
   props.assetId

@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::func::execution::FuncExecutionError;
 use dal::{
     attribute::context::{AttributeContextBuilder, AttributeContextBuilderError},
     func::{
@@ -105,6 +106,8 @@ pub enum FuncError {
     FuncDestinationPropAndOutputSocket,
     #[error("cannot bind func to different prop kinds")]
     FuncDestinationPropKindMismatch,
+    #[error("Function execution: {0}")]
+    FuncExecution(#[from] FuncExecutionError),
     #[error("Function execution failed: {0}")]
     FuncExecutionFailed(String),
     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
@@ -735,6 +738,10 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route("/get_func", get(get_func::get_func))
+        .route(
+            "/get_func_last_execution",
+            get(get_func::get_latest_func_execution),
+        )
         .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
