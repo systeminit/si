@@ -1,17 +1,20 @@
-use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
+use super::{
+    maybe_delete_schema_variant_connected_to_variant_def, migrate_actions_to_new_schema_variant,
+    migrate_leaf_functions_to_new_schema_variant, SchemaVariantDefinitionError,
+    SchemaVariantDefinitionResult,
+};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::import_pkg_from_pkg;
-use dal::SchemaVariantId;
 use dal::{
+    func::intrinsics::IntrinsicFunc,
+    pkg::import_pkg_from_pkg,
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionId, SchemaVariantDefinitionJson,
         SchemaVariantDefinitionMetadataJson,
     },
-    Func, FuncBinding, StandardModel, Visibility, WsEvent,
+    Func, FuncBinding, SchemaVariant, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SiPkg};
@@ -42,11 +45,14 @@ pub async fn exec_variant_def(
 ) -> SchemaVariantDefinitionResult<Json<ExecVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
+    let mut variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
         .await?
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
+
+    let (maybe_previous_variant_id, leaf_funcs_to_migrate) =
+        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -128,7 +134,18 @@ pub async fn exec_variant_def(
     let schema_variant_id = schema_variant_ids
         .get(0)
         .copied()
-        .unwrap_or(SchemaVariantId::NONE);
+        .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
+
+    if let Some(previous_schema_variant_id) = maybe_previous_variant_id {
+        migrate_leaf_functions_to_new_schema_variant(
+            &ctx,
+            leaf_funcs_to_migrate,
+            schema_variant_id,
+        )
+        .await?;
+        migrate_actions_to_new_schema_variant(&ctx, previous_schema_variant_id, schema_variant_id)
+            .await?;
+    }
 
     track(
         &posthog_client,

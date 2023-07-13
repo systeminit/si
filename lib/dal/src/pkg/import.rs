@@ -63,13 +63,13 @@ pub async fn import_pkg_from_pkg(
     // to also store the file name unless we stop using the .sipkg file
     // completely after install
     let installed_pkg_id = if options.no_record {
+        None
+    } else {
         Some(
             *InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string())
                 .await?
                 .id(),
         )
-    } else {
-        None
     };
 
     let mut funcs_by_unique_id = FuncMap::new();

@@ -20,19 +20,13 @@
       </div>
       <!-- TODO: Populate the created by from SDF actorHistory-->
       <div><span class="font-bold">Created By: </span>System Initiative</div>
-      <SiChip
-        v-if="selectedAsset.defaultVariantId"
-        variant="warning"
-        text="read-only"
-      />
+      <SiChip v-if="isReadOnly" variant="warning" text="read-only" />
     </div>
     <div class="flex-grow relative overflow-auto">
       <CodeEditor
         v-model="editingAsset"
         :typescript="selectedAsset?.types"
-        :disabled="
-          !!selectedAsset.defaultVariantId || changeSetsStore.headSelected
-        "
+        :disabled="isReadOnly || changeSetsStore.headSelected"
         @change="onChange"
       />
     </div>
@@ -60,6 +54,11 @@ const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
+);
+
+const isReadOnly = computed(
+  () =>
+    !!(selectedAsset.value?.hasComponents || selectedAsset.value?.hasAttrFuncs),
 );
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");

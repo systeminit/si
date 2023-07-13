@@ -14,7 +14,7 @@
               v-if="assetStore.selectedAssetId && !changeSetsStore.headSelected"
               :disabled="
                 !assetStore.assetsById[assetStore.selectedAssetId]
-                  ?.defaultVariantId
+                  ?.schemaVariantId
               "
               label="Attach Function"
               @selected-attach-type="openAttachFuncModal"
@@ -111,7 +111,7 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 const assetSchemaVariantId = computed(() =>
   props.assetId
-    ? assetStore.assetsById[props.assetId]?.defaultVariantId
+    ? assetStore.assetsById[props.assetId]?.schemaVariantId
     : undefined,
 );
 

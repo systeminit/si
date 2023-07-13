@@ -4,18 +4,27 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::{installed_pkg::InstalledPkgError, pkg::PkgError, FuncBindingError, FuncError, FuncId};
+use strum::IntoEnumIterator;
+use thiserror::Error;
+
 use dal::{
+    installed_pkg::InstalledPkgError,
+    pkg::PkgError,
+    schema::variant::definition::SchemaVariantDefinition,
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    SchemaVariantError, StandardModelError, TenancyError, TransactionsError, WsEventError,
+    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncError, FuncId,
+    LeafInputLocation, LeafKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId,
+    StandardModel, StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
-use thiserror::Error;
 
 use crate::server::state::AppState;
 use crate::service::func::FuncError as SdfFuncError;
+
+use super::func::get_leaf_function_inputs;
 
 pub mod clone_variant_def;
 pub mod create_variant_def;
@@ -27,6 +36,8 @@ pub mod save_variant_def;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("error creating schema variant from definition: {0}")]
@@ -45,6 +56,8 @@ pub enum SchemaVariantDefinitionError {
     FuncNotFound(FuncId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
+    #[error("No new asset was created")]
+    NoAssetCreated,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
@@ -52,9 +65,15 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error(transparent)]
+    Schema(#[from] SchemaError),
+    #[error("could not find schema connected to variant definition {0}")]
+    SchemaNotFound(SchemaVariantDefinitionId),
+    #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
     SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
+    #[error("could not find schema variant {0} connected to variant definition {1}")]
+    SchemaVariantNotFound(SchemaVariantId, SchemaVariantDefinitionId),
     #[error(transparent)]
     SdfFunc(#[from] SdfFuncError),
     #[error("json serialization error: {0}")]
@@ -69,6 +88,8 @@ pub enum SchemaVariantDefinitionError {
     Tenancy(#[from] TenancyError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),
+    #[error("Cannot update asset structure while in use by components, attribute functions, or validations")]
+    VariantInUse,
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -85,6 +106,137 @@ impl IntoResponse for SchemaVariantDefinitionError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn is_variant_def_locked(
+    ctx: &DalContext,
+    variant_def: &SchemaVariantDefinition,
+) -> SchemaVariantDefinitionResult<(bool, bool)> {
+    let has_components = !variant_def.list_components(ctx).await?.is_empty();
+
+    let has_attr_funcs = if let Some(schema_variant_id) = variant_def.schema_variant_id().copied() {
+        SchemaVariant::all_funcs(ctx, schema_variant_id)
+            .await?
+            .iter()
+            .any(|func| {
+                func.backend_kind() == &FuncBackendKind::JsValidation
+                    || (func.backend_kind() == &FuncBackendKind::JsAttribute
+                        && func.name() != "si:resourcePayloadToValue"
+                        && func.backend_response_type() != &FuncBackendResponseType::CodeGeneration
+                        && func.backend_response_type() != &FuncBackendResponseType::Confirmation
+                        && func.backend_response_type() != &FuncBackendResponseType::Qualification)
+            })
+    } else {
+        false
+    };
+
+    Ok((has_components, has_attr_funcs))
+}
+
+pub async fn migrate_actions_to_new_schema_variant(
+    ctx: &DalContext,
+    previous_schema_variant_id: SchemaVariantId,
+    new_schema_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<()> {
+    let mut actions = ActionPrototype::find_for_context(
+        ctx,
+        ActionPrototypeContext {
+            schema_variant_id: previous_schema_variant_id,
+        },
+    )
+    .await?;
+
+    for mut action in actions.drain(..) {
+        action
+            .set_schema_variant_id(ctx, new_schema_variant_id)
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn migrate_leaf_functions_to_new_schema_variant(
+    ctx: &DalContext,
+    leaf_func_migrations: Vec<LeafFuncMigration>,
+    new_schema_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<()> {
+    for leaf_func_migration in leaf_func_migrations {
+        SchemaVariant::upsert_leaf_function(
+            ctx,
+            new_schema_variant_id,
+            None,
+            leaf_func_migration.leaf_kind,
+            &leaf_func_migration.input_locations,
+            &leaf_func_migration.func,
+        )
+        .await?;
+
+        // TODO: delete attribute prototypes for orphaned leaf funcs
+    }
+
+    Ok(())
+}
+
+pub struct LeafFuncMigration {
+    pub func: Func,
+    pub leaf_kind: LeafKind,
+    pub input_locations: Vec<LeafInputLocation>,
+}
+
+pub async fn maybe_delete_schema_variant_connected_to_variant_def(
+    ctx: &DalContext,
+    variant_def: &mut SchemaVariantDefinition,
+) -> SchemaVariantDefinitionResult<(Option<SchemaVariantId>, Vec<LeafFuncMigration>)> {
+    if matches!(
+        is_variant_def_locked(&ctx, &variant_def).await?,
+        (true, _) | (_, true)
+    ) {
+        return Err(SchemaVariantDefinitionError::VariantInUse);
+    }
+
+    let maybe_previous_schema_variant_id = variant_def.schema_variant_id().copied();
+    let mut leaf_func_migrations = vec![];
+    if let Some(schema_variant_id) = maybe_previous_schema_variant_id {
+        let mut variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+            .await?
+            .ok_or(SchemaVariantDefinitionError::SchemaVariantNotFound(
+                schema_variant_id,
+                *variant_def.id(),
+            ))?;
+
+        for leaf_kind in LeafKind::iter() {
+            let leaf_funcs =
+                SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?;
+            for func in leaf_funcs {
+                let input_locations = get_leaf_function_inputs(ctx, *func.id()).await?;
+                leaf_func_migrations.push(LeafFuncMigration {
+                    func: func.to_owned(),
+                    leaf_kind,
+                    input_locations,
+                });
+            }
+        }
+
+        let mut schema =
+            variant
+                .schema(&ctx)
+                .await?
+                .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
+                    *variant_def.id(),
+                ))?;
+
+        variant.delete_by_id(&ctx).await?;
+        for mut ui_menu in schema.ui_menus(&ctx).await? {
+            ui_menu.delete_by_id(&ctx).await?;
+        }
+        schema.delete_by_id(&ctx).await?;
+
+        variant_def
+            .set_schema_variant_id(&ctx, None::<SchemaVariantId>)
+            .await?;
+    }
+
+    Ok((maybe_previous_schema_variant_id, leaf_func_migrations))
 }
 
 pub fn routes() -> Router<AppState> {

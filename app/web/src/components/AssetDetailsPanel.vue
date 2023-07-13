@@ -161,7 +161,12 @@ const updateAsset = () => {
 };
 
 const disabled = computed(
-  () => !!(assetStore.selectedAsset?.defaultVariantId ?? false),
+  () =>
+    !!(
+      (assetStore.selectedAsset?.hasComponents ||
+        assetStore.selectedAsset?.hasAttrFuncs) ??
+      false
+    ),
 );
 
 const executeAsset = async () => {

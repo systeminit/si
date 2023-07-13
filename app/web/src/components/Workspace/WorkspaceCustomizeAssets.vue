@@ -55,7 +55,7 @@
       <FuncDetails
         v-else-if="assetId && funcId"
         :funcId="funcId"
-        :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
+        :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
         singleModelScreen
         @detached="onDetach"
       />
@@ -65,7 +65,7 @@
       <FuncDetails
         v-else-if="assetId && funcId"
         :funcId="funcId"
-        :schemaVariantId="assetStore.assetsById[assetId]?.defaultVariantId"
+        :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
         @detached="onDetach"
       />
     </template>
