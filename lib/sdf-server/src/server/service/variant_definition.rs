@@ -188,7 +188,7 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
     variant_def: &mut SchemaVariantDefinition,
 ) -> SchemaVariantDefinitionResult<(Option<SchemaVariantId>, Vec<LeafFuncMigration>)> {
     if matches!(
-        is_variant_def_locked(&ctx, &variant_def).await?,
+        is_variant_def_locked(ctx, variant_def).await?,
         (true, _) | (_, true)
     ) {
         return Err(SchemaVariantDefinitionError::VariantInUse);
@@ -197,7 +197,7 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
     let maybe_previous_schema_variant_id = variant_def.schema_variant_id().copied();
     let mut leaf_func_migrations = vec![];
     if let Some(schema_variant_id) = maybe_previous_schema_variant_id {
-        let mut variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+        let mut variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
             .await?
             .ok_or(SchemaVariantDefinitionError::SchemaVariantNotFound(
                 schema_variant_id,
@@ -219,20 +219,20 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
 
         let mut schema =
             variant
-                .schema(&ctx)
+                .schema(ctx)
                 .await?
                 .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
                     *variant_def.id(),
                 ))?;
 
-        variant.delete_by_id(&ctx).await?;
-        for mut ui_menu in schema.ui_menus(&ctx).await? {
-            ui_menu.delete_by_id(&ctx).await?;
+        variant.delete_by_id(ctx).await?;
+        for mut ui_menu in schema.ui_menus(ctx).await? {
+            ui_menu.delete_by_id(ctx).await?;
         }
-        schema.delete_by_id(&ctx).await?;
+        schema.delete_by_id(ctx).await?;
 
         variant_def
-            .set_schema_variant_id(&ctx, None::<SchemaVariantId>)
+            .set_schema_variant_id(ctx, None::<SchemaVariantId>)
             .await?;
     }
 

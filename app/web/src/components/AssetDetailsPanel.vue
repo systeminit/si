@@ -13,7 +13,11 @@
         <VButton
           :requestStatus="executeAssetReqStatus"
           loadingText="Creating Asset..."
-          label="Create Asset"
+          :label="
+            assetStore.selectedAsset.schemaVariantId
+              ? 'Update Asset'
+              : 'Create Asset'
+          "
           :disabled="disabled"
           tone="action"
           icon="bolt"

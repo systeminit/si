@@ -14,7 +14,7 @@ use dal::{
         SchemaVariantDefinition, SchemaVariantDefinitionId, SchemaVariantDefinitionJson,
         SchemaVariantDefinitionMetadataJson,
     },
-    Func, FuncBinding, SchemaVariant, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    Func, FuncBinding, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SiPkg};
