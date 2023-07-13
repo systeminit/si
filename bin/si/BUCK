@@ -1,0 +1,19 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "si",
+    deps = [
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:indicatif",
+        "//third-party/rust:tokio",
+        "//third-party/rust:strum",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:comfy-table",
+        "//third-party/rust:console",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
