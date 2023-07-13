@@ -4,9 +4,11 @@
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!FF_SINGLE_MODEL_SCREEN" />
 
-      <CustomizeTabs tabContentSlug="functions">
-        <FuncListPanel />
-      </CustomizeTabs>
+      <div class="relative flex-grow">
+        <CustomizeTabs tabContentSlug="functions">
+          <FuncListPanel />
+        </CustomizeTabs>
+      </div>
     </div>
   </ResizablePanel>
   <div

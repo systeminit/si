@@ -2,14 +2,18 @@
 <template>
   <ResizablePanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <template #subpanel1>
-      <ChangeSetPanel
-        v-if="!FF_SINGLE_MODEL_SCREEN"
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-      />
+      <div class="flex flex-col h-full">
+        <ChangeSetPanel
+          v-if="!FF_SINGLE_MODEL_SCREEN"
+          class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
+        />
 
-      <CustomizeTabs tabContentSlug="assets">
-        <AssetListPanel :assetId="assetId" />
-      </CustomizeTabs>
+        <div class="relative flex-grow">
+          <CustomizeTabs tabContentSlug="assets">
+            <AssetListPanel :assetId="assetId" />
+          </CustomizeTabs>
+        </div>
+      </div>
     </template>
     <template #subpanel2>
       <AssetFuncListPanel :assetId="assetId" />
@@ -101,15 +105,15 @@ watch(
 );
 
 onMounted(async () => {
-  if (!assetId.value && assetStore.getLastSelectedAssetId()) {
-    router.push({
-      name: "workspace-lab-assets",
-      params: {
-        ...router.currentRoute.value.params,
-        assetId: assetStore.getLastSelectedAssetId(),
-      },
-    });
-  }
+  // if (!assetId.value && assetStore.getLastSelectedAssetId()) {
+  //   router.push({
+  //     name: "workspace-lab-assets",
+  //     params: {
+  //       ...router.currentRoute.value.params,
+  //       assetId: assetStore.getLastSelectedAssetId(),
+  //     },
+  //   });
+  // }
 });
 
 const onDetach = async () => {

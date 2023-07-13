@@ -1,20 +1,18 @@
 <template>
-  <div class="relative flex-grow">
-    <TabGroup
-      :startSelectedTabSlug="tabContentSlug"
-      @update:selected-tab="onTabChange"
-    >
-      <TabGroupItem slug="assets" label="ASSETS">
-        <slot v-if="tabContentSlug === 'assets'" />
-      </TabGroupItem>
-      <TabGroupItem slug="functions" label="FUNCTIONS">
-        <slot v-if="tabContentSlug === 'functions'" />
-      </TabGroupItem>
-      <TabGroupItem slug="packages" label="MODULES">
-        <slot v-if="tabContentSlug === 'packages'" />
-      </TabGroupItem>
-    </TabGroup>
-  </div>
+  <TabGroup
+    :startSelectedTabSlug="tabContentSlug"
+    @update:selected-tab="onTabChange"
+  >
+    <TabGroupItem slug="assets" label="ASSETS">
+      <slot v-if="tabContentSlug === 'assets'" />
+    </TabGroupItem>
+    <TabGroupItem slug="functions" label="FUNCTIONS">
+      <slot v-if="tabContentSlug === 'functions'" />
+    </TabGroupItem>
+    <TabGroupItem slug="packages" label="MODULES">
+      <slot v-if="tabContentSlug === 'packages'" />
+    </TabGroupItem>
+  </TabGroup>
 </template>
 
 <script lang="ts" setup>
