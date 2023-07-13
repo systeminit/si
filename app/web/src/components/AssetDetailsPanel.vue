@@ -13,7 +13,11 @@
         <VButton
           :requestStatus="executeAssetReqStatus"
           loadingText="Creating Asset..."
-          label="Create Asset"
+          :label="
+            assetStore.selectedAsset.schemaVariantId
+              ? 'Update Asset'
+              : 'Create Asset'
+          "
           :disabled="disabled"
           tone="action"
           icon="bolt"
@@ -30,6 +34,9 @@
       </div>
 
       <Stack>
+        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning"
+          >{{ disabledWarning }}
+        </ErrorMessage>
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
           :requestStatus="executeAssetReqStatus"
@@ -134,6 +141,7 @@ import {
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { nilId } from "@/utils/nilId";
 import ColorPicker from "./ColorPicker.vue";
 
 defineProps<{
@@ -160,23 +168,45 @@ const updateAsset = () => {
 };
 
 const disabled = computed(
-  () => !!(assetStore.selectedAsset?.defaultVariantId ?? false),
+  () =>
+    !!(
+      (assetStore.selectedAsset?.hasComponents ||
+        assetStore.selectedAsset?.hasAttrFuncs) ??
+      false
+    ),
 );
+
+const disabledWarning = computed(() => {
+  let byComponents = "";
+  if (assetStore.selectedAsset?.hasComponents) {
+    byComponents = "by components";
+  }
+  let byFuncs = "";
+  if (assetStore.selectedAsset?.hasAttrFuncs) {
+    byFuncs = "by attribute functions or custom validations";
+  }
+  const and =
+    assetStore.selectedAsset?.hasComponents &&
+    assetStore.selectedAsset?.hasAttrFuncs
+      ? " and "
+      : "";
+
+  return `This asset cannot be edited because it is in use ${byComponents}${and}${byFuncs}.`;
+});
 
 const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value.open();
-      for (const ipa of result.result.data.installedPkgAssets) {
-        if (ipa.assetKind === "schemaVariant") {
-          // there should only be one sv for an exec'd asset
-          assetStore.setSchemaVariantIdForAsset(
-            assetStore.selectedAssetId,
-            ipa.assetId,
-          );
-          await funcStore.FETCH_INPUT_SOURCE_LIST(ipa.assetId); // a new asset means new input sources
-        }
+      const { schemaVariantId } = result.result.data;
+      if (schemaVariantId !== nilId()) {
+        assetStore.setSchemaVariantIdForAsset(
+          assetStore.selectedAssetId,
+          schemaVariantId,
+        );
+        await assetStore.LOAD_ASSET(schemaVariantId);
+        await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
       }
     }
   }

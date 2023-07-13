@@ -42,10 +42,12 @@ export interface ListedVariantDef {
 
 export interface VariantDef extends ListedVariantDef {
   link?: string;
-  defaultVariantId?: string;
+  schemaVariantId?: string;
   code: string;
   handler: string;
   types?: string;
+  hasComponents: boolean;
+  hasAttrFuncs: boolean;
 }
 
 const funcStore = useFuncStore();
@@ -53,7 +55,14 @@ const funcStore = useFuncStore();
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
 export type AssetSaveRequest = Visibility &
-  Omit<Asset, "createdAt" | "updatedAt" | "variantExists">;
+  Omit<
+    Asset,
+    | "createdAt"
+    | "updatedAt"
+    | "variantExists"
+    | "hasComponents"
+    | "hasAttrFuncs"
+  >;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
   "id" | "definition" | "variantExists"
@@ -105,7 +114,7 @@ export const useAssetStore = () => {
         setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {
           const asset = this.assetsById[assetId];
           if (asset) {
-            asset.defaultVariantId = schemaVariantId;
+            asset.schemaVariantId = schemaVariantId;
             this.assetsById[assetId] = asset;
           }
         },
@@ -185,11 +194,7 @@ export const useAssetStore = () => {
         createNewAsset(): Asset {
           return {
             id: nilId(),
-            name: `new asset ${Math.floor(Math.random() * 10000)}${
-              Math.floor(Math.random() * 20) === 0
-                ? " omg has such a long name the name is so long you can't even believe how long it is!"
-                : ""
-            }`,
+            name: `new asset ${Math.floor(Math.random() * 10000)}`,
             code: "",
             handler: "",
             color: this.generateMockColor(),
@@ -200,7 +205,9 @@ export const useAssetStore = () => {
             funcs: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            defaultVariantId: undefined,
+            schemaVariantId: undefined,
+            hasComponents: false,
+            hasAttrFuncs: false,
           };
         },
 
@@ -215,7 +222,9 @@ export const useAssetStore = () => {
               ...visibility,
               ..._.omit(asset, [
                 "id",
-                "defaultVariantId",
+                "schemaVariantId",
+                "hasComponents",
+                "hasAttrFuncs",
                 "createdAt",
                 "updatedAt",
               ]),
@@ -246,7 +255,13 @@ export const useAssetStore = () => {
             url: "/variant_def/save_variant_def",
             params: {
               ...visibility,
-              ..._.omit(asset, ["defaultVariantId", "createdAt", "updatedAt"]),
+              ..._.omit(asset, [
+                "schemaVariantId",
+                "hasComponents",
+                "hasAttrFuncs",
+                "createdAt",
+                "updatedAt",
+              ]),
             },
           });
         },
@@ -274,7 +289,7 @@ export const useAssetStore = () => {
 
         async EXEC_ASSET(assetId: AssetId) {
           return new ApiRequest<
-            { success: true; installedPkgAssets: InstalledPkgAssetView[] },
+            { success: true; schemaVariantId: string },
             Visibility & { id: AssetId }
           >({
             method: "post",

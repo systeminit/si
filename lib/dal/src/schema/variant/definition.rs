@@ -17,7 +17,7 @@ use crate::{
     NatsError, PgError, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, SocketArity,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use crate::{SchemaError, SchemaId, TransactionsError};
+use crate::{Component, ComponentError, SchemaId, TransactionsError};
 use si_pkg::{
     AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, PropSpecWidgetKind, SchemaSpec,
     SchemaVariantSpec, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
@@ -27,6 +27,8 @@ use si_pkg::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
+    #[error(transparent)]
+    Component(#[from] Box<ComponentError>),
     #[error("Could not check for default variant: {0}")]
     CouldNotCheckForDefaultVariant(String),
     #[error("Could not get ui menu for schema: {0}")]
@@ -231,21 +233,17 @@ impl SchemaVariantDefinition {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
-    pub async fn existing_default_schema_variant_id(
+    pub async fn list_components(
         &self,
         ctx: &DalContext,
-    ) -> SchemaVariantDefinitionResult<Option<SchemaVariantId>> {
-        Ok(
-            match Schema::default_schema_variant_id_for_name(ctx, self.name()).await {
-                Ok(schema_variant_id) => Some(schema_variant_id),
-                Err(SchemaError::NotFoundByName(_)) | Err(SchemaError::NoDefaultVariant(_)) => None,
-                Err(e) => {
-                    return Err(
-                        SchemaVariantDefinitionError::CouldNotCheckForDefaultVariant(e.to_string()),
-                    );
-                }
-            },
-        )
+    ) -> SchemaVariantDefinitionResult<Vec<Component>> {
+        Ok(if let Some(variant_id) = self.schema_variant_id {
+            Component::list_for_schema_variant(ctx, variant_id)
+                .await
+                .map_err(Box::new)?
+        } else {
+            vec![]
+        })
     }
 
     standard_model_accessor!(name, String, SchemaVariantDefinitionResult);

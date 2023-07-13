@@ -1,4 +1,4 @@
-use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
+use super::{is_variant_def_locked, SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::func::compile_return_types;
@@ -36,6 +36,8 @@ pub struct GetVariantDefResponse {
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
     pub types: String,
+    pub has_components: bool,
+    pub has_attr_funcs: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -57,6 +59,8 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             component_type: *def.component_type(),
             handler: "".to_string(), //TODO @stack72
             types: "".to_string(),
+            has_components: false,
+            has_attr_funcs: false,
         }
     }
 }
@@ -76,14 +80,16 @@ pub async fn get_variant_def(
             request.id,
         ))?;
 
-    let variant_id = variant_def.existing_default_schema_variant_id(&ctx).await?;
-
+    let variant_id = variant_def.schema_variant_id().copied();
+    let (has_components, has_attr_funcs) = is_variant_def_locked(&ctx, &variant_def).await?;
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
     )?;
 
     let mut response: GetVariantDefResponse = variant_def.clone().into();
     response.default_variant_id = variant_id;
+    response.has_components = has_components;
+    response.has_attr_funcs = has_attr_funcs;
 
     response.code =
         asset_func
