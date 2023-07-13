@@ -51,17 +51,6 @@
             reindeer
             rust-toolchain
             tilt
-
-            # TODO(fnichol): we can remove these remaining packages when the
-            # Make workflow is dropped
-            automake
-            coreutils
-            gcc
-            gnumake
-            libtool
-            pkg-config
-            postgresql_14
-
           ] ++ lib.optionals pkgs.stdenv.isDarwin [
             libiconv
             darwin.apple_sdk.frameworks.Security
