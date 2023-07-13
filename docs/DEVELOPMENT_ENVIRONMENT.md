@@ -1,27 +1,15 @@
-# Developing
+# Development Environment
 
-This document contains knowledge-base-esque information related to running and developing the System Initiative software.
-Since this document cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more information.
-
-## Table of Contents
-
-- [Development Environment](#development-environment)
-- [Learning About SI Concepts](#learning-about-si-concepts)
-- [Repository Structure](#repository-structure)
-- [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
-
-## Development Environment
-
-Developing SI locally can be done in a variety of ways, but the officially supported method is to use the [Nix Flake](flake.nix)
+Developing SI locally can be done in a variety of ways, but the officially supported method is to use the [Nix Flake](../flake.nix)
 at the root of the repository.
 
-### Supported Platforms
+## Supported Platforms
 
 Using the flake requires using one of the below platforms.
 It is possible that the System Initiative software can be developed on even more platforms, but these platforms have
 been validated to work with `nix` and the corresponding flake.
 
-#### macOS
+### macOS
 
 macOS (Darwin) is officially supported on both x86_64 (amd64) (also known as "Intel") and aarch64 (arm64) (also known as
 "Apple Silicon") architectures.
@@ -33,7 +21,7 @@ You can either install it via directions from the official support page or by ru
 
 On macOS, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
 
-#### Linux
+### Linux
 
 Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) architectures.
 [NixOS](https://nixos.org/) is not supported at this time, but may be desired in the future.
@@ -41,7 +29,7 @@ Linux with MUSL instead of GNU is also not currently supported.
 For Fedora, RHEL-derivative and other [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) users, SELinux
 will likely need to be set to `permissive` mode or configured to work with `nix`.
 
-#### Windows
+### Windows
 
 Using native Windows is not supported at this time, but may be desired in the future.
 However, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows 10 and Windows 11 is officially supported on
@@ -50,7 +38,7 @@ In order to work with `nix`, `systemd` may need to be enabled in your WSL2 distr
 
 On WSL2, you will likely hit the [file descriptor limit](#file-descriptor-limit) problem, which requires user intervention.
 
-#### File Descriptor Limit
+### File Descriptor Limit
 
 On some systems, you may need to significantly increasing the file descriptor limit for `buck2`.
 This is because `buck2` opens many more files than either `cargo` or `pnpm` do.
@@ -69,11 +57,11 @@ Here is an example of a significant limit increase, where the argument provided 
 ulimit -n 10240
 ```
 
-### Dependencies
+## Dependencies
 
 For all supported platforms, there are two dependencies that must be installed, `nix` (preferably from [Zero to Nix](https://zero-to-nix.com/start/install)) and `docker`.
 
-#### Nix
+### Nix
 
 We use `nix` as our package manager for the repository.
 It ensures that our developers are all using the same versions of all packages and libraries for developing SI.
@@ -82,12 +70,12 @@ Regardless of how `nix` is installed, it must have the [flakes](https://nixos.wi
 We highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
 official installer; one reason being that the former will enable flakes by default.
 
-> You can use `direnv` (version >= 2.30) with our [Nix flake](./flake.nix) for both ease of running commands
+> You can use `direnv` (version >= 2.30) with our [Nix flake](../flake.nix) for both ease of running commands
 > and for editor integration.
-> 
+>
 > For more information, see the **Direnv** section.
 
-#### Docker
+### Docker
 
 We use `docker` to run our dependent services for the SI stack.
 It can either be installed via [Docker Desktop](https://www.docker.com/products/docker-desktop/) or
@@ -96,10 +84,10 @@ directly via [Docker Engine](https://docs.docker.com/engine/).
 For Docker Desktop, the version corresponding to your native architecture should be used (e.g. install the aarch64
 (arm64) version on a Apple-Silicon-equipped MacBook Pro).
 
-WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine (i.e. installing and using 
+WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine (i.e. installing and using
 `docker` within the distro and not interacting with the host).
 
-#### (Optional) Direnv
+### (Optional) Direnv
 
 [Direnv](https://direnv.net/) (version >= 2.30) with [nix-direnv](https://github.com/nix-community/nix-direnv) can
 automatically set up  your shell, which means you don't need to enter a subshell with `nix develop`, or prefix all
@@ -129,7 +117,7 @@ There are also plugins to integrate `direnv` with common editors.
 - (Neo)Vim: [direnv.vim](https://github.com/direnv/direnv.vim)
 - Visual Studio Code: [direnv](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
-### How to Run Commands
+## How to Run Commands
 
 All commands need to be run from the `nix` environment.
 There are two primary options to do so:
@@ -139,7 +127,7 @@ There are two primary options to do so:
 2. Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
    execute a command, or use the environment in whatever way your prefer.
 
-### Troubleshooting Potential Service Conflicts
+## Troubleshooting Potential Service Conflicts
 
 SI uses external services in conjunction with its native components.
 These external services are deployed via [`docker compose`](https://docs.docker.com/compose/) and are configured to stick to their default settings as
@@ -155,55 +143,19 @@ Potentially conflicting services include, but are not limited to, the following:
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being
 run.
 
-### How Will I Know That Each Component Is Ready?
+## How Will I Know That Each Component Is Ready?
 
 For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the
 webserver has bound to a port and is ready to receive messages.
 This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence
 changes) and will vary from component to component.
 
-### Using CLion Run Configurations Instead of Terminal Panes
+## (Outdated) Using CLion Run Configurations Instead of Terminal Panes
+
+_Please note: this section is a work in progress._
 
 This repository contains CLion run configurations for most of these targets, in addition to a `Run SI` compound target
 for running all the targets at once. They should be listed on the run menu automatically and are called
 `Prepare`, `Run [SDF | Veritech | Pinga | Web]` and `Teardown` (which is related to the next topic).
 
 Using them you should be able to run the whole stack via CLion's Run tool window instead of using multiple shells!
-
-## Learning About SI Concepts
-
-As referenced in [CODE_DOCUMENTATION](docs/CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
-into learning about the Rust modules and structs that back many SI concepts.
-
-Let's say you want to learn about what a `Component` is.
-You can generate and open the Rust documentation locally via the following command:
-
-```bash
-cargo doc --no-deps --document-private-items --open
-```
-
-Moreover, there are resources in [docs](./docs), [designs](./designs), our Miro boards, and our Figma projects that
-may prove useful as well.
-
-## Repository Structure
-
-While there are other directories in the project, these are primarily where
-most of the interesting source code lives and how they are generally organized:
-
-| Directory    | Description                                                    |
-|--------------|----------------------------------------------------------------|
-| `app/`       | Web front ends, GUIs, or other desktop applications            |
-| `bin/`       | Backend programs, CLIs, servers, etc.                          |
-| `component/` | Docker container images and other ancillary tooling            |
-| `lib/`       | Supporting libraries and packages for services or applications ||
-
-## Preparing Changes and Running Tests
-
-We highly recommend following the [Convential Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) format when committing changes.
-Our prefixes are derived from the official specification as well as the those found in [commitlint](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional), based on [Angular's commit conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md).
-When in doubt, use `feat`, `fix`, or `chore`!
-
-Moreover, please sign your commits using `git commit -s`.
-You can amend an existing commit with `git commit -s --amend`, if needed.
-
-Please see [the relevant document](docs/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.

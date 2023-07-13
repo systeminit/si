@@ -9,17 +9,16 @@ Where do you look?
 You can generate and open the docs in your browser to find out!
 
 ```bash
-cargo doc --no-deps --document-private-items --open
+buck2 run //lib/dal:doc -- --document-private-items --open
 ```
 
 Our Rust crates contain module and documentation comments that can be generated into static webpages by `rustdoc`.
-When in doubt, see if `cargo doc` has what you are looking for.
+When in doubt, see if `doc` target for a Rust-based library has what you are looking for.
 
 ## How Do We Generate Rust Documentation?
 
-As previously mentioned, for our Rust crates, we leverage `rustdoc` for seamless integration with `cargo doc`
-, [IntelliJ Rust](https://www.jetbrains.com/rust/),
-[rust-analyzer](https://rust-analyzer.github.io/), and more.
+As previously mentioned, for our Rust crates, we leverage `rustdoc` for seamless integration with
+[IntelliJ Rust](https://www.jetbrains.com/rust/), [rust-analyzer](https://rust-analyzer.github.io/), and more.
 
 ## Writing Rust Documentation
 

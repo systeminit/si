@@ -6,7 +6,7 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 Running SI locally can be done in a variety of ways, but this abbreviated section will focus on a single method for
 getting your environment ready to run the stack.
-For more information regarding environment setup and running SI locally, see [DEVELOPING](DEVELOPING.md).
+For more information regarding environment setup and running SI locally, see [DEVELOPMENT_ENVIRONMENT](./docs/DEVELOPMENT_ENVIRONMENT.md).
 
 ### Choose a Supported Platform
 
@@ -134,12 +134,6 @@ Alternatively, if you wish to keep your data for later use, you can stop the con
 ```bash
 buck2 run dev:stop
 ```
-
-## Additional Information For Environment Setup and Running the Stack
-
-For more information regarding the environment setup process and running the stack, refer to
-[DEVELOPING](./DEVELOPING.md).
-You can also refer to the [docs directory](./docs) for even more details.
 
 ## Architecture
 
