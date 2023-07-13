@@ -32,7 +32,7 @@ pub struct GetVariantDefResponse {
     pub description: Option<String>,
     pub code: String,
     pub handler: String,
-    pub default_variant_id: Option<SchemaVariantId>,
+    pub schema_variant_id: Option<SchemaVariantId>,
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
     pub types: String,
@@ -55,7 +55,7 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             code: "".to_string(), //TODO @stack72
             timestamp: def.timestamp().to_owned(),
             funcs: vec![],
-            default_variant_id: None,
+            schema_variant_id: None,
             component_type: *def.component_type(),
             handler: "".to_string(), //TODO @stack72
             types: "".to_string(),
@@ -87,7 +87,7 @@ pub async fn get_variant_def(
     )?;
 
     let mut response: GetVariantDefResponse = variant_def.clone().into();
-    response.default_variant_id = variant_id;
+    response.schema_variant_id = variant_id;
     response.has_components = has_components;
     response.has_attr_funcs = has_attr_funcs;
 
