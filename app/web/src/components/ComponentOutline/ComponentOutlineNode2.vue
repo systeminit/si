@@ -104,7 +104,18 @@
                 size="md"
                 :popoverPosition="popoverPosition"
               >
-                Confirmation Data
+                <div
+                  class="bg-neutral-800 w-96 h-80 rounded flex flex-col overflow-clip"
+                >
+                  <div
+                    class="bg-neutral-900 uppercase font-bold text-md p-xs flex place-content-between items-center"
+                  >
+                    <span>Changes</span>
+                  </div>
+                  <div class="p-xs pb-0 overflow-auto">
+                    SOON<span class="align-super">™️</span>
+                  </div>
+                </div>
               </StatusIconWithPopover>
 
               <div class="bg-neutral-500 w-[1px] h-4 mx-xs" />
@@ -115,7 +126,50 @@
                 size="md"
                 :popoverPosition="popoverPosition"
               >
-                Qualification Data
+                <div
+                  class="bg-neutral-800 w-96 h-80 rounded flex flex-col overflow-clip"
+                >
+                  <div
+                    class="bg-neutral-900 uppercase font-bold text-md p-xs flex place-content-between items-center"
+                  >
+                    <span>Qualifications</span>
+                    <div class="flex gap-xs rounded bg-black p-2xs">
+                      <span
+                        v-if="qualificationsFailed"
+                        class="flex items-center gap-0.5"
+                      >
+                        <StatusIndicatorIcon
+                          class="inline-block"
+                          type="qualification"
+                          status="failure"
+                          size="md"
+                        />
+                        {{ qualificationsFailed }}
+                      </span>
+                      <span class="flex items-center gap-0.5">
+                        <StatusIndicatorIcon
+                          class="inline-block"
+                          type="qualification"
+                          status="success"
+                          size="md"
+                        />
+                        {{ qualificationsSucceeded }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="p-xs pb-0 overflow-auto">
+                    <div
+                      v-for="(qualification, index) in componentQualifications"
+                      :key="index"
+                      class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-xs"
+                    >
+                      <QualificationViewerSingle
+                        :qualification="qualification"
+                        :componentId="props.componentId"
+                      />
+                    </div>
+                  </div>
+                </div>
               </StatusIconWithPopover>
             </template>
 
@@ -151,6 +205,8 @@ import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useFixesStore } from "@/store/fixes.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
+import QualificationViewerSingle from "@/components/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 
@@ -170,6 +226,7 @@ const isOpen = ref(true);
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 const fixesStore = useFixesStore();
+const changeSetsStore = useChangeSetsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
@@ -194,6 +251,47 @@ const qualificationStatus = computed(
     // qualificationStore.qualificationStatusWithRollupsByComponentId[
     qualificationsStore.qualificationStatusByComponentId[props.componentId],
 );
+const qualificationStats = computed(
+  () => qualificationsStore.qualificationStatsByComponentId[props.componentId],
+);
+const qualificationsFailed = computed(() =>
+  qualificationStats.value
+    ? qualificationStats.value.failed + qualificationStats.value.warned
+    : 0,
+);
+const qualificationsSucceeded = computed(() =>
+  qualificationStats.value ? qualificationStats.value.succeeded : 0,
+);
+
+watch(
+  [
+    () => changeSetsStore.selectedChangeSetWritten,
+    () => qualificationsStore.checkedQualificationsAt,
+  ],
+  () => {
+    qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
+  },
+  { immediate: true },
+);
+
+const componentQualifications = computed(() =>
+  // TODO remove clone and use toSorted when it gets widely supported
+  _.clone(
+    qualificationsStore.qualificationsByComponentId[props.componentId],
+  )?.sort(({ result: a }, { result: b }) => {
+    // non successful qualifications come first
+    if (a?.status !== b?.status) {
+      if (a?.status !== "success") {
+        return -1;
+      }
+      if (b?.status !== "success") {
+        return 1;
+      }
+    }
+    return 0;
+  }),
+);
+
 const confirmationStatus = computed(
   () => fixesStore.confirmationStatusByComponentId[props.componentId],
 );
@@ -226,6 +324,7 @@ const parentBreadcrumbsText = computed(() => {
 });
 
 // POPOVER CODE
+// Since we anchor the popover on the parent, for now it makes sense to have the position calculated on the parent
 const popoverPosition = ref<{ x: number; y: number } | undefined>();
 const popoverResize = _.debounce(() => {
   if (!nodeRef.value) {

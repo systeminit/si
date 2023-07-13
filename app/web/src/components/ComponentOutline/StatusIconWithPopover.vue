@@ -1,8 +1,13 @@
 <template>
-  <!-- TODO reemit native mouse event from children -->
-
   <div
-    class="hover:bg-action-200 dark:hover:bg-action-300 p-2xs rounded"
+    :class="
+      clsx(
+        'p-2xs rounded',
+        isOpen
+          ? 'bg-action-300 dark:bg-action-400'
+          : 'hover:bg-action-200 dark:hover:bg-action-300',
+      )
+    "
     @mouseenter="setHover(true)"
     @mouseleave="setHover(false)"
     @click="openPopover"
@@ -11,20 +16,18 @@
       :type="type"
       :status="status"
       :size="size"
-      :tone="isHovered ? 'shade' : undefined"
+      :tone="isHovered || isOpen ? 'shade' : undefined"
     />
     <Teleport v-if="isOpen" to="body">
       <div
         v-if="popoverPosition"
         ref="popover"
-        style="width: 200px; height: 200px; background: black"
         :style="{
           top: `${popoverPosition.y}px`,
           left: `${popoverPosition.x}px`,
         }"
-        class="absolute z-50 ml-xs"
+        class="absolute z-50 ml-sm"
       >
-        {{ popoverPosition }}
         <slot />
       </div>
     </Teleport>
@@ -32,9 +35,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, PropType, onBeforeUnmount, watch } from "vue";
+import { ref, PropType, onBeforeUnmount } from "vue";
 import { IconSizes } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
+import clsx from "clsx";
 import StatusIndicatorIcon, {
   IconType,
 } from "@/components/StatusIndicatorIcon2.vue";
