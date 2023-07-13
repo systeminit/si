@@ -4,8 +4,3 @@ sh_binary(
     name = "buck2-update-prelude",
     main = "buck2-update-prelude.sh",
 )
-
-sh_binary(
-    name = "buck2-upload-latest-binaries",
-    main = "buck2-upload-latest-binaries.sh",
-)
