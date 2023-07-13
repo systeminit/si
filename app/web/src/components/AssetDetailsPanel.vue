@@ -30,6 +30,9 @@
       </div>
 
       <Stack>
+        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning"
+          >{{ disabledWarning }}
+        </ErrorMessage>
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
           :requestStatus="executeAssetReqStatus"
@@ -169,6 +172,24 @@ const disabled = computed(
     ),
 );
 
+const disabledWarning = computed(() => {
+  let byComponents = "";
+  if (assetStore.selectedAsset?.hasComponents) {
+    byComponents = "by components";
+  }
+  let byFuncs = "";
+  if (assetStore.selectedAsset?.hasAttrFuncs) {
+    byFuncs = "by attribute functions or custom validations";
+  }
+  const and =
+    assetStore.selectedAsset?.hasComponents &&
+    assetStore.selectedAsset?.hasAttrFuncs
+      ? " and "
+      : "";
+
+  return `This asset cannot be edited because it is in use ${byComponents}${and}${byFuncs}.`;
+});
+
 const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
@@ -180,6 +201,7 @@ const executeAsset = async () => {
           assetStore.selectedAssetId,
           schemaVariantId,
         );
+        await assetStore.LOAD_ASSET(schemaVariantId);
         await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
       }
     }
