@@ -9,6 +9,7 @@ members = [
     "bin/module-index",
     "bin/pinga",
     "bin/sdf",
+    "bin/si",
     "bin/veritech",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
@@ -50,7 +51,9 @@ bytes = "1.4.0"
 chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
+comfy-table = {version ="7.0.1", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
+console = "0.15.7"
 convert_case = "0.6.0"
 crossbeam-channel = "0.5.8"
 deadpool = { version = "0.9.5", features = ["rt_tokio_1"] }
@@ -67,6 +70,7 @@ http = "0.2.9"
 hyper = { version = "0.14.26", features = ["client", "http1", "runtime", "server"] }
 hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] }
 iftree = "1.0.4"
+indicatif = "0.17.5"
 indoc = "2.0.1"
 itertools = "0.10.5"
 jwt-simple = "0.11.5"

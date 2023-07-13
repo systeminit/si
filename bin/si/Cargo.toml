@@ -1,0 +1,20 @@
+[package]
+name = "si"
+version = "0.1.0"
+authors = ["System Initiative Inc. <media@systeminit.com>"]
+edition = "2021"
+rust-version = "1.69"
+
+[[bin]]
+name = "si"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+color-eyre = { workspace = true }
+indicatif = { workspace = true }
+tokio = { workspace = true }
+derive_builder = { workspace = true }
+strum = { workspace = true }
+comfy-table.workspace = true
+console.workspace = true

@@ -66,6 +66,8 @@ A-lang-js:
 A-si-discord-bot:
   - bin/si-discord-bot/**/*
   - .prettierrc.js
+A-si:
+  - bin/si/**/*
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)
