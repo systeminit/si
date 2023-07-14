@@ -57,6 +57,10 @@ about = "The System Initiative Launcher - takes the McFuckery out of DevOps
                                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 ")]
 pub(crate) struct Args {
+    /// The System Initiative Launcher mode
+    #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
+    #[arg(long, short, env = "SI_LAUNCHER_MODE", default_value = "local")]
+    mode: String,
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
@@ -67,40 +71,39 @@ pub(crate) enum Commands {
     Check(CheckArgs),
     /// Installs the necessary components to run System Initiative
     Install(InstallArgs),
-    /// Launch the System Initiative Web UI.
+    /// Launches the System Initiative Web UI.
     Launch(LaunchArgs),
+    /// Starts System Initiative
+    Start(StartArgs),
+    /// Restart System Initiative
+    Restart(RestartArgs),
+    /// Stop System Initiative
+    Stop(StopArgs),
 }
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct LaunchArgs {
-    /// The System Initiative installation to launch
-    #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
-    #[clap(short, long)]
-    #[clap(default_value = "local")]
-    mode: String,
-}
+pub(crate) struct LaunchArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct StartArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct RestartArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct StopArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct CheckArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct InstallArgs {
-    /// The installation mode.
-    #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
-    #[clap(short, long)]
-    mode: String,
     /// Skip the system check as part of the install command
     #[clap(short, long)]
     pub skip_check: bool,
 }
 
-impl InstallArgs {
-    pub(crate) fn mode(&self) -> Mode {
-        Mode::from_str(&self.mode).expect("mode is a validated input str")
-    }
-}
-
-impl LaunchArgs {
+impl Args {
     pub(crate) fn mode(&self) -> Mode {
         Mode::from_str(&self.mode).expect("mode is a validated input str")
     }
