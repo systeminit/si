@@ -1,11 +1,13 @@
 <template>
-  <div class="bg-neutral-800 rounded text-left flex flex-col">
-    <div class="flex py-2 border-b border-black px-3 capitalize">
+  <div
+    class="rounded text-left flex flex-col overflow-auto bg-neutral-800 border border-neutral-800"
+  >
+    <div class="flex py-2 mb-px px-3 capitalize bg-black">
       {{ qualification.title }}
     </div>
 
-    <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
-      <StatusMessageBox :status="qualificationStatus">
+    <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm bg-black">
+      <StatusMessageBox :status="qualificationStatus" class="break-all">
         <span
           v-if="qualificationStatus === 'failure'"
           :title="titleFailedSubchecks"
@@ -134,7 +136,7 @@ const titleFailedSubchecks = computed(() => {
 });
 
 const truncatedFailedSubchecks = computed(() => {
-  const maxLength = 300;
+  const maxLength = 100;
   const message = failedSubchecks.value.length
     ? failedSubchecks.value.map((c) => c.description).join(" ")
     : 'Something went wrong! Click "View Details" to see the output.';

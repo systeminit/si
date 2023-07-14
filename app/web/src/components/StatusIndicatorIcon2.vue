@@ -64,6 +64,10 @@ const props = defineProps({
   type: { type: String as PropType<IconType>, required: true },
   status: { type: String },
   size: { type: String as PropType<IconSizes> },
+  tone: {
+    type: String as PropType<Tones>,
+    required: false,
+  },
 });
 
 const iconName = computed<IconNames>(
@@ -74,6 +78,7 @@ const iconName = computed<IconNames>(
 );
 const iconTone = computed<Tones>(
   () =>
+    props.tone ||
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
     "warning",
