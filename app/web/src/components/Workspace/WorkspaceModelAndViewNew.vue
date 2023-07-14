@@ -196,7 +196,7 @@
     </template>
 
     <template #subpanel2>
-      <div class="flex flex-col flex-grow">
+      <div class="flex flex-col h-full">
         <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
 
         <div class="flex-1">
