@@ -1,4 +1,4 @@
-use crate::args::{CheckArgs, Commands, InstallArgs};
+use crate::args::{CheckArgs, Commands, InstallArgs, LaunchArgs, Mode};
 use color_eyre::Result;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
@@ -22,45 +22,55 @@ fn main() -> Result<()> {
             download_containers(command_args)
         }
         Commands::Check(args) => check_system(args),
+        Commands::Launch(args) => launch_web(args),
     }
+}
+
+fn launch_web(args: LaunchArgs) -> Result<()> {
+    let path = match args.mode() {
+        Mode::Local => "http://localhost:8080",
+    };
+    match open::that(path) {
+        Ok(()) => println!("Opened '{}' successfully.", path),
+        Err(err) => eprintln!("An error occurred when opening '{}': {}", path, err),
+    }
+    Ok(())
 }
 
 fn check_system(_args: CheckArgs) -> Result<()> {
     println!("Preparing for System Initiative Installation");
-    let mut table = comfy_table::Table::new();
+    let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(100)
         .set_header(vec![
-            comfy_table::Cell::new("Dependency").add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("Success?").add_attribute(Attribute::Bold),
+            Cell::new("Dependency").add_attribute(Attribute::Bold),
+            Cell::new("Success?").add_attribute(Attribute::Bold),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Detected Docker Engine").add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ✅    "),
+            Cell::new("Detected Docker Engine").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Detected Docker Command").add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ✅    "),
+            Cell::new("Detected Docker Command").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Docker Compose Available").add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ✅    "),
+            Cell::new("Docker Compose Available").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Found `bash` in Nix environment")
-                .add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ✅    "),
+            Cell::new("Found `bash` in Nix environment").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Found nix environment").add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ✅    "),
+            Cell::new("Found nix environment").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
         ])
         .add_row(vec![
-            comfy_table::Cell::new("Reasonable value for max open files")
-                .add_attribute(Attribute::Bold),
-            comfy_table::Cell::new("    ❌    "),
+            Cell::new("Reasonable value for max open files").add_attribute(Attribute::Bold),
+            Cell::new("    ❌    "),
         ]);
 
     println!("{table}");
