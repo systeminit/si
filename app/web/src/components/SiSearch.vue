@@ -54,11 +54,13 @@ function triggerSearch() {
   emit("search", searchString.value || "");
 }
 
+const debouncedAutoSearch = _.debounce(triggerAutoSearch, 50);
+
 // if autoSearch prop is true, we'll trigger the search event as the user types (debounced)
 // rather than only when they click the search icon
 watch(searchString, () => {
   emit("update:modelValue", searchString.value || "");
-  _.debounce(triggerAutoSearch, 50);
+  debouncedAutoSearch();
 });
 
 function triggerAutoSearch() {

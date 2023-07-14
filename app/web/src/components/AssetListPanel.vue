@@ -18,7 +18,7 @@
           @click="newAsset"
         />
       </div>
-      <SiSearch autoSearch placeholder="search assets" />
+      <SiSearch autoSearch placeholder="search assets" @search="onSearch" />
       <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
       >
@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed } from "vue";
+import { onMounted, computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
   Collapsible,
@@ -79,16 +79,33 @@ onMounted(() => {
   }
 });
 
+const searchString = ref("");
+
+const onSearch = (search: string) => {
+  searchString.value = search.trim().toLocaleLowerCase();
+};
+
 const categorizedAssets = computed(() =>
-  assetList.value.reduce((categorized, asset) => {
-    let catList = categorized[asset.category];
-    if (!catList) {
-      catList = [];
-    }
-    catList.push(asset);
-    categorized[asset.category] = catList;
-    return categorized;
-  }, {} as { [key: string]: AssetListEntry[] }),
+  assetList.value
+    .filter((asset) => {
+      if (searchString.value.length) {
+        return (
+          asset.name.toLocaleLowerCase().includes(searchString.value) ||
+          asset.menuName?.toLocaleLowerCase().includes(searchString.value)
+        );
+      }
+
+      return true;
+    })
+    .reduce((categorized, asset) => {
+      let catList = categorized[asset.category];
+      if (!catList) {
+        catList = [];
+      }
+      catList.push(asset);
+      categorized[asset.category] = catList;
+      return categorized;
+    }, {} as { [key: string]: AssetListEntry[] }),
 );
 
 const newAsset = async () => {
