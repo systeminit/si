@@ -15,6 +15,7 @@ rust_binary(
         "//third-party/rust:comfy-table",
         "//third-party/rust:console",
         "//third-party/rust:open",
+        "//third-party/rust:rand",
     ],
     srcs = glob(["src/**/*.rs"]),
 )

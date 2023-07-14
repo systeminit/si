@@ -16,6 +16,7 @@ indicatif = { workspace = true }
 tokio = { workspace = true }
 derive_builder = { workspace = true }
 strum = { workspace = true }
-comfy-table.workspace = true
-console.workspace = true
-open.workspace = true
+comfy-table = { workspace = true }
+console = { workspace = true }
+open = { workspace = true }
+rand = { workspace = true }
