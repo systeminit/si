@@ -315,7 +315,6 @@ import {
 } from "@/store/components.store";
 import NoAssetsLight from "@/assets/images/no-assets__light.svg?component";
 import NoAssetsDark from "@/assets/images/no-assets__dark.svg?component";
-
 import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";

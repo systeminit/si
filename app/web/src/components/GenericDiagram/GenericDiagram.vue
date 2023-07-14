@@ -7,6 +7,7 @@ overflow hidden */
     class="absolute inset-0 overflow-hidden"
     :style="{ cursor }"
   >
+    <DiagramEmptyState v-if="props.nodes.length === 0" />
     <div
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
@@ -232,6 +233,7 @@ import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
 import { baseConfig } from "./diagram_base_config";
 import DiagramIcon from "./DiagramIcon.vue";
+import DiagramEmptyState from "./DiagramEmptyState.vue";
 
 // zoom config - zoom value of 1 is 100% zoom level
 const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming

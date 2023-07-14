@@ -35,8 +35,10 @@
         <!-- tree mode -->
         <template v-else>
           <div v-if="!rootComponents.length" class="flex flex-col items-center">
-            <NoComponents v-if="appTheme === 'light'" />
-            <NoComponentsDark v-else />
+            <div class="w-52">
+              <NoComponents v-if="appTheme === 'light'" />
+              <NoComponentsDark v-else />
+            </div>
             <div class="text-xl text-neutral-400 mt-2">Drag & Drop</div>
             <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
               Drag & Drop assets on to the canvas and start modeling your
