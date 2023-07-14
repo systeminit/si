@@ -363,7 +363,7 @@ async fn remove_least_specific(ctx: &DalContext) {
         .expect("could not list attribute prototypes for context");
 
     for prototype in prototypes {
-        let result = AttributePrototype::remove(ctx, prototype.id()).await;
+        let result = AttributePrototype::remove(ctx, prototype.id(), false).await;
         if let Err(AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(id)) =
             result
         {
@@ -441,7 +441,7 @@ async fn remove_component_specific(ctx: &DalContext) {
 
     for prototype in prototypes {
         // Ensure that performing remove on base prototypes on props results in failure.
-        assert!(AttributePrototype::remove(ctx, prototype.id())
+        assert!(AttributePrototype::remove(ctx, prototype.id(), false)
             .await
             .is_err());
 
@@ -511,9 +511,11 @@ async fn remove_component_specific(ctx: &DalContext) {
             }
 
             // Perform removal on the prototype.
-            assert!(AttributePrototype::remove(ctx, updated_prototype.id())
-                .await
-                .is_ok());
+            assert!(
+                AttributePrototype::remove(ctx, updated_prototype.id(), false)
+                    .await
+                    .is_ok()
+            );
 
             ctx.blocking_commit()
                 .await

@@ -7,9 +7,8 @@ use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    ComponentType, Func, StandardModel, Timestamp, Visibility,
+    ComponentType, Func, SchemaVariant, SchemaVariantId, StandardModel, Timestamp, Visibility,
 };
-use dal::{SchemaVariant, SchemaVariantId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -81,6 +80,7 @@ pub async fn get_variant_def(
         ))?;
 
     let variant_id = variant_def.schema_variant_id().copied();
+
     let (has_components, has_attr_funcs) = is_variant_def_locked(&ctx, &variant_def).await?;
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
