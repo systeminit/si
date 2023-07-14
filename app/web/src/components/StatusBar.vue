@@ -3,12 +3,11 @@
     ref="panelRef"
     rememberSizeKey="status-bar"
     side="bottom"
-    :minResize="0"
-    :maxResize="0.8"
     :class="clsx(!panelOpen && 'h-12', themeContainerClasses)"
     :resizeable="panelOpen"
     :defaultSize="320"
-    :minSize="280"
+    :minSize="250"
+    :maxSizeRatio="0.8"
   >
     <!-- TODO - we should replace this with our own TabGroup component eventually -->
     <TabGroup
