@@ -16,8 +16,8 @@ use crate::{
     SelectedTestBuiltinSchemas, StandardModel,
 };
 
-mod test_exclusive_fallout;
-mod test_exclusive_starfield;
+mod fallout;
+mod starfield;
 
 /// Migrate [`Schemas`](crate::Schema) for production use.
 pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {

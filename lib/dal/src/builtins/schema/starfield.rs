@@ -125,6 +125,24 @@ impl MigrationDriver {
             .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
             .build()?;
 
+        let starfield_resource_payload_to_value_func_code =
+            "async function translate(arg: Input): Promise<Output> {\
+            return arg.payload ?? {};
+        }";
+        let starfield_resource_payload_to_value_func = FuncSpec::builder()
+            .name("si:resourcePayloadToValue")
+            .code_plaintext(starfield_resource_payload_to_value_func_code)
+            .handler("translate")
+            .backend_kind(FuncSpecBackendKind::JsAttribute)
+            .response_type(FuncSpecBackendResponseType::Json)
+            .argument(
+                FuncArgumentSpec::builder()
+                    .name("payload")
+                    .kind(FuncArgumentKind::Object)
+                    .build()?,
+            )
+            .build()?;
+
         let starfield_schema = SchemaSpec::builder()
             .name("starfield")
             .category("test exclusive")
@@ -250,6 +268,7 @@ impl MigrationDriver {
             .func(starfield_confirmation_func)
             .func(fallout_entries_to_galaxies_transform_func)
             .func(starfield_authoring_schema_func)
+            .func(starfield_resource_payload_to_value_func)
             .schema(starfield_schema)
             .build()?;
 
