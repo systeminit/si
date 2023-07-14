@@ -67,6 +67,17 @@ pub(crate) enum Commands {
     Check(CheckArgs),
     /// Installs the necessary components to run System Initiative
     Install(InstallArgs),
+    /// Launch the System Initiative Web UI.
+    Launch(LaunchArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct LaunchArgs {
+    /// The System Initiative installation to launch
+    #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
+    #[clap(short, long)]
+    #[clap(default_value = "local")]
+    mode: String,
 }
 
 #[derive(Debug, clap::Args)]
@@ -84,6 +95,12 @@ pub(crate) struct InstallArgs {
 }
 
 impl InstallArgs {
+    pub(crate) fn mode(&self) -> Mode {
+        Mode::from_str(&self.mode).expect("mode is a validated input str")
+    }
+}
+
+impl LaunchArgs {
     pub(crate) fn mode(&self) -> Mode {
         Mode::from_str(&self.mode).expect("mode is a validated input str")
     }

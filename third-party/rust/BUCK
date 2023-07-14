@@ -5196,6 +5196,24 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "is-docker-0.2.0.crate",
+    sha256 = "928bae27f42bc99b60d9ac7334e3a21d10ad8f1835a4e12ec3ec0464765ed1b3",
+    strip_prefix = "is-docker-0.2.0",
+    urls = ["https://crates.io/api/v1/crates/is-docker/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "is-docker-0.2.0",
+    srcs = [":is-docker-0.2.0.crate"],
+    crate = "is_docker",
+    crate_root = "is-docker-0.2.0.crate/src/lib.rs",
+    edition = "2015",
+    visibility = [],
+    deps = [":once_cell-1.18.0"],
+)
+
+http_archive(
     name = "is-terminal-0.4.7.crate",
     sha256 = "adcf93614601c8129ddf72e2d5633df827ba6551541c6d8c59520a371475be1f",
     strip_prefix = "is-terminal-0.4.7",
@@ -5231,6 +5249,27 @@ cargo.rust_library(
     },
     visibility = [],
     deps = [":io-lifetimes-1.0.11"],
+)
+
+http_archive(
+    name = "is-wsl-0.4.0.crate",
+    sha256 = "173609498df190136aa7dea1a91db051746d339e18476eed5ca40521f02d7aa5",
+    strip_prefix = "is-wsl-0.4.0",
+    urls = ["https://crates.io/api/v1/crates/is-wsl/0.4.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "is-wsl-0.4.0",
+    srcs = [":is-wsl-0.4.0.crate"],
+    crate = "is_wsl",
+    crate_root = "is-wsl-0.4.0.crate/src/lib.rs",
+    edition = "2015",
+    visibility = [],
+    deps = [
+        ":is-docker-0.2.0",
+        ":once_cell-1.18.0",
+    ],
 )
 
 alias(
@@ -7134,6 +7173,57 @@ cargo.rust_library(
     crate = "opaque_debug",
     crate_root = "opaque-debug-0.3.0.crate/src/lib.rs",
     edition = "2018",
+    visibility = [],
+)
+
+alias(
+    name = "open",
+    actual = ":open-5.0.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "open-5.0.0.crate",
+    sha256 = "cfabf1927dce4d6fdf563d63328a0a506101ced3ec780ca2135747336c98cef8",
+    strip_prefix = "open-5.0.0",
+    urls = ["https://crates.io/api/v1/crates/open/5.0.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "open-5.0.0",
+    srcs = [":open-5.0.0.crate"],
+    crate = "open",
+    crate_root = "open-5.0.0.crate/src/lib.rs",
+    edition = "2018",
+    platform = {
+        "linux-arm64": dict(
+            deps = [
+                ":is-wsl-0.4.0",
+                ":libc-0.2.146",
+                ":pathdiff-0.2.1",
+            ],
+        ),
+        "linux-x86_64": dict(
+            deps = [
+                ":is-wsl-0.4.0",
+                ":libc-0.2.146",
+                ":pathdiff-0.2.1",
+            ],
+        ),
+        "macos-arm64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":pathdiff-0.2.1",
+            ],
+        ),
+        "macos-x86_64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":pathdiff-0.2.1",
+            ],
+        ),
+    },
     visibility = [],
 )
 
@@ -12786,6 +12876,7 @@ cargo.rust_binary(
         ":nkeys-0.2.0",
         ":num_cpus-1.15.0",
         ":once_cell-1.18.0",
+        ":open-5.0.0",
         ":opentelemetry-0.18.0",
         ":opentelemetry-otlp-0.11.0",
         ":opentelemetry-semantic-conventions-0.10.0",
