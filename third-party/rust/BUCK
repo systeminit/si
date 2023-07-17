@@ -2319,6 +2319,77 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "crossterm-0.25.0.crate",
+    sha256 = "e64e6c0fbe2c17357405f7c758c1ef960fce08bdfb2c03d88d2a18d7e09c4b67",
+    strip_prefix = "crossterm-0.25.0",
+    urls = ["https://crates.io/api/v1/crates/crossterm/0.25.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "crossterm-0.25.0",
+    srcs = [":crossterm-0.25.0.crate"],
+    crate = "crossterm",
+    crate_root = "crossterm-0.25.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "bracketed-paste",
+        "default",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":mio-0.8.8",
+                ":signal-hook-0.3.15",
+                ":signal-hook-mio-0.2.3",
+            ],
+        ),
+        "linux-x86_64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":mio-0.8.8",
+                ":signal-hook-0.3.15",
+                ":signal-hook-mio-0.2.3",
+            ],
+        ),
+        "macos-arm64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":mio-0.8.8",
+                ":signal-hook-0.3.15",
+                ":signal-hook-mio-0.2.3",
+            ],
+        ),
+        "macos-x86_64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":mio-0.8.8",
+                ":signal-hook-0.3.15",
+                ":signal-hook-mio-0.2.3",
+            ],
+        ),
+        "windows-gnu": dict(
+            deps = [
+                ":crossterm_winapi-0.9.1",
+                ":winapi-0.3.9",
+            ],
+        ),
+        "windows-msvc": dict(
+            deps = [
+                ":crossterm_winapi-0.9.1",
+                ":winapi-0.3.9",
+            ],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":bitflags-1.3.2",
+        ":parking_lot-0.12.1",
+    ],
+)
+
+http_archive(
     name = "crossterm-0.26.1.crate",
     sha256 = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13",
     strip_prefix = "crossterm-0.26.1",
@@ -5115,6 +5186,44 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "inquire",
+    actual = ":inquire-0.6.2",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "inquire-0.6.2.crate",
+    sha256 = "c33e7c1ddeb15c9abcbfef6029d8e29f69b52b6d6c891031b88ed91b5065803b",
+    strip_prefix = "inquire-0.6.2",
+    urls = ["https://crates.io/api/v1/crates/inquire/0.6.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "inquire-0.6.2",
+    srcs = [":inquire-0.6.2.crate"],
+    crate = "inquire",
+    crate_root = "inquire-0.6.2.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "crossterm",
+        "default",
+        "macros",
+    ],
+    visibility = [],
+    deps = [
+        ":bitflags-1.3.2",
+        ":crossterm-0.25.0",
+        ":dyn-clone-1.0.11",
+        ":lazy_static-1.4.0",
+        ":newline-converter-0.2.2",
+        ":thiserror-1.0.40",
+        ":unicode-segmentation-1.10.1",
+        ":unicode-width-0.1.10",
+    ],
+)
+
 http_archive(
     name = "instant-0.1.12.crate",
     sha256 = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c",
@@ -6587,6 +6696,24 @@ cargo.rust_library(
         ":url-2.4.0",
         ":webpki-0.21.4",
     ],
+)
+
+http_archive(
+    name = "newline-converter-0.2.2.crate",
+    sha256 = "1f71d09d5c87634207f894c6b31b6a2b2c64ea3bdcf71bd5599fdbbe1600c00f",
+    strip_prefix = "newline-converter-0.2.2",
+    urls = ["https://crates.io/api/v1/crates/newline-converter/0.2.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "newline-converter-0.2.2",
+    srcs = [":newline-converter-0.2.2.crate"],
+    crate = "newline_converter",
+    crate_root = "newline-converter-0.2.2.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [":unicode-segmentation-1.10.1"],
 )
 
 alias(
@@ -12867,6 +12994,7 @@ cargo.rust_binary(
         ":iftree-1.0.4",
         ":indicatif-0.17.5",
         ":indoc-2.0.1",
+        ":inquire-0.6.2",
         ":itertools-0.10.5",
         ":jwt-simple-0.11.5",
         ":lazy_static-1.4.0",

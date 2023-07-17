@@ -79,10 +79,20 @@ pub(crate) enum Commands {
     Restart(RestartArgs),
     /// Stop System Initiative
     Stop(StopArgs),
+    /// Update the System Initiative CLI Launcher
+    Update(UpdateArgs),
+    /// Check the status of the specified installation mode
+    Status(StatusArgs),
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct LaunchArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct StatusArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct UpdateArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct StartArgs {}

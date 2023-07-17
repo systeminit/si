@@ -20,3 +20,4 @@ comfy-table = { workspace = true }
 console = { workspace = true }
 open = { workspace = true }
 rand = { workspace = true }
+inquire = { workspace = true }
