@@ -23,7 +23,7 @@
       v-if="FF_SINGLE_MODEL_SCREEN"
       class="absolute w-full flex flex-col h-full"
     >
-      <ApplyChangeSetButton class="w-10/12 m-4" :recommendations="[]" />
+      <ApplyChangeSetButton class="w-10/12 m-4" />
       <SidebarSubpanelTitle>Function Details</SidebarSubpanelTitle>
 
       <FuncDetails

@@ -5,10 +5,11 @@
     :changeSetId="props.changeSetId"
   />
   <WorkspaceSinglePageOld
-    v-else
+    v-else-if="featureFlagsStore.SINGLE_MODEL_SCREEN === false"
     :workspacePk="props.workspacePk"
     :changeSetId="props.changeSetId"
   />
+  <div v-else></div>
 </template>
 
 <script lang="ts" setup>
