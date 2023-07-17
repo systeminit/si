@@ -64,6 +64,7 @@ pub mod user;
 pub mod validation;
 pub mod visibility;
 pub mod workspace;
+pub mod workspace_snapshot;
 pub mod ws_event;
 
 pub use action_prototype::{
@@ -168,6 +169,8 @@ pub use validation::resolver::{
 };
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace_snapshot::WorkspaceSnapshot;
+pub use workspace_snapshot::WorkspaceSnapshotGraph;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[remain::sorted]
