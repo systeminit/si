@@ -14,10 +14,12 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, DalContext, Func,
+    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributePrototype,
+    AttributePrototypeError, DalContext, ExternalProvider, ExternalProviderError, Func,
     FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncError, FuncId,
-    LeafInputLocation, LeafKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId,
-    StandardModel, StandardModelError, TenancyError, TransactionsError, WsEventError,
+    InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, SchemaError,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, StandardModelError,
+    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -39,9 +41,13 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("error creating schema variant from definition: {0}")]
     CouldNotCreateSchemaVariantFromDefinition(String),
+    #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error(transparent)]
@@ -56,6 +62,8 @@ pub enum SchemaVariantDefinitionError {
     FuncNotFound(FuncId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
     #[error("No new asset was created")]
     NoAssetCreated,
     #[error(transparent)]
@@ -86,6 +94,8 @@ pub enum SchemaVariantDefinitionError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error(transparent)]
+    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),
     #[error("Cannot update asset structure while in use by components, attribute functions, or validations")]
@@ -177,6 +187,55 @@ pub async fn migrate_leaf_functions_to_new_schema_variant(
     Ok(())
 }
 
+/// Removes all attribute prototypes, values, props, internal/external providers, sockets and
+/// validation prototypes for a schema variant. Actions are migrated directly, so they are not
+/// removed.
+pub async fn cleanup_orphaned_objects(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<()> {
+    for prototype in AttributePrototype::list_for_schema_variant(ctx, schema_variant_id).await? {
+        AttributePrototype::remove(ctx, prototype.id(), true).await?;
+    }
+
+    for mut prop in SchemaVariant::all_props(ctx, schema_variant_id)
+        .await?
+        .drain(..)
+    {
+        prop.delete_by_id(ctx).await?;
+    }
+
+    for mut external_provider in ExternalProvider::list_for_schema_variant(ctx, schema_variant_id)
+        .await?
+        .drain(..)
+    {
+        for mut socket in external_provider.sockets(ctx).await?.drain(..) {
+            socket.delete_by_id(ctx).await?;
+        }
+        external_provider.delete_by_id(ctx).await?;
+    }
+
+    for mut internal_provider in InternalProvider::list_for_schema_variant(ctx, schema_variant_id)
+        .await?
+        .drain(..)
+    {
+        for mut socket in internal_provider.sockets(ctx).await?.drain(..) {
+            socket.delete_by_id(ctx).await?;
+        }
+        internal_provider.delete_by_id(ctx).await?;
+    }
+
+    for mut validation_prototype in
+        ValidationPrototype::list_for_schema_variant(ctx, schema_variant_id)
+            .await?
+            .drain(..)
+    {
+        validation_prototype.delete_by_id(ctx).await?;
+    }
+
+    Ok(())
+}
+
 pub struct LeafFuncMigration {
     pub func: Func,
     pub leaf_kind: LeafKind,
@@ -224,6 +283,8 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
                 .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
                     *variant_def.id(),
                 ))?;
+
+        cleanup_orphaned_objects(ctx, *variant.id()).await?;
 
         variant.delete_by_id(ctx).await?;
         for mut ui_menu in schema.ui_menus(ctx).await? {

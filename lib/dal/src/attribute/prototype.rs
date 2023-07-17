@@ -46,6 +46,8 @@ const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
     include_str!("../queries/attribute_prototype/list_from_internal_provider_use.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype/list_for_context.sql");
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("../queries/attribute_prototype/list_for_schema_variant.sql");
 const LIST_FUNCS_FOR_CONTEXT_AND_BACKEND_RESPONSE_TYPE: &str = include_str!("../queries/attribute_prototype/list_protoype_funcs_for_context_and_func_backend_response_type.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype/find_with_parent_value_and_key_for_context.sql");
@@ -388,9 +390,14 @@ impl AttributePrototype {
     ///
     /// Caution: this should be used rather than [`StandardModel::delete_by_id()`] when deleting an
     /// [`AttributePrototype`]. That method should never be called directly.
+    ///
+    /// Normally we forbid deleting "least specific" attribute prototypes, that is, prototypes
+    /// at the schema variant level, but we need to do so when removing a schema variant and
+    /// all its associated objects. To make this possible, set `force` to `true`
     pub async fn remove(
         ctx: &DalContext,
         attribute_prototype_id: &AttributePrototypeId,
+        force: bool,
     ) -> AttributePrototypeResult<()> {
         // Get the prototype for the given id. Once we get its corresponding value, we can delete
         // the prototype.
@@ -401,7 +408,9 @@ impl AttributePrototype {
             };
 
         let parent_proto_is_map_or_array_element = attribute_prototype.key().is_some();
-        if attribute_prototype.context.is_least_specific() && !parent_proto_is_map_or_array_element
+        if attribute_prototype.context.is_least_specific()
+            && !parent_proto_is_map_or_array_element
+            && !force
         {
             return Err(
                 AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
@@ -440,6 +449,7 @@ impl AttributePrototype {
             if let Some(mut current_prototype) = current_value.attribute_prototype(ctx).await? {
                 if current_prototype.context.is_least_specific()
                     && !parent_proto_is_map_or_array_element
+                    && !force
                 {
                     return Err(
                         AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
@@ -466,7 +476,10 @@ impl AttributePrototype {
             }
 
             // Delete the value if its context is not "least-specific".
-            if current_value.context.is_least_specific() && !parent_proto_is_map_or_array_element {
+            if current_value.context.is_least_specific()
+                && !parent_proto_is_map_or_array_element
+                && !force
+            {
                 return Err(
                     AttributePrototypeError::LeastSpecificContextValueRemovalNotAllowed(
                         *current_value.id(),
@@ -505,6 +518,23 @@ impl AttributePrototype {
                     &context.prop_id(),
                     &backend_response_type.as_ref(),
                 ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    pub async fn list_for_schema_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> AttributePrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_FOR_SCHEMA_VARIANT,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
 

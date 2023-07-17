@@ -274,7 +274,9 @@ async fn save_attr_func_prototypes(
                     reset_prototype_and_value_to_intrinsic_function(ctx, &proto, proto.context)
                         .await?
                 }
-                RemovedPrototypeOp::Delete => AttributePrototype::remove(ctx, proto.id()).await?,
+                RemovedPrototypeOp::Delete => {
+                    AttributePrototype::remove(ctx, proto.id(), false).await?
+                }
             }
         }
     }
