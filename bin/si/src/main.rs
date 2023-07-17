@@ -1,12 +1,13 @@
 use crate::args::{
-    CheckArgs, Commands, InstallArgs, LaunchArgs, Mode, RestartArgs, StartArgs, StatusArgs,
-    StopArgs, UpdateArgs,
+    CheckArgs, Commands, InstallArgs, LaunchArgs, Mode, ReportArgs, RestartArgs, StartArgs,
+    StatusArgs, StopArgs, UpdateArgs,
 };
 use color_eyre::Result;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
 use console::Emoji;
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressState, ProgressStyle};
+use inquire::{Confirm, Text};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::thread;
@@ -61,7 +62,36 @@ fn main() -> Result<()> {
         Commands::Stop(args) => stop_si(args, mode),
         Commands::Update(args) => update_launcher(args, mode),
         Commands::Status(args) => check_installation(args, mode),
+        Commands::Report(args) => make_a_report(args, mode),
     }
+}
+
+fn make_a_report(_args: ReportArgs, _mode: Mode) -> Result<()> {
+    let ans = Confirm::new("So, you'd like to report a bug?")
+        .with_default(true)
+        .with_help_message(
+            "Please Note: We will collect some data from your system - OS, arch etc.",
+        )
+        .prompt();
+
+    match ans {
+        Ok(true) => println!(
+            "We have collected your OS version, architecture and SI version from this installation",
+        ),
+        Ok(false) => println!("Whimp! ;)"),
+        Err(_) => println!("Error: Try again later!"),
+    }
+
+    let info = Text::new("Do you want to provide us any other information?").prompt();
+
+    match info {
+        Ok(_) => println!("Thank you for making System Initiative better!!"),
+        Err(_) => println!("Error: Try again later!"),
+    }
+
+    println!("Report received");
+
+    Ok(())
 }
 
 fn check_installation(_args: StatusArgs, _mode: Mode) -> Result<()> {
@@ -104,7 +134,7 @@ fn check_installation(_args: StatusArgs, _mode: Mode) -> Result<()> {
 }
 
 fn update_launcher(_args: UpdateArgs, _mode: Mode) -> Result<()> {
-    let ans = inquire::Confirm::new("Are you sure you want to update this launcher?")
+    let ans = Confirm::new("Are you sure you want to update this launcher?")
         .with_default(false)
         .with_help_message("Please Note: No container data is backed up during update!")
         .prompt();
