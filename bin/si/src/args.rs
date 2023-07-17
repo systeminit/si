@@ -83,10 +83,15 @@ pub(crate) enum Commands {
     Update(UpdateArgs),
     /// Check the status of the specified installation mode
     Status(StatusArgs),
+    /// Report an error to System Initiative.
+    Report(ReportArgs),
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct LaunchArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct ReportArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct StatusArgs {}
