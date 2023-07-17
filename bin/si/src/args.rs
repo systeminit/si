@@ -9,7 +9,7 @@ pub(crate) fn parse() -> Args {
     Args::parse()
 }
 
-/// The System Initiative Launcher - takes the McFuckery out of DevOps.
+/// The System Initiative Launcher.
 #[derive(Debug, Parser)]
 #[command(
 name = NAME,
