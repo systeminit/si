@@ -1,5 +1,6 @@
 use crate::args::{
-    CheckArgs, Commands, InstallArgs, LaunchArgs, Mode, RestartArgs, StartArgs, StopArgs,
+    CheckArgs, Commands, InstallArgs, LaunchArgs, Mode, RestartArgs, StartArgs, StatusArgs,
+    StopArgs, UpdateArgs,
 };
 use color_eyre::Result;
 use comfy_table::presets::UTF8_FULL;
@@ -38,9 +39,9 @@ fn main() -> Result<()> {
     let mode = args.mode();
 
     println!(
-        "{}",
+        "{}\n\n",
         format_args!(
-            "Starting System Initiative Launcher in {:?} mode",
+            "System Initiative Launcher is in {:?} mode",
             mode.to_string()
         )
     );
@@ -49,16 +50,72 @@ fn main() -> Result<()> {
         Commands::Install(args) => {
             let command_args = args;
             if !command_args.skip_check {
-                check_system(CheckArgs {}, mode)?;
+                check_dependencies(CheckArgs {}, mode)?;
             }
             download_containers(command_args, mode)
         }
-        Commands::Check(args) => check_system(args, mode),
+        Commands::Check(args) => check_dependencies(args, mode),
         Commands::Launch(args) => launch_web(args, mode),
         Commands::Start(args) => start_si(args, mode),
         Commands::Restart(args) => restart_si(args, mode),
         Commands::Stop(args) => stop_si(args, mode),
+        Commands::Update(args) => update_launcher(args, mode),
+        Commands::Status(args) => check_installation(args, mode),
     }
+}
+
+fn check_installation(_args: StatusArgs, _mode: Mode) -> Result<()> {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_width(100)
+        .set_header(vec![
+            Cell::new("Component").add_attribute(Attribute::Bold),
+            Cell::new("Healthy?").add_attribute(Attribute::Bold),
+        ])
+        .add_row(vec![
+            Cell::new("Council").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
+        ])
+        .add_row(vec![
+            Cell::new("Veritech").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
+        ])
+        .add_row(vec![
+            Cell::new("Pinga").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
+        ])
+        .add_row(vec![
+            Cell::new("SDF").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
+        ])
+        .add_row(vec![
+            Cell::new("Module-Index").add_attribute(Attribute::Bold),
+            Cell::new("    ✅    "),
+        ])
+        .add_row(vec![
+            Cell::new("Web").add_attribute(Attribute::Bold),
+            Cell::new("    ❌    "),
+        ]);
+
+    println!("{table}");
+    Ok(())
+}
+
+fn update_launcher(_args: UpdateArgs, _mode: Mode) -> Result<()> {
+    let ans = inquire::Confirm::new("Are you sure you want to update this launcher?")
+        .with_default(false)
+        .with_help_message("Please Note: No container data is backed up during update!")
+        .prompt();
+
+    match ans {
+        Ok(true) => println!("That's awesome! Let's do this"),
+        Ok(false) => println!("Whimp! ;)"),
+        Err(_) => println!("Error: Try again later!"),
+    }
+
+    Ok(())
 }
 
 fn start_si(_args: StartArgs, _mode: Mode) -> Result<()> {
@@ -183,7 +240,7 @@ fn launch_web(_args: LaunchArgs, mode: Mode) -> Result<()> {
     Ok(())
 }
 
-fn check_system(_args: CheckArgs, _mode: Mode) -> Result<()> {
+fn check_dependencies(_args: CheckArgs, _mode: Mode) -> Result<()> {
     println!("Preparing for System Initiative Installation");
     let mut table = Table::new();
     table

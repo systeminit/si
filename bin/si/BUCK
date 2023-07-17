@@ -16,6 +16,7 @@ rust_binary(
         "//third-party/rust:console",
         "//third-party/rust:open",
         "//third-party/rust:rand",
+        "//third-party/rust:inquire",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
