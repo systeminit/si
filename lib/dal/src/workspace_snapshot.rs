@@ -3,7 +3,6 @@
 // #![warn(
 //     missing_debug_implementations,
 //     missing_docs,
-//     rust_2018_idioms,
 //     unreachable_pub,
 //     bad_style,
 //     dead_code,
@@ -23,13 +22,21 @@
 //     clippy::missing_panics_doc
 // )]
 
+pub mod edge;
+pub mod lamport_clock;
+pub mod node;
+pub mod vector_clock;
+
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use ulid::Ulid;
+use ulid::{Generator, Ulid};
 
+use crate::workspace_snapshot::edge::SnapshotEdge;
+use crate::workspace_snapshot::node::{SnapshotNode, SnapshotNodeKind};
 use crate::{DalContext, StandardModelError, Timestamp, TransactionsError};
 
 #[remain::sorted]
@@ -47,9 +54,18 @@ pub enum WorkspaceSnapshotError {
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
+// FIXME(nick): remove this in favor of the real one.
+pub type ChangeSetId = Ulid;
+
+// FIXME(nick): remove this in favor of the real one.
+pub struct ChangeSet {
+    pub id: ChangeSetId,
+    pub generator: Arc<Mutex<Generator>>,
+}
+
 pub type WorkspaceSnapshotId = Ulid;
 
-pub type WorkspaceSnapshotGraph = StableGraph<SiNode, SiEdge>;
+pub type WorkspaceSnapshotGraph = StableGraph<SnapshotNode, SnapshotEdge>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceSnapshot {
@@ -61,8 +77,9 @@ pub struct WorkspaceSnapshot {
 
 impl WorkspaceSnapshot {
     pub async fn new(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let mut snapshot: StableGraph<SiNode, SiEdge> = StableGraph::with_capacity(1, 0);
-        snapshot.add_node(SiNode::new(SiNodeKind::Root));
+        let mut snapshot: StableGraph<SnapshotNode, SnapshotEdge> =
+            StableGraph::with_capacity(1, 0);
+        snapshot.add_node(SnapshotNode::new(SnapshotNodeKind::Root));
         let serialized_snapshot = serde_json::to_value(&snapshot)?;
 
         let row = ctx
@@ -82,39 +99,4 @@ impl WorkspaceSnapshot {
     pub fn snapshot(&self) -> WorkspaceSnapshotResult<WorkspaceSnapshotGraph> {
         Ok(serde_json::from_value(self.snapshot.clone())?)
     }
-}
-
-pub type SiNodeId = Ulid;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SiNode {
-    pub kind: SiNodeKind,
-    pub id: SiNodeId,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum SiNodeKind {
-    Root,
-}
-
-impl SiNode {
-    pub fn new(kind: SiNodeKind) -> SiNode {
-        SiNode {
-            kind,
-            id: SiNodeId::new(),
-        }
-    }
-}
-
-pub type SiEdgeId = Ulid;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SiEdge {
-    pub kind: SiEdgeKind,
-    pub id: SiEdgeId,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum SiEdgeKind {
-    Uses,
 }
