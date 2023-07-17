@@ -11,8 +11,11 @@
   >
     Nothing has been applied
   </div>
-  <div v-else>
-    <SiSearch autoSearch class="border-b-0" />
+  <ScrollArea v-else>
+    <template #top>
+      <SiSearch autoSearch class="border-b-0" />
+    </template>
+
     <Collapsible
       v-for="(fixBatch, batch_index) of fixBatches"
       :key="batch_index"
@@ -165,7 +168,7 @@
         </ul>
       </template>
     </Collapsible>
-  </div>
+  </ScrollArea>
 </template>
 
 <script lang="ts" setup>
@@ -176,6 +179,7 @@ import {
   themeClasses,
   Timestamp,
   Collapsible,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useFixesStore } from "@/store/fixes.store";
