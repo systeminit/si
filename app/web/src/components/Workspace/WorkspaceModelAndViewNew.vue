@@ -345,11 +345,20 @@ const fixesStore = useFixesStore();
 const diffs = computed(() => {
   const arr = Object.values(componentsStore.componentsById)
     .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => ({
-      componentId: c.id,
-      status: c.changeStatus,
-      updatedAt: c.updatedInfo.timestamp,
-    }));
+    .map((c) => {
+      let updatedAt = c.updatedInfo.timestamp;
+      if (c.changeStatus === "added") {
+        updatedAt = c.createdInfo.timestamp;
+      } else if (c.changeStatus === "deleted" && c.deletedInfo) {
+        updatedAt = c.deletedInfo.timestamp;
+      }
+
+      return {
+        componentId: c.id,
+        status: c.changeStatus,
+        updatedAt,
+      };
+    });
   arr.sort(
     (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
   );
