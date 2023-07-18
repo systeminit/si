@@ -44,7 +44,7 @@ pub async fn create_node(
 
     let mut force_changeset_pk = None;
     if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(&ctx).await?, None).await?;
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
 
         let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
 

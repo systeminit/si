@@ -10,8 +10,8 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
+    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserError, UserPk, Visibility,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -105,17 +105,8 @@ impl ChangeSet {
         Ok(object)
     }
 
-    pub async fn generate_name(ctx: &DalContext) -> ChangeSetResult<String> {
-        let user = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
-                .await?
-                .ok_or(ChangeSetError::InvalidActor(*user_pk))?
-                .name()
-                .to_owned(),
-            HistoryActor::SystemInit => "si".to_owned(),
-        };
-        let now = Utc::now();
-        Ok(format!("{user}/{}", now.format("%H:%M %Y-%m-%d")))
+    pub fn generate_name() -> String {
+        Utc::now().format("%Y-%m-%d-%H:%M").to_string()
     }
 
     #[instrument(skip(ctx))]
