@@ -5,13 +5,19 @@ use ulid::Ulid;
 
 pub type SnapshotEdgeId = Ulid;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum SnapshotEdgeKind {
+    #[default]
     Uses,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct SnapshotEdge {
-    pub id: SnapshotEdgeId,
     pub kind: SnapshotEdgeKind,
+}
+
+impl SnapshotEdge {
+    pub fn new(kind: SnapshotEdgeKind) -> Self {
+        Self { kind }
+    }
 }
