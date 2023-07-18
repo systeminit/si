@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded text-left flex flex-col overflow-auto bg-neutral-800 border border-neutral-800"
+    class="rounded text-left flex flex-col overflow-auto bg-neutral-800 border border-neutral-800 drop-shadow-md"
   >
     <div class="flex py-2 mb-px px-3 capitalize bg-black">
       {{ qualification.title }}

@@ -163,6 +163,12 @@
             <li
               v-for="(obj, key) in fixesStore.recommendationsSelection"
               :key="key"
+              :class="
+                clsx(
+                  'border-b',
+                  themeClasses('border-neutral-200', 'border-neutral-600'),
+                )
+              "
             >
               <RecommendationSprite
                 :key="key"
@@ -298,7 +304,9 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
   ResizablePanel,
+  themeClasses,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {

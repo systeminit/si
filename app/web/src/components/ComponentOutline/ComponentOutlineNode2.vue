@@ -105,16 +105,91 @@
                 :popoverPosition="popoverPosition"
               >
                 <div
-                  class="bg-neutral-800 w-96 h-80 rounded flex flex-col overflow-clip"
+                  class="bg-neutral-700 w-96 h-96 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
                 >
                   <div
-                    class="bg-neutral-900 uppercase font-bold text-md p-xs flex place-content-between items-center"
+                    class="bg-black uppercase font-bold text-md pt-sm pb-xs px-xs shrink-0"
                   >
                     <span>Changes</span>
                   </div>
-                  <div class="p-xs pb-0 overflow-auto">
-                    SOON<span class="align-super">™️</span>
-                  </div>
+                  <TabGroup as="template">
+                    <TabList
+                      class="bg-black flex px-2xs font-bold text-sm children:uppercase children:border-b children:border-transparent children:px-xs children:py-xs"
+                    >
+                      <Tab
+                        class="ui-selected:border-action-300 ui-selected:text-action-300"
+                      >
+                        Proposed
+                        <span
+                          class="rounded-2xl ml-xs mr-xs px-2.5 border border-destructive-500 ui-selected:bg-destructive-500 ui-selected:text-neutral-900 text-destructive-500"
+                        >
+                          {{ recommendationsSelection.length }}
+                        </span>
+                      </Tab>
+                      <Tab
+                        class="ui-selected:border-action-300 ui-selected:text-action-300"
+                      >
+                        Applied
+                        <span
+                          class="rounded-2xl ml-xs mr-xs px-2.5 border border-success-500 ui-selected:bg-success-500 ui-selected:text-neutral-900 text-success-500"
+                        >
+                          {{ filteredBatches.length }}
+                        </span>
+                      </Tab>
+                    </TabList>
+                    <TabPanels as="template">
+                      <TabPanel class="p-xs pb-0 overflow-auto grow">
+                        <div
+                          v-if="recommendationsSelection.length === 0"
+                          class="flex flex-col items-center justify-center h-full w-full text-neutral-400 gap-sm"
+                        >
+                          <NoChanges />
+                          <span class="text-xl">No Changes Proposed</span>
+                        </div>
+                        <ul v-else class="flex flex-col gap-2xs pb-xs">
+                          <li class="py-xs px-sm text-sm">
+                            Proposed Changes will be enacted upon click of the
+                            <b>APPLY CHANGES</b> button in the right rail.
+                          </li>
+                          <li
+                            v-for="(
+                              { recommendation, selected }, key
+                            ) in recommendationsSelection"
+                            :key="key"
+                            class="bg-black"
+                          >
+                            <RecommendationSprite
+                              :key="key"
+                              :recommendation="recommendation"
+                              :selected="selected"
+                              @click.stop
+                              @toggle="
+                                toggleRecommendation($event, recommendation)
+                              "
+                            />
+                          </li>
+                        </ul>
+                      </TabPanel>
+                      <TabPanel class="p-xs overflow-auto grow">
+                        <div
+                          v-if="recommendationsSelection.length === 0"
+                          class="flex flex-col items-center justify-center h-full w-full text-neutral-400 gap-sm"
+                        >
+                          <NoChanges />
+                          <span class="text-xl">No Changes Applied</span>
+                        </div>
+                        <ul v-else class="flex flex-col gap-2xs">
+                          <li
+                            v-for="(fixBatch, index) in filteredBatches"
+                            :key="index"
+                            class="bg-black p-xs"
+                          >
+                            <ApplyHistoryItem :fixBatch="fixBatch" />
+                          </li>
+                        </ul>
+                      </TabPanel>
+                    </TabPanels>
+                  </TabGroup>
                 </div>
               </StatusIconWithPopover>
 
@@ -127,13 +202,13 @@
                 :popoverPosition="popoverPosition"
               >
                 <div
-                  class="bg-neutral-800 w-96 h-80 rounded flex flex-col overflow-clip"
+                  class="bg-neutral-700 w-96 h-80 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
                 >
                   <div
-                    class="bg-neutral-900 uppercase font-bold text-md p-xs flex place-content-between items-center"
+                    class="bg-black uppercase font-bold text-md p-xs flex place-content-between items-center"
                   >
                     <span>Qualifications</span>
-                    <div class="flex gap-xs rounded bg-black p-2xs">
+                    <div class="flex gap-xs p-2xs">
                       <span
                         v-if="qualificationsFailed"
                         class="flex items-center gap-0.5"
@@ -201,12 +276,16 @@ import * as _ from "lodash-es";
 
 import clsx from "clsx";
 import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
+import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@headlessui/vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useFixesStore } from "@/store/fixes.store";
+import { useFixesStore, Recommendation } from "@/store/fixes.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 import QualificationViewerSingle from "@/components/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import NoChanges from "@/assets/images/no-changes.svg?component";
+import RecommendationSprite from "@/components/RecommendationSprite2.vue";
+import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 
@@ -351,4 +430,30 @@ watch(nodeRef, () => {
 onBeforeUnmount(() => {
   resizeObserver.disconnect();
 });
+
+const recommendationsSelection = computed(() =>
+  _.filter(
+    fixesStore.recommendationsSelection,
+    (r) => r.recommendation.componentId === props.componentId,
+  ),
+);
+
+const toggleRecommendation = (
+  selected: boolean,
+  recommendation: Recommendation,
+) => {
+  const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
+  fixesStore.recommendationsSelection[key] = { recommendation, selected };
+};
+
+const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
+
+const filteredBatches = computed(() =>
+  fixBatches.value
+    .map((batch) => ({
+      ...batch,
+      fixes: batch.fixes.filter((fix) => fix.componentId === props.componentId),
+    }))
+    .filter((batch) => batch.fixes.length),
+);
 </script>

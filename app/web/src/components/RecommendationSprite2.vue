@@ -1,10 +1,5 @@
 <template>
-  <Collapsible
-    as="div"
-    contentAs="ul"
-    :defaultOpen="false"
-    hideBottomBorderWhenOpen
-  >
+  <Collapsible as="div" contentAs="ul" :defaultOpen="false" hideBottomBorder>
     <template #label>
       <div
         class="flex flex-row gap-2 items-center text-sm relative min-w-0 w-full justify-end"
@@ -37,14 +32,7 @@
       </div>
     </template>
     <template #default>
-      <div
-        :class="
-          clsx(
-            'w-full pl-[4.25rem] pr-4 border-b',
-            themeClasses('border-neutral-200', 'border-neutral-600'),
-          )
-        "
-      >
+      <div :class="clsx('w-full pl-[4.25rem] pr-4')">
         <div
           v-if="
             props.recommendation.lastFix &&
@@ -104,11 +92,7 @@
 <script setup lang="ts">
 import { computed, PropType } from "vue";
 import clsx from "clsx";
-import {
-  Collapsible,
-  Timestamp,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Collapsible, Timestamp } from "@si/vue-lib/design-system";
 import { Switch } from "@headlessui/vue";
 import { Recommendation } from "@/store/fixes.store";
 
