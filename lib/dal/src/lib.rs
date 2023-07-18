@@ -169,8 +169,8 @@ pub use validation::resolver::{
 };
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
 pub use workspace_snapshot::WorkspaceSnapshot;
-pub use workspace_snapshot::WorkspaceSnapshotGraph;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[remain::sorted]

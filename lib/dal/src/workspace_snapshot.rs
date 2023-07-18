@@ -22,9 +22,10 @@
 //     clippy::missing_panics_doc
 // )]
 
-pub mod edge;
+pub mod edge_weight;
+pub mod graph;
 pub mod lamport_clock;
-pub mod node;
+pub mod node_weight;
 pub mod vector_clock;
 
 use petgraph::algo;
@@ -36,13 +37,15 @@ use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
-use crate::workspace_snapshot::edge::SnapshotEdge;
-use crate::workspace_snapshot::node::{SnapshotNode, SnapshotNodeKind};
-use crate::{DalContext, StandardModelError, Timestamp, TransactionsError};
+use crate::workspace_snapshot::edge_weight::EdgeWeight;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightKind};
+use crate::{DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("node weight not found")]
+    NodeWeightNotFound,
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
@@ -123,83 +126,5 @@ impl WorkspaceSnapshot {
         self.working_copy
             .as_mut()
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraph {
-    pub root_index: NodeIndex,
-    pub graph: StableGraph<SnapshotNode, SnapshotEdge>,
-}
-
-impl WorkspaceSnapshotGraph {
-    pub fn new() -> Self {
-        let mut graph: StableGraph<SnapshotNode, SnapshotEdge> = StableGraph::with_capacity(1, 0);
-        let root_index = graph.add_node(SnapshotNode::new(SnapshotNodeKind::Root));
-        Self { graph, root_index }
-    }
-
-    pub fn is_acyclic_directed(&self) -> bool {
-        // Using this because "is_cyclic_directed" is recursive.
-        algo::toposort(&self.graph, None).is_ok()
-    }
-
-    pub fn cleanup(&mut self) {
-        self.graph.retain_nodes(|frozen_graph, current_node| {
-            algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
-        });
-    }
-
-    fn add_node(&mut self, node: SnapshotNode) -> NodeIndex {
-        self.graph.add_node(node)
-    }
-
-    fn add_edge(
-        &mut self,
-        edge: SnapshotEdge,
-        parent_node_index: NodeIndex,
-        node_index: NodeIndex,
-    ) -> EdgeIndex {
-        self.graph.add_edge(parent_node_index, node_index, edge)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::workspace_snapshot::edge::SnapshotEdgeKind;
-
-    #[test]
-    fn new() {
-        let graph = WorkspaceSnapshotGraph::new();
-        assert!(graph.is_acyclic_directed());
-    }
-
-    #[test]
-    fn add_nodes_and_edges() {
-        let mut graph = WorkspaceSnapshotGraph::new();
-
-        let schema_index = graph.add_node(SnapshotNode::new(SnapshotNodeKind::Schema));
-        let schema_variant_index =
-            graph.add_node(SnapshotNode::new(SnapshotNodeKind::SchemaVariant));
-        let component_index = graph.add_node(SnapshotNode::new(SnapshotNodeKind::Component));
-
-        graph.add_edge(SnapshotEdge::default(), graph.root_index, schema_index);
-        graph.add_edge(SnapshotEdge::default(), schema_index, schema_variant_index);
-        graph.add_edge(
-            SnapshotEdge::default(),
-            schema_variant_index,
-            component_index,
-        );
-
-        let func_index = graph.add_node(SnapshotNode::new(SnapshotNodeKind::Func));
-        let prop_index = graph.add_node(SnapshotNode::new(SnapshotNodeKind::Prop));
-
-        graph.add_edge(SnapshotEdge::default(), graph.root_index, func_index);
-        graph.add_edge(SnapshotEdge::default(), schema_variant_index, func_index);
-        graph.add_edge(SnapshotEdge::default(), schema_variant_index, prop_index);
-        graph.add_edge(SnapshotEdge::default(), prop_index, func_index);
-
-        assert!(graph.is_acyclic_directed());
     }
 }

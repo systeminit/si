@@ -3,21 +3,19 @@
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-pub type SnapshotEdgeId = Ulid;
-
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
-pub enum SnapshotEdgeKind {
+pub enum EdgeWeightKind {
     #[default]
     Uses,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
-pub struct SnapshotEdge {
-    pub kind: SnapshotEdgeKind,
+pub struct EdgeWeight {
+    pub kind: EdgeWeightKind,
 }
 
-impl SnapshotEdge {
-    pub fn new(kind: SnapshotEdgeKind) -> Self {
+impl EdgeWeight {
+    pub fn new(kind: EdgeWeightKind) -> Self {
         Self { kind }
     }
 }
