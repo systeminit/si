@@ -18,7 +18,8 @@ import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
 import { useThemeContainer } from "@si/vue-lib/design-system";
-import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
+import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
+import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
 import { useHead } from "@vueuse/head";
 import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
 import { useAuthStore } from "./store/auth.store";
@@ -41,7 +42,12 @@ useHead(
     htmlAttrs: {
       style: `color-scheme: ${rootTheme.value};`,
     },
-    link: [{ rel: "icon", href: SiLogoUrl }],
+    link: [
+      {
+        rel: "icon",
+        href: rootTheme.value === "light" ? SiLogoUrlLight : SiLogoUrlDark,
+      },
+    ],
     // set up title template and a default
     titleTemplate: "SI | %s",
     title: "Workspace",
