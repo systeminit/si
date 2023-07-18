@@ -298,7 +298,6 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
   ResizablePanel,
-  useTheme,
 } from "@si/vue-lib/design-system";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
@@ -336,8 +335,6 @@ import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
-
-const { theme: appTheme } = useTheme();
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
