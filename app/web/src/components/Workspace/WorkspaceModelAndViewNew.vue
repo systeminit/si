@@ -867,3 +867,9 @@ const refreshResourceForSelectedComponent = () => {
 
 const changesPanelRef = ref<InstanceType<typeof Collapsible>>();
 </script>
+
+<style lang="less" scoped>
+li {
+  list-style-type: none;
+}
+</style>
