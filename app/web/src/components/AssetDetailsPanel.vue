@@ -1,42 +1,45 @@
 <template>
-  <div class="p-xs">
+  <div class="grow relative">
     <RequestStatusMessage
       v-if="loadAssetReqStatus.isPending"
       :requestStatus="loadAssetReqStatus"
       showLoaderWithoutMessage
     />
-    <div v-else-if="assetStore.selectedAsset && assetId">
-      <div
-        v-if="!changeSetsStore.headSelected"
-        class="p-sm border-b dark:border-neutral-600 flex flex-row items-center gap-2"
-      >
-        <VButton
-          :requestStatus="executeAssetReqStatus"
-          loadingText="Creating Asset..."
-          :label="
-            assetStore.selectedAsset.schemaVariantId
-              ? 'Update Asset'
-              : 'Create Asset'
-          "
-          :disabled="disabled"
-          tone="action"
-          icon="bolt"
-          size="md"
-          @click="executeAsset"
-        />
-        <VButton
-          label="Clone"
-          tone="neutral"
-          icon="clipboard-copy"
-          size="md"
-          @click="cloneAsset"
-        />
-      </div>
+    <ScrollArea v-else-if="assetStore.selectedAsset && assetId">
+      <template #top>
+        <div
+          v-if="!changeSetsStore.headSelected"
+          class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
+        >
+          <VButton
+            :requestStatus="executeAssetReqStatus"
+            loadingText="Creating Asset..."
+            :label="
+              assetStore.selectedAsset.schemaVariantId
+                ? 'Update Asset'
+                : 'Create Asset'
+            "
+            :disabled="disabled"
+            tone="action"
+            icon="bolt"
+            size="md"
+            @click="executeAsset"
+          />
+          <VButton
+            label="Clone"
+            tone="neutral"
+            icon="clipboard-copy"
+            size="md"
+            @click="cloneAsset"
+          />
+        </div>
+      </template>
 
-      <Stack>
+      <Stack class="p-xs py-sm">
         <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning"
           >{{ disabledWarning }}
         </ErrorMessage>
+
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
           :requestStatus="executeAssetReqStatus"
@@ -114,7 +117,7 @@
           @blur="updateAsset"
         />
       </Stack>
-    </div>
+    </ScrollArea>
     <div
       v-else
       class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
@@ -137,6 +140,7 @@ import {
   Modal,
   ErrorMessage,
   Stack,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";

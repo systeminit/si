@@ -10,12 +10,13 @@
             <span class="grow">{{ props.recommendation.name }}</span>
             <Switch
               :id="`${props.recommendation.confirmationAttributeValueId}-${props.recommendation.actionKind}`"
-              v-model="inputValue"
-              :class="inputValue ? 'bg-blue-600' : 'bg-gray-200'"
+              :modelValue="selected"
+              :class="selected ? 'bg-blue-600' : 'bg-gray-200'"
               class="relative inline-flex h-5 w-8 items-center rounded-full mt-1 mr-3"
+              @click.stop="emit('toggle', !selected)"
             >
               <span
-                :class="inputValue ? 'translate-x-4' : 'translate-x-1'"
+                :class="selected ? 'translate-x-4' : 'translate-x-1'"
                 class="inline-block h-3 w-3 transform rounded-full bg-white transition"
               />
             </Switch>
@@ -90,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from "vue";
+import { PropType } from "vue";
 import clsx from "clsx";
 import { Collapsible, Timestamp } from "@si/vue-lib/design-system";
 import { Switch } from "@headlessui/vue";
@@ -100,15 +101,6 @@ const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
-});
-
-const inputValue = computed<boolean | undefined>({
-  get() {
-    return props.selected;
-  },
-  set(value) {
-    emit("toggle", !!value);
-  },
 });
 
 const emit = defineEmits<{

@@ -1,17 +1,18 @@
 <template>
-  <span>
-    <VButton
-      v-if="!changeSetsStore.headSelected"
-      ref="applyButtonRef"
-      icon="tools"
-      size="sm"
-      tone="success"
-      loadingText="Applying Changes"
-      label="Apply Changes"
-      :requestStatus="applyChangeSetReqStatus"
-      :disabled="statusStoreUpdating"
-      @click.stop="maybeOpenModal"
-    />
+  <VButton
+    v-if="!changeSetsStore.headSelected"
+    ref="applyButtonRef"
+    icon="tools"
+    size="md"
+    tone="success"
+    loadingText="Applying Changes"
+    :requestStatus="applyChangeSetReqStatus"
+    :disabled="statusStoreUpdating"
+    @click.stop="maybeOpenModal"
+  >
+    Apply Changes
+
+    <!-- modal is teleported out of here, but better to leave the button as the single root node -->
     <Modal ref="createModalRef" title="Apply Change Set" class="flex-col flex">
       <span class="text-center text-sm"
         >Applying this change set may have side-effects.</span
@@ -41,7 +42,7 @@
         @click="applyChangeSet"
       />
     </Modal>
-  </span>
+  </VButton>
 </template>
 
 <script lang="ts" setup>

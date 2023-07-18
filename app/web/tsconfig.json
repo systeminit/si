@@ -9,6 +9,8 @@
       ]
     },
     "types": [
+      "vite/client",
+      "vite-svg-loader",
       "unplugin-icons/types/raw"
     ],
     "declaration": false,

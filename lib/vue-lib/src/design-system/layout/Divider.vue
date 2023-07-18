@@ -46,6 +46,6 @@ const computedClasses = computed(() => ({
   height: 1px;
   border: none;
   background: currentColor;
-  opacity: 0.5;
+  opacity: 0.3;
 }
 </style>

@@ -42,6 +42,24 @@ export type FuncWithDetails = FuncSummary & {
   associations?: FuncAssociations;
 };
 
+type FuncExecutionState =
+  | "Create"
+  | "Dispatch"
+  | "Failure"
+  | "Run"
+  | "Start"
+  | "Success";
+
+// TODO: remove when fn log stuff gets figured out a bit deeper
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export type FuncExecutionLog = {
+  id: FuncId;
+  state: FuncExecutionState;
+  value?: any;
+  outputStream?: any[];
+  functionFailure?: any; // FunctionResultFailure
+};
+
 export interface SaveFuncResponse {
   isRevertible: boolean;
   types: string;
@@ -79,6 +97,7 @@ export const useFuncStore = () => {
         outputSockets: {} as OutputSockets,
         saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
         openFuncIds: [] as FuncId[],
+        lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
       }),
       getters: {
         urlSelectedFuncId: () => {
@@ -369,6 +388,16 @@ export const useFuncStore = () => {
                 func.isRevertible = response.isRevertible;
                 this.funcDetailsById[funcId] = func;
               }
+            },
+          });
+        },
+        async GET_FUNC_LAST_EXECUTION(funcId: FuncId) {
+          return new ApiRequest({
+            method: "get",
+            url: "func/get_func_last_execution",
+            params: { id: funcId, ...visibility },
+            onSuccess: (response) => {
+              this.lastFuncExecutionLogByFuncId[funcId] = response;
             },
           });
         },
