@@ -175,8 +175,8 @@ import {
 } from "@si/vue-lib/design-system";
 
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
-import SiLogoUrl from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
-
+import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
+import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
 import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
@@ -197,7 +197,12 @@ useHead({
     style: () => `color-scheme: ${rootTheme.value};`,
     class: () => rootTheme.value,
   },
-  link: [{ rel: "icon", href: SiLogoUrl }],
+  link: [
+    {
+      rel: "icon",
+      href: rootTheme.value === "light" ? SiLogoUrlLight : SiLogoUrlDark,
+    },
+  ],
 
   // set up title template and a default
   titleTemplate: "SI | %s",

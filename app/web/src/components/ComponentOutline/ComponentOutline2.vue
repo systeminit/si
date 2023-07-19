@@ -36,10 +36,11 @@
         <template v-else>
           <div v-if="!rootComponents.length" class="flex flex-col items-center">
             <div class="w-52">
-              <NoComponents v-if="appTheme === 'light'" />
-              <NoComponentsDark v-else />
+              <EmptyStateIcon name="no-components" />
             </div>
-            <div class="text-xl text-neutral-400 mt-2">Drag & Drop</div>
+            <div class="text-xl text-neutral-400 dark:text-neutral-300 mt-2">
+              Drag & Drop
+            </div>
             <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
               Drag & Drop assets on to the canvas and start modeling your
               infrastructure
@@ -98,17 +99,13 @@ import {
   ErrorMessage,
   RequestStatusMessage,
   ScrollArea,
-  useTheme,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import NoComponents from "@/assets/images/no-components__light.svg?component";
-import NoComponentsDark from "@/assets/images/no-components__dark.svg?component";
 
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue";
-
-const { theme: appTheme } = useTheme();
+import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 const outlineRef = ref<HTMLElement>();
 

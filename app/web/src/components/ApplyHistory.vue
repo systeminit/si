@@ -1,15 +1,15 @@
 <template>
-  <div
-    v-if="fixBatches.length === 0"
-    :class="
-      clsx(
-        'm-6 p-3 border rounded-md flex items-center font-bold justify-around text-center',
-        themeClasses('border-neutral-300', 'border-neutral-600'),
-        themeClasses('text-neutral-300', 'text-neutral-600'),
-      )
-    "
-  >
-    Nothing has been applied
+  <div v-if="fixBatches.length === 0" class="flex flex-col items-center">
+    <div class="w-52">
+      <EmptyStateIcon name="actions" />
+    </div>
+    <div class="text-xl text-neutral-400 dark:text-neutral-300 mt-2">
+      No Actions To Be Taken
+    </div>
+    <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+      There are no <span class="font-bold">actions</span> to display for the
+      selected asset(s)
+    </div>
   </div>
   <ScrollArea v-else>
     <template #top>
@@ -186,6 +186,7 @@ import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";
+import EmptyStateIcon from "./EmptyStateIcon.vue";
 
 const fixesStore = useFixesStore();
 

@@ -10,18 +10,7 @@
       </div>
     </div>
     <div class="w-52 pb-sm">
-      <template v-if="appTheme === 'light'">
-        <ConnectEdgesLight v-if="number === 2" />
-        <CustomizeFunctionsLight v-else-if="number === 3" />
-        <ApplyChangesLight v-else-if="number === 4" />
-        <NoComponentsLight v-else />
-      </template>
-      <template v-else>
-        <ConnectEdgesDark v-if="number === 2" />
-        <CustomizeFunctionsDark v-else-if="number === 3" />
-        <ApplyChangesDark v-else-if="number === 4" />
-        <NoComponentsDark v-else />
-      </template>
+      <EmptyStateIcon :name="iconName" />
     </div>
     <div class="flex flex-row items-center text-neutral-400 pb-xs">
       <Icon :name="number === 3 ? 'beaker' : 'diagram'" />
@@ -39,19 +28,22 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon, useTheme } from "@si/vue-lib/design-system";
-import NoComponentsLight from "@/assets/images/no-components__light.svg?component";
-import NoComponentsDark from "@/assets/images/no-components__dark.svg?component";
-import CustomizeFunctionsLight from "@/assets/images/customize-functions__light.svg?component";
-import CustomizeFunctionsDark from "@/assets/images/customize-functions__dark.svg?component";
-import ConnectEdgesLight from "@/assets/images/connect-edges__light.svg?component";
-import ConnectEdgesDark from "@/assets/images/connect-edges__dark.svg?component";
-import ApplyChangesLight from "@/assets/images/apply-changes__light.svg?component";
-import ApplyChangesDark from "@/assets/images/apply-changes__dark.svg?component";
+import { Icon } from "@si/vue-lib/design-system";
+import { computed } from "vue";
+import EmptyStateIcon, { EMPTY_STATE_ICON_NAMES } from "../EmptyStateIcon.vue";
 
-const { theme: appTheme } = useTheme();
-
-defineProps({
+const props = defineProps({
   number: { type: Number, required: true },
+});
+
+const iconName = computed(() => {
+  const names: EMPTY_STATE_ICON_NAMES[] = [
+    "no-components",
+    "connect-edges",
+    "customize",
+    "apply-changes",
+  ];
+
+  return names[props.number - 1] || "no-components";
 });
 </script>

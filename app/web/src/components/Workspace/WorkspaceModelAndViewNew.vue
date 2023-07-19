@@ -213,10 +213,11 @@
           </template>
           <template v-else>
             <div class="flex flex-col items-center text-neutral-400">
-              <NoAssetsLight v-if="appTheme === 'light'" class="mt-3" />
-              <NoAssetsDark v-else class="mt-3" />
-              <span class="text-xl">No Assets Selected</span>
-              <div class="capsize px-xs py-md mt-xs italic text-sm text-center">
+              <EmptyStateIcon name="no-assets" class="mt-3" />
+              <span class="text-xl dark:text-neutral-300"
+                >No Assets Selected</span
+              >
+              <div class="capsize px-xs py-md italic text-sm text-center">
                 <template v-if="componentsStore.allComponents.length === 0">
                   Your model is currently empty.
                 </template>
@@ -297,7 +298,6 @@ import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
   ResizablePanel,
-  useTheme,
 } from "@si/vue-lib/design-system";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
@@ -306,8 +306,6 @@ import {
   EdgeId,
   useComponentsStore,
 } from "@/store/components.store";
-import NoAssetsLight from "@/assets/images/no-assets__light.svg?component";
-import NoAssetsDark from "@/assets/images/no-assets__dark.svg?component";
 import { Recommendation, useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
@@ -336,8 +334,7 @@ import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
-
-const { theme: appTheme } = useTheme();
+import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
