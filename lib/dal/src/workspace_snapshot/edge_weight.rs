@@ -1,7 +1,6 @@
 //! Edges
 
 use serde::{Deserialize, Serialize};
-use ulid::Ulid;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum EdgeWeightKind {

@@ -28,8 +28,6 @@ pub mod lamport_clock;
 pub mod node_weight;
 pub mod vector_clock;
 
-use petgraph::algo;
-use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
@@ -37,8 +35,6 @@ use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
-use crate::workspace_snapshot::edge_weight::EdgeWeight;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightKind};
 use crate::{DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph};
 
 #[remain::sorted]

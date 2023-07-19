@@ -1,24 +1,23 @@
 use petgraph::algo;
 use petgraph::prelude::*;
-use petgraph::visit::NodeRef;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_data_pg::PgError;
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
-use thiserror::Error;
-use ulid::{Generator, Ulid};
+use std::collections::HashMap;
 
-use crate::workspace_snapshot::edge_weight::EdgeWeight;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightKind};
-use crate::workspace_snapshot::WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing;
-use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
-use crate::{DalContext, Node, StandardModelError, Timestamp, TransactionsError};
+use crate::workspace_snapshot::{
+    edge_weight::EdgeWeight,
+    node_weight::{NodeWeight, NodeWeightKind},
+    WorkspaceSnapshotError, WorkspaceSnapshotResult,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraph {
     pub root_index: NodeIndex,
     pub graph: StableDiGraph<NodeWeight, EdgeWeight>,
+}
+impl Default for WorkspaceSnapshotGraph {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WorkspaceSnapshotGraph {
@@ -97,7 +96,7 @@ impl WorkspaceSnapshotGraph {
                     Some(found_new_node_index) => *found_new_node_index,
                     None => {
                         let new_node_index =
-                            self.add_node(self.get_node_weight(old_node_index)?.clone());
+                            self.add_node(*self.get_node_weight(old_node_index)?);
                         old_to_new_node_indices.insert(old_node_index, new_node_index);
                         new_node_index
                     }
@@ -122,7 +121,7 @@ impl WorkspaceSnapshotGraph {
                 // - otherwise, the old version of the destination (the destination was not replaced)
                 for (edge_weight, destination_node_index) in edges_to_create {
                     self.add_edge(
-                        edge_weight.clone(),
+                        edge_weight,
                         new_node_index,
                         *old_to_new_node_indices
                             .get(&destination_node_index)
