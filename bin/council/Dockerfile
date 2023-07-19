@@ -1,66 +1,38 @@
-ARG BUILDER_IMAGE=cache
-ARG RUST_VERSION=1.57.0
-
-###########################################################################
-# Cache Stage
-###########################################################################
-FROM rust:$RUST_VERSION as cache
-ARG RUST_VERSION
+# hadolint ignore=DL3007
+FROM nixos/nix:latest AS builder
 ARG BIN=council
 
-# hadolint ignore=DL3008
-RUN set -eux; \
-    apt-get update; \
-    apt-get install --yes --no-install-recommends \
-        lld \
-        protobuf-compiler \
-    ;
-WORKDIR /usr/src
-COPY . .
+COPY . /workdir
+WORKDIR /workdir
 
 RUN set -eux; \
-    cargo build --release --bin $BIN;
+    nix \
+        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
+        --option filter-syscalls false \
+        build \
+        ".#$BIN";
 
-RUN set -eux; \
-    find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;;
+RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
+# hadolint ignore=SC2046
+RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
+# hadolint ignore=SC2046
+RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
-###########################################################################
-# Builder Stage
-###########################################################################
-# hadolint ignore=DL3006
-FROM $BUILDER_IMAGE as builder
+FROM alpine:3 AS final
 ARG BIN=council
 
-WORKDIR /usr/src
-COPY . .
-
+# hadolint ignore=DL3018
 RUN set -eux; \
-    cargo build --release --bin $BIN;
-# Create a 2-part executable which occupies less space in RAM but still links
-# to debugging information for in-production debugging
-# hadolint ignore=DL3003
-RUN set -eux; \
-    objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg; \
-    objcopy --strip-debug target/release/$BIN; \
-    (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN);
-
-###########################################################################
-# Final Stage
-###########################################################################
-FROM debian:stable-slim as final
-ARG BIN=council
-
-RUN set -eux; \
-    useradd -ms /bin/bash app; \
+    apk add --no-cache runuser; \
+    adduser -D app; \
     for dir in /run /etc /usr/local/etc /home/app/.config; do \
         mkdir -pv "$dir/$BIN"; \
     done;
 
 WORKDIR /run/$BIN
-COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
-COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/
+COPY --from=builder /tmp/nix-store-closure /nix/store
+COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 
-EXPOSE 5156/tcp
 ENTRYPOINT [ \
   "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/council" \
 ]
