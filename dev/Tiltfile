@@ -77,6 +77,7 @@ local_resource(
     cmd = "buck2 build {}".format(module_index_target),
     serve_cmd = "buck2 run {}".format(module_index_target),
     allow_parallel = True,
+    auto_init = False,
     resource_deps = [
         "otelcol",
         "postgres"
