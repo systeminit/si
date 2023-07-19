@@ -89,9 +89,12 @@ impl WorkspaceSnapshotGraph {
 
         let mut dfspo = DfsPostOrder::new(&self.graph, self.root_index);
         while let Some(old_node_index) = dfspo.next(&self.graph) {
+            // All nodes that exist between the root and the `original_node_index` are affected by the replace, and only
+            // those nodes are affected, because the replacement affects their merkel tree hashes.
             if self.is_on_path_between(self.root_index, original_node_index, old_node_index) {
                 // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
-                // traversal should already exist.
+                // traversal should already exist since it was created before we entered `replace_references`, and
+                // is the reason we're updating things in the first place.
                 let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
                     Some(found_new_node_index) => *found_new_node_index,
                     None => {
@@ -117,8 +120,12 @@ impl WorkspaceSnapshotGraph {
 
                 // Make copies of these edges where the source is the new node index and the
                 // destination is one of the following...
-                // - if one exists, the new version of the destination (the destination was replaced)
-                // - otherwise, the old version of the destination (the destination was not replaced)
+                // - If an entry exists in `old_to_new_node_indicies` for the destination node index,
+                //   use the value of the entry (the destination was affected by the replacement,
+                //   and needs to use the new node index to reflect this).
+                // - There is no entry in `old_to_new_node_indicies`; use the same destination node
+                //   index as the old edge (the destination was *NOT* affected by the replacemnt,
+                //   and does not have any new information to reflect).
                 for (edge_weight, destination_node_index) in edges_to_create {
                     self.add_edge(
                         edge_weight,
