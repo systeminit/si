@@ -21,3 +21,7 @@ console = { workspace = true }
 open = { workspace = true }
 rand = { workspace = true }
 inquire = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+si-posthog = { path = "../../lib/si-posthog-rs" }
+telemetry-application = { path = "../../lib/telemetry-application-rs" }

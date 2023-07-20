@@ -38,7 +38,7 @@ impl PosthogSender {
     }
 
     pub async fn run(mut self) {
-        info!("PostHog Sender running.");
+        debug!("PostHog Sender running.");
         if !self.enabled {
             debug!("posthog tracking is disabled");
         }

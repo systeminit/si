@@ -13,6 +13,9 @@ use rand::Rng;
 use std::thread;
 use std::time::{Duration, Instant};
 use std::{cmp::min, fmt::Write};
+use telemetry_application::{prelude::*, TelemetryConfig};
+use tokio::sync::oneshot::Sender;
+use tokio::task;
 
 mod args;
 
@@ -34,10 +37,25 @@ static RESTART_COMMANDS: &[&str] = &["docker restart"];
 
 static SPARKLE: Emoji<'_, '_> = Emoji("✨ ", ":-)");
 
-fn main() -> Result<()> {
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+async fn main() -> Result<()> {
     color_eyre::install()?;
+    let config = TelemetryConfig::builder()
+        .service_name("cli")
+        .service_namespace("cli")
+        .log_env_var_prefix("SI")
+        .app_modules(vec!["si"])
+        .build()?;
+    let _telemetry = telemetry_application::init(config)?;
     let args = args::parse();
     let mode = args.mode();
+
+    debug!(arguments =?args, "parsed cli arguments");
+
+    let (ph_client, ph_sender) = si_posthog::new().request_timeout_ms(3000).build()?;
+    let (ph_done_sender, ph_done_receiver) = tokio::sync::oneshot::channel();
+
+    tokio::spawn(wait_for_posthog_flush(ph_done_sender, ph_sender));
 
     println!(
         "{}\n\n",
@@ -47,23 +65,97 @@ fn main() -> Result<()> {
         )
     );
 
-    match args.command {
-        Commands::Install(args) => {
-            let command_args = args;
-            if !command_args.skip_check {
-                check_dependencies(CheckArgs {}, mode)?;
+    task::spawn_blocking(move || {
+        match args.command {
+            Commands::Install(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "install", "mode": mode.to_string()}),
+                );
+                download_containers(args, mode)
             }
-            download_containers(command_args, mode)
+            Commands::Check(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "check-dependencies", "mode": mode.to_string()}),
+                );
+                check_dependencies(args, mode)
+            }
+            Commands::Launch(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "launch-ui", "mode": mode.to_string()}),
+                );
+                launch_web(args, mode)
+            }
+            Commands::Start(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "start-system", "mode": mode.to_string()}),
+                );
+                start_si(args, mode)
+            }
+            Commands::Restart(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "restart-system", "mode": mode.to_string()}),
+                );
+                restart_si(args, mode)
+            }
+            Commands::Stop(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "stop-system", "mode": mode.to_string()}),
+                );
+                stop_si(args, mode)
+            }
+            Commands::Update(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "update-launcher", "mode": mode.to_string()}),
+                );
+                update_launcher(args, mode)
+            }
+            Commands::Status(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "status-check", "mode": mode.to_string()}),
+                );
+                check_installation(args, mode)
+            }
+            Commands::Report(args) => {
+                let _ = ph_client.capture(
+                    "si-command",
+                    "sally@systeminit.com",
+                    serde_json::json!({"name": "report-error", "mode": mode.to_string()}),
+                );
+                make_a_report(args, mode)
+            }
         }
-        Commands::Check(args) => check_dependencies(args, mode),
-        Commands::Launch(args) => launch_web(args, mode),
-        Commands::Start(args) => start_si(args, mode),
-        Commands::Restart(args) => restart_si(args, mode),
-        Commands::Stop(args) => stop_si(args, mode),
-        Commands::Update(args) => update_launcher(args, mode),
-        Commands::Status(args) => check_installation(args, mode),
-        Commands::Report(args) => make_a_report(args, mode),
+        .expect("Failed to match a CLI command");
+        drop(ph_client);
+    })
+    .await?;
+
+    if let Err(e) = ph_done_receiver.await {
+        println!("{}", e)
     }
+    Ok(())
+}
+
+async fn wait_for_posthog_flush(done_sender: Sender<()>, sender: si_posthog::PosthogSender) {
+    sender.run().await;
+    done_sender
+        .send(())
+        .expect("Unable to push events to Posthog")
 }
 
 fn make_a_report(_args: ReportArgs, _mode: Mode) -> Result<()> {

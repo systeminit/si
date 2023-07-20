@@ -17,6 +17,10 @@ rust_binary(
         "//third-party/rust:open",
         "//third-party/rust:rand",
         "//third-party/rust:inquire",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+        "//lib/si-posthog-rs:si-posthog",
+        "//lib/telemetry-application-rs:telemetry-application",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
