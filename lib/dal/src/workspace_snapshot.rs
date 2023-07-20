@@ -22,6 +22,8 @@
 //     clippy::missing_panics_doc
 // )]
 
+pub mod change_set;
+pub mod content_hash;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
@@ -31,39 +33,44 @@ pub mod vector_clock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
-use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use ulid::{Generator, Ulid};
+use ulid::Ulid;
 
-use crate::{DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph};
+use crate::{
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
+    DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
+};
+use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
+use content_hash::ContentHash;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("Action would create a graph cycle")]
+    CreateGraphCycle,
+    #[error("monotonic error: {0}")]
+    Monotonic(#[from] ulid::MonotonicError),
+    #[error("NodeWeight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("poison error: {0}")]
+    Poison(String),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("WorkspaceSnapshotGraph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]
     WorkspaceSnapshotGraphMissing,
 }
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
-
-// FIXME(nick): remove this in favor of the real one.
-pub type ChangeSetId = Ulid;
-
-// FIXME(nick): remove this in favor of the real one.
-pub struct ChangeSet {
-    pub id: ChangeSetId,
-    pub generator: Arc<Mutex<Generator>>,
-}
 
 pub type WorkspaceSnapshotId = Ulid;
 
@@ -78,8 +85,8 @@ pub struct WorkspaceSnapshot {
 }
 
 impl WorkspaceSnapshot {
-    pub async fn new(ctx: &DalContext) -> WorkspaceSnapshotResult<Self> {
-        let snapshot = WorkspaceSnapshotGraph::new();
+    pub async fn new(ctx: &DalContext, change_set: &ChangeSet) -> WorkspaceSnapshotResult<Self> {
+        let snapshot = WorkspaceSnapshotGraph::new(change_set)?;
         let serialized_snapshot = serde_json::to_value(&snapshot)?;
 
         let row = ctx

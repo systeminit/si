@@ -2,43 +2,66 @@
 
 use std::collections::HashMap;
 
-use crate::workspace_snapshot::lamport_clock::LamportClock;
-use crate::workspace_snapshot::{ChangeSet, ChangeSetId};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+use crate::workspace_snapshot::{
+    lamport_clock::{LamportClock, LamportClockError},
+    {ChangeSet, ChangeSetId},
+};
+
+#[derive(Debug, Error)]
+pub enum VectorClockError {
+    #[error("Lamport Clock Error: {0}")]
+    LamportClock(#[from] LamportClockError),
+}
+
+pub type VectorClockResult<T> = Result<T, VectorClockError>;
+
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
     pub entries: HashMap<ChangeSetId, LamportClock>,
 }
 
 impl VectorClock {
-    pub fn new(change_set: &ChangeSet) -> VectorClock {
-        let lamport_clock = LamportClock::new(change_set);
+    pub fn new(change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
+        let lamport_clock = LamportClock::new(change_set)?;
         let mut entries = HashMap::new();
         entries.insert(change_set.id, lamport_clock);
-        VectorClock { entries }
+
+        Ok(VectorClock { entries })
     }
 
-    pub fn inc(&mut self, change_set: &ChangeSet) {
-        self.entries
-            .entry(change_set.id)
-            .and_modify(|lc| lc.inc(change_set))
-            .or_insert(LamportClock::new(change_set));
-    }
-
-    pub fn merge(&mut self, change_set: &ChangeSet, other: &VectorClock) {
-        for (other_change_set_id, other_lamport_clock) in other.entries.iter() {
+    pub fn inc(&mut self, change_set: &ChangeSet) -> VectorClockResult<()> {
+        if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
+            lamport_clock.inc(change_set)?;
+        } else {
             self.entries
-                .entry(*other_change_set_id)
-                .and_modify(|local_lamport_clock| local_lamport_clock.merge(other_lamport_clock))
-                .or_insert(other_lamport_clock.clone());
+                .insert(change_set.id, LamportClock::new(change_set)?);
         }
-        self.inc(change_set);
+
+        Ok(())
     }
 
-    pub fn fork(&self, change_set: &ChangeSet) -> VectorClock {
+    pub fn merge(&mut self, change_set: &ChangeSet, other: &VectorClock) -> VectorClockResult<()> {
+        for (other_change_set_id, other_lamport_clock) in other.entries.iter() {
+            if let Some(lamport_clock) = self.entries.get_mut(other_change_set_id) {
+                lamport_clock.merge(other_lamport_clock);
+            } else {
+                self.entries
+                    .insert(*other_change_set_id, other_lamport_clock.clone());
+            }
+        }
+        self.inc(change_set)?;
+
+        Ok(())
+    }
+
+    pub fn fork(&self, change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
         let mut forked = self.clone();
-        forked.inc(change_set);
-        forked
+        forked.inc(change_set)?;
+
+        Ok(forked)
     }
 }
 

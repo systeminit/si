@@ -2,39 +2,56 @@ use petgraph::algo;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use thiserror::Error;
+use ulid::Ulid;
 
 use crate::workspace_snapshot::{
+    change_set::ChangeSet,
+    content_hash::ContentHash,
     edge_weight::EdgeWeight,
-    node_weight::{NodeWeight, NodeWeightKind},
+    node_weight::{NodeWeight, NodeWeightError, NodeWeightKind},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct WorkspaceSnapshotGraph {
-    pub root_index: NodeIndex,
-    pub graph: StableDiGraph<NodeWeight, EdgeWeight>,
+#[derive(Debug, Error)]
+pub enum WorkspaceSnapshotGraphError {
+    #[error("NodeWeight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
 }
-impl Default for WorkspaceSnapshotGraph {
-    fn default() -> Self {
-        Self::new()
+
+pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
+
+#[derive(Default, Deserialize, Serialize, Clone)]
+pub struct WorkspaceSnapshotGraph {
+    root_index: NodeIndex,
+    graph: StableDiGraph<NodeWeight, EdgeWeight>,
+}
+
+impl std::fmt::Debug for WorkspaceSnapshotGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WorkspaceSnapshotGraph")
+            .field("root_index", &self.root_index)
+            .field("graph", &self.graph)
+            .finish()
     }
 }
 
 impl WorkspaceSnapshotGraph {
-    pub fn new() -> Self {
+    pub fn new(change_set: &ChangeSet) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
-        let root_index = graph.add_node(NodeWeight::new(NodeWeightKind::Root));
-        Self { root_index, graph }
+        let root_index = graph.add_node(NodeWeight::new(change_set, NodeWeightKind::Root)?);
+
+        Ok(Self { root_index, graph })
     }
 
-    pub fn is_acyclic_directed(&self) -> bool {
+    fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
     }
 
     pub fn cleanup(&mut self) {
         self.graph.retain_nodes(|frozen_graph, current_node| {
-            // We cannot use "has_path_to_root" because we need the frozen graph.
+            // We cannot use "has_path_to_root" because we need to use the Frozen<StableGraph<...>>.
             algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
         });
     }
@@ -43,7 +60,7 @@ impl WorkspaceSnapshotGraph {
         // NOTE(nick): copy the output and execute this on macOS. It will create two files in the
         // process and open a new tab in your browser.
         // ```
-        // pbpaste > foo.txt && dot foo.txt -Tsvg -o foo.svg && open foo.svg
+        // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
         // ```
         println!(
             "{:?}",
@@ -51,17 +68,38 @@ impl WorkspaceSnapshotGraph {
         );
     }
 
-    fn add_node(&mut self, node: NodeWeight) -> NodeIndex {
-        self.graph.add_node(node)
+    fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
+        let new_node_index = self.graph.add_node(node);
+        self.update_merkle_tree_hash(new_node_index)?;
+
+        Ok(new_node_index)
     }
 
     fn add_edge(
         &mut self,
+        from_node_index: NodeIndex,
         edge: EdgeWeight,
-        parent_node_index: NodeIndex,
-        node_index: NodeIndex,
-    ) -> EdgeIndex {
-        self.graph.add_edge(parent_node_index, node_index, edge)
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let new_edge_index = self.graph.add_edge(from_node_index, to_node_index, edge);
+        if !self.is_acyclic_directed() {
+            self.graph.remove_edge(new_edge_index);
+            return Err(WorkspaceSnapshotError::CreateGraphCycle);
+        }
+        self.update_merkle_tree_hash(from_node_index)?;
+
+        Ok(new_edge_index)
+    }
+
+    fn get_node_index_by_id(&mut self, id: Ulid) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
+        for node_index in self.graph.node_indices() {
+            let node_weight = self.get_node_weight(node_index)?;
+            if node_weight.id == id {
+                return Ok(Some(node_index));
+            }
+        }
+
+        Ok(None)
     }
 
     fn has_path_to_root(&self, node: NodeIndex) -> bool {
@@ -81,6 +119,7 @@ impl WorkspaceSnapshotGraph {
 
     fn replace_references(
         &mut self,
+        change_set: &ChangeSet,
         original_node_index: NodeIndex,
         new_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<()> {
@@ -98,8 +137,8 @@ impl WorkspaceSnapshotGraph {
                 let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
                     Some(found_new_node_index) => *found_new_node_index,
                     None => {
-                        let new_node_index =
-                            self.add_node(*self.get_node_weight(old_node_index)?);
+                        let new_node_index = self
+                            .add_node(self.get_node_weight(old_node_index)?.modify(change_set)?)?;
                         old_to_new_node_indices.insert(old_node_index, new_node_index);
                         new_node_index
                     }
@@ -128,20 +167,65 @@ impl WorkspaceSnapshotGraph {
                 //   and does not have any new information to reflect).
                 for (edge_weight, destination_node_index) in edges_to_create {
                     self.add_edge(
-                        edge_weight,
                         new_node_index,
+                        edge_weight,
                         *old_to_new_node_indices
                             .get(&destination_node_index)
                             .unwrap_or(&destination_node_index),
-                    );
+                    )?;
+                }
+
+                self.update_merkle_tree_hash(new_node_index)?;
+
+                // Use the new version of the old root node as our root node.
+                if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
+                    self.root_index = *new_root_node_index;
                 }
             }
         }
 
-        // Use the new version of the old root node as our root node.
-        if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
-            self.root_index = *new_root_node_index;
+        Ok(())
+    }
+
+    fn update_merkle_tree_hash(
+        &mut self,
+        node_index_to_update: NodeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        let mut hasher = ContentHash::hasher();
+        hasher.update(
+            self.get_node_weight(node_index_to_update)?
+                .content_hash()
+                .to_string()
+                .as_bytes(),
+        );
+
+        // Need to make sure the neighbors are added to the hash in a stable order to ensure the
+        // merkle tree hash is identical for identical trees.
+        let mut ordered_neighbors = Vec::new();
+        for neighbor_node in self
+            .graph
+            .neighbors_directed(node_index_to_update, Outgoing)
+        {
+            ordered_neighbors.push(neighbor_node);
         }
+        ordered_neighbors.sort();
+
+        for neighbor_node in ordered_neighbors {
+            hasher.update(
+                self.graph
+                    .node_weight(neighbor_node)
+                    .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)?
+                    .merkle_tree_hash()
+                    .to_string()
+                    .as_bytes(),
+            );
+        }
+
+        let new_node_weight = self
+            .graph
+            .node_weight_mut(node_index_to_update)
+            .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)?;
+        new_node_weight.set_merkle_tree_hash(hasher.finalize());
 
         Ok(())
     }
@@ -150,92 +234,238 @@ impl WorkspaceSnapshotGraph {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
+    use crate::{
+        workspace_snapshot::content_hash::ContentHash, ComponentId, FuncId, PropId, SchemaId,
+        SchemaVariantId,
+    };
 
     #[test]
     fn new() {
-        let graph = WorkspaceSnapshotGraph::new();
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let graph = WorkspaceSnapshotGraph::new(&change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
     }
 
     #[test]
     fn add_nodes_and_edges() {
-        let mut graph = WorkspaceSnapshotGraph::new();
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let schema_index = graph.add_node(NodeWeight::new(NodeWeightKind::Schema(
-            SchemaId::generate(),
-        )));
-        let schema_variant_index = graph.add_node(NodeWeight::new(NodeWeightKind::SchemaVariant(
-            SchemaVariantId::generate(),
-        )));
-        let component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+        let component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add component");
 
-        graph.add_edge(EdgeWeight::default(), graph.root_index, component_index);
-        graph.add_edge(EdgeWeight::default(), graph.root_index, schema_index);
-        graph.add_edge(EdgeWeight::default(), schema_index, schema_variant_index);
-        graph.add_edge(EdgeWeight::default(), component_index, schema_variant_index);
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), component_index)
+            .expect("Unable to add root -> component edge");
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), schema_index)
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(schema_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add schema -> schema variant edge");
+        graph
+            .add_edge(component_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add component -> schema variant edge");
 
-        let func_index = graph.add_node(NodeWeight::new(NodeWeightKind::Func(FuncId::generate())));
-        let prop_index = graph.add_node(NodeWeight::new(NodeWeightKind::Prop(PropId::generate())));
+        let func_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Func(ContentHash::new(
+                        FuncId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add func");
+        let prop_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Prop(ContentHash::new(
+                        PropId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add prop");
 
-        graph.add_edge(EdgeWeight::default(), graph.root_index, func_index);
-        graph.add_edge(EdgeWeight::default(), schema_variant_index, prop_index);
-        graph.add_edge(EdgeWeight::default(), prop_index, func_index);
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), func_index)
+            .expect("Unable to add root -> func edge");
+        graph
+            .add_edge(schema_variant_index, EdgeWeight::default(), prop_index)
+            .expect("Unable to add schema variant -> prop edge");
+        graph
+            .add_edge(prop_index, EdgeWeight::default(), func_index)
+            .expect("Unable to add prop -> func edge");
 
         assert!(graph.is_acyclic_directed());
     }
 
     #[test]
     fn cyclic_failure() {
-        let mut graph = WorkspaceSnapshotGraph::new();
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let schema_index = graph.add_node(NodeWeight::new(NodeWeightKind::Schema(
-            SchemaId::generate(),
-        )));
-        let schema_variant_index = graph.add_node(NodeWeight::new(NodeWeightKind::SchemaVariant(
-            SchemaVariantId::generate(),
-        )));
-        let component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+        let component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add component");
 
-        graph.add_edge(EdgeWeight::default(), graph.root_index, component_index);
-        graph.add_edge(EdgeWeight::default(), graph.root_index, schema_index);
-        graph.add_edge(EdgeWeight::default(), schema_index, schema_variant_index);
-        graph.add_edge(EdgeWeight::default(), component_index, schema_variant_index);
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), component_index)
+            .expect("Unable to add root -> component edge");
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), schema_index)
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(schema_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add schema -> schema variant edge");
+        graph
+            .add_edge(component_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add component -> schema variant edge");
 
         // This should cause a cycle.
-        graph.add_edge(EdgeWeight::default(), schema_variant_index, component_index);
-
-        assert!(!graph.is_acyclic_directed());
+        graph
+            .add_edge(schema_variant_index, EdgeWeight::default(), component_index)
+            .expect_err("Created a cycle");
     }
 
     #[test]
     fn replace_references() {
-        let mut graph = WorkspaceSnapshotGraph::new();
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let schema_index = graph.add_node(NodeWeight::new(NodeWeightKind::Schema(
-            SchemaId::generate(),
-        )));
-        let schema_variant_index = graph.add_node(NodeWeight::new(NodeWeightKind::SchemaVariant(
-            SchemaVariantId::generate(),
-        )));
-        let component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+        let component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add component");
 
-        graph.add_edge(EdgeWeight::default(), graph.root_index, component_index);
-        graph.add_edge(EdgeWeight::default(), graph.root_index, schema_index);
-        graph.add_edge(EdgeWeight::default(), schema_index, schema_variant_index);
-        graph.add_edge(EdgeWeight::default(), component_index, schema_variant_index);
-
-        let new_component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
         graph
-            .replace_references(component_index, new_component_index)
+            .add_edge(graph.root_index, EdgeWeight::default(), component_index)
+            .expect("Unable to add root -> component edge");
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), schema_index)
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(schema_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add schema -> schema variant edge");
+        graph
+            .add_edge(component_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add component -> schema variant edge");
+
+        // TODO: This is meant to simulate "modifying" the existing component, instead of swapping in a completely independent component.
+        let new_component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add new component");
+        graph
+            .replace_references(change_set, component_index, new_component_index)
             .expect("could not replace references");
 
         // TODO(nick,jacob): do something here
@@ -243,31 +473,83 @@ mod test {
 
     #[test]
     fn replace_references_and_cleanup() {
-        let mut graph = WorkspaceSnapshotGraph::new();
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
 
-        let schema_index = graph.add_node(NodeWeight::new(NodeWeightKind::Schema(
-            SchemaId::generate(),
-        )));
-        let schema_variant_index = graph.add_node(NodeWeight::new(NodeWeightKind::SchemaVariant(
-            SchemaVariantId::generate(),
-        )));
-        let component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+        let component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add component");
 
-        graph.add_edge(EdgeWeight::default(), graph.root_index, component_index);
-        graph.add_edge(EdgeWeight::default(), graph.root_index, schema_index);
-        graph.add_edge(EdgeWeight::default(), schema_index, schema_variant_index);
-        graph.add_edge(EdgeWeight::default(), component_index, schema_variant_index);
-
-        let new_component_index = graph.add_node(NodeWeight::new(NodeWeightKind::Component(
-            ComponentId::generate(),
-        )));
         graph
-            .replace_references(component_index, new_component_index)
+            .add_edge(graph.root_index, EdgeWeight::default(), component_index)
+            .expect("Unable to add root -> component edge");
+        graph
+            .add_edge(graph.root_index, EdgeWeight::default(), schema_index)
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(schema_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add schema -> schema variant edge");
+        graph
+            .add_edge(component_index, EdgeWeight::default(), schema_variant_index)
+            .expect("Unable to add component -> schema variant edge");
+
+        graph.dot();
+
+        // TODO: This is meant to simulate "modifying" the existing component, instead of swapping in a completely independent component.
+        let new_component_index = graph
+            .add_node(
+                NodeWeight::new(
+                    change_set,
+                    NodeWeightKind::Component(ContentHash::new(
+                        ComponentId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add new component");
+        graph
+            .replace_references(change_set, component_index, new_component_index)
             .expect("could not replace references");
 
+        graph.dot();
+
         graph.cleanup();
+
+        graph.dot();
+
+        panic!();
 
         // TODO(nick,jacob): do something here
     }
