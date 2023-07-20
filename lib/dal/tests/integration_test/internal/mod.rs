@@ -13,6 +13,7 @@ mod node;
 mod node_menu;
 mod pkg;
 mod prop;
+mod prop_tree;
 mod property_editor;
 mod provider;
 mod schema;

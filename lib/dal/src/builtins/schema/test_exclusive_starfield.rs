@@ -150,6 +150,13 @@ impl MigrationDriver {
                     )
                     .domain_prop(
                         PropSpec::builder()
+                            .name("hidden_prop")
+                            .kind(PropKind::String)
+                            .hidden(true)
+                            .build()?,
+                    )
+                    .domain_prop(
+                        PropSpec::builder()
                             .name("freestar")
                             .kind(PropKind::String)
                             .build()?,

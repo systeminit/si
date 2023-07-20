@@ -1,3 +1,4 @@
+use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
@@ -33,7 +34,7 @@ use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, Tran
 pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
 /// This type should be used to manage prop paths instead of a raw string
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PropPath(String);
 
 impl PropPath {
@@ -104,6 +105,8 @@ const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropError {
+    #[error("Array prop {0} is missing element child")]
+    ArrayMissingElementChild(PropId),
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextBuilderError),
     #[error("AttributePrototype error: {0}")]
@@ -122,6 +125,8 @@ pub enum PropError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("Map prop {0} is missing element child")]
+    MapMissingElementChild(PropId),
     #[error("missing a func: {0}")]
     MissingFunc(String),
     #[error("missing a func by id: {0}")]
@@ -366,6 +371,59 @@ impl Prop {
             )
             .await?;
         Ok(objects_from_rows(rows)?)
+    }
+
+    #[instrument(skip_all)]
+    #[async_recursion]
+    pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
+        // XXX: Hack! The payload prop kind is a string but we're actually storing arbitrary json
+        // there and expect it to be a JSON object in most of our code. However, the resource_value
+        // work is likely to remove the need for this entirely
+        if self.path() == PropPath::new(["root", "resource", "payload"]) {
+            return Ok("any".to_string());
+        }
+
+        Ok(match self.kind() {
+            PropKind::Array => format!(
+                "{}[]",
+                self.child_props(ctx)
+                    .await?
+                    .get(0)
+                    .ok_or(PropError::ArrayMissingElementChild(self.id))?
+                    .ts_type(ctx)
+                    .await?
+            ),
+            PropKind::Boolean => "boolean".to_string(),
+            PropKind::Integer => "number".to_string(),
+            PropKind::Map => format!(
+                "Record<string, {}>",
+                self.child_props(ctx)
+                    .await?
+                    .get(0)
+                    .ok_or(PropError::MapMissingElementChild(self.id))?
+                    .ts_type(ctx)
+                    .await?
+            ),
+            PropKind::Object => {
+                let mut object_type = "{\n".to_string();
+                for child in self.child_props(ctx).await? {
+                    let name_value = serde_json::to_value(&child.name)?;
+                    let name_serialized = serde_json::to_string(&name_value)?;
+                    object_type.push_str(
+                        format!(
+                            "{}: {} | null | undefined;\n",
+                            &name_serialized,
+                            child.ts_type(ctx).await?
+                        )
+                        .as_str(),
+                    );
+                }
+                object_type.push('}');
+
+                object_type
+            }
+            PropKind::String => "string".to_string(),
+        })
     }
 
     /// Assembles the "json_pointer" representing the full "path" to a [`Prop`] based on its

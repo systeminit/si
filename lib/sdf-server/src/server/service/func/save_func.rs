@@ -345,6 +345,7 @@ async fn attribute_view_for_leaf_func(
 
         argument_views.push(AttributePrototypeArgumentView {
             func_argument_id: *func_argument.id(),
+            func_argument_name: func_argument.name().to_owned(),
             id: Some(*proto_arg.id()),
             internal_provider_id: Some(proto_arg.internal_provider_id()),
         });

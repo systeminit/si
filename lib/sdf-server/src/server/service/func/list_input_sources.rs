@@ -117,7 +117,14 @@ pub async fn list_input_sources(
     })
     .collect();
 
-    let props = prop_tree_to_list(&PropTree::new(&ctx, true, request.schema_variant_id).await?);
+    let prop_tree = PropTree::new(
+        &ctx,
+        true,
+        request.schema_variant_id.map(|sv_id| vec![sv_id]),
+        None,
+    )
+    .await?;
+    let props = prop_tree_to_list(&prop_tree);
 
     Ok(Json(ListInputSourcesResponse {
         input_sockets,
