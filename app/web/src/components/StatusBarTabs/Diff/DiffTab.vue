@@ -1,9 +1,9 @@
 <template>
   <StatusBarTab :selected="props.selected">
-    <template #icon><Icon class="text-white" name="clock" /></template>
-    <template #name>{{
-      stats.total > 0 ? "Changes" : "No Changes Yet..."
-    }}</template>
+    <template #icon>
+      <Icon class="text-white" name="clock" />
+    </template>
+    <template #name>Diff</template>
     <template #summary>
       <StatusBarTabPill v-if="stats.total > 0">
         <span class="font-bold">Total:&nbsp; {{ stats.total }}</span>

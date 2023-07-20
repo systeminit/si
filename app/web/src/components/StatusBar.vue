@@ -32,7 +32,7 @@
           :aria-hidden="isViewMode"
           :class="[isViewMode ? 'hidden' : '']"
         >
-          <ChangeSetTab :selected="selected" />
+          <DiffTab :selected="selected" />
         </Tab>
         <Tab v-slot="{ selected }">
           <QualificationTab :selected="selected" />
@@ -124,7 +124,7 @@
             :class="[isViewMode ? 'hidden' : '']"
             class="h-full"
           >
-            <ChangeSetTabPanel />
+            <DiffTabPanel />
           </TabPanel>
           <TabPanel class="h-full">
             <QualificationTabPanel />
@@ -182,8 +182,8 @@ import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/components/StatusBarTabs/Qualification/QualificationTab.vue";
-import ChangeSetTabPanel from "@/components/StatusBarTabs/Changes/ChangesTabPanel.vue";
-import ChangeSetTab from "@/components/StatusBarTabs/Changes/ChangesTab.vue";
+import DiffTabPanel from "@/components/StatusBarTabs/Diff/DiffTabPanel.vue";
+import DiffTab from "@/components/StatusBarTabs/Diff/DiffTab.vue";
 import FixHistoryTab from "@/components/StatusBarTabs/Fixes/FixHistoryTab.vue";
 import FixHistoryPanel from "@/components/StatusBarTabs/Fixes/FixHistoryPanel.vue";
 import ConfirmationsPanel from "@/components/StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
