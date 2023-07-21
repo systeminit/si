@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
 
 rust_binary(
     name = "council",
@@ -10,4 +14,10 @@ rust_binary(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
+)
+
+docker_image(
+    name = "image",
+    image_name = "council",
+    build_deps = ["//bin/council:council"]
 )

@@ -12,6 +12,10 @@ export_file(
 )
 
 export_file(
+    name = "docker_build_context_srcs_from_deps.bxl",
+)
+
+export_file(
     name = "docker_container_run.py",
 )
 

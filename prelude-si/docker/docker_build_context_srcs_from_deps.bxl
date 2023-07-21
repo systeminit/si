@@ -1,0 +1,73 @@
+def _docker_build_context_srcs_from_deps_impl(ctx):
+    raw_paths = []
+
+    for dep in ctx.cli_args.dep:
+        # All dep targets required for the given `dep`
+        dep_targets = ctx.uquery().deps(_normalize_target_str(dep))
+        # All associated `BUCK` files for all the dep targets
+        buck_files = ctx.uquery().buildfile(dep_targets)
+
+        # For each `BUCK` file
+        for buck_file in map(lambda e: str(e), buck_files):
+            # Add the `BUCK` file as a candidate path
+            raw_paths.append(buck_file)
+            all_targets = buck_file.replace("BUCK", ":")
+            # Find all input files for all the targets in the `BUCK` file
+            inputs = ctx.uquery().inputs(all_targets)
+            # Add all input files to candidate paths
+            raw_paths.extend(map(lambda e: str(e), inputs))
+
+    # Add condidate path entries for Buck2 config and root
+    raw_paths.append(".buckconfig")
+    raw_paths.append(".buckroot")
+    # Add candidate path entries for the Buck2 prelude directories (we want *all* these files)
+    raw_paths.append("prelude")
+    raw_paths.append("prelude-si")
+    # While not officially in a prelude, there are macros that Reindeer used to create the Rust
+    # third-party targets, so we will include this directory as well.
+    raw_paths.append("third-party/macros")
+
+    all_paths = map(
+        # Remove namespace prefixes to leave simple file/directory path strings
+        lambda e: _normalize_file_str(e),
+        # Remove any candidate paths under the prelude namespaces--we added the full directories
+        # already
+        filter(
+            lambda e: not e.startswith("prelude//") and not e.startswith("prelude-si//"),
+            raw_paths,
+        ),
+    )
+
+    # Compute an unique, sorted set of paths
+    unique_paths = {}
+    for path in all_paths:
+        unique_paths.update({path: True})
+    paths = sorted(unique_paths.keys())
+    pprint(paths)
+
+    # Print all path entries
+    for path in paths:
+        ctx.output.print(path)
+
+docker_build_context_srcs_from_deps = bxl(
+    impl = _docker_build_context_srcs_from_deps_impl,
+    cli_args = {
+        "dep": cli_args.list(
+            cli_args.string(),
+            default = [],
+            doc = """Target from which to derive all relevant sources.""",
+        ),
+    },
+)
+
+def _normalize_target_str(dep: str.type) -> str.type:
+    if dep.startswith("//"):
+        return "root" + dep
+    else:
+        return "root//{}".format(dep)
+
+def _normalize_file_str(raw_file: str.type) -> str.type:
+    if raw_file.startswith("root//"):
+        return raw_file.replace("root//", "")
+    else:
+        return raw_file.replace("//", "/")
