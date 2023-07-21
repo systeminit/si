@@ -4469,18 +4469,30 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
- "comfy-table",
- "console",
  "derive_builder",
- "indicatif",
- "inquire",
- "open",
- "rand",
  "serde_json",
+ "si-cli",
  "si-posthog",
  "strum",
  "telemetry-application",
  "tokio",
+]
+
+[[package]]
+name = "si-cli"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "comfy-table",
+ "console",
+ "indicatif",
+ "inquire",
+ "open",
+ "rand",
+ "remain",
+ "serde_json",
+ "si-posthog",
+ "thiserror",
 ]
 
 [[package]]
