@@ -18,12 +18,13 @@ use dal::{
     ActionKind, ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextError,
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
     AttributePrototypeError, AttributePrototypeId, AttributeValueError, ComponentError,
-    ComponentId, DalContext, ExternalProviderId, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
-    PropKind, PrototypeListForFuncError, SchemaVariantId, StandardModel, StandardModelError,
-    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
+    ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBindingError, FuncDescription, FuncDescriptionContents, FuncId,
+    InternalProvider, InternalProviderError, InternalProviderId, LeafInputLocation, Prop,
+    PropError, PropId, PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, WsEventError,
 };
-use dal::{ExternalProviderError, FuncDescription, FuncDescriptionContents, LeafInputLocation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -229,6 +230,7 @@ impl TryFrom<&Func> for FuncVariant {
 #[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeArgumentView {
     func_argument_id: FuncArgumentId,
+    func_argument_name: String,
     id: Option<AttributePrototypeArgumentId>,
     internal_provider_id: Option<InternalProviderId>,
 }
@@ -373,6 +375,7 @@ async fn prototype_view_for_attribute_prototype(
             .map(
                 |(func_arg, maybe_proto_arg)| AttributePrototypeArgumentView {
                     func_argument_id: *func_arg.id(),
+                    func_argument_name: func_arg.name().to_owned(),
                     id: maybe_proto_arg.as_ref().map(|proto_arg| *proto_arg.id()),
                     internal_provider_id: maybe_proto_arg
                         .as_ref()
@@ -471,44 +474,48 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
     let (associations, input_type) = match func.backend_kind() {
         FuncBackendKind::JsAttribute => {
-            let input_type = compile_argument_types(&arguments);
-
-            let associations = match func.backend_response_type() {
-                FuncBackendResponseType::CodeGeneration => {
+            let (associations, input_type) = match func.backend_response_type() {
+                FuncBackendResponseType::CodeGeneration
+                | FuncBackendResponseType::Confirmation
+                | FuncBackendResponseType::Qualification => {
                     let (schema_variant_ids, component_ids) =
                         attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
                             .await?;
 
-                    Some(FuncAssociations::CodeGeneration {
-                        schema_variant_ids,
-                        component_ids,
-                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
-                    })
-                }
-                FuncBackendResponseType::Confirmation => {
-                    let (schema_variant_ids, component_ids) =
-                        attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                    let inputs = get_leaf_function_inputs(ctx, *func.id()).await?;
+                    let input_type =
+                        compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs)
                             .await?;
 
-                    let descriptions = func_description_views(ctx, *func.id()).await?;
+                    (
+                        Some(match func.backend_response_type() {
+                            FuncBackendResponseType::CodeGeneration => {
+                                FuncAssociations::CodeGeneration {
+                                    schema_variant_ids,
+                                    component_ids,
+                                    inputs,
+                                }
+                            }
+                            FuncBackendResponseType::Confirmation => {
+                                FuncAssociations::Confirmation {
+                                    schema_variant_ids,
+                                    component_ids,
+                                    descriptions: func_description_views(ctx, *func.id()).await?,
+                                    inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
+                                }
+                            }
 
-                    Some(FuncAssociations::Confirmation {
-                        schema_variant_ids,
-                        component_ids,
-                        descriptions,
-                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
-                    })
-                }
-                FuncBackendResponseType::Qualification => {
-                    let (schema_variant_ids, component_ids) =
-                        attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-                            .await?;
-
-                    Some(FuncAssociations::Qualification {
-                        schema_variant_ids,
-                        component_ids,
-                        inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
-                    })
+                            FuncBackendResponseType::Qualification => {
+                                FuncAssociations::Qualification {
+                                    schema_variant_ids,
+                                    component_ids,
+                                    inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
+                                }
+                            }
+                            _ => unreachable!("the match above ensures this is unreachable"),
+                        }),
+                        input_type,
+                    )
                 }
                 _ => {
                     let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
@@ -520,18 +527,23 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                         );
                     }
 
-                    Some(FuncAssociations::Attribute {
-                        prototypes,
-                        arguments: arguments
-                            .iter()
-                            .map(|arg| FuncArgumentView {
-                                id: *arg.id(),
-                                name: arg.name().to_owned(),
-                                kind: arg.kind().to_owned(),
-                                element_kind: arg.element_kind().cloned(),
-                            })
-                            .collect(),
-                    })
+                    let ts_types = compile_attribute_function_types(ctx, &prototypes).await?;
+
+                    (
+                        Some(FuncAssociations::Attribute {
+                            prototypes,
+                            arguments: arguments
+                                .iter()
+                                .map(|arg| FuncArgumentView {
+                                    id: *arg.id(),
+                                    name: arg.name().to_owned(),
+                                    kind: arg.kind().to_owned(),
+                                    element_kind: arg.element_kind().cloned(),
+                                })
+                                .collect(),
+                        }),
+                        ts_types,
+                    )
                 }
             };
             (associations, input_type)
@@ -540,12 +552,14 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             let (kind, schema_variant_ids) =
                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
 
+            let ts_types = compile_action_types(ctx, &schema_variant_ids).await?;
+
             let associations = Some(FuncAssociations::Action {
                 schema_variant_ids,
                 kind,
             });
 
-            (associations, compile_action_types())
+            (associations, ts_types)
         }
         FuncBackendKind::JsReconciliation => {
             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
@@ -603,7 +617,7 @@ pub fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
         FuncBackendResponseType::Qualification => {
             "interface Output {
   result: 'success' | 'warning' | 'failure';
-  message?: string;
+  message?: string | null;
 }"
         }
         FuncBackendResponseType::Confirmation => {
@@ -636,14 +650,14 @@ interface Output {
             "interface Output {
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
-    message?: string;
+    message?: string | null;
 }"
         }
         FuncBackendResponseType::Json => "type Output = any;",
         // Note: there is no ts function returning those
         FuncBackendResponseType::Identity => "interface Output extends Input {}",
         FuncBackendResponseType::Array => "type Output = any[];",
-        FuncBackendResponseType::Map => "type Output = any;",
+        FuncBackendResponseType::Map => "type Output = Record<string, any>;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
@@ -659,7 +673,6 @@ async fn compile_validation_types(
     prototypes: &[ValidationPrototype],
 ) -> FuncResult<String> {
     let mut input_fields = Vec::new();
-    // TODO: avoid any, follow prop graph and build actual type
     for prototype in prototypes {
         let prop = Prop::get_by_id(ctx, &prototype.context().prop_id())
             .await?
@@ -667,15 +680,8 @@ async fn compile_validation_types(
                 prototype.context().prop_id(),
                 *ctx.visibility(),
             ))?;
-        let ty = match prop.kind() {
-            PropKind::Boolean => "boolean",
-            PropKind::Integer => "number",
-            PropKind::String => "string",
-            PropKind::Array => "any[]",
-            PropKind::Object => "any",
-            PropKind::Map => "any",
-        };
-        input_fields.push(ty);
+        let ts_type = prop.ts_type(ctx).await?;
+        input_fields.push(ts_type);
     }
     if input_fields.is_empty() {
         Ok("type Input = never;".to_owned())
@@ -686,27 +692,96 @@ async fn compile_validation_types(
     }
 }
 
-fn compile_argument_types(arguments: &[FuncArgument]) -> String {
-    let mut input_fields = HashMap::new();
-    // TODO: avoid any, follow prop graph and build actual type
-    for argument in arguments {
-        let ty = match argument.kind() {
-            FuncArgumentKind::Boolean => "boolean",
-            FuncArgumentKind::Integer => "number",
-            FuncArgumentKind::String => "string",
-            FuncArgumentKind::Array => "any[]",
-            FuncArgumentKind::Object => "any",
-            FuncArgumentKind::Map => "any",
-            FuncArgumentKind::Any => "any",
-        };
-        input_fields.insert(argument.name().to_owned(), ty);
+async fn get_per_variant_types_for_prop_path(
+    ctx: &DalContext,
+    variant_ids: &[SchemaVariantId],
+    path: &[&str],
+) -> FuncResult<String> {
+    let mut per_variant_types = vec![];
+
+    for variant_id in variant_ids {
+        let prop = SchemaVariant::find_prop_in_tree(ctx, *variant_id, path).await?;
+        let ts_type = prop.ts_type(ctx).await?;
+
+        if !per_variant_types.contains(&ts_type) {
+            per_variant_types.push(ts_type);
+        }
     }
-    let mut types = "interface Input {\n".to_owned();
-    for (name, ty) in &input_fields {
-        types.push_str(&format!("  {name}: {ty} | null;\n"));
+
+    Ok(per_variant_types.join(" | "))
+}
+
+async fn compile_leaf_function_input_types(
+    ctx: &DalContext,
+    schema_variant_ids: &[SchemaVariantId],
+    inputs: &[LeafInputLocation],
+) -> FuncResult<String> {
+    let mut ts_type = "type Input = {\n".to_string();
+
+    for input_location in inputs {
+        let input_property = format!(
+            "{}?: {} | null;\n",
+            input_location.arg_name(),
+            get_per_variant_types_for_prop_path(
+                ctx,
+                schema_variant_ids,
+                &input_location.prop_path()
+            )
+            .await?
+        );
+        ts_type.push_str(&input_property);
     }
-    types.push('}');
-    types
+    ts_type.push_str("};");
+
+    Ok(ts_type)
+}
+
+async fn compile_attribute_function_types(
+    ctx: &DalContext,
+    prototype_views: &[AttributePrototypeView],
+) -> FuncResult<String> {
+    let mut input_ts_types = "type Input = {\n".to_string();
+
+    let mut argument_types = HashMap::new();
+    for prototype_view in prototype_views {
+        for arg in &prototype_view.prototype_arguments {
+            if let Some(ip_id) = arg.internal_provider_id {
+                let ip = InternalProvider::get_by_id(ctx, &ip_id)
+                    .await?
+                    .ok_or(InternalProviderError::NotFound(ip_id))?;
+
+                let ts_type = if ip.prop_id().is_none() {
+                    "object".to_string()
+                } else {
+                    Prop::get_by_id(ctx, ip.prop_id())
+                        .await?
+                        .ok_or(PropError::NotFound(
+                            *ip.prop_id(),
+                            ctx.visibility().to_owned(),
+                        ))?
+                        .ts_type(ctx)
+                        .await?
+                };
+
+                if !argument_types.contains_key(&arg.func_argument_name) {
+                    argument_types.insert(arg.func_argument_name.clone(), vec![ts_type]);
+                } else if let Some(ts_types_for_arg) =
+                    argument_types.get_mut(&arg.func_argument_name)
+                {
+                    if !ts_types_for_arg.contains(&ts_type) {
+                        ts_types_for_arg.push(ts_type)
+                    }
+                }
+            }
+        }
+    }
+    for (arg_name, ts_types) in argument_types.iter() {
+        input_ts_types
+            .push_str(format!("{}?: {} | null;\n", arg_name, ts_types.join(" | ")).as_str());
+    }
+    input_ts_types.push_str("};");
+
+    Ok(input_ts_types)
 }
 
 // TODO FIXME(paulo): arguments for command functions are provided through a js function, so we can't predict this, we should fix it so the types are predictable
@@ -714,12 +789,23 @@ fn compile_argument_types(arguments: &[FuncArgument]) -> String {
 //
 // TODO: build properties types from prop tree
 // Note: ComponentKind::Credential is unused and the implementation is broken, so let's ignore it for now
-fn compile_action_types() -> String {
-    "interface Input {
+async fn compile_action_types(
+    ctx: &DalContext,
+    variant_ids: &[SchemaVariantId],
+) -> FuncResult<String> {
+    let mut ts_types = vec![];
+    for variant_id in variant_ids {
+        let prop = SchemaVariant::find_prop_in_tree(ctx, *variant_id, &["root"]).await?;
+        ts_types.push(prop.ts_type(ctx).await?);
+    }
+
+    Ok(format!(
+        "interface Input {{
     kind: 'standard';
-    properties: any;
-}"
-    .to_owned()
+    properties: {};
+}}",
+        ts_types.join(" | "),
+    ))
 }
 
 // TODO: stop duplicating definition

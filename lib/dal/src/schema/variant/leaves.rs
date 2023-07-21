@@ -127,6 +127,10 @@ impl LeafInputLocation {
         }
     }
 
+    pub fn prop_path(&self) -> Vec<&'static str> {
+        vec!["root", self.arg_name()]
+    }
+
     pub fn maybe_from_arg_name(arg_name: &str) -> Option<Self> {
         Some(match arg_name {
             "domain" => LeafInputLocation::Domain,

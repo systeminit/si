@@ -626,7 +626,7 @@ async fn set_variant_spec_prop_data(
     prop_root: SchemaVariantSpecPropRoot,
     func_specs: &HashMap<FuncId, FuncSpec>,
 ) -> PkgResult<()> {
-    let mut prop_tree = PropTree::new(ctx, true, Some(*variant.id())).await?;
+    let mut prop_tree = PropTree::new(ctx, true, Some(vec![*variant.id()]), None).await?;
     let root_tree_node = prop_tree
         .root_props
         .pop()
