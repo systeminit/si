@@ -18,7 +18,7 @@ pub enum VectorClockError {
 
 pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
     pub entries: HashMap<ChangeSetId, LamportClock>,
 }
@@ -49,7 +49,7 @@ impl VectorClock {
                 lamport_clock.merge(other_lamport_clock);
             } else {
                 self.entries
-                    .insert(*other_change_set_id, other_lamport_clock.clone());
+                    .insert(*other_change_set_id, *other_lamport_clock);
             }
         }
         self.inc(change_set)?;
@@ -62,6 +62,14 @@ impl VectorClock {
         forked.inc(change_set)?;
 
         Ok(forked)
+    }
+}
+
+impl std::fmt::Debug for VectorClock {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt.debug_map()
+            .entries(self.entries.iter().map(|(k, v)| (k.to_string(), v)))
+            .finish()
     }
 }
 

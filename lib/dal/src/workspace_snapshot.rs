@@ -54,6 +54,8 @@ pub enum WorkspaceSnapshotError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
+    #[error("Node with ID {0} not found")]
+    NodeWithIdNotFound(Ulid),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("poison error: {0}")]

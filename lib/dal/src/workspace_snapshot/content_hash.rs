@@ -6,7 +6,7 @@ use serde::{
 };
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct ContentHash(blake3::Hash);
 
 impl ContentHash {
@@ -23,6 +23,12 @@ impl ContentHash {
 impl Default for ContentHash {
     fn default() -> Self {
         Self::new("".as_bytes())
+    }
+}
+
+impl fmt::Debug for ContentHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ContentHash({})", self.0)
     }
 }
 
@@ -79,13 +85,14 @@ impl FromStr for ContentHash {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ContentHasher(blake3::Hasher);
 
 impl ContentHasher {
     pub fn new() -> Self {
         ContentHasher(blake3::Hasher::new())
     }
+
     pub fn update(&mut self, input: &[u8]) {
         self.0.update(input);
     }

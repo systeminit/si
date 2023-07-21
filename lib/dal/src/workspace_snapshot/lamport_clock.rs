@@ -41,8 +41,6 @@ impl LamportClock {
 
 impl std::fmt::Debug for LamportClock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LamportClock")
-            .field("counter", &self.counter.to_string())
-            .finish()
+        write!(f, "LamportClock({})", &self.counter.to_string())
     }
 }

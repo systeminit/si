@@ -11,6 +11,8 @@ use ulid::Ulid;
 
 #[derive(Debug, Error)]
 pub enum NodeWeightError {
+    #[error("Cannot update root node's content hash")]
+    CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Vector Clock error: {0}")]
@@ -47,7 +49,7 @@ impl NodeWeightKind {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NodeWeight {
     /// The stable local ID of the object in question. Mainly used by external things like
     /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
@@ -71,10 +73,14 @@ pub struct NodeWeight {
 }
 
 impl NodeWeight {
-    pub fn new(change_set: &ChangeSet, kind: NodeWeightKind) -> NodeWeightResult<NodeWeight> {
+    pub fn new(
+        change_set: &ChangeSet,
+        id: Ulid,
+        kind: NodeWeightKind,
+    ) -> NodeWeightResult<NodeWeight> {
         Ok(NodeWeight {
-            id: change_set.generate_ulid()?,
-            origin_id: change_set.generate_ulid()?.into(),
+            id,
+            origin_id: change_set.generate_ulid()?,
             kind,
             merkle_tree_hash: ContentHash::default(),
             vector_clock_seen: None,
@@ -82,8 +88,37 @@ impl NodeWeight {
         })
     }
 
+    pub fn new_with_seen_vector_clock(
+        change_set: &ChangeSet,
+        kind: NodeWeightKind,
+    ) -> NodeWeightResult<NodeWeight> {
+        Ok(NodeWeight {
+            id: change_set.generate_ulid()?,
+            origin_id: change_set.generate_ulid()?,
+            kind,
+            merkle_tree_hash: ContentHash::default(),
+            vector_clock_seen: Some(VectorClock::new(change_set)?),
+            vector_clock_write: VectorClock::new(change_set)?,
+        })
+    }
+
     pub fn content_hash(&self) -> ContentHash {
         self.kind.content_hash()
+    }
+
+    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+        let new_kind = match &self.kind {
+            NodeWeightKind::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
+            NodeWeightKind::SchemaVariant(_) => NodeWeightKind::SchemaVariant(content_hash),
+            NodeWeightKind::Schema(_) => NodeWeightKind::Schema(content_hash),
+            NodeWeightKind::Component(_) => NodeWeightKind::Component(content_hash),
+            NodeWeightKind::Func(_) => NodeWeightKind::Func(content_hash),
+            NodeWeightKind::Prop(_) => NodeWeightKind::Prop(content_hash),
+        };
+
+        self.kind = new_kind;
+
+        Ok(())
     }
 
     pub fn merkle_tree_hash(&self) -> ContentHash {
@@ -94,26 +129,35 @@ impl NodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn modify(&self, change_set: &ChangeSet) -> NodeWeightResult<Self> {
-        let vector_clock_seen = match &self.vector_clock_seen {
-            Some(vcs) => {
-                let mut new_vcs = vcs.clone();
-                new_vcs.inc(change_set)?;
-
-                Some(new_vcs)
-            }
-            None => None,
+    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        if let Some(vcs) = &mut self.vector_clock_seen {
+            vcs.inc(change_set)?;
         };
-        let mut vector_clock_write = self.vector_clock_write.clone();
-        vector_clock_write.inc(change_set)?;
+        self.vector_clock_write.inc(change_set)?;
 
-        Ok(NodeWeight {
-            id: self.id,
-            origin_id: self.origin_id,
-            kind: self.kind,
-            merkle_tree_hash: self.merkle_tree_hash,
-            vector_clock_seen,
-            vector_clock_write,
-        })
+        Ok(())
+    }
+
+    pub fn new_with_incremented_vector_clocks(
+        &self,
+        change_set: &ChangeSet,
+    ) -> NodeWeightResult<Self> {
+        let mut new_node_weight = self.clone();
+        new_node_weight.increment_vector_clocks(change_set)?;
+
+        Ok(new_node_weight)
+    }
+}
+
+impl std::fmt::Debug for NodeWeight {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("NodeWeight")
+            .field("id", &self.id.to_string())
+            .field("origin_id", &self.origin_id.to_string())
+            .field("kind", &self.kind)
+            .field("merkle_tree_hash", &self.merkle_tree_hash)
+            .field("vector_clock_seen", &self.vector_clock_seen)
+            .field("vector_clock_write", &self.vector_clock_write)
+            .finish()
     }
 }
