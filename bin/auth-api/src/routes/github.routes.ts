@@ -24,47 +24,72 @@ interface Release {
   publishedAt: string;
 }
 
+let cachedAt: Date | null = null;
+let releases: Release[] | null = null;
+let loading: boolean = false;
+
 router.get("/github/releases", async (ctx) => {
-  const data = await tryCatch(async () => {
-    const req = await ghApi.get("/repos/systeminit/si/releases", {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${process.env.GH_TOKEN}`,
-        "X-Github-Api-Version": "2022-11-28",
-      },
-    });
+  const seconds = Math.abs(Date.now() - (cachedAt?.getTime() ?? 0));
+  if ((seconds > 180 * 1000 || !releases) && !loading) {
+    loading = true;
 
-    return req.data;
-  }, (err) => {
-    throw new ApiError(
-      err.response.statusText,
-      "GITHUB_LIST_RELEASES_FAILURE",
-      err.response.data.message,
-    );
-  });
+    try {
+      const data = await tryCatch(async () => {
+        const req = await ghApi.get("/repos/systeminit/si/releases", {
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${process.env.GH_TOKEN}`,
+            "X-Github-Api-Version": "2022-11-28",
+          },
+        });
 
-  const releases: Release[] = [];
-  for (const release of data) {
-    const assets: Asset[] = [];
-    for (const asset of release.assets) {
-      assets.push({
-        id: asset.id,
-        contentType: asset.content_type,
-        size: asset.size,
-        name: asset.name,
-        url: asset.browser_download_url,
+        return req.data;
+      }, (err) => {
+        throw new ApiError(
+          err.response.statusText,
+          "GITHUB_LIST_RELEASES_FAILURE",
+          err.response.data.message,
+        );
       });
-    }
 
-    releases.push({
-      id: release.id,
-      version: release.tag_name,
-      name: release.name,
-      description: release.body,
-      assets,
-      publishedAt: release.published_at,
-    });
+      const releasesTemp: Release[] = [];
+      for (const githubRelease of data) {
+        const release: Release = {
+          id: githubRelease.id,
+          version: githubRelease.tag_name,
+          name: githubRelease.name,
+          description: githubRelease.body,
+          publishedAt: githubRelease.published_at,
+          assets: [],
+        };
+
+        for (const githubAsset of githubRelease.assets) {
+          const asset: Asset = {
+            id: githubAsset.id,
+            contentType: githubAsset.content_type,
+            size: githubAsset.size,
+            name: githubAsset.name,
+            url: githubAsset.browser_download_url,
+          };
+          release.assets.push(asset);
+        }
+
+        releasesTemp.push(release);
+      }
+
+      cachedAt = new Date();
+      releases = releasesTemp;
+    } catch (err) {
+      if (releases) {
+        // eslint-disable-next-line no-console
+        console.error(err);
+        return releases;
+      }
+      throw err;
+    } finally {
+      loading = false;
+    }
   }
 
-  ctx.body = releases;
+  ctx.body = releases ?? [];
 });
