@@ -125,7 +125,10 @@ pub async fn get_variant_def(
             .collect();
     }
 
-    let types = compile_return_types(*asset_func.backend_response_type());
+    let types = compile_return_types(
+        *asset_func.backend_response_type(),
+        *asset_func.backend_kind(),
+    );
     response.types = types.to_string();
 
     track(

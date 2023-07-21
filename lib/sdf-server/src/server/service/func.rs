@@ -584,7 +584,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
     let is_revertible = is_func_revertible(ctx, func).await?;
     let types = [
-        compile_return_types(*func.backend_response_type()),
+        compile_return_types(*func.backend_response_type(), *func.backend_kind()),
         &input_type,
         langjs_types(),
     ]
@@ -607,9 +607,18 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
 // TODO FIXME(paulo): cleanup code repetition
 
-pub fn compile_return_types(ty: FuncBackendResponseType) -> &'static str {
-    // TODO: avoid any, follow prop graph and build actual type
-    // TODO: Could be generated automatically from some rust types, but which?
+pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
+    if matches!(kind, FuncBackendKind::JsAttribute)
+        && !matches!(
+            ty,
+            FuncBackendResponseType::CodeGeneration
+                | FuncBackendResponseType::Confirmation
+                | FuncBackendResponseType::Qualification
+        )
+    {
+        return ""; // attribute functions have their output compiled dynamically
+    }
+
     match ty {
         FuncBackendResponseType::Boolean => "type Output = boolean | null;",
         FuncBackendResponseType::String => "type Output = string | null;",
@@ -742,6 +751,7 @@ async fn compile_attribute_function_types(
 ) -> FuncResult<String> {
     let mut input_ts_types = "type Input = {\n".to_string();
 
+    let mut output_ts_types = vec![];
     let mut argument_types = HashMap::new();
     for prototype_view in prototype_views {
         for arg in &prototype_view.prototype_arguments {
@@ -773,6 +783,23 @@ async fn compile_attribute_function_types(
                     }
                 }
             }
+
+            let output_type = if let Some(output_prop_id) = prototype_view.prop_id {
+                Prop::get_by_id(ctx, &output_prop_id)
+                    .await?
+                    .ok_or(PropError::NotFound(
+                        output_prop_id,
+                        ctx.visibility().to_owned(),
+                    ))?
+                    .ts_type(ctx)
+                    .await?
+            } else {
+                "any".to_string()
+            };
+
+            if !output_ts_types.contains(&output_type) {
+                output_ts_types.push(output_type);
+            }
         }
     }
     for (arg_name, ts_types) in argument_types.iter() {
@@ -781,7 +808,9 @@ async fn compile_attribute_function_types(
     }
     input_ts_types.push_str("};");
 
-    Ok(input_ts_types)
+    let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
+
+    Ok(format!("{}\n{}", input_ts_types, output_ts))
 }
 
 // TODO FIXME(paulo): arguments for command functions are provided through a js function, so we can't predict this, we should fix it so the types are predictable
