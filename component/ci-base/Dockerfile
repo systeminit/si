@@ -54,7 +54,7 @@ RUN set -eux; \
     mkdir -p "$HOME/.config/nix"; \
     { \
         echo 'extra-nix-path = nixpkgs=flake:nixpkgs'; \
-        echo 'experimental-features = nix-command flakes'; \
+        echo 'experimental-features = nix-command flakes impure-derivations ca-derivations'; \
         echo 'auto-optimise-store = true'; \
         echo 'bash-prompt-prefix = (nix:$name)\040'; \
     } >"$HOME/.config/nix/nix.conf"; \
