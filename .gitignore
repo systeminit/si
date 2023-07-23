@@ -30,7 +30,10 @@ app/web/cypress/videos/
 .netlify
 
 # Buck
-buck-out
+/buck-out/
+
+# Nix builds
+/result
 
 # direnv
 .direnv

@@ -49,6 +49,11 @@ docker_image = rule(
             default = {},
             doc = """Mapping of sources files to the relative directory in a Dockerfile context..""",
         ),
+        "build_deps": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Buck2 targets that could be built in an image.""",
+        ),
         "build_args": attrs.dict(
             attrs.string(),
             attrs.string(),
@@ -199,10 +204,17 @@ def docker_build_context(ctx: "context") -> DockerBuildContext.type:
         docker_toolchain.docker_build_context[DefaultInfo].default_outputs,
         "--dockerfile",
         ctx.attrs.dockerfile,
+        "--bxl-file",
+        docker_toolchain.docker_build_context_srcs_from_deps[DefaultInfo].default_outputs,
+        "--bxl-script",
+        "docker_build_context_srcs_from_deps",
     )
     for src, rel_path in ctx.attrs.srcs.items():
         cmd.add("--src")
         cmd.add(cmd_args(src, format = "{}=" + rel_path))
+    for dep in ctx.attrs.build_deps or []:
+        cmd.add("--dep")
+        cmd.add(dep)
     cmd.add(context_tree.as_output())
 
     ctx.actions.run(cmd, category = "docker_build_context")
