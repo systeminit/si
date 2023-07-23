@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
 
 rust_binary(
     name = "pinga",
@@ -13,4 +17,10 @@ rust_binary(
     resources = {
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
     },
+)
+
+docker_image(
+    name = "image",
+    image_name = "pinga",
+    build_deps = ["//bin/pinga:pinga"]
 )
