@@ -35,6 +35,6 @@ def docker_image(
 
     _docker_image_promote(
         name = promote_target,
-        image_name = "{}/{}".format(organization, name),
+        image_name = "{}/{}".format(organization, kwargs.get("image_name", name)),
         visibility = visibility,
     )

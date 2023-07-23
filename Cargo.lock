@@ -4476,7 +4476,10 @@ dependencies = [
  "inquire",
  "open",
  "rand",
+ "serde_json",
+ "si-posthog",
  "strum",
+ "telemetry-application",
  "tokio",
 ]
 
