@@ -230,7 +230,7 @@ impl TryFrom<&Func> for FuncVariant {
 #[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeArgumentView {
     func_argument_id: FuncArgumentId,
-    func_argument_name: String,
+    func_argument_name: Option<String>,
     id: Option<AttributePrototypeArgumentId>,
     internal_provider_id: Option<InternalProviderId>,
 }
@@ -375,7 +375,7 @@ async fn prototype_view_for_attribute_prototype(
             .map(
                 |(func_arg, maybe_proto_arg)| AttributePrototypeArgumentView {
                     func_argument_id: *func_arg.id(),
-                    func_argument_name: func_arg.name().to_owned(),
+                    func_argument_name: Some(func_arg.name().to_owned()),
                     id: maybe_proto_arg.as_ref().map(|proto_arg| *proto_arg.id()),
                     internal_provider_id: maybe_proto_arg
                         .as_ref()
@@ -803,8 +803,14 @@ async fn compile_attribute_function_types(
         }
     }
     for (arg_name, ts_types) in argument_types.iter() {
-        input_ts_types
-            .push_str(format!("{}?: {} | null;\n", arg_name, ts_types.join(" | ")).as_str());
+        input_ts_types.push_str(
+            format!(
+                "{}?: {} | null;\n",
+                arg_name.as_ref().unwrap_or(&"".to_string()).to_owned(),
+                ts_types.join(" | ")
+            )
+            .as_str(),
+        );
     }
     input_ts_types.push_str("};");
 
