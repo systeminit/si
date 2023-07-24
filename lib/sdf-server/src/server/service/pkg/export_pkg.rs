@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAc
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{SchemaVariantId, Visibility, WsEvent};
+use dal::{HistoryActor, SchemaVariantId, User, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -52,24 +52,31 @@ pub async fn export_pkg(
         None => return Err(PkgError::ModuleIndexNotConfigured),
     };
 
+    let user = match ctx.history_actor() {
+        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        _ => None,
+    };
+
+    let created_by = user
+        .map(|user| format!("{} <{}>", user.name(), user.email()))
+        .unwrap_or("unknown".into());
+
     info!("Packaging module");
     let module_payload = dal::pkg::export_pkg_as_bytes(
         &ctx,
-        request.name.clone(),
-        request.version.clone(),
-        request.description,
-        "Sally Signup".to_string(),
+        &request.name,
+        &request.version,
+        request.description.as_ref(),
+        &created_by,
         request.schema_variants.clone(),
     )
     .await?;
 
     let index_client =
         module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);
-    let _response = dbg!(
-        index_client
-            .upload_module(request.name.trim(), request.version.trim(), module_payload)
-            .await?
-    );
+    let response = index_client
+        .upload_module(request.name.trim(), request.version.trim(), module_payload)
+        .await?;
 
     track(
         &posthog_client,
@@ -79,7 +86,10 @@ pub async fn export_pkg(
         serde_json::json!({
                     "pkg_name": request.name,
                     "pkg_version": request.version,
+                    "pkg_description": request.description,
+                    "pkg_created_by": created_by,
                     "pkg_schema_count": request.schema_variants.len(),
+                    "pkg_hash": response.latest_hash,
         }),
     );
 

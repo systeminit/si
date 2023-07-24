@@ -7,7 +7,7 @@ use axum::{
 use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
-    StandardModelError, TenancyError, TransactionsError, WsEventError,
+    StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -76,6 +76,8 @@ pub enum PkgError {
     Tenancy(#[from] TenancyError),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
+    #[error("transparent")]
+    User(#[from] UserError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }

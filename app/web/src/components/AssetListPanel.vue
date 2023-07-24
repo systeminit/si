@@ -7,11 +7,19 @@
     />
     <template #top>
       <div
-        v-if="!changeSetsStore.headSelected"
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <VButton
-          label="Author New Asset"
+          v-if="featureFlagsStore.CONTRIBUTE_BUTTON"
+          label="Contribute"
+          tone="action"
+          icon="cloud-upload"
+          size="sm"
+          @click="contributeAsset"
+        />
+        <VButton
+          v-if="!changeSetsStore.headSelected"
+          label="New Asset"
           tone="action"
           icon="plus"
           size="sm"
@@ -45,6 +53,13 @@
         </Collapsible>
       </ul>
     </template>
+    <ModuleExportModal
+      ref="contributeAssetModalRef"
+      title="Contribute Assets"
+      label="Contribute"
+      :preSelectedSchemaVariantId="assetStore.selectedAsset?.schemaVariantId"
+      autoVersion
+    />
   </ScrollArea>
 </template>
 
@@ -61,13 +76,17 @@ import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListItem from "./AssetListItem.vue";
+import ModuleExportModal from "./modules/ModuleExportModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
+const featureFlagsStore = useFeatureFlagsStore();
 const { assetList } = storeToRefs(assetStore);
 const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 
 const props = defineProps({
   assetId: { type: String },
@@ -120,5 +139,9 @@ const newAsset = async () => {
       },
     });
   }
+};
+
+const contributeAsset = () => {
+  contributeAssetModalRef.value?.open();
 };
 </script>

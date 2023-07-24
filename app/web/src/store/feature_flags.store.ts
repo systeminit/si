@@ -3,22 +3,30 @@ import { addStoreHooks } from "@si/vue-lib/pinia";
 import * as _ from "lodash-es";
 import { posthog } from "@/utils/posthog";
 
-const FLAGS: { [key: string]: { key: string; default: boolean } } = {
+type FlagStoreKey = "SINGLE_MODEL_SCREEN" | "MODULES_TAB" | "CONTRIBUTE_BUTTON";
+
+// The key to this object is the flag name on PostHog, the "storeKey" property is the
+// key used when accessing it from the Pinia feature flag store
+const FLAGS: { [key: string]: { storeKey: FlagStoreKey; default: boolean } } = {
   one_screen_to_rule_them_all: {
-    key: "SINGLE_MODEL_SCREEN",
+    storeKey: "SINGLE_MODEL_SCREEN",
     default: false,
   },
   modules_tab: {
-    key: "MODULES_TAB",
+    storeKey: "MODULES_TAB",
+    default: false,
+  },
+  contribute_button: {
+    storeKey: "CONTRIBUTE_BUTTON",
     default: false,
   },
 };
 
 const flagsToState = () =>
   Object.values(FLAGS).reduce((state, flag) => {
-    state[flag.key] = flag.default;
+    state[flag.storeKey] = flag.default;
     return state;
-  }, {} as { [key: string]: boolean });
+  }, {} as { [key in FlagStoreKey]: boolean });
 
 export function useFeatureFlagsStore() {
   return addStoreHooks(
@@ -27,7 +35,7 @@ export function useFeatureFlagsStore() {
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           for (const flag of flags) {
-            const flagKey = FLAGS[flag]?.key;
+            const flagKey = FLAGS[flag]?.storeKey;
             if (flagKey) {
               this[flagKey] = true;
             }

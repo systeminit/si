@@ -9,6 +9,7 @@ import SlashForward from "~icons/mdi/slash-forward";
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
+import CloudUpload from "~icons/heroicons-solid/cloud-upload";
 
 import AlertCircle from "~icons/heroicons/exclamation-circle-20-solid";
 import AlertSquare from "./custom-icons/exclamation-square.svg?raw";
@@ -125,6 +126,7 @@ export const ICONS = Object.freeze({
   check2: Check2,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
+  "cloud-upload": CloudUpload,
   component: Cube,
   create: Create,
   "credit-card": CreditCard,
