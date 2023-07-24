@@ -42,6 +42,7 @@
       <div class="font-bold">Shell script for {{ selectedPlatform }}</div>
       <RichText class="py-sm">
         <pre><code class="language-shell">$ script goes here for {{ selectedPlatform }}</code></pre>
+        <!-- WARNING - the code on the line above breaks if you add newlines between the tags! -->
       </RichText>
       <div class="font-bold">Binary download for {{ selectedPlatform }}</div>
       <div
