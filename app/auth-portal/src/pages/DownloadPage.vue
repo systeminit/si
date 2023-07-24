@@ -5,13 +5,15 @@
       <div class="flex flex-col grow">
         <h1 class="text-2xl font-bold">Install System Initiative</h1>
         <p class="text-sm italic line-clamp-2">
-          Install or update to v{{ selectedVersion }} (latest version) of System
-          Initiative to get started.
+          Install or update to v{{ selectedVersion }} of System Initiative to
+          get started.
         </p>
+        <!-- TODO(wendy) - add "latest version" text conditional -->
       </div>
       <div class="w-20 flex-none">
         <VormInput
           v-model="selectedVersion"
+          noLabel
           type="dropdown"
           :options="versions"
         />
@@ -51,7 +53,11 @@
             Version: {{ selectedVersion }}
           </div>
         </div>
-        <div class="flex flex-row items-center text-action-500 font-bold">
+        <div
+          class="flex flex-row items-center text-action-500 font-bold cursor-pointer"
+          @click="false"
+        >
+          <!-- TODO(wendy) - download link goes here -->
           <div>Download</div>
           <Icon name="download" />
         </div>
@@ -66,7 +72,11 @@
             Version: {{ selectedVersion }}
           </div>
         </div>
-        <div class="flex flex-row items-center text-action-500 font-bold">
+        <div
+          class="flex flex-row items-center text-action-500 font-bold cursor-pointer"
+          @click="false"
+        >
+          <!-- TODO(wendy) - changelog link goes here -->
           <div>Github</div>
           <Icon name="arrow-square-out" />
         </div>
