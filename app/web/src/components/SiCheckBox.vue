@@ -12,7 +12,9 @@
         :id="props.id"
         v-model="inputValue"
         :disabled="props.disabled"
-        :class="inputValue ? 'bg-blue-600' : 'bg-gray-200'"
+        :class="
+          inputValue ? 'bg-success-600' : 'bg-neutral-400 dark:bg-neutral-500'
+        "
         class="relative inline-flex h-5 w-8 items-center rounded-full ml-2"
         :aria-invalid="inError"
         @blur="setDirty"

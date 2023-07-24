@@ -123,11 +123,11 @@ import {
 
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import Confetti from "@/components/Confetti.vue";
 
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
 import TutorialSurvey from "./TutorialSurvey.vue";
 
 // enable working on tutorial without being logged in

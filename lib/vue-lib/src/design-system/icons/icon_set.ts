@@ -14,6 +14,7 @@ import CloudUpload from "~icons/heroicons-solid/cloud-upload";
 import AlertCircle from "~icons/heroicons/exclamation-circle-20-solid";
 import AlertSquare from "./custom-icons/exclamation-square.svg?raw";
 import AlertTriangle from "~icons/heroicons/exclamation-triangle-20-solid";
+import ArrowSquareOut from "~icons/heroicons/arrow-top-right-on-square-20-solid";
 
 import X from "~icons/heroicons/x-mark-20-solid";
 import XCircle from "~icons/heroicons/x-circle-20-solid";
@@ -114,6 +115,7 @@ export const ICONS = Object.freeze({
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,
+  "arrow-square-out": ArrowSquareOut,
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,

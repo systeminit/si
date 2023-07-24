@@ -62,7 +62,12 @@ function styleCodeElements() {
 
     const parent = codeEl.parentElement;
 
-    if (parent && parent.tagName === "PRE") {
+    if (parent && parent.tagName.toUpperCase() === "PRE") {
+      const oldPasteButtons = document.querySelectorAll(".paste-button");
+      oldPasteButtons.forEach((button) => {
+        button.remove();
+      });
+
       const pasteButton = document.createElement("div");
       pasteButton.classList.add(
         "absolute",
@@ -72,6 +77,7 @@ function styleCodeElements() {
         "dark:hover:text-shade-0",
         "hover:text-shade-100",
         "cursor-pointer",
+        "paste-button",
       );
       pasteButton.innerHTML = copyIcon;
       pasteButton.addEventListener("click", () => {
