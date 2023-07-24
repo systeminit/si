@@ -115,7 +115,7 @@ onBeforeMount(async () => {
   if (githubStore.releases.length > 0) {
     selectedVersion.value = githubStore.releases[0].version;
   }
-  console.log(githubStore.releases);
+  // console.log(githubStore.releases);
 });
 
 const releasesArray = computed(() => {
