@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="overflow-hidden">
     <RichText>
       <h3>Your dashboard</h3>
       <p>

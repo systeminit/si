@@ -59,11 +59,18 @@
                   )
                 "
               >
-                <RouterLink :to="{ name: 'tutorial' }" class="underline-link"
-                  >Tutorial
+                <RouterLink
+                  v-if="featureFlagsStore.INSTALL_PAGE"
+                  :to="{ name: 'download' }"
+                  class="underline-link"
+                >
+                  Install
                 </RouterLink>
-                <RouterLink :to="{ name: 'dashboard' }" class="underline-link"
-                  >Dashboard
+                <RouterLink :to="{ name: 'tutorial' }" class="underline-link">
+                  Tutorial
+                </RouterLink>
+                <RouterLink :to="{ name: 'dashboard' }" class="underline-link">
+                  Dashboard
                 </RouterLink>
               </template>
             </nav>
@@ -131,7 +138,7 @@
         </div>
 
         <div class="">
-          <div class="m-auto max-w-[1200px]">
+          <div class="m-auto max-w-[1200px] min-w-[480px]">
             <div
               class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >
@@ -141,7 +148,7 @@
         </div>
 
         <footer
-          class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-800 dark:text-neutral-200"
+          class="mt-auto flex text-sm p-sm gap-sm justify-end text-neutral-800 dark:text-neutral-200 min-w-[350px]"
         >
           <a
             class="hover:underline hover:dark:text-action-300 hover:text-action-700"
@@ -156,7 +163,9 @@
             >Legal
           </RouterLink>
           <span class="opacity-50">|</span>
-          <div class="text-center">&copy; System Initiative, Inc.</div>
+          <div class="text-center whitespace-nowrap">
+            &copy; System Initiative, Inc.
+          </div>
         </footer>
       </div>
     </template>
@@ -183,6 +192,9 @@ import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
+import { useFeatureFlagsStore } from "./store/feature_flags.store";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
