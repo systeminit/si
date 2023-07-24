@@ -199,26 +199,29 @@ const featureFlagsStore = useFeatureFlagsStore();
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
 
-useHead({
-  bodyAttrs: {
-    // add some base classes we need these type classes set for capsize plugin to work throughout
-    // and add dark mode style/class
-    class: tw`font-sans text-base leading-none text-black dark:text-white`,
-  },
-  htmlAttrs: {
-    style: () => `color-scheme: ${rootTheme.value};`,
-    class: () => rootTheme.value,
-  },
-  link: [
-    {
-      rel: "icon",
-      href: rootTheme.value === "light" ? SiLogoUrlLight : SiLogoUrlDark,
+useHead(
+  computed(() => ({
+    bodyAttrs: {
+      // add some base classes we need these type classes set for capsize plugin to work throughout
+      // and add dark mode style/class
+      class: tw`font-sans text-base leading-none text-black dark:text-white`,
     },
-  ],
+    htmlAttrs: {
+      style: () => `color-scheme: ${rootTheme.value};`,
+      class: () => rootTheme.value,
+    },
+    link: [
+      {
+        rel: "icon",
+        href: rootTheme.value === "light" ? SiLogoUrlLight : SiLogoUrlDark,
+      },
+    ],
 
-  // set up title template and a default
-  titleTemplate: "SI | %s",
-});
+    // set up title template and a default
+    titleTemplate: "SI | %s",
+  })),
+);
+
 onMounted(() => {
   // useHead not properly clearing existing dark/light class from pre-render...?
   // should be able to remove...
