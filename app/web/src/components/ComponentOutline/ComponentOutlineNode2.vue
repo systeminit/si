@@ -172,7 +172,7 @@
                       </TabPanel>
                       <TabPanel class="p-xs overflow-auto grow">
                         <div
-                          v-if="recommendationsSelection.length === 0"
+                          v-if="filteredBatches.length === 0"
                           class="flex flex-col items-center justify-center h-full w-full text-neutral-400 gap-sm"
                         >
                           <NoChanges />
