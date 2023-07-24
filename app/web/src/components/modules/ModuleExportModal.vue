@@ -1,5 +1,5 @@
 <template>
-  <Modal ref="modalRef" title="Export module">
+  <Modal ref="modalRef" :title="title">
     <Stack>
       <VormInput
         v-model="packageExportReq.name"
@@ -8,6 +8,7 @@
         placeholder="The name of this module..."
       />
       <VormInput
+        v-if="!autoVersion"
         v-model="packageExportReq.version"
         label="Version"
         required
@@ -22,7 +23,7 @@
       <div class="flex flex-row items-end gap-sm">
         <VormInput
           v-model="selectedSchemaVariant"
-          label="Schema Variants"
+          label="Assets"
           type="dropdown"
           class="flex-1"
           :options="schemaVariantOptions"
@@ -53,12 +54,17 @@
         v-if="exportPkgReqStatus.isError"
         :requestStatus="exportPkgReqStatus"
       />
+      <p>
+        Assets contributed to System Initiative will be reviewed for sharing
+        with the community.
+      </p>
       <VButton
         :requestStatus="exportPkgReqStatus"
         loadingText="Exporting..."
+        :disabled="!enableExportButton"
         label="Export"
         tone="action"
-        icon="plus"
+        icon="cloud-upload"
         size="sm"
         @click="exportPkg"
       />
@@ -76,6 +82,7 @@ import {
   Stack,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
+import { format as dateFormat } from "date-fns";
 import { useComponentsStore } from "@/store/components.store";
 import { useModuleStore, PkgExportRequest } from "@/store/module.store";
 
@@ -83,6 +90,20 @@ const moduleStore = useModuleStore();
 const componentStore = useComponentsStore();
 const modalRef = ref<InstanceType<typeof Modal>>();
 const exportPkgReqStatus = moduleStore.getRequestStatus("EXPORT_MODULE");
+
+const props = withDefaults(
+  defineProps<{
+    title?: string;
+    label?: string;
+    autoVersion?: boolean;
+    preSelectedSchemaVariantId?: string;
+  }>(),
+  {
+    title: "Export Module",
+    label: "Export",
+    autoVersion: false,
+  },
+);
 
 const emptyExportPackageReq: PkgExportRequest = {
   name: "",
@@ -111,6 +132,9 @@ const { open: openModal, close } = useModal(modalRef);
 const open = () => {
   selectedSchemaVariant.value = undefined;
   schemaVariantsForExport.value = [];
+  if (props.preSelectedSchemaVariantId) {
+    schemaVariantsForExport.value = [props.preSelectedSchemaVariantId];
+  }
   packageExportReq.value = { ...emptyExportPackageReq };
   openModal();
 };
@@ -128,7 +152,29 @@ const schemaVariantOptions = computed(() =>
     })),
 );
 
+const getVersionTimestamp = () => dateFormat(Date.now(), "yyyyMMddkkmmss");
+
+const enableExportButton = computed(() => {
+  if (packageExportReq.value?.name?.trim().length === 0) {
+    return false;
+  }
+  if (
+    !props.autoVersion &&
+    packageExportReq.value?.version?.trim().length === 0
+  ) {
+    return false;
+  }
+  if (schemaVariantsForExport.value?.length === 0) {
+    return false;
+  }
+
+  return true;
+});
+
 const exportPkg = async () => {
+  if (props.autoVersion) {
+    packageExportReq.value.version = getVersionTimestamp();
+  }
   const result = await moduleStore.EXPORT_MODULE({
     ...packageExportReq.value,
     schemaVariants: schemaVariantsForExport.value,
