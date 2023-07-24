@@ -31,7 +31,7 @@
       @resize-move="onResizeMove"
       @resize-reset="resetSize"
     />
-    <div class="si-panel__inner absolute w-full h-full">
+    <div class="si-panel__inner absolute w-full h-full flex flex-col">
       <!-- most uses will just have a single child -->
       <slot />
 
@@ -64,7 +64,7 @@
             ? 'auto'
             : `${100 - subpanelSplitPercent * 100}%`,
         }"
-        class="relative overflow-hidden"
+        class="grow relative overflow-hidden"
       >
         <slot name="subpanel2" />
       </div>

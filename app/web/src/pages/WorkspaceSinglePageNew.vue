@@ -44,8 +44,8 @@
           v-if="changeSetsStore.creatingChangeSet"
           class="text-center text-2xl z-100 absolute w-full h-full bg-black bg-opacity-50 flex flex-row justify-center items-center"
         >
-          <div class="bg-black w-1/5 rounded-lg">
-            <LoadingMessage message="Creating Change-Set..." />
+          <div class="bg-black text-white w-1/5 rounded-lg">
+            <LoadingMessage message="Creating Change Set..." />
           </div>
         </div>
         <div class="w-full h-full flex flex-row relative overflow-hidden">

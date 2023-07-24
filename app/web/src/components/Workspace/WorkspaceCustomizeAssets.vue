@@ -22,7 +22,7 @@
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
-    <div class="left-2 right-2 top-2 bottom-2 absolute">
+    <div class="left-2 right-2 top-0 bottom-2 absolute">
       <AssetEditorTabs :selectedAssetId="assetId" :selectedFuncId="funcId" />
     </div>
   </div>
@@ -31,22 +31,26 @@
       v-if="FF_SINGLE_MODEL_SCREEN"
       class="absolute w-full flex flex-col h-full"
     >
-      <ApplyChangeSetButton class="w-10/12 m-4" />
-      <SidebarSubpanelTitle v-if="assetId && !funcId"
-        >Asset Details</SidebarSubpanelTitle
+      <div
+        v-if="!changeSetsStore.headSelected"
+        class="p-xs border-b dark:border-neutral-500"
       >
-      <SidebarSubpanelTitle v-if="assetId && funcId"
-        >Asset Function Details</SidebarSubpanelTitle
-      >
+        <ApplyChangeSetButton class="w-full" />
+      </div>
+      <template v-if="assetId">
+        <SidebarSubpanelTitle>
+          {{ funcId ? "Asset Function Details" : "Asset Details" }}
+        </SidebarSubpanelTitle>
 
-      <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
-      <FuncDetails
-        v-else-if="assetId && funcId"
-        :funcId="funcId"
-        :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
-        singleModelScreen
-        @detached="onDetach"
-      />
+        <FuncDetails
+          v-if="funcId"
+          :funcId="funcId"
+          :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
+          singleModelScreen
+          @detached="onDetach"
+        />
+        <AssetDetailsPanel v-else :assetId="assetId" />
+      </template>
     </div>
     <template v-else>
       <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
@@ -68,6 +72,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
@@ -80,6 +85,8 @@ const featureFlagsStore = useFeatureFlagsStore();
 const FF_SINGLE_MODEL_SCREEN = computed(
   () => featureFlagsStore.SINGLE_MODEL_SCREEN,
 );
+
+const changeSetsStore = useChangeSetsStore();
 
 const assetStore = useAssetStore();
 const router = useRouter();

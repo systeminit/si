@@ -25,10 +25,8 @@
       <TabGroupItem label="Properties" slug="properties">
         <ScrollArea>
           <template v-if="!changeSetsStore.headSelected" #top>
-            <Stack>
-              <div
-                class="w-full flex p-2 gap-1 border-b dark:border-neutral-600"
-              >
+            <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
+              <div class="flex gap-1">
                 <VButton
                   class="--tone-success"
                   icon="save"
@@ -63,30 +61,40 @@
                   @click="detachFunc"
                 />
               </div>
-              <div class="p-2">
-                <ErrorMessage
-                  v-if="execFuncReqStatus.isError"
-                  :requestStatus="execFuncReqStatus"
-                />
-                <ErrorMessage
-                  v-if="isConnectedToOtherAssetTypes"
-                  icon="alert-triangle"
-                  tone="warning"
-                >
-                  This function is connected to other
-                  {{
-                    (editingFunc?.associations &&
-                      editingFunc.associations?.type === "validation") ||
-                    (editingFunc?.associations &&
-                      editingFunc?.associations?.type === "attribute")
-                      ? "attributes"
-                      : "assets"
-                  }}.
-                </ErrorMessage>
-              </div>
+
+              <ErrorMessage
+                v-if="execFuncReqStatus.isError"
+                :requestStatus="execFuncReqStatus"
+              />
+              <ErrorMessage
+                v-if="editingFunc?.associations?.type === 'action'"
+                icon="alert-triangle"
+                tone="warning"
+                >Executing will run on all attached components, so may have
+                effects on your real world resources!</ErrorMessage
+              >
+              <ErrorMessage
+                v-if="isConnectedToOtherAssetTypes"
+                icon="alert-triangle"
+                tone="warning"
+              >
+                This function is connected to other
+                {{
+                  (editingFunc?.associations &&
+                    editingFunc.associations?.type === "validation") ||
+                  (editingFunc?.associations &&
+                    editingFunc?.associations?.type === "attribute")
+                    ? "attributes"
+                    : "assets"
+                }}.
+              </ErrorMessage>
             </Stack>
           </template>
 
+          <!-- <Collapsible label="Logs">
+            {{ lastExecutionLog }}
+            <VButton @click="getLastExecution">Load</VButton>
+          </Collapsible> -->
           <Collapsible label="Attributes" defaultOpen>
             <Stack class="p-3">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
@@ -365,6 +373,18 @@ const detachFunc = async () => {
     }
   }
 };
+
+// const getExecutionReqStatus = funcStore.getRequestStatus(
+//   "GET_FUNC_LAST_EXECUTION",
+//   funcId,
+// );
+// function getLastExecution() {
+//   if (!funcId.value) return;
+//   funcStore.GET_FUNC_LAST_EXECUTION(funcId.value);
+// }
+// const lastExecutionLog = computed(
+//   () => funcStore.lastFuncExecutionLogByFuncId[funcId?.value || ""],
+// );
 
 const changeSetsStore = useChangeSetsStore();
 

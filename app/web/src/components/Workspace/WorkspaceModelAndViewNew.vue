@@ -118,7 +118,6 @@
               v-for="diff in diffs"
               :key="diff.componentId"
               as="div"
-              contentAs="ul"
               :defaultOpen="false"
               hideBottomBorderWhenOpen
             >
@@ -160,7 +159,7 @@
               </template>
             </Collapsible>
 
-            <li
+            <div
               v-for="(obj, key) in fixesStore.recommendationsSelection"
               :key="key"
               :class="
@@ -177,15 +176,15 @@
                 @click.stop
                 @toggle="toggleRecommendation($event, obj.recommendation)"
               />
-            </li>
-            <li
+            </div>
+            <div
               v-if="fixesStore.recommendations.length === 0"
               class="p-4 italic !delay-0 !duration-0 hidden first:block"
             >
               <div class="pb-sm">
                 No recommendations are available at this time.
               </div>
-            </li>
+            </div>
           </TabGroupItem>
 
           <TabGroupItem label="Applied" slug="recommendations_applied">

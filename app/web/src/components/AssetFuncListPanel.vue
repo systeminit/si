@@ -23,7 +23,7 @@
         </SidebarSubpanelTitle>
         <div
           v-if="!assetStore.selectedAssetId"
-          class="w-full mt-4 text-neutral-400 dark:text-neutral-300 text-sm text-center"
+          class="w-full mt-4 p-sm text-neutral-400 dark:text-neutral-300 text-sm text-center"
         >
           Select an asset to see the functions attached to it.
         </div>
