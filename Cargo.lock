@@ -4626,6 +4626,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-posthog",
+ "tempfile",
  "thiserror",
  "tokio",
 ]

@@ -29,8 +29,12 @@ pub enum SiCliError {
     IncorrectInstallMode(String),
     #[error("aborting installation")]
     Installation,
+    #[error("io: {0}")]
+    Io(#[from] std::io::Error),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("unable to download update, status = {0}")]
+    UnableToDownloadUpdate(u16),
 }
 
 pub type CliResult<T> = Result<T, SiCliError>;
