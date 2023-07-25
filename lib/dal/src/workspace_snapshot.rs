@@ -23,6 +23,7 @@
 // )]
 
 pub mod change_set;
+pub mod conflict;
 pub mod content_hash;
 pub mod edge_weight;
 pub mod graph;
@@ -30,15 +31,18 @@ pub mod lamport_clock;
 pub mod node_weight;
 pub mod vector_clock;
 
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
-use petgraph::prelude::*;
 
 use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
+    workspace_snapshot::{
+        edge_weight::EdgeWeightError, graph::WorkspaceSnapshotGraphError,
+        node_weight::NodeWeightError,
+    },
     DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
 };
 use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
@@ -49,6 +53,8 @@ use content_hash::ContentHash;
 pub enum WorkspaceSnapshotError {
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("EdgeWeight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
     #[error("Problem during graph traversal: {0:?}")]
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("monotonic error: {0}")]

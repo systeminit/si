@@ -25,11 +25,19 @@ impl LamportClock {
         Ok(LamportClock { counter })
     }
 
+    pub fn new_with_value(new_value: Ulid) -> Self {
+        LamportClock { counter: new_value }
+    }
+
     pub fn inc(&mut self, change_set: &ChangeSet) -> LamportClockResult<()> {
         let next = change_set.generate_ulid()?;
         self.counter = next;
 
         Ok(())
+    }
+
+    pub fn inc_to(&mut self, new_value: Ulid) {
+        self.counter = new_value;
     }
 
     pub fn merge(&mut self, other: &LamportClock) {

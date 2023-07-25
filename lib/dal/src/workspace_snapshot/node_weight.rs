@@ -1,10 +1,13 @@
 //! Nodes
 
-use crate::{workspace_snapshot::{
-    change_set::{ChangeSet, ChangeSetError},
-    vector_clock::{VectorClock, VectorClockError},
-    ContentHash,
-}, PropKind};
+use crate::{
+    workspace_snapshot::{
+        change_set::{ChangeSet, ChangeSetError},
+        vector_clock::{VectorClock, VectorClockError},
+        ContentHash,
+    },
+    PropKind,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -26,7 +29,7 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 pub type OriginId = Ulid;
 
 #[remain::sorted]
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum NodeWeightKind {
@@ -140,10 +143,12 @@ impl NodeWeight {
     }
 
     pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        let new_vc_entry = change_set.generate_ulid()?;
+
+        self.vector_clock_write.inc_to(change_set, new_vc_entry);
         if let Some(vcs) = &mut self.vector_clock_seen {
-            vcs.inc(change_set)?;
+            vcs.inc_to(change_set, new_vc_entry);
         };
-        self.vector_clock_write.inc(change_set)?;
 
         Ok(())
     }
@@ -168,20 +173,23 @@ impl NodeWeight {
         Ok(new_node_weight)
     }
 
-    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &NodeWeight) -> NodeWeightResult<()> {
-        self.vector_clock_write.merge(change_set, &other.vector_clock_write)?;
+    pub fn merge_clocks(
+        &mut self,
+        change_set: &ChangeSet,
+        other: &NodeWeight,
+    ) -> NodeWeightResult<()> {
+        self.vector_clock_write
+            .merge(change_set, &other.vector_clock_write)?;
 
         if let Some(local_vector_clock_seen) = &mut self.vector_clock_seen {
             if let Some(remote_vector_clock_seen) = &other.vector_clock_seen {
                 local_vector_clock_seen.merge(change_set, remote_vector_clock_seen)?;
-
-                Ok(())
             } else {
-                Err(NodeWeightError::NoSeenVectorClock)
+                return Err(NodeWeightError::NoSeenVectorClock);
             }
-        } else {
-            Err(NodeWeightError::NoSeenVectorClock)
         }
+
+        Ok(())
     }
 }
 

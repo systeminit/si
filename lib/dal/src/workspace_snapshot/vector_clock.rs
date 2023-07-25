@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::workspace_snapshot::{
     lamport_clock::{LamportClock, LamportClockError},
@@ -31,6 +32,15 @@ impl VectorClock {
         entries.insert(change_set.id, lamport_clock);
 
         Ok(VectorClock { entries })
+    }
+
+    pub fn inc_to(&mut self, change_set: &ChangeSet, new_clock_value: Ulid) {
+        if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
+            lamport_clock.inc_to(new_clock_value);
+        } else {
+            self.entries
+                .insert(change_set.id, LamportClock::new_with_value(new_clock_value));
+        }
     }
 
     /// Increment the entry for [`ChangeSet`], adding one if there wasn't one already.
