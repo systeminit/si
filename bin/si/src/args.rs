@@ -61,6 +61,10 @@ pub(crate) struct Args {
     #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
     #[arg(long, short, env = "SI_LAUNCHER_MODE", default_value = "local")]
     mode: String,
+    /// The engine in which to launch System Initiate Containers
+    #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
+    #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]
+    engine: String,
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
@@ -122,6 +126,10 @@ impl Args {
     pub(crate) fn mode(&self) -> Mode {
         Mode::from_str(&self.mode).expect("mode is a validated input str")
     }
+
+    pub(crate) fn engine(&self) -> Engine {
+        Engine::from_str(&self.engine).expect("engine is a validated input str")
+    }
 }
 
 #[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames)]
@@ -130,7 +138,22 @@ pub enum Mode {
     Local,
 }
 
+#[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames)]
+pub enum Engine {
+    #[strum(serialize = "docker")]
+    Docker,
+    #[strum(serialize = "podman")]
+    Podman,
+}
+
 impl Mode {
+    #[must_use]
+    pub const fn variants() -> &'static [&'static str] {
+        <Self as strum::VariantNames>::VARIANTS
+    }
+}
+
+impl Engine {
     #[must_use]
     pub const fn variants() -> &'static [&'static str] {
         <Self as strum::VariantNames>::VARIANTS
