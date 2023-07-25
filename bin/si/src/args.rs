@@ -13,7 +13,7 @@ pub(crate) fn parse() -> Args {
 #[derive(Debug, Parser)]
 #[command(
 name = NAME,
-about = "The System Initiative Launcher - takes the McFuckery out of DevOps
+about = "The System Initiative Launcher
 
                                               @@@@@@@@@                                             
                                   %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%                                 
