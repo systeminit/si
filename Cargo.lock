@@ -4622,6 +4622,8 @@ dependencies = [
  "open",
  "rand",
  "remain",
+ "reqwest",
+ "serde",
  "serde_json",
  "si-posthog",
  "thiserror",
