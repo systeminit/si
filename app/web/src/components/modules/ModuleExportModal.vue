@@ -60,9 +60,9 @@
       </p>
       <VButton
         :requestStatus="exportPkgReqStatus"
-        loadingText="Exporting..."
+        :loadingText="loadingText"
         :disabled="!enableExportButton"
-        label="Export"
+        :label="label"
         tone="action"
         icon="cloud-upload"
         size="sm"
@@ -96,12 +96,14 @@ const props = withDefaults(
   defineProps<{
     title?: string;
     label?: string;
+    loadingText?: string;
     autoVersion?: boolean;
     preSelectedSchemaVariantId?: string;
   }>(),
   {
     title: "Export Module",
     label: "Export",
+    loadingText: "Exporting...",
     autoVersion: false,
   },
 );

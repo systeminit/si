@@ -56,7 +56,8 @@
     <ModuleExportModal
       ref="contributeAssetModalRef"
       title="Contribute Assets"
-      label="Contribute"
+      label="Contribute to System Initiative"
+      loadingText="Engaging photon torpedos..."
       :preSelectedSchemaVariantId="assetStore.selectedAsset?.schemaVariantId"
       autoVersion
       @export-success="onExport"
