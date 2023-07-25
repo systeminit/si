@@ -1,7 +1,7 @@
-use crate::dependencies::check_system_dependencies;
-use crate::CliResult;
+use crate::{CliResult, SiCliError};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
+use docker_api::Docker;
 use si_posthog::PosthogClient;
 
 pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
@@ -11,11 +11,11 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         serde_json::json!({"name": "check-dependencies", "mode": mode}),
     );
 
-    println!("Checking that the system satisfies all the dependencies needed to run System Initiative...");
-    let check_installation = check_system_dependencies().await?;
-    if !check_installation {
-        println!("System is not ready to install SI");
-        return Ok(());
+    println!("Checking that the system is able to interact with the docker engine to run System Initiative...");
+    let docker = Docker::unix("//var/run/docker.sock");
+
+    if let Err(_e) = docker.ping().await {
+        return Err(SiCliError::DockerEngine);
     }
 
     let mut table = Table::new();
@@ -23,12 +23,8 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(100)
-        .set_header(vec![
-            Cell::new("Dependency").add_attribute(Attribute::Bold),
-            Cell::new("Success?").add_attribute(Attribute::Bold),
-        ])
         .add_row(vec![
-            Cell::new("Detected Docker Engine").add_attribute(Attribute::Bold),
+            Cell::new("Docker Engine Active").add_attribute(Attribute::Bold),
             Cell::new("    ✅    "),
         ]);
 

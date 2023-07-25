@@ -4,7 +4,6 @@ use thiserror::Error;
 
 pub mod cmd;
 mod containers;
-mod dependencies;
 
 static PACKAGES: &[&str] = &[
     "systeminit/sdf",
@@ -28,6 +27,8 @@ static SPARKLE: Emoji<'_, '_> = Emoji("✨ ", ":-)");
 pub enum SiCliError {
     #[error("docker api: {0}")]
     Docker(#[from] docker_api::Error),
+    #[error("unable to connect to the docker engine")]
+    DockerEngine,
     #[error("failed to launch web url {0}")]
     FailToLaunch(String),
     #[error("incorrect installation type {0}")]
