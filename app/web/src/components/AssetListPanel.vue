@@ -59,7 +59,11 @@
       label="Contribute"
       :preSelectedSchemaVariantId="assetStore.selectedAsset?.schemaVariantId"
       autoVersion
+      @export-success="onExport"
     />
+    <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
+      Thanks for sharing your module with us!
+    </Modal>
   </ScrollArea>
 </template>
 
@@ -70,6 +74,7 @@ import {
   Collapsible,
   ScrollArea,
   VButton,
+  Modal,
   RequestStatusMessage,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
@@ -87,6 +92,7 @@ const { assetList } = storeToRefs(assetStore);
 const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
+const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
 
 const props = defineProps({
   assetId: { type: String },
@@ -141,7 +147,6 @@ const newAsset = async () => {
   }
 };
 
-const contributeAsset = () => {
-  contributeAssetModalRef.value?.open();
-};
+const contributeAsset = () => contributeAssetModalRef.value?.open();
+const onExport = () => exportSuccessModalRef.value?.open();
 </script>

@@ -73,6 +73,7 @@
 </template>
 
 <script lang="ts" setup>
+import { emit } from "process";
 import { ref, computed } from "vue";
 import {
   Modal,
@@ -104,6 +105,8 @@ const props = withDefaults(
     autoVersion: false,
   },
 );
+
+const emits = defineEmits(["exportSuccess"]);
 
 const emptyExportPackageReq: PkgExportRequest = {
   name: "",
@@ -180,6 +183,7 @@ const exportPkg = async () => {
     schemaVariants: schemaVariantsForExport.value,
   });
   if (result.result.success) {
+    emits("exportSuccess");
     close();
     await moduleStore.LOAD_LOCAL_MODULES();
   }
