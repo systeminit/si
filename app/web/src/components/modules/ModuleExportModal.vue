@@ -55,8 +55,18 @@
         :requestStatus="exportPkgReqStatus"
       />
       <p>
-        Assets contributed to System Initiative will be reviewed for sharing
-        with the community.
+        Everything you contribute will receive a code review, and we will reach
+        out if we have any questions or concerns. Assuming things look good, we
+        will then include your asset in a future version of System Initiative!
+      </p>
+      <p>
+        By clicking the 'Contribute to System Initiative' button, you agree to
+        license any code submitted under the terms of the
+        <a
+          href="https://www.apache.org/licenses/LICENSE-2.0"
+          class="text-green-500"
+          >Apache License, Version 2.0</a
+        >, and that you intend for System Initiative, Inc. to distribute it.
       </p>
       <VButton
         :requestStatus="exportPkgReqStatus"
