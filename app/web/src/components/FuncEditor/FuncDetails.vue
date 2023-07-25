@@ -10,8 +10,8 @@
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
       !loadFuncDetailsReqStatus.isRequested
     "
-    noMessage
-  />
+    >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
+  >
   <div
     v-else-if="selectedFuncId && editingFunc"
     :class="
@@ -282,7 +282,7 @@ const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
   "FETCH_FUNC_DETAILS",
   funcId,
 );
-const { selectedFuncId } = storeToRefs(funcStore);
+const { selectedFuncId, selectedFuncSummary } = storeToRefs(funcStore);
 
 const funcArgumentsIdMap = computed(() =>
   editingFunc?.value?.associations?.type === "attribute"

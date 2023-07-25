@@ -51,6 +51,12 @@
         />
         <AssetDetailsPanel v-else :assetId="assetId" />
       </template>
+      <div
+        v-else
+        class="p-sm text-center text-neutral-400 dark:text-neutral-300"
+      >
+        Select an asset to edit it.
+      </div>
     </div>
     <template v-else>
       <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />

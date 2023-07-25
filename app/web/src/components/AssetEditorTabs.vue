@@ -10,14 +10,14 @@
       @update:selected-tab="onTabChange"
     >
       <template #noTabs>
-        <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+        <div class="text-center text-neutral-400 dark:text-neutral-300">
           <RequestStatusMessage
             v-if="loadAssetsRequestStatus.isPending"
             :requestStatus="loadAssetsRequestStatus"
-            showLoaderWithoutMessage
+            loadingMessage="Loading assets..."
           />
           <template v-else-if="loadAssetsRequestStatus.isSuccess">
-            Select an asset, to edit it...
+            <div class="text-center p-lg">Select an asset to edit it.</div>
           </template>
         </div>
       </template>

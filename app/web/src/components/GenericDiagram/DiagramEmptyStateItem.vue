@@ -22,7 +22,19 @@
       </div>
     </div>
     <div class="text-xs italic text-center text-neutral-400 px-xs">
-      Drag assets to the canvas to start simulating your infrastructre
+      <template v-if="number === 1">
+        Drag assets to the canvas to start simulating your infrastructure
+      </template>
+      <template v-if="number === 2">
+        Connect edges from socket to socket to build up your infrastructure
+      </template>
+      <template v-if="number === 3">
+        Customize configuration and behavior using functions in the Customize
+        tab
+      </template>
+      <template v-if="number === 4">
+        Apply the changes that you have simulated to the real world!
+      </template>
     </div>
   </div>
 </template>
