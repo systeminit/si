@@ -29,6 +29,8 @@ pub enum SiCliError {
     IncorrectInstallMode(String),
     #[error("aborting installation")]
     Installation,
+    #[error("reqwest: {0}")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 pub type CliResult<T> = Result<T, SiCliError>;

@@ -12,7 +12,6 @@ rust_binary(
         "//third-party/rust:strum",
         "//third-party/rust:derive_builder",
         "//third-party/rust:serde_json",
-        "//third-party/rust:tokio",
         "//lib/si-cli:si-cli",
         "//lib/si-posthog-rs:si-posthog",
         "//lib/telemetry-application-rs:telemetry-application",

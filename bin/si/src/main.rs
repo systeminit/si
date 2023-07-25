@@ -34,6 +34,12 @@ async fn main() -> Result<()> {
         )
     );
 
+    if let Some(_update) = update::find().await? {
+        if !matches!(args.command, Commands::Update(_)) {
+            println!("Update found, please run `si update` to install it\n");
+        }
+    }
+
     if let Engine::Podman = args.engine() {
         println!("Podman isn't supported as an engine at this time! It's coming soon though...");
         return Ok(());
@@ -47,25 +53,25 @@ async fn main() -> Result<()> {
             check::invoke(&ph_client, mode.to_string(), false).await?;
         }
         Commands::Launch(_args) => {
-            let _ = launch::invoke(&ph_client, mode.to_string());
+            launch::invoke(&ph_client, mode.to_string())?;
         }
         Commands::Start(_args) => {
             start::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Restart(_args) => {
-            let _ = restart::invoke(&ph_client, mode.to_string());
+            restart::invoke(&ph_client, mode.to_string())?;
         }
         Commands::Stop(_args) => {
             stop::invoke(&ph_client, mode.to_string()).await?;
         }
-        Commands::Update(_args) => {
-            let _ = update::invoke(&ph_client, mode.to_string());
+        Commands::Update(args) => {
+            update::invoke(&ph_client, mode.to_string(), args.skip_check).await?;
         }
         Commands::Status(_args) => {
             status::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Report(_args) => {
-            let _ = report::invoke(&ph_client, mode.to_string());
+            report::invoke(&ph_client, mode.to_string())?;
         }
     }
     drop(ph_client);
