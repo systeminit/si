@@ -13,7 +13,7 @@
         <RequestStatusMessage
           v-if="loadFuncsReqStatus.isPending"
           :requestStatus="loadFuncsReqStatus"
-          showLoaderWithoutMessage
+          loadingMessage="Loading functions..."
         />
         <template v-else-if="loadFuncsReqStatus.isSuccess">
           Select a function to edit it.

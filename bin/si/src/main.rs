@@ -1,4 +1,4 @@
-use crate::args::Commands;
+use crate::args::{Commands, Engine};
 use color_eyre::Result;
 use si_cli::cmd::{check, install, launch, report, restart, start, status, stop, update};
 use telemetry_application::{prelude::*, TelemetryConfig};
@@ -33,6 +33,11 @@ async fn main() -> Result<()> {
             mode.to_string()
         )
     );
+
+    if let Engine::Podman = args.engine() {
+        println!("Podman isn't supported as an engine at this time! It's coming soon though...");
+        return Ok(());
+    }
 
     match args.command {
         Commands::Install(_args) => {
