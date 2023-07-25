@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts" setup>
-import { useTheme } from "@si/vue-lib/design-system";
+import { useTheme, ThemeValue } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
 import NoAssetsLight from "@/assets/images/no-assets__light.svg?url";
 import NoAssetsDark from "@/assets/images/no-assets__dark.svg?url";
@@ -22,10 +22,13 @@ const { theme: appTheme } = useTheme();
 
 const props = defineProps({
   name: { type: String as PropType<EMPTY_STATE_ICON_NAMES>, required: true },
+  fixedTheme: { type: String as PropType<ThemeValue> },
 });
 
 const svgUrl = computed(() => {
-  return ICONS[props.name][appTheme.value] as EMPTY_STATE_ICON_NAMES;
+  return ICONS[props.name][
+    props.fixedTheme ?? appTheme.value
+  ] as EMPTY_STATE_ICON_NAMES;
 });
 </script>
 

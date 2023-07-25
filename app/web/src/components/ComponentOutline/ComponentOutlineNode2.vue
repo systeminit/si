@@ -221,6 +221,18 @@
                         />
                         {{ qualificationsFailed }}
                       </span>
+                      <span
+                        v-if="qualificationsWarned"
+                        class="flex items-center gap-0.5"
+                      >
+                        <StatusIndicatorIcon
+                          class="inline-block"
+                          type="qualification"
+                          status="warning"
+                          size="md"
+                        />
+                        {{ qualificationsWarned }}
+                      </span>
                       <span class="flex items-center gap-0.5">
                         <StatusIndicatorIcon
                           class="inline-block"
@@ -334,9 +346,10 @@ const qualificationStats = computed(
   () => qualificationsStore.qualificationStatsByComponentId[props.componentId],
 );
 const qualificationsFailed = computed(() =>
-  qualificationStats.value
-    ? qualificationStats.value.failed + qualificationStats.value.warned
-    : 0,
+  qualificationStats.value ? qualificationStats.value.failed : 0,
+);
+const qualificationsWarned = computed(() =>
+  qualificationStats.value ? qualificationStats.value.warned : 0,
 );
 const qualificationsSucceeded = computed(() =>
   qualificationStats.value ? qualificationStats.value.succeeded : 0,
