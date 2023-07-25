@@ -1,10 +1,10 @@
 //! Nodes
 
-use crate::workspace_snapshot::{
+use crate::{workspace_snapshot::{
     change_set::{ChangeSet, ChangeSetError},
     vector_clock::{VectorClock, VectorClockError},
     ContentHash,
-};
+}, PropKind};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -15,6 +15,8 @@ pub enum NodeWeightError {
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("No Seen Vector Clock available")]
+    NoSeenVectorClock,
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
 }
@@ -23,27 +25,30 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
 pub type OriginId = Ulid;
 
+#[remain::sorted]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum NodeWeightKind {
-    Root,
-    SchemaVariant(ContentHash),
-    Schema(ContentHash),
     Component(ContentHash),
     Func(ContentHash),
+    FuncArg(ContentHash),
     Prop(ContentHash),
+    Root,
+    Schema(ContentHash),
+    SchemaVariant(ContentHash),
 }
 
 impl NodeWeightKind {
     fn content_hash(&self) -> ContentHash {
         match self {
-            NodeWeightKind::Root => None,
-            NodeWeightKind::SchemaVariant(id) => Some(*id),
-            NodeWeightKind::Schema(id) => Some(*id),
             NodeWeightKind::Component(id) => Some(*id),
             NodeWeightKind::Func(id) => Some(*id),
+            NodeWeightKind::FuncArg(id) => Some(*id),
             NodeWeightKind::Prop(id) => Some(*id),
+            NodeWeightKind::Root => None,
+            NodeWeightKind::Schema(id) => Some(*id),
+            NodeWeightKind::SchemaVariant(id) => Some(*id),
         }
         .unwrap_or_default()
     }
@@ -63,6 +68,8 @@ pub struct NodeWeight {
     /// What type of thing is this node representing, and what is the content hash used to
     /// retrieve the data for this specific node.
     pub kind: NodeWeightKind,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub container_content_order: Option<Vec<Ulid>>,
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
@@ -82,6 +89,7 @@ impl NodeWeight {
             id,
             origin_id: change_set.generate_ulid()?,
             kind,
+            container_content_order: None,
             merkle_tree_hash: ContentHash::default(),
             vector_clock_seen: None,
             vector_clock_write: VectorClock::new(change_set)?,
@@ -96,6 +104,7 @@ impl NodeWeight {
             id: change_set.generate_ulid()?,
             origin_id: change_set.generate_ulid()?,
             kind,
+            container_content_order: Default::default(),
             merkle_tree_hash: ContentHash::default(),
             vector_clock_seen: Some(VectorClock::new(change_set)?),
             vector_clock_write: VectorClock::new(change_set)?,
@@ -108,12 +117,13 @@ impl NodeWeight {
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_kind = match &self.kind {
-            NodeWeightKind::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            NodeWeightKind::SchemaVariant(_) => NodeWeightKind::SchemaVariant(content_hash),
-            NodeWeightKind::Schema(_) => NodeWeightKind::Schema(content_hash),
             NodeWeightKind::Component(_) => NodeWeightKind::Component(content_hash),
             NodeWeightKind::Func(_) => NodeWeightKind::Func(content_hash),
+            NodeWeightKind::FuncArg(_) => NodeWeightKind::FuncArg(content_hash),
             NodeWeightKind::Prop(_) => NodeWeightKind::Prop(content_hash),
+            NodeWeightKind::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
+            NodeWeightKind::Schema(_) => NodeWeightKind::Schema(content_hash),
+            NodeWeightKind::SchemaVariant(_) => NodeWeightKind::SchemaVariant(content_hash),
         };
 
         self.kind = new_kind;
@@ -138,6 +148,16 @@ impl NodeWeight {
         Ok(())
     }
 
+    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        if let Some(vcs) = &mut self.vector_clock_seen {
+            vcs.inc(change_set)?;
+
+            Ok(())
+        } else {
+            Err(NodeWeightError::NoSeenVectorClock)
+        }
+    }
+
     pub fn new_with_incremented_vector_clocks(
         &self,
         change_set: &ChangeSet,
@@ -146,6 +166,22 @@ impl NodeWeight {
         new_node_weight.increment_vector_clocks(change_set)?;
 
         Ok(new_node_weight)
+    }
+
+    pub fn merge_clocks(&mut self, change_set: &ChangeSet, other: &NodeWeight) -> NodeWeightResult<()> {
+        self.vector_clock_write.merge(change_set, &other.vector_clock_write)?;
+
+        if let Some(local_vector_clock_seen) = &mut self.vector_clock_seen {
+            if let Some(remote_vector_clock_seen) = &other.vector_clock_seen {
+                local_vector_clock_seen.merge(change_set, remote_vector_clock_seen)?;
+
+                Ok(())
+            } else {
+                Err(NodeWeightError::NoSeenVectorClock)
+            }
+        } else {
+            Err(NodeWeightError::NoSeenVectorClock)
+        }
     }
 }
 

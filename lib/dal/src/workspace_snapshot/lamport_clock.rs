@@ -14,7 +14,7 @@ pub enum LamportClockError {
 
 pub type LamportClockResult<T> = Result<T, LamportClockError>;
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct LamportClock {
     pub counter: Ulid,
 }
@@ -42,5 +42,19 @@ impl LamportClock {
 impl std::fmt::Debug for LamportClock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "LamportClock({})", &self.counter.to_string())
+    }
+}
+
+impl Eq for LamportClock {}
+
+impl PartialEq for LamportClock {
+    fn eq(&self, other: &Self) -> bool {
+        self.counter == other.counter
+    }
+}
+
+impl PartialOrd for LamportClock {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.counter.partial_cmp(&other.counter)
     }
 }

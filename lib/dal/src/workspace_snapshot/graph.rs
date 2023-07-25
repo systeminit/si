@@ -289,6 +289,105 @@ impl WorkspaceSnapshotGraph {
 
         Ok(())
     }
+
+    pub fn merge(&mut self, change_set: &ChangeSet, other: &WorkspaceSnapshotGraph) -> WorkspaceSnapshotResult<()> {
+        let local_root_write_vector_clock = &self.get_node_weight(self.root_index)?.vector_clock_write;
+        let remote_root_write_vector_clock = &other.get_node_weight(other.root_index)?.vector_clock_write;
+
+        if local_root_write_vector_clock.is_newer_than(remote_root_write_vector_clock) {
+            // We're strictly newer than `other`, which means that we can fast forward by incorporating new
+            // vector clock entries in `other` (which should only be in the "seen" clock), and incrementing
+            // our "seen" vector clock entry.
+            //
+            // Create a new root node with merged "seen" vector clocks, incrementing the entry for `change_set`.
+            // Do *NOT* increment the "write" vector clock, since we have not changed anything about the content
+            // of the graph.
+            let mut new_root_node_weight = self.get_node_weight(self.root_index)?.clone();
+            new_root_node_weight.merge_clocks(change_set, other.get_node_weight(other.root_index)?)?;
+            new_root_node_weight.increment_seen_vector_clock(change_set)?;
+            let new_root_index = self.add_node(new_root_node_weight)?;
+
+            self.replace_references(change_set, self.root_index, new_root_index)?;
+        } else if remote_root_write_vector_clock.is_newer_than(local_root_write_vector_clock) {
+            // `local` is not "newer" than `other` and `other` *IS* "newer" than `local`, which means that we
+            // can fast-forward `local` to the state of `other`, incorporate the `local` vector clock entries
+            // into `other` (which should only be in the "seen" clock), and increment our "seen" vector clock
+            // entry.
+            let mut new_root_node_weight = other.get_node_weight(other.root_index)?.clone();
+            new_root_node_weight.merge_clocks(change_set, self.get_node_weight(self.root_index)?)?;
+            new_root_node_weight.increment_seen_vector_clock(change_set)?;
+
+            self.graph = other.graph.clone();
+            self.root_index = other.root_index;
+
+            let new_root_node_index = self.add_node(new_root_node_weight)?;
+            self.replace_references(change_set, self.root_index, new_root_node_index)?;
+        } else {
+            // `self`/`local` is the base change set. `other` is the change set to merge in.
+            // Both `local` and `other` have (write) entries that the other does not. Figure out if the
+            // trees can be merged together without any conflicts.
+            let base_root_node_weight = self.get_node_weight(self.root_index)?;
+            let to_merge_root_node_weight = other.get_node_weight(other.root_index)?;
+            //let conflicts = Vec::new();
+            let result = petgraph::visit::depth_first_search(&other.graph, Some(other.root_index), |event| {
+                match event {
+                    petgraph::visit::DfsEvent::Discover(node_index, _) => {
+                        // Check if `base` has a node with the same `ID`
+                        let to_merge_node_weight = other.get_node_weight(node_index).map_err(|_| event)?;
+                        let base_node_index = match self.get_node_index_by_id(to_merge_node_weight.id) {
+                            Ok(ni) => ni,
+                            // If there isn't a node with the same ID in `base` then it's a "new" node.
+                            Err(WorkspaceSnapshotError::NodeWithIdNotFound(_)) => return Ok(petgraph::visit::Control::Continue),
+                            // Something else went wrong; we should probably bail out.
+                            Err(_) => return Err(event),
+                        };
+                        let base_node_weight = self.get_node_weight(base_node_index).map_err(|_| event)?;
+
+                        if to_merge_node_weight.merkle_tree_hash() == base_node_weight.merkle_tree_hash() {
+                            // These (sub-)graphs have the same content, so there can be no conflicts
+                            // from this point towards the leaves.
+                            return Ok(petgraph::visit::Control::Prune);
+                        }
+
+                        // The node exists on both sides of the merge, and has different content.
+
+                        match base_node_weight.kind {
+                            NodeWeightKind::Component(_) => todo!(),
+                            NodeWeightKind::Func(_) => todo!(),
+                            NodeWeightKind::FuncArg(_) => todo!(),
+                            NodeWeightKind::Prop(_) => todo!(),
+                            NodeWeightKind::Root => {
+                                // The root of the graph can't have conflitcs, since it doesn't really
+                                // have any properties of its own.
+                                return Ok(petgraph::visit::Control::Continue);
+                            }
+                            NodeWeightKind::SchemaVariant(_) => todo!(),
+                            NodeWeightKind::Schema(_) => todo!(),
+                        }
+
+                        Ok(petgraph::visit::Control::Continue)
+                    },
+                    // TODO: Remove this. Only here to get type checking/guessing to work.
+                    // Not actually what we want, since this is about finishing all edges from a node,
+                    // not about finishing the graph.
+                    petgraph::visit::DfsEvent::Finish(_, _) => Ok(petgraph::visit::Control::Break(())),
+                    _ => Ok(petgraph::visit::Control::Continue),
+                    // petgraph::visit::DfsEvent::TreeEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::BackEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::CrossForwardEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::Finish(_, _) => todo!(),
+                }
+            });
+            if let Err(traversal_error) = result {
+                return Err(WorkspaceSnapshotError::GraphTraversal(traversal_error))
+            }
+        }
+
+        // `other` has newer/more entries than we have:
+        //   - If we also have newer/more entries than `other`, both sides have changed, and we need to see if there's a conflict.
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -296,7 +395,7 @@ mod test {
     use super::*;
     use crate::{
         workspace_snapshot::content_hash::ContentHash, ComponentId, FuncId, PropId, SchemaId,
-        SchemaVariantId,
+        SchemaVariantId, PropKind,
     };
 
     #[test]
@@ -413,9 +512,11 @@ mod test {
                 NodeWeight::new(
                     change_set,
                     prop_id,
-                    NodeWeightKind::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
+                    NodeWeightKind::Prop(
+                        ContentHash::new(
+                            PropId::generate().to_string().as_bytes(),
+                        ),
+                    ),
                 )
                 .expect("Unable to create NodeWeight"),
             )

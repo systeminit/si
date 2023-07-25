@@ -35,6 +35,7 @@ use serde_json::Value;
 use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
+use petgraph::prelude::*;
 
 use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
@@ -48,6 +49,8 @@ use content_hash::ContentHash;
 pub enum WorkspaceSnapshotError {
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("Problem during graph traversal: {0:?}")]
+    GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]

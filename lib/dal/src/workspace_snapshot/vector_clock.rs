@@ -20,10 +20,11 @@ pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
-    pub entries: HashMap<ChangeSetId, LamportClock>,
+    entries: HashMap<ChangeSetId, LamportClock>,
 }
 
 impl VectorClock {
+    /// Create a new [`VectorClock`] with an entry for [`ChangeSet`].
     pub fn new(change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
         let lamport_clock = LamportClock::new(change_set)?;
         let mut entries = HashMap::new();
@@ -32,6 +33,7 @@ impl VectorClock {
         Ok(VectorClock { entries })
     }
 
+    /// Increment the entry for [`ChangeSet`], adding one if there wasn't one already.
     pub fn inc(&mut self, change_set: &ChangeSet) -> VectorClockResult<()> {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
             lamport_clock.inc(change_set)?;
@@ -43,6 +45,9 @@ impl VectorClock {
         Ok(())
     }
 
+    /// Add all entries in `other` to `self`, taking the most recent value if the entry already
+    /// exists in `self`, then increment the entry for [`ChangeSet`] (adding one if it is not
+    /// already there).
     pub fn merge(&mut self, change_set: &ChangeSet, other: &VectorClock) -> VectorClockResult<()> {
         for (other_change_set_id, other_lamport_clock) in other.entries.iter() {
             if let Some(lamport_clock) = self.entries.get_mut(other_change_set_id) {
@@ -57,11 +62,29 @@ impl VectorClock {
         Ok(())
     }
 
+    /// Return a new [`VectorClock`] with the entry for [`ChangeSet`] incremented.
     pub fn fork(&self, change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
         let mut forked = self.clone();
         forked.inc(change_set)?;
 
         Ok(forked)
+    }
+
+    /// Returns true if all entries in `other` are present in `self`, and `<=` the entry in
+    /// `self`, meaning that `self` has already seen/incorporated all of the information
+    /// in `other`.
+    pub fn is_newer_than(&self, other: &VectorClock) -> bool {
+        for (other_change_set_id, other_lamport_clock) in &other.entries {
+            if let Some(my_clock) = self.entries.get(other_change_set_id) {
+                if my_clock > other_lamport_clock {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -72,56 +95,3 @@ impl std::fmt::Debug for VectorClock {
             .finish()
     }
 }
-
-//     // We are 'newer' than the other clock if we have seen all of the other clocks
-//     // change sets, and we are newer than they are.
-//     //
-//     // TODO(nick,jacob): we need more in place to solve this.
-//     pub fn is_newer(&self, other: &VectorClock) -> bool {
-//         let mut is_newer = true;
-//         for (other_change_set_id, other_lamport_clock) in other.entries {
-//             if let Some(local_lamport_clock) = self.entries.get(&other_change_set_id) {
-//                 if local_lamport_clock < &other_lamport_clock {
-//                     is_newer = false;
-//                 }
-//             } else {
-//                 is_newer = false;
-//             }
-//         }
-//         is_newer
-//     }
-//
-//     pub fn newer_for_change_set(&self, change_set_pk: ChangeSetPk, other: &VectorClock) -> bool {
-//         let is_newer = false;
-//         if let Some(my_lc) = self.entries.get(&change_set_pk) {
-//             if let Some(other_lc) = other.entries.get(&change_set_pk) {
-//                 return my_lc > other_lc;
-//             }
-//         }
-//         is_newer
-//     }
-//
-//     // The clock was changed if there is an entry in the vector for a change set pk
-//     pub fn was_changed_in_changeset(&self, change_set_pk: ChangeSetPk) -> bool {
-//         self.entries.get(&change_set_pk).is_some()
-//     }
-// }
-//
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//
-//     #[test]
-//     fn already_seen() {
-//         let object_id = Ulid::new();
-//         let mut vector_clock_a = VectorClock::new(object_id, ChangeSetPk::new());
-//         let vector_clock_b = vector_clock_a.fork(ChangeSetPk::new()).unwrap();
-//         assert!(vector_clock_b.is_newer(&vector_clock_a));
-//         assert!(!vector_clock_a.is_newer(&vector_clock_b));
-//         let change_set_pk = ChangeSetPk::new();
-//         vector_clock_a
-//             .merge(change_set_pk, &vector_clock_b)
-//             .unwrap();
-//         assert!(vector_clock_a.is_newer(&vector_clock_b));
-//     }
-// }
