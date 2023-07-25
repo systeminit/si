@@ -57,9 +57,12 @@ pub async fn export_pkg(
         _ => None,
     };
 
-    let created_by = user
-        .map(|user| format!("{} <{}>", user.name(), user.email()))
-        .unwrap_or("unknown".into());
+    let (created_by_name, created_by_email) = user
+        .map(|user| (user.name().to_owned(), user.email().to_owned()))
+        .unwrap_or((
+            "unauthenticated user name".into(),
+            "unauthenticated user email".into(),
+        ));
 
     info!("Packaging module");
     let module_payload = dal::pkg::export_pkg_as_bytes(
@@ -67,7 +70,7 @@ pub async fn export_pkg(
         &request.name,
         &request.version,
         request.description.as_ref(),
-        &created_by,
+        &created_by_email,
         request.schema_variants.clone(),
     )
     .await?;
@@ -87,7 +90,8 @@ pub async fn export_pkg(
                     "pkg_name": request.name,
                     "pkg_version": request.version,
                     "pkg_description": request.description,
-                    "pkg_created_by": created_by,
+                    "pkg_created_by_name": created_by_name,
+                    "pkg_created_by_email": created_by_email,
                     "pkg_schema_count": request.schema_variants.len(),
                     "pkg_hash": response.latest_hash,
         }),
