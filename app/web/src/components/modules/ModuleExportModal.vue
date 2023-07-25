@@ -37,17 +37,20 @@
           @click="addSchemaVariantToExport"
         />
       </div>
-      <ul>
+      <ul class="flex flex-col gap-2xs">
         <li
           v-for="svId in schemaVariantsForExport"
           :key="svId"
-          class="flex flex-row gap-sm px-1"
+          class="flex px-1 items-center"
         >
-          <div class="pr-2" role="decoration">•</div>
+          <span class="pr-2" role="decoration">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
-          <div class="ml-auto">
-            <VButton label="" icon="trash" @click="removeSchemaVariant(svId)" />
-          </div>
+          <VButton
+            class="ml-auto"
+            size="xs"
+            icon="trash"
+            @click="removeSchemaVariant(svId)"
+          />
         </li>
       </ul>
       <ErrorMessage
