@@ -607,6 +607,31 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "asynchronous-codec-0.6.2.crate",
+    sha256 = "4057f2c32adbb2fc158e22fb38433c8e9bbf76b75a4732c7c0cbaf695fb65568",
+    strip_prefix = "asynchronous-codec-0.6.2",
+    urls = ["https://crates.io/api/v1/crates/asynchronous-codec/0.6.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "asynchronous-codec-0.6.2",
+    srcs = [":asynchronous-codec-0.6.2.crate"],
+    crate = "asynchronous_codec",
+    crate_root = "asynchronous-codec-0.6.2.crate/src/lib.rs",
+    edition = "2018",
+    features = ["default"],
+    visibility = [],
+    deps = [
+        ":bytes-1.4.0",
+        ":futures-sink-0.3.28",
+        ":futures-util-0.3.28",
+        ":memchr-2.5.0",
+        ":pin-project-lite-0.2.9",
+    ],
+)
+
+http_archive(
     name = "atoi-1.0.0.crate",
     sha256 = "d7c57d12312ff59c811c0643f4d80830505833c9ffaebd193d819392b265be8e",
     strip_prefix = "atoi-1.0.0",
@@ -963,6 +988,7 @@ cargo.rust_library(
     crate_root = "base64-0.13.1.crate/src/lib.rs",
     edition = "2018",
     features = [
+        "alloc",
         "default",
         "std",
     ],
@@ -2129,6 +2155,58 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "containers-api-0.9.0.crate",
+    sha256 = "74a6c297451ce82117ff9090e5174bf18f86e6bcbfbfc3820246abbc4f44fa16",
+    strip_prefix = "containers-api-0.9.0",
+    urls = ["https://crates.io/api/v1/crates/containers-api/0.9.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "containers-api-0.9.0",
+    srcs = [":containers-api-0.9.0.crate"],
+    crate = "containers_api",
+    crate_root = "containers-api-0.9.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "chrono",
+        "default",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":chrono-0.4.26",
+        ":flate2-1.0.26",
+        ":futures-util-0.3.28",
+        ":http-0.2.9",
+        ":hyper-0.14.26",
+        ":log-0.4.19",
+        ":mime-0.3.17",
+        ":paste-1.0.12",
+        ":pin-project-1.1.0",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":tar-0.4.38",
+        ":thiserror-1.0.40",
+        ":tokio-1.28.2",
+        ":url-2.4.0",
+    ],
+)
+
+http_archive(
     name = "convert_case-0.4.0.crate",
     sha256 = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e",
     strip_prefix = "convert_case-0.4.0",
@@ -2230,6 +2308,28 @@ cargo.rust_library(
         ),
     },
     visibility = [],
+)
+
+http_archive(
+    name = "crc32fast-1.3.2.crate",
+    sha256 = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d",
+    strip_prefix = "crc32fast-1.3.2",
+    urls = ["https://crates.io/api/v1/crates/crc32fast/1.3.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "crc32fast-1.3.2",
+    srcs = [":crc32fast-1.3.2.crate"],
+    crate = "crc32fast",
+    crate_root = "crc32fast-1.3.2.crate/src/lib.rs",
+    edition = "2015",
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [":cfg-if-1.0.0"],
 )
 
 alias(
@@ -3337,6 +3437,75 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "docker-api",
+    actual = ":docker-api-0.14.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "docker-api-0.14.0.crate",
+    sha256 = "4576e993f4ef4805931a835b7afe71dec6cbd096e9b08bbd8e8f03e1940b2745",
+    strip_prefix = "docker-api-0.14.0",
+    urls = ["https://crates.io/api/v1/crates/docker-api/0.14.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "docker-api-0.14.0",
+    srcs = [":docker-api-0.14.0.crate"],
+    crate = "docker_api",
+    crate_root = "docker-api-0.14.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "chrono",
+        "default",
+    ],
+    visibility = [],
+    deps = [
+        ":asynchronous-codec-0.6.2",
+        ":base64-0.13.1",
+        ":byteorder-1.4.3",
+        ":bytes-1.4.0",
+        ":chrono-0.4.26",
+        ":containers-api-0.9.0",
+        ":docker-api-stubs-0.5.0",
+        ":futures-util-0.3.28",
+        ":http-0.2.9",
+        ":hyper-0.14.26",
+        ":log-0.4.19",
+        ":paste-1.0.12",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":tar-0.4.38",
+        ":thiserror-1.0.40",
+        ":url-2.4.0",
+    ],
+)
+
+http_archive(
+    name = "docker-api-stubs-0.5.0.crate",
+    sha256 = "6198e6d77eb486d04c9b3997aec536428a7cbba833e84cdfda49e144c8df1734",
+    strip_prefix = "docker-api-stubs-0.5.0",
+    urls = ["https://crates.io/api/v1/crates/docker-api-stubs/0.5.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "docker-api-stubs-0.5.0",
+    srcs = [":docker-api-stubs-0.5.0.crate"],
+    crate = "docker_api_stubs",
+    crate_root = "docker-api-stubs-0.5.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":chrono-0.4.26",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":serde_with-2.3.3",
+    ],
+)
+
 http_archive(
     name = "dotenvy-0.15.7.crate",
     sha256 = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b",
@@ -3846,6 +4015,32 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "flate2-1.0.26.crate",
+    sha256 = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743",
+    strip_prefix = "flate2-1.0.26",
+    urls = ["https://crates.io/api/v1/crates/flate2/1.0.26/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "flate2-1.0.26",
+    srcs = [":flate2-1.0.26.crate"],
+    crate = "flate2",
+    crate_root = "flate2-1.0.26.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "default",
+        "miniz_oxide",
+        "rust_backend",
+    ],
+    visibility = [],
+    deps = [
+        ":crc32fast-1.3.2",
+        ":miniz_oxide-0.7.1",
+    ],
+)
+
+http_archive(
     name = "fnv-1.0.7.crate",
     sha256 = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1",
     strip_prefix = "fnv-1.0.7",
@@ -4204,6 +4399,12 @@ cargo.rust_library(
         "std",
     ],
     visibility = [],
+)
+
+alias(
+    name = "futures-util",
+    actual = ":futures-util-0.3.28",
+    visibility = ["PUBLIC"],
 )
 
 http_archive(
@@ -4930,7 +5131,11 @@ cargo.rust_library(
     crate = "hyperlocal",
     crate_root = "fnichol/hyperlocal/src/lib.rs",
     edition = "2018",
-    features = ["client"],
+    features = [
+        "client",
+        "default",
+        "server",
+    ],
     visibility = [],
     deps = [
         ":futures-util-0.3.28",
@@ -6462,6 +6667,25 @@ cargo.rust_library(
     crate = "miniz_oxide",
     crate_root = "miniz_oxide-0.6.2.crate/src/lib.rs",
     edition = "2018",
+    visibility = [],
+    deps = [":adler-1.0.2"],
+)
+
+http_archive(
+    name = "miniz_oxide-0.7.1.crate",
+    sha256 = "e7810e0be55b428ada41041c41f32c9f1a42817901b4ccf45fa3d4b6561e74c7",
+    strip_prefix = "miniz_oxide-0.7.1",
+    urls = ["https://crates.io/api/v1/crates/miniz_oxide/0.7.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "miniz_oxide-0.7.1",
+    srcs = [":miniz_oxide-0.7.1.crate"],
+    crate = "miniz_oxide",
+    crate_root = "miniz_oxide-0.7.1.crate/src/lib.rs",
+    edition = "2018",
+    features = ["with-alloc"],
     visibility = [],
     deps = [":adler-1.0.2"],
 )
@@ -8458,11 +8682,54 @@ cargo.rust_library(
     crate = "portable_atomic",
     crate_root = "portable-atomic-1.4.0.crate/src/lib.rs",
     edition = "2018",
+    env = {
+        "CARGO_MANIFEST_DIR": "portable-atomic-1.4.0.crate",
+        "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
+        "CARGO_PKG_NAME": "portable-atomic",
+        "CARGO_PKG_VERSION": "1.4.0",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
+    features = [
+        "default",
+        "fallback",
+    ],
+    rustc_flags = ["@$(location :portable-atomic-1.4.0-build-script-run[rustc_flags])"],
+    visibility = [],
+)
+
+cargo.rust_binary(
+    name = "portable-atomic-1.4.0-build-script-build",
+    srcs = [":portable-atomic-1.4.0.crate"],
+    crate = "build_script_build",
+    crate_root = "portable-atomic-1.4.0.crate/build.rs",
+    edition = "2018",
+    env = {
+        "CARGO_MANIFEST_DIR": "portable-atomic-1.4.0.crate",
+        "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
+        "CARGO_PKG_NAME": "portable-atomic",
+        "CARGO_PKG_VERSION": "1.4.0",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
     features = [
         "default",
         "fallback",
     ],
     visibility = [],
+)
+
+buildscript_run(
+    name = "portable-atomic-1.4.0-build-script-run",
+    package_name = "portable-atomic",
+    buildscript_rule = ":portable-atomic-1.4.0-build-script-build",
+    features = [
+        "default",
+        "fallback",
+    ],
+    version = "1.4.0",
 )
 
 http_archive(
@@ -11534,6 +11801,41 @@ cargo.rust_library(
     ],
 )
 
+http_archive(
+    name = "serde_with-2.3.3.crate",
+    sha256 = "07ff71d2c147a7b57362cead5e22f772cd52f6ab31cfcd9edcd7f6aeb2a0afbe",
+    strip_prefix = "serde_with-2.3.3",
+    urls = ["https://crates.io/api/v1/crates/serde_with/2.3.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "serde_with-2.3.3",
+    srcs = [":serde_with-2.3.3.crate"],
+    crate = "serde_with",
+    crate_root = "serde_with-2.3.3.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "alloc",
+        "default",
+        "macros",
+        "std",
+    ],
+    named_deps = {
+        "chrono_0_4": ":chrono-0.4.26",
+        "indexmap_1": ":indexmap-1.9.3",
+        "time_0_3": ":time-0.3.22",
+    },
+    visibility = [],
+    deps = [
+        ":base64-0.13.1",
+        ":hex-0.4.3",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":serde_with_macros-2.3.3",
+    ],
+)
+
 alias(
     name = "serde_with",
     actual = ":serde_with-3.0.0",
@@ -11572,6 +11874,30 @@ cargo.rust_library(
         ":serde-1.0.164",
         ":serde_json-1.0.97",
         ":serde_with_macros-3.0.0",
+    ],
+)
+
+http_archive(
+    name = "serde_with_macros-2.3.3.crate",
+    sha256 = "881b6f881b17d13214e5d494c939ebab463d01264ce1811e9d4ac3a882e7695f",
+    strip_prefix = "serde_with_macros-2.3.3",
+    urls = ["https://crates.io/api/v1/crates/serde_with_macros/2.3.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "serde_with_macros-2.3.3",
+    srcs = [":serde_with_macros-2.3.3.crate"],
+    crate = "serde_with_macros",
+    crate_root = "serde_with_macros-2.3.3.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":darling-0.20.1",
+        ":proc-macro2-1.0.60",
+        ":quote-1.0.28",
+        ":syn-2.0.18",
     ],
 )
 
@@ -12984,9 +13310,11 @@ cargo.rust_binary(
         ":derive_more-0.99.17",
         ":diff-0.1.13",
         ":directories-5.0.1",
+        ":docker-api-0.14.0",
         ":dyn-clone-1.0.11",
         ":futures-0.3.28",
         ":futures-lite-1.13.0",
+        ":futures-util-0.3.28",
         ":hex-0.4.3",
         ":http-0.2.9",
         ":hyper-0.14.26",

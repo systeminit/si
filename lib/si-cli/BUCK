@@ -1,0 +1,24 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-cli",
+    deps = [
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:comfy-table",
+        "//third-party/rust:console",
+        "//third-party/rust:docker-api",
+        "//third-party/rust:futures",
+        "//third-party/rust:indicatif",
+        "//third-party/rust:inquire",
+        "//third-party/rust:open",
+        "//third-party/rust:rand",
+        "//third-party/rust:remain",
+        "//third-party/rust:tokio",
+        "//third-party/rust:thiserror",
+        "//lib/si-posthog-rs:si-posthog",
+        "//third-party/rust:serde_json",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
