@@ -63,7 +63,12 @@
       @export-success="onExport"
     />
     <Modal ref="exportSuccessModalRef" size="sm" title="Contribution sent">
-      Thanks for sharing your module with us!
+      <p>
+        Thanks for contributing! We will review your contribution, and reach out
+        via email or on Discord if we have any questions.
+      </p>
+      <p class="text-right">Best,</p>
+      <p class="text-right">The System Initiative Developers</p>
     </Modal>
   </ScrollArea>
 </template>
