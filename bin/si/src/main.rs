@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
             install::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Check(_args) => {
-            check::invoke(&ph_client, mode.to_string()).await?;
+            check::invoke(&ph_client, mode.to_string(), false).await?;
         }
         Commands::Launch(_args) => {
             let _ = launch::invoke(&ph_client, mode.to_string());
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
             let _ = restart::invoke(&ph_client, mode.to_string());
         }
         Commands::Stop(_args) => {
-            let _ = stop::invoke(&ph_client, mode.to_string());
+            stop::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Update(_args) => {
             let _ = update::invoke(&ph_client, mode.to_string());

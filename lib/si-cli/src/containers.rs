@@ -1,5 +1,5 @@
-use crate::CliResult;
 use crate::SiCliError;
+use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::{ContainerSummary, ImageSummary};
 use docker_api::opts::{ContainerListOpts, ImageListOpts, PullOpts};
 use docker_api::Docker;
@@ -7,18 +7,6 @@ use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::cmp::min;
 use std::string::ToString;
-
-const REQUIRED_CONTAINER_LIST: &[&str] = &[
-    "systeminit/jaeger",
-    "systeminit/otelcol",
-    "systeminit/postgres",
-    "systeminit/nats",
-    // "systeminit/sdf",
-    // "systeminit/council",
-    // "systeminit/veritech",
-    // "systeminit/pinga",
-    // "systeminit/web",
-];
 
 pub(crate) async fn downloaded_systeminit_containers_list() -> Result<Vec<ImageSummary>, SiCliError>
 {
@@ -61,11 +49,13 @@ pub(crate) async fn missing_containers() -> Result<Vec<String>, SiCliError> {
     let mut missing_containers = Vec::new();
     let containers = downloaded_systeminit_containers_list().await?;
 
-    for required_container in REQUIRED_CONTAINER_LIST.iter().copied() {
-        if !containers
-            .iter()
-            .any(|c| c.repo_tags.iter().all(|t| t.contains(required_container)))
-        {
+    for name in CONTAINER_NAMES.iter() {
+        let required_container = format!("systeminit/{0}", name);
+        if !containers.iter().any(|c| {
+            c.repo_tags
+                .iter()
+                .all(|t| t.contains(required_container.as_str()))
+        }) {
             missing_containers.push(required_container.to_string());
         }
     }
@@ -77,11 +67,12 @@ pub(crate) async fn get_non_running_containers() -> Result<Vec<String>, SiCliErr
     let mut non_running_containers = Vec::new();
     let running_containers = running_systeminit_containers_list().await?;
 
-    for required_container in REQUIRED_CONTAINER_LIST.iter().copied() {
+    for name in CONTAINER_NAMES.iter() {
+        let required_container = format!("systeminit/{0}", name);
         if !running_containers.iter().any(|c| {
             c.image
                 .as_ref()
-                .is_some_and(|c| c.contains(required_container))
+                .is_some_and(|c| c.contains(required_container.as_str()))
         }) {
             non_running_containers.push(required_container.to_string());
         }

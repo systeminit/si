@@ -14,7 +14,7 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         serde_json::json!({"name": "start-system", "mode": mode}),
     );
 
-    check::invoke(posthog_client, mode.clone()).await?;
+    check::invoke(posthog_client, mode.clone(), false).await?;
 
     install::invoke(posthog_client, mode.clone()).await?;
 

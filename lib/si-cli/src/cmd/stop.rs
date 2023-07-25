@@ -1,50 +1,59 @@
-use crate::CliResult;
-use crate::{PACKAGES, SPARKLE, STOP_COMMANDS};
-use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
-use rand::seq::SliceRandom;
-use rand::Rng;
+use crate::cmd::check;
+use crate::{CliResult, CONTAINER_NAMES};
+use docker_api::opts::{ContainerFilter, ContainerListOpts, ContainerStopOpts};
+use docker_api::Docker;
 use si_posthog::PosthogClient;
-use std::thread;
-use std::time::{Duration, Instant};
 
-pub fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
         serde_json::json!({"name": "stop-system", "mode": mode}),
     );
-    let mut rng = rand::thread_rng();
-    let started = Instant::now();
-    let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
-        .unwrap()
-        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
 
-    let m = MultiProgress::new();
-    let handles: Vec<_> = (0..8u32)
-        .map(|i| {
-            let count = rng.gen_range(30..80);
-            let pb = m.add(ProgressBar::new(count));
-            pb.set_style(spinner_style.clone());
-            pb.set_prefix(format!("[{}/?]", i + 1));
-            thread::spawn(move || {
-                let mut rng = rand::thread_rng();
-                let pkg = PACKAGES.choose(&mut rng).unwrap();
-                for _ in 0..count {
-                    let cmd = STOP_COMMANDS.choose(&mut rng).unwrap();
-                    thread::sleep(Duration::from_millis(rng.gen_range(25..200)));
-                    pb.set_message(format!("{pkg}: {cmd}"));
-                    pb.inc(1);
+    check::invoke(posthog_client, mode.clone(), true).await?;
+
+    let mut spawned = Vec::new();
+    for container_name in CONTAINER_NAMES.iter() {
+        let container_identifier = format!("dev-{0}-1", container_name);
+
+        let h1 = tokio::spawn(async move {
+            let docker = Docker::unix("//var/run/docker.sock");
+            let filter = ContainerFilter::Name(container_identifier.clone());
+            let list_opts = ContainerListOpts::builder()
+                .filter([filter])
+                .all(true)
+                .build();
+            let containers = docker
+                .containers()
+                .list(&list_opts)
+                .await
+                .expect("Issue making Docker Image Search");
+            if !containers.is_empty() {
+                let container = containers.first().unwrap();
+                if let Some(state) = container.state.as_ref() {
+                    if *state == "running" {
+                        let existing_id = container.id.as_ref().unwrap();
+                        println!("Stopping Container: {}", container_identifier.clone());
+                        docker
+                            .containers()
+                            .get(existing_id)
+                            .stop(&ContainerStopOpts::builder().build())
+                            .await
+                            .expect("Issue stopping docker container");
+                    }
                 }
-                pb.finish_with_message("waiting...");
-            })
-        })
-        .collect();
-    for h in handles {
-        let _ = h.join();
-    }
-    m.clear().unwrap();
+            }
+        });
 
-    println!("{} Done in {}", SPARKLE, HumanDuration(started.elapsed()));
+        spawned.push(h1);
+    }
+
+    for spawn in spawned {
+        spawn.await.unwrap();
+    }
+
+    println!("All system components stopped...");
 
     Ok(())
 }
