@@ -4597,6 +4597,7 @@ dependencies = [
  "dyn-clone",
  "futures",
  "futures-lite",
+ "futures-util",
  "hex",
  "http",
  "hyper",

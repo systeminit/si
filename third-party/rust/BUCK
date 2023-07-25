@@ -4401,6 +4401,12 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "futures-util",
+    actual = ":futures-util-0.3.28",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "futures-util-0.3.28.crate",
     sha256 = "26b01e40b772d54cf6c6d721c1d1abd0647a0106a12ecaa1c186273392a69533",
@@ -13308,6 +13314,7 @@ cargo.rust_binary(
         ":dyn-clone-1.0.11",
         ":futures-0.3.28",
         ":futures-lite-1.13.0",
+        ":futures-util-0.3.28",
         ":hex-0.4.3",
         ":http-0.2.9",
         ":hyper-0.14.26",

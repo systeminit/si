@@ -1,15 +1,23 @@
+use crate::dependencies::check_system_dependencies;
 use crate::CliResult;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
 use si_posthog::PosthogClient;
 
-pub fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
         serde_json::json!({"name": "check-dependencies", "mode": mode}),
     );
-    println!("Preparing for System Initiative Installation");
+
+    println!("Checking that the system satisfies all the dependencies needed to run System Initiative...");
+    let check_installation = check_system_dependencies().await?;
+    if !check_installation {
+        println!("System is not ready to install SI");
+        return Ok(());
+    }
+
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -22,26 +30,6 @@ pub fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
         .add_row(vec![
             Cell::new("Detected Docker Engine").add_attribute(Attribute::Bold),
             Cell::new("    ✅    "),
-        ])
-        .add_row(vec![
-            Cell::new("Detected Docker Command").add_attribute(Attribute::Bold),
-            Cell::new("    ✅    "),
-        ])
-        .add_row(vec![
-            Cell::new("Docker Compose Available").add_attribute(Attribute::Bold),
-            Cell::new("    ✅    "),
-        ])
-        .add_row(vec![
-            Cell::new("Found `bash` in Nix environment").add_attribute(Attribute::Bold),
-            Cell::new("    ✅    "),
-        ])
-        .add_row(vec![
-            Cell::new("Found nix environment").add_attribute(Attribute::Bold),
-            Cell::new("    ✅    "),
-        ])
-        .add_row(vec![
-            Cell::new("Reasonable value for max open files").add_attribute(Attribute::Bold),
-            Cell::new("    ❌    "),
         ]);
 
     println!("{table}");

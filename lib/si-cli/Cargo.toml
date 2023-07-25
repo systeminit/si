@@ -9,6 +9,8 @@ publish = false
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 console = { workspace = true }
+docker-api = { workspace = true }
+futures = { workspace = true }
 indicatif = { workspace = true }
 inquire = { workspace = true }
 open = { workspace = true }
@@ -16,4 +18,5 @@ rand = { workspace = true }
 remain = { workspace = true }
 si-posthog = { path = "../../lib/si-posthog-rs" }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 serde_json = { workspace = true }

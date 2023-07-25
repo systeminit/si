@@ -3,7 +3,6 @@ use color_eyre::Result;
 use si_cli::cmd::{check, install, launch, report, restart, start, status, stop, update};
 use telemetry_application::{prelude::*, TelemetryConfig};
 use tokio::sync::oneshot::Sender;
-use tokio::task;
 
 mod args;
 
@@ -35,22 +34,36 @@ async fn main() -> Result<()> {
         )
     );
 
-    task::spawn_blocking(move || {
-        match args.command {
-            Commands::Install(_args) => install::invoke(&ph_client, mode.to_string()),
-            Commands::Check(_args) => check::invoke(&ph_client, mode.to_string()),
-            Commands::Launch(_args) => launch::invoke(&ph_client, mode.to_string()),
-            Commands::Start(_args) => start::invoke(&ph_client, mode.to_string()),
-            Commands::Restart(_args) => restart::invoke(&ph_client, mode.to_string()),
-            Commands::Stop(_args) => stop::invoke(&ph_client, mode.to_string()),
-            Commands::Update(_args) => update::invoke(&ph_client, mode.to_string()),
-            Commands::Status(_args) => status::invoke(&ph_client, mode.to_string()),
-            Commands::Report(_args) => report::invoke(&ph_client, mode.to_string()),
+    match args.command {
+        Commands::Install(_args) => {
+            install::invoke(&ph_client, mode.to_string()).await?;
         }
-        .expect("Failed to match a CLI command");
-        drop(ph_client);
-    })
-    .await?;
+        Commands::Check(_args) => {
+            check::invoke(&ph_client, mode.to_string()).await?;
+        }
+        Commands::Launch(_args) => {
+            let _ = launch::invoke(&ph_client, mode.to_string());
+        }
+        Commands::Start(_args) => {
+            start::invoke(&ph_client, mode.to_string()).await?;
+        }
+        Commands::Restart(_args) => {
+            let _ = restart::invoke(&ph_client, mode.to_string());
+        }
+        Commands::Stop(_args) => {
+            let _ = stop::invoke(&ph_client, mode.to_string());
+        }
+        Commands::Update(_args) => {
+            let _ = update::invoke(&ph_client, mode.to_string());
+        }
+        Commands::Status(_args) => {
+            status::invoke(&ph_client, mode.to_string()).await?;
+        }
+        Commands::Report(_args) => {
+            let _ = report::invoke(&ph_client, mode.to_string());
+        }
+    }
+    drop(ph_client);
 
     if let Err(e) = ph_done_receiver.await {
         println!("{}", e)
