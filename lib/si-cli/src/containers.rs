@@ -1,6 +1,6 @@
 use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
-use docker_api::models::{ContainerSummary, ImageSummary};
+use docker_api::models::ImageSummary;
 use docker_api::opts::{ContainerFilter, ContainerListOpts, ImageListOpts, PullOpts};
 use docker_api::Docker;
 use futures::StreamExt;
@@ -26,25 +26,6 @@ pub(crate) async fn downloaded_systeminit_containers_list() -> Result<Vec<ImageS
     Ok(containers)
 }
 
-pub(crate) async fn running_systeminit_containers_list() -> Result<Vec<ContainerSummary>, SiCliError>
-{
-    let docker = Docker::unix("//var/run/docker.sock");
-    let opts = ContainerListOpts::builder().all(true).build();
-    let mut containers = docker.containers().list(&opts).await?;
-
-    let containers: Vec<ContainerSummary> = containers
-        .drain(..)
-        .filter(|c| {
-            c.image
-                .as_ref()
-                .is_some_and(|c| c.starts_with("systeminit/") && c.ends_with(":stable"))
-                && c.state.as_ref().is_some_and(|c| c == "running")
-        })
-        .collect();
-
-    Ok(containers)
-}
-
 pub(crate) async fn missing_containers() -> Result<Vec<String>, SiCliError> {
     let mut missing_containers = Vec::new();
     let containers = downloaded_systeminit_containers_list().await?;
@@ -61,24 +42,6 @@ pub(crate) async fn missing_containers() -> Result<Vec<String>, SiCliError> {
     }
 
     Ok(missing_containers)
-}
-
-pub(crate) async fn get_non_running_containers() -> Result<Vec<String>, SiCliError> {
-    let mut non_running_containers = Vec::new();
-    let running_containers = running_systeminit_containers_list().await?;
-
-    for name in CONTAINER_NAMES.iter() {
-        let required_container = format!("systeminit/{0}", name);
-        if !running_containers.iter().any(|c| {
-            c.image
-                .as_ref()
-                .is_some_and(|c| c.contains(required_container.as_str()))
-        }) {
-            non_running_containers.push(required_container.to_string());
-        }
-    }
-
-    Ok(non_running_containers)
 }
 
 pub(crate) async fn download_missing_containers(missing_containers: Vec<String>) -> CliResult<()> {
@@ -146,7 +109,11 @@ pub(crate) async fn download_missing_containers(missing_containers: Vec<String>)
     Ok(())
 }
 
-pub(crate) async fn delete_existing_container_id(docker: &Docker, name: String) -> CliResult<()> {
+pub(crate) async fn has_existing_container(
+    docker: &Docker,
+    name: String,
+    delete_container: bool,
+) -> CliResult<bool> {
     let filter = ContainerFilter::Name(name.clone());
     let list_opts = ContainerListOpts::builder()
         .filter([filter])
@@ -155,10 +122,18 @@ pub(crate) async fn delete_existing_container_id(docker: &Docker, name: String) 
     let containers = docker.containers().list(&list_opts).await?;
     if !containers.is_empty() {
         let existing_id = containers.first().unwrap().id.as_ref().unwrap();
+        let state = containers.first().unwrap().state.as_ref().unwrap();
 
-        println!("Found an existing {} container: {}", name, *existing_id);
-        docker.containers().get(existing_id).delete().await?;
+        if *state == "running" {
+            return Ok(true);
+        }
+
+        if delete_container {
+            println!("Found an existing {} container: {}", name, *existing_id);
+            docker.containers().get(existing_id).delete().await?;
+            return Ok(false);
+        }
     }
 
-    Ok(())
+    Ok(false)
 }
