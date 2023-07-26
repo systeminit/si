@@ -8,6 +8,13 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::cmp::min;
 use std::string::ToString;
 
+#[derive(Debug)]
+pub struct DockerReleaseInfo {
+    pub git_sha: String,
+    pub created_data: String,
+    pub image_name: String,
+}
+
 pub(crate) async fn downloaded_systeminit_containers_list() -> Result<Vec<ImageSummary>, SiCliError>
 {
     let docker = Docker::unix("//var/run/docker.sock");
@@ -24,6 +31,30 @@ pub(crate) async fn downloaded_systeminit_containers_list() -> Result<Vec<ImageS
         .collect();
 
     Ok(containers)
+}
+
+pub(crate) async fn get_container_details() -> CliResult<Vec<DockerReleaseInfo>> {
+    let mut release_info: Vec<DockerReleaseInfo> = Vec::new();
+    let containers = downloaded_systeminit_containers_list().await?;
+    for container in containers {
+        // Each of the containers we use will 100% have these labels so it's fine to unwrap them
+        // it's not the ideal and we can find a better way to deal with the option but it works
+        release_info.push(DockerReleaseInfo {
+            git_sha: container
+                .labels
+                .get("org.opencontainers.image.revision")
+                .unwrap()
+                .to_string(),
+            created_data: container
+                .labels
+                .get("org.opencontainers.image.created")
+                .unwrap()
+                .to_string(),
+            image_name: container.labels.get("name").unwrap().to_string(),
+        })
+    }
+
+    Ok(release_info)
 }
 
 pub(crate) async fn missing_containers() -> Result<Vec<String>, SiCliError> {

@@ -1,3 +1,4 @@
+use crate::containers::get_container_details;
 use crate::{CliResult, SiCliError};
 use colored::Colorize;
 use inquire::Confirm;
@@ -133,6 +134,8 @@ pub async fn invoke(
         Ok((false, _)) => println!("See ya later ;)"),
         Err(err) => println!("Error: Try again later!: {err}"),
     }
+
+    let _ = get_container_details().await?;
 
     Ok(())
 }
