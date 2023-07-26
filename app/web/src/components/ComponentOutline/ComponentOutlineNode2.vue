@@ -138,15 +138,17 @@
                       </Tab>
                     </TabList>
                     <TabPanels as="template">
-                      <TabPanel class="p-xs pb-0 overflow-auto grow">
+                      <TabPanel class="overflow-auto grow">
                         <div
                           v-if="recommendationsSelection.length === 0"
-                          class="flex flex-col items-center justify-center h-full w-full text-neutral-400 gap-sm"
+                          class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
                         >
-                          <NoChanges />
+                          <div class="w-64">
+                            <EmptyStateIcon name="no-changes" />
+                          </div>
                           <span class="text-xl">No Changes Proposed</span>
                         </div>
-                        <ul v-else class="flex flex-col gap-2xs pb-xs">
+                        <ul v-else class="flex flex-col p-xs gap-2xs">
                           <li class="py-xs px-sm text-sm">
                             Proposed Changes will be enacted upon click of the
                             <b>APPLY CHANGES</b> button in the right rail.
@@ -170,15 +172,17 @@
                           </li>
                         </ul>
                       </TabPanel>
-                      <TabPanel class="p-xs overflow-auto grow">
+                      <TabPanel class="overflow-auto grow">
                         <div
                           v-if="filteredBatches.length === 0"
-                          class="flex flex-col items-center justify-center h-full w-full text-neutral-400 gap-sm"
+                          class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
                         >
-                          <NoChanges />
+                          <div class="w-64">
+                            <EmptyStateIcon name="no-changes" />
+                          </div>
                           <span class="text-xl">No Changes Applied</span>
                         </div>
-                        <ul v-else class="flex flex-col gap-2xs">
+                        <ul v-else class="flex flex-col gap-2xs p-xs">
                           <li
                             v-for="(fixBatch, index) in filteredBatches"
                             :key="index"
@@ -295,13 +299,13 @@ import { useFixesStore, Recommendation } from "@/store/fixes.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 import QualificationViewerSingle from "@/components/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import NoChanges from "@/assets/images/no-changes.svg?component";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon2.vue";
 
 import { useComponentOutlineContext2 } from "./ComponentOutline2.vue";
+import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
