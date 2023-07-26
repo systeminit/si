@@ -34,9 +34,15 @@ async fn main() -> Result<()> {
         )
     );
 
-    if let Some(_update) = update::find().await? {
-        if !matches!(args.command, Commands::Update(_)) {
-            println!("Update found, please run `si update` to install it\n");
+    if !matches!(args.command, Commands::Update(_)) {
+        match update::find().await {
+            Ok(Some(_)) => {
+                println!("Update found, please run `si update` to install it\n");
+            }
+            Ok(None) => {}
+            Err(err) => {
+                println!("Unable to retrieve updates: {err}");
+            }
         }
     }
 

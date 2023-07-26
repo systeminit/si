@@ -1,4 +1,4 @@
-use crate::CliResult;
+use crate::{CliResult, SiCliError};
 use inquire::Confirm;
 use serde::Deserialize;
 use si_posthog::PosthogClient;
@@ -28,6 +28,11 @@ pub async fn find() -> CliResult<Option<Release>> {
     // Note: we currently can't deploy auth api to production, so we are only supporting it locally for now
     let host = "http://localhost:9001";
     let req = reqwest::get(format!("{host}/github/releases")).await?;
+    if req.status().as_u16() != 200 {
+        println!("API returned an expected status code: {}", req.status());
+        return Ok(None);
+    }
+
     let releases: Vec<Release> = req.json().await?;
     if let Some(release) = releases.first() {
         if release.version != CURRENT_VERSION {
@@ -35,6 +40,39 @@ pub async fn find() -> CliResult<Option<Release>> {
         }
     }
     Ok(None)
+}
+
+pub async fn update_current_binary(url: &str) -> CliResult<()> {
+    let current_exe = std::env::current_exe()?;
+
+    let req = reqwest::get(url).await?;
+    if req.status().as_u16() != 200 {
+        println!(
+            "Unable to update: API returned an expected status code {}",
+            req.status()
+        );
+        return Err(SiCliError::UnableToDownloadUpdate(req.status().as_u16()));
+    }
+
+    // Note: named temp files may be leaked if destructors don't run
+    // ideally we would use tempfile::tempfile(), but it doesn't have a path so it
+    // can't be renamed atomically to replace the current binary without corrupting it
+    //
+    // We could have a folder in tmp with updates so we can delete it every time we start one,
+    // but this leak is not a significant issue, so no need to do it _right now_
+    let tempfile = tempfile::NamedTempFile::new()?;
+
+    println!("Downloading new binary");
+    let bytes = req.bytes().await?;
+    tokio::fs::write(tempfile.path(), bytes).await?;
+
+    println!("Overwriting current binary");
+    dbg!(&current_exe);
+    tokio::fs::rename(tempfile.path(), current_exe).await?;
+
+    println!("Binary updated!");
+
+    Ok(())
 }
 
 const CURRENT_VERSION: &str = "0.9";
@@ -79,6 +117,7 @@ pub async fn invoke(
                 for asset in &update.assets {
                     if asset.name.to_lowercase().contains(&our_os.to_lowercase()) {
                         println!("Download the new version here: {}\n", asset.url);
+                        // update_current_binary(&asset.url).await?;
                     }
                 }
             }

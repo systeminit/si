@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
 
 rust_binary(
     name = "module-index",
@@ -15,4 +19,10 @@ rust_binary(
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
 #        "pkgs_path": "//pkgs:pkgs",
     },
+)
+
+docker_image(
+    name = "image",
+    image_name = "module-index",
+    build_deps = ["//bin/module-index:module-index"]
 )

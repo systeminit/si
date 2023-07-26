@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
 
 rust_binary(
     name = "sdf",
@@ -16,4 +20,10 @@ rust_binary(
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
         "pkgs_path": "//pkgs:pkgs",
     },
+)
+
+docker_image(
+    name = "image",
+    image_name = "sdf",
+    build_deps = ["//bin/sdf:sdf"]
 )

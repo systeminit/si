@@ -17,6 +17,7 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:reqwest",
         "//third-party/rust:thiserror",
+        "//third-party/rust:tempfile",
         "//lib/si-posthog-rs:si-posthog",
         "//third-party/rust:serde_json",
     ],
