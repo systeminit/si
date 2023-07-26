@@ -32,9 +32,11 @@ RUN set -eux; \
 WORKDIR /run/$BIN
 COPY --from=builder /tmp/nix-store-closure /nix/store
 COPY --from=builder /tmp/local-bin/* /usr/local/bin/
+COPY --from=builder /workdir/config/keys/prod.jwt_signing_public_key.pem /run/module-index
 
 EXPOSE 5156/tcp
 
 ENTRYPOINT [ \
-  "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/module-index" \
+  "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/module-index", \
+  "--jwt-public-key", "/run/module-index/prod.jwt_signing_public_key.pem" \
 ]

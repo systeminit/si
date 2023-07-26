@@ -22,24 +22,56 @@ pub(crate) struct Args {
     pub(crate) verbose: u8,
 
     /// PostgreSQL connection pool dbname [example: myapp]
-    #[arg(long)]
+    #[arg(long, env)]
     pub(crate) pg_dbname: Option<String>,
 
     /// PostgreSQL connection pool hostname [example: prod.db.example.com]
-    #[arg(long)]
+    #[arg(long, env)]
     pub(crate) pg_hostname: Option<String>,
 
     /// PostgreSQL connection pool max size [example: 8]
-    #[arg(long)]
+    #[arg(long, env)]
     pub(crate) pg_pool_max_size: Option<u32>,
 
     /// PostgreSQL connection pool port [example: 5432]
-    #[arg(long)]
+    #[arg(long, env)]
     pub(crate) pg_port: Option<u16>,
 
     /// PostgreSQL connection pool user [example: dbuser]
-    #[arg(long)]
+    #[arg(long, env)]
     pub(crate) pg_user: Option<String>,
+
+    /// PostgreSQL connection pool password [example: dbuser]
+    #[arg(long, env)]
+    pub(crate) pg_password: Option<String>,
+
+    /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
+    #[arg(long, env)]
+    pub(crate) socket_addr: Option<String>,
+
+    /// The s3 bucket access key id
+    #[arg(long, env)]
+    pub(crate) s3_access_key_id: Option<String>,
+
+    /// The s3 bucket
+    #[arg(long, env)]
+    pub(crate) s3_bucket: Option<String>,
+
+    /// The s3 bucket region
+    #[arg(long, env)]
+    pub(crate) s3_region: Option<String>,
+
+    /// The s3 bucket secret access key
+    #[arg(long, env)]
+    pub(crate) s3_secret_access_key: Option<String>,
+
+    /// The s3 bucket path prefix
+    #[arg(long, env)]
+    pub(crate) s3_path_prefix: Option<String>,
+
+    /// The path to the JWT public signing key
+    #[arg(long, env)]
+    pub(crate) jwt_public_key: Option<String>,
 
     // /// Database migration mode on startup
     // #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
@@ -70,6 +102,32 @@ impl TryFrom<Args> for Config {
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
             }
+            if let Some(password) = args.pg_password {
+                config_map.set("pg.password", password);
+            }
+            if let Some(socket_addr) = args.socket_addr {
+                config_map.set("socket_addr", socket_addr);
+            }
+
+            if let Some(s3_access_key_id) = args.s3_access_key_id {
+                config_map.set("s3.access_key_id", s3_access_key_id);
+            }
+            if let Some(s3_secret_access_key) = args.s3_secret_access_key {
+                config_map.set("s3.secret_access_key", s3_secret_access_key);
+            }
+            if let Some(s3_bucket) = args.s3_bucket {
+                config_map.set("s3.bucket", s3_bucket);
+            }
+            if let Some(s3_region) = args.s3_region {
+                config_map.set("s3.region", s3_region);
+            }
+            if let Some(s3_path_prefix) = args.s3_path_prefix {
+                config_map.set("s3.path_prefix", s3_path_prefix);
+            }
+            if let Some(jwt_public_key) = args.jwt_public_key {
+                config_map.set("jwt_signing_public_key_path", jwt_public_key);
+            }
+
             // if let Some(migration_mode) = args.migration_mode {
             //     config_map.set("migration_mode", migration_mode);
             // }
