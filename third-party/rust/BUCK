@@ -1966,6 +1966,41 @@ cargo.rust_library(
 )
 
 alias(
+    name = "colored",
+    actual = ":colored-2.0.4",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "colored-2.0.4.crate",
+    sha256 = "2674ec482fbc38012cf31e6c42ba0177b431a0cb6f15fe40efa5aab1bda516f6",
+    strip_prefix = "colored-2.0.4",
+    urls = ["https://crates.io/api/v1/crates/colored/2.0.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "colored-2.0.4",
+    srcs = [":colored-2.0.4.crate"],
+    crate = "colored",
+    crate_root = "colored-2.0.4.crate/src/lib.rs",
+    edition = "2021",
+    platform = {
+        "windows-gnu": dict(
+            deps = [":windows-sys-0.48.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows-sys-0.48.0"],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":is-terminal-0.4.7",
+        ":lazy_static-1.4.0",
+    ],
+)
+
+alias(
     name = "comfy-table",
     actual = ":comfy-table-7.0.1",
     visibility = ["PUBLIC"],
@@ -13299,6 +13334,7 @@ cargo.rust_binary(
         ":chrono-0.4.26",
         ":clap-4.3.4",
         ":color-eyre-0.6.2",
+        ":colored-2.0.4",
         ":comfy-table-7.0.1",
         ":config-0.13.3",
         ":console-0.15.7",

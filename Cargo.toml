@@ -51,6 +51,7 @@ bytes = "1.4.0"
 chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
+colored = "2.0.4"
 comfy-table = {version ="7.0.1", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 console = "0.15.7"
