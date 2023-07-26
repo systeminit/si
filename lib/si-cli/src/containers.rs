@@ -1,7 +1,7 @@
 use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::{ContainerSummary, ImageSummary};
-use docker_api::opts::{ContainerListOpts, ImageListOpts, PullOpts};
+use docker_api::opts::{ContainerFilter, ContainerListOpts, ImageListOpts, PullOpts};
 use docker_api::Docker;
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -142,6 +142,23 @@ pub(crate) async fn download_missing_containers(missing_containers: Vec<String>)
 
     m.println("All containers successfully downloaded").unwrap();
     m.clear().unwrap();
+
+    Ok(())
+}
+
+pub(crate) async fn delete_existing_container_id(docker: &Docker, name: String) -> CliResult<()> {
+    let filter = ContainerFilter::Name(name.clone());
+    let list_opts = ContainerListOpts::builder()
+        .filter([filter])
+        .all(true)
+        .build();
+    let containers = docker.containers().list(&list_opts).await?;
+    if !containers.is_empty() {
+        let existing_id = containers.first().unwrap().id.as_ref().unwrap();
+
+        println!("Found an existing {} container: {}", name, *existing_id);
+        docker.containers().get(existing_id).delete().await?;
+    }
 
     Ok(())
 }

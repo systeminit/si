@@ -77,12 +77,14 @@ pub(crate) enum Commands {
     Install(InstallArgs),
     /// Launches the System Initiative Web UI.
     Launch(LaunchArgs),
-    /// Starts System Initiative
+    /// Starts all of the System Initiative components
     Start(StartArgs),
-    /// Restart System Initiative
+    /// Restarts all of the System Initiative components
     Restart(RestartArgs),
-    /// Stop System Initiative
+    /// Stops all of the System Initiative components
     Stop(StopArgs),
+    /// Deletes all of the System Initiative components
+    Delete(DeleteArgs),
     /// Update the System Initiative CLI Launcher
     Update(UpdateArgs),
     /// Check the status of the specified installation mode
@@ -111,6 +113,9 @@ pub(crate) struct StopArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct CheckArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct DeleteArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct UpdateArgs {
