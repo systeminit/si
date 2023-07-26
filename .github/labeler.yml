@@ -59,10 +59,15 @@ A-council:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-
 A-lang-js:
   - bin/lang-js/**/*
   - .prettierrc.js
+A-module-index:
+  - bin/module-index/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-discord-bot:
   - bin/si-discord-bot/**/*
   - .prettierrc.js
