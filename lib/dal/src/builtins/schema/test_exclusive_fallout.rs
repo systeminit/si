@@ -72,6 +72,24 @@ impl MigrationDriver {
             .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
             .build()?;
 
+        let fallout_resource_payload_to_value_func_code =
+            "async function translate(arg: Input): Promise<Output> {\
+            return arg.payload ?? {};
+        }";
+        let fallout_resource_payload_to_value_func = FuncSpec::builder()
+            .name("test:resourcePayloadToValue")
+            .code_plaintext(fallout_resource_payload_to_value_func_code)
+            .handler("translate")
+            .backend_kind(FuncSpecBackendKind::JsAttribute)
+            .response_type(FuncSpecBackendResponseType::Json)
+            .argument(
+                FuncArgumentSpec::builder()
+                    .name("payload")
+                    .kind(FuncArgumentKind::Object)
+                    .build()?,
+            )
+            .build()?;
+
         let fallout_schema = SchemaSpec::builder()
             .name("fallout")
             .category("test exclusive")
@@ -176,6 +194,7 @@ impl MigrationDriver {
             .func(fallout_create_action_func)
             .func(fallout_confirmation_func)
             .func(fallout_authoring_schema_func)
+            .func(fallout_resource_payload_to_value_func)
             .schema(fallout_schema)
             .build()?;
 

@@ -6,6 +6,10 @@ use tokio::sync::oneshot::Sender;
 
 mod args;
 
+// TODO Note: buck2 does not set CARGO_PKG_VERSION at compile time like cargo does
+// static VERSION: &str = env!("CARGO_PKG_VERSION");
+static VERSION: &str = "0.1";
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -34,8 +38,12 @@ async fn main() -> Result<()> {
         )
     );
 
+    // TODO: move this to be a CLI argument instead of env var
+    #[allow(clippy::disallowed_methods)]
+    let auth_api_host = std::env::var("AUTH_API").ok();
+
     if !matches!(args.command, Commands::Update(_)) {
-        match update::find().await {
+        match update::find(VERSION, auth_api_host.as_deref()).await {
             Ok(Some(_)) => {
                 println!("Update found, please run `si update` to install it\n");
             }
@@ -74,7 +82,14 @@ async fn main() -> Result<()> {
             stop::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Update(args) => {
-            update::invoke(&ph_client, mode.to_string(), args.skip_check).await?;
+            update::invoke(
+                VERSION,
+                auth_api_host.as_deref(),
+                &ph_client,
+                mode.to_string(),
+                args.skip_check,
+            )
+            .await?;
         }
         Commands::Status(_args) => {
             status::invoke(&ph_client, mode.to_string()).await?;

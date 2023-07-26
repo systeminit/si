@@ -17,6 +17,7 @@ import CustomizeDark from "@/assets/images/customize__dark.svg?url";
 import CustomizeLight from "@/assets/images/customize__light.svg?url";
 import NoComponentsLight from "@/assets/images/no-components__light.svg?url";
 import NoComponentsDark from "@/assets/images/no-components__dark.svg?url";
+import NoChangesDark from "@/assets/images/no-changes__dark.svg?url";
 
 const { theme: appTheme } = useTheme();
 
@@ -40,6 +41,7 @@ export const ICONS = Object.freeze({
   customize: { light: CustomizeLight, dark: CustomizeDark },
   "no-assets": { light: NoAssetsLight, dark: NoAssetsDark },
   "no-components": { light: NoComponentsLight, dark: NoComponentsDark },
+  "no-changes": { light: NoChangesDark, dark: NoChangesDark }, // currently there is only a dark version of this EmptyStateIcon
 });
 
 export type EMPTY_STATE_ICON_NAMES = keyof typeof ICONS;

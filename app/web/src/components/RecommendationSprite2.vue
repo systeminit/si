@@ -11,7 +11,11 @@
             <Switch
               :id="`${props.recommendation.confirmationAttributeValueId}-${props.recommendation.actionKind}`"
               :modelValue="selected"
-              :class="selected ? 'bg-blue-600' : 'bg-gray-200'"
+              :class="
+                selected
+                  ? 'bg-success-600'
+                  : 'bg-neutral-400 dark:bg-neutral-500'
+              "
               class="relative inline-flex h-5 w-8 items-center rounded-full mt-1 mr-3"
               @click.stop="emit('toggle', !selected)"
             >

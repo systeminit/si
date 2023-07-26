@@ -1,4 +1,5 @@
 use crate::{CliResult, SiCliError};
+use colored::Colorize;
 use inquire::Confirm;
 use serde::Deserialize;
 use si_posthog::PosthogClient;
@@ -24,9 +25,11 @@ pub struct Release {
     pub published_at: String,
 }
 
-pub async fn find() -> CliResult<Option<Release>> {
-    // Note: we currently can't deploy auth api to production, so we are only supporting it locally for now
-    let host = "http://localhost:9001";
+static HOST: &str = "https://auth-api.systeminit.com";
+
+pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Option<Release>> {
+    let host = if let Some(host) = host { host } else { HOST };
+
     let req = reqwest::get(format!("{host}/github/releases")).await?;
     if req.status().as_u16() != 200 {
         println!("API returned an expected status code: {}", req.status());
@@ -35,7 +38,7 @@ pub async fn find() -> CliResult<Option<Release>> {
 
     let releases: Vec<Release> = req.json().await?;
     if let Some(release) = releases.first() {
-        if release.version != CURRENT_VERSION {
+        if release.version != current_version {
             return Ok(Some(release.clone()));
         }
     }
@@ -75,9 +78,9 @@ pub async fn update_current_binary(url: &str) -> CliResult<()> {
     Ok(())
 }
 
-const CURRENT_VERSION: &str = "0.9";
-
 pub async fn invoke(
+    current_version: &str,
+    host: Option<&str>,
     posthog_client: &PosthogClient,
     mode: String,
     skip_check: bool,
@@ -88,41 +91,46 @@ pub async fn invoke(
         serde_json::json!({"name": "update-launcher", "mode": mode}),
     );
 
-    let ans = if skip_check {
-        Ok(true)
+    #[cfg(target_os = "linux")]
+    let our_os = "Linux";
+
+    #[cfg(all(not(target_os = "linux"), target_vendor = "apple"))]
+    let our_os = "Darwin";
+
+    let update = find(current_version, host).await?;
+    if let Some(update) = &update {
+        let version = &update.version;
+        println!("Update found: from {current_version} to {version}\n",);
+    }
+
+    let ans = if let Some(update) = update {
+        if skip_check {
+            Ok((true, update))
+        } else {
+            println!("{}", "Updating the launcher will destroy your data!".red());
+            Confirm::new("Are you sure you want to update this launcher?")
+                .with_default(false)
+                .prompt()
+                .map(|ans| (ans, update))
+        }
     } else {
-        Confirm::new("Are you sure you want to update this launcher?")
-            .with_default(false)
-            .with_help_message("Please Note: No container data is backed up during update!")
-            .prompt()
+        return Ok(());
     };
 
     match ans {
-        Ok(true) => {
-            println!("That's awesome! Let's do this");
-            #[cfg(target_os = "linux")]
-            let our_os = "Linux";
-
-            #[cfg(all(not(target_os = "linux"), target_vendor = "apple"))]
-            let our_os = "Darwin";
-
-            if let Some(update) = find().await? {
-                println!(
-                    "\nUpdate found: from {} to {}\n",
-                    CURRENT_VERSION, update.version
-                );
-                // Note: we can't download from here because the repo is private, we should
-                // automate the download and replace the current binary after we go public
-                // (or start caching the binaries in auth api)
-                for asset in &update.assets {
-                    if asset.name.to_lowercase().contains(&our_os.to_lowercase()) {
-                        println!("Download the new version here: {}\n", asset.url);
-                        // update_current_binary(&asset.url).await?;
-                    }
+        Ok((true, update)) => {
+            println!("\nThat's awesome! Let's do this");
+            // Note: we can't download from here because the repo is private, we should
+            // automate the download + replace of the current binary after we go public
+            // (or start caching the binaries in auth api)
+            for asset in &update.assets {
+                if asset.name.to_lowercase().contains(&our_os.to_lowercase()) {
+                    println!("Download the new version here: {}\n", asset.url);
+                    // update_current_binary(&asset.url).await?;
                 }
             }
         }
-        Ok(false) => println!("See ya later ;)"),
+        Ok((false, _)) => println!("See ya later ;)"),
         Err(err) => println!("Error: Try again later!: {err}"),
     }
 
