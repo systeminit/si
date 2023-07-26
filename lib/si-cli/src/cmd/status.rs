@@ -1,8 +1,12 @@
-use crate::containers::{get_non_running_containers, running_systeminit_containers_list};
-use crate::CliResult;
+use crate::containers::has_existing_container;
+use crate::{CliResult, CONTAINER_NAMES};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
+use docker_api::Docker;
 use si_posthog::PosthogClient;
+
+const RUNNING: &str = "    ✅    ";
+const NOT_RUNNING: &str = "    ❌    ";
 
 pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
     let _ = posthog_client.capture(
@@ -10,7 +14,8 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         "sally@systeminit.com",
         serde_json::json!({"name": "check-dependencies", "mode": mode}),
     );
-    println!("Preparing for System Initiative Installation");
+    println!("Checking the status of System Initiative Software");
+    let docker = Docker::unix("//var/run/docker.sock");
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -18,34 +23,28 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         .set_width(100)
         .set_header(vec![
             Cell::new("Container Image").add_attribute(Attribute::Bold),
-            Cell::new("Names").add_attribute(Attribute::Bold),
             Cell::new("State").add_attribute(Attribute::Bold),
         ]);
 
-    let containers = running_systeminit_containers_list().await?;
-    for container in containers {
+    let mut broken_containers = Vec::new();
+    for name in CONTAINER_NAMES.iter() {
+        let image_name = format!("systeminit/{0}:stable", name);
+        let container_identifier = format!("dev-{0}-1", name);
+        let is_running = has_existing_container(&docker, container_identifier, false).await?;
+        if !is_running {
+            broken_containers.push(image_name.clone());
+        }
         table.add_row(vec![
-            Cell::new(container.image.unwrap_or("-".to_string()).to_string())
-                .add_attribute(Attribute::Bold),
-            Cell::new(
-                container
-                    .names
-                    .unwrap_or(Vec::new())
-                    .get(0)
-                    .unwrap_or(&"-".to_string())
-                    .to_string(),
-            ),
-            Cell::new(container.state.unwrap_or("-".to_string()).to_string()),
+            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+            Cell::new(if is_running { RUNNING } else { NOT_RUNNING }),
         ]);
     }
 
     println!("{table}");
 
-    let non_started_containers = get_non_running_containers().await?;
-    println!(
-        "\n System is running?: {0}",
-        non_started_containers.is_empty()
-    );
+    if broken_containers.is_empty() {
+        println!("\nAll system components working as expected...")
+    }
 
     Ok(())
 }
