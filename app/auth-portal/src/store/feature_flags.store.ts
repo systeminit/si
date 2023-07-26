@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { addStoreHooks } from "@si/vue-lib/pinia";
 import * as _ from "lodash-es";
-import { posthog } from "@/utils/posthog";
+import posthog from "posthog-js";
 
 export const useFeatureFlagsStore = () => {
   return addStoreHooks(
