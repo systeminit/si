@@ -1,4 +1,5 @@
 pub mod check;
+pub mod delete;
 pub mod install;
 pub mod launch;
 pub mod report;
