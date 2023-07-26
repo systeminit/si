@@ -206,6 +206,9 @@ async fn list_confirmations(mut octx: DalContext) {
     let (component, _) = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
 
     assert_eq!(new_change_set.pk, ctx.visibility().change_set_pk);
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
@@ -263,7 +266,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 "protected": false
             },
             "domain": {
-                "name": "starfield",
+                "name": "component",
             },
             "confirmation": {
                 "test:confirmationStarfield": {
@@ -326,7 +329,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 "protected": false
             },
             "domain": {
-                "name": "starfield",
+                "name": "component",
             },
             "resource": {
                 "logs": [],
@@ -410,7 +413,7 @@ async fn list_confirmations(mut octx: DalContext) {
                 "protected": false
             },
             "domain": {
-                "name": "starfield",
+                "name": "component",
             },
             "resource": {
                 "logs": [],

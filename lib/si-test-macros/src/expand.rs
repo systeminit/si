@@ -528,7 +528,7 @@ pub(crate) trait FnSetupExpander {
                     .wrap_err("failed to build default dal ctx for dal_context_default")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
-                ctx.commit()
+                ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit create_change_set_and_update_ctx")?;
 
@@ -559,7 +559,7 @@ pub(crate) trait FnSetupExpander {
                     .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
-                ctx.commit()
+                ctx.blocking_commit()
                     .await
                     .wrap_err("failed to commit create_change_set_and_update_ctx_mut")?;
 
