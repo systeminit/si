@@ -1,23 +1,31 @@
 //! Nodes
 
-use crate::{
-    workspace_snapshot::{
-        change_set::{ChangeSet, ChangeSetError},
-        vector_clock::{VectorClock, VectorClockError},
-        ContentHash,
-    },
-    PropKind,
+pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentKind;
+use crate::workspace_snapshot::{
+    change_set::{ChangeSet, ChangeSetError},
+    content_hash::ContentHash,
+    vector_clock::{VectorClock, VectorClockError},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+pub mod content_node_weight;
+pub mod ordering_node_weight;
+
+pub use content_node_weight::ContentNodeWeight;
+pub use ordering_node_weight::OrderingNodeWeight;
 use ulid::Ulid;
 
 #[derive(Debug, Error)]
 pub enum NodeWeightError {
+    #[error("Cannot set content hash directly on node weight kind")]
+    CannotSetContentHashOnKind,
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("Incompatible node weights")]
+    IncompatibleNodeWeightVariants,
     #[error("No Seen Vector Clock available")]
     NoSeenVectorClock,
     #[error("Vector Clock error: {0}")]
@@ -26,151 +34,36 @@ pub enum NodeWeightError {
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
-pub type OriginId = Ulid;
-
-#[remain::sorted]
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
-/// The type of the object, and the content-addressable-storage address (content hash)
-/// of the object itself.
-pub enum NodeWeightKind {
-    Component(ContentHash),
-    Func(ContentHash),
-    FuncArg(ContentHash),
-    Prop(ContentHash),
-    Root,
-    Schema(ContentHash),
-    SchemaVariant(ContentHash),
-}
-
-impl NodeWeightKind {
-    fn content_hash(&self) -> ContentHash {
-        match self {
-            NodeWeightKind::Component(id) => Some(*id),
-            NodeWeightKind::Func(id) => Some(*id),
-            NodeWeightKind::FuncArg(id) => Some(*id),
-            NodeWeightKind::Prop(id) => Some(*id),
-            NodeWeightKind::Root => None,
-            NodeWeightKind::Schema(id) => Some(*id),
-            NodeWeightKind::SchemaVariant(id) => Some(*id),
-        }
-        .unwrap_or_default()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct NodeWeight {
-    /// The stable local ID of the object in question. Mainly used by external things like
-    /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
-    /// internal implementation detail, and the content ID wrapped by the
-    /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
-    /// example, the name, or type of a [`Prop`].)
-    pub id: Ulid,
-    /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
-    /// should be trying to receive updates.
-    pub origin_id: OriginId,
-    /// What type of thing is this node representing, and what is the content hash used to
-    /// retrieve the data for this specific node.
-    pub kind: NodeWeightKind,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub container_content_order: Option<Vec<Ulid>>,
-    /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
-    /// starting with this node as the root. Mainly useful in quickly determining "has
-    /// something changed anywhere in this (sub)graph".
-    pub merkle_tree_hash: ContentHash,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub vector_clock_seen: Option<VectorClock>,
-    pub vector_clock_write: VectorClock,
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum NodeWeight {
+    Content(ContentNodeWeight),
+    Ordering(OrderingNodeWeight),
 }
 
 impl NodeWeight {
-    pub fn new(
-        change_set: &ChangeSet,
-        id: Ulid,
-        kind: NodeWeightKind,
-    ) -> NodeWeightResult<NodeWeight> {
-        Ok(NodeWeight {
-            id,
-            origin_id: change_set.generate_ulid()?,
-            kind,
-            container_content_order: None,
-            merkle_tree_hash: ContentHash::default(),
-            vector_clock_seen: None,
-            vector_clock_write: VectorClock::new(change_set)?,
-        })
-    }
-
-    pub fn new_with_seen_vector_clock(
-        change_set: &ChangeSet,
-        kind: NodeWeightKind,
-    ) -> NodeWeightResult<NodeWeight> {
-        Ok(NodeWeight {
-            id: change_set.generate_ulid()?,
-            origin_id: change_set.generate_ulid()?,
-            kind,
-            container_content_order: Default::default(),
-            merkle_tree_hash: ContentHash::default(),
-            vector_clock_seen: Some(VectorClock::new(change_set)?),
-            vector_clock_write: VectorClock::new(change_set)?,
-        })
-    }
-
     pub fn content_hash(&self) -> ContentHash {
-        self.kind.content_hash()
-    }
-
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_kind = match &self.kind {
-            NodeWeightKind::Component(_) => NodeWeightKind::Component(content_hash),
-            NodeWeightKind::Func(_) => NodeWeightKind::Func(content_hash),
-            NodeWeightKind::FuncArg(_) => NodeWeightKind::FuncArg(content_hash),
-            NodeWeightKind::Prop(_) => NodeWeightKind::Prop(content_hash),
-            NodeWeightKind::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            NodeWeightKind::Schema(_) => NodeWeightKind::Schema(content_hash),
-            NodeWeightKind::SchemaVariant(_) => NodeWeightKind::SchemaVariant(content_hash),
-        };
-
-        self.kind = new_kind;
-
-        Ok(())
-    }
-
-    pub fn merkle_tree_hash(&self) -> ContentHash {
-        self.merkle_tree_hash
-    }
-
-    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
-        self.merkle_tree_hash = new_hash;
-    }
-
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        let new_vc_entry = change_set.generate_ulid()?;
-
-        self.vector_clock_write.inc_to(change_set, new_vc_entry);
-        if let Some(vcs) = &mut self.vector_clock_seen {
-            vcs.inc_to(change_set, new_vc_entry);
-        };
-
-        Ok(())
-    }
-
-    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        if let Some(vcs) = &mut self.vector_clock_seen {
-            vcs.inc(change_set)?;
-
-            Ok(())
-        } else {
-            Err(NodeWeightError::NoSeenVectorClock)
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.content_hash(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.content_hash(),
         }
     }
 
-    pub fn new_with_incremented_vector_clocks(
-        &self,
-        change_set: &ChangeSet,
-    ) -> NodeWeightResult<Self> {
-        let mut new_node_weight = self.clone();
-        new_node_weight.increment_vector_clocks(change_set)?;
+    pub fn id(&self) -> Ulid {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.id(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.id(),
+        }
+    }
 
-        Ok(new_node_weight)
+    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Content(content_weight) => {
+                content_weight.increment_seen_vector_clock(change_set)
+            }
+            NodeWeight::Ordering(ordering_weight) => {
+                ordering_weight.increment_seen_vector_clock(change_set)
+            }
+        }
     }
 
     pub fn merge_clocks(
@@ -178,30 +71,86 @@ impl NodeWeight {
         change_set: &ChangeSet,
         other: &NodeWeight,
     ) -> NodeWeightResult<()> {
-        self.vector_clock_write
-            .merge(change_set, &other.vector_clock_write)?;
-
-        if let Some(local_vector_clock_seen) = &mut self.vector_clock_seen {
-            if let Some(remote_vector_clock_seen) = &other.vector_clock_seen {
-                local_vector_clock_seen.merge(change_set, remote_vector_clock_seen)?;
-            } else {
-                return Err(NodeWeightError::NoSeenVectorClock);
-            }
+        match (self, other) {
+            (
+                NodeWeight::Content(self_content_weight),
+                NodeWeight::Content(other_content_weight),
+            ) => self_content_weight.merge_clocks(change_set, other_content_weight),
+            (
+                NodeWeight::Ordering(self_ordering_weight),
+                NodeWeight::Ordering(other_ordering_weight),
+            ) => self_ordering_weight.merge_clocks(change_set, other_ordering_weight),
+            _ => Err(NodeWeightError::IncompatibleNodeWeightVariants),
         }
-
-        Ok(())
     }
-}
 
-impl std::fmt::Debug for NodeWeight {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("NodeWeight")
-            .field("id", &self.id.to_string())
-            .field("origin_id", &self.origin_id.to_string())
-            .field("kind", &self.kind)
-            .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_seen", &self.vector_clock_seen)
-            .field("vector_clock_write", &self.vector_clock_write)
-            .finish()
+    pub fn merkle_tree_hash(&self) -> ContentHash {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.merkle_tree_hash(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.merkle_tree_hash(),
+        }
+    }
+
+    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.new_content_hash(content_hash),
+            NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+        }
+    }
+
+    pub fn new_content(
+        change_set: &ChangeSet,
+        content_id: Ulid,
+        kind: ContentKind,
+    ) -> NodeWeightResult<Self> {
+        Ok(NodeWeight::Content(ContentNodeWeight::new(
+            change_set, content_id, kind,
+        )?))
+    }
+
+    pub fn new_content_with_seen_vector_clock(
+        change_set: &ChangeSet,
+        kind: ContentKind,
+    ) -> NodeWeightResult<Self> {
+        Ok(NodeWeight::Content(
+            ContentNodeWeight::new_with_seen_vector_clock(change_set, kind)?,
+        ))
+    }
+
+    pub fn new_with_incremented_vector_clocks(
+        &self,
+        change_set: &ChangeSet,
+    ) -> NodeWeightResult<Self> {
+        let new_weight = match self {
+            NodeWeight::Content(content_weight) => {
+                NodeWeight::Content(content_weight.new_with_incremented_vector_clocks(change_set)?)
+            }
+            NodeWeight::Ordering(ordering_weight) => NodeWeight::Ordering(
+                ordering_weight.new_with_incremented_vector_clocks(change_set)?,
+            ),
+        };
+
+        Ok(new_weight)
+    }
+
+    pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.set_merkle_tree_hash(new_hash),
+        }
+    }
+
+    pub fn vector_clock_seen(&self) -> Option<&VectorClock> {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.vector_clock_seen(),
+            NodeWeight::Ordering(ordering_weight) => Some(ordering_weight.vector_clock_seen()),
+        }
+    }
+
+    pub fn vector_clock_write(&self) -> &VectorClock {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.vector_clock_write(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.vector_clock_write(),
+        }
     }
 }

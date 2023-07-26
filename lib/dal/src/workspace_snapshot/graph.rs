@@ -10,10 +10,11 @@ use crate::workspace_snapshot::{
     conflict::Conflict,
     content_hash::ContentHash,
     edge_weight::EdgeWeight,
-    node_weight::{NodeWeight, NodeWeightError, NodeWeightKind},
+    node_weight::{ContentKind, NodeWeight, NodeWeightError},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
     #[error("NodeWeight error: {0}")]
@@ -40,9 +41,9 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
 impl WorkspaceSnapshotGraph {
     pub fn new(change_set: &ChangeSet) -> WorkspaceSnapshotGraphResult<Self> {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
-        let root_index = graph.add_node(NodeWeight::new_with_seen_vector_clock(
+        let root_index = graph.add_node(NodeWeight::new_content_with_seen_vector_clock(
             change_set,
-            NodeWeightKind::Root,
+            ContentKind::Root,
         )?);
 
         Ok(Self { root_index, graph })
@@ -90,7 +91,7 @@ impl WorkspaceSnapshotGraph {
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
         let temp_edge = self
             .graph
-            .add_edge(from_node_index, to_node_index, edge_weight.clone());
+            .update_edge(from_node_index, to_node_index, edge_weight.clone());
         let would_create_a_cycle = !self.is_acyclic_directed();
         self.graph.remove_edge(temp_edge);
         if would_create_a_cycle {
@@ -106,9 +107,9 @@ impl WorkspaceSnapshotGraph {
         let new_from_node_index = self.copy_node_index(change_set, from_node_index)?;
 
         // Add the new edge to the new version of the "from" node.
-        let new_edge_index = self
-            .graph
-            .add_edge(new_from_node_index, to_node_index, edge_weight);
+        let new_edge_index =
+            self.graph
+                .update_edge(new_from_node_index, to_node_index, edge_weight);
         self.update_merkle_tree_hash(new_from_node_index)?;
 
         // Update the rest of the graph to reflect the new node/edge.
@@ -127,7 +128,7 @@ impl WorkspaceSnapshotGraph {
             // changes have been made.
             if self.has_path_to_root(node_index) {
                 let node_weight = self.get_node_weight(node_index)?;
-                if node_weight.id == id {
+                if node_weight.id() == id {
                     return Ok(node_index);
                 }
             }
@@ -242,7 +243,7 @@ impl WorkspaceSnapshotGraph {
                     // Need to directly add the edge, without going through `self.add_edge` to avoid
                     // infinite recursion, and because we're the place doing all the book keeping
                     // that we'd be interested in happening from `self.add_edge`.
-                    self.graph.add_edge(
+                    self.graph.update_edge(
                         new_node_index,
                         *old_to_new_node_indices
                             .get(&destination_node_index)
@@ -312,9 +313,10 @@ impl WorkspaceSnapshotGraph {
         other: &WorkspaceSnapshotGraph,
     ) -> WorkspaceSnapshotResult<()> {
         let local_root_write_vector_clock =
-            &self.get_node_weight(self.root_index)?.vector_clock_write;
-        let remote_root_write_vector_clock =
-            &other.get_node_weight(other.root_index)?.vector_clock_write;
+            self.get_node_weight(self.root_index)?.vector_clock_write();
+        let remote_root_write_vector_clock = other
+            .get_node_weight(other.root_index)?
+            .vector_clock_write();
 
         if local_root_write_vector_clock.is_newer_than(remote_root_write_vector_clock) {
             // We're strictly newer than `other`, which means that we can fast forward by incorporating new
@@ -361,7 +363,7 @@ impl WorkspaceSnapshotGraph {
                             let to_merge_node_weight =
                                 other.get_node_weight(node_index).map_err(|_| event)?;
                             let base_node_index =
-                                match self.get_node_index_by_id(to_merge_node_weight.id) {
+                                match self.get_node_index_by_id(to_merge_node_weight.id()) {
                                     Ok(ni) => ni,
                                     // If there isn't a node with the same ID in `base` then it's a "new" node.
                                     Err(WorkspaceSnapshotError::NodeWithIdNotFound(_)) => {
@@ -387,13 +389,27 @@ impl WorkspaceSnapshotGraph {
                             // added or removed relationship, or that one of the child nodes itself (or one
                             // of its descendents) has changed. Re-ordering of the members of a container
                             // should count as a conflict on the container node, if it conflicts.
-                            if to_merge_node_weight.kind == base_node_weight.kind {
-                                // TODO Check child node ordering & membership
+                            if let (
+                                NodeWeight::Content(base_content_weight),
+                                NodeWeight::Content(to_merge_content_weight),
+                            ) = (base_node_weight, to_merge_node_weight)
+                            {
+                                if to_merge_content_weight.kind() == base_content_weight.kind() {
 
-                                // - Set membership same on both sides & order the same: No conflict
-                                // - Set membership different between sides & both sides have entries the other does not: Conflict::ChildMembership
-                                // - Set membership different between sides & only one side has been modified: No conflict (TODO How exactly is this state detected?)
-                                // - Set membership
+                                    // TODO Check child node ordering & membership
+
+                                    // - Set membership same on both sides & order the same: No child conflict
+                                    // - Set membership different between sides & both sides have entries the other does not: Conflict::ChildMembership
+                                    // - Set membership different between sides & only one side has entries the other does not: No child conflict
+                                    // - Set membership same on both sides & both sides changed ordering: Conflict::ChildOrder
+                                    // - Set membership same on both sides & only one side changed ordering: No child conflict
+
+                                    // Store ordering as its own graph node (child of container)?
+                                    // - Would only see writes if membership/ordering changes
+                                    // - Container changes detectable separately from ordering changes
+                                    // - Ordering changes -> container changes
+                                    // - Edges need "seen" clock
+                                }
                             }
 
                             Ok(petgraph::visit::Control::Continue)
@@ -451,10 +467,10 @@ mod test {
         let schema_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    NodeWeightKind::Schema(ContentHash::new(
+                    ContentKind::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -464,10 +480,10 @@ mod test {
         let schema_variant_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_variant_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                    ContentKind::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -477,10 +493,10 @@ mod test {
         let component_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let component_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     component_id,
-                    NodeWeightKind::Component(ContentHash::new(
+                    ContentKind::Component(ContentHash::new(
                         ComponentId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -530,12 +546,10 @@ mod test {
         let func_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let func_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     func_id,
-                    NodeWeightKind::Func(ContentHash::new(
-                        FuncId::generate().to_string().as_bytes(),
-                    )),
+                    ContentKind::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -543,12 +557,10 @@ mod test {
         let prop_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let prop_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     prop_id,
-                    NodeWeightKind::Prop(ContentHash::new(
-                        PropId::generate().to_string().as_bytes(),
-                    )),
+                    ContentKind::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -598,10 +610,10 @@ mod test {
         let schema_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let initial_schema_node_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    NodeWeightKind::Schema(ContentHash::new(
+                    ContentKind::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -611,10 +623,10 @@ mod test {
         let schema_variant_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let initial_schema_variant_node_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                    ContentKind::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -624,10 +636,10 @@ mod test {
         let component_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let initial_component_node_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     component_id,
-                    NodeWeightKind::Component(ContentHash::new(
+                    ContentKind::Component(ContentHash::new(
                         ComponentId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -703,10 +715,10 @@ mod test {
         let schema_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    NodeWeightKind::Schema(ContentHash::new(
+                    ContentKind::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -716,10 +728,10 @@ mod test {
         let schema_variant_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_variant_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                    ContentKind::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -729,12 +741,10 @@ mod test {
         let component_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let component_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     component_id,
-                    NodeWeightKind::Component(ContentHash::new(
-                        component_id.to_string().as_bytes(),
-                    )),
+                    ContentKind::Component(ContentHash::new(component_id.to_string().as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -811,10 +821,10 @@ mod test {
         let schema_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    NodeWeightKind::Schema(ContentHash::new(
+                    ContentKind::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -824,10 +834,10 @@ mod test {
         let schema_variant_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let schema_variant_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    NodeWeightKind::SchemaVariant(ContentHash::new(
+                    ContentKind::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -837,12 +847,10 @@ mod test {
         let component_id = change_set.generate_ulid().expect("Cannot generate Ulid");
         let component_index = graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     change_set,
                     component_id,
-                    NodeWeightKind::Component(ContentHash::new(
-                        component_id.to_string().as_bytes(),
-                    )),
+                    ContentKind::Component(ContentHash::new(component_id.to_string().as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -923,10 +931,10 @@ mod test {
             .expect("Cannot generate Ulid");
         let schema_index = initial_graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     initial_change_set,
                     schema_id,
-                    NodeWeightKind::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentKind::Schema(ContentHash::new("Schema A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -936,10 +944,10 @@ mod test {
             .expect("Cannot generate Ulid");
         let schema_variant_index = initial_graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     initial_change_set,
                     schema_variant_id,
-                    NodeWeightKind::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentKind::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -975,10 +983,10 @@ mod test {
             .expect("Cannot generate Ulid");
         let component_index = new_graph
             .add_node(
-                NodeWeight::new(
+                NodeWeight::new_content(
                     new_change_set,
                     component_id,
-                    NodeWeightKind::Schema(ContentHash::new("Component A".as_bytes())),
+                    ContentKind::Schema(ContentHash::new("Component A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
