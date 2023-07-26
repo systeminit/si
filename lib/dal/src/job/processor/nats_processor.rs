@@ -139,6 +139,7 @@ impl JobQueueProcessor for NatsProcessor {
     }
 
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {
+        panic!("{:?}", self);
         let processor = self.clone();
         tokio::spawn(async move {
             if let Err(err) = processor.push_all_jobs().await {

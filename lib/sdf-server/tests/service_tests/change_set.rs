@@ -22,7 +22,7 @@ async fn list_open_change_sets(
 ) {
     let _a_change_set = dal_create_change_set(&ctx).await;
     let _b_change_set = dal_create_change_set(&ctx).await;
-    ctx.commit().await.expect("cannot commit transaction");
+    ctx.blocking_commit().await.expect("cannot commit transaction");
 
     let response: ListOpenChangeSetsResponse = api_request_auth_empty(
         app,
@@ -58,7 +58,7 @@ async fn get_change_set(
     AuthTokenRef(auth_token): AuthTokenRef<'_>,
 ) {
     let change_set = dal_create_change_set(&ctx).await;
-    ctx.commit().await.expect("cannot commit txn");
+    ctx.blocking_commit().await.expect("cannot commit transaction");
     let request = GetChangeSetRequest { pk: change_set.pk };
 
     let response: GetChangeSetResponse =
@@ -73,7 +73,7 @@ async fn apply_change_set(
     AuthTokenRef(auth_token): AuthTokenRef<'_>,
 ) {
     let change_set = dal_create_change_set(&ctx).await;
-    ctx.commit().await.expect("cannot commit txn");
+    ctx.blocking_commit().await.expect("cannot commit txn");
     let request = ApplyChangeSetRequest {
         change_set_pk: change_set.pk,
     };

@@ -38,7 +38,7 @@ async fn list_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): Au
     let rand_schema2_name = rand_schema2.name();
 
     let visibility = *ctx.visibility();
-    ctx.commit().await.expect("cannot commit txn");
+    ctx.blocking_commit().await.expect("cannot commit txn");
 
     let request = ListSchemaRequest { visibility };
 
@@ -67,7 +67,7 @@ async fn get_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): Aut
     let schema_one = dal_create_schema(&ctx).await;
 
     let visibility = *ctx.visibility();
-    ctx.commit().await.expect("cannot commit txn");
+    ctx.blocking_commit().await.expect("cannot commit txn");
 
     let request = GetSchemaRequest {
         visibility,
