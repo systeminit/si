@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "alias",
     "export_file",
+    "nix_flake_lock",
     "pnpm_lock",
     "pnpm_workspace",
     "workspace_node_modules",
@@ -55,7 +56,7 @@ export_file(
     name = "flake.nix",
 )
 
-export_file(
+nix_flake_lock(
     name = "flake.lock",
 )
 

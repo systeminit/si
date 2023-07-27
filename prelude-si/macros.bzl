@@ -17,6 +17,12 @@ load(
 docker_image = _docker_image
 
 load(
+    "@prelude-si//macros:nix.bzl",
+    _nix_flake_lock = "nix_flake_lock",
+)
+nix_flake_lock = _nix_flake_lock
+
+load(
     "@prelude-si//macros:pnpm.bzl",
     _eslint = "eslint",
     _node_pkg_bin = "node_pkg_bin",
