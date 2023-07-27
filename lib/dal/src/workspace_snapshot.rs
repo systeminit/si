@@ -55,14 +55,10 @@ pub enum WorkspaceSnapshotError {
     CreateGraphCycle,
     #[error("EdgeWeight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("Problem during graph traversal: {0:?}")]
-    GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("node weight not found")]
-    NodeWeightNotFound,
     #[error("Node with ID {0} not found")]
     NodeWithIdNotFound(Ulid),
     #[error("si_data_pg error: {0}")]
@@ -75,6 +71,8 @@ pub enum WorkspaceSnapshotError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("Workspace Snapshot has conflicts and must be rebased")]
+    WorkspaceNeedsRebase,
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]

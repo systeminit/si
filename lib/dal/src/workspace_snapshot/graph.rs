@@ -1,24 +1,32 @@
-use petgraph::algo;
 use petgraph::prelude::*;
+use petgraph::{algo, stable_graph::EdgeReference};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::{
     change_set::ChangeSet,
-    conflict::Conflict,
+    conflict::{Conflict, ConflictLocation},
     content_hash::ContentHash,
     edge_weight::EdgeWeight,
-    node_weight::{ContentKind, NodeWeight, NodeWeightError},
+    node_weight::{ContentKind, NodeWeight, NodeWeightError, OrderingNodeWeight},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
+    #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
+    CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
+    #[error("Problem during graph traversal: {0:?}")]
+    GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("node weight not found")]
+    NodeWeightNotFound,
+    #[error("NodeIndex has too many Ordering children: {0:?}")]
+    TooManyOrderingForNode(NodeIndex),
 }
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
@@ -173,19 +181,19 @@ impl WorkspaceSnapshotGraph {
             && algo::has_path_connecting(&self.graph, node, end, None)
     }
 
-    fn get_node_weight(&self, node_index: NodeIndex) -> WorkspaceSnapshotResult<&NodeWeight> {
+    fn get_node_weight(&self, node_index: NodeIndex) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
         self.graph
             .node_weight(node_index)
-            .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
     fn get_node_weight_mut(
         &mut self,
         node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<&mut NodeWeight> {
+    ) -> WorkspaceSnapshotGraphResult<&mut NodeWeight> {
         self.graph
             .node_weight_mut(node_index)
-            .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
     fn replace_references(
@@ -267,7 +275,7 @@ impl WorkspaceSnapshotGraph {
     fn update_merkle_tree_hash(
         &mut self,
         node_index_to_update: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> WorkspaceSnapshotGraphResult<()> {
         let mut hasher = ContentHash::hasher();
         hasher.update(
             self.get_node_weight(node_index_to_update)?
@@ -291,7 +299,7 @@ impl WorkspaceSnapshotGraph {
             hasher.update(
                 self.graph
                     .node_weight(neighbor_node)
-                    .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)?
+                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
                     .merkle_tree_hash()
                     .to_string()
                     .as_bytes(),
@@ -301,7 +309,7 @@ impl WorkspaceSnapshotGraph {
         let new_node_weight = self
             .graph
             .node_weight_mut(node_index_to_update)
-            .ok_or(WorkspaceSnapshotError::NodeWeightNotFound)?;
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
         new_node_weight.set_merkle_tree_hash(hasher.finalize());
 
         Ok(())
@@ -311,6 +319,7 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         change_set: &ChangeSet,
         other: &WorkspaceSnapshotGraph,
+        other_change_set: &ChangeSet,
     ) -> WorkspaceSnapshotResult<()> {
         let local_root_write_vector_clock =
             self.get_node_weight(self.root_index)?.vector_clock_write();
@@ -348,89 +357,15 @@ impl WorkspaceSnapshotGraph {
 
             let new_root_node_index = self.add_node(new_root_node_weight)?;
             self.replace_references(change_set, self.root_index, new_root_node_index)?;
+        } else if !self
+            .find_conflicts(change_set, other, other_change_set)?
+            .is_empty()
+        {
+            return Err(WorkspaceSnapshotError::WorkspaceNeedsRebase);
         } else {
-            // `self`/`local` is the base change set. `other` is the change set to merge in.
-            // Both `local` and `other` have (write) entries that the other does not. Figure out if the
-            // trees can be merged together without any conflicts.
-            let conflicts: Vec<Conflict> = Vec::new();
-            let result = petgraph::visit::depth_first_search(
-                &other.graph,
-                Some(other.root_index),
-                |event| {
-                    match event {
-                        petgraph::visit::DfsEvent::Discover(node_index, _) => {
-                            // Check if `base` has a node with the same `ID`
-                            let to_merge_node_weight =
-                                other.get_node_weight(node_index).map_err(|_| event)?;
-                            let base_node_index =
-                                match self.get_node_index_by_id(to_merge_node_weight.id()) {
-                                    Ok(ni) => ni,
-                                    // If there isn't a node with the same ID in `base` then it's a "new" node.
-                                    Err(WorkspaceSnapshotError::NodeWithIdNotFound(_)) => {
-                                        // TODO: This isn't right. We should be checking why it's only in `other` (the branch to merge). Was it deleted in `base`, and if so, has it been modified at all in `other`?
-                                        return Ok(petgraph::visit::Control::Continue);
-                                    }
-                                    // Something else went wrong; we should probably bail out.
-                                    Err(_) => return Err(event),
-                                };
-                            let base_node_weight =
-                                self.get_node_weight(base_node_index).map_err(|_| event)?;
+            // No conflicts; do the merge!
 
-                            if to_merge_node_weight.merkle_tree_hash()
-                                == base_node_weight.merkle_tree_hash()
-                            {
-                                // These (sub-)graphs have the same content, so there can be no conflicts
-                                // from this point towards the leaves.
-                                return Ok(petgraph::visit::Control::Prune);
-                            }
-
-                            // If the content of the node itself is the same in `base` and `other`, then that
-                            // means that something has changed about the node's children. This would be an
-                            // added or removed relationship, or that one of the child nodes itself (or one
-                            // of its descendents) has changed. Re-ordering of the members of a container
-                            // should count as a conflict on the container node, if it conflicts.
-                            if let (
-                                NodeWeight::Content(base_content_weight),
-                                NodeWeight::Content(to_merge_content_weight),
-                            ) = (base_node_weight, to_merge_node_weight)
-                            {
-                                if to_merge_content_weight.kind() == base_content_weight.kind() {
-
-                                    // TODO Check child node ordering & membership
-
-                                    // - Set membership same on both sides & order the same: No child conflict
-                                    // - Set membership different between sides & both sides have entries the other does not: Conflict::ChildMembership
-                                    // - Set membership different between sides & only one side has entries the other does not: No child conflict
-                                    // - Set membership same on both sides & both sides changed ordering: Conflict::ChildOrder
-                                    // - Set membership same on both sides & only one side changed ordering: No child conflict
-
-                                    // Store ordering as its own graph node (child of container)?
-                                    // - Would only see writes if membership/ordering changes
-                                    // - Container changes detectable separately from ordering changes
-                                    // - Ordering changes -> container changes
-                                    // - Edges need "seen" clock
-                                }
-                            }
-
-                            Ok(petgraph::visit::Control::Continue)
-                        }
-                        // TODO: Remove this. Only here to get type checking/guessing to work.
-                        // Not actually what we want, since this is about finishing all edges from a node,
-                        // not about finishing the graph.
-                        petgraph::visit::DfsEvent::Finish(_, _) => {
-                            Ok(petgraph::visit::Control::Break(()))
-                        }
-                        _ => Ok(petgraph::visit::Control::Continue),
-                        // petgraph::visit::DfsEvent::TreeEdge(_, _) => todo!(),
-                        // petgraph::visit::DfsEvent::BackEdge(_, _) => todo!(),
-                        // petgraph::visit::DfsEvent::CrossForwardEdge(_, _) => todo!(),
-                        // petgraph::visit::DfsEvent::Finish(_, _) => todo!(),
-                    }
-                },
-            );
-            if let Err(traversal_error) = result {
-                return Err(WorkspaceSnapshotError::GraphTraversal(traversal_error));
-            }
+            todo!();
         }
 
         // `other` has newer/more entries than we have:
@@ -438,21 +373,234 @@ impl WorkspaceSnapshotGraph {
 
         Ok(())
     }
+
+    pub fn find_conflicts(
+        &self,
+        change_set: &ChangeSet,
+        other: &WorkspaceSnapshotGraph,
+        other_change_set: &ChangeSet,
+    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
+        // `self`/`local` is the base change set. `other` is the change set to merge in.
+        // Both `local` and `other` have (write) entries that the other does not. Figure out if the
+        // trees can be merged together without any conflicts.
+        let mut conflicts: Vec<Conflict> = Vec::new();
+        let result =
+            petgraph::visit::depth_first_search(&other.graph, Some(other.root_index), |event| {
+                match event {
+                    petgraph::visit::DfsEvent::Discover(to_merge_node_index, _) => {
+                        // Check if `base` has a node with the same `ID`
+                        let to_merge_node_weight = other
+                            .get_node_weight(to_merge_node_index)
+                            .map_err(|_| event)?;
+                        let base_node_index =
+                            match self.get_node_index_by_id(to_merge_node_weight.id()) {
+                                Ok(ni) => ni,
+                                // If there isn't a node with the same ID in `base` then it's a "new" node.
+                                Err(WorkspaceSnapshotError::NodeWithIdNotFound(_)) => {
+                                    // TODO: This isn't right. We should be checking why it's only in `other` (the branch to merge). Was it deleted in `base`, and if so, has it been modified at all in `other`?
+                                    return Ok(petgraph::visit::Control::Continue);
+                                }
+                                // Something else went wrong; we should probably bail out.
+                                Err(_) => return Err(event),
+                            };
+                        let base_node_weight =
+                            self.get_node_weight(base_node_index).map_err(|_| event)?;
+
+                        if to_merge_node_weight.merkle_tree_hash()
+                            == base_node_weight.merkle_tree_hash()
+                        {
+                            // These (sub-)graphs have the same content, so there can be no conflicts
+                            // from this point towards the leaves.
+                            return Ok(petgraph::visit::Control::Prune);
+                        }
+
+                        if let (
+                            NodeWeight::Content(base_content_weight),
+                            NodeWeight::Content(to_merge_content_weight),
+                        ) = (base_node_weight, to_merge_node_weight)
+                        {
+                            // If the content of the node itself is the same in `base` and `other`, then that
+                            // means that something has changed about the node's children. This could be an
+                            // added or removed relationship, a change in the ordering of the children, or
+                            // that one of the child nodes itself (or one of its descendents) has changed,
+                            // or all of these. If there are added/removed relationships, or re-ordered
+                            // children on both sides, then that should be considered as a conflict on the
+                            // container node itself.
+                            if to_merge_content_weight.kind() == base_content_weight.kind() {
+                                if let Some(container_membership_conflict) = self
+                                    .has_container_membership_conflict(
+                                        base_node_index,
+                                        other,
+                                        to_merge_node_index,
+                                    )
+                                    .map_err(|_| event)?
+                                {
+                                    conflicts.push(container_membership_conflict);
+                                }
+                            }
+                        }
+
+                        Ok(petgraph::visit::Control::Continue)
+                    }
+                    // TODO: Remove this. Only here to get type checking/guessing to work.
+                    // Not actually what we want, since this is about finishing all edges from a node,
+                    // not about finishing the graph.
+                    petgraph::visit::DfsEvent::Finish(_, _) => {
+                        Ok(petgraph::visit::Control::Break(()))
+                    }
+                    _ => Ok(petgraph::visit::Control::Continue),
+                    // petgraph::visit::DfsEvent::TreeEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::BackEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::CrossForwardEdge(_, _) => todo!(),
+                    // petgraph::visit::DfsEvent::Finish(_, _) => todo!(),
+                }
+            });
+        if let Err(traversal_error) = result {
+            return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
+        }
+
+        Ok(conflicts)
+    }
+
+    fn has_container_membership_conflict(
+        &self,
+        base_container_node_index: NodeIndex,
+        to_merge: &WorkspaceSnapshotGraph,
+        to_merge_container_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<Conflict>> {
+        // Store ordering as its own graph node (child of container)?
+        // - Would only see writes if membership/ordering changes
+        // - Container changes detectable separately from ordering changes
+        // - Ordering changes -> container changes
+        // - Edges need "seen" clock
+
+        let base_ordering_node_indexes =
+            ordering_node_indexes_for_node_index(self, base_container_node_index);
+        if base_ordering_node_indexes.len() > 1 {
+            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
+                base_container_node_index,
+            ));
+        }
+        let to_merge_ordering_node_indexes =
+            ordering_node_indexes_for_node_index(to_merge, to_merge_container_node_index);
+        if to_merge_ordering_node_indexes.len() > 1 {
+            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
+                base_container_node_index,
+            ));
+        }
+
+        let (base_order_index, to_merge_order_index) = match (
+            base_ordering_node_indexes.get(0),
+            to_merge_ordering_node_indexes.get(0),
+        ) {
+            (Some(base_order_index), Some(to_merge_order_index)) => {
+                (*base_order_index, *to_merge_order_index)
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                return Err(
+                    WorkspaceSnapshotGraphError::CannotCompareOrderedAndUnorderedContainers(
+                        base_container_node_index,
+                        to_merge_container_node_index,
+                    ),
+                );
+            }
+            (None, None) => {
+                // Neither is ordered; conflict is purely based on set membership.
+                todo!();
+            }
+        };
+
+        let base_order = match self.get_node_weight(base_order_index)? {
+            NodeWeight::Content(_) => unreachable!(),
+            NodeWeight::Ordering(o) => o,
+        };
+        let to_merge_order = match to_merge.get_node_weight(to_merge_order_index)? {
+            NodeWeight::Content(_) => unreachable!(),
+            NodeWeight::Ordering(o) => o,
+        };
+
+        if base_order.order() == to_merge_order.order() {
+            // Set membership same on both sides & order the same: No child conflict
+            return Ok(None);
+        }
+
+        let base_order_set: HashSet<Ulid> = base_order.order().iter().copied().collect();
+        let to_merge_order_set: HashSet<Ulid> = to_merge_order.order().iter().copied().collect();
+        if base_order_set == to_merge_order_set {
+            // Set membership same on both sides & only one side changed ordering: No child conflict
+            if base_order
+                .vector_clock_write()
+                .is_newer_than(to_merge_order.vector_clock_write())
+                || to_merge_order
+                    .vector_clock_write()
+                    .is_newer_than(base_order.vector_clock_write())
+            {
+                return Ok(None);
+            }
+
+            // Set membership same on both sides & both sides changed ordering: Conflict::ChildOrder
+            return Ok(Some(Conflict::ChildOrder(ConflictLocation {
+                base: base_order_index,
+                other: to_merge_order_index,
+            })));
+        } else if base_order_set
+            .difference(&to_merge_order_set)
+            .next()
+            .is_some()
+            && to_merge_order_set
+                .difference(&base_order_set)
+                .next()
+                .is_some()
+        {
+            // Set membership different between sides & each side has entries the other does not: Conflict::ChildMembership
+            return Ok(Some(Conflict::ChildMembership(ConflictLocation {
+                base: base_container_node_index,
+                other: to_merge_container_node_index,
+            })));
+        }
+
+        // Set membership different between sides & only one side has entries the other does not: No child conflict
+        Ok(None)
+    }
+}
+
+fn ordering_node_indexes_for_node_index(
+    snapshot: &WorkspaceSnapshotGraph,
+    node_index: NodeIndex,
+) -> Vec<NodeIndex> {
+    snapshot
+        .graph
+        .edges_directed(node_index, Outgoing)
+        .filter_map(|edge_reference| {
+            if let Some((_, destination_node_index)) =
+                snapshot.graph.edge_endpoints(edge_reference.id())
+            {
+                if matches!(
+                    snapshot.get_node_weight(destination_node_index),
+                    Ok(NodeWeight::Ordering(_))
+                ) {
+                    return Some(destination_node_index);
+                }
+            }
+
+            None
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{
-        workspace_snapshot::content_hash::ContentHash, ComponentId, FuncId, PropId, PropKind,
-        SchemaId, SchemaVariantId,
+        workspace_snapshot::content_hash::ContentHash, ComponentId, FuncId, PropId, SchemaId,
+        SchemaVariantId,
     };
 
     #[test]
     fn new() {
         let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
         let change_set = &change_set;
-        let graph = WorkspaceSnapshotGraph::new(&change_set)
+        let graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
     }

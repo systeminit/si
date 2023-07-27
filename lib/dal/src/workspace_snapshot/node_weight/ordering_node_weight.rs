@@ -66,6 +66,10 @@ impl OrderingNodeWeight {
         Ok(new_ordering_weight)
     }
 
+    pub fn order(&self) -> &Vec<Ulid> {
+        &self.order
+    }
+
     pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
         self.merkle_tree_hash = new_hash;
     }
