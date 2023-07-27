@@ -9,11 +9,11 @@ use ulid::Ulid;
 use crate::workspace_snapshot::{
     change_set::ChangeSet,
     conflict::{Conflict, ConflictLocation},
-    content_hash::ContentHash,
     edge_weight::EdgeWeight,
     node_weight::{ContentAddress, NodeWeight, NodeWeightError, OrderingNodeWeight},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
+use crate::ContentHash;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
@@ -659,10 +659,7 @@ fn ordering_node_indexes_for_node_index(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        workspace_snapshot::content_hash::ContentHash, ComponentId, FuncId, PropId, SchemaId,
-        SchemaVariantId,
-    };
+    use crate::{ComponentId, ContentHash, FuncId, PropId, SchemaId, SchemaVariantId};
 
     #[test]
     fn new() {

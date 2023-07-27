@@ -3,10 +3,10 @@ use ulid::Ulid;
 
 use crate::workspace_snapshot::{
     change_set::ChangeSet,
-    content_hash::ContentHash,
     node_weight::{NodeWeightError, NodeWeightResult},
     vector_clock::VectorClock,
 };
+use crate::ContentHash;
 
 pub type OriginId = Ulid;
 

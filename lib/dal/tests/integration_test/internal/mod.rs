@@ -27,4 +27,3 @@ mod validation_prototype;
 mod validation_resolver;
 mod visibility;
 mod workspace;
-mod workspace_snapshot;

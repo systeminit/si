@@ -24,7 +24,6 @@
 
 pub mod change_set;
 pub mod conflict;
-pub mod content_hash;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
@@ -46,7 +45,6 @@ use crate::{
     DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
 };
 use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
-use content_hash::ContentHash;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

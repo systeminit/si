@@ -1,20 +1,19 @@
-//! Nodes
-
-pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentAddress;
-use crate::workspace_snapshot::{
-    change_set::{ChangeSet, ChangeSetError},
-    content_hash::ContentHash,
-    vector_clock::{VectorClock, VectorClockError},
-};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use ulid::Ulid;
+
+use crate::workspace_snapshot::{
+    change_set::{ChangeSet, ChangeSetError},
+    vector_clock::{VectorClock, VectorClockError},
+};
+use crate::ContentHash;
+
+pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentAddress;
+pub use content_node_weight::ContentNodeWeight;
+pub use ordering_node_weight::OrderingNodeWeight;
 
 pub mod content_node_weight;
 pub mod ordering_node_weight;
-
-pub use content_node_weight::ContentNodeWeight;
-pub use ordering_node_weight::OrderingNodeWeight;
-use ulid::Ulid;
 
 #[derive(Debug, Error)]
 pub enum NodeWeightError {
