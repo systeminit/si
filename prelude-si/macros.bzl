@@ -23,6 +23,7 @@ load(
     _npm_bin = "npm_bin",
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
+    _pnpm_workspace = "pnpm_workspace",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _vite_app = "vite_app",
@@ -33,6 +34,7 @@ node_pkg_bin = _node_pkg_bin
 npm_bin = _npm_bin
 package_node_modules = _package_node_modules
 pnpm_lock = _pnpm_lock
+pnpm_workspace = _pnpm_workspace
 typescript_check = _typescript_check
 typescript_dist = _typescript_dist
 vite_app = _vite_app

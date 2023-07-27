@@ -3,6 +3,7 @@ load(
     "alias",
     "export_file",
     "pnpm_lock",
+    "pnpm_workspace",
     "workspace_node_modules",
 )
 
@@ -62,12 +63,8 @@ export_file(
     name = "package.json",
 )
 
-export_file(
+pnpm_workspace(
     name = "pnpm-workspace.yaml",
-)
-
-pnpm_lock(
-    name = "pnpm-lock.yaml",
     packages = [
         "//app/auth-portal:package.json",
         "//app/web:package.json",
@@ -78,6 +75,10 @@ pnpm_lock(
         "//lib/tsconfig:package.json",
         "//lib/vue-lib:package.json",
     ],
+)
+
+pnpm_lock(
+    name = "pnpm-lock.yaml",
 )
 
 export_file(

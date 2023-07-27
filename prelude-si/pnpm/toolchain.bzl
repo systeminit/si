@@ -2,7 +2,6 @@ PnpmToolchainInfo = provider(fields = [
     "build_npm_bin",
     "build_package_node_modules",
     "build_pkg_bin",
-    "build_pnpm_lock",
     "build_workspace_node_modules",
     "exec_cmd",
     "package_build_context",
@@ -19,7 +18,6 @@ def pnpm_toolchain_impl(ctx) -> [[DefaultInfo.type, PnpmToolchainInfo.type]]:
             build_npm_bin = ctx.attrs._build_npm_bin,
             build_package_node_modules = ctx.attrs._build_package_node_modules,
             build_pkg_bin = ctx.attrs._build_pkg_bin,
-            build_pnpm_lock = ctx.attrs._build_pnpm_lock,
             build_workspace_node_modules = ctx.attrs._build_workspace_node_modules,
             exec_cmd = ctx.attrs._exec_cmd,
             package_build_context = ctx.attrs._package_build_context,
@@ -38,9 +36,6 @@ pnpm_toolchain = rule(
         ),
         "_build_pkg_bin": attrs.dep(
             default = "prelude-si//pnpm:build_pkg_bin.py",
-        ),
-        "_build_pnpm_lock": attrs.dep(
-            default = "prelude-si//pnpm:build_pnpm_lock.py",
         ),
         "_build_workspace_node_modules": attrs.dep(
             default = "prelude-si//pnpm:build_workspace_node_modules.py",

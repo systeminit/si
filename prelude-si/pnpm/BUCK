@@ -16,10 +16,6 @@ export_file(
 )
 
 export_file(
-    name = "build_pnpm_lock.py",
-)
-
-export_file(
     name = "build_workspace_node_modules.py",
 )
 

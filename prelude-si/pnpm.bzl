@@ -1,4 +1,8 @@
 load(
+    "@prelude//:artifacts.bzl",
+    "ArtifactGroupInfo",
+)
+load(
     "@prelude//decls/common.bzl",
     "buck",
 )
@@ -442,53 +446,50 @@ package_node_modules = rule(
     },
 )
 
-def pnpm_lock_impl(ctx: "context") -> ["provider"]:
-    pnpm_lock = ctx.actions.declare_output("pnpm-lock.yaml")
+def pnpm_lock_impl(ctx: "context") -> [DefaultInfo.type]:
+    out = ctx.actions.declare_output("pnpm-lock.yaml")
 
-    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
-    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
+    output = ctx.actions.copy_file(out, ctx.attrs.src)
 
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        pnpm_toolchain.build_pnpm_lock[DefaultInfo].default_outputs,
-        "--package-dir",
-        package_dir,
-        "--pnpm-lock-out-path",
-        pnpm_lock.as_output(),
-    )
-    cmd.hidden([
-        ctx.attrs.package_json,
-        ctx.attrs.pnpm_workspace,
-        ctx.attrs.packages,
-    ])
-
-    ctx.actions.run(cmd, category = "pnpm", identifier = "install --lockfile-only")
-
-    return [DefaultInfo(default_outputs = [pnpm_lock])]
+    return [DefaultInfo(default_output = out)]
 
 pnpm_lock = rule(
     impl = pnpm_lock_impl,
     attrs = {
-        "package_json": attrs.source(
-            default = "//:package.json",
-            doc = """Workspace package.json""",
+        "src": attrs.source(
+            doc = """pnpm-lock.yaml source.""",
         ),
-        "pnpm_workspace": attrs.source(
+        "pnpm_workspace": attrs.dep(
             default = "//:pnpm-workspace.yaml",
-            doc = """Workspace Pnpm file""",
+            doc = """Pnpm Workspace dependency.""",
+        ),
+    },
+)
+
+def pnpm_workspace_impl(ctx: "context") -> [[DefaultInfo.type, ArtifactGroupInfo.type]]:
+    out = ctx.actions.declare_output("pnpm-workspace.yaml")
+
+    output = ctx.actions.copy_file(out, ctx.attrs.src)
+    ctx.actions.write_json("member-packages.json", ctx.attrs.packages)
+
+    return [
+        DefaultInfo(default_output = output),
+        ArtifactGroupInfo(artifacts = [ctx.attrs.workspace_package] + ctx.attrs.packages),
+    ]
+
+pnpm_workspace = rule(
+    impl = pnpm_workspace_impl,
+    attrs = {
+        "src": attrs.source(
+            doc = """pnpm-workspace.yaml source.""",
+        ),
+        "workspace_package": attrs.source(
+            doc = """Workspace root package.json source.""",
         ),
         "packages": attrs.list(
             attrs.source(),
             default = [],
             doc = """List of package.json files to track.""",
-        ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
-        ),
-        "_pnpm_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:pnpm",
-            providers = [PnpmToolchainInfo],
         ),
     },
 )
