@@ -440,6 +440,26 @@ impl WorkspaceSnapshotGraph {
                                 {
                                     conflicts.push(container_membership_conflict);
                                 }
+                            } else {
+                                // There's a difference in the content of the node itself, so we need to see
+                                // if that difference is because of a conflict.
+                                if base_content_weight
+                                    .vector_clock_write()
+                                    .is_newer_than(to_merge_content_weight.vector_clock_write())
+                                    || to_merge_content_weight
+                                        .vector_clock_write()
+                                        .is_newer_than(base_content_weight.vector_clock_write())
+                                {
+                                    // One side already contains all of the changes from the other, so it's not a conflict.
+                                    return Ok(petgraph::visit::Control::Continue);
+                                } else {
+                                    // Both sides have changes the other does not know about: We've
+                                    // got a conflict.
+                                    conflicts.push(Conflict::NodeContent(ConflictLocation {
+                                        base: base_node_index,
+                                        other: to_merge_node_index,
+                                    }));
+                                }
                             }
                         }
 
