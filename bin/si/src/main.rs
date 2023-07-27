@@ -22,6 +22,7 @@ async fn main() -> Result<()> {
     let _telemetry = telemetry_application::init(config)?;
     let args = args::parse();
     let mode = args.mode();
+    let is_preview = args.is_preview;
 
     debug!(arguments =?args, "parsed cli arguments");
 
@@ -59,27 +60,31 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    if is_preview {
+        println!("Preview mode... System Initiative would have taken the following actions");
+    }
+
     match args.command {
         Commands::Install(_args) => {
-            install::invoke(&ph_client, mode.to_string()).await?;
+            install::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
         Commands::Check(_args) => {
-            check::invoke(&ph_client, mode.to_string(), false).await?;
+            check::invoke(&ph_client, mode.to_string(), false, is_preview).await?;
         }
         Commands::Launch(_args) => {
             launch::invoke(&ph_client, mode.to_string())?;
         }
         Commands::Start(_args) => {
-            start::invoke(&ph_client, mode.to_string()).await?;
+            start::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
         Commands::Delete(_args) => {
-            delete::invoke(&ph_client, mode.to_string()).await?;
+            delete::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
         Commands::Restart(_args) => {
             restart::invoke(&ph_client, mode.to_string())?;
         }
         Commands::Stop(_args) => {
-            stop::invoke(&ph_client, mode.to_string()).await?;
+            stop::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
         Commands::Update(args) => {
             update::invoke(
