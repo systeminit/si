@@ -2,6 +2,7 @@ use petgraph::prelude::*;
 use petgraph::{algo, stable_graph::EdgeReference};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -470,12 +471,6 @@ impl WorkspaceSnapshotGraph {
         to_merge: &WorkspaceSnapshotGraph,
         to_merge_container_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<Conflict>> {
-        // Store ordering as its own graph node (child of container)?
-        // - Would only see writes if membership/ordering changes
-        // - Container changes detectable separately from ordering changes
-        // - Ordering changes -> container changes
-        // - Edges need "seen" clock
-
         let base_ordering_node_indexes =
             ordering_node_indexes_for_node_index(self, base_container_node_index);
         if base_ordering_node_indexes.len() > 1 {
@@ -507,7 +502,20 @@ impl WorkspaceSnapshotGraph {
                 );
             }
             (None, None) => {
-                // Neither is ordered; conflict is purely based on set membership.
+                // Neither is ordered. The potential conflict could be because one
+                // or more elements changed, because elements were added/removed,
+                // or a combination of these.
+                //
+                // We need to check for all of these using the outgoing edges from
+                // the containers, since we can't rely on an ordering child to
+                // contain all the information to determine ordering/addition/removal.
+                //
+                // TODO: Eventually, this shouldn't ever happen, since Objects, Maps, and Arrays should all have an ordering, for at least display ordering purposes.
+                warn!(
+                    "Found what appears to be two unordered containers: {:?}, {:?}",
+                    base_container_node_index, to_merge_container_node_index
+                );
+
                 todo!();
             }
         };
@@ -579,16 +587,10 @@ impl WorkspaceSnapshotGraph {
                 .intersection(&to_merge_order_set)
                 .copied()
                 .collect();
-            let mut base_common_order = base_order
-                .order()
-                .clone();
-            base_common_order
-                .retain(|id| common_element_ids.contains(id));
-            let mut to_merge_common_order = to_merge_order
-                .order()
-                .clone();
-            to_merge_common_order
-                .retain(|id| common_element_ids.contains(id));
+            let mut base_common_order = base_order.order().clone();
+            base_common_order.retain(|id| common_element_ids.contains(id));
+            let mut to_merge_common_order = to_merge_order.order().clone();
+            to_merge_common_order.retain(|id| common_element_ids.contains(id));
             if base_common_order == to_merge_common_order {
                 return Ok(Some(Conflict::ChildMembership(ConflictLocation {
                     base: base_container_node_index,

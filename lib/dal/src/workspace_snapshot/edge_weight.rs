@@ -18,6 +18,11 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum EdgeWeightKind {
+    /// Used to record the order that the elements of a container should be presented in.
+    Ordering,
+    /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
+    /// Schema variants "use" props. Props "use" functions, and other props. Modules
+    /// "use" functions, schemas, and eventually(?) components.
     #[default]
     Uses,
 }
