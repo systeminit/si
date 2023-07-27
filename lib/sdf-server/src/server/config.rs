@@ -73,7 +73,7 @@ pub struct Config {
 }
 
 fn default_module_index_url() -> String {
-    "http://localhost:5157".into()
+    "https://module-index.systeminit.com".into()
 }
 
 impl StandardConfig for Config {
