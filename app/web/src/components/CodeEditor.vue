@@ -9,7 +9,7 @@
         variant="ghost"
         class="pointer-events-none"
       >
-        Read-only!
+        Read-only
       </VButton>
       <VButton
         v-else
