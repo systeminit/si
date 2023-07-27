@@ -10,7 +10,7 @@ use crate::workspace_snapshot::{
     conflict::{Conflict, ConflictLocation},
     content_hash::ContentHash,
     edge_weight::EdgeWeight,
-    node_weight::{ContentKind, NodeWeight, NodeWeightError, OrderingNodeWeight},
+    node_weight::{ContentAddress, NodeWeight, NodeWeightError, OrderingNodeWeight},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
 
@@ -51,7 +51,7 @@ impl WorkspaceSnapshotGraph {
         let mut graph: StableDiGraph<NodeWeight, EdgeWeight> = StableDiGraph::with_capacity(1, 0);
         let root_index = graph.add_node(NodeWeight::new_content_with_seen_vector_clock(
             change_set,
-            ContentKind::Root,
+            ContentAddress::Root,
         )?);
 
         Ok(Self { root_index, graph })
@@ -426,7 +426,9 @@ impl WorkspaceSnapshotGraph {
                             // or all of these. If there are added/removed relationships, or re-ordered
                             // children on both sides, then that should be considered as a conflict on the
                             // container node itself.
-                            if to_merge_content_weight.kind() == base_content_weight.kind() {
+                            if to_merge_content_weight.content_address()
+                                == base_content_weight.content_address()
+                            {
                                 if let Some(container_membership_conflict) = self
                                     .has_container_membership_conflict(
                                         base_node_index,
@@ -662,7 +664,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    ContentKind::Schema(ContentHash::new(
+                    ContentAddress::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -675,7 +677,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    ContentKind::SchemaVariant(ContentHash::new(
+                    ContentAddress::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -688,7 +690,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     component_id,
-                    ContentKind::Component(ContentHash::new(
+                    ContentAddress::Component(ContentHash::new(
                         ComponentId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -741,7 +743,9 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     func_id,
-                    ContentKind::Func(ContentHash::new(FuncId::generate().to_string().as_bytes())),
+                    ContentAddress::Func(ContentHash::new(
+                        FuncId::generate().to_string().as_bytes(),
+                    )),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -752,7 +756,9 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     prop_id,
-                    ContentKind::Prop(ContentHash::new(PropId::generate().to_string().as_bytes())),
+                    ContentAddress::Prop(ContentHash::new(
+                        PropId::generate().to_string().as_bytes(),
+                    )),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -805,7 +811,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    ContentKind::Schema(ContentHash::new(
+                    ContentAddress::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -818,7 +824,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    ContentKind::SchemaVariant(ContentHash::new(
+                    ContentAddress::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -831,7 +837,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     component_id,
-                    ContentKind::Component(ContentHash::new(
+                    ContentAddress::Component(ContentHash::new(
                         ComponentId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -910,7 +916,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    ContentKind::Schema(ContentHash::new(
+                    ContentAddress::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -923,7 +929,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    ContentKind::SchemaVariant(ContentHash::new(
+                    ContentAddress::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -936,7 +942,9 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     component_id,
-                    ContentKind::Component(ContentHash::new(component_id.to_string().as_bytes())),
+                    ContentAddress::Component(ContentHash::new(
+                        component_id.to_string().as_bytes(),
+                    )),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1016,7 +1024,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    ContentKind::Schema(ContentHash::new(
+                    ContentAddress::Schema(ContentHash::new(
                         SchemaId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -1029,7 +1037,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_variant_id,
-                    ContentKind::SchemaVariant(ContentHash::new(
+                    ContentAddress::SchemaVariant(ContentHash::new(
                         SchemaVariantId::generate().to_string().as_bytes(),
                     )),
                 )
@@ -1042,7 +1050,9 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     component_id,
-                    ContentKind::Component(ContentHash::new(component_id.to_string().as_bytes())),
+                    ContentAddress::Component(ContentHash::new(
+                        component_id.to_string().as_bytes(),
+                    )),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1126,7 +1136,7 @@ mod test {
                 NodeWeight::new_content(
                     initial_change_set,
                     schema_id,
-                    ContentKind::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1139,7 +1149,7 @@ mod test {
                 NodeWeight::new_content(
                     initial_change_set,
                     schema_variant_id,
-                    ContentKind::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1178,7 +1188,7 @@ mod test {
                 NodeWeight::new_content(
                     new_change_set,
                     component_id,
-                    ContentKind::Schema(ContentHash::new("Component A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::new("Component A".as_bytes())),
                 )
                 .expect("Unable to create NodeWeight"),
             )

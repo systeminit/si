@@ -1,6 +1,6 @@
 //! Nodes
 
-pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentKind;
+pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentAddress;
 use crate::workspace_snapshot::{
     change_set::{ChangeSet, ChangeSetError},
     content_hash::ContentHash,
@@ -101,7 +101,7 @@ impl NodeWeight {
     pub fn new_content(
         change_set: &ChangeSet,
         content_id: Ulid,
-        kind: ContentKind,
+        kind: ContentAddress,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Content(ContentNodeWeight::new(
             change_set, content_id, kind,
@@ -110,7 +110,7 @@ impl NodeWeight {
 
     pub fn new_content_with_seen_vector_clock(
         change_set: &ChangeSet,
-        kind: ContentKind,
+        kind: ContentAddress,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Content(
             ContentNodeWeight::new_with_seen_vector_clock(change_set, kind)?,

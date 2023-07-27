@@ -14,7 +14,7 @@ pub type OriginId = Ulid;
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
-pub enum ContentKind {
+pub enum ContentAddress {
     Component(ContentHash),
     Func(ContentHash),
     FuncArg(ContentHash),
@@ -24,16 +24,16 @@ pub enum ContentKind {
     SchemaVariant(ContentHash),
 }
 
-impl ContentKind {
+impl ContentAddress {
     fn content_hash(&self) -> ContentHash {
         match self {
-            ContentKind::Component(id) => Some(*id),
-            ContentKind::Func(id) => Some(*id),
-            ContentKind::FuncArg(id) => Some(*id),
-            ContentKind::Prop(id) => Some(*id),
-            ContentKind::Root => None,
-            ContentKind::Schema(id) => Some(*id),
-            ContentKind::SchemaVariant(id) => Some(*id),
+            ContentAddress::Component(id) => Some(*id),
+            ContentAddress::Func(id) => Some(*id),
+            ContentAddress::FuncArg(id) => Some(*id),
+            ContentAddress::Prop(id) => Some(*id),
+            ContentAddress::Root => None,
+            ContentAddress::Schema(id) => Some(*id),
+            ContentAddress::SchemaVariant(id) => Some(*id),
         }
         .unwrap_or_default()
     }
@@ -52,7 +52,7 @@ pub struct ContentNodeWeight {
     origin_id: OriginId,
     /// What type of thing is this node representing, and what is the content hash used to
     /// retrieve the data for this specific node.
-    kind: ContentKind,
+    content_address: ContentAddress,
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
@@ -63,11 +63,15 @@ pub struct ContentNodeWeight {
 }
 
 impl ContentNodeWeight {
-    pub fn new(change_set: &ChangeSet, id: Ulid, kind: ContentKind) -> NodeWeightResult<Self> {
+    pub fn new(
+        change_set: &ChangeSet,
+        id: Ulid,
+        content_address: ContentAddress,
+    ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
             origin_id: change_set.generate_ulid()?,
-            kind,
+            content_address,
             merkle_tree_hash: ContentHash::default(),
             vector_clock_seen: None,
             vector_clock_write: VectorClock::new(change_set)?,
@@ -76,12 +80,12 @@ impl ContentNodeWeight {
 
     pub fn new_with_seen_vector_clock(
         change_set: &ChangeSet,
-        kind: ContentKind,
+        content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id: change_set.generate_ulid()?,
             origin_id: change_set.generate_ulid()?,
-            kind,
+            content_address,
             merkle_tree_hash: ContentHash::default(),
             vector_clock_seen: Some(VectorClock::new(change_set)?),
             vector_clock_write: VectorClock::new(change_set)?,
@@ -89,21 +93,21 @@ impl ContentNodeWeight {
     }
 
     pub fn content_hash(&self) -> ContentHash {
-        self.kind.content_hash()
+        self.content_address.content_hash()
     }
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_kind = match &self.kind {
-            ContentKind::Component(_) => ContentKind::Component(content_hash),
-            ContentKind::Func(_) => ContentKind::Func(content_hash),
-            ContentKind::FuncArg(_) => ContentKind::FuncArg(content_hash),
-            ContentKind::Prop(_) => ContentKind::Prop(content_hash),
-            ContentKind::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            ContentKind::Schema(_) => ContentKind::Schema(content_hash),
-            ContentKind::SchemaVariant(_) => ContentKind::SchemaVariant(content_hash),
+        let new_kind = match &self.content_address {
+            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
+            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
+            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
+            ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),
+            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
+            ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
+            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
         };
 
-        self.kind = new_kind;
+        self.content_address = new_kind;
 
         Ok(())
     }
@@ -112,8 +116,8 @@ impl ContentNodeWeight {
         self.id
     }
 
-    pub fn kind(&self) -> ContentKind {
-        self.kind
+    pub fn content_address(&self) -> ContentAddress {
+        self.content_address
     }
 
     pub fn merkle_tree_hash(&self) -> ContentHash {
@@ -188,7 +192,7 @@ impl std::fmt::Debug for ContentNodeWeight {
         f.debug_struct("NodeWeight")
             .field("id", &self.id.to_string())
             .field("origin_id", &self.origin_id.to_string())
-            .field("kind", &self.kind)
+            .field("content_address", &self.content_address)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_seen", &self.vector_clock_seen)
             .field("vector_clock_write", &self.vector_clock_write)
