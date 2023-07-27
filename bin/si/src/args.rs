@@ -100,7 +100,15 @@ pub(crate) struct LaunchArgs {}
 pub(crate) struct ReportArgs {}
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct StatusArgs {}
+pub(crate) struct StatusArgs {
+    /// Shows the logs from the containers
+    #[clap(short, long)]
+    pub show_logs: bool,
+
+    /// The number of log lines to show when `show_logs` is used
+    #[arg(long, short, default_value = "10")]
+    pub log_lines: usize,
+}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct StartArgs {}

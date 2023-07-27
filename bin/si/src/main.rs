@@ -91,8 +91,8 @@ async fn main() -> Result<()> {
             )
             .await?;
         }
-        Commands::Status(_args) => {
-            status::invoke(&ph_client, mode.to_string()).await?;
+        Commands::Status(args) => {
+            status::invoke(&ph_client, mode.to_string(), args.show_logs, args.log_lines).await?;
         }
         Commands::Report(_args) => {
             report::invoke(&ph_client, mode.to_string())?;

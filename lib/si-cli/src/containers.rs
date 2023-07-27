@@ -1,7 +1,7 @@
 use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::ImageSummary;
-use docker_api::opts::{ContainerFilter, ContainerListOpts, ImageListOpts, PullOpts};
+use docker_api::opts::{ContainerFilter, ContainerListOpts, ImageListOpts, LogsOpts, PullOpts};
 use docker_api::Docker;
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -163,6 +163,50 @@ pub(crate) async fn has_existing_container(
             println!("Found an existing {} container: {}", name, *existing_id);
             docker.containers().get(existing_id).delete().await?;
             return Ok(false);
+        }
+    }
+
+    Ok(false)
+}
+
+pub(crate) async fn get_container_logs(
+    docker: &Docker,
+    name: String,
+    log_lines: usize,
+) -> CliResult<bool> {
+    let filter = ContainerFilter::Name(name.clone());
+    let list_opts = ContainerListOpts::builder()
+        .filter([filter])
+        .all(true)
+        .build();
+    let containers = docker.containers().list(&list_opts).await?;
+    if !containers.is_empty() {
+        let existing_id = containers.first().unwrap().id.as_ref().unwrap();
+        let state = containers.first().unwrap().state.as_ref().unwrap();
+
+        if *state == "running" {
+            let logs_opts = LogsOpts::builder()
+                .n_lines(log_lines)
+                .stdout(true)
+                .stderr(true)
+                .build();
+            let container = docker.containers().get(existing_id);
+            let logs_stream = container.logs(&logs_opts);
+            let logs: Vec<_> = logs_stream
+                .map(|chunk| match chunk {
+                    Ok(chunk) => chunk.to_vec(),
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        vec![]
+                    }
+                })
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+            println!("{}", String::from_utf8_lossy(&logs));
+            return Ok(true);
         }
     }
 

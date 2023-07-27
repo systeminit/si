@@ -1,4 +1,4 @@
-use crate::containers::has_existing_container;
+use crate::containers::{get_container_logs, has_existing_container};
 use crate::{CliResult, CONTAINER_NAMES};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
@@ -8,7 +8,12 @@ use si_posthog::PosthogClient;
 const RUNNING: &str = "    ✅    ";
 const NOT_RUNNING: &str = "    ❌    ";
 
-pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(
+    posthog_client: &PosthogClient,
+    mode: String,
+    show_logs: bool,
+    log_lines: usize,
+) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
@@ -30,10 +35,16 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
     for name in CONTAINER_NAMES.iter() {
         let image_name = format!("systeminit/{0}:stable", name);
         let container_identifier = format!("dev-{0}-1", name);
-        let is_running = has_existing_container(&docker, container_identifier, false).await?;
+        let is_running =
+            has_existing_container(&docker, container_identifier.clone(), false).await?;
         if !is_running {
             broken_containers.push(image_name.clone());
         }
+        if show_logs {
+            println!("\n\nShowing container logs for {0}", image_name.clone());
+            get_container_logs(&docker, container_identifier.clone(), log_lines).await?;
+        }
+
         table.add_row(vec![
             Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
             Cell::new(if is_running { RUNNING } else { NOT_RUNNING }),
