@@ -559,7 +559,51 @@ impl WorkspaceSnapshotGraph {
             })));
         }
 
-        // Set membership different between sides & only one side has entries the other does not: No child conflict
+        // Set membership different between sides & only one side has entries the other does not, there
+        // can still be a conflict if one side has also changed ordering (both sides will have written
+        // to the order for different reasons).
+        if !base_order
+            .vector_clock_write()
+            .is_newer_than(to_merge_order.vector_clock_write())
+            && !to_merge_order
+                .vector_clock_write()
+                .is_newer_than(base_order.vector_clock_write())
+        {
+            // By comparing the ordering using only the elements from the intersection of the two sets
+            // we can help narrow down whether the conflict is an ordering conflict, or a membership
+            // conflict. If the ordering of the intersection is the same between both, then it's a membership
+            // conflict.
+            let common_element_ids: HashSet<Ulid> = base_order_set
+                .intersection(&to_merge_order_set)
+                .copied()
+                .collect();
+            let mut base_common_order = base_order
+                .order()
+                .clone();
+            base_common_order
+                .retain(|id| common_element_ids.contains(id));
+            let mut to_merge_common_order = to_merge_order
+                .order()
+                .clone();
+            to_merge_common_order
+                .retain(|id| common_element_ids.contains(id));
+            if base_common_order == to_merge_common_order {
+                return Ok(Some(Conflict::ChildMembership(ConflictLocation {
+                    base: base_container_node_index,
+                    other: to_merge_container_node_index,
+                })));
+            }
+
+            // TODO: It's still possible that this is an ordering conflict, but we're not checking at that level of detail yet.
+            //
+            // We can probably tell whether it's a membership, or an ordering conflict by comparing the
+            // ordering using only the intersection of the two sets.
+            return Ok(Some(Conflict::ChildMembership(ConflictLocation {
+                base: base_container_node_index,
+                other: to_merge_container_node_index,
+            })));
+        }
+
         Ok(None)
     }
 }
