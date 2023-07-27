@@ -4,17 +4,29 @@ use docker_api::opts::{ContainerFilter, ContainerListOpts, ContainerStopOpts};
 use docker_api::Docker;
 use si_posthog::PosthogClient;
 
-pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(
+    posthog_client: &PosthogClient,
+    mode: String,
+    is_preview: bool,
+) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
         serde_json::json!({"name": "stop-system", "mode": mode}),
     );
 
-    check::invoke(posthog_client, mode.clone(), true).await?;
+    check::invoke(posthog_client, mode.clone(), true, is_preview).await?;
+
+    if is_preview {
+        println!("Stopped the following containers:");
+    }
 
     for container_name in CONTAINER_NAMES.iter() {
         let container_identifier = format!("dev-{0}-1", container_name);
+        if is_preview {
+            println!("{}", container_identifier.clone());
+            continue;
+        }
         let docker = Docker::unix("//var/run/docker.sock");
         let filter = ContainerFilter::Name(container_identifier.clone());
         let list_opts = ContainerListOpts::builder()
@@ -43,7 +55,9 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         }
     }
 
-    println!("All system components stopped...");
+    if !is_preview {
+        println!("All system components stopped...");
+    }
 
     Ok(())
 }

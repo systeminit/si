@@ -4,7 +4,12 @@ use comfy_table::*;
 use docker_api::Docker;
 use si_posthog::PosthogClient;
 
-pub async fn invoke(posthog_client: &PosthogClient, mode: String, silent: bool) -> CliResult<()> {
+pub async fn invoke(
+    posthog_client: &PosthogClient,
+    mode: String,
+    silent: bool,
+    is_preview: bool,
+) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
@@ -14,8 +19,12 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String, silent: bool) 
     if !silent {
         println!("Checking that the system is able to interact with the docker engine to control System Initiative...");
     }
-    let docker = Docker::unix("//var/run/docker.sock");
 
+    if is_preview {
+        return Ok(());
+    }
+
+    let docker = Docker::unix("//var/run/docker.sock");
     if let Err(_e) = docker.ping().await {
         return Err(SiCliError::DockerEngine);
     }

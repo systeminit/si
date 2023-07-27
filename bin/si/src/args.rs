@@ -61,6 +61,9 @@ pub(crate) struct Args {
     #[arg(value_parser = PossibleValuesParser::new(Mode::variants()))]
     #[arg(long, short, env = "SI_LAUNCHER_MODE", default_value = "local")]
     mode: String,
+    /// Show a preview of what the System Initiative Launcher will do
+    #[arg(long, short, default_value = "false")]
+    pub is_preview: bool,
     /// The engine in which to launch System Initiate Containers
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
     #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]

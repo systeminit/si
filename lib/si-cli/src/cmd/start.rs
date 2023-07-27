@@ -5,17 +5,25 @@ use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
 use docker_api::Docker;
 use si_posthog::PosthogClient;
 
-pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(
+    posthog_client: &PosthogClient,
+    mode: String,
+    is_preview: bool,
+) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
         "sally@systeminit.com",
         serde_json::json!({"name": "start-system", "mode": mode}),
     );
 
-    check::invoke(posthog_client, mode.clone(), false).await?;
-    install::invoke(posthog_client, mode.clone()).await?;
+    check::invoke(posthog_client, mode.clone(), false, is_preview).await?;
+    install::invoke(posthog_client, mode.clone(), is_preview).await?;
 
     let docker = Docker::unix("//var/run/docker.sock");
+
+    if is_preview {
+        println!("Started the following containers:");
+    }
 
     for name in CONTAINER_NAMES.iter() {
         let container = format!("systeminit/{0}", name);
@@ -25,6 +33,14 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
                 has_existing_container(&docker, container_name.clone(), true).await?;
 
             if !running_container {
+                if is_preview {
+                    println!(
+                        "{0}:stable as {1}",
+                        container.clone(),
+                        container_name.clone()
+                    );
+                    continue;
+                }
                 println!(
                     "Starting {0}:stable as {1}",
                     container.clone(),
@@ -46,6 +62,14 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
                 has_existing_container(&docker, "dev-jaeger-1".to_string(), true).await?;
 
             if !running_container {
+                if is_preview {
+                    println!(
+                        "{0}:stable as {1}",
+                        container.clone(),
+                        container_name.clone()
+                    );
+                    continue;
+                }
                 println!(
                     "Starting {0}:stable as {1}",
                     container.clone(),
@@ -67,6 +91,14 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
                 has_existing_container(&docker, "dev-nats-1".to_string(), true).await?;
 
             if !running_container {
+                if is_preview {
+                    println!(
+                        "{0}:stable as {1}",
+                        container.clone(),
+                        container_name.clone()
+                    );
+                    continue;
+                }
                 println!(
                     "Starting {0}:stable as {1}",
                     container.clone(),
@@ -88,6 +120,14 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
                 has_existing_container(&docker, "dev-postgres-1".to_string(), true).await?;
 
             if !running_container {
+                if is_preview {
+                    println!(
+                        "{0}:stable as {1}",
+                        container.clone(),
+                        container_name.clone()
+                    );
+                    continue;
+                }
                 println!(
                     "Starting {0}:stable as {1}",
                     container.clone(),
@@ -111,7 +151,9 @@ pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<(
         }
     }
 
-    println!("All system components running... System Initiative is alive!");
+    if !is_preview {
+        println!("All system components running... System Initiative is alive!");
+    }
 
     Ok(())
 }
