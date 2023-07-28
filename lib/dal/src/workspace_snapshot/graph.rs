@@ -320,7 +320,6 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         change_set: &ChangeSet,
         other: &WorkspaceSnapshotGraph,
-        other_change_set: &ChangeSet,
     ) -> WorkspaceSnapshotResult<()> {
         let local_root_write_vector_clock =
             self.get_node_weight(self.root_index)?.vector_clock_write();
@@ -358,10 +357,9 @@ impl WorkspaceSnapshotGraph {
 
             let new_root_node_index = self.add_node(new_root_node_weight)?;
             self.replace_references(change_set, self.root_index, new_root_node_index)?;
-        } else if !self
-            .find_conflicts(change_set, other, other_change_set)?
-            .is_empty()
-        {
+        } else if !self.find_conflicts(other)?.is_empty() {
+            // Neither `local`, nor `remote` are purely "newer" than the other (both have things the other does not),
+            // and there are conflicts. We cannot merge, and `remote` must be "rebased" to resolve the conflicts.
             return Err(WorkspaceSnapshotError::WorkspaceNeedsRebase);
         } else {
             // No conflicts; do the merge!
@@ -370,16 +368,13 @@ impl WorkspaceSnapshotGraph {
         }
 
         // `other` has newer/more entries than we have:
-        //   - If we also have newer/more entries than `other`, both sides have changed, and we need to see if there's a conflict.
 
         Ok(())
     }
 
     pub fn find_conflicts(
         &self,
-        change_set: &ChangeSet,
         other: &WorkspaceSnapshotGraph,
-        other_change_set: &ChangeSet,
     ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
         // `self`/`local` is the base change set. `other` is the change set to merge in.
         // Both `local` and `other` have (write) entries that the other does not. Figure out if the

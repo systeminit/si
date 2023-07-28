@@ -1,11 +1,12 @@
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::workspace_snapshot::{
-    change_set::ChangeSet, node_weight::NodeWeightResult, vector_clock::VectorClock,
+use crate::{
+    workspace_snapshot::{
+        change_set::ChangeSet, node_weight::NodeWeightResult, vector_clock::VectorClock,
+    },
+    ContentHash,
 };
-use crate::ContentHash;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
