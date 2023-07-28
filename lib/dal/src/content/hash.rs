@@ -4,6 +4,7 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Serialize,
 };
+use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -13,6 +14,11 @@ impl ContentHash {
     #[must_use]
     pub fn new(input: &[u8]) -> Self {
         Self(blake3::hash(input))
+    }
+
+    pub fn new_from_value(value: &Value) -> Self {
+        let input = value.to_string();
+        Self::new(input.as_bytes())
     }
 
     pub fn hasher() -> ContentHasher {

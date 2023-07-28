@@ -30,9 +30,13 @@ pub struct ContentPair {
 }
 
 impl ContentPair {
-    pub async fn new(ctx: &DalContext, key: ContentHash, value: Value) -> ContentPairResult<Self> {
-        let result: Self = match Self::find(ctx, &key).await? {
-            Some(found) => found,
+    pub async fn find_or_create(
+        ctx: &DalContext,
+        key: ContentHash,
+        value: Value,
+    ) -> ContentPairResult<(Self, bool)> {
+        let (pair, created): (Self, bool) = match Self::find(ctx, &key).await? {
+            Some(found) => (found, false),
             None => {
                 let row = ctx
                     .txns()
@@ -44,10 +48,10 @@ impl ContentPair {
                     )
                     .await?;
                 let json: Value = row.try_get("object")?;
-                serde_json::from_value(json)?
+                (serde_json::from_value(json)?, true)
             }
         };
-        Ok(result)
+        Ok((pair, created))
     }
 
     pub async fn find(ctx: &DalContext, key: &ContentHash) -> ContentPairResult<Option<Self>> {
