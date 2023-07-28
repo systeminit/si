@@ -75,6 +75,9 @@
       buck2Derivation = {
         pathPrefix,
         pkgName,
+        extraBuildInputs ? [],
+        extraBuildPhase ? "",
+        installPhase,
       }:
         pkgs.stdenv.mkDerivation rec {
           name = pkgName;
@@ -82,7 +85,7 @@
           __impure = true;
           src = ./.;
           nativeBuildInputs = buck2NativeBuildInputs;
-          buildInputs = buck2BuildInputs;
+          buildInputs = buck2BuildInputs ++ extraBuildInputs;
           runtimeDependencies = map pkgs.lib.getLib buck2BuildInputs;
           postPatch = with pkgs; ''
             rg -l '#!(/usr/bin/env|/bin/bash|/bin/sh)' prelude prelude-si \
@@ -97,21 +100,41 @@
                   --replace /bin/bash "${bash}/bin/bash"
               done
           '';
-          buildPhase = ''
-            export HOME="$(dirname $(pwd))/home"
-            buck2 build "$buck2_target" --verbose 3 --out "$name-$system"
-          '';
-          installPhase = ''
-            mkdir -p "$out/bin"
-            cp -p "$name-$system" "$out/bin/$name"
-          '';
+          buildPhase =
+            ''
+              export HOME="$(dirname $(pwd))/home"
+              mkdir -p build
+              buck2 build "$buck2_target" --verbose 3 --out "build/$name-$system"
+            ''
+            + extraBuildPhase;
+          inherit installPhase;
         };
+
+      appDerivation = {
+        pkgName,
+        extraBuildPhase ? "",
+        extraInstallPhase ? "",
+      }: (buck2Derivation {
+        pathPrefix = "app";
+        inherit pkgName;
+        inherit extraBuildPhase;
+        installPhase =
+          ''
+            mkdir -pv "$out"
+            cp -rpv "build/$name-$system" "$out/html"
+          ''
+          + extraInstallPhase;
+      });
 
       binDerivation = pkgName: (buck2Derivation {
         pathPrefix = "bin";
         inherit
           pkgName
           ;
+        installPhase = ''
+          mkdir -pv "$out/bin"
+          cp -pv "build/$name-$system" "$out/bin/$name"
+        '';
       });
     in
       with pkgs; rec {
@@ -124,6 +147,28 @@
           sdf = binDerivation "sdf";
           si = binDerivation "si";
           veritech = binDerivation "veritech";
+
+          web = appDerivation rec {
+            pkgName = "web";
+            extraBuildPhase = ''
+              buck2 build app/web:nginx_src --verbose 3 --out build/nginx
+              buck2 build app/web:docker-entrypoint.sh \
+                --verbose 3 --out build/docker-entrypoint.sh
+            '';
+            extraInstallPhase = ''
+              patchShebangs --host build/docker-entrypoint.sh
+              substituteInPlace build/docker-entrypoint.sh \
+                --replace @@nginx@@ "${nginx}/bin/nginx" \
+                --replace @@conf@@ "$out/conf/nginx.conf" \
+                --replace @@prefix@@ "$out"
+
+              mkdir -pv "$out/bin" "$out/conf/certs"
+              cp -pv build/nginx/nginx.conf "$out/conf/nginx.conf"
+              cp -pv "${nginx}/conf/mime.types" "$out/conf"/
+              cp -pv build/nginx/nginx/* "$out/conf/certs"/
+              cp -pv build/docker-entrypoint.sh "$out/bin/${pkgName}"
+            '';
+          };
         };
 
         devShells.default = mkShell {
