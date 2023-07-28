@@ -3,15 +3,11 @@ use thiserror::Error;
 
 pub mod cmd;
 mod containers;
+mod key_management;
 
 pub const CONTAINER_NAMES: &[&str] = &[
-    "jaeger", "otelcol", "postgres",
-    "nats",
-    // "sdf",
-    // "council",
-    // "veritech",
-    // "pinga",
-    // "web",
+    "jaeger", "postgres", "nats", "otelcol", "council", // "veritech",
+    "pinga", "sdf", "web",
 ];
 
 #[remain::sorted]
@@ -31,6 +27,8 @@ pub enum SiCliError {
     Installation,
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Unable to find local data dir. Expected format `$HOME/.local/share` or `$HOME/Library/Application Support`")]
+    MissingDataDir(),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("unable to download update, status = {0}")]

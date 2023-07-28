@@ -31,6 +31,7 @@ async fn async_main() -> Result<()> {
         .app_modules(vec!["pinga", "pinga_server"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
+
     let args = args::parse();
 
     run(args, telemetry).await
