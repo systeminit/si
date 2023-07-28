@@ -162,10 +162,9 @@
                 --replace @@conf@@ "$out/conf/nginx.conf" \
                 --replace @@prefix@@ "$out"
 
-              mkdir -pv "$out/bin" "$out/conf/certs"
+              mkdir -pv "$out/bin" "$out/conf"
               cp -pv build/nginx/nginx.conf "$out/conf/nginx.conf"
               cp -pv "${nginx}/conf/mime.types" "$out/conf"/
-              cp -pv build/nginx/nginx/* "$out/conf/certs"/
               cp -pv build/docker-entrypoint.sh "$out/bin/${pkgName}"
             '';
           };
@@ -187,7 +186,7 @@
               kubeval
               skopeo
             ]
-            # Directly add the build depndencies for the packages rather than
+            # Directly add the build dependencies for the packages rather than
             # use: `inputsFrom = lib.attrValues packages;`.
             #
             # This tweak means our flake doesn't require `impure-derivations`
