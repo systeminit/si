@@ -16,7 +16,7 @@ pub enum EdgeWeightError {
 
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum EdgeWeightKind {
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,

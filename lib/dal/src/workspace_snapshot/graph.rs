@@ -9,7 +9,7 @@ use ulid::Ulid;
 use crate::workspace_snapshot::{
     change_set::ChangeSet,
     conflict::{Conflict, ConflictLocation},
-    edge_weight::EdgeWeight,
+    edge_weight::{EdgeWeight, EdgeWeightKind},
     node_weight::{ContentAddress, NodeWeight, NodeWeightError, OrderingNodeWeight},
     WorkspaceSnapshotError, WorkspaceSnapshotResult,
 };
@@ -640,14 +640,16 @@ fn ordering_node_indexes_for_node_index(
         .graph
         .edges_directed(node_index, Outgoing)
         .filter_map(|edge_reference| {
-            if let Some((_, destination_node_index)) =
-                snapshot.graph.edge_endpoints(edge_reference.id())
-            {
-                if matches!(
-                    snapshot.get_node_weight(destination_node_index),
-                    Ok(NodeWeight::Ordering(_))
-                ) {
-                    return Some(destination_node_index);
+            if edge_reference.weight().kind == EdgeWeightKind::Ordering {
+                if let Some((_, destination_node_index)) =
+                    snapshot.graph.edge_endpoints(edge_reference.id())
+                {
+                    if matches!(
+                        snapshot.get_node_weight(destination_node_index),
+                        Ok(NodeWeight::Ordering(_))
+                    ) {
+                        return Some(destination_node_index);
+                    }
                 }
             }
 
