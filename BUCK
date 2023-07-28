@@ -2,7 +2,9 @@ load(
     "@prelude-si//:macros.bzl",
     "alias",
     "export_file",
+    "nix_flake_lock",
     "pnpm_lock",
+    "pnpm_workspace",
     "workspace_node_modules",
 )
 
@@ -54,7 +56,7 @@ export_file(
     name = "flake.nix",
 )
 
-export_file(
+nix_flake_lock(
     name = "flake.lock",
 )
 
@@ -62,12 +64,8 @@ export_file(
     name = "package.json",
 )
 
-export_file(
+pnpm_workspace(
     name = "pnpm-workspace.yaml",
-)
-
-pnpm_lock(
-    name = "pnpm-lock.yaml",
     packages = [
         "//app/auth-portal:package.json",
         "//app/web:package.json",
@@ -78,6 +76,10 @@ pnpm_lock(
         "//lib/tsconfig:package.json",
         "//lib/vue-lib:package.json",
     ],
+)
+
+pnpm_lock(
+    name = "pnpm-lock.yaml",
 )
 
 export_file(

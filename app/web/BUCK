@@ -1,5 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
+    "docker_image",
     "eslint",
     "export_file",
     "package_node_modules",
@@ -36,6 +37,18 @@ filegroup(
     ]),
 )
 
+export_file(
+    name = "docker-entrypoint.sh",
+)
+
+filegroup(
+    name = "nginx_src",
+    srcs = glob([
+        "nginx.conf",
+        "nginx/*",
+    ])
+)
+
 prod_deps_srcs = {
     "lib/ts-lib": "//lib/ts-lib:src",
     "lib/vue-lib": "//lib/vue-lib:src",
@@ -66,6 +79,17 @@ typescript_check(
     tsc_bin = "vue-tsc",
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
+)
+
+docker_image(
+    name = "image",
+    image_name = "web",
+    flake_lock = "//:flake.lock",
+    build_deps = [
+        "//app/web:web",
+        "//app/web:nginx_src",
+        "//app/web:docker-entrypoint.sh",
+    ]
 )
 
 #

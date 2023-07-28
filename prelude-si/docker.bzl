@@ -54,6 +54,11 @@ docker_image = rule(
             default = [],
             doc = """Buck2 targets that could be built in an image.""",
         ),
+        "flake_lock": attrs.option(
+            attrs.dep(),
+            default = None,
+            doc = """flake.lock dependency if Docker image uses Nix flake internally.""",
+        ),
         "build_args": attrs.dict(
             attrs.string(),
             attrs.string(),

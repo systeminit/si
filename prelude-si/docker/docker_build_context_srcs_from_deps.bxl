@@ -43,7 +43,6 @@ def _docker_build_context_srcs_from_deps_impl(ctx):
     for path in all_paths:
         unique_paths.update({path: True})
     paths = sorted(unique_paths.keys())
-    pprint(paths)
 
     # Print all path entries
     for path in paths:

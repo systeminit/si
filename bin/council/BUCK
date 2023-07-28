@@ -19,5 +19,6 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "council",
+    flake_lock = "//:flake.lock",
     build_deps = ["//bin/council:council"]
 )

@@ -5,6 +5,7 @@ load(
     _npm_bin = "npm_bin",
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
+    _pnpm_workspace = "pnpm_workspace",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _vite_app = "vite_app",
@@ -69,9 +70,30 @@ def package_node_modules(
     _package_node_modules(visibility = visibility, **kwargs)
 
 def pnpm_lock(
+        name,
+        src = None,
         visibility = ["PUBLIC"],
         **kwargs):
-    _pnpm_lock(visibility = visibility, **kwargs)
+    _pnpm_lock(
+        name = name,
+        src = src or name,
+        visibility = visibility,
+        **kwargs,
+    )
+
+def pnpm_workspace(
+        name,
+        src = None,
+        workspace_package = ":package.json",
+        visibility = ["PUBLIC"],
+        **kwargs):
+    _pnpm_workspace(
+        name = name,
+        src = src or name,
+        workspace_package = workspace_package,
+        visibility = visibility,
+        **kwargs,
+    )
 
 def typescript_check(
         tsc_bin = "tsc",

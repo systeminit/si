@@ -3,10 +3,15 @@ load(
     "export_file",
     "npm_bin",
     "pnpm_lock",
+    "pnpm_workspace",
     "workspace_node_modules",
 )
 
 export_file(
+    name = "package.json",
+)
+
+pnpm_workspace(
     name = "pnpm-workspace.yaml",
 )
 
