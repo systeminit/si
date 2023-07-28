@@ -25,6 +25,7 @@ package_node_modules(
 filegroup(
     name = "src",
     srcs = glob([
+        ".env",
         "build-src/**/*",
         "index.html",
         "postcss.config.js",
@@ -45,7 +46,6 @@ filegroup(
     name = "nginx_src",
     srcs = glob([
         "nginx.conf",
-        "nginx/*",
     ])
 )
 
@@ -87,7 +87,6 @@ docker_image(
     flake_lock = "//:flake.lock",
     build_deps = [
         "//app/web:web",
-        "//app/web:nginx_src",
         "//app/web:docker-entrypoint.sh",
     ]
 )
