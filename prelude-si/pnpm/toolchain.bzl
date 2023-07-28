@@ -5,6 +5,7 @@ PnpmToolchainInfo = provider(fields = [
     "build_workspace_node_modules",
     "exec_cmd",
     "package_build_context",
+    "package_dist_context",
     "run_pnpm_script",
 ])
 
@@ -21,6 +22,7 @@ def pnpm_toolchain_impl(ctx) -> [[DefaultInfo.type, PnpmToolchainInfo.type]]:
             build_workspace_node_modules = ctx.attrs._build_workspace_node_modules,
             exec_cmd = ctx.attrs._exec_cmd,
             package_build_context = ctx.attrs._package_build_context,
+            package_dist_context = ctx.attrs._package_dist_context,
             run_pnpm_script = ctx.attrs._run_pnpm_script,
         )
     ]
@@ -45,6 +47,9 @@ pnpm_toolchain = rule(
         ),
         "_package_build_context": attrs.dep(
             default = "prelude-si//pnpm:package_build_context.py",
+        ),
+        "_package_dist_context": attrs.dep(
+            default = "prelude-si//pnpm:package_dist_context.py",
         ),
         "_run_pnpm_script": attrs.dep(
             default = "prelude-si//pnpm:run_pnpm_script.py",

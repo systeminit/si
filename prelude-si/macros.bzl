@@ -32,6 +32,8 @@ load(
     _pnpm_workspace = "pnpm_workspace",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
+    _typescript_runnable_dist = "typescript_runnable_dist",
+    _typescript_runnable_dist_bin = "typescript_runnable_dist_bin",
     _vite_app = "vite_app",
     _workspace_node_modules = "workspace_node_modules",
 )
@@ -43,6 +45,8 @@ pnpm_lock = _pnpm_lock
 pnpm_workspace = _pnpm_workspace
 typescript_check = _typescript_check
 typescript_dist = _typescript_dist
+typescript_runnable_dist = _typescript_runnable_dist
+typescript_runnable_dist_bin = _typescript_runnable_dist_bin
 vite_app = _vite_app
 workspace_node_modules = _workspace_node_modules
 

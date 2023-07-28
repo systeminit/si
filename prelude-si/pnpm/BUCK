@@ -28,5 +28,9 @@ export_file(
 )
 
 export_file(
+    name = "package_dist_context.py",
+)
+
+export_file(
     name = "run_pnpm_script.py",
 )

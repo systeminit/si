@@ -5,7 +5,7 @@
   "description": "Inference for Entities",
   "main": "dist/index.js",
   "bin": {
-    "lang-js": "./bin-placeholder.js"
+    "lang-js": "./dist/index.js"
   },
   "pkg": {
     "scripts": "dist/**/*.js",

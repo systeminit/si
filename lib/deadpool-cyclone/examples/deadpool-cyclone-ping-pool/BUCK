@@ -18,6 +18,6 @@ rust_binary(
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
-        "lang-js": "//bin/lang-js:lang-js",
+        "lang-js": "//bin/lang-js:bin",
     },
 )

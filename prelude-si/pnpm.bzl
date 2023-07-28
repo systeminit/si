@@ -11,6 +11,10 @@ load(
     "inject_test_run_info",
 )
 load(
+    "@prelude//:paths.bzl",
+    "paths",
+)
+load(
     "@prelude//python:toolchain.bzl",
     "PythonToolchainInfo",
 )
@@ -22,6 +26,11 @@ load(
     "//pnpm:toolchain.bzl",
     "PnpmToolchainInfo",
 )
+
+TypescriptRunnableDistInfo = provider(fields = {
+    "runnable_dist": "artifact",
+    "bin": str.type,
+})
 
 def _npm_test_impl(
     ctx: "context",
@@ -388,32 +397,8 @@ npm_bin = rule(
 )
 
 def package_node_modules_impl(ctx: "context") -> ["provider"]:
-    out = ctx.actions.declare_output("root", dir = True)
-
-    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
-    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
-
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        pnpm_toolchain.build_package_node_modules[DefaultInfo].default_outputs,
-        "--turbo-bin",
-        ctx.attrs.turbo[RunInfo],
-    )
-    if ctx.attrs.package_name:
-        cmd.add("--package-name")
-        cmd.add(ctx.attrs.package_name)
-    if ctx.attrs.root_workspace:
-        cmd.add("--package-dir")
-        cmd.add(package_dir)
-    else:
-        cmd.add("--root-dir")
-        cmd.add(package_dir)
-    cmd.add(out.as_output())
-    cmd.hidden([ctx.attrs.pnpm_lock])
-
-    ctx.actions.run(cmd, category = "pnpm", identifier = "install " + ctx.label.package)
-
-    return [DefaultInfo(default_output = out)]
+    node_modules_ctx = node_modules_context(ctx, ctx.attrs.prod_only)
+    return [DefaultInfo(default_output = node_modules_ctx.root)]
 
 package_node_modules = rule(
     impl = package_node_modules_impl,
@@ -434,6 +419,10 @@ package_node_modules = rule(
         ),
         "root_workspace": attrs.bool(
             default = True,
+        ),
+        "prod_only": attrs.bool(
+            default = False,
+            doc = "Only install production dependencies"
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -515,7 +504,9 @@ def typescript_dist_impl(ctx: "context") -> [DefaultInfo.type]:
 
     ctx.actions.run(cmd, category = "tsc")
 
-    return [DefaultInfo(default_outputs = [out])]
+    return [
+        DefaultInfo(default_output = out),
+    ]
 
 typescript_dist = rule(
     impl = typescript_dist_impl,
@@ -560,6 +551,87 @@ typescript_dist = rule(
         "_pnpm_toolchain": attrs.toolchain_dep(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
+        ),
+    }
+)
+
+def typescript_runnable_dist_impl(ctx: "context") -> [[
+    DefaultInfo.type,
+    RunInfo.type,
+    TypescriptRunnableDistInfo.type,
+]]:
+    runnable_dist_ctx = package_runnable_dist_context(ctx)
+    out = runnable_dist_ctx.tree
+
+    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
+    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
+
+    bin = paths.join("bin", paths.basename(ctx.label.package))
+    run_cmd = cmd_args(
+        cmd_args([out, bin], delimiter = "/"),
+    )
+
+    return [
+        DefaultInfo(default_output = out),
+        RunInfo(run_cmd),
+        TypescriptRunnableDistInfo(
+            runnable_dist = out,
+            bin = bin,
+        )
+    ]
+
+typescript_runnable_dist = rule(
+    impl = typescript_runnable_dist_impl,
+    attrs = {
+        "typescript_dist": attrs.dep(
+            doc = """Target which builds the Typescript dist artifact.""",
+        ),
+        "package_node_modules_prod": attrs.dep(
+            doc = """Target which builds package `node_modules` with prod-only modules.""",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    }
+)
+
+def typescript_runnable_dist_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+    base_path = ctx.attrs.typescript_runnable_dist[DefaultInfo].default_outputs[0]
+    bin = ctx.attrs.typescript_runnable_dist[TypescriptRunnableDistInfo].bin
+    cd_path = cmd_args([base_path, paths.dirname(bin)], delimiter = "/")
+
+    out = ctx.actions.write(
+        paths.basename(bin),
+        cmd_args(
+            [
+                "#!/usr/bin/env sh",
+                "set -eu",
+                cmd_args(cd_path, format = "cd {}"),
+                "exec ./{} \"$@\"".format(paths.basename(bin)),
+            ],
+            delimiter = "\n",
+        ),
+        is_executable = True,
+    )
+
+    return [
+        DefaultInfo(
+            default_output = out,
+            other_outputs = [base_path],
+        ),
+        RunInfo(out),
+    ]
+
+typescript_runnable_dist_bin = rule(
+    impl = typescript_runnable_dist_bin_impl,
+    attrs = {
+        "typescript_runnable_dist": attrs.dep(
+            doc = """Target which builds the runnable Typescript dist artifact.""",
         ),
     }
 )
@@ -695,6 +767,44 @@ workspace_node_modules = rule(
     },
 )
 
+NodeModulesContext = record(
+    root = field("artifact"),
+)
+
+def node_modules_context(
+    ctx: "context",
+    prod_only: bool.type = False,
+    out_dir: str.type = "root",
+) -> NodeModulesContext.type:
+    out = ctx.actions.declare_output(out_dir, dir = True)
+
+    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
+    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        pnpm_toolchain.build_package_node_modules[DefaultInfo].default_outputs,
+        "--turbo-bin",
+        ctx.attrs.turbo[RunInfo],
+    )
+    if ctx.attrs.package_name:
+        cmd.add("--package-name")
+        cmd.add(ctx.attrs.package_name)
+    if ctx.attrs.root_workspace:
+        cmd.add("--package-dir")
+        cmd.add(package_dir)
+    else:
+        cmd.add("--root-dir")
+        cmd.add(package_dir)
+    if prod_only:
+        cmd.add("--prod-only")
+    cmd.add(out.as_output())
+    cmd.hidden([ctx.attrs.pnpm_lock])
+
+    ctx.actions.run(cmd, category = "pnpm", identifier = "install " + ctx.label.package)
+
+    return NodeModulesContext(root = out)
+
 PackageBuildContext = record(
     # Root of a workspace source tree containing a pruned sub-package and all node_modules
     srcs_tree = field("artifact"),
@@ -729,6 +839,40 @@ def package_build_context(ctx: "context") -> PackageBuildContext.type:
 
     return PackageBuildContext(
         srcs_tree = srcs_tree,
+    )
+
+PackageDistContext = record(
+    tree = field("artifact"),
+)
+
+def package_runnable_dist_context(
+    ctx: "context",
+    dist_path: ["artifact", None] = None,
+) -> PackageDistContext.type:
+    out = ctx.actions.declare_output("runnable_dist", dir = True)
+
+    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
+    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
+
+    if not dist_path:
+        dist_path = ctx.attrs.typescript_dist[DefaultInfo].default_outputs[0]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        pnpm_toolchain.package_dist_context[DefaultInfo].default_outputs,
+        "--package-dir",
+        package_dir,
+        "--package-node-modules-path",
+        ctx.attrs.package_node_modules_prod[DefaultInfo].default_outputs[0],
+        "--dist-path",
+        dist_path,
+    )
+    cmd.add(out.as_output())
+
+    ctx.actions.run(cmd, category = "package_runnable_dist_context")
+
+    return PackageDistContext(
+        tree = out,
     )
 
 def pnpm_task_library_impl(ctx: "context") -> ["provider"]:

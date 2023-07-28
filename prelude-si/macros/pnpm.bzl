@@ -8,6 +8,8 @@ load(
     _pnpm_workspace = "pnpm_workspace",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
+    _typescript_runnable_dist = "typescript_runnable_dist",
+    _typescript_runnable_dist_bin = "typescript_runnable_dist_bin",
     _vite_app = "vite_app",
     _workspace_node_modules = "workspace_node_modules",
 )
@@ -123,6 +125,33 @@ def typescript_dist(
     _typescript_dist(
         tsc = tsc,
         package_node_modules = package_node_modules,
+        visibility = visibility,
+        **kwargs,
+    )
+
+def typescript_runnable_dist(
+        typescript_dist = ":dist",
+        package_node_modules_prod = ":node_modules_prod",
+        visibility = ["PUBLIC"],
+        **kwargs):
+    if not rule_exists(package_node_modules_prod.replace(":", "")):
+        _package_node_modules(
+            name = package_node_modules_prod.replace(":", ""),
+            prod_only = True,
+            visibility = visibility,
+        )
+
+    _typescript_runnable_dist(
+        typescript_dist = typescript_dist,
+        package_node_modules_prod = package_node_modules_prod,
+        visibility = visibility,
+        **kwargs,
+    )
+
+def typescript_runnable_dist_bin(
+        visibility = ["PUBLIC"],
+        **kwargs):
+    _typescript_runnable_dist_bin(
         visibility = visibility,
         **kwargs,
     )

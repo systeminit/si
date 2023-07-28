@@ -1,4 +1,8 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
 
 rust_binary(
     name = "veritech",
@@ -14,7 +18,18 @@ rust_binary(
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
-        "lang-js": "//bin/lang-js:lang-js",
+        "lang-js": "//bin/lang-js:bin",
     },
     visibility = ["PUBLIC"],
+)
+
+docker_image(
+    name = "image",
+    image_name = "veritech",
+    flake_lock = "//:flake.lock",
+    build_deps = [
+        "//bin/veritech:veritech",
+        "//bin/cyclone:cyclone",
+        "//bin/lang-js:bin",
+    ]
 )
