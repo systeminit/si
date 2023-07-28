@@ -59,7 +59,7 @@ impl Store {
         T: Serialize + ToOwned,
     {
         let value = serde_json::to_value(value)?;
-        let hash = ContentHash::new_from_value(&value);
+        let hash = ContentHash::from(&value);
         let already_in_store = self.0.contains_key(&hash);
         if !already_in_store {
             // NOTE(nick): we DO NOT check that it is in the database because it does not matter.

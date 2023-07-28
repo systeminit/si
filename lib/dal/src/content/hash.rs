@@ -16,13 +16,15 @@ impl ContentHash {
         Self(blake3::hash(input))
     }
 
-    pub fn new_from_value(value: &Value) -> Self {
-        let input = value.to_string();
-        Self::new(input.as_bytes())
-    }
-
     pub fn hasher() -> ContentHasher {
         ContentHasher::new()
+    }
+}
+
+impl From<&Value> for ContentHash {
+    fn from(value: &Value) -> Self {
+        let input = value.to_string();
+        Self::new(input.as_bytes())
     }
 }
 
