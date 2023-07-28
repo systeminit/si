@@ -88,6 +88,7 @@ docker_image(
     build_deps = [
         "//app/web:web",
         "//app/web:docker-entrypoint.sh",
+        "//app/web:nginx_src",
     ]
 )
 
