@@ -5,7 +5,7 @@ import _ from 'lodash';
 import { request } from './helpers/supertest-agents';
 import { testSuiteAfter, testSuiteBefore } from './helpers/test-suite-hooks';
 import { mockAuth0TokenExchange } from './helpers/auth0-mocks';
-import { decodeAuthToken } from '../src/services/auth.service';
+import { decodeAuthToken, createSdfAuthToken } from '../src/services/auth.service';
 
 t.before(testSuiteBefore);
 t.teardown(testSuiteAfter);
@@ -81,6 +81,20 @@ t.test('Auth routes', async () => {
         .expectError('Unauthorized');
     });
 
+    t.test('verify sdf auth token succeeds for whoami', async () => {
+      const authData = await decodeAuthToken(validToken);
+      const sdfToken = createSdfAuthToken(authData.userId, 'foo');
+      await request.get('/whoami')
+        .set('cookie', `si-auth=${sdfToken}`)
+        .expectOk()
+        .expectBody({
+          user: {
+            email: testEmail,
+          },
+        });
+
+    });
+
     t.test(`fails if state is reused`, async () => {
       await request.get('/auth/login-callback')
         .query({
@@ -142,7 +156,7 @@ t.test('Auth routes', async () => {
       };
     }
 
-    const AUTH0_ID = 'google-oauth|12345';
+    const AUTH0_ID = 'google-oauth|123456';
     const EMAIL_1 = 'new-user@systeminit.dev';
     const EMAIL_2 = 'updated@systeminit.dev';
 

@@ -29,7 +29,16 @@ export function createAuthToken(userId: string) {
 }
 
 export async function decodeAuthToken(token: string) {
-  return verifyJWT(token) as AuthTokenData & JwtPayload;
+  const verified = verifyJWT(token);
+  if (typeof verified !== "string" && "user_pk" in verified) {
+    return {
+      userId: verified.user_pk,
+      ...verified,
+      user_pk: undefined,
+    } as AuthTokenData & JwtPayload;
+  } else {
+    return verified as AuthTokenData & JwtPayload;
+  }
 }
 
 // Auth tokens used for communication between the user's browser and SDF
