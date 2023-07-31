@@ -11,6 +11,7 @@ pub(crate) fn parse() -> Args {
 
 /// The System Initiative Launcher.
 #[derive(Debug, Parser)]
+#[command(version = include_str!("version.txt"))]
 #[command(
 name = NAME,
 about = "The System Initiative Launcher

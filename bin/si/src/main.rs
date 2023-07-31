@@ -6,9 +6,7 @@ use tokio::sync::oneshot::Sender;
 
 mod args;
 
-// TODO Note: buck2 does not set CARGO_PKG_VERSION at compile time like cargo does
-// static VERSION: &str = env!("CARGO_PKG_VERSION");
-static VERSION: &str = "0.1";
+static VERSION: &str = include_str!("version.txt");
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<()> {

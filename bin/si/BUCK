@@ -16,5 +16,5 @@ rust_binary(
         "//lib/si-posthog-rs:si-posthog",
         "//lib/telemetry-application-rs:telemetry-application",
     ],
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(["src/**/*.rs", "src/version.txt"]),
 )
