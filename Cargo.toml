@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "bin/council",
     "bin/cyclone",
+    "bin/gobbler",
     "bin/module-index",
     "bin/pinga",
     "bin/sdf",
@@ -21,6 +22,7 @@ members = [
     "lib/dal",
     "lib/dal-test",
     "lib/deadpool-cyclone",
+    "lib/gobbler-server",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-subscriber",
@@ -52,7 +54,7 @@ chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 colored = "2.0.4"
-comfy-table = {version ="7.0.1", features = ["crossterm", "tty", "custom_styling"] }
+comfy-table = { version = "7.0.1", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
@@ -103,7 +105,7 @@ regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
+sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }

@@ -1973,6 +1973,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "gobbler"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "gobbler-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "gobbler-server"
+version = "0.1.0"
+dependencies = [
+ "buck2-resources",
+ "dal",
+ "derive_builder",
+ "futures",
+ "nats-subscriber",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-settings",
+ "stream-cancel",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "ulid",
+ "veritech-client",
+]
+
+[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
