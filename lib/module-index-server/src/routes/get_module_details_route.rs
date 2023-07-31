@@ -47,7 +47,7 @@ pub struct GetModuleDetailsRequest {
 
 pub async fn get_module_details_route(
     Path(module_id): Path<ModuleId>,
-    Authorization(_claim): Authorization,
+    Authorization { .. }: Authorization,
     DbConnection(txn): DbConnection,
     Query(_request): Query<GetModuleDetailsRequest>,
 ) -> Result<Json<Value>, GetModuleDetailsError> {

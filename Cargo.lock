@@ -272,6 +272,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "auth-api-client"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "remain",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "ulid",
+ "url",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2690,6 +2706,7 @@ dependencies = [
 name = "module-index-server"
 version = "0.1.0"
 dependencies = [
+ "auth-api-client",
  "axum",
  "base64 0.21.2",
  "buck2-resources",
@@ -2718,6 +2735,7 @@ dependencies = [
  "tower",
  "tower-http",
  "ulid",
+ "url",
 ]
 
 [[package]]

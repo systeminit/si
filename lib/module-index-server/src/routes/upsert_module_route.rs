@@ -57,7 +57,7 @@ impl IntoResponse for UpsertModuleError {
 
 // #[debug_handler]
 pub async fn upsert_module_route(
-    Authorization(_claim): Authorization,
+    Authorization { .. }: Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,

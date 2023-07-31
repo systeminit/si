@@ -42,7 +42,7 @@ impl IntoResponse for DownloadModuleError {
 
 pub async fn download_module_route(
     Path(module_id): Path<ModuleId>,
-    Authorization(_claim): Authorization,
+    Authorization { .. }: Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
 ) -> Result<Redirect, DownloadModuleError> {

@@ -100,6 +100,7 @@ impl Server<(), ()> {
             posthog_client,
             aws_creds,
             config.s3().clone(),
+            config.restrict_listing(),
         )?;
 
         info!(
@@ -214,6 +215,7 @@ pub fn build_service(
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
     s3_config: S3Config,
+    restrict_listing: bool,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -224,6 +226,7 @@ pub fn build_service(
         posthog_client,
         aws_creds,
         s3_config,
+        restrict_listing,
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
     );

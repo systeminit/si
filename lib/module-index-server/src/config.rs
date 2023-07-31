@@ -55,6 +55,9 @@ pub struct Config {
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
 
+    #[builder(default = "false")]
+    restrict_listing: bool,
+
     s3: S3Config,
 }
 
@@ -95,6 +98,11 @@ impl Config {
     #[must_use]
     pub fn s3(&self) -> &S3Config {
         &self.s3
+    }
+
+    /// Whether to restrict module listing to SystemInit accounts
+    pub fn restrict_listing(&self) -> bool {
+        self.restrict_listing
     }
 }
 

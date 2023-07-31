@@ -80,6 +80,9 @@ pub(crate) struct Args {
     /// Disable OpenTelemetry on startup
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
+
+    #[arg(long, env)]
+    pub(crate) restrict_listing: bool,
 }
 
 impl TryFrom<Args> for Config {

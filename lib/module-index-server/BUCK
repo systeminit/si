@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "module-index-server",
     deps = [
+        "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",
         "//lib/module-index-client:module-index-client",
         "//lib/si-data-pg:si-data-pg",
@@ -31,6 +32,7 @@ rust_library(
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
         "//third-party/rust:ulid",
+        "//third-party/rust:url",
     ],
     srcs = glob([
         "src/**/*.rs",

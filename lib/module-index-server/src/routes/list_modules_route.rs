@@ -1,17 +1,18 @@
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     response::{IntoResponse, Response},
     Json,
 };
 use hyper::StatusCode;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use thiserror::Error;
 
 use crate::{
+    app_state::AppState,
     extract::{Authorization, DbConnection},
     models::si_module,
+    whoami::{is_systeminit_auth_token, WhoamiError},
 };
 
 #[remain::sorted]
@@ -19,6 +20,8 @@ use crate::{
 pub enum ListModulesError {
     #[error("db error: {0}")]
     DbErr(#[from] DbErr),
+    #[error("whoami error: {0}")]
+    Whoami(#[from] WhoamiError),
 }
 
 // TODO: figure out how to not keep this serialization logic here
@@ -40,12 +43,28 @@ pub struct ListModulesRequest {
     pub name: Option<String>,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListModulesResponse {
+    modules: Vec<si_module::Model>,
+}
+
 pub async fn list_module_route(
-    Authorization(_claim): Authorization,
+    Authorization {
+        user_claim: _user_claim,
+        auth_token,
+    }: Authorization,
     DbConnection(txn): DbConnection,
     Query(request): Query<ListModulesRequest>,
-) -> Result<Json<Value>, ListModulesError> {
+    State(state): State<AppState>,
+) -> Result<Json<ListModulesResponse>, ListModulesError> {
     let query = si_module::Entity::find();
+
+    if state.restrict_listing()
+        && !is_systeminit_auth_token(&auth_token, state.token_emails()).await?
+    {
+        return Ok(Json(ListModulesResponse { modules: vec![] }));
+    }
 
     // filters
     let query = if let Some(name_filter) = request.name {
@@ -59,5 +78,5 @@ pub async fn list_module_route(
 
     let modules: Vec<si_module::Model> = query.all(&txn).await?;
 
-    Ok(Json(json!({ "modules": modules })))
+    Ok(Json(ListModulesResponse { modules }))
 }
