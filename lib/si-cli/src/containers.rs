@@ -1,7 +1,9 @@
 use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::ImageSummary;
-use docker_api::opts::{ContainerFilter, ContainerListOpts, ImageListOpts, LogsOpts, PullOpts};
+use docker_api::opts::{
+    ContainerFilter, ContainerListOpts, ImageListOpts, LogsOpts, PullOpts, RegistryAuth,
+};
 use docker_api::Docker;
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -99,9 +101,14 @@ pub(crate) async fn download_missing_containers(missing_containers: Vec<String>)
             let docker = Docker::unix("//var/run/docker.sock");
             let mut downloaded = 0;
 
+            let auth = RegistryAuth::builder()
+                .username("stack72")
+                .password("dckr_pat_dHhJ3jhygqHx2gCCZqchywQEvDQ")
+                .build();
             let pull_opts = PullOpts::builder()
                 .image(missing_container)
                 .tag("stable")
+                .auth(auth)
                 .build();
             let images = docker.images();
             let mut stream = images.pull(&pull_opts);

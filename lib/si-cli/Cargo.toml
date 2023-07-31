@@ -9,6 +9,7 @@ publish = false
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 console = { workspace = true }
+directories = { workspace = true }
 docker-api = { workspace = true }
 futures = { workspace = true }
 indicatif = { workspace = true }
@@ -21,6 +22,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
+sodiumoxide = { workspace = true }
 reqwest = { workspace = true }
 tempfile = { workspace = true }
 colored = { workspace = true }
