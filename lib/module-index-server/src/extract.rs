@@ -122,7 +122,10 @@ impl UserClaim {
     }
 }
 
-pub struct Authorization(pub UserClaim);
+pub struct Authorization {
+    pub user_claim: UserClaim,
+    pub auth_token: String,
+}
 
 #[async_trait]
 impl FromRequestParts<AppState> for Authorization {
@@ -138,14 +141,17 @@ impl FromRequestParts<AppState> for Authorization {
         let authorization_header_value = headers
             .get("Authorization")
             .ok_or_else(unauthorized_error)?;
-        let authorization = authorization_header_value
+        let auth_token = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
+        let user_claim = UserClaim::from_bearer_token(jwt_public_signing_key, auth_token)
             .await
             .map_err(|_| unauthorized_error())?;
 
-        Ok(Self(claim))
+        Ok(Self {
+            user_claim,
+            auth_token: auth_token.into(),
+        })
     }
 }
 

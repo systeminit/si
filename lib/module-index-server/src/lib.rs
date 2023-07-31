@@ -6,6 +6,7 @@ mod models;
 mod routes;
 mod s3;
 pub mod server;
+mod whoami;
 
 pub use crate::{
     config::{

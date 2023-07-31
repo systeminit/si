@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 axum = { workspace = true }
+auth-api-client = { path = "../../lib/auth-api-client" }
 base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
@@ -34,3 +35,4 @@ tokio-stream = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 ulid = { workspace = true }
+url = { workspace = true }

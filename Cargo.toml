@@ -11,6 +11,7 @@ members = [
     "bin/sdf",
     "bin/si",
     "bin/veritech",
+    "lib/auth-api-client",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",

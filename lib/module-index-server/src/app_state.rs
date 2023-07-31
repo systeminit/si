@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::extract::FromRef;
@@ -5,7 +6,7 @@ use s3::creds::Credentials as AwsCredentials;
 use sea_orm::DatabaseConnection;
 pub use si_posthog::PosthogClient;
 
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{broadcast, mpsc, Mutex};
 
 use crate::{jwt_key::JwtPublicSigningKey, s3::S3Config};
 
@@ -24,6 +25,8 @@ pub struct AppState {
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
     s3_config: S3Config,
+    restrict_listing: bool,
+    token_emails: Arc<Mutex<HashMap<String, String>>>,
 
     shutdown_broadcast: ShutdownBroadcast,
 
@@ -34,12 +37,14 @@ pub struct AppState {
 
 impl AppState {
     /// Constructs a new instance of a `AppState`.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_pool: DatabaseConnection,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
         aws_creds: AwsCredentials,
         s3_config: S3Config,
+        restrict_listing: bool,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
@@ -49,7 +54,9 @@ impl AppState {
             posthog_client,
             aws_creds,
             s3_config,
+            restrict_listing,
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
+            token_emails: Arc::new(Mutex::new(HashMap::new())),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }
     }
@@ -59,6 +66,7 @@ impl AppState {
         &self.pg_pool
     }
 
+    /// Gets a reference to the public key used to sign the JWT
     pub fn jwt_public_signing_key(&self) -> &JwtPublicSigningKey {
         &self.jwt_public_signing_key
     }
@@ -75,5 +83,14 @@ impl AppState {
     /// Gets a reference to the s3 config (bucket, region, etc)
     pub fn s3_config(&self) -> &S3Config {
         &self.s3_config
+    }
+
+    /// Clones the ArcMutex that holds a hashmap between auth tokens and emails
+    pub fn token_emails(&self) -> Arc<Mutex<HashMap<String, String>>> {
+        self.token_emails.clone()
+    }
+
+    pub fn restrict_listing(&self) -> bool {
+        self.restrict_listing
     }
 }
