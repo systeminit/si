@@ -127,6 +127,8 @@ const codeMirrorTheme = computed(() =>
 
 const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
+  const tooltipBackground = appTheme.value === "dark" ? "#000000" : "#ffffff";
+  const tooltipBorder = appTheme.value === "dark" ? "#737373" : "#A3A3A3";
   return EditorView.theme({
     "&": { height: "100%" },
     ".cm-scroller": { overflow: "auto" },
@@ -138,6 +140,16 @@ const styleExtension = computed(() => {
     },
     ".cm-focused .cm-selectionBackground .cm-activeLine, .cm-selectionBackground, .cm-content .cm-activeLine ::selection":
       { backgroundColor: `${activeLineHighlight} !important` },
+    ".cm-tooltip-autocomplete": {
+      backgroundColor: `${tooltipBackground} !important`,
+      border: `1px solid ${tooltipBorder} !important`,
+      borderRadius: "0.25rem",
+    },
+    ".cm-tooltip-lint": {
+      backgroundColor: `${tooltipBackground} !important`,
+      border: `1px solid ${tooltipBorder} !important`,
+      borderRadius: "0 0.25rem 0.25rem 0",
+    },
   });
 });
 watch(codeMirrorTheme, () => {
