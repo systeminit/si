@@ -23,6 +23,7 @@ pub mod export_pkg;
 pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
+pub mod remote_module_spec;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -180,4 +181,8 @@ pub fn routes() -> Router<AppState> {
         .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
         .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
+        .route(
+            "/remote_module_spec",
+            get(remote_module_spec::remote_module_spec),
+        )
 }

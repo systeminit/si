@@ -129,6 +129,29 @@
             >
               Install this module
             </VButton>
+
+            <ErrorMessage :requestStatus="remoteModuleSpecStatus" />
+            <VButton
+              :requestStatus="remoteModuleSpecStatus"
+              @click="viewModuleSpecHandler"
+            >
+              View functions from this module
+            </VButton>
+
+            <div v-if="remoteSpec && remoteSpec.funcs.length > 0">
+              <ul>
+                <li
+                  v-for="func in remoteSpec.funcs"
+                  :key="func.uniqueId"
+                  class="mt-5"
+                >
+                  {{ func.name }}
+                  <pre v-if="func.codeBase64">{{
+                    decodeb64(func.codeBase64)
+                  }}</pre>
+                </li>
+              </ul>
+            </div>
           </Stack>
         </template>
       </template>
@@ -143,7 +166,7 @@
       loading remote modules...
     </div>
     <div v-else-if="loadRemoteModulesReqStatus.isError">
-      <ErrorMessage :request-status="loadRemoteModulesReqStatus" />
+      <ErrorMessage :requestStatus="loadRemoteModulesReqStatus" />
     </div>
     <div v-else-if="loadRemoteModulesReqStatus.isSuccess">
       <template v-if="remoteSummary">Module exists on remote! </template>
@@ -179,6 +202,9 @@ const _remoteDetailsReq = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_DETAILS",
 );
 const installReqStatus = moduleStore.getRequestStatus("INSTALL_REMOTE_MODULE");
+const remoteModuleSpecStatus = moduleStore.getRequestStatus(
+  "GET_REMOTE_MODULE_SPEC",
+);
 
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
@@ -190,6 +216,11 @@ const remoteSummary = computed(
     moduleStore.remoteModuleSummaryByName[moduleStore.urlSelectedModuleSlug!],
 );
 const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
+const remoteSpec = computed(() =>
+  remoteSummary.value?.id
+    ? moduleStore.remoteModuleSpecsById[remoteSummary.value?.id]
+    : undefined,
+);
 
 // since the URL is based on the name, but we need the hash to fetch the module details
 // we have to wait until we have the local info loaded
@@ -221,4 +252,11 @@ async function installButtonHandler() {
   if (!remoteSummary.value) return;
   await moduleStore.INSTALL_REMOTE_MODULE(remoteSummary.value?.id);
 }
+
+async function viewModuleSpecHandler() {
+  if (!remoteSummary.value) return;
+  await moduleStore.GET_REMOTE_MODULE_SPEC(remoteSummary.value?.id);
+}
+
+const decodeb64 = (input: string) => atob(input);
 </script>
