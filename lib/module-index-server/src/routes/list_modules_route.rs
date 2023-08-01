@@ -60,8 +60,8 @@ pub async fn list_module_route(
 ) -> Result<Json<ListModulesResponse>, ListModulesError> {
     let query = si_module::Entity::find();
 
-    if state.restrict_listing()
-        && !is_systeminit_auth_token(&auth_token, state.token_emails()).await?
+    if dbg!(state.restrict_listing())
+        && !dbg!(is_systeminit_auth_token(&auth_token, state.token_emails()).await?)
     {
         return Ok(Json(ListModulesResponse { modules: vec![] }));
     }
