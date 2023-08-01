@@ -3,6 +3,7 @@ import { RouterOptions } from "vite-ssg";
 import { Router } from "vue-router";
 import { nextTick } from "vue";
 import posthog from "posthog-js";
+import storage from "local-storage-fallback";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
@@ -50,7 +51,12 @@ export const routerOptions: RouterOptions = {
     {
       path: "/login-success",
       name: "login-success",
-      redirect: { name: "tutorial" },
+      redirect() {
+        // see App.vue for logic saving this redirect location
+        const savedPath = storage.getItem("SI-LOGIN-REDIRECT");
+        storage.removeItem("SI-LOGIN-REDIRECT");
+        return savedPath || { name: "tutorial" };
+      },
     },
     { path: "/:catchAll(.*)", name: "404", component: NotFoundPage },
   ],
