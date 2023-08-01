@@ -39,7 +39,7 @@ services:
   rabbitmq:
     # FIXME(nick): use our own rabbitmq once on "main".
     # image: systeminit/rabbitmq:stable
-    image: rabbitmq/3.12-management-alpine
+    image: rabbitmq:3.12-management-alpine
     ports:
       - "5672:5672"
       - "15672:15672"
