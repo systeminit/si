@@ -43,10 +43,16 @@ async fn main() -> Result<()> {
 
     if !matches!(args.command, Commands::Update(_)) {
         match update::find(VERSION, auth_api_host.as_deref()).await {
-            Ok(Some(_)) => {
-                println!("Update found, please run `si update` to install it\n");
+            Ok(update) => {
+                if update.si.is_some() {
+                    println!("Launcher update found, please run `si update` to install it");
+                }
+
+                if !update.containers.is_empty() {
+                    println!("Containers update found, please run `si update` to install them");
+                }
+                println!();
             }
-            Ok(None) => {}
             Err(err) => {
                 println!("Unable to retrieve updates: {err}");
             }
@@ -90,7 +96,8 @@ async fn main() -> Result<()> {
                 auth_api_host.as_deref(),
                 &ph_client,
                 mode.to_string(),
-                args.skip_check,
+                args.skip_confirmation,
+                args.binary,
             )
             .await?;
         }

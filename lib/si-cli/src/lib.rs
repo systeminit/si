@@ -33,6 +33,10 @@ pub enum SiCliError {
     Reqwest(#[from] reqwest::Error),
     #[error("unable to download update, status = {0}")]
     UnableToDownloadUpdate(u16),
+    #[error("unable to fetch containers update, status = {0}")]
+    UnableToFetchContainersUpdate(u16),
+    #[error("unable to fetch si update, status = {0}")]
+    UnableToFetchSiUpdate(u16),
 }
 
 pub type CliResult<T> = Result<T, SiCliError>;

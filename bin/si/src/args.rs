@@ -132,8 +132,11 @@ pub(crate) struct DeleteArgs {}
 #[derive(Debug, clap::Args)]
 pub(crate) struct UpdateArgs {
     /// Skip the confirmation check as part of the update command
-    #[clap(short, long)]
-    pub skip_check: bool,
+    #[clap(short = 'y', long)]
+    pub skip_confirmation: bool,
+    /// Skip the containers update as part of the update command
+    #[clap(name = "self", short, long)]
+    pub binary: bool,
 }
 
 #[derive(Debug, clap::Args)]

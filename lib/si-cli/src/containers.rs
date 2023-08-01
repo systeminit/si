@@ -13,8 +13,8 @@ use std::string::ToString;
 #[derive(Debug)]
 pub struct DockerReleaseInfo {
     pub git_sha: String,
-    pub created_data: String,
-    pub image_name: String,
+    pub created_at: String,
+    pub image: String,
 }
 
 pub(crate) async fn downloaded_systeminit_containers_list() -> Result<Vec<ImageSummary>, SiCliError>
@@ -47,12 +47,12 @@ pub(crate) async fn get_container_details() -> CliResult<Vec<DockerReleaseInfo>>
                 .get("org.opencontainers.image.revision")
                 .unwrap()
                 .to_string(),
-            created_data: container
+            created_at: container
                 .labels
                 .get("org.opencontainers.image.created")
                 .unwrap()
                 .to_string(),
-            image_name: container.labels.get("name").unwrap().to_string(),
+            image: container.labels.get("name").unwrap().to_string(),
         })
     }
 
