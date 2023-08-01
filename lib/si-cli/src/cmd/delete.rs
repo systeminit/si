@@ -1,5 +1,5 @@
 use crate::cmd::check;
-use crate::containers::has_existing_container;
+use crate::containers::{cleanup_image, has_existing_container};
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::Docker;
 use si_posthog::PosthogClient;
@@ -19,16 +19,17 @@ pub async fn invoke(
     let docker = Docker::unix("//var/run/docker.sock");
 
     if is_preview {
-        println!("Deleted the following containers:");
+        println!("Deleted the following containers and associated images:");
     }
 
     for name in CONTAINER_NAMES.iter() {
         let container_name = format!("dev-{0}-1", name);
         if is_preview {
-            println!("{}", container_name.clone());
+            println!("{}", container_name);
             continue;
         }
         has_existing_container(&docker, container_name, true).await?;
+        cleanup_image(&docker, name.to_string()).await?;
     }
 
     Ok(())

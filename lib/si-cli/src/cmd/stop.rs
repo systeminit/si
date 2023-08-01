@@ -21,7 +21,7 @@ pub async fn invoke(
         println!("Stopped the following containers:");
     }
 
-    for container_name in CONTAINER_NAMES.iter() {
+    for container_name in CONTAINER_NAMES.iter().rev() {
         let container_identifier = format!("dev-{0}-1", container_name);
         if is_preview {
             println!("{}", container_identifier.clone());

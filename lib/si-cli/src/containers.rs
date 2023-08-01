@@ -2,7 +2,8 @@ use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::ImageSummary;
 use docker_api::opts::{
-    ContainerFilter, ContainerListOpts, ImageListOpts, LogsOpts, PullOpts, RegistryAuth,
+    ContainerFilter, ContainerListOpts, ImageListOpts, ImageRemoveOpts, LogsOpts, PullOpts,
+    RegistryAuth,
 };
 use docker_api::Docker;
 use futures::StreamExt;
@@ -174,6 +175,25 @@ pub(crate) async fn has_existing_container(
     }
 
     Ok(false)
+}
+
+pub(crate) async fn cleanup_image(docker: &Docker, name: String) -> CliResult<()> {
+    let image_name = format!("systeminit/{0}:stable", name);
+    let opts = ImageRemoveOpts::builder()
+        .force(true)
+        .noprune(false)
+        .build();
+
+    if (docker.images().get(image_name.clone()).inspect().await).is_ok() {
+        println!("Removing image: {0}", image_name.clone());
+        docker
+            .images()
+            .get(image_name.clone())
+            .remove(&opts)
+            .await?;
+    };
+
+    Ok(())
 }
 
 pub(crate) async fn get_container_logs(
