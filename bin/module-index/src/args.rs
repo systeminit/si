@@ -130,6 +130,9 @@ impl TryFrom<Args> for Config {
             if let Some(jwt_public_key) = args.jwt_public_key {
                 config_map.set("jwt_signing_public_key_path", jwt_public_key);
             }
+            if args.restrict_listing {
+                config_map.set("restrict_listing", true);
+            }
 
             // if let Some(migration_mode) = args.migration_mode {
             //     config_map.set("migration_mode", migration_mode);
