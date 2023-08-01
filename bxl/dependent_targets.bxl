@@ -39,11 +39,15 @@ dependent_targets = bxl(
         ),
         "release_docker": cli_args.bool(
             default = False,
-            doc = """Filter targets to releaseable docker images.""",
+            doc = """Filter targets to releasable docker images.""",
         ),
         "promote_docker": cli_args.bool(
             default = False,
             doc = """Filter targets to runnable docker promotions.""",
+        ),
+        "releasable_binary": cli_args.bool(
+            default = False,
+            doc = """Filter targets to releasable binaries.""",
         ),
         "global_file": cli_args.list(
             cli_args.string(),
@@ -157,6 +161,9 @@ def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
     if ctx.cli_args.release_docker:
         has_filtered = True
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
+    if ctx.cli_args.releasable_binary:
+        has_filtered = True
+        filtered = filtered + ctx.uquery().eval("attrfilter(name, 'si', '//...') intersect kind('rust_binary', '//...')")
     if ctx.cli_args.promote_docker:
         has_filtered = True
         filtered = filtered + _filtered_promote_docker_targets(ctx, targets)
