@@ -50,6 +50,26 @@ export interface LocalModuleDetails {
   hash: ModuleHash;
 }
 
+export interface ModuleSpec {
+  funcs: {
+    arguments: {
+      name: string;
+      kind: string;
+      elementKind: string | null;
+    }[];
+    backendKind: string;
+    codeBase64: string | null;
+    description: string | null;
+    displayName: string | null;
+    handler: string | null;
+    hidden: boolean;
+    link: string | null;
+    name: string;
+    responseType: string;
+    uniqueId: string;
+  }[];
+}
+
 export type Asset = {
   id: number;
   displayName: string;
@@ -88,6 +108,7 @@ export const useModuleStore = () => {
 
         remoteModuleSearchResults: [] as RemoteModuleSummary[],
         remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
+        remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
       }),
       getters: {
         urlSelectedModuleSlug: () => {
@@ -168,6 +189,17 @@ export const useModuleStore = () => {
             url: `/modules/${id}`,
             onSuccess: (response) => {
               this.remoteModuleDetailsById[response.id] = response;
+            },
+          });
+        },
+
+        async GET_REMOTE_MODULE_SPEC(id: ModuleId) {
+          return new ApiRequest({
+            method: "get",
+            url: "/pkg/remote_module_spec",
+            params: { id, ...visibility },
+            onSuccess: (response) => {
+              this.remoteModuleSpecsById[id] = response;
             },
           });
         },
