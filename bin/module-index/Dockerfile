@@ -38,6 +38,6 @@ EXPOSE 5157/tcp
 
 ENTRYPOINT [ \
   "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/module-index", \
-  "--jwt-public-key", "/run/module-index/prod.jwt_signing_public_key.pem" \
-  "--restrict-listing" "--disable-opentelemetry" \
+  "--jwt-public-key", "/run/module-index/prod.jwt_signing_public_key.pem", \
+  "--restrict-listing", "--disable-opentelemetry" \
 ]
