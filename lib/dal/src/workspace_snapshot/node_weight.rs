@@ -25,8 +25,6 @@ pub enum NodeWeightError {
     ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
-    #[error("No Seen Vector Clock available")]
-    NoSeenVectorClock,
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
 }
@@ -51,17 +49,6 @@ impl NodeWeight {
         match self {
             NodeWeight::Content(content_weight) => content_weight.id(),
             NodeWeight::Ordering(ordering_weight) => ordering_weight.id(),
-        }
-    }
-
-    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        match self {
-            NodeWeight::Content(content_weight) => {
-                content_weight.increment_seen_vector_clock(change_set)
-            }
-            NodeWeight::Ordering(ordering_weight) => {
-                ordering_weight.increment_seen_vector_clock(change_set)
-            }
         }
     }
 
@@ -114,26 +101,17 @@ impl NodeWeight {
         )?))
     }
 
-    pub fn new_content_with_seen_vector_clock(
-        change_set: &ChangeSet,
-        kind: ContentAddress,
-    ) -> NodeWeightResult<Self> {
-        Ok(NodeWeight::Content(
-            ContentNodeWeight::new_with_seen_vector_clock(change_set, kind)?,
-        ))
-    }
-
-    pub fn new_with_incremented_vector_clocks(
+    pub fn new_with_incremented_vector_clock(
         &self,
         change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let new_weight = match self {
             NodeWeight::Content(content_weight) => {
-                NodeWeight::Content(content_weight.new_with_incremented_vector_clocks(change_set)?)
+                NodeWeight::Content(content_weight.new_with_incremented_vector_clock(change_set)?)
             }
-            NodeWeight::Ordering(ordering_weight) => NodeWeight::Ordering(
-                ordering_weight.new_with_incremented_vector_clocks(change_set)?,
-            ),
+            NodeWeight::Ordering(ordering_weight) => {
+                NodeWeight::Ordering(ordering_weight.new_with_incremented_vector_clock(change_set)?)
+            }
         };
 
         Ok(new_weight)
@@ -146,10 +124,10 @@ impl NodeWeight {
         }
     }
 
-    pub fn vector_clock_seen(&self) -> Option<&VectorClock> {
+    pub fn vector_clock_seen(&self) -> &VectorClock {
         match self {
             NodeWeight::Content(content_weight) => content_weight.vector_clock_seen(),
-            NodeWeight::Ordering(ordering_weight) => Some(ordering_weight.vector_clock_seen()),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.vector_clock_seen(),
         }
     }
 

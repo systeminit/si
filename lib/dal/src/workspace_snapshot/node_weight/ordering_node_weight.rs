@@ -12,6 +12,7 @@ use crate::{
 pub struct OrderingNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
+    /// The `id` of the items, in the order that they should appear in the container.
     order: Vec<Ulid>,
     content_hash: ContentHash,
     merkle_tree_hash: ContentHash,
@@ -34,10 +35,9 @@ impl OrderingNodeWeight {
         Ok(())
     }
 
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         let new_vc_entry = change_set.generate_ulid()?;
         self.vector_clock_write.inc_to(change_set, new_vc_entry);
-        self.vector_clock_seen.inc_to(change_set, new_vc_entry);
 
         Ok(())
     }
@@ -73,12 +73,12 @@ impl OrderingNodeWeight {
         })
     }
 
-    pub fn new_with_incremented_vector_clocks(
+    pub fn new_with_incremented_vector_clock(
         &self,
         change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let mut new_ordering_weight = self.clone();
-        new_ordering_weight.increment_vector_clocks(change_set)?;
+        new_ordering_weight.increment_vector_clock(change_set)?;
 
         Ok(new_ordering_weight)
     }
@@ -110,7 +110,7 @@ impl OrderingNodeWeight {
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<String>>()
-            .concat();
+            .join(" ");
         let content_bytes = concat_elements.as_bytes();
         content_hasher.update(content_bytes);
 

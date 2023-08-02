@@ -2,7 +2,7 @@ use petgraph::prelude::*;
 
 use super::edge_weight::EdgeWeight;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Update {
     NewSubgraph {
         source: NodeIndex,

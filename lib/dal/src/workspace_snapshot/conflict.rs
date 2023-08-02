@@ -5,9 +5,9 @@ use petgraph::stable_graph::NodeIndex;
 #[remain::sorted]
 #[derive(Debug, Copy, Clone)]
 pub enum Conflict {
-    ChildMembership(ConflictLocation),
-    ChildOrder(ConflictLocation),
-    NodeContent(ConflictLocation),
+    ChildMembership { ours: NodeIndex, theirs: NodeIndex },
+    ChildOrder { ours: NodeIndex, theirs: NodeIndex },
+    NodeContent { ours: NodeIndex, theirs: NodeIndex },
 }
 
 /// The [`NodeIndex`] of the location in the graph where a conflict occurs.
