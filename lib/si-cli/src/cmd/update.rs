@@ -1,6 +1,7 @@
-use crate::containers::get_container_details;
+use crate::containers::{cleanup_image, get_container_details, has_existing_container};
 use crate::{CliResult, SiCliError};
 use colored::Colorize;
+use docker_api::Docker;
 use inquire::Confirm;
 use serde::Deserialize;
 use si_posthog::PosthogClient;
@@ -60,10 +61,14 @@ pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Update
     let latest_containers: Vec<LatestContainer> = req.json().await?;
     'outer: for latest in latest_containers {
         for current in &current_containers {
-            if current.git_sha == latest.git_sha {
-                containers.push(latest);
-                continue 'outer;
+            if current.image != format!("{}/{}", latest.namespace, latest.repository) {
+                continue;
             }
+
+            if current.git_sha != latest.git_sha {
+                containers.push(latest);
+            }
+            continue 'outer;
         }
 
         // If we don't have the container locally we should fetch it
@@ -182,10 +187,17 @@ pub async fn invoke(
 
     match ans {
         Ok(true) => {
-            println!("\nThat's awesome! Let's do this");
+            if !only_binary && !update.containers.is_empty() {
+                crate::cmd::stop::invoke(posthog_client, mode.clone(), false).await?;
 
-            if !only_binary {
-                dbg!(update.containers);
+                let docker = Docker::unix("//var/run/docker.sock");
+                for container in &update.containers {
+                    let container_name = format!("dev-{0}-1", container.repository);
+                    has_existing_container(&docker, container_name, true).await?;
+                    cleanup_image(&docker, container.repository.to_owned()).await?;
+                }
+
+                crate::cmd::start::invoke(posthog_client, mode.clone(), false).await?;
             }
 
             if let Some(update) = &update.si {
