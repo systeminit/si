@@ -1,6 +1,6 @@
 use rabbitmq_stream_client::error::{
     ClientError, ConsumerCloseError, ConsumerCreateError, ProducerCloseError, ProducerCreateError,
-    ProducerPublishError,
+    ProducerPublishError, StreamCreateError, StreamDeleteError,
 };
 use thiserror::Error;
 
@@ -22,6 +22,10 @@ pub enum RabbitError {
     ProducerCreate(#[from] ProducerCreateError),
     #[error("producer publish error: {0}")]
     ProducerPublish(#[from] ProducerPublishError),
+    #[error("stream create error: {0}")]
+    StreamCreate(#[from] StreamCreateError),
+    #[error("stream delete error: {0}")]
+    StreamDelete(#[from] StreamDeleteError),
 }
 
 #[allow(missing_docs)]
