@@ -16,6 +16,7 @@ vendor/automerge
 deploy/docker-compose.env.yml
 app/web/cypress/screenshots/
 app/web/cypress/videos/
+bin/si/src/version.txt
 
 .turbo
 .netlify
