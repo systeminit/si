@@ -127,7 +127,7 @@ const releasesByVersion = computed(() => {
 });
 
 const selectedPlatform = ref("Linux");
-const platforms = ["Linux", "darwin"];
+const platforms = ["Linux", "macOS"];
 
 const selectedVersion = ref<string>();
 const versions = computed(() => {
@@ -142,7 +142,9 @@ const selectedPlatformAssets = computed(() => {
   releasesByVersion.value[selectedVersion.value].assets.forEach(
     (asset: Asset) => {
       if (
-        asset.name.toLowerCase().includes(selectedPlatform.value.toLowerCase())
+        selectedPlatform.value.toLowerCase() === "macos"
+          ? asset.name.toLowerCase().includes("darwin")
+          : asset.name.toLowerCase().includes("linux")
       ) {
         assets.push(asset);
       }
