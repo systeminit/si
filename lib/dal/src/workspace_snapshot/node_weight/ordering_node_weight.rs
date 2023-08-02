@@ -11,6 +11,7 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
     id: Ulid,
+    lineage_id: Ulid,
     order: Vec<Ulid>,
     content_hash: ContentHash,
     merkle_tree_hash: ContentHash,
@@ -40,6 +41,11 @@ impl OrderingNodeWeight {
 
         Ok(())
     }
+
+    pub fn lineage_id(&self) -> Ulid {
+        self.lineage_id
+    }
+
     pub fn merge_clocks(
         &mut self,
         change_set: &ChangeSet,
@@ -55,6 +61,16 @@ impl OrderingNodeWeight {
 
     pub fn merkle_tree_hash(&self) -> ContentHash {
         self.merkle_tree_hash
+    }
+
+    pub fn new(change_set: &ChangeSet) -> NodeWeightResult<Self> {
+        Ok(Self {
+            id: change_set.generate_ulid()?,
+            lineage_id: change_set.generate_ulid()?,
+            vector_clock_write: VectorClock::new(change_set)?,
+            vector_clock_seen: VectorClock::new(change_set)?,
+            ..Default::default()
+        })
     }
 
     pub fn new_with_incremented_vector_clocks(

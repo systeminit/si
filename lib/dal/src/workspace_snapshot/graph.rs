@@ -1,5 +1,4 @@
-use petgraph::prelude::*;
-use petgraph::{algo, stable_graph::EdgeReference};
+use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
@@ -9,33 +8,44 @@ use ulid::Ulid;
 use crate::workspace_snapshot::{
     change_set::ChangeSet,
     conflict::{Conflict, ConflictLocation},
-    edge_weight::{EdgeWeight, EdgeWeightKind},
-    node_weight::{ContentAddress, NodeWeight, NodeWeightError, OrderingNodeWeight},
-    WorkspaceSnapshotError, WorkspaceSnapshotResult,
+    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
+    node_weight::{ContentAddress, NodeWeight, NodeWeightError},
+    update::Update,
 };
 use crate::ContentHash;
 
 #[allow(clippy::large_enum_variant)]
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
     #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
+    #[error("Action would create a graph cycle")]
+    CreateGraphCycle,
+    #[error("EdgeWeight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
     #[error("Problem during graph traversal: {0:?}")]
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
+    #[error("Node with ID {0} not found")]
+    NodeWithIdNotFound(Ulid),
     #[error("NodeIndex has too many Ordering children: {0:?}")]
     TooManyOrderingForNode(NodeIndex),
+    #[error("Workspace Snapshot has conflicts and must be rebased")]
+    WorkspaceNeedsRebase,
+    #[error("Workspace Snapshot has conflicts")]
+    WorkspacesConflict,
 }
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;
 
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraph {
-    root_index: NodeIndex,
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
+    root_index: NodeIndex,
 }
 
 impl std::fmt::Debug for WorkspaceSnapshotGraph {
@@ -58,45 +68,13 @@ impl WorkspaceSnapshotGraph {
         Ok(Self { root_index, graph })
     }
 
-    fn is_acyclic_directed(&self) -> bool {
-        // Using this because "is_cyclic_directed" is recursive.
-        algo::toposort(&self.graph, None).is_ok()
-    }
-
-    pub fn cleanup(&mut self) {
-        self.graph.retain_nodes(|frozen_graph, current_node| {
-            // We cannot use "has_path_to_root" because we need to use the Frozen<StableGraph<...>>.
-            algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
-        });
-    }
-
-    fn dot(&self) {
-        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
-        // process and open a new tab in your browser.
-        // ```
-        // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
-        // ```
-        let current_root_weight = self.get_node_weight(self.root_index).unwrap();
-        println!(
-            "Root Node Weight: {current_root_weight:?}\n{:?}",
-            petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
-        );
-    }
-
-    fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self.graph.add_node(node);
-        self.update_merkle_tree_hash(new_node_index)?;
-
-        Ok(new_node_index)
-    }
-
     pub fn add_edge(
         &mut self,
         change_set: &ChangeSet,
         from_node_index: NodeIndex,
         mut edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
         let temp_edge = self
             .graph
@@ -104,7 +82,7 @@ impl WorkspaceSnapshotGraph {
         let would_create_a_cycle = !self.is_acyclic_directed();
         self.graph.remove_edge(temp_edge);
         if would_create_a_cycle {
-            return Err(WorkspaceSnapshotError::CreateGraphCycle);
+            return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
         }
 
         // Ensure the vector clocks of the edge are up-to-date.
@@ -127,7 +105,280 @@ impl WorkspaceSnapshotGraph {
         Ok(new_edge_index)
     }
 
-    fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotResult<NodeIndex> {
+    fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let new_node_index = self.graph.add_node(node);
+        self.update_merkle_tree_hash(new_node_index)?;
+
+        Ok(new_node_index)
+    }
+
+    pub fn cleanup(&mut self) {
+        self.graph.retain_nodes(|frozen_graph, current_node| {
+            // We cannot use "has_path_to_root" because we need to use the Frozen<StableGraph<...>>.
+            algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
+        });
+    }
+
+    fn copy_node_index(
+        &mut self,
+        change_set: &ChangeSet,
+        node_index_to_copy: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let new_node_index = self.graph.add_node(
+            self.get_node_weight(node_index_to_copy)?
+                .new_with_incremented_vector_clocks(change_set)?,
+        );
+
+        Ok(new_node_index)
+    }
+
+    fn detect_conflicts_and_updates(
+        &self,
+        onto: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
+        let mut conflicts: Vec<Conflict> = Vec::new();
+        let mut updates: Vec<Update> = Vec::new();
+        if let Err(traversal_error) =
+            petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
+                self.detect_conflicts_and_updates_process_dfs_event(
+                    onto,
+                    event,
+                    &mut conflicts,
+                    &mut updates,
+                )
+            })
+        {
+            return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
+        };
+
+        Ok((conflicts, updates))
+    }
+
+    fn detect_conflicts_and_updates_process_dfs_event(
+        &self,
+        onto: &WorkspaceSnapshotGraph,
+        event: DfsEvent<NodeIndex>,
+        conflicts: &mut Vec<Conflict>,
+        updates: &mut Vec<Update>,
+    ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
+        match event {
+            DfsEvent::Discover(onto_node_index, _) => {
+                let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|_| event)?;
+                let mut to_rebase_node_indexes = Vec::new();
+                if let NodeWeight::Content(onto_content_weight) = onto_node_weight {
+                    if onto_content_weight.content_address() == ContentAddress::Root {
+                        // There can only be one (valid/current) `ContentAddress::Root` at any
+                        // given moment, and the `lineage_id` isn't really relevant as it's not
+                        // globally stable (even though it is locally stable). This matters as we
+                        // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
+                        // externally from a module that we're attempting to import. The external
+                        // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
+                        // `onto`.
+                        to_rebase_node_indexes.push(self.root_index);
+                    } else {
+                        self.get_node_index_by_lineage(onto_node_weight.lineage_id())
+                            .map_err(|_| event)?;
+                    }
+                }
+
+                let mut all_content_with_lineage_is_same = true;
+                for to_rebase_node_index in to_rebase_node_indexes {
+                    let to_rebase_node_weight = self
+                        .get_node_weight(to_rebase_node_index)
+                        .map_err(|_| event)?;
+
+                    if onto_node_weight.merkle_tree_hash()
+                        == to_rebase_node_weight.merkle_tree_hash()
+                    {
+                        // If the merkle tree hashes are the same, then the entire sub-graph is
+                        // identical, and we don't need to check any further.
+                        continue;
+                    }
+
+                    // Check if there's a difference in the node itself (and whether it is a
+                    // conflict if there is a difference).
+                    if onto_node_weight.content_hash() != to_rebase_node_weight.content_hash() {
+                        if to_rebase_node_weight
+                            .vector_clock_write()
+                            .is_newer_than(onto_node_weight.vector_clock_write())
+                        {
+                            // The existing node (`to_rebase`) has changes, but has already seen
+                            // all of the changes in `onto`. There is no conflict, and there is
+                            // nothing to update.
+                        } else if onto_node_weight
+                            .vector_clock_write()
+                            .is_newer_than(to_rebase_node_weight.vector_clock_write())
+                        {
+                            // `onto` has changes, but has already seen all of the changes in
+                            // `to_rebase`. There is no conflict, and we should update to use the
+                            // `onto` node.
+                            updates.push(Update::ReplaceSubgraph)
+                        }
+                    }
+                    // match (onto_node_weight, to_rebase_node_weight) {
+                    //     (NodeWeight::Content(onto_content_weight), NodeWeight::Content(to_rebase_content_weight)) => {
+                    //         if onto_content_weight != to_rebase_content_weight
+                    //     }
+                    //     NodeWeight::Ordering(_) => todo!(),
+                    // }
+                }
+
+                if all_content_with_lineage_is_same {
+                    return Ok(petgraph::visit::Control::Prune);
+                } else {
+                    // There wasn't a difference with the node itself, nor with the child edges,
+                    // even though the merkle tree hashes were different, so there must be a
+                    // difference somewhere within the children themselves.
+                    return Ok(petgraph::visit::Control::Continue);
+                }
+            }
+            DfsEvent::TreeEdge(_, _)
+            | DfsEvent::BackEdge(_, _)
+            | DfsEvent::CrossForwardEdge(_, _)
+            | DfsEvent::Finish(_, _) => {
+                // These events are all ignored, since we handle looking at edges as we encounter
+                // the node(s) the edges are coming from (Outgoing edges).
+                return Ok(petgraph::visit::Control::Continue);
+            }
+        }
+
+        Err(event)
+    }
+
+    fn dot(&self) {
+        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
+        // process and open a new tab in your browser.
+        // ```
+        // pbpaste | dot -Tsvg -o foo.svg && open foo.svg
+        // ```
+        let current_root_weight = self.get_node_weight(self.root_index).unwrap();
+        println!(
+            "Root Node Weight: {current_root_weight:?}\n{:?}",
+            petgraph::dot::Dot::with_config(&self.graph, &[petgraph::dot::Config::EdgeNoLabel])
+        );
+    }
+
+    pub fn update_content(
+        &mut self,
+        change_set: &ChangeSet,
+        id: Ulid,
+        new_content_hash: ContentHash,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let original_node_index = self.get_node_index_by_id(id)?;
+        let new_node_index = self.copy_node_index(change_set, original_node_index)?;
+        let node_weight = self.get_node_weight_mut(new_node_index)?;
+        node_weight.new_content_hash(new_content_hash)?;
+
+        self.replace_references(change_set, original_node_index, new_node_index)
+    }
+
+    pub fn find_conflicts(
+        &self,
+        other: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
+        // `self`/`local` is the base change set. `other` is the change set to merge in.
+        // Both `local` and `other` have (write) entries that the other does not. Figure out if the
+        // trees can be merged together without any conflicts.
+        let mut conflicts: Vec<Conflict> = Vec::new();
+        let result =
+            petgraph::visit::depth_first_search(&other.graph, Some(other.root_index), |event| {
+                self.find_conflicts_process_dfs_event(&mut conflicts, other, event)
+            });
+        if let Err(traversal_error) = result {
+            return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
+        }
+
+        Ok(conflicts)
+    }
+
+    fn find_conflicts_process_dfs_event(
+        &self,
+        conflicts: &mut Vec<Conflict>,
+        other: &WorkspaceSnapshotGraph,
+        event: DfsEvent<NodeIndex>,
+    ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
+        match event {
+            petgraph::visit::DfsEvent::Discover(to_merge_node_index, _) => {
+                // Check if `base` has a node with the same `ID`
+                let to_merge_node_weight = other
+                    .get_node_weight(to_merge_node_index)
+                    .map_err(|_| event)?;
+                let base_node_index = match self.get_node_index_by_id(to_merge_node_weight.id()) {
+                    Ok(ni) => ni,
+                    // If there isn't a node with the same ID in `base` then it's a "new" node.
+                    Err(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => {
+                        // TODO: This isn't right. We should be checking why it's only in `other` (the branch to merge). Was it deleted in `base`, and if so, has it been modified at all in `other`?
+                        return Ok(petgraph::visit::Control::Continue);
+                    }
+                    // Something else went wrong; we should probably bail out.
+                    Err(_) => return Err(event),
+                };
+                let base_node_weight = self.get_node_weight(base_node_index).map_err(|_| event)?;
+
+                if to_merge_node_weight.merkle_tree_hash() == base_node_weight.merkle_tree_hash() {
+                    // These (sub-)graphs have the same content, so there can be no conflicts
+                    // from this point towards the leaves.
+                    return Ok(petgraph::visit::Control::Prune);
+                }
+
+                if let (
+                    NodeWeight::Content(base_content_weight),
+                    NodeWeight::Content(to_merge_content_weight),
+                ) = (base_node_weight, to_merge_node_weight)
+                {
+                    // If the content of the node itself is the same in `base` and `other`, then that
+                    // means that something has changed about the node's children. This could be an
+                    // added or removed relationship, a change in the ordering of the children, or
+                    // that one of the child nodes itself (or one of its descendents) has changed,
+                    // or all of these. If there are added/removed relationships, or re-ordered
+                    // children on both sides, then that should be considered as a conflict on the
+                    // container node itself.
+                    if to_merge_content_weight.content_address()
+                        == base_content_weight.content_address()
+                    {
+                        if let Some(container_membership_conflict) = self
+                            .has_container_membership_conflict(
+                                base_node_index,
+                                other,
+                                to_merge_node_index,
+                            )
+                            .map_err(|_| event)?
+                        {
+                            conflicts.push(container_membership_conflict);
+                        }
+                    } else {
+                        // There's a difference in the content of the node itself, so we need to see
+                        // if that difference is because of a conflict.
+                        if base_content_weight
+                            .vector_clock_write()
+                            .is_newer_than(to_merge_content_weight.vector_clock_write())
+                            || to_merge_content_weight
+                                .vector_clock_write()
+                                .is_newer_than(base_content_weight.vector_clock_write())
+                        {
+                            // One side already contains all of the changes from the other, so it's not a conflict.
+                            return Ok(petgraph::visit::Control::Continue);
+                        } else {
+                            // Both sides have changes the other does not know about: We've
+                            // got a conflict.
+                            conflicts.push(Conflict::NodeContent(ConflictLocation {
+                                base: base_node_index,
+                                other: to_merge_node_index,
+                            }));
+                        }
+                    }
+                }
+
+                Ok(petgraph::visit::Control::Continue)
+            }
+            // All other events have to do with the edges themselves, and we're not
+            // processing things that way. Anything edge related is handled by the
+            // parent/container.
+            _ => Ok(petgraph::visit::Control::Continue),
+        }
+    }
+
+    fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         for node_index in self.graph.node_indices() {
             // It's possible that there are multiple nodes in the petgraph that have the
             // same ID as the one we're interested in, as we may not yet have cleaned up
@@ -143,43 +394,23 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
-        Err(WorkspaceSnapshotError::NodeWithIdNotFound(id))
+        Err(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
     }
 
-    fn copy_node_index(
-        &mut self,
-        change_set: &ChangeSet,
-        node_index_to_copy: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeIndex> {
-        let new_node_index = self.graph.add_node(
-            self.get_node_weight(node_index_to_copy)?
-                .new_with_incremented_vector_clocks(change_set)?,
-        );
+    fn get_node_index_by_lineage(
+        &self,
+        lineage_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<Vec<NodeIndex>> {
+        let mut results = Vec::new();
+        for node_index in self.graph.node_indices() {
+            if let NodeWeight::Content(node_weight) = self.get_node_weight(node_index)? {
+                if node_weight.lineage_id() == lineage_id {
+                    results.push(node_index);
+                }
+            }
+        }
 
-        Ok(new_node_index)
-    }
-
-    pub fn update_content(
-        &mut self,
-        change_set: &ChangeSet,
-        id: Ulid,
-        new_content_hash: ContentHash,
-    ) -> WorkspaceSnapshotResult<()> {
-        let original_node_index = self.get_node_index_by_id(id)?;
-        let new_node_index = self.copy_node_index(change_set, original_node_index)?;
-        let node_weight = self.get_node_weight_mut(new_node_index)?;
-        node_weight.new_content_hash(new_content_hash)?;
-
-        self.replace_references(change_set, original_node_index, new_node_index)
-    }
-
-    fn has_path_to_root(&self, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, self.root_index, node, None)
-    }
-
-    fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
-        algo::has_path_connecting(&self.graph, start, node, None)
-            && algo::has_path_connecting(&self.graph, node, end, None)
+        Ok(results)
     }
 
     fn get_node_weight(&self, node_index: NodeIndex) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
@@ -195,289 +426,6 @@ impl WorkspaceSnapshotGraph {
         self.graph
             .node_weight_mut(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
-    }
-
-    fn replace_references(
-        &mut self,
-        change_set: &ChangeSet,
-        original_node_index: NodeIndex,
-        new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
-        let mut old_to_new_node_indices: HashMap<NodeIndex, NodeIndex> = HashMap::new();
-        old_to_new_node_indices.insert(original_node_index, new_node_index);
-
-        let mut dfspo = DfsPostOrder::new(&self.graph, self.root_index);
-        while let Some(old_node_index) = dfspo.next(&self.graph) {
-            // All nodes that exist between the root and the `original_node_index` are affected by the replace, and only
-            // those nodes are affected, because the replacement affects their merkel tree hashes.
-            if self.is_on_path_between(self.root_index, original_node_index, old_node_index) {
-                // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
-                // traversal should already exist since it was created before we entered `replace_references`, and
-                // is the reason we're updating things in the first place.
-                let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
-                    Some(found_new_node_index) => *found_new_node_index,
-                    None => {
-                        let new_node_index = self.copy_node_index(change_set, old_node_index)?;
-                        old_to_new_node_indices.insert(old_node_index, new_node_index);
-                        new_node_index
-                    }
-                };
-
-                // Find all outgoing edges. From those outgoing edges and find their destinations.
-                // If they do not have destinations, then there is no work to do (i.e. stale edge
-                // reference, which should only happen if an edge was removed after we got the
-                // edge ref, but before we asked about the edge's endpoints).
-                let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
-                for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
-                    let edge_weight = edge_reference.weight();
-                    if let Some((_, destination_node_index)) =
-                        self.graph.edge_endpoints(edge_reference.id())
-                    {
-                        edges_to_create.push((
-                            edge_weight.new_with_incremented_vector_clocks(change_set)?,
-                            destination_node_index,
-                        ));
-                    }
-                }
-
-                // Make copies of these edges where the source is the new node index and the
-                // destination is one of the following...
-                // - If an entry exists in `old_to_new_node_indicies` for the destination node index,
-                //   use the value of the entry (the destination was affected by the replacement,
-                //   and needs to use the new node index to reflect this).
-                // - There is no entry in `old_to_new_node_indicies`; use the same destination node
-                //   index as the old edge (the destination was *NOT* affected by the replacemnt,
-                //   and does not have any new information to reflect).
-                for (edge_weight, destination_node_index) in edges_to_create {
-                    // Need to directly add the edge, without going through `self.add_edge` to avoid
-                    // infinite recursion, and because we're the place doing all the book keeping
-                    // that we'd be interested in happening from `self.add_edge`.
-                    self.graph.update_edge(
-                        new_node_index,
-                        *old_to_new_node_indices
-                            .get(&destination_node_index)
-                            .unwrap_or(&destination_node_index),
-                        edge_weight,
-                    );
-                }
-
-                self.update_merkle_tree_hash(new_node_index)?;
-
-                // Use the new version of the old root node as our root node.
-                if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
-                    self.root_index = *new_root_node_index;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn update_merkle_tree_hash(
-        &mut self,
-        node_index_to_update: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut hasher = ContentHash::hasher();
-        hasher.update(
-            self.get_node_weight(node_index_to_update)?
-                .content_hash()
-                .to_string()
-                .as_bytes(),
-        );
-
-        // Need to make sure the neighbors are added to the hash in a stable order to ensure the
-        // merkle tree hash is identical for identical trees.
-        let mut ordered_neighbors = Vec::new();
-        for neighbor_node in self
-            .graph
-            .neighbors_directed(node_index_to_update, Outgoing)
-        {
-            ordered_neighbors.push(neighbor_node);
-        }
-        ordered_neighbors.sort();
-
-        for neighbor_node in ordered_neighbors {
-            hasher.update(
-                self.graph
-                    .node_weight(neighbor_node)
-                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
-                    .merkle_tree_hash()
-                    .to_string()
-                    .as_bytes(),
-            );
-        }
-
-        let new_node_weight = self
-            .graph
-            .node_weight_mut(node_index_to_update)
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-        new_node_weight.set_merkle_tree_hash(hasher.finalize());
-
-        Ok(())
-    }
-
-    pub fn merge(
-        &mut self,
-        change_set: &ChangeSet,
-        other: &WorkspaceSnapshotGraph,
-    ) -> WorkspaceSnapshotResult<()> {
-        let local_root_write_vector_clock =
-            self.get_node_weight(self.root_index)?.vector_clock_write();
-        let remote_root_write_vector_clock = other
-            .get_node_weight(other.root_index)?
-            .vector_clock_write();
-
-        if local_root_write_vector_clock.is_newer_than(remote_root_write_vector_clock) {
-            // We're strictly newer than `other`, which means that we can fast forward by incorporating new
-            // vector clock entries in `other` (which should only be in the "seen" clock), and incrementing
-            // our "seen" vector clock entry.
-            //
-            // Create a new root node with merged "seen" vector clocks, incrementing the entry for `change_set`.
-            // Do *NOT* increment the "write" vector clock, since we have not changed anything about the content
-            // of the graph.
-            let mut new_root_node_weight = self.get_node_weight(self.root_index)?.clone();
-            new_root_node_weight
-                .merge_clocks(change_set, other.get_node_weight(other.root_index)?)?;
-            new_root_node_weight.increment_seen_vector_clock(change_set)?;
-            let new_root_index = self.add_node(new_root_node_weight)?;
-
-            self.replace_references(change_set, self.root_index, new_root_index)?;
-        } else if remote_root_write_vector_clock.is_newer_than(local_root_write_vector_clock) {
-            // `local` is not "newer" than `other` and `other` *IS* "newer" than `local`, which means that we
-            // can fast-forward `local` to the state of `other`, incorporate the `local` vector clock entries
-            // into `other` (which should only be in the "seen" clock), and increment our "seen" vector clock
-            // entry.
-            let mut new_root_node_weight = other.get_node_weight(other.root_index)?.clone();
-            new_root_node_weight
-                .merge_clocks(change_set, self.get_node_weight(self.root_index)?)?;
-            new_root_node_weight.increment_seen_vector_clock(change_set)?;
-
-            self.graph = other.graph.clone();
-            self.root_index = other.root_index;
-
-            let new_root_node_index = self.add_node(new_root_node_weight)?;
-            self.replace_references(change_set, self.root_index, new_root_node_index)?;
-        } else if !self.find_conflicts(other)?.is_empty() {
-            // Neither `local`, nor `remote` are purely "newer" than the other (both have things the other does not),
-            // and there are conflicts. We cannot merge, and `remote` must be "rebased" to resolve the conflicts.
-            return Err(WorkspaceSnapshotError::WorkspaceNeedsRebase);
-        } else {
-            // No conflicts; do the merge!
-
-            todo!();
-        }
-
-        // `other` has newer/more entries than we have:
-
-        Ok(())
-    }
-
-    pub fn find_conflicts(
-        &self,
-        other: &WorkspaceSnapshotGraph,
-    ) -> WorkspaceSnapshotGraphResult<Vec<Conflict>> {
-        // `self`/`local` is the base change set. `other` is the change set to merge in.
-        // Both `local` and `other` have (write) entries that the other does not. Figure out if the
-        // trees can be merged together without any conflicts.
-        let mut conflicts: Vec<Conflict> = Vec::new();
-        let result =
-            petgraph::visit::depth_first_search(&other.graph, Some(other.root_index), |event| {
-                match event {
-                    petgraph::visit::DfsEvent::Discover(to_merge_node_index, _) => {
-                        // Check if `base` has a node with the same `ID`
-                        let to_merge_node_weight = other
-                            .get_node_weight(to_merge_node_index)
-                            .map_err(|_| event)?;
-                        let base_node_index =
-                            match self.get_node_index_by_id(to_merge_node_weight.id()) {
-                                Ok(ni) => ni,
-                                // If there isn't a node with the same ID in `base` then it's a "new" node.
-                                Err(WorkspaceSnapshotError::NodeWithIdNotFound(_)) => {
-                                    // TODO: This isn't right. We should be checking why it's only in `other` (the branch to merge). Was it deleted in `base`, and if so, has it been modified at all in `other`?
-                                    return Ok(petgraph::visit::Control::Continue);
-                                }
-                                // Something else went wrong; we should probably bail out.
-                                Err(_) => return Err(event),
-                            };
-                        let base_node_weight =
-                            self.get_node_weight(base_node_index).map_err(|_| event)?;
-
-                        if to_merge_node_weight.merkle_tree_hash()
-                            == base_node_weight.merkle_tree_hash()
-                        {
-                            // These (sub-)graphs have the same content, so there can be no conflicts
-                            // from this point towards the leaves.
-                            return Ok(petgraph::visit::Control::Prune);
-                        }
-
-                        if let (
-                            NodeWeight::Content(base_content_weight),
-                            NodeWeight::Content(to_merge_content_weight),
-                        ) = (base_node_weight, to_merge_node_weight)
-                        {
-                            // If the content of the node itself is the same in `base` and `other`, then that
-                            // means that something has changed about the node's children. This could be an
-                            // added or removed relationship, a change in the ordering of the children, or
-                            // that one of the child nodes itself (or one of its descendents) has changed,
-                            // or all of these. If there are added/removed relationships, or re-ordered
-                            // children on both sides, then that should be considered as a conflict on the
-                            // container node itself.
-                            if to_merge_content_weight.content_address()
-                                == base_content_weight.content_address()
-                            {
-                                if let Some(container_membership_conflict) = self
-                                    .has_container_membership_conflict(
-                                        base_node_index,
-                                        other,
-                                        to_merge_node_index,
-                                    )
-                                    .map_err(|_| event)?
-                                {
-                                    conflicts.push(container_membership_conflict);
-                                }
-                            } else {
-                                // There's a difference in the content of the node itself, so we need to see
-                                // if that difference is because of a conflict.
-                                if base_content_weight
-                                    .vector_clock_write()
-                                    .is_newer_than(to_merge_content_weight.vector_clock_write())
-                                    || to_merge_content_weight
-                                        .vector_clock_write()
-                                        .is_newer_than(base_content_weight.vector_clock_write())
-                                {
-                                    // One side already contains all of the changes from the other, so it's not a conflict.
-                                    return Ok(petgraph::visit::Control::Continue);
-                                } else {
-                                    // Both sides have changes the other does not know about: We've
-                                    // got a conflict.
-                                    conflicts.push(Conflict::NodeContent(ConflictLocation {
-                                        base: base_node_index,
-                                        other: to_merge_node_index,
-                                    }));
-                                }
-                            }
-                        }
-
-                        Ok(petgraph::visit::Control::Continue)
-                    }
-                    // TODO: Remove this. Only here to get type checking/guessing to work.
-                    // Not actually what we want, since this is about finishing all edges from a node,
-                    // not about finishing the graph.
-                    petgraph::visit::DfsEvent::Finish(_, _) => {
-                        Ok(petgraph::visit::Control::Break(()))
-                    }
-                    _ => Ok(petgraph::visit::Control::Continue),
-                    // petgraph::visit::DfsEvent::TreeEdge(_, _) => todo!(),
-                    // petgraph::visit::DfsEvent::BackEdge(_, _) => todo!(),
-                    // petgraph::visit::DfsEvent::CrossForwardEdge(_, _) => todo!(),
-                    // petgraph::visit::DfsEvent::Finish(_, _) => todo!(),
-                }
-            });
-        if let Err(traversal_error) = result {
-            return Err(WorkspaceSnapshotGraphError::GraphTraversal(traversal_error));
-        }
-
-        Ok(conflicts)
     }
 
     fn has_container_membership_conflict(
@@ -624,6 +572,323 @@ impl WorkspaceSnapshotGraph {
         }
 
         Ok(None)
+    }
+
+    fn has_path_to_root(&self, node: NodeIndex) -> bool {
+        algo::has_path_connecting(&self.graph, self.root_index, node, None)
+    }
+
+    fn import_subgraph(
+        &mut self,
+        other: &WorkspaceSnapshotGraph,
+        root_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let mut new_node_indexes = HashMap::new();
+        let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
+        while let Some(node_index_to_copy) = dfs.next(&other.graph) {
+            let node_weight_copy = other.get_node_weight(node_index_to_copy)?.clone();
+            let new_node_index = self.add_node(node_weight_copy)?;
+            new_node_indexes.insert(node_index_to_copy, new_node_index);
+
+            for edge in other.graph.edges_directed(node_index_to_copy, Outgoing) {
+                self.graph.update_edge(
+                    new_node_index,
+                    new_node_indexes
+                        .get(&edge.target())
+                        .copied()
+                        .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?,
+                    edge.weight().clone(),
+                );
+            }
+        }
+
+        new_node_indexes
+            .get(&root_index)
+            .copied()
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+    }
+
+    fn is_acyclic_directed(&self) -> bool {
+        // Using this because "is_cyclic_directed" is recursive.
+        algo::toposort(&self.graph, None).is_ok()
+    }
+
+    fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
+        algo::has_path_connecting(&self.graph, start, node, None)
+            && algo::has_path_connecting(&self.graph, node, end, None)
+    }
+
+    pub fn merge(
+        &mut self,
+        change_set: &ChangeSet,
+        other: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let local_root_write_vector_clock =
+            self.get_node_weight(self.root_index)?.vector_clock_write();
+        let remote_root_write_vector_clock = other
+            .get_node_weight(other.root_index)?
+            .vector_clock_write();
+
+        if local_root_write_vector_clock.is_newer_than(remote_root_write_vector_clock) {
+            // We're strictly newer than `other`, which means that we can fast forward by incorporating new
+            // vector clock entries in `other` (which should only be in the "seen" clock), and incrementing
+            // our "seen" vector clock entry.
+            //
+            // Create a new root node with merged "seen" vector clocks, incrementing the entry for `change_set`.
+            // Do *NOT* increment the "write" vector clock, since we have not changed anything about the content
+            // of the graph.
+            let mut new_root_node_weight = self.get_node_weight(self.root_index)?.clone();
+            new_root_node_weight
+                .merge_clocks(change_set, other.get_node_weight(other.root_index)?)?;
+            new_root_node_weight.increment_seen_vector_clock(change_set)?;
+            let new_root_index = self.add_node(new_root_node_weight)?;
+
+            self.replace_references(change_set, self.root_index, new_root_index)?;
+        } else if remote_root_write_vector_clock.is_newer_than(local_root_write_vector_clock) {
+            // `local` is not "newer" than `other` and `other` *IS* "newer" than `local`, which means that we
+            // can fast-forward `local` to the state of `other`, incorporate the `local` vector clock entries
+            // into `other` (which should only be in the "seen" clock), and increment our "seen" vector clock
+            // entry.
+            let mut new_root_node_weight = other.get_node_weight(other.root_index)?.clone();
+            new_root_node_weight
+                .merge_clocks(change_set, self.get_node_weight(self.root_index)?)?;
+            new_root_node_weight.increment_seen_vector_clock(change_set)?;
+
+            self.graph = other.graph.clone();
+            self.root_index = other.root_index;
+
+            let new_root_node_index = self.add_node(new_root_node_weight)?;
+            self.replace_references(change_set, self.root_index, new_root_node_index)?;
+        } else if !self.find_conflicts(other)?.is_empty() {
+            // Neither `local`, nor `remote` are purely "newer" than the other (both have things the other does not),
+            // and there are conflicts. We cannot merge, and `remote` must be "rebased" to resolve the conflicts.
+            return Err(WorkspaceSnapshotGraphError::WorkspaceNeedsRebase);
+        } else {
+            self.merge_snapshot_graphs(change_set, other)?;
+        }
+
+        Ok(())
+    }
+
+    fn merge_snapshot_graphs(
+        &mut self,
+        change_set: &ChangeSet,
+        to_merge: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        Err(WorkspaceSnapshotGraphError::WorkspacesConflict)
+    }
+
+    fn rebase(
+        &mut self,
+        change_set: &ChangeSet,
+        onto: &WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let result =
+            petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
+                self.rebase_process_dfs_event(change_set, onto, event)
+            });
+
+        Err(WorkspaceSnapshotGraphError::WorkspacesConflict)
+    }
+
+    fn rebase_process_dfs_event(
+        &mut self,
+        change_set: &ChangeSet,
+        onto: &WorkspaceSnapshotGraph,
+        event: DfsEvent<NodeIndex>,
+    ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
+        match event {
+            petgraph::visit::DfsEvent::Discover(onto_node_index, _) => {
+                let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|_| event)?;
+                let nodes_with_lineage = self
+                    .get_node_index_by_lineage(onto_node_weight.lineage_id())
+                    .map_err(|_| event)?;
+                if !nodes_with_lineage.is_empty() {
+                    for our_node_index in self
+                        .get_node_index_by_lineage(onto_node_weight.lineage_id())
+                        .map_err(|_| event)?
+                    {
+                        let our_node_weight =
+                            self.get_node_weight(our_node_index).map_err(|_| event)?;
+                        if onto_node_weight
+                            .vector_clock_write()
+                            .is_newer_than(our_node_weight.vector_clock_write())
+                        {
+                            // The thing is newer in the snapshot we're rebasing onto, use that
+                            // one.
+                            let new_node_index = self
+                                .import_subgraph(onto, onto_node_index)
+                                .map_err(|_| event)?;
+                            self.replace_references(change_set, our_node_index, new_node_index)
+                                .map_err(|_| event)?;
+
+                            // No need to look further down the graph at this point, since we've
+                            // already taken everything below this point.
+                            return Ok(petgraph::visit::Control::Prune);
+                        }
+                        // Ours is newer, do nothing. Neither is newer, there's a conflict that
+                        // must be resolved (and should have been detected before `rebase` was
+                        // called).
+                    }
+                } else {
+                    // This is a new thing we need to import into our snapshot.
+                    if let NodeWeight::Content(content_weight) = onto_node_weight {
+                        match content_weight.content_address() {
+                            ContentAddress::Component(_) |
+                            ContentAddress::Func(_) |
+                            ContentAddress::Prop(_) |
+                            ContentAddress::Schema(_) => {
+                                let new_node_index = self
+                                    .import_subgraph(onto, onto_node_index)
+                                    .map_err(|_| event)?;
+                                let edge_weight = EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                                    .map_err(|_| event)?;
+                                self.add_edge(change_set, self.root_index, edge_weight, new_node_index)
+                                    .map_err(|_| event)?;
+                            }
+                            ContentAddress::FuncArg(_) |
+                            ContentAddress::SchemaVariant(_) => {
+                                for incoming_edge in onto.graph.edges_directed(onto_node_index, Incoming) {
+                                    // TODO
+                                }
+                                // Nothing to do. These are not directly connected to the root node
+                                // in the graph.
+                            }
+                            ContentAddress::Root => {
+                                // Nothing to do. We already have a root node. No need to have a
+                                // second one.
+                            }
+                        }
+                    }
+                }
+            }
+            _ => { /* Ignoring all other events */ }
+            // DfsEvent::TreeEdge(_, _) => todo!(),
+            // DfsEvent::BackEdge(_, _) => todo!(),
+            // DfsEvent::CrossForwardEdge(_, _) => todo!(),
+            // DfsEvent::Finish(_, _) => todo!(),
+        }
+
+        Ok(petgraph::visit::Control::Continue)
+    }
+
+    fn replace_references(
+        &mut self,
+        change_set: &ChangeSet,
+        original_node_index: NodeIndex,
+        new_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let mut old_to_new_node_indices: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        old_to_new_node_indices.insert(original_node_index, new_node_index);
+
+        let mut dfspo = DfsPostOrder::new(&self.graph, self.root_index);
+        while let Some(old_node_index) = dfspo.next(&self.graph) {
+            // All nodes that exist between the root and the `original_node_index` are affected by the replace, and only
+            // those nodes are affected, because the replacement affects their merkel tree hashes.
+            if self.is_on_path_between(self.root_index, original_node_index, old_node_index) {
+                // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
+                // traversal should already exist since it was created before we entered `replace_references`, and
+                // is the reason we're updating things in the first place.
+                let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
+                    Some(found_new_node_index) => *found_new_node_index,
+                    None => {
+                        let new_node_index = self.copy_node_index(change_set, old_node_index)?;
+                        old_to_new_node_indices.insert(old_node_index, new_node_index);
+                        new_node_index
+                    }
+                };
+
+                // Find all outgoing edges. From those outgoing edges and find their destinations.
+                // If they do not have destinations, then there is no work to do (i.e. stale edge
+                // reference, which should only happen if an edge was removed after we got the
+                // edge ref, but before we asked about the edge's endpoints).
+                let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
+                for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
+                    let edge_weight = edge_reference.weight();
+                    if let Some((_, destination_node_index)) =
+                        self.graph.edge_endpoints(edge_reference.id())
+                    {
+                        edges_to_create.push((
+                            edge_weight.new_with_incremented_vector_clocks(change_set)?,
+                            destination_node_index,
+                        ));
+                    }
+                }
+
+                // Make copies of these edges where the source is the new node index and the
+                // destination is one of the following...
+                // - If an entry exists in `old_to_new_node_indicies` for the destination node index,
+                //   use the value of the entry (the destination was affected by the replacement,
+                //   and needs to use the new node index to reflect this).
+                // - There is no entry in `old_to_new_node_indicies`; use the same destination node
+                //   index as the old edge (the destination was *NOT* affected by the replacemnt,
+                //   and does not have any new information to reflect).
+                for (edge_weight, destination_node_index) in edges_to_create {
+                    // Need to directly add the edge, without going through `self.add_edge` to avoid
+                    // infinite recursion, and because we're the place doing all the book keeping
+                    // that we'd be interested in happening from `self.add_edge`.
+                    self.graph.update_edge(
+                        new_node_index,
+                        *old_to_new_node_indices
+                            .get(&destination_node_index)
+                            .unwrap_or(&destination_node_index),
+                        edge_weight,
+                    );
+                }
+
+                self.update_merkle_tree_hash(new_node_index)?;
+
+                // Use the new version of the old root node as our root node.
+                if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
+                    self.root_index = *new_root_node_index;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_merkle_tree_hash(
+        &mut self,
+        node_index_to_update: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let mut hasher = ContentHash::hasher();
+        hasher.update(
+            self.get_node_weight(node_index_to_update)?
+                .content_hash()
+                .to_string()
+                .as_bytes(),
+        );
+
+        // Need to make sure the neighbors are added to the hash in a stable order to ensure the
+        // merkle tree hash is identical for identical trees.
+        let mut ordered_neighbors = Vec::new();
+        for neighbor_node in self
+            .graph
+            .neighbors_directed(node_index_to_update, Outgoing)
+        {
+            ordered_neighbors.push(neighbor_node);
+        }
+        ordered_neighbors.sort();
+
+        for neighbor_node in ordered_neighbors {
+            hasher.update(
+                self.graph
+                    .node_weight(neighbor_node)
+                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+                    .merkle_tree_hash()
+                    .to_string()
+                    .as_bytes(),
+            );
+        }
+
+        let new_node_weight = self
+            .graph
+            .node_weight_mut(node_index_to_update)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+        new_node_weight.set_merkle_tree_hash(hasher.finalize());
+
+        Ok(())
     }
 }
 

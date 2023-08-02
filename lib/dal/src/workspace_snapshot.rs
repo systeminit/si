@@ -28,6 +28,7 @@ pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
 pub mod node_weight;
+pub mod update;
 pub mod vector_clock;
 
 use petgraph::prelude::*;
@@ -38,10 +39,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::{
-    workspace_snapshot::{
-        edge_weight::EdgeWeightError, graph::WorkspaceSnapshotGraphError,
-        node_weight::NodeWeightError,
-    },
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
 };
 use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
@@ -49,16 +47,10 @@ use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("Action would create a graph cycle")]
-    CreateGraphCycle,
-    #[error("EdgeWeight error: {0}")]
-    EdgeWeight(#[from] EdgeWeightError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("Node with ID {0} not found")]
-    NodeWithIdNotFound(Ulid),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("poison error: {0}")]
@@ -69,8 +61,6 @@ pub enum WorkspaceSnapshotError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("Workspace Snapshot has conflicts and must be rebased")]
-    WorkspaceNeedsRebase,
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]

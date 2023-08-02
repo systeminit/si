@@ -65,6 +65,13 @@ impl NodeWeight {
         }
     }
 
+    pub fn lineage_id(&self) -> Ulid {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.lineage_id(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.lineage_id(),
+        }
+    }
+
     pub fn merge_clocks(
         &mut self,
         change_set: &ChangeSet,
