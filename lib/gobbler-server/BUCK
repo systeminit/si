@@ -35,6 +35,7 @@ rust_test(
         "//lib/dal:dal",
         "//lib/dal-test:dal-test",
         "//lib/si-pkg:si-pkg",
+        "//lib/si-rabbitmq:si-rabbitmq",
         "//lib/si-test-macros:si-test-macros",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:base64",
