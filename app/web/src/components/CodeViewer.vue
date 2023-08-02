@@ -60,6 +60,7 @@ import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
 import { themeClasses, useTheme } from "@si/vue-lib/design-system";
+import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
 import SiButtonIcon from "@/components/SiButtonIcon.vue";
@@ -112,13 +113,19 @@ const editorStyleExtension = computed(() => {
   });
 });
 
+const javascriptLang = new Compartment();
+
 const editorExtensionList = computed<Extension[]>(() => {
+  const codeParser =
+    props.codeLanguage === "javascript"
+      ? javascriptLang.of(CodemirrorJsLang())
+      : StreamLanguage.define(CODE_PARSER_LOOKUP[props.codeLanguage]);
   return [
     basicSetup,
     editorThemeExtension.value,
     editorStyleExtension.value,
     keymap.of([indentWithTab]),
-    StreamLanguage.define(CODE_PARSER_LOOKUP[props.codeLanguage]),
+    codeParser,
     readOnly.of(EditorState.readOnly.of(true)),
     EditorView.lineWrapping,
   ];

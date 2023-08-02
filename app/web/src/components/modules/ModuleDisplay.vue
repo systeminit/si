@@ -145,10 +145,13 @@
                   :key="func.uniqueId"
                   class="mt-5"
                 >
-                  {{ func.name }}
-                  <pre v-if="func.codeBase64">{{
-                    decodeb64(func.codeBase64)
-                  }}</pre>
+                  <b>{{ func.name }}</b>
+                  <CodeViewer
+                    v-if="func.codeBase64"
+                    :code="decodeb64(func.codeBase64)"
+                    codeLanguage="javascript"
+                  />
+                  <p v-else>(builtin, or no code)</p>
                 </li>
               </ul>
             </div>
@@ -187,6 +190,7 @@ import {
   VButton,
 } from "@si/vue-lib/design-system";
 import { useModuleStore } from "@/store/module.store";
+import CodeViewer from "../CodeViewer.vue";
 
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
