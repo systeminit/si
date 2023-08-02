@@ -6,13 +6,12 @@ use axum::{
 };
 use dal::{
     change_status::ChangeStatusError, ChangeSetError as DalChangeSetError,
-    ComponentError as DalComponentError, DalContext, FixError, SchemaVariant, StandardModel,
-    StandardModelError, TransactionsError, UserError, UserPk,
+    ComponentError as DalComponentError, FixError, StandardModelError, TransactionsError,
+    UserError, UserPk,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{server::state::AppState, service::pkg::PkgError};
 
@@ -108,6 +107,7 @@ pub fn routes() -> Router<AppState> {
 // but we'll need to nail down exactly how the job will auth to the module-index API first.
 // Passing the user's access token into the background job processing system is kind of a
 // non-starter.
+/*
 async fn upload_workspace_backup_module(
     ctx: DalContext,
     access_token: String,
@@ -144,3 +144,4 @@ async fn upload_workspace_backup_module(
     info!("Success");
     Ok(())
 }
+*/

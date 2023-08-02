@@ -1,5 +1,5 @@
 use super::ChangeSetResult;
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::service::change_set::ChangeSetError;
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
@@ -11,7 +11,6 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 //use telemetry::tracing::{info_span, Instrument, log::warn};
-use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +36,6 @@ pub struct ApplyChangeSetResponse {
 pub async fn apply_change_set(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    RawAccessToken(raw_access_token): RawAccessToken,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ApplyChangeSetRequest>,
@@ -110,10 +108,12 @@ pub async fn apply_change_set(
 
     // If anything fails with uploading the workspace backup module, just log it. We shouldn't
     // have the change set apply itself fail because of this.
+    /*
     tokio::task::spawn(
         super::upload_workspace_backup_module(ctx, raw_access_token)
             .instrument(info_span!("Workspace backup module upload")),
     );
+    */
 
     Ok(Json(ApplyChangeSetResponse { change_set }))
 }
