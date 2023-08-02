@@ -37,7 +37,7 @@ Some Marks may not be registered, but registration does not equal ownership of t
 
 The following trademarks are ones that are reserved exclusively to our use and are not covered by the Policy:
 
-<img src="https://images.ctfassets.net/vfl28orm8any/2sQ28XRVtvhVpwfL3veeyy/f572bb523ba3ce73c3a02768358c128e/si-logo-wts.svg" width="64" height="64"/> 
+<img src="https://images.ctfassets.net/vfl28orm8any/10ZZ8DqAxV9Kug8wT1tHa7/56fff2fb3d8f046f40a821aacfd60142/SI-Symbol-Rev-RGB.svg" width="64" height="64"/>
 
 Contact us as described in "Where to get further information" below if you have questions or want to ask permission to use any of these excluded trademarks.
 
@@ -69,7 +69,7 @@ See Universal considerations for all uses above, which also apply.
 
 ### Distribution of unmodified source code or unmodified executable code we have compiled
 
-When you redistribute an unmodified copy of our software, you are not changing the quality or nature of it. Therefore, you may retain any of our Marks, as well as any logos or other indicia of source we have included in the software, whether that redistribution is made by optical media, memory stick or download of unmodified source and executable code. This kind of use only applies if you are redistributing an official distribution from this Project that has not been changed in any way. 
+When you redistribute an unmodified copy of our software, you are not changing the quality or nature of it. Therefore, you may retain any of our Marks, as well as any logos or other indicia of source we have included in the software, whether that redistribution is made by optical media, memory stick or download of unmodified source and executable code. This kind of use only applies if you are redistributing an official distribution from this Project that has not been changed in any way.
 
 ### Statements about compatibility, interoperability or derivation
 
@@ -85,11 +85,11 @@ You may use the Marks to truthfully describe the relationship between your softw
 
 ### Internal use of software for development, testing and integration purposes
 
-We understand that you will need to modify, build, install, and test the software to see whether the software will be suitable for your needs, develop new functionality, and integrate properly into your systems, and we want you to do that quickly and easily. Therefore, you may build an executable version from source code for the purpose of testing the integration of the software into your systems, including modifying it, and you do not have to remove the Marks from your testing executable. This permission includes providing copies of the source code or testing executable to independent contractors that you have hired to perform this function on your behalf. However, you cannot include the Marks in any version that you build from source that you will be using beyond development and testing the software itself, including for any production purposes. 
+We understand that you will need to modify, build, install, and test the software to see whether the software will be suitable for your needs, develop new functionality, and integrate properly into your systems, and we want you to do that quickly and easily. Therefore, you may build an executable version from source code for the purpose of testing the integration of the software into your systems, including modifying it, and you do not have to remove the Marks from your testing executable. This permission includes providing copies of the source code or testing executable to independent contractors that you have hired to perform this function on your behalf. However, you cannot include the Marks in any version that you build from source that you will be using beyond development and testing the software itself, including for any production purposes.
 
 ## Uses we consider infringing without seeking further permission from us
 
-We will likely consider using the Marks for an executable form of the software built from our source code to be an infringement of our Marks. We cannot assure that the software meets our standards of quality if we did not build it. 
+We will likely consider using the Marks for an executable form of the software built from our source code to be an infringement of our Marks. We cannot assure that the software meets our standards of quality if we did not build it.
 
 We will likely consider using the Marks for a software distribution that combines our software with any other software program an infringement of our Marks. We would consider your software "combined" with ours if you create a single executable for both software programs, as well as if, by installing our software, it automatically installs yours. We would not consider your software "combined" with ours if it is on the same media but requires separate, independent action to install it.
 
@@ -112,7 +112,7 @@ You can use the Word Marks as part of your user group name provided that:
 * The main focus of the group is the software;
 * Any software or services the group provides are without cost;
 * The group does not make a profit;
-* Any charge to attend meetings are to cover the cost of the venue, food and drink only. 
+* Any charge to attend meetings are to cover the cost of the venue, food and drink only.
 
 Note that the Universal considerations for all uses, above, still apply, specifically, that you may not use or register the Marks as part of your own trademark, service mark, domain name, company name, trade name, product name or service name.
 
@@ -137,7 +137,7 @@ If you are aware of any confusing use or misuse of the Marks in any way, we woul
 
 ### Where to get further information
 
-If you have any questions about this Policy, would like to speak with us about the use of our Marks in ways not described in the Policy, or see any abuse of our Marks, please **TODO: insert contact information.**
+If you have any questions about this Policy, would like to speak with us about the use of our Marks in ways not described in the Policy, or see any abuse of our Marks, please email <a href="mailto:legal@systeminit.com">legal@systeminit.com</a>.
 
 ### General considerations about trademarks and their use
 
@@ -185,7 +185,7 @@ Don't pluralize a trademark.
   * Unacceptable: I have seventeen System Initiatives running in my lab.
   * Acceptable: I have seventeen System Initiative installations running in my lab.
 
-Always use a trademark as an adjective modifying a noun.* You can see the nouns we prefer under "Our trademarks." 
+Always use a trademark as an adjective modifying a noun.* You can see the nouns we prefer under "Our trademarks."
 
   * Unacceptable: This is a System Initiative. Anyone can install it.
   * Acceptable: This is a System Initiative instance. Anyone can install it.
