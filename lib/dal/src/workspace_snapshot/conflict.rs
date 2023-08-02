@@ -14,7 +14,7 @@ pub enum Conflict {
 #[derive(Debug, Copy, Clone)]
 pub struct ConflictLocation {
     /// The location of the conflict in the "base" graph of the merge.
-    pub base: NodeIndex,
+    pub onto: NodeIndex,
     /// The location of the conflict in the graph that is attempting to be merged into "base".
-    pub other: NodeIndex,
+    pub to_rebase: NodeIndex,
 }

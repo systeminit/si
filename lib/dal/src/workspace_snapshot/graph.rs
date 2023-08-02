@@ -30,6 +30,8 @@ pub enum WorkspaceSnapshotGraphError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("Problem during graph traversal: {0:?}")]
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
+    #[error("Incompatible node types")]
+    IncompatibleNodeTypes,
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
@@ -191,7 +193,7 @@ impl WorkspaceSnapshotGraph {
                 // below, as it will be identical every time.
                 let mut onto_edges = None;
                 let mut onto_ordering_node_index = None;
-                let mut onto_order_set = None;
+                let mut onto_order_set: Option<HashSet<Ulid>> = None;
 
                 // If everything with the same `lineage_id` is identical, then we can prune the
                 // graph traversal, and avoid unnecessary lookups/comparisons.
@@ -268,9 +270,9 @@ impl WorkspaceSnapshotGraph {
                             // the containers, since we can't rely on an ordering child to
                             // contain all the information to determine ordering/addition/removal.
                             //
-                            // Eventually, this only happen, on the root node itself, since
+                            // Eventually, this will only happen on the root node itself, since
                             // Objects, Maps, and Arrays should all have an ordering, for at
-                            // least display ordering purposes.
+                            // least display purposes.
                             warn!(
                                 "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
                                 onto_node_index, to_rebase_node_index,
@@ -305,20 +307,21 @@ impl WorkspaceSnapshotGraph {
                                 };
                             }
                             let (container_updates, container_conflicts) = self
-                                .find_container_membership_conflicts_and_updates(
+                                .find_ordered_container_membership_conflicts_and_updates(
+                                    to_rebase_node_index,
                                     to_rebase_ordering_node_index,
                                     onto,
+                                    onto_node_index,
                                     onto_ordering_node_index,
-                                    onto_order_set.as_ref(),
                                 )
                                 .map_err(|_| event)?;
+
+                            updates.extend(container_updates);
+                            conflicts.extend(container_conflicts);
+
+                            return Ok(petgraph::visit::Control::Continue);
                         }
                     }
-                    // Check if there's difference in the outgoing edges (and whether it's a
-                    // conflict if there is a difference).
-
-                    // Is the set of things pointed to by `onto_edges` the same as the set of things
-                    // pointed to by `to_rebase_edges` (ignoring content of the things themselves)?
                 }
 
                 if any_content_with_lineage_has_changed {
@@ -476,14 +479,51 @@ impl WorkspaceSnapshotGraph {
         }
     }
 
-    fn find_container_membership_conflicts_and_updates(
+    fn find_ordered_container_membership_conflicts_and_updates(
         &self,
-        our_node_index: NodeIndex,
-        other: &WorkspaceSnapshotGraph,
-        other_node_index: NodeIndex,
-        other_ordering_set: Option<&HashSet<Ulid>>,
+        to_rebase_container_index: NodeIndex,
+        to_rebase_ordering_index: NodeIndex,
+        onto: &WorkspaceSnapshotGraph,
+        onto_container_index: NodeIndex,
+        onto_ordering_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Update>, Vec<Conflict>)> {
-        todo!();
+        let mut updates = Vec::new();
+        let mut conflicts = Vec::new();
+
+        let onto_ordering = match onto.get_node_weight(onto_ordering_index)? {
+            NodeWeight::Ordering(ordering) => ordering,
+            _ => return Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes),
+        };
+        let to_rebase_ordering = match self.get_node_weight(to_rebase_ordering_index)? {
+            NodeWeight::Ordering(ordering) => ordering,
+            _ => return Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes),
+        };
+
+        if onto_ordering.order() == to_rebase_ordering.order() {
+            // Both contain the same items, in the same order. No conflicts, and nothing
+            // to update.
+            return Ok((updates, conflicts));
+        } else if onto_ordering
+            .vector_clock_write()
+            .is_newer_than(to_rebase_ordering.vector_clock_write())
+        {
+            // `onto` has content that `to_rebase` has not seen yet. We need to find out what they
+            // are and use them.
+        } else if to_rebase_ordering
+            .vector_clock_write()
+            .is_newer_than(onto_ordering.vector_clock_write())
+        {
+            // We already have everything in `onto` as part of `to_rebase`. Nothing needs
+            // updating, and there are no conflicts.
+            todo!();
+        } else {
+            // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
+            // need to find out what the changes are to see what needs to be updated, and what
+            // conflicts.
+            todo!();
+        }
+
+        Ok((updates, conflicts))
     }
 
     fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
