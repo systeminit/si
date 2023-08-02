@@ -242,9 +242,6 @@ impl WorkspaceSnapshotGraph {
                         }
                     }
 
-                    let onto_edges = onto_edges.get_or_insert_with(|| {
-                        onto.graph.edges_directed(onto_node_index, Outgoing)
-                    });
                     if onto_ordering_node_index.is_none() {
                         let onto_ordering_node_indexes =
                             ordering_node_indexes_for_node_index(onto, onto_node_index);
@@ -253,7 +250,6 @@ impl WorkspaceSnapshotGraph {
                         }
                         onto_ordering_node_index = onto_ordering_node_indexes.get(0).copied();
                     }
-                    let to_rebase_edges = self.graph.edges_directed(to_rebase_node_index, Outgoing);
                     let to_rebase_ordering_node_indexes =
                         ordering_node_indexes_for_node_index(self, to_rebase_node_index);
                     if to_rebase_ordering_node_indexes.len() > 1 {
@@ -280,6 +276,12 @@ impl WorkspaceSnapshotGraph {
                                 onto_node_index, to_rebase_node_index,
                             );
 
+                            let onto_edges = onto_edges.get_or_insert_with(|| {
+                                onto.graph.edges_directed(onto_node_index, Outgoing)
+                            });
+                            let to_rebase_edges =
+                                self.graph.edges_directed(to_rebase_node_index, Outgoing);
+
                             todo!();
                         }
                         (None, Some(_)) | (Some(_), None) => {
@@ -293,6 +295,15 @@ impl WorkspaceSnapshotGraph {
                             return Err(event);
                         }
                         (Some(to_rebase_ordering_node_index), Some(onto_ordering_node_index)) => {
+                            if onto_order_set.is_none() {
+                                if let NodeWeight::Ordering(onto_order_weight) = onto
+                                    .get_node_weight(onto_ordering_node_index)
+                                    .map_err(|_| event)?
+                                {
+                                    onto_order_set =
+                                        Some(onto_order_weight.order().iter().copied().collect());
+                                };
+                            }
                             let (container_updates, container_conflicts) = self
                                 .find_container_membership_conflicts_and_updates(
                                     to_rebase_ordering_node_index,
