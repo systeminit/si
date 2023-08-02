@@ -10,7 +10,7 @@
         </p>
         <!-- TODO(wendy) - add "latest version" text conditional -->
       </div>
-      <div v-if="versions.length > 1" class="w-20 flex-none">
+      <div v-if="versions.length > 1" class="w-40 flex-none">
         <VormInput
           v-model="selectedVersion"
           noLabel
@@ -39,12 +39,10 @@
         </div>
       </div>
       <div class="border-b border-neutral-400 my-md" />
-      <!-- 
-      <div class="font-bold">Shell script for {{ selectedPlatform }}</div>
+      <div class="font-bold">Shell script for installation</div>
       <RichText class="py-sm">
-        <pre><code class="language-shell">$ script goes here for {{ selectedPlatform }}</code></pre>
+        <pre><code class="language-shell">$ curl https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
-      -->
       <template v-if="selectedPlatformAssets.length > 0">
         <div class="font-bold">
           Binary download{{ selectedPlatformAssets.length > 1 ? "s" : "" }} for
@@ -101,7 +99,7 @@ import { useHead } from "@vueuse/head";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import clsx from "clsx";
 import { computed, onBeforeMount, ref } from "vue";
-import { Icon, VormInput } from "@si/vue-lib/design-system";
+import { Icon, VormInput, RichText } from "@si/vue-lib/design-system";
 import { Asset, useGithubStore } from "@/store/github.store";
 import { useFeatureFlagsStore } from "../store/feature_flags.store";
 
@@ -144,7 +142,9 @@ const selectedPlatformAssets = computed(() => {
   releasesByVersion.value[selectedVersion.value].assets.forEach(
     (asset: Asset) => {
       if (
-        asset.name.toLowerCase().includes(selectedPlatform.value.toLowerCase())
+        selectedPlatform.value.toLowerCase() === "macos"
+          ? asset.name.toLowerCase().includes("darwin")
+          : asset.name.toLowerCase().includes("linux")
       ) {
         assets.push(asset);
       }
