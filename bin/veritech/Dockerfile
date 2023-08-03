@@ -1,145 +1,94 @@
-ARG BUILDER_IMAGE=cache
-ARG RUST_VERSION=1.57.0
-
-ARG BUILDER_LANG_JS_IMAGE=cache_lang_js
-ARG NODE_VERSION=18.16.0
-ARG PNPM_VERSION=8.5.0
-
 ###########################################################################
-# Cache Stage
+# Builder Stage: veritech
 ###########################################################################
-# https://hub.docker.com/_/rust
-FROM rust:$RUST_VERSION as cache
-ARG RUST_VERSION
+# hadolint ignore=DL3007
+FROM nixos/nix:latest AS builder-veritech
 ARG BIN=veritech
 
-# hadolint ignore=DL3008
-RUN set -eux; \
-    apt-get update; \
-    apt-get install --yes --no-install-recommends \
-        lld \
-        protobuf-compiler \
-    ;
-WORKDIR /usr/src
-COPY . .
+COPY . /workdir
+WORKDIR /workdir
 
 RUN set -eux; \
-    cargo build --release --locked --bin $BIN --bin cyclone;
+    nix \
+        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
+        --option filter-syscalls false \
+        build \
+        ".#$BIN";
 
-RUN set -eux; \
-    find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;;
+RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
+# hadolint ignore=SC2046
+RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
+# hadolint ignore=SC2046
+RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
 ###########################################################################
-# Builder Stage
+# Builder Stage: cyclone
 ###########################################################################
-# hadolint ignore=DL3006
-FROM $BUILDER_IMAGE as builder
-ARG BIN=veritech
+# hadolint ignore=DL3007
+FROM nixos/nix:latest AS builder-cyclone
+ARG BIN=cyclone
 
-WORKDIR /usr/src
-COPY . .
+COPY . /workdir
+WORKDIR /workdir
 
 RUN set -eux; \
-    cargo build --release --locked --bin $BIN --bin cyclone;
+    nix \
+        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
+        --option filter-syscalls false \
+        build \
+        ".#$BIN";
 
-# Create a 2-part executable which occupies less space in RAM but still links
-# to debugging information for in-production debugging
-# hadolint ignore=DL3003
-RUN set -eux; \
-    objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg; \
-    objcopy --strip-debug target/release/$BIN; \
-    (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN);
-
-# hadolint ignore=DL3003
-RUN set -eux; \
-    objcopy --only-keep-debug target/release/cyclone target/release/cyclone.dbg; \
-    objcopy --strip-debug target/release/cyclone; \
-    (cd target/release && objcopy --add-gnu-debuglink=cyclone.dbg cyclone);
+RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
+# hadolint ignore=SC2046
+RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
+# hadolint ignore=SC2046
+RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
 ###########################################################################
-# lang-js Cache Stage
+# Builder Stage: lang-js
 ###########################################################################
-FROM node:$NODE_VERSION as cache_lang_js
-ARG NODE_VERSION
+# hadolint ignore=DL3007
+FROM nixos/nix:latest AS builder-lang-js
+ARG BIN=lang-js
 
-RUN npm install -g pnpm@$PNPM_VERSION
-
-WORKDIR /usr/src
-COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
-
-RUN pnpm fetch --filter lang-js;
-
-###########################################################################
-# lang-js Builder Stage
-###########################################################################
-# hadolint ignore=DL3006
-FROM $BUILDER_LANG_JS_IMAGE as builder_lang_js
-
-WORKDIR /usr/src
-COPY bin/lang-js ./bin/lang-js
-
-RUN pnpm install --filter lang-js;
+COPY . /workdir
+WORKDIR /workdir
 
 RUN set -eux; \
-    env; \
-    cd bin/lang-js; \
-    pnpm run package; \
-    ls -la target;
+    nix \
+        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
+        --option filter-syscalls false \
+        build \
+        ".#$BIN";
+
+RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
+# hadolint ignore=SC2046
+RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
+# hadolint ignore=SC2046
+RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
 ###########################################################################
 # Final Stage
 ###########################################################################
-FROM debian:stable-slim as final
+FROM alpine:3 AS final
 ARG BIN=veritech
 
+# hadolint ignore=DL3018
 RUN set -eux; \
-    useradd -ms /bin/bash app; \
+    apk add --no-cache runuser; \
+    adduser -D app; \
     for dir in /run /etc /usr/local/etc /home/app/.config; do \
         mkdir -pv "$dir/$BIN"; \
     done;
 
-# hadolint ignore=DL3008
-RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends \
-        busybox \
-        ca-certificates \
-        skopeo \
-        wget \
-    ; \
-    rm -rf /var/lib/apt/lists/*
-
-# https://github.com/instrumenta/kubeval/releases
-ARG KUBEVAL_VERSION=0.16.1
-
-# https://github.com/coreos/butane/releases
-ARG BUTANE_VERSION=0.16.0
-
-# hadolint ignore=DL3047
-RUN set -eux; \
-    wget -O /tmp/kubeval.tar.gz \
-        "https://github.com/instrumenta/kubeval/releases/download/v$KUBEVAL_VERSION/kubeval-linux-amd64.tar.gz"; \
-    tar xvf /tmp/kubeval.tar.gz -C /usr/local/bin kubeval; \
-    rm -v /tmp/kubeval.tar.gz; \
-    wget -O /usr/local/bin/butane \
-        "https://github.com/coreos/butane/releases/download/v$BUTANE_VERSION/butane-x86_64-unknown-linux-gnu"; \
-    chmod +x /usr/local/bin/butane; \
-    wget -O /tmp/awscliv2.zip \
-        "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"; \
-    busybox unzip /tmp/awscliv2.zip -d /tmp; \
-    /tmp/aws/install; \
-    rm -rf /tmp/aws /tmp/awscliv2.zip;
-
 WORKDIR /run/$BIN
-COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
-COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/
+COPY --from=builder-veritech /tmp/nix-store-closure /nix/store
+COPY --from=builder-veritech /tmp/local-bin/* /usr/local/bin/
+COPY --from=builder-cyclone /tmp/nix-store-closure /nix/store
+COPY --from=builder-cyclone /tmp/local-bin/* /usr/local/bin/
+COPY --from=builder-lang-js /tmp/nix-store-closure /nix/store
+COPY --from=builder-lang-js /tmp/local-bin/* /usr/local/bin/
 
-COPY --from=builder /usr/src/target/release/cyclone /usr/local/bin/
-COPY --from=builder /usr/src/target/release/cyclone.dbg /usr/local/bin/.debug/
-
-COPY --from=builder_lang_js /usr/src/bin/lang-js/target/lang-js /usr/local/bin/
-
-EXPOSE 5156/tcp
 ENTRYPOINT [ \
   "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/veritech" \
 ]

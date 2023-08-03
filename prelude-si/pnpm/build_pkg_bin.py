@@ -3,9 +3,7 @@
 Builds a binary executable using `pkg`.
 """
 import argparse
-import json
 import os
-from posix import symlink
 import shutil
 import subprocess
 import sys

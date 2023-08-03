@@ -5,6 +5,8 @@ load(
     "node_pkg_bin",
     "typescript_check",
     "typescript_dist",
+    "typescript_runnable_dist",
+    "typescript_runnable_dist_bin",
     "package_node_modules",
 )
 load(
@@ -29,7 +31,7 @@ filegroup(
 )
 
 filegroup(
-    name = "test",
+    name = "test_src",
     srcs = glob([
         "tests/**/*",
     ]),
@@ -40,15 +42,19 @@ typescript_dist(
     srcs = [":src"],
 )
 
-node_pkg_bin(
+typescript_runnable_dist(
     name = "lang-js",
-    extra_srcs = ["bin-placeholder.js"],
+)
+
+typescript_runnable_dist_bin(
+    name = "bin",
+    typescript_runnable_dist = ":lang-js",
 )
 
 eslint(
     name = "check-lint",
     directories = ["src", "tests"],
-    srcs = [":src", ":test"] + glob([".eslint*"]),
+    srcs = [":src", ":test_src"] + glob([".eslint*"]),
 )
 
 typescript_check(

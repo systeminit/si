@@ -5,7 +5,6 @@ node_modules.
 """
 import argparse
 import os
-from os.path import isdir
 import shutil
 import tempfile
 

@@ -44,6 +44,7 @@
           clang
           gitMinimal
           lld
+          makeWrapper
           nodejs
           pnpm
           protobuf
@@ -55,9 +56,6 @@
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           darwin.sigtool
-        ]
-        ++ lib.optionals pkgs.stdenv.isLinux [
-          autoPatchelfHook
         ];
 
       buck2BuildInputs = with pkgs;
@@ -72,19 +70,36 @@
           darwin.apple_sdk.frameworks.SystemConfiguration
         ];
 
+      langJsExtraPkgs = with pkgs; [
+        awscli
+        butane
+        skopeo
+      ];
+
       buck2Derivation = {
         pathPrefix,
         pkgName,
         extraBuildInputs ? [],
+        stdBuildPhase ? ''
+          buck2 build "$buck2_target" --verbose 8 --out "build/$name-$system"
+        '',
         extraBuildPhase ? "",
         installPhase,
+        dontStrip ? false,
+        dontPatchELF ? false,
+        dontAutoPatchELF ? false,
+        postFixup ? "",
       }:
         pkgs.stdenv.mkDerivation rec {
           name = pkgName;
           buck2_target = "//${pathPrefix}/${pkgName}";
           __impure = true;
           src = ./.;
-          nativeBuildInputs = buck2NativeBuildInputs;
+          nativeBuildInputs =
+            buck2NativeBuildInputs
+            ++ pkgs.lib.optionals (
+              pkgs.stdenv.isLinux && !dontAutoPatchELF
+            ) [pkgs.autoPatchelfHook];
           buildInputs = buck2BuildInputs ++ extraBuildInputs;
           runtimeDependencies = map pkgs.lib.getLib buck2BuildInputs;
           postPatch = with pkgs; ''
@@ -104,16 +119,22 @@
             ''
               export HOME="$(dirname $(pwd))/home"
               mkdir -p build
-              buck2 build "$buck2_target" --verbose 3 --out "build/$name-$system"
             ''
+            + stdBuildPhase
             + extraBuildPhase;
           inherit installPhase;
+          inherit dontStrip;
+          inherit dontPatchELF;
+          inherit postFixup;
         };
 
       appDerivation = {
         pkgName,
         extraBuildPhase ? "",
         extraInstallPhase ? "",
+        dontStrip ? false,
+        dontPatchELF ? false,
+        dontAutoPatchELF ? false,
       }: (buck2Derivation {
         pathPrefix = "app";
         inherit pkgName;
@@ -124,29 +145,83 @@
             cp -rpv "build/$name-$system" "$out/html"
           ''
           + extraInstallPhase;
+        inherit dontStrip;
+        inherit dontPatchELF;
+        inherit dontAutoPatchELF;
       });
 
-      binDerivation = pkgName: (buck2Derivation {
+      binDerivation = {
+        pkgName,
+        extraInstallPhase ? "",
+        dontStrip ? false,
+        dontPatchELF ? false,
+        dontAutoPatchELF ? false,
+      }: (buck2Derivation {
         pathPrefix = "bin";
-        inherit
-          pkgName
-          ;
-        installPhase = ''
-          mkdir -pv "$out/bin"
-          cp -pv "build/$name-$system" "$out/bin/$name"
-        '';
+        inherit pkgName;
+        installPhase =
+          ''
+            mkdir -pv "$out/bin"
+            cp -pv "build/$name-$system" "$out/bin/$name"
+          ''
+          + extraInstallPhase;
+        inherit dontStrip;
+        inherit dontPatchELF;
+        inherit dontAutoPatchELF;
       });
     in
       with pkgs; rec {
         packages = {
-          council = binDerivation "council";
-          cyclone = binDerivation "cyclone";
-          lang-js = binDerivation "lang-js";
-          module-index = binDerivation "module-index";
-          pinga = binDerivation "pinga";
-          sdf = binDerivation "sdf";
-          si = binDerivation "si";
-          veritech = binDerivation "veritech";
+          council = binDerivation {pkgName = "council";};
+
+          cyclone = binDerivation {pkgName = "cyclone";};
+
+          # This one's awful: we don't have a stanalone binary here, we have a
+          # directory of stuff with a `bin/$name` entrypoint shell script to
+          # invoke this beast. Additionally there are `node_modules` symlinks
+          # everywhere and Buck2's normal `buck2 build ... --out ...` option
+          # dies on some symlinks referring to directories and not files.
+          # Instead we'll have to parse a build report JSON to get the output
+          # path and copy it ourselves.
+          lang-js = buck2Derivation {
+            pathPrefix = "bin";
+            pkgName = "lang-js";
+            extraBuildInputs = [pkgs.jq];
+            stdBuildPhase = ''
+              buck2 build "$buck2_target" --verbose 8 --build-report report.log
+              dist_dir="$(jq -r \
+                '.results | to_entries | map(.value)[0].outputs.DEFAULT[0]' \
+                <report.log
+              )"
+              cp -rpv "$dist_dir" "build/$name-$system"
+            '';
+            installPhase = ''
+              mkdir -pv "$out"
+              cp -rpv "build/$name-$system"/* "$out"/
+              mv -v "$out/bin/lang-js" "$out/bin/.lang-js"
+              # Need to escape this shell variable which should not be
+              # iterpreted in Nix as a variable nor a shell variable when run
+              # but rather a litteral string which happens to be a shell
+              # variable. Nuclear arms race of quoting and escaping special
+              # characters to make this work...
+              substituteInPlace "$out/bin/.lang-js" \
+                --replace "#!${pkgs.coreutils}/bin/env sh" "#!${pkgs.bash}/bin/sh" \
+                --replace "\''${0%/*}/../lib/" "$out/lib/" \
+                --replace "exec node" "exec ${pkgs.nodejs}/bin/node"
+              makeWrapper "$out/bin/.lang-js" "$out/bin/lang-js" \
+                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs}
+            '';
+          };
+
+          module-index = binDerivation {pkgName = "module-index";};
+
+          pinga = binDerivation {pkgName = "pinga";};
+
+          sdf = binDerivation {pkgName = "sdf";};
+
+          si = binDerivation {pkgName = "si";};
+
+          veritech = binDerivation {pkgName = "veritech";};
 
           web = appDerivation rec {
             pkgName = "web";
@@ -180,11 +255,6 @@
               pgcli
               reindeer
               tilt
-
-              awscli
-              butane
-              kubeval
-              skopeo
             ]
             # Directly add the build dependencies for the packages rather than
             # use: `inputsFrom = lib.attrValues packages;`.
@@ -193,7 +263,8 @@
             # and `ca-derivations` experimental features by default--only when
             # attempting to build the packages directly.
             ++ buck2NativeBuildInputs
-            ++ buck2BuildInputs;
+            ++ buck2BuildInputs
+            ++ langJsExtraPkgs;
         };
 
         formatter = alejandra;
