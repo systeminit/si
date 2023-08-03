@@ -62,7 +62,11 @@ RUN set -eux; \
     . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
     nix-env -iA nixpkgs.nixFlakes; \
     grep 'Nix installer' "$HOME/.profile" >>"$HOME/.bashrc"; \
-    git config --global --add safe.directory /workdir
+    \
+    git config --global --add safe.directory /workdir; \
+    mkdir -p "$HOME/.ssh"; \
+    chmod 0700 "$HOME/.ssh"; \
+    ssh-keyscan github.com >>"$HOME/.ssh/known_hosts";
 
 WORKDIR /workdir
 
