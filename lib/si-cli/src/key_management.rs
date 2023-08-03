@@ -31,7 +31,7 @@ pub async fn ensure_encryption_keys() -> CliResult<()> {
         file.write_all(&secret_key.0)?;
     }
 
-    let public_key_path = si_data_dir.join("cyclone_decryption.key");
+    let public_key_path = si_data_dir.join("decryption.key");
     if !public_key_path.exists() {
         let mut file = File::create(&public_key_path)?;
         file.write_all(&public_key.0)?;

@@ -6,8 +6,7 @@ mod containers;
 mod key_management;
 
 pub const CONTAINER_NAMES: &[&str] = &[
-    "jaeger", "postgres", "nats", "otelcol", "council", // "veritech",
-    "pinga", "sdf", "web",
+    "jaeger", "postgres", "nats", "otelcol", "council", "veritech", "pinga", "sdf", "web",
 ];
 
 #[remain::sorted]
