@@ -13,6 +13,7 @@ RUN set -eux; \
         curl \
         git \
         gnupg \
+        openssh-client \
         sudo \
         xz-utils \
     ; \
