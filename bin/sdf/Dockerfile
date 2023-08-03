@@ -32,6 +32,7 @@ RUN set -eux; \
 WORKDIR /run/$BIN
 COPY --from=builder /tmp/nix-store-closure /nix/store
 COPY --from=builder /tmp/local-bin/* /usr/local/bin/
+COPY --from=builder /workdir/pkgs/*.sipkg /run/sdf/pkgs/
 
 EXPOSE 5156/tcp
 
