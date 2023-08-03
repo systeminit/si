@@ -507,15 +507,72 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(to_rebase_ordering.vector_clock_write())
         {
-            // `onto` has content that `to_rebase` has not seen yet. We need to find out what they
-            // are and use them.
+            let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
+            let to_rebase_ordering_set: HashSet<Ulid> =
+                to_rebase_ordering.order().iter().copied().collect();
+            let new_items: HashSet<Ulid> = onto_ordering_set
+                .difference(&to_rebase_ordering_set)
+                .copied()
+                .collect();
+            let removed_items: HashSet<Ulid> = to_rebase_ordering_set
+                .difference(&onto_ordering_set)
+                .copied()
+                .collect();
+
+            // Find which `other` container items have the new ordering IDs so we can add edges
+            // from the `to_rebase` container to them (and create them in `to_rebase` if they don't
+            // already exist).
+            for onto_container_item_index in onto
+                .graph
+                .neighbors_directed(onto_container_index, Outgoing)
+            {
+                let onto_container_item_weight = onto.get_node_weight(onto_container_item_index)?;
+                if new_items.contains(&onto_container_item_weight.id()) {
+                    for edge in onto
+                        .graph
+                        .edges_connecting(onto_container_index, onto_container_item_index)
+                    {
+                        updates.push(Update::NewEdge {
+                            source: to_rebase_container_index,
+                            destination: onto_container_item_index,
+                            weight: edge.weight().clone(),
+                        });
+                    }
+                }
+            }
+
+            // Remove the edges from the `to_rebase` container to the items removed in `onto`. We
+            // don't need to worry about removing the items themselves as they will be garbage
+            // collected when we drop all items that are not reachable from `to_rebase.root_index`
+            // if they are no longer referenced by anything.
+            for to_rebase_container_item_index in self
+                .graph
+                .neighbors_directed(to_rebase_container_index, Outgoing)
+            {
+                let to_rebase_container_item_weight =
+                    self.get_node_weight(to_rebase_container_item_index)?;
+                if removed_items.contains(&to_rebase_container_item_weight.id()) {
+                    for edge in self
+                        .graph
+                        .edges_connecting(to_rebase_container_index, to_rebase_container_item_index)
+                    {
+                        updates.push(Update::RemoveEdge(edge.id()));
+                    }
+                }
+            }
+
+            // Use the ordering from `other` in `to_rebase`.
+            updates.push(Update::ReplaceSubgraph {
+                new: onto_ordering_index,
+                old: to_rebase_ordering_index,
+            });
         } else if to_rebase_ordering
             .vector_clock_write()
             .is_newer_than(onto_ordering.vector_clock_write())
         {
             // We already have everything in `onto` as part of `to_rebase`. Nothing needs
             // updating, and there are no conflicts.
-            todo!();
+            return Ok((updates, conflicts));
         } else {
             // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
             // need to find out what the changes are to see what needs to be updated, and what
