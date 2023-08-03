@@ -26,5 +26,8 @@ docker_image(
     name = "image",
     image_name = "sdf",
     flake_lock = "//:flake.lock",
-    build_deps = ["//bin/sdf:sdf"]
+    build_deps = [
+        "//bin/sdf:sdf",
+        "//pkgs:pkgs",
+    ]
 )
