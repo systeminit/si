@@ -179,8 +179,44 @@ pub async fn invoke(
                 let create_opts = ContainerCreateOpts::builder()
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
-                    .links(vec!["dev-nats-1:nats"])
-                    .env(vec!["SI_COUNCIL__NATS__URL=nats"])
+                    .links(vec!["dev-nats-1:nats", "dev-otelcol-1:otelcol"])
+                    .env(vec![
+                        "SI_COUNCIL__NATS__URL=nats",
+                        "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
+                    ])
+                    .build();
+
+                let container = docker.containers().create(&create_opts).await?;
+                container.start().await?;
+            }
+        }
+        if container == "systeminit/veritech" {
+            let running_container =
+                has_existing_container(&docker, "dev-veritech-1".to_string(), true).await?;
+
+            if !running_container {
+                if is_preview {
+                    println!(
+                        "{0}:stable as {1}",
+                        container.clone(),
+                        container_name.clone()
+                    );
+                    continue;
+                }
+                println!(
+                    "Starting {0}:stable as {1}",
+                    container.clone(),
+                    container_name.clone()
+                );
+                let create_opts = ContainerCreateOpts::builder()
+                    .name(container_name.clone())
+                    .image(format!("{0}:stable", container.clone()))
+                    .links(vec!["dev-nats-1:nats", "dev-otelcol-1:otelcol"])
+                    .env(vec![
+                        "SI_VERITECH__NATS__URL=nats",
+                        "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
+                    ])
+                    .volumes([format!("{}:/run/cyclone", si_data_dir.display())])
                     .build();
 
                 let container = docker.containers().create(&create_opts).await?;
