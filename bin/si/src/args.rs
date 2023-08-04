@@ -83,6 +83,8 @@ pub(crate) enum Commands {
     Launch(LaunchArgs),
     /// Starts all of the System Initiative components
     Start(StartArgs),
+    /// Configures the appropriate services needed to run System Initiative (AWS, Docker, etc.)
+    Configure(ConfigureArgs),
     /// Restarts all of the System Initiative components
     Restart(RestartArgs),
     /// Stops all of the System Initiative components
@@ -102,6 +104,9 @@ pub(crate) struct LaunchArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ReportArgs {}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct ConfigureArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct StatusArgs {

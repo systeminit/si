@@ -108,7 +108,7 @@ sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }
-serde_toml = { version = "0.7.3", package = "toml" }
+toml = { version = "0.7.6" }
 serde_url_params = "0.2.1"
 serde_with = "3.0.0"
 serde_yaml = "0.9.21"
