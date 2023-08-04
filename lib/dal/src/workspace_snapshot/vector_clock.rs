@@ -94,7 +94,7 @@ impl VectorClock {
     pub fn is_newer_than(&self, other: &VectorClock) -> bool {
         for (other_change_set_id, other_lamport_clock) in &other.entries {
             if let Some(my_clock) = self.entries.get(other_change_set_id) {
-                if my_clock > other_lamport_clock {
+                if other_lamport_clock > my_clock {
                     return false;
                 }
             } else {

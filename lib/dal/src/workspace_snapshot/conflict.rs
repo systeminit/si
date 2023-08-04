@@ -15,8 +15,8 @@ pub enum Conflict {
     },
     ModifyRemovedItem(NodeIndex),
     NodeContent {
-        ours: NodeIndex,
-        theirs: NodeIndex,
+        to_rebase: NodeIndex,
+        onto: NodeIndex,
     },
     RemoveModifiedItem {
         container: NodeIndex,

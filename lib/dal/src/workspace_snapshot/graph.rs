@@ -197,15 +197,17 @@ impl WorkspaceSnapshotGraph {
                         // `onto`.
                         to_rebase_node_indexes.push(self.root_index);
                     } else {
-                        self.get_node_index_by_lineage(onto_node_weight.lineage_id())
-                            .map_err(|err| {
-                                error!(
-                                    "Unable to find NodeIndex(es) for lineage_id {}: {}",
-                                    onto_node_weight.lineage_id(),
-                                    err,
-                                );
-                                event
-                            })?;
+                        to_rebase_node_indexes.extend(
+                            self.get_node_index_by_lineage(onto_node_weight.lineage_id())
+                                .map_err(|err| {
+                                    error!(
+                                        "Unable to find NodeIndex(es) for lineage_id {}: {}",
+                                        onto_node_weight.lineage_id(),
+                                        err,
+                                    );
+                                    event
+                                })?,
+                        );
                     }
                 }
 
@@ -264,8 +266,8 @@ impl WorkspaceSnapshotGraph {
                             // side; this is a conflict. There may also be other conflicts in the
                             // outgoing relationships, the downstream nodes, or both.
                             conflicts.push(Conflict::NodeContent {
-                                ours: to_rebase_node_index,
-                                theirs: onto_node_index,
+                                to_rebase: to_rebase_node_index,
+                                onto: onto_node_index,
                             });
                         }
                     }
@@ -2189,5 +2191,146 @@ mod test {
             }
             other => panic!("Unexpected updates: {:?}", other),
         }
+    }
+
+    #[test]
+    fn detect_conflicts_and_updates_simple_with_conflict() {
+        let initial_change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let base_change_set = &initial_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let schema_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let schema_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    schema_id,
+                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema A");
+        let schema_variant_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let schema_variant_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema Variant A");
+
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let component_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let component_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    component_id,
+                    ContentAddress::Component(ContentHash::new("Component A".as_bytes())),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Component A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                component_index,
+            )
+            .expect("Unable to add root -> component edge");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(component_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                base_graph
+                    .get_node_index_by_id(schema_variant_id)
+                    .expect("Cannot get NodeIndex"),
+            )
+            .expect("Unable to add component -> schema variant edge");
+
+        base_graph.cleanup();
+        println!("Initial base graph (Root {:?}):", base_graph.root_index);
+        base_graph.dot();
+
+        let new_change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let new_change_set = &new_change_set;
+        let mut new_graph = base_graph.clone();
+
+        new_graph
+            .update_content(
+                new_change_set,
+                component_id,
+                ContentHash::new("Updated Component A".as_bytes()),
+            )
+            .expect("Unable to update Component A");
+
+        new_graph.cleanup();
+        println!("new graph (Root {:?}):", new_graph.root_index);
+        new_graph.dot();
+
+        base_graph
+            .update_content(
+                base_change_set,
+                component_id,
+                ContentHash::new("Base Updated Component A".as_bytes()),
+            )
+            .expect("Unable to update Component A");
+
+        base_graph.cleanup();
+        println!("Updated base graph (Root: {:?}):", base_graph.root_index);
+        base_graph.dot();
+
+        let (conflicts, updates) = new_graph
+            .detect_conflicts_and_updates(dbg!(new_change_set), &base_graph, dbg!(base_change_set))
+            .expect("Unable to detect conflicts and updates");
+
+        assert_eq!(
+            vec![Conflict::NodeContent {
+                onto: base_graph
+                    .get_node_index_by_id(component_id)
+                    .expect("Unable to get component NodeIndex"),
+                to_rebase: new_graph
+                    .get_node_index_by_id(component_id)
+                    .expect("Unable to get component NodeIndex")
+            }],
+            conflicts
+        );
+        assert_eq!(Vec::<Update>::new(), updates);
     }
 }
