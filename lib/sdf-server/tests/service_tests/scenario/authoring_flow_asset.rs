@@ -24,7 +24,7 @@ async fn authoring_flow_asset(
 
     // Create the asset
     let asset = harness
-        .create_asset(&ctx, schema_name.to_string(), None)
+        .create_asset(ctx.visibility(), schema_name.to_string(), None)
         .await;
     assert!(asset.asset_id.is_some());
 
@@ -37,7 +37,7 @@ async fn authoring_flow_asset(
             .setValueFrom(new ValueFromBuilder().setKind("prop").setPropPath(["root", "si", "name"]).build())
             .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
-    
+
         const portsProp = new PropBuilder()
             .setKind("array")
             .setName("ExposedPorts")
@@ -47,18 +47,18 @@ async fn authoring_flow_asset(
                         .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
                         .build())
             .build();
-    
+
         const portsSocket = new SocketDefinitionBuilder()
             .setName("Exposed Ports")
             .setArity("many")
             .build();
-    
+
         const credentialSocket = new SocketDefinitionBuilder()
             .setName("Docker Hub Credential")
             .setArity("many")
             .build();
-    
-    
+
+
         return new AssetBuilder()
             .addProp(imageProp)
             .addProp(portsProp)
@@ -69,7 +69,7 @@ async fn authoring_flow_asset(
 
     harness
         .update_asset(
-            &ctx,
+            ctx.visibility(),
             asset.asset_id,
             schema_name.to_string(),
             None,
@@ -77,12 +77,16 @@ async fn authoring_flow_asset(
         )
         .await;
 
-    harness.publish_asset(&ctx, asset.asset_id).await;
+    harness
+        .publish_asset(ctx.visibility(), asset.asset_id)
+        .await;
 
     // Let's add the new schema to our test harness cache
     harness.add_schemas(&ctx, &[schema_name]).await;
 
-    let my_asset = harness.create_node(&ctx, schema_name, None).await;
+    let my_asset = harness
+        .create_node(ctx.visibility(), schema_name, None)
+        .await;
 
     // Update the name of the asset
     harness

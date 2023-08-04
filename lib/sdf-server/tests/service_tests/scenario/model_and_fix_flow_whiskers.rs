@@ -52,24 +52,28 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // Create all AWS components.
-    let region = harness.create_node(&ctx, "Region", None).await;
-    let ami = harness.create_node(&ctx, "AMI", Some(region.node_id)).await;
+    let region = harness.create_node(ctx.visibility(), "Region", None).await;
+    let ami = harness
+        .create_node(ctx.visibility(), "AMI", Some(region.node_id))
+        .await;
     let key_pair = harness
-        .create_node(&ctx, "Key Pair", Some(region.node_id))
+        .create_node(ctx.visibility(), "Key Pair", Some(region.node_id))
         .await;
     let ec2 = harness
-        .create_node(&ctx, "EC2 Instance", Some(region.node_id))
+        .create_node(ctx.visibility(), "EC2 Instance", Some(region.node_id))
         .await;
     let security_group = harness
-        .create_node(&ctx, "Security Group", Some(region.node_id))
+        .create_node(ctx.visibility(), "Security Group", Some(region.node_id))
         .await;
     let ingress = harness
-        .create_node(&ctx, "Ingress", Some(region.node_id))
+        .create_node(ctx.visibility(), "Ingress", Some(region.node_id))
         .await;
 
     // Create all other components.
-    let docker = harness.create_node(&ctx, "Docker Image", None).await;
-    let butane = harness.create_node(&ctx, "Butane", None).await;
+    let docker = harness
+        .create_node(ctx.visibility(), "Docker Image", None)
+        .await;
+    let butane = harness.create_node(ctx.visibility(), "Butane", None).await;
 
     // Connect Docker and Butane to the relevant AWS components.
     harness
@@ -517,7 +521,7 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // Prepare the fixes
-    let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, recommendations) = harness.list_confirmations(ctx.visibility()).await;
 
     assert_eq!(
         8, // expected - there are matching exists/ needs deleted confirmations for each components
@@ -567,10 +571,10 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Run fixes from the requests.
-    let fix_batch_id = harness.run_fixes(&mut ctx, fix_requests).await;
+    let fix_batch_id = harness.run_fixes(ctx.visibility(), fix_requests).await;
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         fix_batch_id,              // expected
@@ -582,7 +586,7 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Check that all confirmations are passing.
-    let (confirmations, recommendations) = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, recommendations) = harness.list_confirmations(ctx.visibility()).await;
     assert_eq!(
         8,                   // expected
         confirmations.len(), // actual
@@ -613,12 +617,18 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // delete AWS components
-    harness.delete_component(&ctx, key_pair.component_id).await;
-    harness.delete_component(&ctx, ec2.component_id).await;
     harness
-        .delete_component(&ctx, security_group.component_id)
+        .delete_component(ctx.visibility(), key_pair.component_id)
         .await;
-    harness.delete_component(&ctx, ingress.component_id).await;
+    harness
+        .delete_component(ctx.visibility(), ec2.component_id)
+        .await;
+    harness
+        .delete_component(ctx.visibility(), security_group.component_id)
+        .await;
+    harness
+        .delete_component(ctx.visibility(), ingress.component_id)
+        .await;
 
     // Let's apply the changeset to ensure we delete the components
     harness
@@ -626,7 +636,8 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // Prepare the fixes
-    let (delete_confirmations, delete_recommendations) = harness.list_confirmations(&mut ctx).await;
+    let (delete_confirmations, delete_recommendations) =
+        harness.list_confirmations(ctx.visibility()).await;
 
     assert_eq!(
         8, // no resources exist at this point so there should be no confirmations
@@ -666,10 +677,12 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Let's delete the non-SG group first
-    let fix_batch_id = harness.run_fixes(&mut ctx, delete_requests).await;
+    dbg!(harness.list_fixes(ctx.visibility()).await);
+
+    let fix_batch_id = harness.run_fixes(ctx.visibility(), delete_requests).await;
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         fix_batch_id,              // expected
@@ -681,10 +694,12 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Delete the SG
-    let fix_batch_id = harness.run_fixes(&mut ctx, delete_sg_requests).await;
+    let fix_batch_id = harness
+        .run_fixes(ctx.visibility(), delete_sg_requests)
+        .await;
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         fix_batch_id,              // expected
