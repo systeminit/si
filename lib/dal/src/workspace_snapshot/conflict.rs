@@ -5,10 +5,6 @@ use petgraph::stable_graph::NodeIndex;
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Conflict {
-    ChildMembership {
-        ours: NodeIndex,
-        theirs: NodeIndex,
-    },
     ChildOrder {
         ours: NodeIndex,
         theirs: NodeIndex,
