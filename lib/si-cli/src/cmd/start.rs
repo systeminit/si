@@ -299,7 +299,16 @@ pub async fn invoke(
                     ])
                     .network_mode("bridge")
                     .expose(PublishPort::tcp(5156), HostPort::new(5156))
-                    .volumes([format!("{}:/run/sdf", si_data_dir.display())])
+                    .volumes([
+                        format!(
+                            "{}:/run/sdf/cyclone_encryption.key",
+                            si_data_dir.join("cyclone_encryption.key").display()
+                        ),
+                        format!(
+                            "{}:/run/sdf/jwt_signing_public_key.pem",
+                            si_data_dir.join("jwt_signing_public_key.pem").display()
+                        ),
+                    ])
                     .build();
 
                 let container = docker.containers().create(&create_opts).await?;
