@@ -38,7 +38,7 @@ def main() -> int:
     args = parse_args()
 
     tag = create_git_tag(args.binary, args.version, args.verbose)
-    create_github_release(tag, args.assets or [], args.verbose)
+    create_github_release(tag, args.version, args.assets or [], args.verbose)
 
     return 0
 
@@ -73,7 +73,7 @@ def create_git_tag(program: str, version: str, verbose: bool) -> str:
     return tag
 
 
-def create_github_release(tag: str, assets: List[str], verbose: bool):
+def create_github_release(tag: str, version: str, assets: List[str], verbose: bool):
     section(f":github: Creating GitHub release: {tag}")
     for asset in assets:
         info(f"Including asset: {asset}")
@@ -82,6 +82,8 @@ def create_github_release(tag: str, assets: List[str], verbose: bool):
         "gh",
         "release",
         "create",
+        "--title",
+        version,
         "--latest",
         "--generate-notes",
         tag,
