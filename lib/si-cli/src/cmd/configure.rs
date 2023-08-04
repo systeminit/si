@@ -7,6 +7,7 @@ pub async fn invoke(
     posthog_client: &PosthogClient,
     mode: String,
     _is_preview: bool,
+    reconfigure: bool,
 ) -> CliResult<()> {
     let _ = posthog_client.capture(
         "si-command",
@@ -17,7 +18,7 @@ pub async fn invoke(
     let si_data_dir = get_si_data_dir().await?;
     let credentials_path = si_data_dir.join("si_credentials.toml");
 
-    if credentials_path.exists() {
+    if credentials_path.exists() && !reconfigure {
         return Ok(());
     }
 

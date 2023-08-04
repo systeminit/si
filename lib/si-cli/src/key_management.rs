@@ -87,7 +87,7 @@ pub async fn get_veritech_credentials() -> CliResult<Vec<String>> {
         raw_creds.docker_hub_user_name, raw_creds.docker_hub_credential
     );
     let mut buf = String::new();
-    general_purpose::STANDARD_NO_PAD.encode_string(docker_creds, &mut buf);
+    general_purpose::STANDARD.encode_string(docker_creds.as_bytes(), &mut buf);
 
     creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
 
