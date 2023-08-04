@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -37,10 +38,7 @@ impl OrderingNodeWeight {
     }
 
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        let new_vc_entry = change_set.generate_ulid()?;
-        self.vector_clock_write.inc_to(change_set, new_vc_entry);
-
-        Ok(())
+        self.vector_clock_write.inc(change_set).map_err(Into::into)
     }
 
     pub fn lineage_id(&self) -> Ulid {
@@ -104,7 +102,11 @@ impl OrderingNodeWeight {
         Ok(())
     }
 
-    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+    pub fn set_vector_clock_recently_seen_to(
+        &mut self,
+        change_set: &ChangeSet,
+        new_val: DateTime<Utc>,
+    ) {
         self.vector_clock_recently_seen.inc_to(change_set, new_val);
     }
 

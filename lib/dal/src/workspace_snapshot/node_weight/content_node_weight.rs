@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -160,7 +161,11 @@ impl ContentNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+    pub fn set_vector_clock_recently_seen_to(
+        &mut self,
+        change_set: &ChangeSet,
+        new_val: DateTime<Utc>,
+    ) {
         self.vector_clock_recently_seen.inc_to(change_set, new_val);
     }
 

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -27,7 +28,7 @@ pub struct VectorClock {
 impl VectorClock {
     /// Create a new [`VectorClock`] with an entry for [`ChangeSet`].
     pub fn new(change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
-        let lamport_clock = LamportClock::new(change_set)?;
+        let lamport_clock = LamportClock::new()?;
         let mut entries = HashMap::new();
         entries.insert(change_set.id, lamport_clock);
 
@@ -42,7 +43,7 @@ impl VectorClock {
         self.entries.values().any(|v| *v > clock_stamp)
     }
 
-    pub fn inc_to(&mut self, change_set: &ChangeSet, new_clock_value: Ulid) {
+    pub fn inc_to(&mut self, change_set: &ChangeSet, new_clock_value: DateTime<Utc>) {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
             lamport_clock.inc_to(new_clock_value);
         } else {
@@ -54,10 +55,9 @@ impl VectorClock {
     /// Increment the entry for [`ChangeSet`], adding one if there wasn't one already.
     pub fn inc(&mut self, change_set: &ChangeSet) -> VectorClockResult<()> {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
-            lamport_clock.inc(change_set)?;
+            lamport_clock.inc()?;
         } else {
-            self.entries
-                .insert(change_set.id, LamportClock::new(change_set)?);
+            self.entries.insert(change_set.id, LamportClock::new()?);
         }
 
         Ok(())

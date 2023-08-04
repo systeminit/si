@@ -221,6 +221,7 @@ impl WorkspaceSnapshotGraph {
                 // If everything with the same `lineage_id` is identical, then we can prune the
                 // graph traversal, and avoid unnecessary lookups/comparisons.
                 let mut any_content_with_lineage_has_changed = false;
+
                 for to_rebase_node_index in to_rebase_node_indexes {
                     let to_rebase_node_weight =
                         self.get_node_weight(to_rebase_node_index).map_err(|err| {
@@ -772,11 +773,11 @@ impl WorkspaceSnapshotGraph {
                 .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
             let onto_item_weight = onto.get_node_weight(only_onto_edge_info.target_node_index)?;
 
-            if let Some(onto_first_seen) = dbg!(onto_edge_weight
+            if let Some(onto_first_seen) = onto_edge_weight
                 .vector_clock_first_seen()
-                .entry_for(onto_change_set))
+                .entry_for(onto_change_set)
             {
-                if let Some(root_seen_as_of) = dbg!(root_seen_as_of_onto) {
+                if let Some(root_seen_as_of) = root_seen_as_of_onto {
                     if onto_first_seen > root_seen_as_of {
                         // Edge first seen by `onto` > "seen as of" on `to_rebase` graph for `onto`'s entry on
                         // root node: Item is new.
@@ -855,152 +856,6 @@ impl WorkspaceSnapshotGraph {
         self.graph
             .node_weight_mut(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
-    }
-
-    fn has_container_membership_conflict(
-        &self,
-        base_container_node_index: NodeIndex,
-        to_merge: &WorkspaceSnapshotGraph,
-        to_merge_container_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<Option<Conflict>> {
-        let base_ordering_node_indexes =
-            ordering_node_indexes_for_node_index(self, base_container_node_index);
-        if base_ordering_node_indexes.len() > 1 {
-            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
-                base_container_node_index,
-            ));
-        }
-        let to_merge_ordering_node_indexes =
-            ordering_node_indexes_for_node_index(to_merge, to_merge_container_node_index);
-        if to_merge_ordering_node_indexes.len() > 1 {
-            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
-                base_container_node_index,
-            ));
-        }
-
-        let (base_order_index, to_merge_order_index) = match (
-            base_ordering_node_indexes.get(0),
-            to_merge_ordering_node_indexes.get(0),
-        ) {
-            (Some(base_order_index), Some(to_merge_order_index)) => {
-                (*base_order_index, *to_merge_order_index)
-            }
-            (Some(_), None) | (None, Some(_)) => {
-                return Err(
-                    WorkspaceSnapshotGraphError::CannotCompareOrderedAndUnorderedContainers(
-                        base_container_node_index,
-                        to_merge_container_node_index,
-                    ),
-                );
-            }
-            (None, None) => {
-                // Neither is ordered. The potential conflict could be because one
-                // or more elements changed, because elements were added/removed,
-                // or a combination of these.
-                //
-                // We need to check for all of these using the outgoing edges from
-                // the containers, since we can't rely on an ordering child to
-                // contain all the information to determine ordering/addition/removal.
-                //
-                // TODO: Eventually, this shouldn't ever happen, since Objects, Maps, and Arrays should all have an ordering, for at least display ordering purposes.
-                warn!(
-                    "Found what appears to be two unordered containers: {:?}, {:?}",
-                    base_container_node_index, to_merge_container_node_index
-                );
-
-                todo!();
-            }
-        };
-
-        let base_order = match self.get_node_weight(base_order_index)? {
-            NodeWeight::Content(_) => unreachable!(),
-            NodeWeight::Ordering(o) => o,
-        };
-        let to_merge_order = match to_merge.get_node_weight(to_merge_order_index)? {
-            NodeWeight::Content(_) => unreachable!(),
-            NodeWeight::Ordering(o) => o,
-        };
-
-        if base_order.order() == to_merge_order.order() {
-            // Set membership same on both sides & order the same: No child conflict
-            return Ok(None);
-        }
-
-        let base_order_set: HashSet<Ulid> = base_order.order().iter().copied().collect();
-        let to_merge_order_set: HashSet<Ulid> = to_merge_order.order().iter().copied().collect();
-        if base_order_set == to_merge_order_set {
-            // Set membership same on both sides & only one side changed ordering: No child conflict
-            if base_order
-                .vector_clock_write()
-                .is_newer_than(to_merge_order.vector_clock_write())
-                || to_merge_order
-                    .vector_clock_write()
-                    .is_newer_than(base_order.vector_clock_write())
-            {
-                return Ok(None);
-            }
-
-            // Set membership same on both sides & both sides changed ordering: Conflict::ChildOrder
-            return Ok(Some(Conflict::ChildOrder {
-                ours: base_order_index,
-                theirs: to_merge_order_index,
-            }));
-        } else if base_order_set
-            .difference(&to_merge_order_set)
-            .next()
-            .is_some()
-            && to_merge_order_set
-                .difference(&base_order_set)
-                .next()
-                .is_some()
-        {
-            // Set membership different between sides & each side has entries the other does not: Conflict::ChildMembership
-            return Ok(Some(Conflict::ChildMembership {
-                ours: base_container_node_index,
-                theirs: to_merge_container_node_index,
-            }));
-        }
-
-        // Set membership different between sides & only one side has entries the other does not, there
-        // can still be a conflict if one side has also changed ordering (both sides will have written
-        // to the order for different reasons).
-        if !base_order
-            .vector_clock_write()
-            .is_newer_than(to_merge_order.vector_clock_write())
-            && !to_merge_order
-                .vector_clock_write()
-                .is_newer_than(base_order.vector_clock_write())
-        {
-            // By comparing the ordering using only the elements from the intersection of the two sets
-            // we can help narrow down whether the conflict is an ordering conflict, or a membership
-            // conflict. If the ordering of the intersection is the same between both, then it's a membership
-            // conflict.
-            let common_element_ids: HashSet<Ulid> = base_order_set
-                .intersection(&to_merge_order_set)
-                .copied()
-                .collect();
-            let mut base_common_order = base_order.order().clone();
-            base_common_order.retain(|id| common_element_ids.contains(id));
-            let mut to_merge_common_order = to_merge_order.order().clone();
-            to_merge_common_order.retain(|id| common_element_ids.contains(id));
-            if base_common_order == to_merge_common_order {
-                return Ok(Some(Conflict::ChildMembership {
-                    ours: base_container_node_index,
-                    theirs: to_merge_container_node_index,
-                }));
-            }
-
-            // TODO: It's still possible that this is an ordering conflict, but we're not checking at that level of detail yet.
-            //
-            // We can probably tell whether it's a membership, or an ordering conflict by comparing the
-            // ordering using only the intersection of the two sets.
-            return Ok(Some(Conflict::ChildMembership {
-                ours: base_container_node_index,
-                theirs: to_merge_container_node_index,
-            }));
-        }
-
-        Ok(None)
     }
 
     fn has_path_to_root(&self, node: NodeIndex) -> bool {

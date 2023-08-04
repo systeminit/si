@@ -1,5 +1,6 @@
 //! Lamport Clocks
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -16,27 +17,27 @@ pub type LamportClockResult<T> = Result<T, LamportClockError>;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct LamportClock {
-    pub counter: Ulid,
+    #[serde(with = "chrono::serde::ts_nanoseconds")]
+    pub counter: DateTime<Utc>,
 }
 
 impl LamportClock {
-    pub fn new(change_set: &ChangeSet) -> LamportClockResult<LamportClock> {
-        let counter = change_set.generate_ulid()?;
+    pub fn new() -> LamportClockResult<LamportClock> {
+        let counter = Utc::now();
         Ok(LamportClock { counter })
     }
 
-    pub fn new_with_value(new_value: Ulid) -> Self {
+    pub fn new_with_value(new_value: DateTime<Utc>) -> Self {
         LamportClock { counter: new_value }
     }
 
-    pub fn inc(&mut self, change_set: &ChangeSet) -> LamportClockResult<()> {
-        let next = change_set.generate_ulid()?;
-        self.counter = next;
+    pub fn inc(&mut self) -> LamportClockResult<()> {
+        self.counter = Utc::now();
 
         Ok(())
     }
 
-    pub fn inc_to(&mut self, new_value: Ulid) {
+    pub fn inc_to(&mut self, new_value: DateTime<Utc>) {
         self.counter = new_value;
     }
 

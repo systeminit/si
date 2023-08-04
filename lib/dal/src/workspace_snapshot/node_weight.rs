@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -124,7 +125,11 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+    pub fn set_vector_clock_recently_seen_to(
+        &mut self,
+        change_set: &ChangeSet,
+        new_val: DateTime<Utc>,
+    ) {
         match self {
             NodeWeight::Content(content_weight) => {
                 content_weight.set_vector_clock_recently_seen_to(change_set, new_val)
