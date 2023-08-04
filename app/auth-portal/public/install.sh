@@ -1,26 +1,72 @@
-#!/bin/sh
+#!/usr/bin/env sh
 set -e
 
 print_unsupported_platform()
 {
-    printf "\n error: We're sorry, but it looks like we don't support our installation on your platform"
+    >&2 say_red "Error: We're sorry, but it looks like we don't support our installation on your platform"
+    exit 1
 }
+
+say_green()
+{
+    printf "%b%s%b\\n" "\\033[32;1m" "$1" "\\033[0m"
+    return 0
+}
+
+say_red()
+{
+    printf "%b%s%b\\n" "\\033[31;1m" "$1" "\\033[0m"
+}
+
+say_yellow()
+{
+    printf "%b%s%b\\n" "\\033[33;1m" "$1" "\\033[0m"
+    return 0
+}
+
+say_blue()
+{
+    printf "%b%s%b\\n" "\\033[34;1m" "$1" "\\033[0m"
+    return 0
+}
+
+say_white()
+{
+    printf "%b%s%b\\n" "\\033[37;1m" "$1" "\\033[0m"
+    return 0
+}
+
+at_exit()
+{
+    # shellcheck disable=SC2181
+    # https://github.com/koalaman/shellcheck/wiki/SC2181
+    # Disable because we don't actually know the command we're running
+    if [ "$?" -ne 0 ]; then
+        >&2 say_red
+        >&2 say_red "We're sorry, but it looks like something might have gone wrong during installation."
+        >&2 say_red "If you need help, please join us on our discord!"
+    fi
+}
+
+trap at_exit EXIT
 
 get_latest_version() {
     local _version="$(curl -s 'https://auth-api.systeminit.com/github/releases/latest' | \
                          awk 'BEGIN { FS="\""; RS="," }
                          $2 == "version" { print $4 }')"
-    RETVAL="$_version"
+    ## This won't be necessary when we have a non mirrored repository!
+    ## RETVAL="$_version"
+    local _version_x="$(echo "$_version" | awk '{ print substr ($0, 2 ) }')"
+    RETVAL="$_version_x"
 }
 
 get_os() {
   local _os="$(uname)"
   case "$_os" in
-      "Linux") OS="linux";;
-      "Darwin") OS="darwin";;
+      "Linux") _os="linux";;
+      "Darwin") _os="darwin";;
       *)
           print_unsupported_platform
-          exit 1
           ;;
   esac
 
@@ -39,7 +85,6 @@ get_architechure() {
       "aarch64") _arch="aarch64";;
       *)
           print_unsupported_platform
-          exit 1
           ;;
   esac
 
@@ -53,7 +98,9 @@ build_download_url() {
     local _os="$RETVAL"
     get_architechure
     local _arch="$RETVAL"
-    local _download_url="https://github.com/systeminit/si/releases/download/$_version/si-$_arch-$_os.tar.gz"
+
+    #local _download_url="https://github.com/systeminit/si/releases/download/$_version/si-$_arch-$_os.tar.gz"
+    local _download_url="https://github.com/stack72/test-download/releases/download/$_version/si-$_arch-$_os.tar.gz"
 
     RETVAL="$_download_url"
 }
@@ -62,32 +109,30 @@ build_download_url() {
 download_tarball() {
     build_download_url
     local _download_url="$RETVAL"
-    echo "Downloading $_download_url..."
-    curl -L -o "/tmp/si.tar.gz" "$_download_url";
+    say_white "Downloading release binary from $_download_url"
+    curl -L -o "/tmp/si.tar.gz" "$_download_url"
 }
 
-if download_tarball; then
-    echo "Downloaded the release"
-
+check_old_release() {
+    say_yellow "Checking for an old release of System Initiative"
     if [ -e "/usr/local/bin/si" ]; then
         sudo rm -f /usr/local/bin/si
     fi
+}
 
-    mkdir /tmp/si
-    tar xzvf "/tmp/si.tar.gz" -C "/tmp/si"
-    sudo chmod a+x /tmp/si/si
-    sudo cp /tmp/si/si /usr/local/bin
+download_tarball
+check_old_release
 
-    rm -f "/tmp/si.tar.gz"
-    rm -rf "/tmp/si"
+mkdir /tmp/si
+tar xzvf "/tmp/si.tar.gz" -C "/tmp/si"
+sudo chmod a+x /tmp/si/si
+sudo cp /tmp/si/si /usr/local/bin
+
+rm -f "/tmp/si.tar.gz"
+rm -rf "/tmp/si"
+
+if [ "$(command -v si)" != "/usr/local/bin/si" ]; then
+  say_red "System Initiative has been downloaded but isn't on your PATH. Check /usr/local/bin to ensure it's on PATH"
 else
-    echo "error: failed to download the release"
-    echo"       check your internet and try again; if the problem persists, let us know in discord"
-    exit 1
-fi
-
-if command -v si >/dev/null; then
-  printf "\n SI has been successfully installed."
-else
-  printf "\n SI has been downloaded but isn't on your PATH. Check /usr/local/bin to ensure it's on PATH"
+  say_green "System Initiative has been successfully installed."
 fi
