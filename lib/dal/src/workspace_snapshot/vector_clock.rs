@@ -34,6 +34,14 @@ impl VectorClock {
         Ok(VectorClock { entries })
     }
 
+    pub fn entry_for(&self, change_set: &ChangeSet) -> Option<LamportClock> {
+        self.entries.get(&change_set.id).copied()
+    }
+
+    pub fn has_entries_newer_than(&self, clock_stamp: LamportClock) -> bool {
+        self.entries.values().any(|v| *v > clock_stamp)
+    }
+
     pub fn inc_to(&mut self, change_set: &ChangeSet, new_clock_value: Ulid) {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
             lamport_clock.inc_to(new_clock_value);

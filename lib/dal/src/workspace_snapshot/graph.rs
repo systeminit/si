@@ -28,6 +28,8 @@ pub enum WorkspaceSnapshotGraphError {
     CreateGraphCycle,
     #[error("EdgeWeight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("EdgeWeight not found")]
+    EdgeWeightNotFound,
     #[error("Problem during graph traversal: {0:?}")]
     GraphTraversal(petgraph::visit::DfsEvent<NodeIndex>),
     #[error("Incompatible node types")]
@@ -141,14 +143,18 @@ impl WorkspaceSnapshotGraph {
 
     fn detect_conflicts_and_updates(
         &self,
+        to_rebase_change_set: &ChangeSet,
         onto: &WorkspaceSnapshotGraph,
+        onto_change_set: &ChangeSet,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
         let mut conflicts: Vec<Conflict> = Vec::new();
         let mut updates: Vec<Update> = Vec::new();
         if let Err(traversal_error) =
             petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
                 self.detect_conflicts_and_updates_process_dfs_event(
+                    to_rebase_change_set,
                     onto,
+                    onto_change_set,
                     event,
                     &mut conflicts,
                     &mut updates,
@@ -163,7 +169,9 @@ impl WorkspaceSnapshotGraph {
 
     fn detect_conflicts_and_updates_process_dfs_event(
         &self,
+        to_rebase_change_set: &ChangeSet,
         onto: &WorkspaceSnapshotGraph,
+        onto_change_set: &ChangeSet,
         event: DfsEvent<NodeIndex>,
         conflicts: &mut Vec<Conflict>,
         updates: &mut Vec<Update>,
@@ -284,7 +292,18 @@ impl WorkspaceSnapshotGraph {
                             let to_rebase_edges =
                                 self.graph.edges_directed(to_rebase_node_index, Outgoing);
 
-                            todo!();
+                            let (container_updates, container_conflicts) = self
+                                .find_unordered_container_membership_conflicts_and_updates(
+                                    to_rebase_change_set,
+                                    to_rebase_node_index,
+                                    onto,
+                                    onto_change_set,
+                                    onto_node_index,
+                                )
+                                .map_err(|_| event)?;
+
+                            updates.extend(container_updates);
+                            conflicts.extend(container_conflicts);
                         }
                         (None, Some(_)) | (Some(_), None) => {
                             // We're trying to compare an ordered container with an unordered one,
@@ -308,9 +327,11 @@ impl WorkspaceSnapshotGraph {
                             }
                             let (container_updates, container_conflicts) = self
                                 .find_ordered_container_membership_conflicts_and_updates(
+                                    to_rebase_change_set,
                                     to_rebase_node_index,
                                     to_rebase_ordering_node_index,
                                     onto,
+                                    onto_change_set,
                                     onto_node_index,
                                     onto_ordering_node_index,
                                 )
@@ -481,9 +502,11 @@ impl WorkspaceSnapshotGraph {
 
     fn find_ordered_container_membership_conflicts_and_updates(
         &self,
+        to_rebase_change_set: &ChangeSet,
         to_rebase_container_index: NodeIndex,
         to_rebase_ordering_index: NodeIndex,
         onto: &WorkspaceSnapshotGraph,
+        onto_change_set: &ChangeSet,
         onto_container_index: NodeIndex,
         onto_ordering_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Update>, Vec<Conflict>)> {
@@ -572,14 +595,279 @@ impl WorkspaceSnapshotGraph {
         {
             // We already have everything in `onto` as part of `to_rebase`. Nothing needs
             // updating, and there are no conflicts.
-            return Ok((updates, conflicts));
         } else {
             // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
             // need to find out what the changes are to see what needs to be updated, and what
             // conflicts.
-            todo!();
+            let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
+            let to_rebase_ordering_set: HashSet<Ulid> =
+                to_rebase_ordering.order().iter().copied().collect();
+            let only_onto_items: HashSet<Ulid> = onto_ordering_set
+                .difference(&to_rebase_ordering_set)
+                .copied()
+                .collect();
+            let only_to_rebase_items: HashSet<Ulid> = to_rebase_ordering_set
+                .difference(&onto_ordering_set)
+                .copied()
+                .collect();
+
+            let mut only_to_rebase_item_indexes = HashMap::new();
+            for to_rebase_edgeref in self
+                .graph
+                .edges_directed(to_rebase_container_index, Outgoing)
+            {
+                let dest_node_weight = self.get_node_weight(to_rebase_edgeref.target())?;
+                if only_to_rebase_items.contains(&dest_node_weight.id()) {
+                    only_to_rebase_item_indexes
+                        .insert(dest_node_weight.id(), to_rebase_edgeref.target());
+                }
+            }
+
+            for only_to_rebase_item in only_to_rebase_items {
+                let only_to_rebase_item_index = *only_to_rebase_item_indexes
+                    .get(&only_to_rebase_item)
+                    .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(
+                        only_to_rebase_item,
+                    ))?;
+                for to_rebase_edgeref in self
+                    .graph
+                    .edges_connecting(to_rebase_container_index, only_to_rebase_item_index)
+                {
+                    if to_rebase_edgeref
+                        .weight()
+                        .vector_clock_first_seen()
+                        .entry_for(onto_change_set)
+                        .is_none()
+                    {
+                        // `only_to_rebase_item` is new: Edge in `to_rebase` does not have a "First Seen" for `onto`.
+                    } else if self
+                        .get_node_weight(only_to_rebase_item_index)?
+                        .vector_clock_write()
+                        .entry_for(to_rebase_change_set)
+                        .is_some()
+                    {
+                        // Entry was deleted in `onto`. If we have also modified the entry, then
+                        // there's a conflict.
+                        conflicts.push(Conflict::ModifyRemovedItem(only_to_rebase_item_index));
+                    } else {
+                        // Entry was deleted in `onto`, and has not been modified in `to_rebase`:
+                        // Remove the edge.
+                        updates.push(Update::RemoveEdge(to_rebase_edgeref.id()));
+                    }
+                }
+            }
+
+            let mut only_onto_item_indexes = HashMap::new();
+            for onto_edgeref in onto.graph.edges_directed(onto_container_index, Outgoing) {
+                let dest_node_weight = onto.get_node_weight(onto_edgeref.target())?;
+                if only_onto_items.contains(&dest_node_weight.id()) {
+                    only_onto_item_indexes.insert(dest_node_weight.id(), onto_edgeref.target());
+                }
+            }
+
+            let onto_root_seen_as_of = self
+                .get_node_weight(self.root_index)?
+                .vector_clock_recently_seen()
+                .entry_for(onto_change_set);
+            for only_onto_item in only_onto_items {
+                let only_onto_item_index = *only_onto_item_indexes.get(&only_onto_item).ok_or(
+                    WorkspaceSnapshotGraphError::NodeWithIdNotFound(only_onto_item),
+                )?;
+                for onto_edgeref in onto
+                    .graph
+                    .edges_connecting(onto_container_index, only_onto_item_index)
+                {
+                    // `only_onto_item` is new:
+                    //   - "First seen" of edge for `onto` > "Seen As Of" on root for `onto` in
+                    //     `to_rebase`.
+                    if let Some(onto_first_seen) = onto_edgeref
+                        .weight()
+                        .vector_clock_first_seen()
+                        .entry_for(onto_change_set)
+                    {
+                        if let Some(root_seen_as_of) = onto_root_seen_as_of {
+                            if onto_first_seen > root_seen_as_of {
+                                // The edge for the item was created more recently than the last
+                                // state we knew of from `onto`, which means that the item is
+                                // "new". We can't have removed something that we didn't know
+                                // existed in the first place.
+                                updates.push(Update::NewEdge {
+                                    source: to_rebase_container_index,
+                                    destination: onto_edgeref.target(),
+                                    weight: onto_edgeref.weight().clone(),
+                                });
+                            }
+                        }
+                    } else if let Some(onto_item_node_weight) =
+                        onto.get_node_weight(only_onto_item_index).ok()
+                    {
+                        if let Some(root_seen_as_of) = onto_root_seen_as_of {
+                            if onto_item_node_weight
+                                .vector_clock_write()
+                                .has_entries_newer_than(root_seen_as_of)
+                            {
+                                // The item removed in `to_rebase` has been modified in `onto`
+                                // since we last knew the state of `onto`: This is a conflict, as
+                                // we don't know if the removal is still intended given the new
+                                // state of the item.
+                                conflicts.push(Conflict::RemoveModifiedItem {
+                                    container: to_rebase_container_index,
+                                    removed_item: only_onto_item_index,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
 
+        Ok((updates, conflicts))
+    }
+
+    fn find_unordered_container_membership_conflicts_and_updates(
+        &self,
+        to_rebase_change_set: &ChangeSet,
+        to_rebase_container_index: NodeIndex,
+        onto: &WorkspaceSnapshotGraph,
+        onto_change_set: &ChangeSet,
+        onto_container_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<(Vec<Update>, Vec<Conflict>)> {
+        #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        struct UniqueEdgeInfo {
+            pub kind: EdgeWeightKind,
+            pub target_lineage: Ulid,
+        }
+
+        #[derive(Debug, Copy, Clone)]
+        struct EdgeInfo {
+            pub target_node_index: NodeIndex,
+            pub edge_index: EdgeIndex,
+        }
+
+        let mut updates = Vec::new();
+        let mut conflicts = Vec::new();
+
+        let mut to_rebase_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
+        for edgeref in self
+            .graph
+            .edges_directed(to_rebase_container_index, Outgoing)
+        {
+            let target_node_weight = self.get_node_weight(edgeref.target())?;
+            to_rebase_edges.insert(
+                UniqueEdgeInfo {
+                    kind: edgeref.weight().kind,
+                    target_lineage: target_node_weight.lineage_id(),
+                },
+                EdgeInfo {
+                    target_node_index: edgeref.target(),
+                    edge_index: edgeref.id(),
+                },
+            );
+        }
+
+        let mut onto_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
+        for edgeref in onto.graph.edges_directed(onto_container_index, Outgoing) {
+            let target_node_weight = self.get_node_weight(edgeref.target())?;
+            onto_edges.insert(
+                UniqueEdgeInfo {
+                    kind: edgeref.weight().kind,
+                    target_lineage: target_node_weight.lineage_id(),
+                },
+                EdgeInfo {
+                    target_node_index: edgeref.target(),
+                    edge_index: edgeref.id(),
+                },
+            );
+        }
+
+        let only_to_rebase_edges = {
+            let mut unique_edges = to_rebase_edges.clone();
+            for key in onto_edges.keys() {
+                unique_edges.remove(key);
+            }
+            unique_edges
+        };
+        let only_onto_edges = {
+            let mut unique_edges = onto_edges.clone();
+            for key in to_rebase_edges.keys() {
+                unique_edges.remove(key);
+            }
+            unique_edges
+        };
+
+        let root_seen_as_of_onto = self
+            .get_node_weight(self.root_index)?
+            .vector_clock_recently_seen()
+            .entry_for(onto_change_set);
+        for only_to_rebase_edge_info in only_to_rebase_edges.values() {
+            let to_rebase_edge_weight = self
+                .graph
+                .edge_weight(only_to_rebase_edge_info.edge_index)
+                .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
+            let to_rebase_item_weight =
+                self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
+
+            // If `onto` has never seen this edge, then it's new, and there are no conflicts, and
+            // no updates.
+            if to_rebase_edge_weight
+                .vector_clock_first_seen()
+                .entry_for(onto_change_set)
+                .is_some()
+            {
+                if to_rebase_item_weight
+                    .vector_clock_write()
+                    .entry_for(to_rebase_change_set)
+                    > root_seen_as_of_onto
+                {
+                    // Edge has been modified in `onto` (`onto` item write vector clock > "seen as
+                    // of" for `onto` entry in `to_rebase` root): Conflict (ModifyRemovedItem)
+                    conflicts.push(Conflict::ModifyRemovedItem(
+                        only_to_rebase_edge_info.target_node_index,
+                    ))
+                } else {
+                    // Item not modified & removed by `onto`: No conflict; Update::RemoveEdge
+                    updates.push(Update::RemoveEdge(only_to_rebase_edge_info.edge_index));
+                }
+            }
+        }
+
+        // - Items unique to `onto`:
+        for only_onto_edge_info in only_onto_edges.values() {
+            let onto_edge_weight = onto
+                .graph
+                .edge_weight(only_onto_edge_info.edge_index)
+                .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
+            let onto_item_weight = onto.get_node_weight(only_onto_edge_info.target_node_index)?;
+
+            if onto_edge_weight
+                .vector_clock_first_seen()
+                .entry_for(onto_change_set)
+                > root_seen_as_of_onto
+            {
+                // Edge first seen by `onto` > "seen as of" on `to_rebase` graph for `onto`'s entry on
+                // root node: Item is new.
+                updates.push(Update::NewEdge {
+                    source: to_rebase_container_index,
+                    destination: only_onto_edge_info.target_node_index,
+                    weight: onto_edge_weight.clone(),
+                });
+            } else if let Some(root_seen_as_of) = root_seen_as_of_onto {
+                if onto_item_weight
+                    .vector_clock_write()
+                    .has_entries_newer_than(root_seen_as_of)
+                {
+                    // Item write vector clock has entries > "seen as of" on `to_rebase` graph for
+                    // `onto`'s entry on root node: Conflict (RemoveModifiedItem)
+                    conflicts.push(Conflict::RemoveModifiedItem {
+                        container: to_rebase_container_index,
+                        removed_item: only_onto_edge_info.target_node_index,
+                    });
+                }
+            }
+            // Item removed by `to_rebase`: No conflict & no update necessary.
+        }
+
+        // - Sets same: No conflicts/updates
         Ok((updates, conflicts))
     }
 
@@ -821,87 +1109,6 @@ impl WorkspaceSnapshotGraph {
     fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
         algo::has_path_connecting(&self.graph, start, node, None)
             && algo::has_path_connecting(&self.graph, node, end, None)
-    }
-
-    fn rebase_process_dfs_event(
-        &mut self,
-        change_set: &ChangeSet,
-        onto: &WorkspaceSnapshotGraph,
-        event: DfsEvent<NodeIndex>,
-    ) -> Result<petgraph::visit::Control<()>, petgraph::visit::DfsEvent<NodeIndex>> {
-        match event {
-            petgraph::visit::DfsEvent::Discover(onto_node_index, _) => {
-                let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|_| event)?;
-                let nodes_with_lineage = self
-                    .get_node_index_by_lineage(onto_node_weight.lineage_id())
-                    .map_err(|_| event)?;
-                if !nodes_with_lineage.is_empty() {
-                    for our_node_index in self
-                        .get_node_index_by_lineage(onto_node_weight.lineage_id())
-                        .map_err(|_| event)?
-                    {
-                        let our_node_weight =
-                            self.get_node_weight(our_node_index).map_err(|_| event)?;
-                        if onto_node_weight
-                            .vector_clock_write()
-                            .is_newer_than(our_node_weight.vector_clock_write())
-                        {
-                            // The thing is newer in the snapshot we're rebasing onto, use that
-                            // one.
-                            let new_node_index = self
-                                .import_subgraph(onto, onto_node_index)
-                                .map_err(|_| event)?;
-                            self.replace_references(change_set, our_node_index, new_node_index)
-                                .map_err(|_| event)?;
-
-                            // No need to look further down the graph at this point, since we've
-                            // already taken everything below this point.
-                            return Ok(petgraph::visit::Control::Prune);
-                        }
-                        // Ours is newer, do nothing. Neither is newer, there's a conflict that
-                        // must be resolved (and should have been detected before `rebase` was
-                        // called).
-                    }
-                } else {
-                    // This is a new thing we need to import into our snapshot.
-                    if let NodeWeight::Content(content_weight) = onto_node_weight {
-                        match content_weight.content_address() {
-                            ContentAddress::Component(_) |
-                            ContentAddress::Func(_) |
-                            ContentAddress::Prop(_) |
-                            ContentAddress::Schema(_) => {
-                                let new_node_index = self
-                                    .import_subgraph(onto, onto_node_index)
-                                    .map_err(|_| event)?;
-                                let edge_weight = EdgeWeight::new(change_set, EdgeWeightKind::Uses)
-                                    .map_err(|_| event)?;
-                                self.add_edge(change_set, self.root_index, edge_weight, new_node_index)
-                                    .map_err(|_| event)?;
-                            }
-                            ContentAddress::FuncArg(_) |
-                            ContentAddress::SchemaVariant(_) => {
-                                for incoming_edge in onto.graph.edges_directed(onto_node_index, Incoming) {
-                                    // TODO
-                                }
-                                // Nothing to do. These are not directly connected to the root node
-                                // in the graph.
-                            }
-                            ContentAddress::Root => {
-                                // Nothing to do. We already have a root node. No need to have a
-                                // second one.
-                            }
-                        }
-                    }
-                }
-            }
-            _ => { /* Ignoring all other events */ }
-            // DfsEvent::TreeEdge(_, _) => todo!(),
-            // DfsEvent::BackEdge(_, _) => todo!(),
-            // DfsEvent::CrossForwardEdge(_, _) => todo!(),
-            // DfsEvent::Finish(_, _) => todo!(),
-        }
-
-        Ok(petgraph::visit::Control::Continue)
     }
 
     fn replace_references(

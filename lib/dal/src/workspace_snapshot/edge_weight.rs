@@ -16,7 +16,7 @@ pub enum EdgeWeightError {
 
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EdgeWeightKind {
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
@@ -30,15 +30,22 @@ pub enum EdgeWeightKind {
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct EdgeWeight {
     pub kind: EdgeWeightKind,
-    pub vector_clock_seen: VectorClock,
-    pub vector_clock_write: VectorClock,
+    vector_clock_first_seen: VectorClock,
+    vector_clock_write: VectorClock,
 }
 
 impl EdgeWeight {
+    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
+        self.vector_clock_first_seen.inc(change_set)?;
+        self.vector_clock_write.inc(change_set)?;
+
+        Ok(())
+    }
+
     pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
         Ok(Self {
             kind,
-            vector_clock_seen: VectorClock::new(change_set)?,
+            vector_clock_first_seen: VectorClock::new(change_set)?,
             vector_clock_write: VectorClock::new(change_set)?,
         })
     }
@@ -53,10 +60,11 @@ impl EdgeWeight {
         Ok(new_weight)
     }
 
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
-        self.vector_clock_seen.inc(change_set)?;
-        self.vector_clock_write.inc(change_set)?;
+    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
 
-        Ok(())
+    pub fn vector_clock_write(&self) -> &VectorClock {
+        &self.vector_clock_write
     }
 }

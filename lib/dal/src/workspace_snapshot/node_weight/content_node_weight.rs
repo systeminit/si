@@ -60,7 +60,8 @@ pub struct ContentNodeWeight {
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
-    vector_clock_seen: VectorClock,
+    vector_clock_first_seen: VectorClock,
+    vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
@@ -75,7 +76,8 @@ impl ContentNodeWeight {
             lineage_id: change_set.generate_ulid()?,
             content_address,
             merkle_tree_hash: ContentHash::default(),
-            vector_clock_seen: VectorClock::new(change_set)?,
+            vector_clock_first_seen: VectorClock::new(change_set)?,
+            vector_clock_recently_seen: VectorClock::new(change_set)?,
             vector_clock_write: VectorClock::new(change_set)?,
         })
     }
@@ -88,12 +90,25 @@ impl ContentNodeWeight {
         self.content_address.content_hash()
     }
 
+    pub fn id(&self) -> Ulid {
+        self.id
+    }
+
     pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_write.inc(change_set).map_err(Into::into)
+        self.vector_clock_write.inc(change_set)?;
+        self.vector_clock_recently_seen.inc(change_set)?;
+
+        Ok(())
     }
 
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
+    }
+
+    pub fn mark_seen(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        self.vector_clock_recently_seen
+            .inc(change_set)
+            .map_err(Into::into)
     }
 
     pub fn merge_clocks(
@@ -103,8 +118,10 @@ impl ContentNodeWeight {
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
             .merge(change_set, &other.vector_clock_write)?;
-        self.vector_clock_seen
-            .merge(change_set, &other.vector_clock_seen)?;
+        self.vector_clock_first_seen
+            .merge(change_set, &other.vector_clock_first_seen)?;
+        self.vector_clock_recently_seen
+            .merge(change_set, &other.vector_clock_recently_seen)?;
 
         Ok(())
     }
@@ -129,10 +146,6 @@ impl ContentNodeWeight {
         Ok(())
     }
 
-    pub fn id(&self) -> Ulid {
-        self.id
-    }
-
     pub fn new_with_incremented_vector_clock(
         &self,
         change_set: &ChangeSet,
@@ -147,8 +160,12 @@ impl ContentNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn vector_clock_seen(&self) -> &VectorClock {
-        &self.vector_clock_seen
+    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
+
+    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+        &self.vector_clock_recently_seen
     }
 
     pub fn vector_clock_write(&self) -> &VectorClock {
@@ -163,7 +180,7 @@ impl std::fmt::Debug for ContentNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("content_address", &self.content_address)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_seen", &self.vector_clock_seen)
+            .field("vector_clock_seen", &self.vector_clock_first_seen)
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }

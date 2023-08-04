@@ -5,9 +5,23 @@ use petgraph::stable_graph::NodeIndex;
 #[remain::sorted]
 #[derive(Debug, Copy, Clone)]
 pub enum Conflict {
-    ChildMembership { ours: NodeIndex, theirs: NodeIndex },
-    ChildOrder { ours: NodeIndex, theirs: NodeIndex },
-    NodeContent { ours: NodeIndex, theirs: NodeIndex },
+    ChildMembership {
+        ours: NodeIndex,
+        theirs: NodeIndex,
+    },
+    ChildOrder {
+        ours: NodeIndex,
+        theirs: NodeIndex,
+    },
+    ModifyRemovedItem(NodeIndex),
+    NodeContent {
+        ours: NodeIndex,
+        theirs: NodeIndex,
+    },
+    RemoveModifiedItem {
+        container: NodeIndex,
+        removed_item: NodeIndex,
+    },
 }
 
 /// The [`NodeIndex`] of the location in the graph where a conflict occurs.

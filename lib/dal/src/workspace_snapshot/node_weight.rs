@@ -124,10 +124,17 @@ impl NodeWeight {
         }
     }
 
-    pub fn vector_clock_seen(&self) -> &VectorClock {
+    pub fn vector_clock_first_seen(&self) -> &VectorClock {
         match self {
-            NodeWeight::Content(content_weight) => content_weight.vector_clock_seen(),
-            NodeWeight::Ordering(ordering_weight) => ordering_weight.vector_clock_seen(),
+            NodeWeight::Content(content_weight) => content_weight.vector_clock_first_seen(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.vector_clock_first_seen(),
+        }
+    }
+
+    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.vector_clock_recently_seen(),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.vector_clock_recently_seen(),
         }
     }
 

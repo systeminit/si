@@ -16,7 +16,8 @@ pub struct OrderingNodeWeight {
     order: Vec<Ulid>,
     content_hash: ContentHash,
     merkle_tree_hash: ContentHash,
-    vector_clock_seen: VectorClock,
+    vector_clock_first_seen: VectorClock,
+    vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
@@ -30,7 +31,7 @@ impl OrderingNodeWeight {
     }
 
     pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
-        self.vector_clock_seen.inc(change_set)?;
+        self.vector_clock_first_seen.inc(change_set)?;
 
         Ok(())
     }
@@ -53,8 +54,8 @@ impl OrderingNodeWeight {
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
             .merge(change_set, other.vector_clock_write())?;
-        self.vector_clock_seen
-            .merge(change_set, other.vector_clock_seen())?;
+        self.vector_clock_first_seen
+            .merge(change_set, other.vector_clock_first_seen())?;
 
         Ok(())
     }
@@ -68,7 +69,7 @@ impl OrderingNodeWeight {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
             vector_clock_write: VectorClock::new(change_set)?,
-            vector_clock_seen: VectorClock::new(change_set)?,
+            vector_clock_first_seen: VectorClock::new(change_set)?,
             ..Default::default()
         })
     }
@@ -117,8 +118,12 @@ impl OrderingNodeWeight {
         self.content_hash = content_hasher.finalize();
     }
 
-    pub fn vector_clock_seen(&self) -> &VectorClock {
-        &self.vector_clock_seen
+    pub fn vector_clock_first_seen(&self) -> &VectorClock {
+        &self.vector_clock_first_seen
+    }
+
+    pub fn vector_clock_recently_seen(&self) -> &VectorClock {
+        &self.vector_clock_recently_seen
     }
 
     pub fn vector_clock_write(&self) -> &VectorClock {
