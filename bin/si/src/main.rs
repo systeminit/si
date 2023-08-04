@@ -83,8 +83,14 @@ async fn main() -> Result<()> {
         Commands::Start(_args) => {
             start::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
-        Commands::Configure(_args) => {
-            configure::invoke(&ph_client, mode.to_string(), is_preview).await?;
+        Commands::Configure(args) => {
+            configure::invoke(
+                &ph_client,
+                mode.to_string(),
+                is_preview,
+                args.force_reconfigure,
+            )
+            .await?;
         }
         Commands::Delete(_args) => {
             delete::invoke(&ph_client, mode.to_string(), is_preview).await?;
