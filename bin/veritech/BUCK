@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
+    "export_file",
     "rust_binary",
 )
 
@@ -23,12 +24,17 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
+export_file(
+    name = "docker-entrypoint.sh",
+)
+
 docker_image(
     name = "image",
     image_name = "veritech",
     flake_lock = "//:flake.lock",
     build_deps = [
         "//bin/veritech:veritech",
+        "//bin/veritech:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
     ]
