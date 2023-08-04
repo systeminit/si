@@ -28,9 +28,9 @@ async fn model_and_fix_flow_aws_key_pair(
         .await;
 
     // Create all AWS components.
-    let region = harness.create_node(&ctx, "Region", None).await;
+    let region = harness.create_node(ctx.visibility(), "Region", None).await;
     let key_pair = harness
-        .create_node(&ctx, "Key Pair", Some(region.node_id))
+        .create_node(ctx.visibility(), "Key Pair", Some(region.node_id))
         .await;
 
     // Update property editor values.
@@ -120,7 +120,7 @@ async fn model_and_fix_flow_aws_key_pair(
         .await;
 
     // Check the confirmations and ensure they look as we expect.
-    let (confirmations, mut recommendations) = harness.list_confirmations(&mut ctx).await;
+    let (confirmations, mut recommendations) = harness.list_confirmations(ctx.visibility()).await;
     assert_eq!(
         1,                   // expected
         confirmations.len()  // actual
@@ -131,7 +131,7 @@ async fn model_and_fix_flow_aws_key_pair(
     // Run the fix for the confirmation.
     let fix_batch_id = harness
         .run_fixes(
-            &mut ctx,
+            ctx.visibility(),
             vec![FixRunRequest {
                 attribute_value_id: recommendation.confirmation_attribute_value_id,
                 component_id: recommendation.component_id,
@@ -141,7 +141,7 @@ async fn model_and_fix_flow_aws_key_pair(
         .await;
 
     // Check that the fix succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(&mut ctx).await;
+    let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(

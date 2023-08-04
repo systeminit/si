@@ -100,6 +100,8 @@ impl ComponentBag {
     /// Generate a [`ComponentView`](dal::ComponentView) and return the
     /// [`properties`](dal_test::helpers::component_view::ComponentViewProperties).
     pub async fn view(&self, ctx: &DalContext) -> ComponentViewProperties {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         let component_view = ComponentView::new(ctx, self.component_id)
             .await
             .expect("could not create component view");
@@ -127,6 +129,8 @@ impl ScenarioHarness {
         auth_token: String,
         schema_names: &[&'static str],
     ) -> Self {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         let mut schemas: HashMap<&'static str, SchemaId> = HashMap::new();
         for schema_name in schema_names {
             let schema = Schema::find_by_attr(ctx, "name", &schema_name.to_string())
@@ -149,6 +153,8 @@ impl ScenarioHarness {
 
     /// Add [`Schemas`](dal::Schema) to the [`harness`](Self) that were not added in [`Self::new`].
     pub async fn add_schemas(&mut self, ctx: &DalContext, schema_names: &[&'static str]) {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         for schema_name in schema_names {
             let schema = Schema::find_by_attr(ctx, "name", &schema_name.to_string())
                 .await
@@ -181,6 +187,8 @@ impl ScenarioHarness {
         component_id: ComponentId,
         path: &[&str],
     ) -> (AttributeValueId, PropertyEditorValue) {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         // Prepare the queue and pop the first item from it. This will be our identifier to track
         // the current value that we are looking for.
         let mut queue = path
@@ -190,7 +198,7 @@ impl ScenarioHarness {
         let mut identifier = queue.pop_front().expect("provided empty path");
 
         // Collect the property editor values that we need to traverse.
-        let property_values = self.get_values(ctx, component_id).await;
+        let property_values = self.get_values(ctx.visibility(), component_id).await;
 
         // Start with the root's child values.
         let value_ids = property_values
@@ -334,10 +342,14 @@ impl ScenarioHarness {
     }
 
     /// Get the latest [`PropertyValues`] for a given [`Component`](dal::Component).
-    async fn get_values(&self, ctx: &DalContext, component_id: ComponentId) -> PropertyValues {
+    async fn get_values(
+        &self,
+        visibility: &Visibility,
+        component_id: ComponentId,
+    ) -> PropertyValues {
         let request = GetPropertyEditorValuesRequest {
             component_id,
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: GetPropertyEditorValuesResponse = self
             .query_get("/api/component/get_property_editor_values", &request)
@@ -346,9 +358,9 @@ impl ScenarioHarness {
     }
 
     /// Get the latest [`Diagram`] for the workspace.
-    async fn get_diagram(&self, ctx: &DalContext) -> Diagram {
+    async fn get_diagram(&self, visibility: &Visibility) -> Diagram {
         let request = GetDiagramRequest {
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: Diagram = self.query_get("/api/diagram/get_diagram", &request).await;
         response
@@ -363,6 +375,8 @@ impl ScenarioHarness {
         destination_node_id: NodeId,
         shared_socket_name: &str,
     ) {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         let source_socket = Socket::find_by_name_for_edge_kind_and_node(
             ctx,
             shared_socket_name,
@@ -394,10 +408,14 @@ impl ScenarioHarness {
             .await;
     }
 
-    pub async fn publish_asset(&mut self, ctx: &DalContext, asset_id: SchemaVariantDefinitionId) {
+    pub async fn publish_asset(
+        &mut self,
+        visibility: &Visibility,
+        asset_id: SchemaVariantDefinitionId,
+    ) {
         let request = ExecVariantDefRequest {
             id: asset_id,
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: ExecVariantDefResponse = self
             .query_post("/api/variant_def/exec_variant_def", &request)
@@ -407,7 +425,7 @@ impl ScenarioHarness {
 
     pub async fn update_asset(
         &mut self,
-        ctx: &DalContext,
+        visibility: &Visibility,
         asset_id: SchemaVariantDefinitionId,
         asset_name: String,
         menu_name: Option<String>,
@@ -423,7 +441,7 @@ impl ScenarioHarness {
             code,
             handler: "createAsset".to_string(),
             description: None,
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: SaveVariantDefResponse = self
             .query_post("/api/variant_def/save_variant_def", &request)
@@ -433,7 +451,7 @@ impl ScenarioHarness {
 
     pub async fn create_asset(
         &mut self,
-        ctx: &DalContext,
+        visibility: &Visibility,
         asset_name: String,
         menu_name: Option<String>,
     ) -> AssetBag {
@@ -444,7 +462,7 @@ impl ScenarioHarness {
             color: "#FFFF00".to_string(),
             link: Some("https://www.systeminit.com/".to_string()),
             description: None,
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
 
         let save_variant_def_response: CreateVariantDefResponse = self
@@ -457,7 +475,7 @@ impl ScenarioHarness {
     /// [`Schema`](dal::Schema). Optionally "place" the [`Node`](dal::Node) into a "frame".
     pub async fn create_node(
         &mut self,
-        ctx: &DalContext,
+        visibility: &Visibility,
         schema_name: &str,
         frame_node_id: Option<NodeId>,
     ) -> ComponentBag {
@@ -470,17 +488,17 @@ impl ScenarioHarness {
             parent_id: frame_node_id,
             x: "0".to_string(),
             y: "0".to_string(),
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let create_node_response: CreateNodeResponse =
             self.query_post("/api/diagram/create_node", &request).await;
         create_node_response.into()
     }
 
-    pub async fn delete_component(&self, ctx: &DalContext, component_id: ComponentId) {
+    pub async fn delete_component(&self, visibility: &Visibility, component_id: ComponentId) {
         let request = DeleteComponentRequest {
             component_id,
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         self.query_post_no_response("/api/diagram/delete_component", &request)
             .await;
@@ -488,12 +506,12 @@ impl ScenarioHarness {
 
     pub async fn author_single_schema_with_default_variant(
         &self,
-        ctx: &DalContext,
+        visibility: &Visibility,
         schema_name: impl AsRef<str>,
     ) -> (SchemaId, SchemaVariantId) {
         let request = AuthorSingleSchemaRequest {
             schema_name: schema_name.as_ref().into(),
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: AuthorSingleSchemaResponse = self
             .query_post(
@@ -510,6 +528,8 @@ impl ScenarioHarness {
         ctx: &mut DalContext,
         change_set_name: impl Into<String>,
     ) {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         let request = CreateChangeSetRequest {
             change_set_name: change_set_name.into(),
         };
@@ -522,6 +542,8 @@ impl ScenarioHarness {
 
     /// Apply the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
     pub async fn apply_change_set_and_update_ctx_visibility_to_head(&self, ctx: &mut DalContext) {
+        ctx.blocking_commit().await.expect("unable to commit");
+
         assert!(!ctx.visibility().is_head());
         let request = ApplyChangeSetRequest {
             change_set_pk: ctx.visibility().change_set_pk,
@@ -533,10 +555,10 @@ impl ScenarioHarness {
         assert!(ctx.visibility().is_head());
     }
 
-    pub async fn resource_refresh(&self, ctx: &DalContext, component_id: ComponentId) {
+    pub async fn resource_refresh(&self, visibility: &Visibility, component_id: ComponentId) {
         let request = RefreshRequest {
             component_id: Some(component_id),
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: RefreshResponse = self.query_post("/api/component/refresh", &request).await;
         assert!(response.success);
@@ -544,28 +566,32 @@ impl ScenarioHarness {
 
     pub async fn list_confirmations(
         &self,
-        ctx: &mut DalContext,
+        visibility: &Visibility,
     ) -> (Vec<ConfirmationView>, Vec<RecommendationView>) {
         let request = ConfirmationsRequest {
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: ConfirmationsResponse =
             self.query_get("/api/fix/confirmations", &request).await;
         (response.confirmations, response.recommendations)
     }
 
-    pub async fn run_fixes(&self, ctx: &mut DalContext, fixes: Vec<FixRunRequest>) -> FixBatchId {
-        let request = FixesRunRequest {
+    pub async fn run_fixes(
+        &self,
+        visibility: &Visibility,
+        fixes: Vec<FixRunRequest>,
+    ) -> FixBatchId {
+        let request = dbg!(FixesRunRequest {
             list: fixes,
-            visibility: *ctx.visibility(),
-        };
-        let response: FixesRunResponse = self.query_post("/api/fix/run", &request).await;
+            visibility: *visibility,
+        });
+        let response: FixesRunResponse = dbg!(self.query_post("/api/fix/run", &request).await);
         response.id
     }
 
-    pub async fn list_fixes(&self, ctx: &mut DalContext) -> Vec<BatchHistoryView> {
+    pub async fn list_fixes(&self, visibility: &Visibility) -> Vec<BatchHistoryView> {
         let request = ListFixesRequest {
-            visibility: *ctx.visibility(),
+            visibility: *visibility,
         };
         let response: ListFixesResponse = self.query_get("/api/fix/list", &request).await;
         response
