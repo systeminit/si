@@ -1,6 +1,8 @@
 use crate::args::{Commands, Engine};
 use color_eyre::Result;
-use si_cli::cmd::{check, delete, install, launch, report, restart, start, status, stop, update};
+use si_cli::cmd::{
+    check, configure, delete, install, launch, report, restart, start, status, stop, update,
+};
 use telemetry_application::{prelude::*, TelemetryConfig};
 use tokio::sync::oneshot::Sender;
 
@@ -80,6 +82,9 @@ async fn main() -> Result<()> {
         }
         Commands::Start(_args) => {
             start::invoke(&ph_client, mode.to_string(), is_preview).await?;
+        }
+        Commands::Configure(_args) => {
+            configure::invoke(&ph_client, mode.to_string(), is_preview).await?;
         }
         Commands::Delete(_args) => {
             delete::invoke(&ph_client, mode.to_string(), is_preview).await?;

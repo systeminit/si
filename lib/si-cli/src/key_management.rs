@@ -1,10 +1,20 @@
 use crate::{CliResult, SiCliError};
+use base64::{engine::general_purpose, Engine};
 use directories::BaseDirs;
+use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::box_;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Credentials {
+    pub aws_access_key_id: String,
+    pub aws_secret_access_key: String,
+    pub docker_hub_user_name: String,
+    pub docker_hub_credential: String,
+}
 
 const JWT_SIGNING_KEY: &str = "-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAuoogz71y+EO3tmEAiHCD
@@ -50,13 +60,38 @@ pub async fn ensure_jwt_public_signing_key() -> CliResult<()> {
     Ok(())
 }
 
-pub async fn ensure_pkgs_directory() -> CliResult<()> {
-    let si_data_dir = get_si_data_dir().await?;
-    let pkgs_dir = si_data_dir.join("pkgs");
-    if !pkgs_dir.exists() {
-        fs::create_dir(pkgs_dir.as_path())?;
-    }
+pub async fn write_veritech_credentials(
+    credentials: &Credentials,
+    credentials_path: PathBuf,
+) -> CliResult<()> {
+    let creds = toml::to_string(credentials).expect("Error creating Toml Structure");
+    fs::write(credentials_path, creds).expect("Error writing to credentials file");
     Ok(())
+}
+
+pub async fn get_veritech_credentials() -> CliResult<Vec<String>> {
+    let contents = fs::read_to_string(get_si_data_dir().await?.join("si_credentials.toml"))
+        .expect("Can't read the credentials file");
+
+    let raw_creds: Credentials = toml::from_str(contents.as_str()).unwrap();
+
+    let mut creds = Vec::new();
+    creds.push(format!("AWS_ACCESS_KEY_ID={}", raw_creds.aws_access_key_id));
+    creds.push(format!(
+        "AWS_SECRET_ACCESS_KEY={}",
+        raw_creds.aws_secret_access_key
+    ));
+
+    let docker_creds = format!(
+        "{}:{}",
+        raw_creds.docker_hub_user_name, raw_creds.docker_hub_credential
+    );
+    let mut buf = String::new();
+    general_purpose::STANDARD_NO_PAD.encode_string(docker_creds, &mut buf);
+
+    creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
+
+    Ok(creds)
 }
 
 pub async fn get_si_data_dir() -> Result<PathBuf, SiCliError> {

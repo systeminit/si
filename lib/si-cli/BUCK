@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-cli",
     deps = [
+        "//third-party/rust:base64",
         "//third-party/rust:color-eyre",
         "//third-party/rust:colored",
         "//third-party/rust:comfy-table",
@@ -17,6 +18,7 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:tokio",
+        "//third-party/rust:toml",
         "//third-party/rust:reqwest",
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:thiserror",

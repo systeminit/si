@@ -1,7 +1,8 @@
-use crate::cmd::{check, install};
+use crate::cmd::{check, configure, install};
 use crate::containers::has_existing_container;
 use crate::key_management::{
-    ensure_encryption_keys, ensure_jwt_public_signing_key, ensure_pkgs_directory, get_si_data_dir,
+    ensure_encryption_keys, ensure_jwt_public_signing_key, get_si_data_dir,
+    get_veritech_credentials,
 };
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
@@ -21,6 +22,7 @@ pub async fn invoke(
 
     check::invoke(posthog_client, mode.clone(), false, is_preview).await?;
     install::invoke(posthog_client, mode.clone(), is_preview).await?;
+    configure::invoke(posthog_client, mode.clone(), is_preview).await?;
 
     let docker = Docker::unix("//var/run/docker.sock");
 
@@ -30,7 +32,6 @@ pub async fn invoke(
 
     ensure_encryption_keys().await?;
     ensure_jwt_public_signing_key().await?;
-    ensure_pkgs_directory().await?;
     let si_data_dir = get_si_data_dir().await?;
 
     for name in CONTAINER_NAMES.iter() {
@@ -208,14 +209,17 @@ pub async fn invoke(
                     container.clone(),
                     container_name.clone()
                 );
+                let mut veritech_credentials = get_veritech_credentials().await?;
+                let mut env_vars = vec![
+                    "SI_VERITECH__NATS__URL=nats".to_string(),
+                    "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317".to_string(),
+                ];
+                env_vars.append(&mut veritech_credentials);
                 let create_opts = ContainerCreateOpts::builder()
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
                     .links(vec!["dev-nats-1:nats", "dev-otelcol-1:otelcol"])
-                    .env(vec![
-                        "SI_VERITECH__NATS__URL=nats",
-                        "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
-                    ])
+                    .env(env_vars)
                     .volumes([format!("{}:/run/cyclone", si_data_dir.display())])
                     .build();
 
