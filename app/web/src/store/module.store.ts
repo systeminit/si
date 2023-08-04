@@ -9,8 +9,9 @@ import { useRouterStore } from "./router.store";
 import { ModuleIndexApiRequest } from ".";
 
 export type ModuleId = string;
-export type ModuleSlug = string;
+export type ModuleName = string;
 export type ModuleHash = string;
+export type ModuleSlug = ModuleHash;
 
 export interface SchemaVariant {
   id: string;
@@ -39,6 +40,7 @@ export interface LocalModuleSummary {
   name: string;
   hash: ModuleHash;
 }
+
 export interface LocalModuleDetails {
   name: string;
   version: string;
@@ -80,8 +82,8 @@ export type RemoteModuleSummary = {
   name: string;
   description: string;
   createdAt: IsoDateString;
-  latestHash: ModuleHash;
-  latestHashCreatedAt: IsoDateString;
+  hash: ModuleHash;
+  hashCreatedAt: IsoDateString;
   ownerDisplayName: string;
   ownerUserId: string; // userid?
 };
@@ -103,8 +105,8 @@ export const useModuleStore = () => {
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/modules`, {
       state: () => ({
-        localModulesByName: {} as Record<ModuleSlug, LocalModuleSummary>,
-        localModuleDetailsByName: {} as Record<ModuleSlug, LocalModuleDetails>,
+        localModulesByName: {} as Record<ModuleName, LocalModuleSummary>,
+        localModuleDetailsByName: {} as Record<ModuleName, LocalModuleDetails>,
 
         remoteModuleSearchResults: [] as RemoteModuleSummary[],
         remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
@@ -116,27 +118,40 @@ export const useModuleStore = () => {
           return route?.params?.moduleSlug as ModuleSlug | undefined;
         },
         localModules: (state) => _.values(state.localModulesByName),
-        remoteModuleSummaryByName: (state) => {
-          return _.keyBy(state.remoteModuleSearchResults, (m) => m.name);
+        localModulesByHash(): Record<ModuleSlug, LocalModuleSummary> {
+          return _.keyBy(this.localModules, (m) => m.hash);
         },
-        remoteModuleDetailsByName: (state) => {
+
+        localModuleDetails: (state) => _.values(state.localModuleDetailsByName),
+        localModuleDetailsByHash(): Record<ModuleSlug, LocalModuleDetails> {
+          return _.keyBy(this.localModuleDetails, (m) => m.hash);
+        },
+
+        remoteModuleSummaryByHash: (state) => {
+          return _.keyBy(state.remoteModuleSearchResults, (m) => m.hash);
+        },
+        remoteModuleDetailsByHash: (state) => {
           return _.keyBy(
             _.values(state.remoteModuleDetailsById),
-            (m) => m.name,
+            (m) => m.hash,
           );
         },
 
         selectedModuleLocalSummary(): LocalModuleSummary | undefined {
           if (!this.urlSelectedModuleSlug) return undefined;
-          return this.localModulesByName[this.urlSelectedModuleSlug];
+          return this.localModulesByHash[this.urlSelectedModuleSlug];
         },
         selectedModuleLocalDetails(): LocalModuleDetails | undefined {
           if (!this.urlSelectedModuleSlug) return undefined;
-          return this.localModuleDetailsByName[this.urlSelectedModuleSlug];
+          return this.localModuleDetailsByHash[this.urlSelectedModuleSlug];
+        },
+        selectedModuleRemoteSummary(): RemoteModuleDetails | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.remoteModuleSummaryByHash[this.urlSelectedModuleSlug];
         },
         selectedModuleRemoteDetails(): RemoteModuleDetails | undefined {
           if (!this.urlSelectedModuleSlug) return undefined;
-          return this.remoteModuleDetailsByName[this.urlSelectedModuleSlug];
+          return this.remoteModuleDetailsByHash[this.urlSelectedModuleSlug];
         },
       },
       actions: {
@@ -174,12 +189,21 @@ export const useModuleStore = () => {
         },
 
         async SEARCH_REMOTE_MODULES(nameQuery?: string) {
-          return new ModuleIndexApiRequest<{ modules: RemoteModuleSummary[] }>({
+          return new ModuleIndexApiRequest<{
+            modules: (RemoteModuleSummary & {
+              latestHash: ModuleHash;
+              latestHashCreatedAt: IsoDateString;
+            })[];
+          }>({
             method: "get",
             url: "/modules",
             params: { name: nameQuery },
             onSuccess: (response) => {
-              this.remoteModuleSearchResults = response.modules;
+              this.remoteModuleSearchResults = _.map(response.modules, (m) => ({
+                ...m,
+                hash: m.latestHash,
+                hashCreatedAt: m.latestHashCreatedAt,
+              }));
             },
           });
         },
@@ -187,7 +211,15 @@ export const useModuleStore = () => {
           return new ModuleIndexApiRequest<RemoteModuleDetails>({
             method: "get",
             url: `/modules/${id}`,
-            onSuccess: (response) => {
+            onSuccess: (
+              response: RemoteModuleDetails & {
+                latestHash: ModuleHash;
+                latestHashCreatedAt: IsoDateString;
+              },
+            ) => {
+              response.hash = response.latestHash;
+              response.hashCreatedAt = response.latestHashCreatedAt;
+
               this.remoteModuleDetailsById[response.id] = response;
             },
           });

@@ -9,7 +9,10 @@
     "
     :to="{
       name: 'workspace-lab-packages',
-      params: { ...route.params, moduleSlug: moduleSummary.name },
+      params: {
+        ...route.params,
+        moduleSlug: moduleSummary.hash,
+      },
     }"
   >
     <Icon name="component" />
@@ -27,18 +30,17 @@ import { ModuleSlug, useModuleStore } from "@/store/module.store";
 
 const props = defineProps({
   moduleSlug: { type: String as PropType<ModuleSlug>, required: true },
-  remote: { type: Boolean },
 });
 
 const route = useRoute();
 const moduleStore = useModuleStore();
 const moduleSummary = computed(() => {
   return (
-    moduleStore.localModulesByName[props.moduleSlug] ||
-    moduleStore.remoteModuleSummaryByName[props.moduleSlug]
+    moduleStore.localModulesByHash[props.moduleSlug] ||
+    moduleStore.remoteModuleSummaryByHash[props.moduleSlug]
   );
 });
 const isSelected = computed(
-  () => moduleSummary.value?.name === moduleStore.urlSelectedModuleSlug,
+  () => moduleSummary.value?.hash === moduleStore.urlSelectedModuleSlug,
 );
 </script>
