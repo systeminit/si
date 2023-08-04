@@ -124,6 +124,17 @@ impl NodeWeight {
         }
     }
 
+    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+        match self {
+            NodeWeight::Content(content_weight) => {
+                content_weight.set_vector_clock_recently_seen_to(change_set, new_val)
+            }
+            NodeWeight::Ordering(ordering_weight) => {
+                ordering_weight.set_vector_clock_recently_seen_to(change_set, new_val)
+            }
+        }
+    }
+
     pub fn vector_clock_first_seen(&self) -> &VectorClock {
         match self {
             NodeWeight::Content(content_weight) => content_weight.vector_clock_first_seen(),

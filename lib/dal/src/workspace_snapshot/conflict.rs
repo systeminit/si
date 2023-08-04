@@ -3,7 +3,7 @@ use petgraph::stable_graph::NodeIndex;
 /// Describe the type of conflict between the given locations in a
 /// workspace graph.
 #[remain::sorted]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Conflict {
     ChildMembership {
         ours: NodeIndex,

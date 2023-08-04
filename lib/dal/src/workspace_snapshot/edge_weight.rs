@@ -27,19 +27,22 @@ pub enum EdgeWeightKind {
     Uses,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct EdgeWeight {
-    pub kind: EdgeWeightKind,
+    kind: EdgeWeightKind,
     vector_clock_first_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
 impl EdgeWeight {
     pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
-        self.vector_clock_first_seen.inc(change_set)?;
         self.vector_clock_write.inc(change_set)?;
 
         Ok(())
+    }
+
+    pub fn kind(&self) -> EdgeWeightKind {
+        self.kind
     }
 
     pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {

@@ -8,7 +8,7 @@ use crate::{
     ContentHash,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
     id: Ulid,
     lineage_id: Ulid,
@@ -104,6 +104,10 @@ impl OrderingNodeWeight {
         Ok(())
     }
 
+    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+        self.vector_clock_recently_seen.inc_to(change_set, new_val);
+    }
+
     fn update_content_hash(&mut self) {
         let mut content_hasher = ContentHash::hasher();
         let concat_elements = self
@@ -128,5 +132,23 @@ impl OrderingNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+}
+
+impl std::fmt::Debug for OrderingNodeWeight {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("NodeWeight")
+            .field("id", &self.id.to_string())
+            .field("lineage_id", &self.lineage_id.to_string())
+            .field("order", &self.order)
+            .field("content_hash", &self.content_hash)
+            .field("merkle_tree_hash", &self.merkle_tree_hash)
+            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
+            .field(
+                "vector_clock_recently_seen",
+                &self.vector_clock_recently_seen,
+            )
+            .field("vector_clock_write", &self.vector_clock_write)
+            .finish()
     }
 }

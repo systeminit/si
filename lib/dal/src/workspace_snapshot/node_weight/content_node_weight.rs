@@ -160,6 +160,10 @@ impl ContentNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
+    pub fn set_vector_clock_recently_seen_to(&mut self, change_set: &ChangeSet, new_val: Ulid) {
+        self.vector_clock_recently_seen.inc_to(change_set, new_val);
+    }
+
     pub fn vector_clock_first_seen(&self) -> &VectorClock {
         &self.vector_clock_first_seen
     }
@@ -180,7 +184,11 @@ impl std::fmt::Debug for ContentNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("content_address", &self.content_address)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
-            .field("vector_clock_seen", &self.vector_clock_first_seen)
+            .field("vector_clock_first_seen", &self.vector_clock_first_seen)
+            .field(
+                "vector_clock_recently_seen",
+                &self.vector_clock_recently_seen,
+            )
             .field("vector_clock_write", &self.vector_clock_write)
             .finish()
     }
