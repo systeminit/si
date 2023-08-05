@@ -55,7 +55,8 @@
                 v-if="
                   !(
                     authStore.needsProfileUpdate ||
-                    authStore.user?.needsTosUpdate
+                    authStore.user?.needsTosUpdate ||
+                    !authStore.user?.onboardingDetails?.reviewedProfile
                   )
                 "
               >
@@ -138,7 +139,7 @@
         </div>
 
         <div class="">
-          <div class="m-auto max-w-[1200px] min-w-[480px]">
+          <div class="m-auto max-w-[1200px] min-w-[520px]">
             <div
               class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >

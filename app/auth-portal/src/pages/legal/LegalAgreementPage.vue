@@ -144,9 +144,10 @@ watch(() => authStore.user?.needsTosUpdate, loadTosDetails, {
 });
 
 async function agreeButtonHandler() {
+  const isFirstAgreement = !authStore.user?.agreedTosVersion;
   const agreeReq = await authStore.AGREE_TOS(CURRENT_VERSION);
   if (agreeReq.result.success) {
-    await router.push({ name: "login-success" });
+    await router.push({ name: isFirstAgreement ? "profile" : "login-success" });
   }
 }
 

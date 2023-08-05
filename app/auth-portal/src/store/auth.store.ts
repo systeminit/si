@@ -20,10 +20,16 @@ export type User = {
   emailVerified: boolean;
   pictureUrl: string | null;
   needsTosUpdate?: boolean;
+  agreedTosVersion?: string;
   githubUsername?: string;
   discordUsername?: string;
   onboardingDetails?: {
     vroStepsCompletedAt?: Record<string, ISODateString>;
+    reviewedProfile?: ISODateString;
+    company?: string;
+    cloudProviders?: string[];
+    devOpsTools?: string[];
+    openSource?: boolean;
   };
 };
 
@@ -45,8 +51,7 @@ export const useAuthStore = defineStore("auth", {
       );
     },
     // useful to keep this logic in one place
-    needsProfileUpdate: (state) =>
-      !state.user?.githubUsername || !state.user?.discordUsername,
+    needsProfileUpdate: (state) => false, // if we need to force a profile update, change the logic here
   },
   actions: {
     // fetches user + billing account info - called on page refresh
@@ -93,6 +98,17 @@ export const useAuthStore = defineStore("auth", {
       return new ApiRequest<{ user: User }>({
         method: "patch",
         url: `/users/${this.user.id}`,
+        params: user,
+        onSuccess: (response) => {
+          this.user = response.user;
+        },
+      });
+    },
+    async COMPLETE_PROFILE(user: Partial<User>) {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ user: User }>({
+        method: "post",
+        url: `/users/${this.user.id}/complete-profile`,
         params: user,
         onSuccess: (response) => {
           this.user = response.user;

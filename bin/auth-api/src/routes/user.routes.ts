@@ -78,6 +78,18 @@ router.post("/users/:userId/complete-tutorial-step", async (ctx) => {
   ctx.body = { user };
 });
 
+router.post("/users/:userId/complete-profile", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+
+  if (!(user?.onboardingDetails as any)?.reviewedProfile) {
+    _.set(user, ['onboardingDetails', 'reviewedProfile'], new Date());
+  }
+
+  await saveUser(user);
+
+  ctx.body = { user };
+});
+
 router.get("/tos-details", async (ctx) => {
   if (!ctx.state.authUser) {
     throw new ApiError('Unauthorized', 'You are not logged in');

@@ -11,24 +11,28 @@
       <div class="flex gap-xl">
         <div class="w-[35%] flex items-center pl-md">
           <Stack>
-            <!-- this text only shows the first time / user is in onboarding -->
-            <template v-if="isOnboarding">
+            <template v-if="isOnboarding && stepTwo">
               <RichText>
-                <h2>Welcome to the preview of System Initiative!</h2>
+                <h2>Please Tell Us More About You</h2>
                 <p>
-                  In order to get you access to the software, we need to know a
-                  little more about you: specifically, we need your GitHub
-                  Username and your Discord ID. We will use your GitHub Username
-                  to add you to our private repository, and your Discord ID to
-                  ensure you have access to private channels to discuss System
-                  Initiative with other folks in the preview.
+                  These questions are completely optional but they will help us
+                  to better understand who is using System Initiative.
                 </p>
+                <p>We won't share your info with anyone.</p>
+              </RichText>
+            </template>
+            <!-- this text only shows the first time / user is in onboarding -->
+            <template v-else-if="isOnboarding">
+              <RichText>
+                <h2>Welcome To System Initiative!</h2>
+                <p>Please enter your profile information.</p>
+                <p>We won't share your info with anyone.</p>
               </RichText>
             </template>
             <!-- this is the default text -->
             <template v-else>
               <RichText>
-                <h2>Update your profile</h2>
+                <h2>Update Your Profile</h2>
                 <p>Use this page to update your profile info.</p>
                 <p>We won't share your info with anyone.</p>
               </RichText>
@@ -36,7 +40,72 @@
           </Stack>
         </div>
 
-        <form class="grow my-md p-md">
+        <form v-if="stepTwo" class="grow my-md p-md">
+          <Stack spacing="lg">
+            <Stack>
+              <VormInput
+                v-model="stepTwoData.company"
+                label="Company"
+                name="company"
+                placeholder="Enter the name of your company here"
+              />
+              <VormInput
+                v-model="stepTwoData.cloudProviders"
+                label="Cloud Providers"
+                prompt="Which of these cloud providers does your company use? Please select all that apply."
+                name="cloud_providers"
+                type="multi-checkbox"
+                :options="cloudProviders"
+              />
+              <VormInput
+                v-model="stepTwoData.devOpsTools"
+                label="DevOps Tools"
+                prompt="Which of these DevOps tools are you currently using? Please select all that apply."
+                name="devops_tools"
+                type="multi-checkbox"
+                :options="devOpsTools"
+              />
+              <VormInput
+                v-model="stepTwoData.openSource"
+                label="Open Source Experience"
+                prompt="Have you contributed to an open source project before?"
+                name="open_source"
+                type="radio"
+                :options="[
+                  { value: true, label: 'Yes' },
+                  { value: false, label: 'No' },
+                ]"
+              />
+              <div class="flex flex-row gap-sm">
+                <VButton
+                  class="flex-grow"
+                  iconRight="chevron--right"
+                  :disabled="validationState.isError"
+                  :requestStatus="updateUserReqStatus"
+                  loadingText="Saving your answers..."
+                  successText="Thank you!"
+                  tone="action"
+                  variant="solid"
+                  @click="tellUsMoreHandler"
+                >
+                  Submit
+                </VButton>
+                <VButton
+                  class="flex-none"
+                  iconRight="x"
+                  :disabled="validationState.isError"
+                  :requestStatus="updateUserReqStatus"
+                  tone="destructive"
+                  variant="soft"
+                  @click="completeProfile"
+                >
+                  Skip
+                </VButton>
+              </div>
+            </Stack>
+          </Stack>
+        </form>
+        <form v-else class="grow my-md p-md">
           <Stack spacing="lg">
             <Stack>
               <ErrorMessage :requestStatus="updateUserReqStatus" />
@@ -57,10 +126,12 @@
                     >Clear Picture
                   </VButton>
                 </div>
-                <div v-else class="h-xl items-center flex flex-row gap-sm">
+                <div
+                  v-else-if="storeUser?.pictureUrl"
+                  class="h-xl items-center flex flex-row gap-sm"
+                >
                   <div class="italic text-sm">No image set.</div>
                   <VButton
-                    v-if="storeUser?.pictureUrl"
                     tone="action"
                     size="xs"
                     variant="ghost"
@@ -68,11 +139,6 @@
                     >Restore Picture
                   </VButton>
                 </div>
-
-                <!--
-  v-model="draftUser.pictureUrl"
-              placeholder="Leave blank to have no profile picture"
--->
               </VormInput>
               <Tiles columns="2" spacing="sm" columnsMobile="1">
                 <VormInput
@@ -108,7 +174,6 @@
                 label="Github Username"
                 name="github_username"
                 placeholder="ex: devopsdude42"
-                required
                 :regex="GITHUB_USERNAME_REGEX"
                 regexMessage="Invalid github username"
               />
@@ -116,8 +181,7 @@
                 v-model="draftUser.discordUsername"
                 label="Discord Username"
                 name="discord_username"
-                placeholder="ex: eggscellent#1234"
-                required
+                placeholder="ex: eggscellent OR eggscellent#1234"
                 :regex="DISCORD_TAG_REGEX"
                 regexMessage="Invalid discord tag"
               />
@@ -147,7 +211,7 @@
 
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount, reactive, ref, watch } from "vue";
 import {
   ErrorMessage,
   Icon,
@@ -164,7 +228,7 @@ import { tracker } from "@/lib/posthog";
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
-  /^((?!(discordUsername|everyone|here)#)((?!@|#|:|```).{2,32})#?[0-9]?)/;
+  /^(?!(discord|here|everyone))(((?!.*\.\.)(([\w.]{2,32})))|[^@#:]{2,32}#[\d]{4})$/i;
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
@@ -176,16 +240,45 @@ const updateUserReqStatus = authStore.getRequestStatus("UPDATE_USER");
 
 const storeUser = computed(() => authStore.user);
 const draftUser = ref<User>();
+const isOnboarding = ref<boolean>();
+const stepTwo = ref(false);
+const stepTwoData = reactive({
+  company: undefined,
+  cloudProviders: [],
+  devOpsTools: [],
+  openSource: undefined,
+});
+
+const cloudProviders = [
+  { value: "aws", label: "AWS" },
+  { value: "azure", label: "Azure" },
+  { value: "digital_ocean", label: "Digital Ocean" },
+  { value: "gcp", label: "GCP" },
+];
+
+const devOpsTools = [
+  { value: "cdk", label: "CDK" },
+  { value: "docker", label: "Docker" },
+  { value: "kubernetes", label: "Kubernetes" },
+  { value: "pulumi", label: "Pulumi" },
+  { value: "terraform", label: "Terraform" },
+];
 
 useHead({ title: "Profile" });
-
-const isOnboarding = ref(authStore.needsProfileUpdate);
 
 function resetDraftUser() {
   draftUser.value = _.cloneDeep(storeUser.value!);
 }
 
 watch(storeUser, resetDraftUser, { immediate: true });
+
+function checkUserOnboarding() {
+  if (storeUser.value && isOnboarding.value === undefined) {
+    isOnboarding.value = !storeUser.value.onboardingDetails?.reviewedProfile;
+  }
+}
+
+watch(storeUser, checkUserOnboarding, { immediate: true });
 
 onBeforeMount(() => {
   // normally when landing on this page, we should probably make sure we have the latest profile info
@@ -203,9 +296,8 @@ async function saveHandler() {
   if (validationMethods.hasError()) return;
 
   // if this is first time, we will take them off profile page after save
-  const goToNextStepOnSave = isOnboarding.value;
   const updateReq = await authStore.UPDATE_USER(draftUser.value!);
-  if (updateReq.result.success && goToNextStepOnSave) {
+  if (updateReq.result.success && isOnboarding.value) {
     tracker.trackEvent("initial_profile_set", {
       email: draftUser.value?.email,
       githubUsername: draftUser.value?.githubUsername,
@@ -213,6 +305,52 @@ async function saveHandler() {
       firstName: draftUser.value?.firstName,
       lastName: draftUser.value?.lastName,
     });
+    stepTwo.value = true;
+  }
+}
+
+async function tellUsMoreHandler() {
+  if (validationMethods.hasError()) return;
+
+  if (draftUser.value && !draftUser.value.onboardingDetails) {
+    draftUser.value.onboardingDetails = {};
+  }
+
+  if (draftUser.value?.onboardingDetails) {
+    if (stepTwoData.company) {
+      draftUser.value.onboardingDetails.company = stepTwoData.company;
+    }
+    if (stepTwoData.cloudProviders.length > 0) {
+      draftUser.value.onboardingDetails.cloudProviders =
+        stepTwoData.cloudProviders;
+    }
+    if (stepTwoData.devOpsTools.length > 0) {
+      draftUser.value.onboardingDetails.devOpsTools = stepTwoData.devOpsTools;
+    }
+    if (stepTwoData.openSource !== undefined) {
+      draftUser.value.onboardingDetails.openSource = stepTwoData.openSource;
+    }
+
+    // TODO(Wendy) - Can't figure out why Prisma isn't updating the onboardingDetails properly :(
+    const draftUserClone = _.cloneDeep(draftUser.value);
+    const tellUsMoreReq = await authStore.UPDATE_USER(draftUser.value!);
+
+    if (tellUsMoreReq.result.success) {
+      tracker.trackEvent("tell_us_more_answers", {
+        company: draftUserClone.onboardingDetails?.company || "",
+        cloudProviders: draftUserClone.onboardingDetails?.cloudProviders || "",
+        devOpsTools: draftUserClone.onboardingDetails?.devOpsTools || "",
+        openSource: draftUserClone.onboardingDetails?.openSource || "",
+      });
+
+      await completeProfile();
+    }
+  }
+}
+
+async function completeProfile() {
+  const completeProfileReq = await authStore.COMPLETE_PROFILE(draftUser.value!);
+  if (completeProfileReq.result.success) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     router.push({ name: "login-success" });
   }
