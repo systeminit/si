@@ -2,9 +2,11 @@ use crate::containers::{cleanup_image, get_container_details, has_existing_conta
 use crate::{CliResult, SiCliError};
 use colored::Colorize;
 use docker_api::Docker;
+use flate2::read::GzDecoder;
 use inquire::Confirm;
 use serde::Deserialize;
 use si_posthog::PosthogClient;
+use std::io::Cursor;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -82,7 +84,8 @@ pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Update
 
     let mut si = None;
     let release: Release = req.json().await?;
-    if release.version != current_version {
+
+    if release.version != format!("v{current_version}") {
         si = Some(release);
     }
 
@@ -91,6 +94,12 @@ pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Update
 
 pub async fn update_current_binary(url: &str) -> CliResult<()> {
     let current_exe = std::env::current_exe()?;
+
+    // TODO: remove this line when we open source
+    let url = url.replace(
+        "/systeminit/si/releases/download/v",
+        "/stack72/test-download/releases/download/",
+    );
 
     let req = reqwest::get(url).await?;
     if req.status().as_u16() != 200 {
@@ -101,20 +110,23 @@ pub async fn update_current_binary(url: &str) -> CliResult<()> {
         return Err(SiCliError::UnableToDownloadUpdate(req.status().as_u16()));
     }
 
-    // Note: named temp files may be leaked if destructors don't run
-    // ideally we would use tempfile::tempfile(), but it doesn't have a path so it
-    // can't be renamed atomically to replace the current binary without corrupting it
-    //
-    // We could have a folder in tmp with updates so we can delete it every time we start one,
-    // but this leak is not a significant issue, so no need to do it _right now_
-    let tempfile = tempfile::NamedTempFile::new()?;
+    // Note: temp folders will be leaked if destructors don't run
+    let tempdir = tempfile::TempDir::new()?;
 
     println!("Downloading new binary");
     let bytes = req.bytes().await?;
-    tokio::fs::write(tempfile.path(), bytes).await?;
+    let bytes = GzDecoder::new(Cursor::new(bytes));
+
+    let path = tempdir.path().to_owned();
+    tokio::task::spawn_blocking(move || {
+        let mut archive = tar::Archive::new(bytes);
+        archive.unpack(path)?;
+        Ok::<(), SiCliError>(())
+    })
+    .await??;
 
     println!("Overwriting current binary");
-    tokio::fs::rename(tempfile.path(), current_exe).await?;
+    tokio::fs::rename(tempdir.path().join("si"), current_exe).await?;
 
     println!("Binary updated!");
 
@@ -153,7 +165,7 @@ pub async fn invoke(
 
     if let Some(update) = &update.si {
         let version = &update.version;
-        println!("Launcher update found: from {current_version} to {version}",);
+        println!("Launcher update found: from v{current_version} to {version}",);
     }
 
     let ans = if update.si.is_some() || (!only_binary && !update.containers.is_empty()) {
@@ -204,10 +216,17 @@ pub async fn invoke(
                 // Note: we can't download from here because the repo is private, we should
                 // automate the download + replace of the current binary after we go public
                 // (or start caching the binaries in auth api)
+                #[cfg(target_arch = "x86_64")]
+                let arch = "x86_64";
+
+                #[cfg(target_arch = "aarch64")]
+                let arch = "aarch64";
+
                 for asset in &update.assets {
-                    if asset.name.to_lowercase().contains(&our_os.to_lowercase()) {
-                        println!("Download the new version here: {}\n", asset.url);
-                        // update_current_binary(&asset.url).await?;
+                    if asset.name.to_lowercase().contains(arch)
+                        && asset.name.to_lowercase().contains(&our_os.to_lowercase())
+                    {
+                        update_current_binary(&asset.url).await?;
                     }
                 }
             }
