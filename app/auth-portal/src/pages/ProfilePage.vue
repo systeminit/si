@@ -11,7 +11,10 @@
       <div class="flex gap-xl">
         <div class="w-[35%] flex items-center pl-md">
           <Stack>
-            <template v-if="isOnboarding && stepTwo">
+            <!-- this text only shows when filling out the step two questions -->
+            <template
+              v-if="isOnboarding && stepTwo && featureFlagsStore.OSS_RELEASE"
+            >
               <RichText>
                 <h2>Please Tell Us More About You</h2>
                 <p>
@@ -22,11 +25,27 @@
               </RichText>
             </template>
             <!-- this text only shows the first time / user is in onboarding -->
-            <template v-else-if="isOnboarding">
+            <template v-else-if="isOnboarding && featureFlagsStore.OSS_RELEASE">
               <RichText>
                 <h2>Welcome To System Initiative!</h2>
                 <p>Please enter your profile information.</p>
                 <p>We won't share your info with anyone.</p>
+              </RichText>
+            </template>
+            <!-- OLD TEXT this text only shows the first time a user is onboarding PRIOR TO OSS RELEASE -->
+            <template
+              v-else-if="isOnboarding && !featureFlagsStore.OSS_RELEASE"
+            >
+              <RichText>
+                <h2>Welcome to the preview of System Initiative!</h2>
+                <p>
+                  In order to get you access to the software, we need to know a
+                  little more about you: specifically, we need your GitHub
+                  Username and your Discord ID. We will use your GitHub Username
+                  to add you to our private repository, and your Discord ID to
+                  ensure you have access to private channels to discuss System
+                  Initiative with other folks in the preview.
+                </p>
               </RichText>
             </template>
             <!-- this is the default text -->
@@ -40,7 +59,10 @@
           </Stack>
         </div>
 
-        <form v-if="stepTwo" class="grow my-md p-md">
+        <form
+          v-if="stepTwo && featureFlagsStore.OSS_RELEASE"
+          class="grow my-md p-md"
+        >
           <Stack spacing="lg">
             <Stack>
               <VormInput
@@ -176,6 +198,7 @@
                 placeholder="ex: devopsdude42"
                 :regex="GITHUB_USERNAME_REGEX"
                 regexMessage="Invalid github username"
+                :required="!featureFlagsStore.OSS_RELEASE"
               />
               <VormInput
                 v-model="draftUser.discordUsername"
@@ -184,6 +207,7 @@
                 placeholder="ex: eggscellent OR eggscellent#1234"
                 :regex="DISCORD_TAG_REGEX"
                 regexMessage="Invalid discord tag"
+                :required="!featureFlagsStore.OSS_RELEASE"
               />
 
               <VButton
@@ -225,6 +249,9 @@ import {
 import { useHead } from "@vueuse/head";
 import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 const DISCORD_TAG_REGEX =
@@ -305,7 +332,11 @@ async function saveHandler() {
       firstName: draftUser.value?.firstName,
       lastName: draftUser.value?.lastName,
     });
-    stepTwo.value = true;
+    if (featureFlagsStore.OSS_RELEASE) {
+      stepTwo.value = true;
+    } else {
+      await completeProfile();
+    }
   }
 }
 

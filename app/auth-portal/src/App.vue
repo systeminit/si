@@ -56,7 +56,8 @@
                   !(
                     authStore.needsProfileUpdate ||
                     authStore.user?.needsTosUpdate ||
-                    !authStore.user?.onboardingDetails?.reviewedProfile
+                    (!authStore.user?.onboardingDetails?.reviewedProfile &&
+                      featureFlagsStore.OSS_RELEASE)
                   )
                 "
               >

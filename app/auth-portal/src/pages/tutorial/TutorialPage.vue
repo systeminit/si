@@ -3,90 +3,114 @@
   <div>
     <Confetti :active="runConfetti" startTop noLoop />
 
-    <div class="flex gap-lg">
-      <div class="flex-none w-[250px]">
-        <div class="sticky top-md flex flex-col gap-sm">
-          <div
-            v-for="step in TUTORIAL_STEPS"
-            :key="step.slug"
-            :class="
-              clsx(
-                'cursor-pointer flex items-center gap-xs leading-5',
-                !stepsEnabled[step.slug] && 'pointer-events-none opacity-50',
-              )
-            "
-            @click="stepSelectHandler(step.slug)"
-          >
-            <Icon
-              :name="
-                _.get(onboardingStore.stepsCompleted, step.slug)
-                  ? step.completeIcon || 'check-circle'
-                  : step.incompleteIcon || 'minus-circle'
-              "
-              size="lg"
+    <template
+      v-if="
+        !featureFlagsStore.OSS_RELEASE &&
+        !onboardingStore.githubAccessGranted &&
+        !PREVIEW_MODE
+      "
+    >
+      <RichText>
+        <h3>We're getting you access</h3>
+        <p>
+          Thank you! We're double checking everything and getting your access to
+          the github repository. Be on the lookout for the invitation from
+          GitHub! It may take us an hour or more to process things, depending on
+          our availability. If you have any questions, or run into trouble, you
+          can email us at
+          <a href="mailto:help@systeminit.com" target="_blank"
+            >help@systeminit.com</a
+          >, or hit us up on
+          <a href="https://discord.gg/system-init">discord</a>.
+        </p>
+      </RichText>
+    </template>
+    <template v-else>
+      <div class="flex gap-lg">
+        <div class="flex-none w-[250px]">
+          <div class="sticky top-md flex flex-col gap-sm">
+            <div
+              v-for="step in TUTORIAL_STEPS"
+              :key="step.slug"
               :class="
                 clsx(
-                  '-ml-[2px]',
-                  _.get(onboardingStore.stepsCompleted, step.slug)
-                    ? 'text-success-500'
-                    : activeStepSlug !== step.slug
-                    ? 'text-neutral-400'
-                    : '',
+                  'cursor-pointer flex items-center gap-xs leading-5',
+                  !stepsEnabled[step.slug] && 'pointer-events-none opacity-50',
                 )
               "
-            />
-
-            <a
-              href="#"
-              :class="
-                clsx(
-                  'underline-link',
-                  activeStepSlug === step.slug && '--active',
-                )
-              "
-              @click.prevent
+              @click="stepSelectHandler(step.slug)"
             >
-              {{ step.title }}
-            </a>
-          </div>
+              <Icon
+                :name="
+                  _.get(onboardingStore.stepsCompleted, step.slug)
+                    ? step.completeIcon || 'check-circle'
+                    : step.incompleteIcon || 'minus-circle'
+                "
+                size="lg"
+                :class="
+                  clsx(
+                    '-ml-[2px]',
+                    _.get(onboardingStore.stepsCompleted, step.slug)
+                      ? 'text-success-500'
+                      : activeStepSlug !== step.slug
+                      ? 'text-neutral-400'
+                      : '',
+                  )
+                "
+              />
 
-          <Transition
-            class="duration-500"
-            enterFromClass="transform opacity-0"
-            enterToClass="opacity-100"
-            leaveToClass="opacity-0"
-          >
-            <WorkspaceLinkWidget
-              v-if="
-                TUTORIAL_STEPS[activeStepSlug] &&
-                !TUTORIAL_STEPS[activeStepSlug].hideWorkspaceLink
-              "
-              compact
-              class="mt-xs"
+              <a
+                href="#"
+                :class="
+                  clsx(
+                    'underline-link',
+                    activeStepSlug === step.slug && '--active',
+                  )
+                "
+                @click.prevent
+              >
+                {{ step.title }}
+              </a>
+            </div>
+
+            <Transition
+              class="duration-500"
+              enterFromClass="transform opacity-0"
+              enterToClass="opacity-100"
+              leaveToClass="opacity-0"
+            >
+              <WorkspaceLinkWidget
+                v-if="
+                  TUTORIAL_STEPS[activeStepSlug] &&
+                  !TUTORIAL_STEPS[activeStepSlug].hideWorkspaceLink
+                "
+                compact
+                class="mt-xs"
+              />
+            </Transition>
+          </div>
+        </div>
+        <div
+          class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg relative overflow-x-hidden"
+        >
+          <RichText>
+            <Component
+              :is="TUTORIAL_STEPS[activeStepSlug].component"
+              v-if="TUTORIAL_STEPS[activeStepSlug]"
             />
-          </Transition>
+          </RichText>
+          <VButton
+            class="w-full mt-lg"
+            iconRight="arrow--right"
+            variant="solid"
+            tone="action"
+            @click="stepContinueHandler"
+          >
+            Continue
+          </VButton>
         </div>
       </div>
-      <div
-        class="grow border-l border-neutral-300 dark:border-neutral-700 pl-lg relative overflow-x-hidden"
-      >
-        <RichText>
-          <Component
-            :is="TUTORIAL_STEPS[activeStepSlug].component"
-            v-if="TUTORIAL_STEPS[activeStepSlug]"
-          />
-        </RichText>
-        <VButton
-          class="w-full mt-lg"
-          iconRight="arrow--right"
-          variant="solid"
-          tone="action"
-          @click="stepContinueHandler"
-        >
-          Continue
-        </VButton>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -110,10 +134,13 @@ import Confetti from "@/components/Confetti.vue";
 
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import TutorialSurvey from "./TutorialSurvey.vue";
 
 // enable working on tutorial without being logged in
 const PREVIEW_MODE = !!import.meta.env.VITE_PREVIEW_TUTORIAL;
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const onboardingStore = useOnboardingStore();
 
