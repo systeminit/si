@@ -350,6 +350,9 @@ pub async fn invoke(
 
     if !is_preview {
         println!("All system components running... System Initiative is alive!");
+        println!(
+            "\nYou can now use the `si launch` command to open the System Initiative web portal"
+        )
     }
 
     Ok(())
