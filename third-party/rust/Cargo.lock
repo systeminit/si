@@ -4623,6 +4623,7 @@ dependencies = [
  "directories",
  "docker-api",
  "dyn-clone",
+ "flate2",
  "futures",
  "futures-lite",
  "futures-util",

@@ -4066,6 +4066,12 @@ cargo.rust_library(
     visibility = [],
 )
 
+alias(
+    name = "flate2",
+    actual = ":flate2-1.0.26",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "flate2-1.0.26.crate",
     sha256 = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743",
@@ -13389,6 +13395,7 @@ cargo.rust_binary(
         ":directories-5.0.1",
         ":docker-api-0.14.0",
         ":dyn-clone-1.0.11",
+        ":flate2-1.0.26",
         ":futures-0.3.28",
         ":futures-lite-1.13.0",
         ":futures-util-0.3.28",

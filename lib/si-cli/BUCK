@@ -16,6 +16,8 @@ rust_library(
         "//third-party/rust:open",
         "//third-party/rust:rand",
         "//third-party/rust:remain",
+        "//third-party/rust:tar",
+        "//third-party/rust:flate2",
         "//third-party/rust:serde",
         "//third-party/rust:tokio",
         "//third-party/rust:toml",

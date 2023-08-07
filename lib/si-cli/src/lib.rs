@@ -26,6 +26,8 @@ pub enum SiCliError {
     Installation,
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    #[error("join: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("Unable to find local data dir. Expected format `$HOME/.local/share` or `$HOME/Library/Application Support`")]
     MissingDataDir(),
     #[error("reqwest: {0}")]

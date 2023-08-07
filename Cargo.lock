@@ -4657,12 +4657,14 @@ dependencies = [
 name = "si-cli"
 version = "0.1.0"
 dependencies = [
+ "base64 0.21.2",
  "color-eyre",
  "colored",
  "comfy-table",
  "console",
  "directories",
  "docker-api",
+ "flate2",
  "futures",
  "indicatif",
  "inquire",
@@ -4674,6 +4676,7 @@ dependencies = [
  "serde_json",
  "si-posthog",
  "sodiumoxide",
+ "tar",
  "tempfile",
  "thiserror",
  "tokio",

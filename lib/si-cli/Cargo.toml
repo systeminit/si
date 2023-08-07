@@ -28,3 +28,5 @@ sodiumoxide = { workspace = true }
 reqwest = { workspace = true }
 tempfile = { workspace = true }
 colored = { workspace = true }
+tar = { workspace = true }
+flate2 = { workspace = true }
