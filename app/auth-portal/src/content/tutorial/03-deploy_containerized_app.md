@@ -45,11 +45,11 @@ Let's take a minute to walk through all the information we're showing you.
 * Below that is the 'type' of this Asset: a Docker Image.
 * The green 'plus' icon indicates that this Asset was newly added to the Model in this Change Set.
 * Below that are two Output Sockets - one named `Exposed Ports` and the other named `Container Image` (we will go into more detail about these later.)
-* There is a red X warning in the bottom right corner of the Asset, which represents a Qualification error.
+* There is a red X warning in the bottom right corner of the Asset, which represents a Qualification failure.
   * **What is a Qualification?** 
  Qualifications are like built-in, real-time tests for your Model, letting you know when an Asset has not met all the requirements to function in the real world (i.e. whether it is 'qualified for use'). Qualifications can be built into specific Assets or into the Workspace itself (more on that in the Customization section of this tutorial). 
 
-You can investigate the Qualification error in the `Diagram Outline Panel`. Click on the red X to see that your Docker `Image` is not qualified because there is an error parsing the image name: your registry has no Docker `Image` with the name 'si-8356'.
+You can investigate the Qualification failure in the `Diagram Outline Panel`. Click on the red X to see that your Docker `Image` is not qualified because there is an error parsing the image name: your registry has no Docker `Image` with the name 'si-8356'.
 
 ![Qualification expanded](/tutorial-img/03-deploy_containerized_app/qualification_expanded.png)
 
@@ -118,14 +118,14 @@ Notice that this Asset looks different from the previous two! An AWS `Region` is
 
 Resize the `Region` frame to be a little larger by clicking and dragging the corner of the frame. You can see in the lower right corner of the frame that it is not qualified - that's because you haven't decided which AWS Region to use.
 
-If you investigate the Qualification error in the `Diagram Outine Panel`, you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the progress bar finishes, you will see that your Qualification for this `Region` turns from a red X to a green check - you're good to go. System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
+If you investigate the Qualification failure in the `Diagram Outine Panel`, you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the progress bar finishes, you will see that your Qualification for this `Region` turns from a red X to a green check - you're good to go. System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
 
 ![Set the region](/tutorial-img/03-deploy_containerized_app/set_the_region.png)
 
 The application runs on an EC2 Instance, so let's model it. Select the AWS `EC2 Instance` asset from the `Asset Panel`, and click to place it inside the `Region` frame on the Workspace. You can then click and drag the `EC2 Instance` into the upper right corner of the `Region` frame. A couple of things to notice:
 
 * You can see that the `Region` input socket on the `EC2 Instance` is already filled - configured by the `Region` frame in which it sits.
-* If you investigate the Qualification errors in the `Diagram Outine Panel`, you'll see there are multiple issues here, and some will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly.
+* If you investigate the Qualification failures in the `Diagram Outine Panel`, you'll see there are multiple issues here, and some will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly.
 
 Things should look like this:
 
@@ -167,22 +167,26 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 
 There is one more open input socket on the `EC2 Instance`: the `Image ID` socket. In AWS EC2, you use an AMIs ID as the Image ID.
 
-Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Workspace below the `Key Pair`. Connect the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`. Click on the Qualification error in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and got to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
+Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Workspace below the `Key Pair`. Connect the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`. Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and got to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
 
-If you take a look at the `Diagram Outline Panel` you see that you are down to a single Qualification error on your model. If you click on it, it tells you that you need to configure the `/domain/InstanceType` attribute for your `EC2 Instance`. Let's fix that now. 
+Let's look again at the Qualifications on your `EC2 Instance` by clicking on the red X in the `Diagram Outline Panel`. 
+* There is an orange Qualification warning, which will be resolved once the `Key Pair` is created. No action needed.  
+* There is a Qualification failure, telling you that you need to configure the `/domain/InstanceType` attribute for your `EC2 Instance`. Let's fix that now. 
 
-![Single Qualification remains](/tutorial-img/03-deploy_containerized_app/single_qualification_remains.png) 
+![Qualification warning and failure remain](/tutorial-img/03-deploy_containerized_app/Qualification_warning_and_failure_remain.png) 
 
-Select the `EC2 Instance`, go to the `Selected Assets Panel`, (Attributes tab), scroll down to the the `domain/InstanceType` attribute, and set it to <code>t3.micro</code>. You should see the Qualification error icon on this Asset turn from a red X to a green checkmark. 
+Select the `EC2 Instance`, go to the `Selected Assets Panel`, (Attributes tab), scroll down to the the `domain/InstanceType` attribute, and set it to <code>t3.micro</code>. The red Qualification failure icon on this Asset will disappear, leaving just the orange Qualification warning in its place. 
 
 Review the `Diagram Outline Panel`: 
-* **Confirmation warnings (no action needed)**: Each of the four AWS Assets you used has a red tools Confirmation warning, which is telling you that the Model does not match the resources in reality. The model is proposing the create these Resources (you can see the 'create' actions in `Changes Panel`), and once you hit `Apply Changes` to create these resources these Confirmations will turn green.
+* **Four Confirmation warnings (no action needed)**: Each of the four AWS Assets you used has a red tools Confirmation warning, which is telling you that the Model does not match the resources in reality. The model is proposing the create these Resources (you can see the 'create' actions in `Changes Panel`), and once you hit `Apply Changes` to create these resources these Confirmations will turn green.
 
-* **A single Qualification warning (no action needed)**: As mentioned earlier, there's an orange Qualification warning on the `Ingress` rule, which we expect to be qualified for use once the `Security Group` is created and passes the Group ID through.
+* **Two Qualification warnings (no action needed)**: 
+  * As mentioned earlier, there's an orange Qualification warning on the `Ingress` rule, which will be qualified for use once the `Security Group` is created and passes the Group ID through. 
+  * There's also an orange Qualification warning on the `EC2 Instance` which will be qualified for use once the `Key Pair` is created. 
 
- ![Looking good](/tutorial-img/03-deploy_containerized_app/looking_good.png)
+ ![Looking good](/tutorial-img/03-deploy_containerized_app/Looking_good.png)
 
 ### Apply your changes
 
@@ -246,7 +250,7 @@ If you want to walk through the action steps of this tutorial - without the cont
 
 ## 1. Add and Configure a Docker Image:
 * **Add a Docker `Image`** asset to the Workspace from the `Asset Panel`. You will see the progress bar update, indicating that System Initiative is updating the Model of your infrastructure.
-* **Investigate the Qualification error** by clicking on the red X in the `Diagram Outline Panel`. The error arises because your registry has no Docker `Image` with that name (in the screenshot example it's 'si-2660'). 
+* **Investigate the Qualification failure** by clicking on the red X in the `Diagram Outline Panel`. The error arises because your registry has no Docker `Image` with that name (in the screenshot example it's 'si-2660'). 
 * **Configure the Asset** 
   * Go to the `Selected Assets Panel` and change the `si/name`  of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. 
   * Go the `Selected Assets Panel`, scroll down to `domain/ExposedPorts[0]`, and click on the `+ Add to array` button. In the new field for the ExposedPort enter the value `80/tcp` and hit 'Enter'.
@@ -255,23 +259,23 @@ If you want to walk through the action steps of this tutorial - without the cont
 ## 2. Add and Configure a CoreOS Butane asset: 
 * **Add a CoreOS `Butane` asset** to the Workspace from `Asset Panel`.
 * **Connect** the `Container Image` output socket of the Docker `Image` to the matching `Container Image` input socket on your new `Butane` asset. 
-* **Check for Qualification errors**: The `Butane` asset is already qualified with a green checkmark. Easy! 
+* **Check for Qualification failures**: The `Butane` asset is already qualified with a green checkmark. Easy! 
 
 ## 3. Add and Configure an AWS Region**: 
 * **Add an AWS `Region` frame** to the Workspace from the `Asset Panel` and resize it to be a little larger by clicking and dragging the corner of the frame.
-* **Investigate the Qualification error** in the `Diagram Outine Panel`, and you'll learn that it appears because you haven't decided which AWS Region to use. 
-* **Configure the Asset** to get rid of the Qualification error. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. 
+* **Investigate the Qualification failure** in the `Diagram Outine Panel`, and you'll learn that it appears because you haven't decided which AWS Region to use. 
+* **Configure the Asset** to get rid of the Qualification failure. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. 
 * The Qualification for this `Region` turns from a red X to a green checkmark. 
 
 ## 4. Add and Configure an EC2 Instance** 
 * **Add an AWS `EC2 Instance`** and drop it inside the `Region` Frame. You can drag it up to the top right corner of the `Region` frame.
 * **Connect** your `Butane` configuration's `User Data` output socket to your `EC2 Instance`'s `User Data` input socket. 
-* **Investigate the Qualification errors** in the `Diagram Outine Panel`, and click 'view details' to see what needs to be done. There are multiple issues here, and some will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly. 
+* **Investigate the Qualification failures** in the `Diagram Outine Panel`, and click 'view details' to see what needs to be done. There are multiple issues here, and some will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly. 
 
 ## 5. Add and Configure a Security Group
 * **Add a `Security Group`** to the top left of the Frame.
 * **Connect** the `Security Group` to the `EC2 Instance`. 
-* **Check for Qualification errors**: The `Security Group` is already qualified with a green checkmark. Easy! 
+* **Check for Qualification failures**: The `Security Group` is already qualified with a green checkmark. Easy! 
 
 ## 6. Add and Configure an Ingress rule**
 * **Add an AWS `Ingress` asset** from the `Asset Panel`, and place in the middle of the `Region` frame.  
@@ -282,18 +286,18 @@ If you want to walk through the action steps of this tutorial - without the cont
 ## 7. Add and Configure a Key Pair
 * **Add a `Key Pair`** from the `Asset Panel` to your `Region` frame, right underneath yout `Ingress` rule
 * **Connect** the `Key Pair` to your `EC2 Instance`.
-* **Check for Qualification errors**: The `Key Pair` is already qualified with a green checkmark. Easy! 
+* **Check for Qualification failures**: The `Key Pair` is already qualified with a green checkmark. Easy! 
 
 ## 8. Add and Configure an AMI asset  
 * **Add an AWS `AMI` asset** to the `Region` frame beow the `Key Pair`.
 * **Connnect** the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`.
-* **Investigate the Qualification error** in the `Diagram Outline Panel`. It needs an Image ID or a Filter. 
- * **Configure the `AMI` asset** to get rid of the Qualification error. Going to the `Selected Assets Panel` (Attributes tab) and populate the Attribue <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter.
+* **Investigate the Qualification failure** in the `Diagram Outline Panel`. It needs an Image ID or a Filter. 
+ * **Configure the `AMI` asset** to get rid of the Qualification failure. Going to the `Selected Assets Panel` (Attributes tab) and populate the Attribue <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter.
  * The Qualification for this `AMI` asset turns from a red X to a green checkmark.
 
 ## 9. Return to finish configuring the EC2 instance
-* **Investigate the Qualification error** in the `Diagram Outline Panel`. You need to configure the `/domain/InstanceType` attribute for your `EC2 Instance`. Let's fix that now. 
- * **Configure the `EC2 Instance`** to get rid of the Qualification error. Select the `EC2 Instance`, go to the `Selected Assets Panel` (Attributes tab), scroll down to the the `domain/InstanceType` attribute, and set it to <code>t3.micro</code>. 
+* **Investigate the Qualification failure** in the `Diagram Outline Panel`. You need to configure the `/domain/InstanceType` attribute for your `EC2 Instance`. Let's fix that now. 
+ * **Configure the `EC2 Instance`** to get rid of the Qualification failure. Select the `EC2 Instance`, go to the `Selected Assets Panel` (Attributes tab), scroll down to the the `domain/InstanceType` attribute, and set it to <code>t3.micro</code>. 
  * The Qualification for this `EC2 Instance` turns from a red X to a green checkmark.
 
 ## 10. Review the Diagram Outline Panel
