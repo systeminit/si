@@ -104,8 +104,6 @@
                   iconRight="chevron--right"
                   :disabled="validationState.isError"
                   :requestStatus="updateUserReqStatus"
-                  loadingText="Saving your answers..."
-                  successText="Thank you!"
                   tone="action"
                   variant="solid"
                   @click="tellUsMoreHandler"
@@ -118,7 +116,7 @@
                   :disabled="validationState.isError"
                   :requestStatus="updateUserReqStatus"
                   tone="destructive"
-                  variant="soft"
+                  variant="ghost"
                   @click="completeProfile"
                 >
                   Skip
@@ -208,7 +206,15 @@
                 :regex="DISCORD_TAG_REGEX"
                 regexMessage="Invalid discord tag"
                 :required="!featureFlagsStore.OSS_RELEASE"
-              />
+                class="pb-sm"
+              >
+                <template #instructions>
+                  <div class="text-neutral-700 dark:text-neutral-200 italic">
+                    Entering your Discord username will help us to better give
+                    you technical support.
+                  </div>
+                </template>
+              </VormInput>
 
               <VButton
                 iconRight="chevron--right"

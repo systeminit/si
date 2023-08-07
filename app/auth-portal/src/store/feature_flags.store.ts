@@ -13,7 +13,7 @@ export const useFeatureFlagsStore = () => {
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.INSTALL_PAGE = flags.includes("install_page");
-          this.OSS_RELEASE = flags.includes("featureOssRelease");
+          this.OSS_RELEASE = true; // flags.includes("featureOssRelease");
         });
       },
     }),

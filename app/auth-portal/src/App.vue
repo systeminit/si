@@ -56,8 +56,7 @@
                   !(
                     authStore.needsProfileUpdate ||
                     authStore.user?.needsTosUpdate ||
-                    (!authStore.user?.onboardingDetails?.reviewedProfile &&
-                      featureFlagsStore.OSS_RELEASE)
+                    !authStore.user?.onboardingDetails?.reviewedProfile
                   )
                 "
               >
@@ -291,8 +290,12 @@ watch([checkAuthReq, route], () => {
     }
     return;
   }
+
   // check user has reviewed/completed their profile
-  if (authStore.needsProfileUpdate) {
+  if (
+    authStore.needsProfileUpdate ||
+    !authStore.user?.onboardingDetails?.reviewedProfile
+  ) {
     if (currentRouteName !== "profile" && currentRouteName !== "legal") {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       return router.push({ name: "profile" });
