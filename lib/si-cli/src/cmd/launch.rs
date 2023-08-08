@@ -1,10 +1,12 @@
+use crate::key_management::get_user_email;
 use crate::{CliResult, SiCliError};
 use si_posthog::PosthogClient;
 
-pub fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "launch-ui", "mode": mode}),
     );
     let path = "http://localhost:8080";

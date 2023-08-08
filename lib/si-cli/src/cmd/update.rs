@@ -1,4 +1,5 @@
 use crate::containers::{cleanup_image, get_container_details, has_existing_container};
+use crate::key_management::get_user_email;
 use crate::{CliResult, SiCliError};
 use colored::Colorize;
 use docker_api::Docker;
@@ -141,9 +142,10 @@ pub async fn invoke(
     skip_confirmation: bool,
     only_binary: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "update-launcher", "mode": mode}),
     );
 

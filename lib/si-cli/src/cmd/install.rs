@@ -1,4 +1,5 @@
 use crate::containers::{download_missing_containers, missing_containers};
+use crate::key_management::get_user_email;
 use crate::CliResult;
 use si_posthog::PosthogClient;
 
@@ -7,15 +8,16 @@ pub async fn invoke(
     mode: String,
     is_preview: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "install", "mode": mode}),
     );
 
     let missing_containers = missing_containers().await?;
     if missing_containers.is_empty() {
-        println!("All containers downloaded");
+        println!("All containers downloaded\n");
         return Ok(());
     }
 

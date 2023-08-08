@@ -1,3 +1,4 @@
+use crate::key_management::get_user_email;
 use crate::{CliResult, SiCliError};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
@@ -10,9 +11,10 @@ pub async fn invoke(
     silent: bool,
     is_preview: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "check-dependencies", "mode": mode}),
     );
 

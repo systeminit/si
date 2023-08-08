@@ -1,4 +1,5 @@
 use crate::cmd::check;
+use crate::key_management::get_user_email;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::opts::{ContainerFilter, ContainerListOpts, ContainerStopOpts};
 use docker_api::Docker;
@@ -9,9 +10,10 @@ pub async fn invoke(
     mode: String,
     is_preview: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "stop-system", "mode": mode}),
     );
 
