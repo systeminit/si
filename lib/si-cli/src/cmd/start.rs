@@ -21,9 +21,9 @@ pub async fn invoke(
         serde_json::json!({"name": "start-system", "mode": mode}),
     );
 
+    configure::invoke(posthog_client, mode.clone(), is_preview, false).await?;
     check::invoke(posthog_client, mode.clone(), false, is_preview).await?;
     install::invoke(posthog_client, mode.clone(), is_preview).await?;
-    configure::invoke(posthog_client, mode.clone(), is_preview, false).await?;
 
     let docker = Docker::unix("//var/run/docker.sock");
 
