@@ -24,6 +24,8 @@ async fn main() -> Result<()> {
     let mode = args.mode();
     let is_preview = args.is_preview;
 
+    let current_version = VERSION.trim();
+
     debug!(arguments =?args, "parsed cli arguments");
 
     let (ph_client, ph_sender) = si_posthog::new().request_timeout_ms(3000).build()?;
@@ -44,7 +46,7 @@ async fn main() -> Result<()> {
     let auth_api_host = std::env::var("AUTH_API").ok();
 
     if !matches!(args.command, Commands::Update(_)) {
-        match update::find(VERSION, auth_api_host.as_deref()).await {
+        match update::find(current_version, auth_api_host.as_deref()).await {
             Ok(update) => {
                 if update.si.is_some() {
                     println!("Launcher update found, please run `si update` to install it");
@@ -103,7 +105,7 @@ async fn main() -> Result<()> {
         }
         Commands::Update(args) => {
             update::invoke(
-                VERSION,
+                current_version,
                 auth_api_host.as_deref(),
                 &ph_client,
                 mode.to_string(),
