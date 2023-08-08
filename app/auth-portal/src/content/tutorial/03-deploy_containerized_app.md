@@ -35,7 +35,7 @@ Scroll down the `Asset Panel` to find the Docker `Image` asset, click it, then c
 
 When it finishes, click on the Docker `Image` you placed on the Canvas to select it. With the Docker `Image` asset selected, your Canvas will look something like this:
 
-![Workspace with Docker Image](/tutorial-img/03-deploy_containerized_app/workspace_with_docker_image.png)
+![Canvas with Docker Image](/tutorial-img/03-deploy_containerized_app/workspace_with_docker_image.png)
 
 Let's take a minute to walk through all the information we're showing you.
 
