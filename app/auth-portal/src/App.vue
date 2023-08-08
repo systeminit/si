@@ -13,7 +13,13 @@
     <template v-else-if="route.name === 'print-legal'">
       <RouterView />
     </template>
-    <template v-else-if="!checkAuthReq.isRequested || checkAuthReq.isPending">
+    <template
+      v-else-if="
+        !checkAuthReq.isRequested ||
+        checkAuthReq.isPending ||
+        !hasCheckedOnboardingStatus
+      "
+    >
       <div
         class="fixed inset-0 flex flex-col items-center justify-center p-md gap-sm"
       >
@@ -187,7 +193,7 @@ import {
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
 import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
-import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
@@ -252,6 +258,8 @@ onMounted(() => {
   // });
 });
 
+const hasCheckedOnboardingStatus = ref(false);
+
 // some logic around pushing the user to the right page to go through onboarding
 // could make sense to live in the router, but easier to interact with the auth loading state here
 const router = useRouter();
@@ -259,6 +267,11 @@ const route = useRoute();
 watch([checkAuthReq, route], () => {
   // if we're still checking auth, do nothing
   if (!checkAuthReq.value.isRequested || checkAuthReq.value.isPending) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  nextTick(() => {
+    hasCheckedOnboardingStatus.value = true;
+  });
 
   const currentRouteName = route.name as string;
 

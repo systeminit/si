@@ -18,10 +18,9 @@
               <RichText>
                 <h2>Please Tell Us More About You</h2>
                 <p>
-                  These questions are completely optional but they will help us
-                  to better understand who is using System Initiative.
+                  These optional questions will help us understand how to
+                  prioritize development of new features for System Initiative.
                 </p>
-                <p>We won't share your info with anyone.</p>
               </RichText>
             </template>
             <!-- this text only shows the first time / user is in onboarding -->
@@ -29,7 +28,6 @@
               <RichText>
                 <h2>Welcome To System Initiative!</h2>
                 <p>Please enter your profile information.</p>
-                <p>We won't share your info with anyone.</p>
               </RichText>
             </template>
             <!-- OLD TEXT this text only shows the first time a user is onboarding PRIOR TO OSS RELEASE -->
@@ -53,7 +51,6 @@
               <RichText>
                 <h2>Update Your Profile</h2>
                 <p>Use this page to update your profile info.</p>
-                <p>We won't share your info with anyone.</p>
               </RichText>
             </template>
           </Stack>
@@ -117,7 +114,7 @@
                   :requestStatus="updateUserReqStatus"
                   tone="destructive"
                   variant="ghost"
-                  @click="completeProfile"
+                  @click="tellUsMoreHandler(true)"
                 >
                   Skip
                 </VButton>
@@ -190,6 +187,25 @@
                 placeholder="ex: yourname@somewhere.com"
               />
               <VormInput
+                v-model="draftUser.discordUsername"
+                label="Discord Username"
+                name="discord_username"
+                placeholder="ex: eggscellent OR eggscellent#1234"
+                :regex="DISCORD_TAG_REGEX"
+                regexMessage="Invalid discord tag"
+                :required="!featureFlagsStore.OSS_RELEASE"
+              >
+                <template #instructions>
+                  <div class="text-neutral-700 dark:text-neutral-200 italic">
+                    Entering your username will help us to give you technical
+                    support
+                    <a href="" class="underline text-action-500"
+                      >on our Discord</a
+                    >.
+                  </div>
+                </template>
+              </VormInput>
+              <VormInput
                 v-model="draftUser.githubUsername"
                 label="Github Username"
                 name="github_username"
@@ -198,23 +214,6 @@
                 regexMessage="Invalid github username"
                 :required="!featureFlagsStore.OSS_RELEASE"
               />
-              <VormInput
-                v-model="draftUser.discordUsername"
-                label="Discord Username"
-                name="discord_username"
-                placeholder="ex: eggscellent OR eggscellent#1234"
-                :regex="DISCORD_TAG_REGEX"
-                regexMessage="Invalid discord tag"
-                :required="!featureFlagsStore.OSS_RELEASE"
-                class="pb-sm"
-              >
-                <template #instructions>
-                  <div class="text-neutral-700 dark:text-neutral-200 italic">
-                    Entering your Discord username will help us to better give
-                    you technical support.
-                  </div>
-                </template>
-              </VormInput>
 
               <VButton
                 iconRight="chevron--right"
@@ -276,10 +275,10 @@ const draftUser = ref<User>();
 const isOnboarding = ref<boolean>();
 const stepTwo = ref(false);
 const stepTwoData = reactive({
-  company: undefined,
-  cloudProviders: [],
-  devOpsTools: [],
-  openSource: undefined,
+  company: "",
+  cloudProviders: [] as string[],
+  devOpsTools: [] as string[],
+  openSource: "",
 });
 
 const cloudProviders = [
@@ -341,52 +340,25 @@ async function saveHandler() {
     if (featureFlagsStore.OSS_RELEASE) {
       stepTwo.value = true;
     } else {
-      await completeProfile();
+      await tellUsMoreHandler(true);
     }
   }
 }
 
-async function tellUsMoreHandler() {
+async function tellUsMoreHandler(skip = false) {
   if (validationMethods.hasError()) return;
 
-  if (draftUser.value && !draftUser.value.onboardingDetails) {
-    draftUser.value.onboardingDetails = {};
+  console.log(stepTwoData);
+
+  if (!skip) {
+    tracker.trackEvent("tell_us_more_answers", {
+      stepTwoData,
+    });
   }
 
-  if (draftUser.value?.onboardingDetails) {
-    if (stepTwoData.company) {
-      draftUser.value.onboardingDetails.company = stepTwoData.company;
-    }
-    if (stepTwoData.cloudProviders.length > 0) {
-      draftUser.value.onboardingDetails.cloudProviders =
-        stepTwoData.cloudProviders;
-    }
-    if (stepTwoData.devOpsTools.length > 0) {
-      draftUser.value.onboardingDetails.devOpsTools = stepTwoData.devOpsTools;
-    }
-    if (stepTwoData.openSource !== undefined) {
-      draftUser.value.onboardingDetails.openSource = stepTwoData.openSource;
-    }
-
-    // TODO(Wendy) - Can't figure out why Prisma isn't updating the onboardingDetails properly :(
-    const draftUserClone = _.cloneDeep(draftUser.value);
-    const tellUsMoreReq = await authStore.UPDATE_USER(draftUser.value!);
-
-    if (tellUsMoreReq.result.success) {
-      tracker.trackEvent("tell_us_more_answers", {
-        company: draftUserClone.onboardingDetails?.company || "",
-        cloudProviders: draftUserClone.onboardingDetails?.cloudProviders || "",
-        devOpsTools: draftUserClone.onboardingDetails?.devOpsTools || "",
-        openSource: draftUserClone.onboardingDetails?.openSource || "",
-      });
-
-      await completeProfile();
-    }
-  }
-}
-
-async function completeProfile() {
-  const completeProfileReq = await authStore.COMPLETE_PROFILE(draftUser.value!);
+  const completeProfileReq = await authStore.COMPLETE_PROFILE(
+    skip ? {} : stepTwoData,
+  );
   if (completeProfileReq.result.success) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     router.push({ name: "login-success" });
