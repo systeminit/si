@@ -25,7 +25,7 @@ pub async fn invoke(
     }
 
     for name in CONTAINER_NAMES.iter() {
-        let container_name = format!("dev-{0}-1", name);
+        let container_name = format!("local-{0}-1", name);
         if is_preview {
             println!("{}", container_name);
             continue;

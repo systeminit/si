@@ -212,7 +212,7 @@ pub async fn invoke(
 
                 let docker = Docker::unix("//var/run/docker.sock");
                 for container in &update.containers {
-                    let container_name = format!("dev-{0}-1", container.repository);
+                    let container_name = format!("local-{0}-1", container.repository);
                     has_existing_container(&docker, container_name, true).await?;
                     cleanup_image(&docker, container.repository.to_owned()).await?;
                 }

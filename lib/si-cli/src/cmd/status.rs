@@ -34,7 +34,7 @@ pub async fn invoke(
     let mut broken_containers = Vec::new();
     for name in CONTAINER_NAMES.iter() {
         let image_name = format!("systeminit/{0}:stable", name);
-        let container_identifier = format!("dev-{0}-1", name);
+        let container_identifier = format!("local-{0}-1", name);
         let is_running =
             has_existing_container(&docker, container_identifier.clone(), false).await?;
         if !is_running {

@@ -37,7 +37,7 @@ pub async fn invoke(
 
     for name in CONTAINER_NAMES.iter() {
         let container = format!("systeminit/{0}", name);
-        let container_name = format!("dev-{0}-1", name);
+        let container_name = format!("local-{0}-1", name);
         if container == "systeminit/otelcol" {
             let running_container =
                 has_existing_container(&docker, container_name.clone(), true).await?;
@@ -61,7 +61,7 @@ pub async fn invoke(
                     .image(format!("{0}:stable", container.clone()))
                     .expose(PublishPort::tcp(4317), HostPort::new(4317))
                     .expose(PublishPort::tcp(55679), HostPort::new(55679))
-                    .links(["dev-jaeger-1:jaeger"])
+                    .links(["local-jaeger-1:jaeger"])
                     .build();
 
                 let container = docker.containers().create(&create_opts).await?;
@@ -70,7 +70,7 @@ pub async fn invoke(
         }
         if container == "systeminit/jaeger" {
             let running_container =
-                has_existing_container(&docker, "dev-jaeger-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-jaeger-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -99,7 +99,7 @@ pub async fn invoke(
         }
         if container == "systeminit/nats" {
             let running_container =
-                has_existing_container(&docker, "dev-nats-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-nats-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -128,7 +128,7 @@ pub async fn invoke(
         }
         if container == "systeminit/postgres" {
             let running_container =
-                has_existing_container(&docker, "dev-postgres-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-postgres-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -162,7 +162,7 @@ pub async fn invoke(
         }
         if container == "systeminit/council" {
             let running_container =
-                has_existing_container(&docker, "dev-council-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-council-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -181,7 +181,7 @@ pub async fn invoke(
                 let create_opts = ContainerCreateOpts::builder()
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
-                    .links(vec!["dev-nats-1:nats", "dev-otelcol-1:otelcol"])
+                    .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
                     .env(vec![
                         "SI_COUNCIL__NATS__URL=nats",
                         "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
@@ -194,7 +194,7 @@ pub async fn invoke(
         }
         if container == "systeminit/veritech" {
             let running_container =
-                has_existing_container(&docker, "dev-veritech-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-veritech-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -219,7 +219,7 @@ pub async fn invoke(
                 let create_opts = ContainerCreateOpts::builder()
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
-                    .links(vec!["dev-nats-1:nats", "dev-otelcol-1:otelcol"])
+                    .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
                     .env(env_vars)
                     .volumes([format!("{}:/run/cyclone", si_data_dir.display())])
                     .build();
@@ -230,7 +230,7 @@ pub async fn invoke(
         }
         if container == "systeminit/pinga" {
             let running_container =
-                has_existing_container(&docker, "dev-pinga-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-pinga-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -251,9 +251,9 @@ pub async fn invoke(
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
                     .links(vec![
-                        "dev-nats-1:nats",
-                        "dev-postgres-1:postgres",
-                        "dev-otelcol-1:otelcol",
+                        "local-nats-1:nats",
+                        "local-postgres-1:postgres",
+                        "local-otelcol-1:otelcol",
                     ])
                     .env(vec![
                         "SI_PINGA__NATS__URL=nats",
@@ -269,7 +269,7 @@ pub async fn invoke(
         }
         if container == "systeminit/sdf" {
             let running_container =
-                has_existing_container(&docker, "dev-sdf-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-sdf-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -289,9 +289,9 @@ pub async fn invoke(
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
                     .links(vec![
-                        "dev-nats-1:nats",
-                        "dev-postgres-1:postgres",
-                        "dev-otelcol-1:otelcol",
+                        "local-nats-1:nats",
+                        "local-postgres-1:postgres",
+                        "local-otelcol-1:otelcol",
                     ])
                     .env(vec![
                         "SI_SDF__NATS__URL=nats",
@@ -318,7 +318,7 @@ pub async fn invoke(
         }
         if container == "systeminit/web" {
             let running_container =
-                has_existing_container(&docker, "dev-web-1".to_string(), true).await?;
+                has_existing_container(&docker, "local-web-1".to_string(), true).await?;
 
             if !running_container {
                 if is_preview {
@@ -337,7 +337,7 @@ pub async fn invoke(
                 let create_opts = ContainerCreateOpts::builder()
                     .name(container_name.clone())
                     .image(format!("{0}:stable", container.clone()))
-                    .links(vec!["dev-sdf-1:sdf"])
+                    .links(vec!["local-sdf-1:sdf"])
                     .env(["SI_LOG=trace"])
                     .network_mode("bridge")
                     .expose(PublishPort::tcp(8080), HostPort::new(8080))
