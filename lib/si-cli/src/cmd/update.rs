@@ -7,6 +7,7 @@ use flate2::read::GzDecoder;
 use inquire::Confirm;
 use serde::Deserialize;
 use si_posthog::PosthogClient;
+use std::fs;
 use std::io::Cursor;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -95,6 +96,12 @@ pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Update
 pub async fn update_current_binary(url: &str) -> CliResult<()> {
     let current_exe = std::env::current_exe()?;
 
+    let exe_path = if current_exe.is_symlink() {
+        fs::read_link(current_exe)?
+    } else {
+        current_exe
+    };
+
     // TODO: remove this line when we open source
     let url = url.replace(
         "/systeminit/si/releases/download/",
@@ -126,7 +133,7 @@ pub async fn update_current_binary(url: &str) -> CliResult<()> {
     .await??;
 
     println!("Overwriting current binary");
-    tokio::fs::rename(tempdir.path().join("si"), current_exe).await?;
+    tokio::fs::rename(tempdir.path().join("si"), exe_path).await?;
 
     println!("Binary updated!");
 
@@ -166,7 +173,7 @@ pub async fn invoke(
 
     if let Some(update) = &update.si {
         let version = &update.version;
-        println!("Launcher update found: from v{current_version} to {version}",);
+        println!("Launcher update found: from {current_version} to {version}",);
     }
 
     let ans = if update.si.is_some() || (!only_binary && !update.containers.is_empty()) {
