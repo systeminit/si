@@ -85,8 +85,7 @@ pub async fn find(current_version: &str, host: Option<&str>) -> CliResult<Update
 
     let mut si = None;
     let release: Release = req.json().await?;
-
-    if release.version != format!("v{current_version}") {
+    if release.version != current_version {
         si = Some(release);
     }
 
@@ -98,7 +97,7 @@ pub async fn update_current_binary(url: &str) -> CliResult<()> {
 
     // TODO: remove this line when we open source
     let url = url.replace(
-        "/systeminit/si/releases/download/v",
+        "/systeminit/si/releases/download/",
         "/stack72/test-download/releases/download/",
     );
 

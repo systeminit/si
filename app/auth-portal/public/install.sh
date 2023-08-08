@@ -54,10 +54,7 @@ get_latest_version() {
     local _version="$(curl -s 'https://auth-api.systeminit.com/github/releases/latest' | \
                          awk 'BEGIN { FS="\""; RS="," }
                          $2 == "version" { print $4 }')"
-    ## This won't be necessary when we have a non mirrored repository!
-    ## RETVAL="$_version"
-    local _version_x="$(echo "$_version" | awk '{ print substr ($0, 2 ) }')"
-    RETVAL="$_version_x"
+    RETVAL="$_version"
 }
 
 get_os() {
