@@ -6,19 +6,17 @@ title: Customizing System Initiative by writing TypeScript Code
 
 In the previous tutorial, you launched Whiskers R We running on [Fedora CoreOS](https://getfedora.org/en/coreos) EC2 instance. You learned how Qualifications are used to tell us if an Asset meets all the requirements to function in the real world - like a built-in, real-time test for your Model. 
 
-The good folks at Whiskers R We want to ensure they are using the current stable version of the AMI for their AWS Region any time they launch a new instance in AWS. You will help them do that by writing a custom Qualification (using TypeScript) for all the AMIs in their Workspace.
+The good folks at Whiskers R We want to ensure they are using the current stable version of the AMI for their AWS Region any time they launch a new instance in AWS. You will help them do that by writing a custom Qualification (using TypeScript) for all the AMIs on their Canvas.
 
 ### Create a new Change Set
 
-Since you are changing how System Initiative works and updating your Model, you need to create a new Change Set. If you don't have any existing Change Sets, you will be prompted to create one automatically. If you have existing Change Sets, click the 'New Change Set' icon <img src="/tutorial-img/06-customizing/new_change_set.png" alt="New Change Set Icon" class="inline" width="5%" height="5%"/> in the navigation bar at the top of the screen.
-
-You will see a dialog where you can give your Change Set a name, and click the `Create Change Set` button:
+Since you are changing how System Initiative works and updating your Model, you need to create a new Change Set. Click the 'New Change Set' icon <img src="/tutorial-img/06-customizing/new_change_set.png" alt="New Change Set Icon" class="inline" width="5%" height="5%"/> in the navigation bar at the top of the screen, and use the dialog to give your Change Set a name.
 
 <img src="/tutorial-img/06-customizing/create_change_set_dialog.png" alt="Create Change Set Dialog" width="50%" height="50%"/> 
 
 ### Using Real-Time Multiplayer capabilities to your advantage
 
-System Initiative is designed as a real-time multiplayer web application. What happens in your browser will immediately update all other users of the Workspace, enabling easy collaboration. You can take advantage of this capability when customizing System Initiative to see the impact of your customizations on your Model in real-time.
+System Initiative is designed as a real-time multiplayer web application. What happens in your browser will immediately update all other users of the workspace, enabling easy collaboration. You can take advantage of this capability when customizing System Initiative to see the impact of your customizations on your Model in real-time.
 
 To get started, click the 'Copy Link' button in the main navigation at the top right of the screen, and use it to open System Inititative in a new browser window. 
 
@@ -35,11 +33,11 @@ Your Customize screen will look like this:
 
 A few things worth noticing before we get started:
 * In the top left, you can see the same Change Set selector you saw in the Model screen. 
-* Beneath that, there are three tabs - Assets, Functions, and Modules. This tutorial will focus on Functions. Select the `Function` tab now to open the `Function Panel`. 
+* Beneath that, there is a tab for Assets and another for Functions. This tutorial will focus on Functions. Select the `Function` tab now to open the `Function Panel`. 
   * At the top of the `Function Panel` is a `+ Function` button for creating new functions, followed by a search interface.
   * Below that there is a list of functions grouped by their type.
-* The Workspace at center of the screen will show a tabbed code Editor (just as soon as you select a function to work on). 
-* On the right side of the Workspace is the `Function Details Panel`, which will show the details of the currently selected function in the Editor.
+* At the center of the screen there is a tabbed code editor (or there will be, just as soon as you select a function to work on). 
+* On the right side of the screen is the `Function Details Panel`, which will show the details of the currently selected function in the editor.
 
 ### Looking at an existing function
 
@@ -47,7 +45,7 @@ Click the `search functions` box and type 'docker'. You will see the list of fun
 
 <img src="/tutorial-img/06-customizing/search_interface.png" alt="Search interface" width="70%" height="70%"/> 
 
-Click the `Docker Image Exists` function from the Qualifications list, and the function will be loaded into the Editor, with its Properties listed in the `Function Details Panel`. 
+Click the `Docker Image Exists` function from the Qualifications list, and the function will be loaded into the editor, with its Properties listed in the `Function Details Panel`. 
 
 ![Docker image exists](/tutorial-img/06-customizing/docker_image_exists.png)
 
@@ -87,9 +85,7 @@ _Note: Currently, functions are only partially sandboxed. In a future release of
 
 ### Editing a function
 
-Try updating this function with a slightly more helpful failure message, reminding the user that they haven't yet changed the `domain/image` from the pre-generated default hash, which is always in the format 'si-####'. 
-
-The new function body should be:
+Try updating this function to show a slightly more helpful failure message when the name is the pre-generated default 'si-XXXX'. The new function body should be:
 
 ```js
 async function qualificationDockerImageExists(component: Input): Promise<Output> {
@@ -107,15 +103,15 @@ async function qualificationDockerImageExists(component: Input): Promise<Output>
 }
 ```
 
-This function updates line 2 to read that it should return if the image is not set or if it starts with `si-`. It also updates line 5 to have the better, more useful, failure message.
+You updated line 2 to read that it should return if the image is not set or if it starts with `si-`. You also updated line 5 to have the better failure message.
 
-Click the `Execute` button to run your function, and you should see the button spin and let you know that it finished without errors. If you have a syntax error, you will see it in the Editor and also see an error message immediately beneath the `Execute` button. Fix and press `Execute` again. 
+Click the `Execute` button to run your function, and you should see the button spin and let you know that it finished without errors. If you have a syntax error, you will see it in the editor and you'll also see an error message immediately beneath the `Execute` button. Fix, and press `Execute` again. 
 
 ![Execute error output](/tutorial-img/06-customizing/execute_error_output.png)
 
 ### Checking your work in the Model
 
-In the Model Window, add a Docker `Image` Asset to the Workspace, select it, then click on the Qualification failure in the `Diagram Outline Panel`. 
+In the Model Window, add a Docker `Image` Asset to the Canvas, select it, then click on the Qualification failure in the `Diagram Outline Panel`. 
 
 ![Qualification in Model Window](/tutorial-img/06-customizing/qualification_in_model_window.png)
 
@@ -142,9 +138,9 @@ In the `Function Details Panel` set the `Name` of your Qualification to "Only Us
 
 Add a `Description` of "Ensures the AMI is using the latest stable Fedora CoreOS image in its region."
 
-Set your new Qualification to run on all `AMI` assets in this Workspace: click on the `Select assets of type` dropdown, select `AMI`, and press the `+ Add` button. 
+Set your new Qualification to run on all `AMI` assets in your Canvas: click on the `Select assets of type` dropdown, select `AMI`, and press the `+ Add` button. 
 
-Configure the `Function Inputs` by checking the box for `Domain`, which points the function specifically at the Model in System Initiative. 
+Configure the `Function Inputs` by checking the box for `Domain`, which allows System Initiative to interrogate the attributes of the ___Model___ within your Qualification. 
 
 You should see:
 
@@ -152,7 +148,7 @@ You should see:
 
 Click the `Execute` button in the `Function Details Panel` to attach your new functionality to all the AWS AMI assets.
 
-Before we add content to the Qualification, let's just check to make sure that it is working at a basic level. In your Model Window, click the AWS `AMI` asset in the `Asset Panel` and place it on the Workspace. Select the newly created `AMI`, and open the `Qualifications Panel` at the bottom of the screen (which replicates the information in the `Diagram Outline Panel` that we've been using) to see that your new Qualification is present:
+Before we add content to the Qualification, let's just check to make sure that it is working at a basic level. In your Model Window, click the AWS `AMI` asset in the `Asset Panel` and place it on the Canvas. Select the newly created `AMI`, and open the `Qualifications Panel` at the bottom of the screen (which replicates the information in the `Diagram Outline Panel` that we've been using) to see that your new Qualification is present:
 
 ![Model window with AMI](/tutorial-img/06-customizing/model_window_with_ami.png)
 
@@ -164,7 +160,7 @@ Your Customization Screen should now look like the following:
 
 ![Ready to customize](/tutorial-img/06-customizing/ready_to_customize.png)
 
-Now try changing your Qualification function return value to report a failure rather than a success and see what happens. Put the following code into the Editor:
+Now try changing your Qualification function return value to report a failure rather than a success and see what happens. Put the following code into the editor:
 
 ```js
 async function qualification(component: Input): Promise<Output> {
@@ -195,7 +191,7 @@ Press the `Execute` button, and when it has finished spinning, click the `View D
 
 ![Console log example](/tutorial-img/06-customizing/console_log_example.png)
 
-Close the modal window to return to the Editor.
+Close the modal window to return to the editor.
 
 ### Fetching the list of stable Fedora CoreOS AMIs
 
@@ -227,7 +223,7 @@ Press the `Execute` button, and then once again click the `View Details` link at
 
 ![Ugly debug output](/tutorial-img/06-customizing/ugly_debug_output.png)
 
-Ugly, but functional! You can dismiss the modal by pressing 'Escape' or clicking on the Workspace.
+Ugly, but functional! You can dismiss the modal by pressing 'Escape' or clicking anywhere on the screen.
 
 ### Mapping the Qualification states
 
@@ -241,7 +237,7 @@ To write the rest of the code, you'll need to map out the various result states.
 | N         | Y          | N           | Failure | Incorrect CoreOS Stable AMI. Provide the correct AMIs                    |
 | Y         | Y          | Y           | Success | Using current CoreOS Stable AMI                                          |
 
-Update the code in the Editor with the following function, which translates the above into TypeScript:
+Update the code in the editor with the following function, which translates the above into TypeScript:
 
 ```js
 async function qualification(component: Input): Promise<Output> {
@@ -323,13 +319,13 @@ Nice work! You've added a new Qualification to System Initiative that reflects t
 
 ### How does this thing work?
 
-You ask excellent questions! Everything in System Initiative is a result of a TypeScript function execution. When you define a new Asset, you are defining the attributes it has, and setting functions for each value. As you have just seen, Qualifications and Confirmations are just functions. When System Initiative generates code for you - it's just a function that's reactive to the Asset's attributes. When Confirmations recommend actions, these, too, are functions that are reactive to both the attributes and the Resource for a given Asset.
+You ask excellent questions! Everything in System Initiative is a result of a TypeScript function execution. When you define a new Asset, you are defining the attributes it has, and setting functions for each value. As you have just seen, Qualifications are functions too. When System Initiative generates code for you - it's just a function that's reactive to the Asset's attributes. 
 
 System Initiative stitches this web of functions together into a reactive hyper-graph - allowing you to map any number of inputs to a function in the graph and then re-process the function if any of its inputs change. If you're familiar with how systems like [React](https://react.dev/) or [Vue](https://vuejs.org/) work, System Initiative is conceptually very similar.
 
 We call it a hyper-graph because of Change Sets. Any individual Asset or function can be in multiple states at any time. When you create a new Change Set, think of it as creating a new place for a function to bind. If you haven't specified a binding for that particular Change Set, System Initiative falls back to whatever function is bound to `head`.
 
-Everything in System Initiative is open and hackable - from the functions executed on the hyper-graph to the source code itself. Today you can create new Assets and other kinds of functions to build your own system in System Initiative, and we will add lots more functionality in the future, like integrated sharing and discovery functions (allowing you to build the Model up from a Resource, rather than define it upfront.) We hope you'll help us
+Everything in System Initiative is open and hackable - from the functions executed on the hyper-graph to the source code itself. Today you can author new Assets and  functions to expand the range of Resources System Initiative is capable of modeling, and we'll be adding lots more functionality in the future, like integrated sharing and discovery functions (allowing you to build the Model up from a Resource, rather than define it upfront.) We hope you'll help us
 explore what we can build together!
 
 ### Wewt!

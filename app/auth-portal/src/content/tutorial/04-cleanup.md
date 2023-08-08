@@ -21,7 +21,7 @@ The Assets will not disappear from the Workspace - instead, they will be marked 
 
 ![Partial Delete](/tutorial-img/04-cleanup/partial_delete.png)
 
-If you want to restore an Asset you might have accidentally deleted, select the deleted Asset, go to the `Selected Assets Panel` and click `Restore Component`. 
+If you want to restore an Asset you might have accidentally deleted, you can select it, and click `Restore Component` in the `Selected Assets Panel`.   
 
 <img src="/tutorial-img/04-cleanup/restore_option.png" alt="Restore option" width="50%" height="50%"/> 
 
@@ -31,18 +31,17 @@ For now, finish cleaning up your Workspace. Select the `Region` Frame, and hit t
 
 Then ‘Shift-Select’ both the Docker Image and the Butane configuration and delete them both. You should now have a Workspace filled with deleted Assets. 
 
-Just like before, if you expand the `Changes Panel` you'll see the full list of proposed changes that your Model will make once you hit the `Apply Changes` button. Where System Initiative is proposing to take actions in your System to make the Model true (in this case, to destroy Resources in AWS) it will notify you, and allow you to toggle those changes on and off from the `Diagram Outline Panel` or the `Changes Panel`. 
+Just like before, if you expand the `Changes Panel` you'll see the full list of proposed changes that you've made. 
 
-While System Initiative always suggests fixes in an order that allows them to be applied in bulk, it never forces you to commit to any actions that would impact Resources directly. You always have full control over the timing and the order of actions. It’s never all-or-nothing.
+While System Initiative always suggests fixes in an order that allows them to be applied in bulk, it never forces you to commit to any actions that would impact Resources directly. You always have full control over the timing and the order of actions. It’s never all-or-nothing. When reviewing the proposed changes, you can toggle and reorder the those changes to control if/when they are applied.
 
 ![Final Deletes](/tutorial-img/04-cleanup/final_deletes.png)
 
-Now you can hit the `Apply Changes` button at the top right of the screen, applying this (currently empty) Model, and making it true by destroying the Resources you created earlier. Hit Apply Changes again to confirm the changes.
+For now, since we're cleaning up, keep all of those changes toggled on, and hit the Apply Changes button to merge your changes to `head` - deleting those Assets from the Model and destroying the Resources in AWS.
 
-You’ll see the same wipe and confetti (yay!) and redirect to the read-only `head` version of your Model. The progress bar will update. 
+You’ll see the same wipe and confetti (yay!) and can see your newly merged changes reflected in `head`. The progress bar will update. 
 
 Note: deleting the Security Group will occasionally fail, as the EC2 Instance that is using it has not fully terminated yet. If this happens, just apply the recommendation again. Once it is deleted, you will be back to an empty Workspace:
-
 ![Empty Workspace](/tutorial-img/04-cleanup/empty_workspace.png)
 
 ### Congratulations!

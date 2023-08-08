@@ -22,7 +22,7 @@ You have _no idea_ how good it feels to have people we can talk to about System 
 
 [Lets talk on Discord](https://discord.com/channels/955539345538957342/1080953018788364288).
 
-### Get involved?
+### Collaborate
 
 We're excited for DevOps builders to get involved and start modeling and building systems in System Initiative, so please join us in the Discord, talk about the Assets you want to see, and start making stuff with us! 
 
