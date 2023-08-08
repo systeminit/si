@@ -1,8 +1,8 @@
 use crate::cmd::{check, configure, install};
 use crate::containers::has_existing_container;
 use crate::key_management::{
-    ensure_encryption_keys, ensure_jwt_public_signing_key, get_si_data_dir,
-    get_veritech_credentials,
+    ensure_encryption_keys, ensure_jwt_public_signing_key, format_credentials_for_veritech,
+    get_si_data_dir, get_user_email,
 };
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
@@ -14,9 +14,10 @@ pub async fn invoke(
     mode: String,
     is_preview: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "start-system", "mode": mode}),
     );
 
@@ -209,7 +210,7 @@ pub async fn invoke(
                     container.clone(),
                     container_name.clone()
                 );
-                let mut veritech_credentials = get_veritech_credentials().await?;
+                let mut veritech_credentials = format_credentials_for_veritech().await?;
                 let mut env_vars = vec![
                     "SI_VERITECH__NATS__URL=nats".to_string(),
                     "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317".to_string(),

@@ -14,6 +14,7 @@ pub struct Credentials {
     pub aws_secret_access_key: String,
     pub docker_hub_user_name: String,
     pub docker_hub_credential: String,
+    pub si_email: Option<String>,
 }
 
 const JWT_SIGNING_KEY: &str = "-----BEGIN PUBLIC KEY-----
@@ -69,12 +70,32 @@ pub async fn write_veritech_credentials(
     Ok(())
 }
 
-pub async fn get_veritech_credentials() -> CliResult<Vec<String>> {
+pub async fn get_credentials() -> CliResult<Credentials> {
     let contents = fs::read_to_string(get_si_data_dir().await?.join("si_credentials.toml"))
         .expect("Can't read the credentials file");
 
     let raw_creds: Credentials = toml::from_str(contents.as_str()).unwrap();
 
+    Ok(raw_creds)
+}
+
+pub async fn get_user_email() -> CliResult<String> {
+    if !does_credentials_file_exist().await? {
+        return Ok("sally@systeminit.com".to_string());
+    }
+
+    let creds = get_credentials().await?;
+    let mut user_email = "sally@systeminit.com".to_string();
+
+    if let Some(email) = creds.si_email {
+        user_email = email
+    }
+
+    Ok(user_email)
+}
+
+pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
+    let raw_creds = get_credentials().await?;
     let mut creds = Vec::new();
     creds.push(format!("AWS_ACCESS_KEY_ID={}", raw_creds.aws_access_key_id));
     creds.push(format!(
@@ -92,6 +113,13 @@ pub async fn get_veritech_credentials() -> CliResult<Vec<String>> {
     creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
 
     Ok(creds)
+}
+
+pub async fn does_credentials_file_exist() -> CliResult<bool> {
+    Ok(get_si_data_dir()
+        .await?
+        .join("si_credentials.toml")
+        .exists())
 }
 
 pub async fn get_si_data_dir() -> Result<PathBuf, SiCliError> {

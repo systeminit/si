@@ -1,5 +1,6 @@
 use crate::cmd::check;
 use crate::containers::{cleanup_image, has_existing_container};
+use crate::key_management::get_user_email;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::Docker;
 use si_posthog::PosthogClient;
@@ -9,9 +10,10 @@ pub async fn invoke(
     mode: String,
     is_preview: bool,
 ) -> CliResult<()> {
+    let email = get_user_email().await?;
     let _ = posthog_client.capture(
         "si-command",
-        "sally@systeminit.com",
+        email,
         serde_json::json!({"name": "check-dependencies", "mode": mode}),
     );
 

@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
             check::invoke(&ph_client, mode.to_string(), false, is_preview).await?;
         }
         Commands::Launch(_args) => {
-            launch::invoke(&ph_client, mode.to_string())?;
+            launch::invoke(&ph_client, mode.to_string()).await?;
         }
         Commands::Start(_args) => {
             start::invoke(&ph_client, mode.to_string(), is_preview).await?;
