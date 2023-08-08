@@ -88,26 +88,48 @@ get_architechure() {
   RETVAL="$_arch"
 }
 
-build_download_url() {
-    get_latest_version
-    local _version="$RETVAL"
+get_si_file_name() {
     get_os
     local _os="$RETVAL"
     get_architechure
     local _arch="$RETVAL"
 
-    #local _download_url="https://github.com/systeminit/si/releases/download/$_version/si-$_arch-$_os.tar.gz"
-    local _download_url="https://github.com/stack72/test-download/releases/download/$_version/si-$_arch-$_os.tar.gz"
+    local _file="si-$_arch-$_os.tar.gz"
+    RETVAL="$_file"
+}
+
+build_download_url() {
+    get_latest_version
+    local _version="$RETVAL"
+
+    get_si_file_name
+    local _file="$RETVAL"
+
+    #local _download_url="https://github.com/systeminit/si/releases/download/$_version/$_file"
+    local _download_url="https://github.com/stack72/test-download/releases/download/$_version/$_file"
 
     RETVAL="$_download_url"
 }
 
+get_download_location() {
+    local _temp_dir="$(mktemp -d)"
+    RETVAL="$_temp_dir"
+}
 
 download_tarball() {
     build_download_url
     local _download_url="$RETVAL"
-    say_white "Downloading release binary from $_download_url"
-    curl -L -o "/tmp/si.tar.gz" "$_download_url"
+
+    get_download_location
+    local _temp_dir="$RETVAL"
+
+    get_si_file_name
+    local _file="$_temp_dir/$RETVAL"
+
+    say_white "Downloading release binary from $_download_url to $_file"
+    curl -L -o "$_file" "$_download_url"
+
+    RETVAL="$_temp_dir"
 }
 
 check_old_release() {
@@ -118,15 +140,25 @@ check_old_release() {
 }
 
 download_tarball
+_temp_dir="$RETVAL"
+
+get_si_file_name
+_file="$RETVAL"
+
 check_old_release
 
-mkdir /tmp/si
-tar xzvf "/tmp/si.tar.gz" -C "/tmp/si"
-sudo chmod a+x /tmp/si/si
-sudo cp /tmp/si/si /usr/local/bin
+say_white "Extracting file: $_temp_dir/$_file"
+tar xzvf "$_temp_dir/$_file" -C "$_temp_dir"
 
-rm -f "/tmp/si.tar.gz"
-rm -rf "/tmp/si"
+say_white "Changing binary permissions to make it executable"
+chmod +x "$_temp_dir/si"
+
+say_white "Moving the binary to $HOME/.si/bin"
+mkdir -p $HOME/.si/bin
+mv "$_temp_dir/si" "$HOME/.si/bin"
+
+say_white "Linking $HOME/.si/bin/si to /usr/local/bin"
+sudo ln -s $HOME/.si/bin/si /usr/local/bin/
 
 if [ "$(command -v si)" != "/usr/local/bin/si" ]; then
   say_red "System Initiative has been downloaded but isn't on your PATH. Check /usr/local/bin to ensure it's on PATH"
