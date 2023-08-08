@@ -58,7 +58,7 @@
 
         <form
           v-if="stepTwo && featureFlagsStore.OSS_RELEASE"
-          class="grow my-md p-md"
+          class="grow my-md px-md"
         >
           <Stack spacing="lg">
             <Stack>
@@ -122,112 +122,110 @@
             </Stack>
           </Stack>
         </form>
-        <form v-else class="grow my-md p-md">
-          <Stack spacing="lg">
-            <Stack>
-              <ErrorMessage :requestStatus="updateUserReqStatus" />
-              <VormInput label="Profile Image" type="container">
-                <div
-                  v-if="draftUser.pictureUrl"
-                  class="flex flex-row items-center gap-sm"
-                >
-                  <img
-                    :src="draftUser.pictureUrl"
-                    class="rounded-full w-xl h-xl"
-                  />
-                  <VButton
-                    tone="destructive"
-                    size="xs"
-                    variant="ghost"
-                    @click="clearPicture"
-                    >Clear Picture
-                  </VButton>
-                </div>
-                <div
-                  v-else-if="storeUser?.pictureUrl"
-                  class="h-xl items-center flex flex-row gap-sm"
-                >
-                  <div class="italic text-sm">No image set.</div>
-                  <VButton
-                    tone="action"
-                    size="xs"
-                    variant="ghost"
-                    @click="restorePicture"
-                    >Restore Picture
-                  </VButton>
-                </div>
-              </VormInput>
-              <Tiles columns="2" spacing="sm" columnsMobile="1">
-                <VormInput
-                  v-model="draftUser.firstName"
-                  label="First Name"
-                  autocomplete="given-name"
-                  placeholder="Your first name"
-                />
-                <VormInput
-                  v-model="draftUser.lastName"
-                  label="Last Name"
-                  autocomplete="last-name"
-                  placeholder="Your last name"
-                />
-              </Tiles>
-              <VormInput
-                v-model="draftUser.nickname"
-                label="Nickname"
-                autocomplete="username"
-                required
-                placeholder="This name will be shown in the application"
-              />
-              <VormInput
-                v-model="draftUser.email"
-                label="Email"
-                type="email"
-                autocomplete="email"
-                required
-                placeholder="ex: yourname@somewhere.com"
-              />
-              <VormInput
-                v-model="draftUser.discordUsername"
-                label="Discord Username"
-                name="discord_username"
-                placeholder="ex: eggscellent OR eggscellent#1234"
-                :regex="DISCORD_TAG_REGEX"
-                regexMessage="Invalid discord tag"
-                :required="!featureFlagsStore.OSS_RELEASE"
+        <form v-else class="grow my-md px-md">
+          <Stack>
+            <ErrorMessage :requestStatus="updateUserReqStatus" />
+            <VormInput label="Profile Image" type="container">
+              <div
+                v-if="draftUser.pictureUrl"
+                class="flex flex-row items-center gap-sm"
               >
-                <template #instructions>
-                  <div class="text-neutral-700 dark:text-neutral-200 italic">
-                    Entering your username will help us to give you technical
-                    support
-                    <a href="" class="underline text-action-500"
-                      >on our Discord</a
-                    >.
-                  </div>
-                </template>
-              </VormInput>
+                <img
+                  :src="draftUser.pictureUrl"
+                  class="rounded-full w-xl h-xl"
+                />
+                <VButton
+                  tone="destructive"
+                  size="xs"
+                  variant="ghost"
+                  @click="clearPicture"
+                  >Clear Picture
+                </VButton>
+              </div>
+              <div
+                v-else-if="storeUser?.pictureUrl"
+                class="h-xl items-center flex flex-row gap-sm"
+              >
+                <div class="italic text-sm">No image set.</div>
+                <VButton
+                  tone="action"
+                  size="xs"
+                  variant="ghost"
+                  @click="restorePicture"
+                  >Restore Picture
+                </VButton>
+              </div>
+            </VormInput>
+            <Tiles columns="2" spacing="sm" columnsMobile="1">
               <VormInput
-                v-model="draftUser.githubUsername"
-                label="Github Username"
-                name="github_username"
-                placeholder="ex: devopsdude42"
-                :regex="GITHUB_USERNAME_REGEX"
-                regexMessage="Invalid github username"
-                :required="!featureFlagsStore.OSS_RELEASE"
+                v-model="draftUser.firstName"
+                label="First Name"
+                autocomplete="given-name"
+                placeholder="Your first name"
               />
+              <VormInput
+                v-model="draftUser.lastName"
+                label="Last Name"
+                autocomplete="last-name"
+                placeholder="Your last name"
+              />
+            </Tiles>
+            <VormInput
+              v-model="draftUser.nickname"
+              label="Nickname"
+              autocomplete="username"
+              required
+              placeholder="This name will be shown in the application"
+            />
+            <VormInput
+              v-model="draftUser.email"
+              label="Email"
+              type="email"
+              autocomplete="email"
+              required
+              placeholder="ex: yourname@somewhere.com"
+            />
+            <VormInput
+              v-model="draftUser.discordUsername"
+              label="Discord Username"
+              name="discord_username"
+              placeholder="ex: eggscellent OR eggscellent#1234"
+              :regex="DISCORD_TAG_REGEX"
+              regexMessage="Invalid discord tag"
+              :required="!featureFlagsStore.OSS_RELEASE"
+              class="pb-xs"
+            >
+              <template #instructions>
+                <div class="text-neutral-700 dark:text-neutral-200 italic">
+                  Entering your username will help us to give you technical
+                  support
+                  <a href="" class="underline text-action-500">on our Discord</a
+                  >.
+                </div>
+              </template>
+            </VormInput>
+            <VormInput
+              v-model="draftUser.githubUsername"
+              label="Github Username"
+              name="github_username"
+              placeholder="ex: devopsdude42"
+              :regex="GITHUB_USERNAME_REGEX"
+              regexMessage="Invalid github username"
+              :required="!featureFlagsStore.OSS_RELEASE"
+            />
 
-              <VButton
-                iconRight="chevron--right"
-                :disabled="validationState.isError"
-                :requestStatus="updateUserReqStatus"
-                loadingText="Saving your profile..."
-                successText="Updated your profile!"
-                tone="action"
-                variant="solid"
-                @click="saveHandler"
-              >
-                Save
-              </VButton>
-            </Stack>
+            <VButton
+              iconRight="chevron--right"
+              :disabled="validationState.isError"
+              :requestStatus="updateUserReqStatus"
+              loadingText="Saving your profile..."
+              successText="Updated your profile!"
+              tone="action"
+              variant="solid"
+              @click="saveHandler"
+            >
+              Save
+            </VButton>
           </Stack>
         </form>
       </div>
