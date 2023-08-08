@@ -3,25 +3,25 @@ title: Deploy a containerized web application to an AWS EC2 Instance
 ---
 
 ## Deploy a containerized web application to an AWS EC2 instance
-Have this tutorial open in one browser window and your System Initiative dev Workspace open in another. 
+Have this tutorial open in one browser window and your System Initiative workspace open in another. 
 
-### The Workspace
-Your System Initiative Workspace will look like this:
+### The workspace
+Your System Initiative workspace will look like this:
 
 ![Initial System Initiative Screen](/tutorial-img/03-deploy_containerized_app/initial_system_initiative_screen.png)
 
 A few things worth noticing before we get started: 
 * The primary navigation bar at the top of the screen has the Model icon selected
 <img src="/tutorial-img/03-deploy_containerized_app/model_icon.png" alt="Model Icon" class="inline" width="5%" height="5%"/> indicating that you want to work on your infrastructure Model. We'll get to the other icon at the top of the screen, for Customization, in a later section of the tutorial. 
-* In the center of the screen is a Workspace where you will design your Model, with a progress bar on top.
+* In the center of the screen is a Canvas where you will design your Model, with a progress bar on top.
   * **What is a Model?**: In System Initiative, you build a Model of your infrastructure and applications. Think of this Model as a 1:1 simulation of the Resources you want to see in the real world, which provides immediate feedback on requirements and dependencies, and infers configuration on your behalf. You can safely iterate and experiment with your Model as much as you like without applying those changes to the Resources - it is purely a hypothesis about what you believe should exist.
 * In the top left, we have automatically created and named a Change Set for you using the date and timestamp.
   * **What is a Change Set?**: All of the changes proposed by your Model are made within a Change Set, and when you decide that the Model reflects the reality you want and hit `Apply Changes`, System Initiative will take all the proposed changes in the Change Set and apply them in the correct order - creating, configuring, or destroying Resources to bring them in synch with your Model. You can think of a Change Set like a lightweight git branch that auto-rebases on main - where main is the version that you believe best reflects the reality you want. We call the 'main' version of your Model the `Head`.
-* There are four panels on the sides of the Workspace. These can be resized up and down, left and right, to give you more space when you're working on them. 
-  * `Diagram Outline Panel` (top left): lists of all the Assets in your Workspace, with a recap of their current status. 
+* There are four panels on the sides of the Canvas. These can be resized up and down, left and right, to give you more space when you're working on them. 
+  * `Diagram Outline Panel` (top left): lists of all the Assets in your Canvas, with a recap of their current status. 
   * `Asset Panel` (bottom left): a collection of the Assets you can use to build your Model.
   * `Changes Panel` (top right): The Proposed actions in your Change Set, and the changes already Applied.
-  * `Selected Assets Panel` (bottom right): Once you select an Asset in the Workspace, you can use this panel to view its attributes, source code, and Resource data, and configure it according to your needs. 
+  * `Selected Assets Panel` (bottom right): Once you select an Asset on the Canvas, you can use this panel to view its attributes, source code, and Resource data, and configure it according to your needs. 
 
 ### Modeling infrastructure
 
@@ -31,9 +31,9 @@ In this section, you will learn how to deploy a simple web application for [adop
 
 #### Add and Configure a Docker Image
 
-Scroll down the `Asset Panel` to find the Docker `Image` asset, click it, then click again to place it on the Workspace. You will see the progress bar update, indicating that System Initiative is updating the Model of your infrastructure.
+Scroll down the `Asset Panel` to find the Docker `Image` asset, click it, then click again to place it on the Canvas. You will see the progress bar update, indicating that System Initiative is updating the Model of your infrastructure.
 
-When it finishes, click on the Docker `Image` you placed on the Workspace to select it. With the Docker `Image` asset selected, your Workspace will look something like this:
+When it finishes, click on the Docker `Image` you placed on the Canvas to select it. With the Docker `Image` asset selected, your Canvas will look something like this:
 
 ![Workspace with Docker Image](/tutorial-img/03-deploy_containerized_app/workspace_with_docker_image.png)
 
@@ -47,7 +47,7 @@ Let's take a minute to walk through all the information we're showing you.
 * Below that are two Output Sockets - one named `Exposed Ports` and the other named `Container Image` (we will go into more detail about these later.)
 * There is a red X warning in the bottom right corner of the Asset, which represents a Qualification failure.
   * **What is a Qualification?** 
- Qualifications are like built-in, real-time tests for your Model, letting you know when an Asset has not met all the requirements to function in the real world (i.e. whether it is 'qualified for use'). Qualifications can be built into specific Assets or into the Workspace itself (more on that in the Customization section of this tutorial). 
+ Qualifications are like built-in, real-time tests for your Model, letting you know when an Asset has not met all the requirements to function in the real world (i.e. whether it is 'qualified for use'). Qualifications can be built into specific Assets or into the Canvas itself (more on that in the Customization section of this tutorial). 
 
 You can investigate the Qualification failure in the `Diagram Outline Panel`. Click on the red X to see that your Docker `Image` is not qualified because there is an error parsing the image name: your registry has no Docker `Image` with the name 'si-8356'.
 
@@ -57,7 +57,7 @@ To fix it, we need to configure the the Docker `Image` in the Model to point at 
 
 ![Docker image details panel](/tutorial-img/03-deploy_containerized_app/docker_image_details_panel.png)
 
-In the `Selected Assets Panel` (Attributes tab) change the `si/name`  of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. You'll see the progress bar update, and shortly after that the Qualification icon will turn green, both on the Workspace and in the `Diagram Outline Panel`.
+In the `Selected Assets Panel` (Attributes tab) change the `si/name`  of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. You'll see the progress bar update, and shortly after that the Qualification icon will turn green, both on the Canvas and in the `Diagram Outline Panel`.
 
 Notice that, in addition to setting the `si/name` attribute, this action also sets `domain/image` to the same value. In System Initiative, Assets can infer configuration - either from their attributes or from relationships they have with other Assets. It's a powerful way to easily generate a correct configuration.
 
@@ -79,7 +79,7 @@ Notice that the Qualification for this Asset has turned from a red X to a green 
 
 We want you to deploy your Docker Image on a [Fedora CoreOS](https://getfedora.org/en/coreos) system, in part because it has an excellent method for generating configuration for cloud instances called [Butane](https://coreos.github.io/butane/getting-started/).
 
-You can use the Docker `Image` we just configured to automatically generate a Butane configuration for Fedora: Scroll down the `Asset Panel` to find the CoreOS `Butane` asset, then place it on the Workspace to the right of your Docker `Image`. Notice that your new `Butane` Asset has a `Container Image` input socket on the left side.
+You can use the Docker `Image` we just configured to automatically generate a Butane configuration for Fedora: Scroll down the `Asset Panel` to find the CoreOS `Butane` asset, then place it on the Canvas to the right of your Docker `Image`. Notice that your new `Butane` Asset has a `Container Image` input socket on the left side.
 
 Connect the `Container Image` output socket of the Docker `Image` to the matching `Container Image` input socket on your new `Butane` asset by clicking on the output socket and dragging the line to the input socket.
 
@@ -88,17 +88,6 @@ Connect the `Container Image` output socket of the Docker `Image` to the matchin
 When the progress bar has finished, you can see at a glance that the `Butane` asset is already qualified (the circular green checkmark), indicating that System Initiative believes this is a valid configuration.
 
 Click the `Butane` asset so you can inspect its details in the `Selected Assets Panel`. Scroll down to the `domain/systemd/units/[0](unit)` attribute to investigate the unit files (you'll need to expand the size of the 'contents' area to read it). It should look something like this:
-We want you to deploy your Docker Image on a [Fedora CoreOS](https://getfedora.org/en/coreos) system, in part because it has an excellent method for generating configuration for cloud instances called [Butane](https://coreos.github.io/butane/getting-started/).
-
-You can use the Docker `Image` we just configured to automatically generate a Butane configuration for Fedora: Scroll down the `Asset Panel` to find the CoreOS `Butane` asset, then place it on the Workspace to the right of your Docker `Image`. Notice that your new `Butane` asset has a `Container Image` input socket on the left side.
-
-Connect the `Container Image` output socket of the Docker `Image` to the matching `Container Image` input socket on your new `Butane` asset by clicking on the output socket and dragging the line to the input socket.
-
-![Connected sockets](/tutorial-img/03-deploy_containerized_app/connected_sockets.png)
-
-When the progress bar has finished, you can see at a glance that the `Butane` asset is already qualified (the circular green checkmark), indicating that System Initiative believes this is a valid configuration.
-
-CClick the `Butane` asset so you can inspect its details in the `Selected Assets Panel`. Scroll down to the `domain/systemd/units/[0](unit)` attribute to investigate the unit files (you'll need to expand the size of the 'contents' area to read it). It should look something like this:
 
 ![Butane details](/tutorial-img/03-deploy_containerized_app/butane_details.png)
 
@@ -110,9 +99,9 @@ You'll see that System Initiative used the relationship between the Docker `Imag
 
 #### Modeling the deployment of your CoreOS instance to AWS 
 
-You'll need to pick a Region for your deployment. Select the AWS `Region` asset from the `Asset Panel`, and drop it on the Workspace to the right of your `Butane` configuration.
+You'll need to pick a Region for your deployment. Select the AWS `Region` asset from the `Asset Panel`, and drop it on the Canvas to the right of your `Butane` configuration.
 
-![Workspace with region](/tutorial-img/03-deploy_containerized_app/workspace_with_region.png)
+![Canvas with region](/tutorial-img/03-deploy_containerized_app/workspace_with_region.png)
 
 Notice that this Asset looks different from the previous two! An AWS `Region` is a 'frame', while the previous two were 'components'. Frames are a way to organize or aggregate components in the Model for easier configuration or relationship creation. The `Region` frame is a _configuration_ frame, meaning that any Asset placed inside is automatically configured by it.
 
@@ -122,7 +111,7 @@ If you investigate the Qualification failure in the `Diagram Outine Panel`, you'
 
 ![Set the region](/tutorial-img/03-deploy_containerized_app/set_the_region.png)
 
-The application runs on an EC2 Instance, so let's model it. Select the AWS `EC2 Instance` asset from the `Asset Panel`, and click to place it inside the `Region` frame on the Workspace. You can then click and drag the `EC2 Instance` into the upper right corner of the `Region` frame. A couple of things to notice:
+The application runs on an EC2 Instance, so let's model it. Select the AWS `EC2 Instance` asset from the `Asset Panel`, and click to place it inside the `Region` frame on the Canvas. You can then click and drag the `EC2 Instance` into the upper right corner of the `Region` frame. A couple of things to notice:
 
 * You can see that the `Region` input socket on the `EC2 Instance` is already filled - configured by the `Region` frame in which it sits.
 * If you investigate the Qualification failures in the `Diagram Outine Panel`, you'll see there are multiple issues here, and some will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly.
@@ -149,7 +138,7 @@ Connect the `Security Group` to the `Ingress` rule. Then, observe that the `Ingr
 
 Select the `Ingress` rule, and switch to the Code tab in the `Selected Assets Panel`. Check out how System Initiative has written the `IpPermissions` automatically. You now have a single configuration attribute, the ExposedPorts of your Docker `Image`, automatically configuring the Operating System, EC2 User Data, and your `Ingress` rule.
 
-Select your Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change the ExposedPort to <code>8080/tcp</code> rather than <code>80/tcp</code>.  You will see System Initiative calculate the scope of the update, then show that it is updating the configuration of all 3 impacted Assets on the Workspace!
+Select your Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change the ExposedPort to <code>8080/tcp</code> rather than <code>80/tcp</code>.  You will see System Initiative calculate the scope of the update, then show that it is updating the configuration of all 3 impacted Assets on the Canvas!
 
 That was fun, but let's switch it back to port 80. Select the Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change ExposedPort back to 80/tcp.
 
@@ -167,7 +156,7 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 
 There is one more open input socket on the `EC2 Instance`: the `Image ID` socket. In AWS EC2, you use an AMIs ID as the Image ID.
 
-Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Workspace below the `Key Pair`. Connect the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`. Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and got to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
+Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`. Connect the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`. Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and got to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)).  Hit Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
 
@@ -186,13 +175,14 @@ Review the `Diagram Outline Panel`:
   * As mentioned earlier, there's an orange Qualification warning on the `Ingress` rule, which will be qualified for use once the `Security Group` is created and passes the Group ID through. 
   * There's also an orange Qualification warning on the `EC2 Instance` which will be qualified for use once the `Key Pair` is created. 
 
- ![Looking good](/tutorial-img/03-deploy_containerized_app/Looking_good.png)
+
+ ![Looking good](/tutorial-img/03-deploy_containerized_app/looking_good.png)
 
 ### Apply your changes
 
 In System Initiative, like in life, you can imagine as many potential realities as you would like - but in the end, you have to pick which one to manifest into the universe. This Model looks good - all the Qualifications are green (with one expected warning). Let's ship it.
 
-To see the changes that your Model has proposed, expand the `Changes Panel` at the top right side of your Workspace and review the Proposed Changes tab. It'll look like this: 
+To see the changes that your Model has proposed, expand the `Changes Panel` at the top right side of your Canvas and review the Proposed Changes tab. It'll look like this: 
 
 ![Proposed Changes](/tutorial-img/03-deploy_containerized_app/proposed_changes.png)
 
@@ -206,16 +196,16 @@ A notification will pop up to remind you that some of the proposed changes will 
 
 ![Apply Change Set](/tutorial-img/03-deploy_containerized_app/apply_change_set.png)
 
-You will see a screen wipe, followed by a confetti cannon. The progress bar will start updating, and the Assets on the Workspace will have a spinner that indicates System Initiative is evaluating them against AWS. When it's done, the screen will look like this:
+You will see a screen wipe, followed by a confetti cannon. The progress bar will start updating, and the Assets on the Canvas will have a spinner that indicates System Initiative is evaluating them against AWS. When it's done, the screen will look like this:
 
 ![Applied Changes](/tutorial-img/03-deploy_containerized_app/applied_changes.png)
 
 Three things to notice about the screen in front of you:
-* The name of the Change Set in the top left has changed to `head`. This means that the Model in your Workspace is read-only, and is a 1:1 representation of reality as it existed when the changes were last applied.
+* The name of the Change Set in the top left has changed to `head`. This means that the Model on your Canvas is read-only, and is a 1:1 representation of reality as it existed when the changes were last applied.
 
  * The `Changes Panel` is now showing only Applied Changes, and no longer contains a Proposed Changes tab.
 
-* Looking at both the Workspace and the `Diagram Outline Panel`, the Confirmations that were red have now turned green - your Model now matches the Resources we expected in AWS.
+* Looking at both the Canvas and the `Diagram Outline Panel`, the Confirmations that were red have now turned green - your Model now matches the Resources we expected in AWS.
 
 Note that any new changes made to the Model will automatically open a new Change Set, and will appear in the `Changes Panel` as `Proposed Changes`.
 
@@ -249,7 +239,7 @@ ___
 If you want to walk through the action steps of this tutorial - without the context and explanation - you can follow the steps below.  
 
 ## 1. Add and Configure a Docker Image:
-* **Add a Docker `Image`** asset to the Workspace from the `Asset Panel`. You will see the progress bar update, indicating that System Initiative is updating the Model of your infrastructure.
+* **Add a Docker `Image`** asset to the Canvas from the `Asset Panel`. You will see the progress bar update, indicating that System Initiative is updating the Model of your infrastructure.
 * **Investigate the Qualification failure** by clicking on the red X in the `Diagram Outline Panel`. The error arises because your registry has no Docker `Image` with that name (in the screenshot example it's 'si-2660'). 
 * **Configure the Asset** 
   * Go to the `Selected Assets Panel` and change the `si/name`  of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. 
@@ -257,12 +247,12 @@ If you want to walk through the action steps of this tutorial - without the cont
 * The Qualification for this Asset turns from a red X to a green checkmark.
 
 ## 2. Add and Configure a CoreOS Butane asset: 
-* **Add a CoreOS `Butane` asset** to the Workspace from `Asset Panel`.
+* **Add a CoreOS `Butane` asset** to the Canvas from `Asset Panel`.
 * **Connect** the `Container Image` output socket of the Docker `Image` to the matching `Container Image` input socket on your new `Butane` asset. 
 * **Check for Qualification failures**: The `Butane` asset is already qualified with a green checkmark. Easy! 
 
 ## 3. Add and Configure an AWS Region**: 
-* **Add an AWS `Region` frame** to the Workspace from the `Asset Panel` and resize it to be a little larger by clicking and dragging the corner of the frame.
+* **Add an AWS `Region` frame** to the Canvas from the `Asset Panel` and resize it to be a little larger by clicking and dragging the corner of the frame.
 * **Investigate the Qualification failure** in the `Diagram Outine Panel`, and you'll learn that it appears because you haven't decided which AWS Region to use. 
 * **Configure the Asset** to get rid of the Qualification failure. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. 
 * The Qualification for this `Region` turns from a red X to a green checkmark. 
