@@ -313,7 +313,7 @@ To test the case where the ImageId is not set, but the Region is, you can hit th
 
 Our Qualification is still helpfully telling us which ImageIds are valid. Copy one of the ImageIds from the output of the Qualification, paste it into the `domain/ImageId` field, and press 'Enter'. Finally, all the Qualifications for this Asset are passing:
 
-![Qualifications passing workspace](/tutorial-img/06-customizing/qualifications_passing_workspace.png)
+![Qualifications passing](/tutorial-img/06-customizing/qualifications_passing_workspace.png)
 
 Nice work! You've added a new Qualification to System Initiative that reflects the specific policy you needed.
 
