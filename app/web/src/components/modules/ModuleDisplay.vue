@@ -102,9 +102,9 @@
       <template v-else>
         <!-- deal with showing an error message if name is totally bogus -->
         <template v-if="loadRemoteModulesReqStatus.isSuccess && !remoteSummary">
-          <ErrorMessage
-            >Could not find any module with name {{ moduleSlug }}</ErrorMessage
-          >
+          <ErrorMessage>
+            Could not find module with hash {{ moduleSlug }}
+          </ErrorMessage>
         </template>
         <template v-else-if="remoteSummary">
           <Stack class="mt-md">
@@ -214,11 +214,7 @@ const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
 const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
 const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
-const remoteSummary = computed(
-  () =>
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    moduleStore.remoteModuleSummaryByName[moduleStore.urlSelectedModuleSlug!],
-);
+const remoteSummary = computed(() => moduleStore.selectedModuleRemoteSummary);
 const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
 const remoteSpec = computed(() =>
   remoteSummary.value?.id

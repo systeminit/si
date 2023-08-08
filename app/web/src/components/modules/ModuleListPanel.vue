@@ -36,8 +36,8 @@
 
         <ModuleListItem
           v-for="p in moduleStore.localModules"
-          :key="p.name"
-          :moduleSlug="p.name"
+          :key="p.hash"
+          :moduleSlug="p.hash"
         />
       </template>
     </Collapsible>
@@ -58,7 +58,7 @@
         <ModuleListItem
           v-for="p in moduleStore.remoteModuleSearchResults"
           :key="p.id"
-          :moduleSlug="p.name"
+          :moduleSlug="p.hash"
         />
       </template>
     </Collapsible>
@@ -96,5 +96,6 @@ const textSearch = ref("");
 async function triggerSearch() {
   await moduleStore.SEARCH_REMOTE_MODULES();
 }
+
 onMounted(triggerSearch);
 </script>
