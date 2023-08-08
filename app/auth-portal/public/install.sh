@@ -158,7 +158,7 @@ mkdir -p $HOME/.si/bin
 mv "$_temp_dir/si" "$HOME/.si/bin"
 
 say_white "Linking $HOME/.si/bin/si to /usr/local/bin"
-sudo ln -s $HOME/.si/bin/si /usr/local/bin/
+sudo ln -sf $HOME/.si/bin/si /usr/local/bin/
 
 if [ "$(command -v si)" != "/usr/local/bin/si" ]; then
   say_red "System Initiative has been downloaded but isn't on your PATH. Check /usr/local/bin to ensure it's on PATH"
