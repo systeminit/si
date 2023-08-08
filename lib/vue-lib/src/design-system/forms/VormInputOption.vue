@@ -23,7 +23,9 @@ dropdown | radio | multi-checkbox */
       @blur="onBlur"
       @change="onChange"
     />
-    <slot>{{ value }}</slot>
+    <div>
+      <slot>{{ value }}</slot>
+    </div>
   </label>
 
   <label
@@ -40,7 +42,9 @@ dropdown | radio | multi-checkbox */
       @blur="onBlur"
       @change="onMultiCheckboxChange"
     />
-    <slot>{{ value }}</slot>
+    <div>
+      <slot>{{ value }}</slot>
+    </div>
   </label>
 </template>
 
@@ -52,6 +56,8 @@ import {
   getCurrentInstance,
   onBeforeUnmount,
   toRaw,
+  toRef,
+  unref,
 } from "vue";
 import * as _ from "lodash-es";
 
@@ -68,7 +74,9 @@ const props = defineProps({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const vormInputParent = getCurrentInstance()?.parent as any;
 const parentInputType = vormInputParent?.exposed?.vormInputType;
-const parentValue = computed(() => vormInputParent?.exposed?.currentValue);
+const parentValue = computed(() =>
+  unref(vormInputParent?.exposed?.currentValue),
+);
 
 // this is tightly coupled component only meant to be used within a VormInput
 const VALID_PARENT_INPUT_TYPES = ["dropdown", "radio", "multi-checkbox"];
@@ -89,7 +97,7 @@ const safeOptionValue = computed(() => {
     if (props.value === null) return "_null_";
     return props.value?.toString();
   }
-  return undefined;
+  return props.value;
 });
 
 const dropdownOptionSelected = computed(
@@ -134,13 +142,16 @@ onBeforeUnmount(() => {
 // expose the value so the parent can access it
 
 defineExpose({
-  value: toRefs(props).value, // have to expose a ref or value gets stuck if the component is reused
+  optionValue: toRef(props, "value"), // have to expose a ref or value gets stuck if the component is reused
 });
 </script>
 
 <style lang="less">
 label.vorm-input-option {
-  display: block;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-bottom: 0.25rem;
 }
 .vorm-input-option__input {
   margin-right: 8px;

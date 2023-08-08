@@ -8,10 +8,12 @@ export const useFeatureFlagsStore = () => {
     defineStore("feature-flags", {
       state: () => ({
         INSTALL_PAGE: false,
+        OSS_RELEASE: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.INSTALL_PAGE = flags.includes("install_page");
+          this.OSS_RELEASE = flags.includes("featureOssRelease");
         });
       },
     }),

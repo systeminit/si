@@ -13,7 +13,13 @@
     <template v-else-if="route.name === 'print-legal'">
       <RouterView />
     </template>
-    <template v-else-if="!checkAuthReq.isRequested || checkAuthReq.isPending">
+    <template
+      v-else-if="
+        !checkAuthReq.isRequested ||
+        checkAuthReq.isPending ||
+        !hasCheckedOnboardingStatus
+      "
+    >
       <div
         class="fixed inset-0 flex flex-col items-center justify-center p-md gap-sm"
       >
@@ -55,7 +61,8 @@
                 v-if="
                   !(
                     authStore.needsProfileUpdate ||
-                    authStore.user?.needsTosUpdate
+                    authStore.user?.needsTosUpdate ||
+                    !authStore.user?.onboardingDetails?.reviewedProfile
                   )
                 "
               >
@@ -138,7 +145,7 @@
         </div>
 
         <div class="">
-          <div class="m-auto max-w-[1200px] min-w-[480px]">
+          <div class="m-auto max-w-[1200px] min-w-[520px]">
             <div
               class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >
@@ -251,6 +258,8 @@ onMounted(() => {
   // });
 });
 
+const hasCheckedOnboardingStatus = ref(false);
+
 // some logic around pushing the user to the right page to go through onboarding
 // could make sense to live in the router, but easier to interact with the auth loading state here
 const router = useRouter();
@@ -258,6 +267,12 @@ const route = useRoute();
 watch([checkAuthReq, route], () => {
   // if we're still checking auth, do nothing
   if (!checkAuthReq.value.isRequested || checkAuthReq.value.isPending) return;
+
+  // loading state is shown above until this flips
+  // so stop the RouterView from loading/showing a page that it shouldnt yet
+  setTimeout(() => {
+    hasCheckedOnboardingStatus.value = true;
+  });
 
   const currentRouteName = route.name as string;
 
@@ -289,8 +304,12 @@ watch([checkAuthReq, route], () => {
     }
     return;
   }
+
   // check user has reviewed/completed their profile
-  if (authStore.needsProfileUpdate) {
+  if (
+    authStore.needsProfileUpdate ||
+    !authStore.user?.onboardingDetails?.reviewedProfile
+  ) {
     if (currentRouteName !== "profile" && currentRouteName !== "legal") {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       return router.push({ name: "profile" });

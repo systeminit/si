@@ -20,10 +20,16 @@ export type User = {
   emailVerified: boolean;
   pictureUrl: string | null;
   needsTosUpdate?: boolean;
+  agreedTosVersion?: string;
   githubUsername?: string;
   discordUsername?: string;
   onboardingDetails?: {
     vroStepsCompletedAt?: Record<string, ISODateString>;
+    reviewedProfile?: ISODateString;
+    company?: string;
+    cloudProviders?: string[];
+    devOpsTools?: string[];
+    openSource?: boolean;
   };
 };
 
@@ -45,8 +51,7 @@ export const useAuthStore = defineStore("auth", {
       );
     },
     // useful to keep this logic in one place
-    needsProfileUpdate: (state) =>
-      !state.user?.githubUsername || !state.user?.discordUsername,
+    needsProfileUpdate: () => false, // if we need to force a profile update, change the logic here
   },
   actions: {
     // fetches user + billing account info - called on page refresh
@@ -94,6 +99,19 @@ export const useAuthStore = defineStore("auth", {
         method: "patch",
         url: `/users/${this.user.id}`,
         params: user,
+        onSuccess: (response) => {
+          this.user = response.user;
+        },
+      });
+    },
+    // All of the questions answered in onboarding are put into an object
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async COMPLETE_PROFILE(onboardingQuestions: Record<string, any>) {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ user: User }>({
+        method: "post",
+        url: `/users/${this.user.id}/complete-profile`,
+        params: onboardingQuestions,
         onSuccess: (response) => {
           this.user = response.user;
         },

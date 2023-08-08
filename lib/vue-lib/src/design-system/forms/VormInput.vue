@@ -10,17 +10,25 @@ although this is only used for dropdown, multi-checkbox, and radio inputs, and
 you can pass in options as props too */
 
 <template>
-  <div :key="formInputId" class="vorm-input" :class="computedClasses">
+  <div
+    :key="formInputId"
+    ref="wrapperRef"
+    class="vorm-input"
+    :class="computedClasses"
+  >
     <label v-if="!noLabel" class="vorm-input__label" :for="formInputId">
       <Icon
         v-if="disabledBySelfOrParent"
         class="vorm-input__locked-icon"
         name="lock"
       />
-      <slot name="label"
-        >{{ label || "&nbsp;" }}{{ required || requiredWarning ? "*" : "" }}
+      <slot name="label">
+        {{ label || "&nbsp;" }}{{ required || requiredWarning ? "*" : "" }}
       </slot>
     </label>
+    <slot name="prompt">
+      <div class="pb-xs text-sm">{{ prompt }}</div>
+    </slot>
     <div class="vorm-input__input-and-instructions-wrap">
       <div class="vorm-input__input-wrap">
         <template v-if="type === 'container'">
@@ -68,7 +76,6 @@ you can pass in options as props too */
           <VormInputOption
             v-for="(o, i) in optionsFromProps"
             :key="generateOptionKey(o, i)"
-            ref="inputRef"
             :disabled="disabledBySelfOrParent"
             :value="o.value"
             >{{ o.label }}
@@ -215,6 +222,7 @@ const props = defineProps({
 
   // label, placeholder, additional text instructions
   label: { type: String },
+  prompt: { type: String },
   noLabel: { type: Boolean },
   inlineLabel: { type: Boolean },
   instructions: String,
@@ -269,6 +277,7 @@ const props = defineProps({
   checkPasswordStrength: Boolean,
 });
 
+const wrapperRef = ref<HTMLDivElement>(); // template ref
 const inputRef = ref<HTMLInputElement>(); // template ref
 
 const emit = defineEmits(["update:modelValue", "focus", "blur"]);
@@ -544,7 +553,7 @@ function onSelectChange(event: Event) {
 
   const childIndex = (event?.target as any)?.selectedIndex;
   const selectedOption = childInputOptions.value[childIndex];
-  const newSelectedValue = selectedOption?.exposed?.value;
+  const newSelectedValue = selectedOption?.exposed?.optionValue;
   // fallback to event.target.value for cases where the VormInputOption has no bound value
   // for example `VormInputOption yes`
 
@@ -558,10 +567,9 @@ function onSelectChange(event: Event) {
 
 function fixOptionSelection() {
   // if currently selected value doesnt exist reset selection to null
-  const possibleChildValues = _.map(
-    childInputOptions.value,
-    (input) => input?.exposed?.value,
-  );
+  const possibleChildValues = _.map(childInputOptions.value, (input) => {
+    return input?.exposed?.optionValue;
+  });
 
   // first deal with keeping only valid values
   if (props.type === "multi-checkbox") {
@@ -585,7 +593,7 @@ function fixOptionSelection() {
 
     const autoSelectOptionComponent = childInputOptions.value[autoSelectIndex];
     if (autoSelectOptionComponent)
-      setNewValue(autoSelectOptionComponent?.exposed?.value);
+      setNewValue(autoSelectOptionComponent?.exposed?.optionValue);
   }
 }
 
@@ -620,7 +628,12 @@ onUpdated(() => {
 
 // also can be useful to expose a focus method if other things need to trigger focus programatically
 function focus() {
-  if (inputRef.value instanceof HTMLInputElement) inputRef.value.focus();
+  if (["multi-checkbox", "radio"].includes(props.type)) {
+    const inputEls = wrapperRef?.value?.getElementsByTagName("input");
+    inputEls?.item(0)?.focus();
+  } else {
+    if (inputRef.value?.focus) inputRef.value.focus();
+  }
 }
 
 defineExpose({

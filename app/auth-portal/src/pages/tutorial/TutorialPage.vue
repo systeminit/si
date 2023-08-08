@@ -3,7 +3,13 @@
   <div>
     <Confetti :active="runConfetti" startTop noLoop />
 
-    <template v-if="!onboardingStore.githubAccessGranted && !PREVIEW_MODE">
+    <template
+      v-if="
+        !featureFlagsStore.OSS_RELEASE &&
+        !onboardingStore.githubAccessGranted &&
+        !PREVIEW_MODE
+      "
+    >
       <RichText>
         <h3>We're getting you access</h3>
         <p>
@@ -128,10 +134,13 @@ import Confetti from "@/components/Confetti.vue";
 
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import TutorialSurvey from "./TutorialSurvey.vue";
 
 // enable working on tutorial without being logged in
 const PREVIEW_MODE = !!import.meta.env.VITE_PREVIEW_TUTORIAL;
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const onboardingStore = useOnboardingStore();
 

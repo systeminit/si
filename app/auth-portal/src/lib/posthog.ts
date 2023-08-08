@@ -16,6 +16,12 @@ export const tracker = {
     properties?: Properties,
     options?: CaptureOptions,
   ) {
+    if (import.meta.env.VITE_DISABLE_TRACKING) {
+      // eslint-disable-next-line no-console
+      console.log("TRACK EVENT", `ap-${eventName}`, properties, options);
+      return;
+    }
+
     // add consistent prefix for all events coming from this part of the stack
     posthog.capture(`ap-${eventName}`, properties, options);
   },
