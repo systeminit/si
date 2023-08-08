@@ -108,7 +108,6 @@ export const useAuthStore = defineStore("auth", {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async COMPLETE_PROFILE(onboardingQuestions: Record<string, any>) {
       if (!this.user) throw new Error("User not loaded");
-      console.log(onboardingQuestions);
       return new ApiRequest<{ user: User }>({
         method: "post",
         url: `/users/${this.user.id}/complete-profile`,

@@ -103,7 +103,7 @@
                   :requestStatus="updateUserReqStatus"
                   tone="action"
                   variant="solid"
-                  @click="tellUsMoreHandler"
+                  @click="tellUsMoreHandler(false)"
                 >
                   Submit
                 </VButton>
@@ -345,10 +345,8 @@ async function saveHandler() {
   }
 }
 
-async function tellUsMoreHandler(skip = false) {
+async function tellUsMoreHandler(skip: boolean) {
   if (validationMethods.hasError()) return;
-
-  console.log(stepTwoData);
 
   if (!skip) {
     tracker.trackEvent("tell_us_more_answers", {

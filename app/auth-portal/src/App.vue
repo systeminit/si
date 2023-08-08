@@ -268,8 +268,9 @@ watch([checkAuthReq, route], () => {
   // if we're still checking auth, do nothing
   if (!checkAuthReq.value.isRequested || checkAuthReq.value.isPending) return;
 
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  nextTick(() => {
+  // loading state is shown above until this flips
+  // so stop the RouterView from loading/showing a page that it shouldnt yet
+  setTimeout(() => {
     hasCheckedOnboardingStatus.value = true;
   });
 
