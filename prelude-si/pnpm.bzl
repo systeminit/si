@@ -605,25 +605,26 @@ def typescript_runnable_dist_bin_impl(ctx: "context") -> [[DefaultInfo.type, Run
     bin = ctx.attrs.typescript_runnable_dist[TypescriptRunnableDistInfo].bin
     cd_path = cmd_args([base_path, paths.dirname(bin)], delimiter = "/")
 
-    out = ctx.actions.write(
+    out = ctx.actions.declare_output(paths.basename(bin))
+
+    pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        pnpm_toolchain.build_typescript_runnable_dist_bin[DefaultInfo].default_outputs,
+        "--cd-path",
+        cd_path,
+        "--rel-path",
         paths.basename(bin),
-        cmd_args(
-            [
-                "#!/usr/bin/env sh",
-                "set -eu",
-                cmd_args(cd_path, format = "cd {}"),
-                "exec ./{} \"$@\"".format(paths.basename(bin)),
-            ],
-            delimiter = "\n",
-        ),
-        is_executable = True,
+        out.as_output(),
     )
+    cmd.hidden([base_path])
+
+
+    ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin")
 
     return [
-        DefaultInfo(
-            default_output = out,
-            other_outputs = [base_path],
-        ),
+        DefaultInfo(default_output = out),
         RunInfo(out),
     ]
 
@@ -632,6 +633,14 @@ typescript_runnable_dist_bin = rule(
     attrs = {
         "typescript_runnable_dist": attrs.dep(
             doc = """Target which builds the runnable Typescript dist artifact.""",
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
         ),
     }
 )
