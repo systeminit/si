@@ -161,7 +161,7 @@ you can pass in options as props too */
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-explicit-any,@typescript-eslint/no-non-null-assertion */
 
-import { ref, computed, onMounted, onUpdated, watch, toRefs, unref } from "vue";
+import { ref, computed, onMounted, onUpdated, watch, toRefs } from "vue";
 import * as _ from "lodash-es";
 
 import Icon from "../icons/Icon.vue";

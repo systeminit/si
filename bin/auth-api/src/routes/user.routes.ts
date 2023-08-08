@@ -84,8 +84,6 @@ router.post("/users/:userId/complete-profile", async (ctx) => {
   user.onboardingDetails ||= {};
   _.assign(user.onboardingDetails, ctx.request.body);
 
-  console.log(ctx.request.body);
-
   if (!(user?.onboardingDetails as any)?.reviewedProfile) {
     _.set(user, ['onboardingDetails', 'reviewedProfile'], new Date());
   }

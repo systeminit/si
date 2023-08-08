@@ -193,7 +193,7 @@ import {
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
 import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
-import { computed, nextTick, onBeforeMount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";

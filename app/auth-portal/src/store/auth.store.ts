@@ -51,7 +51,7 @@ export const useAuthStore = defineStore("auth", {
       );
     },
     // useful to keep this logic in one place
-    needsProfileUpdate: (state) => false, // if we need to force a profile update, change the logic here
+    needsProfileUpdate: () => false, // if we need to force a profile update, change the logic here
   },
   actions: {
     // fetches user + billing account info - called on page refresh
