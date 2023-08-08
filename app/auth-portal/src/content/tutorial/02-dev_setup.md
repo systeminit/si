@@ -7,7 +7,7 @@ hideWorkspaceLink: true
 
 First things first - let’s set you up with a System Initiative development environment. You will need to check the
 source code out from GitHub, ensure your system has `nix` installed with its environment set up fully (*we highly
-recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the  official installer*), start
+recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer) over the  official installer*), start
 our ancillary services in Docker containers, and finally, compile and execute the various System Initiative services.
 
 *Note - If you’re running this in a VM, you’ll want to run through this all as a non-root user with sudo access. On a
@@ -20,11 +20,9 @@ dependencies installed.
 The following  platforms are supported: macOS, Linux (GNU), [WSL2](https://learn.microsoft.com/en-us/windows/wsl/)
 (Windows 10/11) on either `x86_64 (amd64)` or `aarch64 (arm64)`.
 
-**Platform Notes:**
-- Using macOS `aarch64 (arm64)` requires on Rosetta 2 (install it with `softwareupdate --install-rosetta`)
-- macOS users: you may need to run `xcode-select --install` before proceeding
-- Linux users: [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or
-  configured to work with `nix`
+**macOS Notes:**
+- On Apple Silicon systems (i.e. macOS `aarch64 (arm64)`), Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
+- On either architecture, you may need to run `xcode-select --install` before proceeding
 
 ### Install development dependencies
 
@@ -32,7 +30,7 @@ Once a platform is chosen, we can install the dependencies required for using th
 _This section will install software on your computer and mutate your running environment!_
 
 - `nix` with flakes enabled (enabled by defualt when using the recommended
-  [Zero to Nix](https://zero-to-nix.com/start/install) installer)
+  [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer))
 - `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
   corresponding to your native architecture (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside
   WSL2)
