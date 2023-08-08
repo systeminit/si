@@ -676,9 +676,6 @@ async fn model_and_fix_flow_whiskers(
         delete_sg_requests.len(),
     );
 
-    // Let's delete the non-SG group first
-    dbg!(harness.list_fixes(ctx.visibility()).await);
-
     let fix_batch_id = harness.run_fixes(ctx.visibility(), delete_requests).await;
 
     // Check that they succeeded.
@@ -694,12 +691,14 @@ async fn model_and_fix_flow_whiskers(
     );
 
     // Delete the SG
-    let fix_batch_id = harness
-        .run_fixes(ctx.visibility(), delete_sg_requests)
-        .await;
+    let fix_batch_id = dbg!(
+        harness
+            .run_fixes(dbg!(ctx.visibility()), dbg!(delete_sg_requests))
+            .await
+    );
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
+    let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         fix_batch_id,              // expected
