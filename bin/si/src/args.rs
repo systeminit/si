@@ -91,11 +91,11 @@ pub(crate) enum Commands {
     Stop(StopArgs),
     /// Deletes all of the System Initiative components
     Delete(DeleteArgs),
-    /// Update the System Initiative CLI Launcher
+    /// Updates the System Initiative CLI Launcher
     Update(UpdateArgs),
-    /// Check the status of the specified installation mode
+    /// Checks the status of the specified installation mode
     Status(StatusArgs),
-    /// Report an error to System Initiative.
+    /// Reports an error to System Initiative.
     Report(ReportArgs),
 }
 
