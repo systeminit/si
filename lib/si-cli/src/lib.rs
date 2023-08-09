@@ -32,6 +32,8 @@ pub enum SiCliError {
     MissingDataDir(),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("toml deserialize error: {0}")]
+    TomlDeserialize(#[from] toml::de::Error),
     #[error("unable to download update, status = {0}")]
     UnableToDownloadUpdate(u16),
     #[error("unable to fetch containers update, status = {0}")]
