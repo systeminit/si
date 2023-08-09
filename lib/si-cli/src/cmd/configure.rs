@@ -37,7 +37,7 @@ pub async fn invoke(
         let aws_access_key = Password::new("AWS Access Key ID")
             .with_display_toggle_enabled()
             .without_confirmation()
-            .with_display_mode(PasswordDisplayMode::Masked)
+            .with_display_mode(PasswordDisplayMode::Full)
             .prompt();
 
         match aws_access_key {
@@ -69,23 +69,23 @@ pub async fn invoke(
         }
     }
 
-    if prompt_everything || raw_creds.docker_hub_user_name.is_empty() {
+    if prompt_everything {
         let docker_hub_user_name = Password::new("Docker Hub User Name")
             .with_display_toggle_enabled()
             .without_confirmation()
-            .with_display_mode(PasswordDisplayMode::Masked)
+            .with_display_mode(PasswordDisplayMode::Full)
             .prompt();
 
         match docker_hub_user_name {
             Ok(docker_hub_user_name) => {
-                raw_creds.docker_hub_user_name = docker_hub_user_name;
+                raw_creds.docker_hub_user_name = Some(docker_hub_user_name);
                 requires_rewrite = true;
             }
             Err(_) => println!("Skipped adding a docker hub user name"),
         }
     }
 
-    if prompt_everything || raw_creds.docker_hub_credential.is_empty() {
+    if prompt_everything {
         let docker_hub_token_or_password =
             Password::new("Docker Hub Password or Auth Token - either can be specified")
                 .with_display_toggle_enabled()
@@ -95,7 +95,7 @@ pub async fn invoke(
 
         match docker_hub_token_or_password {
             Ok(docker_hub_token_or_password) => {
-                raw_creds.docker_hub_credential = docker_hub_token_or_password;
+                raw_creds.docker_hub_credential = Some(docker_hub_token_or_password);
                 requires_rewrite = true;
             }
             Err(_) => println!("Skipped adding a docker hub user name"),

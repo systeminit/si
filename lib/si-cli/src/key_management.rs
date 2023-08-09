@@ -12,8 +12,8 @@ use std::{fs, io};
 pub struct Credentials {
     pub aws_access_key_id: String,
     pub aws_secret_access_key: String,
-    pub docker_hub_user_name: String,
-    pub docker_hub_credential: String,
+    pub docker_hub_user_name: Option<String>,
+    pub docker_hub_credential: Option<String>,
     pub si_email: Option<String>,
 }
 
@@ -96,14 +96,21 @@ pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
         raw_creds.aws_secret_access_key
     ));
 
-    let docker_creds = format!(
-        "{}:{}",
-        raw_creds.docker_hub_user_name, raw_creds.docker_hub_credential
-    );
-    let mut buf = String::new();
-    general_purpose::STANDARD.encode_string(docker_creds.as_bytes(), &mut buf);
+    if raw_creds.docker_hub_user_name.is_some() && raw_creds.docker_hub_credential.is_some() {
+        let mut username = "".to_string();
+        let mut credential = "".to_string();
+        if let Some(user_name) = raw_creds.docker_hub_user_name {
+            username = user_name
+        }
+        if let Some(cred) = raw_creds.docker_hub_credential {
+            credential = cred
+        }
+        let docker_creds = format!("{}:{}", username, credential);
+        let mut buf = String::new();
+        general_purpose::STANDARD.encode_string(docker_creds.as_bytes(), &mut buf);
 
-    creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
+        creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
+    }
 
     Ok(creds)
 }
