@@ -31,6 +31,9 @@ importers:
       less:
         specifier: ^4.1.3
         version: 4.1.3
+      local-storage-fallback:
+        specifier: ^4.1.2
+        version: 4.1.2
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21

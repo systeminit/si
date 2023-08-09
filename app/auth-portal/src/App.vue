@@ -197,6 +197,7 @@ import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useHead } from "@vueuse/head";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
+import storage from "local-storage-fallback";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
 import { useFeatureFlagsStore } from "./store/feature_flags.store";
@@ -254,8 +255,6 @@ onMounted(() => {
   setTimeout(() => {
     runAuthProgressBar.value = true;
   }, 10);
-  //   runAuthProgressBar.value = true;
-  // });
 });
 
 const hasCheckedOnboardingStatus = ref(false);
@@ -276,6 +275,13 @@ watch([checkAuthReq, route], () => {
 
   const currentRouteName = route.name as string;
 
+  function saveLoginSuccessRedirect() {
+    const fullPath = route.fullPath;
+    if (fullPath !== "/") {
+      storage.setItem("SI-LOGIN-REDIRECT", fullPath);
+    }
+  }
+
   if (["print-legal"].includes(currentRouteName)) {
     return;
   }
@@ -291,6 +297,7 @@ watch([checkAuthReq, route], () => {
         ...(import.meta.env.VITE_PREVIEW_TUTORIAL ? ["tutorial"] : []),
       ].includes(currentRouteName)
     ) {
+      saveLoginSuccessRedirect();
       return router.push({ name: "login" });
     }
     return;
@@ -299,6 +306,7 @@ watch([checkAuthReq, route], () => {
   // check user has agreed to TOS
   if (user.value.needsTosUpdate) {
     if (currentRouteName !== "review-legal") {
+      saveLoginSuccessRedirect();
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       router.push({ name: "review-legal" });
     }
@@ -311,6 +319,7 @@ watch([checkAuthReq, route], () => {
     !authStore.user?.onboardingDetails?.reviewedProfile
   ) {
     if (currentRouteName !== "profile" && currentRouteName !== "legal") {
+      saveLoginSuccessRedirect();
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       return router.push({ name: "profile" });
     }
