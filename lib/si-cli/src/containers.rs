@@ -1,6 +1,6 @@
 use crate::SiCliError;
 use crate::{CliResult, CONTAINER_NAMES};
-use docker_api::models::ImageSummary;
+use docker_api::models::{ContainerSummary, ImageSummary};
 use docker_api::opts::{
     ContainerFilter, ContainerListOpts, ImageListOpts, ImageRemoveOpts, LogsOpts, PullOpts,
     RegistryAuth,
@@ -148,33 +148,35 @@ pub(crate) async fn download_missing_containers(missing_containers: Vec<String>)
     Ok(())
 }
 
-pub(crate) async fn has_existing_container(
+pub(crate) async fn delete_container(
+    docker: &Docker,
+    container_summary: ContainerSummary,
+    name: String,
+) -> CliResult<()> {
+    println!(
+        "Deleting container: {} ({})",
+        name,
+        container_summary.id.as_ref().unwrap()
+    );
+    let container = docker
+        .containers()
+        .get(container_summary.id.as_ref().unwrap());
+    container.delete().await?;
+    Ok(())
+}
+
+pub(crate) async fn get_existing_container(
     docker: &Docker,
     name: String,
-    delete_container: bool,
-) -> CliResult<bool> {
+) -> CliResult<Option<ContainerSummary>> {
     let filter = ContainerFilter::Name(name.clone());
     let list_opts = ContainerListOpts::builder()
         .filter([filter])
         .all(true)
         .build();
-    let containers = docker.containers().list(&list_opts).await?;
-    if !containers.is_empty() {
-        let existing_id = containers.first().unwrap().id.as_ref().unwrap();
-        let state = containers.first().unwrap().state.as_ref().unwrap();
 
-        if *state == "running" {
-            return Ok(true);
-        }
-
-        if delete_container {
-            println!("Found an existing {} container: {}", name, *existing_id);
-            docker.containers().get(existing_id).delete().await?;
-            return Ok(false);
-        }
-    }
-
-    Ok(false)
+    let mut containers = docker.containers().list(&list_opts).await?;
+    Ok(containers.pop())
 }
 
 pub(crate) async fn cleanup_image(docker: &Docker, name: String) -> CliResult<()> {
