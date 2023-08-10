@@ -33,6 +33,6 @@ You’re going to:
 * Run a development instance of System Initiative
 * Deploy a containerized web application to an AWS EC2 instance
 * Clean up the resources you created in AWS
-* Customize System Initiative by writing TypeScript code
+* Customize System Initiative by writing TypeScript
 
 Let’s go!
