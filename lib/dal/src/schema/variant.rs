@@ -585,13 +585,13 @@ impl SchemaVariant {
             });
         }
 
-        for mut existing_arg in existing_args.drain(..) {
+        for existing_arg in existing_args.drain(..) {
             if !inputs.iter().any(
                 |&LeafInput {
                      func_argument_id, ..
                  }| func_argument_id == *existing_arg.id(),
             ) {
-                existing_arg.delete_by_id(ctx).await?;
+                existing_arg.hard_delete(ctx).await?;
             }
         }
 
@@ -630,7 +630,7 @@ impl SchemaVariant {
                         }
                     }
 
-                    for mut apa in apas.drain(..) {
+                    for apa in apas.drain(..) {
                         if !inputs.iter().any(
                             |&LeafInput {
                                  func_argument_id, ..
@@ -638,7 +638,7 @@ impl SchemaVariant {
                                 func_argument_id == apa.func_argument_id()
                             },
                         ) {
-                            apa.delete_by_id(ctx).await?;
+                            apa.hard_delete(ctx).await?;
                         }
                     }
 
