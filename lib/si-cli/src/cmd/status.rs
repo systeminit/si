@@ -1,24 +1,26 @@
 use crate::containers::{get_container_logs, has_existing_container};
+use crate::key_management::get_user_email;
+use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
 use docker_api::Docker;
-use si_posthog::PosthogClient;
 
 const RUNNING: &str = "    ✅    ";
 const NOT_RUNNING: &str = "    ❌    ";
 
-pub async fn invoke(
-    posthog_client: &PosthogClient,
-    mode: String,
-    show_logs: bool,
-    log_lines: usize,
-) -> CliResult<()> {
-    let _ = posthog_client.capture(
-        "si-command",
-        "sally@systeminit.com",
-        serde_json::json!({"name": "check-dependencies", "mode": mode}),
-    );
+impl AppState {
+    pub async fn status(&self, show_logs: bool, log_lines: usize) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "system-status"}),
+        );
+        invoke(show_logs, log_lines).await?;
+        Ok(())
+    }
+}
+
+async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
     let docker = Docker::unix("//var/run/docker.sock");
     let mut table = Table::new();

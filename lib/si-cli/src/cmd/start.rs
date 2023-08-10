@@ -1,29 +1,28 @@
-use crate::cmd::{check, configure, install};
 use crate::containers::has_existing_container;
 use crate::key_management::{
     ensure_encryption_keys, ensure_jwt_public_signing_key, format_credentials_for_veritech,
     get_si_data_dir, get_user_email,
 };
+use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
 use docker_api::Docker;
-use si_posthog::PosthogClient;
 
-pub async fn invoke(
-    posthog_client: &PosthogClient,
-    mode: String,
-    is_preview: bool,
-) -> CliResult<()> {
-    let email = get_user_email().await?;
-    let _ = posthog_client.capture(
-        "si-command",
-        email,
-        serde_json::json!({"name": "start-system", "mode": mode}),
-    );
+impl AppState {
+    pub async fn start(&self) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "start-system"}),
+        );
+        invoke(self, self.is_preview()).await?;
+        Ok(())
+    }
+}
 
-    configure::invoke(posthog_client, mode.clone(), is_preview, false).await?;
-    check::invoke(posthog_client, mode.clone(), false, is_preview).await?;
-    install::invoke(posthog_client, mode.clone(), is_preview).await?;
+async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
+    app.configure(false).await?;
+    app.check(false).await?;
+    app.install().await?;
 
     let docker = Docker::unix("//var/run/docker.sock");
 

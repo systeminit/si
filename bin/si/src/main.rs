@@ -1,8 +1,7 @@
 use crate::args::{Commands, Engine};
 use color_eyre::Result;
-use si_cli::cmd::{
-    check, configure, delete, install, launch, report, restart, start, status, stop, update,
-};
+use si_cli::state::AppState;
+use std::sync::Arc;
 use telemetry_application::{prelude::*, TelemetryConfig};
 use tokio::sync::oneshot::Sender;
 
@@ -33,6 +32,13 @@ async fn main() -> Result<()> {
 
     tokio::spawn(wait_for_posthog_flush(ph_done_sender, ph_sender));
 
+    let state = AppState::new(
+        ph_client,
+        Arc::from(current_version),
+        Arc::from(mode.to_string()),
+        is_preview,
+    );
+
     println!(
         "{}\n\n",
         format_args!(
@@ -46,7 +52,7 @@ async fn main() -> Result<()> {
     let auth_api_host = std::env::var("AUTH_API").ok();
 
     if !matches!(args.command, Commands::Update(_)) {
-        match update::find(current_version, auth_api_host.as_deref()).await {
+        match state.find(current_version, auth_api_host.as_deref()).await {
             Ok(update) => {
                 if update.si.is_some() {
                     println!("Launcher update found, please run `si update` to install it");
@@ -74,54 +80,48 @@ async fn main() -> Result<()> {
 
     match args.command {
         Commands::Install(_args) => {
-            install::invoke(&ph_client, mode.to_string(), is_preview).await?;
+            state.install().await?;
         }
         Commands::Check(_args) => {
-            check::invoke(&ph_client, mode.to_string(), false, is_preview).await?;
+            state.check(false).await?;
         }
         Commands::Launch(_args) => {
-            launch::invoke(&ph_client, mode.to_string()).await?;
+            state.launch().await?;
         }
         Commands::Start(_args) => {
-            start::invoke(&ph_client, mode.to_string(), is_preview).await?;
+            state.start().await?;
         }
         Commands::Configure(args) => {
-            configure::invoke(
-                &ph_client,
-                mode.to_string(),
-                is_preview,
-                args.force_reconfigure,
-            )
-            .await?;
+            state.configure(args.force_reconfigure).await?;
         }
         Commands::Delete(_args) => {
-            delete::invoke(&ph_client, mode.to_string(), is_preview).await?;
+            state.delete().await?;
         }
         Commands::Restart(_args) => {
-            restart::invoke(&ph_client, mode.to_string()).await?;
+            state.restart().await?;
         }
         Commands::Stop(_args) => {
-            stop::invoke(&ph_client, mode.to_string(), is_preview).await?;
+            state.stop().await?;
         }
         Commands::Update(args) => {
-            update::invoke(
-                current_version,
-                auth_api_host.as_deref(),
-                &ph_client,
-                mode.to_string(),
-                args.skip_confirmation,
-                args.binary,
-            )
-            .await?;
+            state
+                .update(
+                    current_version,
+                    auth_api_host.as_deref(),
+                    args.skip_confirmation,
+                    args.binary,
+                )
+                .await?;
         }
         Commands::Status(args) => {
-            status::invoke(&ph_client, mode.to_string(), args.show_logs, args.log_lines).await?;
+            state.status(args.show_logs, args.log_lines).await?;
         }
         Commands::Report(_args) => {
-            report::invoke(&ph_client, mode.to_string())?;
+            state.report().await?;
         }
     }
-    drop(ph_client);
+
+    drop(state);
 
     if let Err(e) = ph_done_receiver.await {
         println!("{}", e)

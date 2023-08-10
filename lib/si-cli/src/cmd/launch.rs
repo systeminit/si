@@ -1,14 +1,19 @@
 use crate::key_management::get_user_email;
+use crate::state::AppState;
 use crate::{CliResult, SiCliError};
-use si_posthog::PosthogClient;
 
-pub async fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
-    let email = get_user_email().await?;
-    let _ = posthog_client.capture(
-        "si-command",
-        email,
-        serde_json::json!({"name": "launch-ui", "mode": mode}),
-    );
+impl AppState {
+    pub async fn launch(&self) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "launch-ui"}),
+        );
+        invoke().await?;
+        Ok(())
+    }
+}
+
+async fn invoke() -> CliResult<()> {
     let path = "http://localhost:8080";
     match open::that(path) {
         Ok(()) => Ok(()),

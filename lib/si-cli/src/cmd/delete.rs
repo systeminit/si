@@ -1,23 +1,23 @@
-use crate::cmd::check;
 use crate::containers::{cleanup_image, has_existing_container};
 use crate::key_management::get_user_email;
+use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::Docker;
-use si_posthog::PosthogClient;
 
-pub async fn invoke(
-    posthog_client: &PosthogClient,
-    mode: String,
-    is_preview: bool,
-) -> CliResult<()> {
-    let email = get_user_email().await?;
-    let _ = posthog_client.capture(
-        "si-command",
-        email,
-        serde_json::json!({"name": "check-dependencies", "mode": mode}),
-    );
+impl AppState {
+    pub async fn delete(&self) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "delete-system"}),
+        );
+        invoke(self, self.is_preview()).await?;
+        Ok(())
+    }
+}
 
-    check::invoke(posthog_client, mode.clone(), true, is_preview).await?;
+async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
+    app.check(true).await?;
+
     let docker = Docker::unix("//var/run/docker.sock");
 
     if is_preview {
