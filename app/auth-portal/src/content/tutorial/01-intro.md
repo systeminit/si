@@ -30,7 +30,7 @@ In return, you will receive:
 ### This Tutorial 
 
 You’re going to:
-* Install and run System Initiative from your command line interface 
+* Install and run System Initiative locally
 * Model and deploy a containerized web application to an AWS EC2 instance
 * Clean up the resources you created in AWS
 * Customize System Initiative by writing TypeScript code
