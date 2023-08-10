@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Promotes a Docker image tag (based on Git SHA) to a stable tag.
+Promotes a multi-arch Docker image to a tag.
 """
 import argparse
 import subprocess
 import sys
 from enum import Enum, EnumMeta
-from typing import Any
+from typing import Any, List
 
 
 # A slightly more Rust-y feeling enum
@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
         help="Stable tag name [default: '{}']".format(DEFAULT_STABLE_TAG),
     )
     parser.add_argument(
+        "--update-stable-tag",
+        action="store_true",
+        help="Whether or not to update stable tag",
+    )
+    parser.add_argument(
         "--multi-arch",
         action="append",
         default=[],
@@ -79,9 +84,36 @@ def main() -> int:
             )
             sys.exit(1)
 
-    src_prefix = "{}:sha-{}".format(args.image_name, args.src_tag)
-    dst = "{}:{}".format(args.image_name, args.stable_tag)
+    src_prefix = "{}:{}".format(args.image_name, args.src_tag)
+    dst = src_prefix
 
+    promote(src_prefix, dst, multi_arches)
+
+    if args.update_stable_tag:
+        dst = "{}:{}".format(args.image_name, args.stable_tag)
+        promote(src_prefix, dst, multi_arches)
+
+    image_url = ("https://hub.docker.com/r/{}/" +
+                 "tags?page=1&ordering=last_updated&name={}").format(
+                     args.image_name,
+                     args.src_tag,
+                 )
+
+    print("\n--- Image promoted\n")
+    print(f"    Docker Hub Image URL : {image_url}")
+
+    if args.update_stable_tag:
+        image_url = ("https://hub.docker.com/r/{}/" +
+                     "tags?page=1&ordering=last_updated&name={}").format(
+                         args.image_name,
+                         args.stable_tag,
+                     )
+        print(f"    Docker Hub Stable Image URL : {image_url}")
+
+    return 0
+
+
+def promote(src_prefix: str, dst: str, multi_arches: List[DockerArchitecture]):
     srcs = list(map(lambda arch: f"{src_prefix}-{arch}", multi_arches))
 
     print(f"--- Promoting '{src_prefix}-*' images to '{dst}'")
@@ -110,17 +142,6 @@ def main() -> int:
         dst,
     ]
     subprocess.run(manifest_push_cmd).check_returncode()
-
-    image_url = ("https://hub.docker.com/r/{}/" +
-                 "tags?page=1&ordering=last_updated&name={}").format(
-                     args.image_name,
-                     args.stable_tag,
-                 )
-
-    print("\n--- Image promoted\n")
-    print(f"    Docker Hub Image URL : {image_url}")
-
-    return 0
 
 
 if __name__ == "__main__":
