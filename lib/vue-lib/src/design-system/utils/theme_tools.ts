@@ -51,9 +51,13 @@ try {
 // single user-selected theme (overriding the system theme) saved to localstorage
 // we export the user-set theme directly, but we only need to use it for theme switcher components
 // as most components will get current value via inject in `useTheme()`
-export const userOverrideTheme = ref<ThemeValue | null>(
-  (storage.getItem(THEME_STORAGE_KEY) as ThemeValue) || null,
-);
+export const userOverrideTheme = ref<ThemeValue | null>(null);
+
+if (!import.meta.env.SSR) {
+  userOverrideTheme.value =
+    (storage.getItem(THEME_STORAGE_KEY) as ThemeValue) || null;
+}
+
 // watcher to update the user theme in local-storage when it changes
 watch(
   () => userOverrideTheme.value,
