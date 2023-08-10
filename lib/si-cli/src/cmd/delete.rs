@@ -1,4 +1,4 @@
-use crate::containers::{cleanup_image, has_existing_container};
+use crate::containers::{cleanup_image, delete_container, get_existing_container};
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
@@ -30,8 +30,11 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
             println!("{}", container_name);
             continue;
         }
-        has_existing_container(&docker, container_name, true).await?;
-        cleanup_image(&docker, name.to_string()).await?;
+        let container_summary = get_existing_container(&docker, container_name.clone()).await?;
+        if let Some(container_summary) = container_summary {
+            delete_container(&docker, container_summary, container_name.clone()).await?;
+            cleanup_image(&docker, name.to_string()).await?;
+        }
     }
 
     Ok(())

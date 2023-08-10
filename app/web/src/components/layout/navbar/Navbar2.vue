@@ -2,7 +2,7 @@
   <nav
     class="bg-neutral-900 text-white relative border-b border-shade-100 shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-100"
   >
-    <div class="pl-2">
+    <div class="pl-sm">
       <div class="flex items-center h-16">
         <!-- Left side -->
         <div class="flex items-center justify-center place-items-center h-full">

@@ -8,8 +8,8 @@
       )
     "
   >
-    <div class="flex justify-between items-center">
-      <div class="grow whitespace-nowrap">
+    <div class="flex justify-between items-center overflow-hidden">
+      <div class="grow truncate">
         {{ title }}
       </div>
       <slot name="detail">
@@ -24,18 +24,19 @@
         </div>
       </slot>
 
-      <VButton
-        v-if="featureFlagsStore.SINGLE_MODEL_SCREEN"
-        icon="refresh"
-        variant="ghost"
-        loadingIcon="refresh-active"
-        loadingText="Refreshing..."
-        :loading="refreshing"
-        class="ml-2"
-        @click="onClickRefreshButton"
-      >
-        Resources
-      </VButton>
+      <div class="ml-xs flex-none">
+        <VButton
+          v-if="featureFlagsStore.SINGLE_MODEL_SCREEN"
+          icon="refresh"
+          variant="ghost"
+          loadingIcon="refresh-active"
+          loadingText="Refreshing..."
+          :loading="refreshing"
+          @click="onClickRefreshButton"
+        >
+          Resources
+        </VButton>
+      </div>
     </div>
 
     <Transition

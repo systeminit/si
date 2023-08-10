@@ -1,4 +1,6 @@
-use crate::containers::{cleanup_image, get_container_details, has_existing_container};
+use crate::containers::{
+    cleanup_image, delete_container, get_container_details, get_existing_container,
+};
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, SiCliError};
@@ -222,8 +224,13 @@ async fn invoke(
                 let docker = Docker::unix("//var/run/docker.sock");
                 for container in &update.containers {
                     let container_name = format!("local-{0}-1", container.repository);
-                    has_existing_container(&docker, container_name, true).await?;
-                    cleanup_image(&docker, container.repository.to_owned()).await?;
+                    let container_summary =
+                        get_existing_container(&docker, container_name.clone()).await?;
+                    if let Some(container_summary) = container_summary {
+                        delete_container(&docker, container_summary, container_name.clone())
+                            .await?;
+                        cleanup_image(&docker, container_name.to_string()).await?;
+                    }
                 }
 
                 app.start().await?;
