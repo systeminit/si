@@ -100,7 +100,11 @@ pub(crate) enum Commands {
 }
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct LaunchArgs {}
+pub(crate) struct LaunchArgs {
+    /// Allows the launching of the metrics collection endpoint
+    #[clap(long)]
+    pub metrics: bool,
+}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ReportArgs {}

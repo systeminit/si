@@ -85,8 +85,8 @@ async fn main() -> Result<()> {
         Commands::Check(_args) => {
             state.check(false).await?;
         }
-        Commands::Launch(_args) => {
-            state.launch().await?;
+        Commands::Launch(args) => {
+            state.launch(args.metrics).await?;
         }
         Commands::Start(_args) => {
             state.start().await?;
