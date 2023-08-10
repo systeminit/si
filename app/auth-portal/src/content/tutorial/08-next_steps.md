@@ -25,7 +25,7 @@ We're working hard towards a public open source release this summer.
 You have _no idea_ how good it feels to have people we can talk to about System Initiative! You would make our day if
 you asked us questions about how things work, where we're heading, DevOps, philosophy, etc.
 
-[Lets talk on Discord](https://discord.com/channels/955539345538957342/1080953018788364288).
+[Lets talk on Discord](https://discord.com/invite/system-init).
 
 ### Collaborate
 
