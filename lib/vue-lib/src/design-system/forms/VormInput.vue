@@ -27,7 +27,7 @@ you can pass in options as props too */
       </slot>
     </label>
     <slot name="prompt">
-      <div class="pb-xs text-sm">{{ prompt }}</div>
+      <div class="vorm-input__prompt pb-xs text-sm">{{ prompt }}</div>
     </slot>
     <div class="vorm-input__input-and-instructions-wrap">
       <div class="vorm-input__input-wrap">
@@ -845,6 +845,12 @@ defineExpose({
     margin-right: 4px;
   }
 
+  &:empty {
+    display: none;
+  }
+}
+
+.vorm-input__prompt {
   &:empty {
     display: none;
   }
