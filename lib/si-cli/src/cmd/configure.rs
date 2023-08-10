@@ -2,23 +2,22 @@ use crate::key_management::{
     does_credentials_file_exist, get_credentials, get_si_data_dir, get_user_email,
     write_veritech_credentials,
 };
+use crate::state::AppState;
 use crate::CliResult;
 use inquire::{Password, PasswordDisplayMode};
-use si_posthog::PosthogClient;
 
-pub async fn invoke(
-    posthog_client: &PosthogClient,
-    mode: String,
-    _is_preview: bool,
-    reconfigure: bool,
-) -> CliResult<()> {
-    let email = get_user_email().await?;
-    let _ = posthog_client.capture(
-        "si-command",
-        email,
-        serde_json::json!({"name": "configure-system", "mode": mode}),
-    );
+impl AppState {
+    pub async fn configure(&self, reconfigure: bool) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "configure"}),
+        );
+        invoke(self.is_preview(), reconfigure).await?;
+        Ok(())
+    }
+}
 
+async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
     let mut prompt_everything = false;
     let mut requires_rewrite = false;
     if !does_credentials_file_exist().await? || reconfigure {

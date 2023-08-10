@@ -4,6 +4,7 @@ use thiserror::Error;
 pub mod cmd;
 mod containers;
 mod key_management;
+pub mod state;
 
 pub const CONTAINER_NAMES: &[&str] = &[
     "jaeger", "postgres", "nats", "otelcol", "council", "veritech", "pinga", "sdf", "web",

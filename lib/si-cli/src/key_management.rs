@@ -81,10 +81,12 @@ pub async fn get_credentials() -> CliResult<Credentials> {
 
 pub async fn get_user_email() -> CliResult<String> {
     let credentials = get_credentials().await?;
-    Ok(match credentials.si_email {
-        Some(si_email) => si_email,
-        None => "sally@systeminit.com".to_string(),
-    })
+
+    if let Some(email) = credentials.si_email {
+        Ok(email)
+    } else {
+        Ok("sally@systeminit.com".to_string())
+    }
 }
 
 pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {

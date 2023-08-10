@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-cli",
     deps = [
+        "//third-party/rust:axum",
         "//third-party/rust:base64",
         "//third-party/rust:color-eyre",
         "//third-party/rust:colored",
@@ -26,6 +27,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tempfile",
         "//lib/si-posthog-rs:si-posthog",
+        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:serde_json",
     ],
     srcs = glob([
