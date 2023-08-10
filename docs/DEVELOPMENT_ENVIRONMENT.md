@@ -26,8 +26,6 @@ On macOS, you will likely hit the [file descriptor limit](#file-descriptor-limit
 Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) architectures.
 [NixOS](https://nixos.org/) is not supported at this time, but may be desired in the future.
 Linux with MUSL instead of GNU is also not currently supported.
-For Fedora, RHEL-derivative and other [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) users, SELinux
-will likely need to be set to `permissive` mode or configured to work with `nix`.
 
 ### Windows
 
@@ -59,7 +57,7 @@ ulimit -n 10240
 
 ## Dependencies
 
-For all supported platforms, there are two dependencies that must be installed, `nix` (preferably from [Zero to Nix](https://zero-to-nix.com/start/install)) and `docker`.
+For all supported platforms, there are two dependencies that must be installed, `nix` (preferably via the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer)) and `docker`.
 
 ### Nix
 
@@ -67,7 +65,7 @@ We use `nix` as our package manager for the repository.
 It ensures that our developers are all using the same versions of all packages and libraries for developing SI.
 
 Regardless of how `nix` is installed, it must have the [flakes](https://nixos.wiki/wiki/Flakes) feature enabled.
-We highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer over the
+We highly recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer) over the
 official installer; one reason being that the former will enable flakes by default.
 
 > You can use `direnv` (version >= 2.30) with our [Nix flake](../flake.nix) for both ease of running commands

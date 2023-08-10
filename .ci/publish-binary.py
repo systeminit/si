@@ -82,7 +82,7 @@ def create_github_release(tag: str, assets: List[str], verbose: bool):
         "gh",
         "release",
         "create",
-        "--latest",
+        "--draft",
         "--generate-notes",
         tag,
     ] + assets

@@ -18,21 +18,20 @@ Let's start by choosing an officially supported platform.
 | aarch64 (arm64) | macOS, Linux, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
 
 **Platform Notes:**
-* Using macOS aarch64 (arm64) requires Rosetta 2 to be installed (install it with `softwareupdate --install-rosetta`)
-* [NixOS](https://nixos.org/) and Linux with MUSL instead of GNU will not likely work at this time (though, both may be desired in the future)
-* [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux) will likely need to be set to `permissive` mode or configured to work with `nix`
+* On Apple Silicon systems (i.e. macOS aarch64 (arm64)), Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
+* [NixOS](https://nixos.org/) and Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) will not likely work at this time
 * Systemd may need to be enabled on WSL2
 
 ### Install Dependencies
 
 Install dependencies on your chosen platform.
 
-- **1)** `nix` with flakes enabled
+- **1)** [`nix` with flakes enabled](https://github.com/DeterminateSystems/nix-installer)
 - **2)** `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
 - **3a)** [`direnv`](https://direnv.net) version `>= 2.30` installed
 - **3b)** [`direnv` hooked into your shell](https://direnv.net/docs/hook.html)
 
-For `nix`, we highly recommend using the [Zero to Nix](https://zero-to-nix.com/start/install) installer.
+For `nix`, we highly recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer).
 
 For `docker`, the Docker Desktop version corresponding to your native architecture should be used.
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
@@ -135,51 +134,10 @@ Alternatively, if you wish to keep your data for later use, you can stop the con
 buck2 run dev:stop
 ```
 
-## Architecture
+## Where Do I Learn More?
 
-The diagram (created with [asciiflow](https://asciiflow.com)) below illustrates a _very_ high-level overview of SI's calling stack.
-There are other components and paradigms that aren't displayed, but this diagram is purely meant to show the overall flow from "mouse-click" onwards.
-
-```
-                   ┌───────┐   ┌─────────┐
-                   │ pinga ├───│ council │
-                   └───┬───┘   └─────────┘
-                       │
-                       │
-                       │
-┌─────┐   ┌─────┐   ┌──┴──┐   ┌──────────┐
-│ web ├───┤ sdf ├───┤ dal ├───┤ postgres │
-└─────┘   └─────┘   └──┬──┘   └──────────┘
-                       │
-      ┌────────────────┘
-      │
-┌─────┴────┐   ┌──────────────────┐   ┌─────────┐      ┌───────────────────┐
-│ veritech ├───┤ deadpool-cyclone ├───┤ cyclone ├ ─ ─> │ execution runtime │
-│          │   │                  │   │         │      │ (e.g. lang-js)    │
-└──────────┘   └──────────────────┘   └─────────┘      └───────────────────┘
-```
-
-#### Internal Definitions
-
-- **[web](./app/web/):** the primary frontend web application for SI
-- **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
-- **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
-- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats`
-- **[council](./bin/council/):** the DependentValuesUpdate job's synchronization service, used by `dal` via `nats` to avoid race conditions when updating attribute values
-- **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments
-- **[deadpool-cyclone](./lib/deadpool-cyclone/):** a library used for managing a pool of `cyclone` instances of varying "types" (i.e. HTTP, UDS)
-- **[cyclone](./bin/cyclone/):** the manager for a secure execution runtime environment (e.g. `lang-js`)
-- **[lang-js](./bin/lang-js/):** a secure-ish (don't trust it) execution runtime environment for JS functions
-
-#### External Definitions
-
-- **[postgres](https://postgresql.org):** the database for storing SI data
-- **[nats](https://nats.io):** the messaging system used everywhere in SI, by `pinga`, `council`, `dal` and `sdf` (for multicast websocket events)
-
-#### Additional Notes
-
-It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
-While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.
+For more information on how to use and develop the System Initiative software, talk to us on
+[our Discord server](https://discord.com/invite/system-init) and see the [docs](./docs) directory.
 
 ## Contributing
 

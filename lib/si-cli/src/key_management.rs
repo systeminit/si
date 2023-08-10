@@ -3,17 +3,17 @@ use base64::{engine::general_purpose, Engine};
 use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::box_;
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::{fs, io};
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Credentials {
     pub aws_access_key_id: String,
     pub aws_secret_access_key: String,
-    pub docker_hub_user_name: String,
-    pub docker_hub_credential: String,
+    pub docker_hub_user_name: Option<String>,
+    pub docker_hub_credential: Option<String>,
     pub si_email: Option<String>,
 }
 
@@ -71,27 +71,20 @@ pub async fn write_veritech_credentials(
 }
 
 pub async fn get_credentials() -> CliResult<Credentials> {
-    let contents = fs::read_to_string(get_si_data_dir().await?.join("si_credentials.toml"))
-        .expect("Can't read the credentials file");
-
-    let raw_creds: Credentials = toml::from_str(contents.as_str()).unwrap();
-
-    Ok(raw_creds)
+    let credentials_file_path = get_si_data_dir().await?.join("si_credentials.toml");
+    match fs::read_to_string(credentials_file_path) {
+        Ok(found_contents) => Ok(toml::from_str(found_contents.as_str())?),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Credentials::default()),
+        Err(e) => Err(e.into()),
+    }
 }
 
 pub async fn get_user_email() -> CliResult<String> {
-    if !does_credentials_file_exist().await? {
-        return Ok("sally@systeminit.com".to_string());
-    }
-
-    let creds = get_credentials().await?;
-    let mut user_email = "sally@systeminit.com".to_string();
-
-    if let Some(email) = creds.si_email {
-        user_email = email
-    }
-
-    Ok(user_email)
+    let credentials = get_credentials().await?;
+    Ok(match credentials.si_email {
+        Some(si_email) => si_email,
+        None => "sally@systeminit.com".to_string(),
+    })
 }
 
 pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
@@ -103,14 +96,21 @@ pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
         raw_creds.aws_secret_access_key
     ));
 
-    let docker_creds = format!(
-        "{}:{}",
-        raw_creds.docker_hub_user_name, raw_creds.docker_hub_credential
-    );
-    let mut buf = String::new();
-    general_purpose::STANDARD.encode_string(docker_creds.as_bytes(), &mut buf);
+    if raw_creds.docker_hub_user_name.is_some() && raw_creds.docker_hub_credential.is_some() {
+        let mut username = "".to_string();
+        let mut credential = "".to_string();
+        if let Some(user_name) = raw_creds.docker_hub_user_name {
+            username = user_name
+        }
+        if let Some(cred) = raw_creds.docker_hub_credential {
+            credential = cred
+        }
+        let docker_creds = format!("{}:{}", username, credential);
+        let mut buf = String::new();
+        general_purpose::STANDARD.encode_string(docker_creds.as_bytes(), &mut buf);
 
-    creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
+        creds.push(format!("DOCKER_AUTHENTICATION={}", buf));
+    }
 
     Ok(creds)
 }
