@@ -15,7 +15,7 @@
               isHandleVisible ? 'h-[4px]' : 'h-[3px]',
             ],
         isHandleVisible
-          ? 'bg-neutral-400 dark:bg-neutral-500'
+          ? 'bg-neutral-600 dark:bg-neutral-300'
           : 'bg-neutral-300 dark:bg-neutral-600',
         {
           left: 'left-full',
@@ -56,7 +56,7 @@
         clsx(
           'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] shadow-md',
           'w-3 h-16 rounded-full',
-          'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
+          'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600',
           !panelIsVertical && 'rotate-90',
           !isHandleVisible && 'hidden',
         )
@@ -64,7 +64,7 @@
     >
       <Icon
         name="dots-vertical"
-        class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500"
+        class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400"
       />
     </div>
   </div>

@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+axum = { workspace = true }
 base64 = { workspace = true }
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
@@ -19,6 +20,7 @@ open = { workspace = true }
 rand = { workspace = true }
 remain = { workspace = true }
 si-posthog = { path = "../../lib/si-posthog-rs" }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }

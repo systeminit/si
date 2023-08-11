@@ -37,11 +37,10 @@
       >
         <ApplyChangeSetButton class="w-full" />
       </div>
+      <SidebarSubpanelTitle>
+        {{ funcId ? "Asset Function Details" : "Asset Details" }}
+      </SidebarSubpanelTitle>
       <template v-if="assetId">
-        <SidebarSubpanelTitle>
-          {{ funcId ? "Asset Function Details" : "Asset Details" }}
-        </SidebarSubpanelTitle>
-
         <FuncDetails
           v-if="funcId"
           :funcId="funcId"

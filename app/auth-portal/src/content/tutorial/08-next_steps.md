@@ -14,11 +14,9 @@ Here are some of the things we'll be working on:
 * Production deployments
 * A "Bring Your Own Cloud" SaaS offering
 
-We would love to hear your thoughts and suggestions.
-
 ### Talk to us
 
-We love feedback and engaging with users on their experience using System Initiative! We encourage you to ask questions about how things work, where we're heading, DevOps, philosophy, etc.
+We love feedback and engaging with users on their experience using System Initiative! We encourage you to ask questions about how things work, where we're heading, your thoughts and suggestions, DevOps, philosophy, etc.
 
 [Let's talk on Discord](https://discord.com/invite/system-init).
 
@@ -46,4 +44,4 @@ Don't forget to click the submit button! :)
 
 ## Thank you
 
-Once again - thank you. We appreciate your time, intelligence, and passion for DevOps work. We hope to see you in Discord.
+Once again - thank you. We appreciate your time, intelligence, and passion for DevOps work. We hope to see you on Discord.

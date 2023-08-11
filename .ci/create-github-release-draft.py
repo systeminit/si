@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Publishes a release of a binary.
+Publishes a release of a component with assets.
 """
 import argparse
 import subprocess
@@ -11,14 +11,9 @@ from typing import List, Optional
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--binary",
-        default="si-ci",
-        help="Name of binary program",
-    )
-    parser.add_argument(
-        "--version",
+        "--tag",
         required=True,
-        help="Version string used to create release tag (i.e. \"v$VERSION\")",
+        help="Release tag",
     )
     parser.add_argument(
         "--verbose",
@@ -37,15 +32,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    tag = create_git_tag(args.binary, args.version, args.verbose)
-    create_github_release(tag, args.assets or [], args.verbose)
+    create_git_tag(args.tag, args.verbose)
+    create_github_release(args.tag, args.assets or [], args.verbose)
 
     return 0
 
 
-def create_git_tag(program: str, version: str, verbose: bool) -> str:
-    tag = f"{version}"
-
+def create_git_tag(tag: str, verbose: bool):
     section(f":git: Creating Git tag: {tag}")
     git_tag_cmd = [
         "git",
@@ -53,7 +46,7 @@ def create_git_tag(program: str, version: str, verbose: bool) -> str:
         "--annotate",
         tag,
         "--message",
-        f"release: {program} {version}",
+        f"release: {tag}",
     ]
     if verbose:
         debug(cmd_args_str(git_tag_cmd))
@@ -69,8 +62,6 @@ def create_git_tag(program: str, version: str, verbose: bool) -> str:
     if verbose:
         debug(cmd_args_str(git_push_cmd))
     run_or_die(git_push_cmd)
-
-    return tag
 
 
 def create_github_release(tag: str, assets: List[str], verbose: bool):

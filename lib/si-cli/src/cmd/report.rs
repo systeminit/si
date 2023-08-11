@@ -1,13 +1,20 @@
+use crate::key_management::get_user_email;
+use crate::state::AppState;
 use crate::CliResult;
 use inquire::{Confirm, Text};
-use si_posthog::PosthogClient;
 
-pub fn invoke(posthog_client: &PosthogClient, mode: String) -> CliResult<()> {
-    let _ = posthog_client.capture(
-        "si-command",
-        "sally@systeminit.com",
-        serde_json::json!({"name": "report-error", "mode": mode}),
-    );
+impl AppState {
+    pub async fn report(&self) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "report-error"}),
+        );
+        invoke().await?;
+        Ok(())
+    }
+}
+
+async fn invoke() -> CliResult<()> {
     let ans = Confirm::new("So, you'd like to report a bug?")
         .with_default(true)
         .with_help_message(

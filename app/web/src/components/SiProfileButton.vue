@@ -6,10 +6,7 @@
     @mouseleave="toggleHover"
   >
     <span class="sr-only">Open user menu</span>
-    <CheechSvg
-      class="h-8 w-8 rounded-full bg-white border-black border-2"
-      alt="Cheech and Chong"
-    />
+    <CheechSvg class="h-8 w-8 rounded-full bg-white border-black border-2" />
 
     <SiArrow :nudge="hovered === true || open" class="ml-1 w-4 text-white" />
   </MenuButton>
