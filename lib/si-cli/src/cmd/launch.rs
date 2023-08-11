@@ -24,6 +24,7 @@ async fn invoke(launch_metrics: bool) -> CliResult<()> {
     };
 
     if path == "http://localhost:8080" {
+        check_web().await?;
         check_sdf().await?;
     }
 
@@ -33,6 +34,15 @@ async fn invoke(launch_metrics: bool) -> CliResult<()> {
         Err(_err) => Err(SiCliError::FailToLaunch(path.to_string())),
     }
     .expect("issue opening url");
+
+    Ok(())
+}
+
+async fn check_web() -> CliResult<()> {
+    let resp = reqwest::get("http://localhost:8080").await;
+    if let Err(_e) = resp {
+        return Err(SiCliError::WebPortal());
+    }
 
     Ok(())
 }
