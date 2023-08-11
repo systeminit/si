@@ -170,7 +170,10 @@ const platforms = ["Linux", "macOS"];
 
 const selectedVersion = ref<string>();
 const versions = computed(() => {
-  return releasesArray.value.map((release) => release.version);
+  return releasesArray.value.map((release) => {
+    const split = release.version.split("/");
+    return split[split.length - 1];
+  });
 });
 
 const selectedPlatformAssets = computed(() => {
