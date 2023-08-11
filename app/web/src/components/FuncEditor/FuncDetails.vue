@@ -200,11 +200,30 @@
               @change="updateFunc"
             />
           </Collapsible>
+
+          <Collapsible
+            v-if="
+              editingFunc.variant === FuncVariant.Attribute && schemaVariantId
+            "
+            label="Binding"
+            defaultOpen
+          >
+            <AttributeBindings
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'attribute'
+              "
+              ref="detachRef"
+              v-model="editingFunc.associations"
+              :schemaVariantId="schemaVariantId"
+              @change="updateFunc"
+            />
+          </Collapsible>
         </ScrollArea>
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="editingFunc.variant === FuncVariant.Attribute"
+        v-if="editingFunc.variant === FuncVariant.Attribute && !schemaVariantId"
         label="Bindings"
         slug="bindings"
       >

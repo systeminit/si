@@ -58,6 +58,7 @@
             @click="openModal(proto.id)"
           />
           <VButton
+            v-if="!schemaVariantId"
             :disabled="disabled"
             variant="transparent"
             tone="destructive"
