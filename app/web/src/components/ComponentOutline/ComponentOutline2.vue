@@ -3,7 +3,10 @@
     <ScrollArea>
       <template #top>
         <SidebarSubpanelTitle class="border-t-0">
-          Diagram Outline
+          <div class="flex flex-row grow">
+            <span class="mr-auto">Diagram Outline</span>
+            <Icon v-if="fetchComponentsReq.isPending" name="loader" size="sm" />
+          </div>
         </SidebarSubpanelTitle>
 
         <!-- search bar - dont need to show if no components -->
@@ -14,12 +17,7 @@
         />
       </template>
 
-      <RequestStatusMessage
-        v-if="fetchComponentsReq.isPending && !rootComponents.length"
-        :requestStatus="fetchComponentsReq"
-        loadingMessage="Loading..."
-      />
-      <template v-else-if="fetchComponentsReq.isError">
+      <template v-if="fetchComponentsReq.isError">
         <ErrorMessage :requestStatus="fetchComponentsReq" />
       </template>
       <template v-else>
@@ -95,11 +93,7 @@ import {
   ref,
 } from "vue";
 import * as _ from "lodash-es";
-import {
-  ErrorMessage,
-  RequestStatusMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
