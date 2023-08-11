@@ -96,7 +96,8 @@ pub(crate) struct ReportArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ConfigureArgs {
-    /// Forces the reconfiguration of System Initiative credentials
+    /// Forces the reconfiguration of System Initiative credentials.
+    ///
     /// Please Note, you will need to restart the applications to apply these new credentials
     #[clap(short, long)]
     pub force_reconfigure: bool,
