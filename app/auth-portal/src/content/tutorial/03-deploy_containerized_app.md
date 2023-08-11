@@ -103,18 +103,20 @@ You'll need to pick a Region for your deployment. Select the AWS `Region` asset 
 
 ![Canvas with region](/tutorial-img/03-deploy_containerized_app/workspace_with_region.png)
 
-Notice that this Asset looks different from the previous two! An AWS `Region` is a 'frame,' while the previous two were 'components.' Frames are a way to organize or aggregate components in the Model for easier configuration or relationship creation. The `Region` frame is a _configuration_ frame, meaning that any Asset placed inside is automatically configured by it.
+Notice that this Asset looks different from the previous two! An AWS `Region` is a configuration 'frame,' meaning that any Asset placed inside is automatically configured by it.
+
+You will see a red Qualification failure on the `Region`. Investigate in the `Diagram Outline Panel`, you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the Qualification for this `Region` turns from a red X to a green check - you're good to go. Notice System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
 
 Resize the `Region` frame to be larger by clicking and dragging the corner of the frame. You can see in the lower right corner of the frame that it is not qualified - that's because you haven't decided which AWS Region to use.
-
-If you investigate the Qualification failure in the `Diagram Outline Panel`, you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the progress bar finishes, you will see that your Qualification for this `Region` turns from a red X to a green check - you're good to go. System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
 
 ![Set the region](/tutorial-img/03-deploy_containerized_app/set_the_region.png)
 
 The application runs on an EC2 Instance, so let's model it. Select the AWS `EC2 Instance` asset from the `Asset Panel`, and click to place it inside the `Region` frame on the Canvas. You can then click and drag the `EC2 Instance` into the upper right corner of the `Region` frame. A couple of things to notice:
 
+* You can see two red icons on your `EC2 Instance`: 
+  * __A red X qualification failure:__ like the one we saw earlier, means you need to configure the Asset. You can ignore this for now - we'll come back to it once we have connected the `EC2 Instance` input sockets to other Assets. Ignore these for now - we'll come back to them shortly.
+  * __A red tools Changes notification:__ just notifies you that this Asset does not exist yet. It will exist once you click `Apply Changes` (a little later, once we're finished modeling), and this notification will resolve.   
 * You can see that the `Region` input socket on the `EC2 Instance` is already filled - configured by the `Region` frame in which it sits.
-* If you investigate the Qualification failures in the `Diagram Outine Panel`, you'll see multiple issues here, some of which will be resolved as we connect the EC2 instance input sockets to other Assets. Ignore these for now - we'll come back to them shortly.
 
 Things should look like this:
 
@@ -132,23 +134,21 @@ Working through the input sockets of your `EC2 Instance` from top to bottom, you
 
 A cat adoption website that nobody can reach from the outside world would be a sad, lonely website. To fix that, you need to add an Ingress rule to your `Security Group`. Select the AWS `Ingress` asset from the Asset Panel, and place it in the `Region` frame. I like to put it right in the middle of the Frame. 
 
-Connect the `Security Group` to the `Ingress` rule. Then, observe that the `Ingress` asset has an input socket named `Exposed Ports` - and suspiciously, your Docker `Image` has an output socket with the same name. Connect the Docker `Image` to the `Ingress` rule. 
+Connect it up to the other Assets:  
+* Connect the `Security Group` to the `Ingress` rule. 
+* Then, notice that the `Ingress` asset has an input socket named `Exposed Ports` - which matches an output socket on your Docker `Image`. Connect the Docker `Image` to the `Ingress` rule. 
 
 ![Connect a Security Group and Ingress Rule](/tutorial-img/03-deploy_containerized_app/connect_a_security_group_and_ingress_rule.png)
-
-Select the `Ingress` rule, and switch to the Code tab in the `Selected Assets Panel`. Check out how System Initiative has written the `IpPermissions` automatically. You now have a single configuration attribute, the ExposedPorts of your Docker `Image`, automatically configuring the Operating System, EC2 User Data, and your `Ingress` rule.
-
-Select your Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change the ExposedPort to <code>8080/tcp</code> rather than <code>80/tcp</code>. You will see System Initiative calculate the scope of the update, then show that it is updating the configuration of all 3 impacted Assets on the Canvas!
-
-That was fun, but let's switch it back to port 80. Select the Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change ExposedPort back to 80/tcp.
 
 Your `Ingress` rule has an orange warning on Qualification status. Click the warning icon in the `Diagram Outline Panel`, and you can see why:
 
 ![Warning on Ingress](/tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
 
-The configuration for this `Ingress` rule isn't technically valid (yet!) - for it to work, it needs to know the Security Group ID. You don't have one of those yet, because you are still in the modeling phase, and the AWS `Security Group` hasn't been created in the real world yet. Likewise, the other changes you've been modeling so far haven't created or configured real Resources in the world yet.
+The configuration for this `Ingress` rule isn't qualified for use (yet!) - for it to work, it needs to know the Security Group ID. You don't have one of those yet, because the AWS `Security Group` doesn't exist yet (it won't exist until you've finished modeling and click `Apply Changes`). Since your `Ingress` rule is connected to your `Security Group` in the model, once the `Security Group` exists the the Security Group ID will pass through automatically and the warning will resolve itself.
 
-Once you tell System Initiative you want to make your changes real in the world by clicking the `Apply Changes` button, the `Security Group` will be created, and - because your `Ingress` rule is connected to your `Security Group` - the Security Group ID will pass through automatically and the warning will resolve itself.
+Investigate some automation in your model:  
+* Select the `Ingress` rule, and switch to the Code tab in the `Selected Assets Panel`. Check out how System Initiative has written the `IpPermissions` automatically. You now have a single configuration attribute, the ExposedPorts of your Docker `Image`, automatically configuring the Operating System, EC2 User Data, and your `Ingress` rule.
+* Select your Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change the ExposedPort to <code>8080/tcp</code> rather than <code>80/tcp</code>. You will see System Initiative calculate the scope of the update, then show that it is updating the configuration of all 3 impacted Assets on the Canvas! That was fun, but let's switch it back to port 80. Select the Docker `Image`, go to the `Selected Assets Panel` (Attributes tab), and change ExposedPort back to 80/tcp.
 
 Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Name. AWS EC2 uses SSH Key Pairs to authenticate to the instances you boot. Add a `Key Pair` asset from the `Asset Panel` to your `Region` frame, right underneath your `Ingress` rule, and connect it to your `EC2 Instance`. The `Key Pair` is already qualified with a green checkmark, so you know the configuration looks good. 
 
@@ -156,7 +156,9 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 
 There is one more open input socket on the `EC2 Instance`: the `Image ID` socket. In AWS EC2, you use an AMIs ID as the Image ID.
 
-Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`. Connect the `Image ID` output socket on the `AMI` to the `Image ID` input socket on the `EC2 Instance`. Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and go to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)). Click Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
+* Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`. 
+* Connect the `Image ID` output socket on the `AMI` to the corrresponding input socket on the `EC2 Instance`. 
+* Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and go to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)). Click Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
 
@@ -169,9 +171,11 @@ Let's look again at the Qualifications on your `EC2 Instance` by clicking the re
 Select the `EC2 Instance`, go to the `Selected Assets Panel`, (Attributes tab), scroll down to the `domain/InstanceType` attribute, and set it to <code>t3.micro</code>. The red Qualification failure icon on this Asset will disappear, leaving just the orange Qualification warning in its place. 
 
 Review the `Diagram Outline Panel`: 
-* **Four Confirmation warnings (no action needed)**: Each of the four AWS Assets you used has a red tools Confirmation warning, which is telling you that the Model does not match the resources in reality. The Model proposes to create these Resources (you can see the 'create' actions in `Changes Panel`), and once you click `Apply Changes` - and the Resources are created - these Confirmations will turn green.
+* **Four Changes notifications (red tools)**: (no action needed)
+  * Each of the four AWS Assets you used has a red tools Changes notification, which is telling you that this resource does not exist yet. 
+  * These Resources will be created once you click `Apply Changes` in a moment. Once they exist, these Confirmations will turn green.
 
-* **Two Qualification warnings (no action needed)**: 
+* **Two Qualification warnings (orange exclamation point)**: (no action needed) 
   * As mentioned earlier, there's an orange Qualification warning on the `Ingress` rule, which will be qualified for use once the `Security Group` is created and passes the Group ID through. 
   * There's also an orange Qualification warning on the `EC2 Instance`, which will be qualified for use once the `Key Pair` is created. 
 
@@ -186,13 +190,7 @@ To see the changes your Model has proposed, expand the `Changes Panel` at the to
 
 ![Proposed Changes](/tutorial-img/03-deploy_containerized_app/proposed_changes.png)
 
-You'll notice that some of the Proposed Changes have a toggle. System Initiative has compared the Model you have configured to what is known about the Resources you have in the real world, and where a change is needed to bring the Model and reality into sync, these toggles give you the option to choose whether to go ahead and make that change.
-
-You can get more information about the proposed actions by clicking the chevrons in the Proposed Changes tab. Clicking through each of the four AWS Assets you used, you'll see that each has a 'recommendation' to 'create' the Resource in the real world.
-
-In most cases, you will not worry about the toggles in the Proposed Changes tab because you want the Model and reality to be 1:1. If everything looks good, you'll click the green `Apply Changes` button in the upper-right corner to make the Model you have created real in the world.
-
-A notification will pop up to remind you that some of the proposed changes will affect the external Resources or the model. Click `Apply Changes` again to confirm the changes. 
+In most cases, you will not worry about the toggles in the Proposed Changes tab because you want the Model and reality to be 1:1. If everything looks good, you'll click the green `Apply Changes` button in the upper-right corner to make the Model you have created real in the world. Click `Apply Changes` again to confirm the changes. 
 
 ![Apply Change Set](/tutorial-img/03-deploy_containerized_app/apply_change_set.png)
 
@@ -291,8 +289,8 @@ If you want to walk through the action steps of this tutorial - without the cont
  * The Qualification for this `EC2 Instance` turns from a red X to a green checkmark.
 
 ## 10. Review the Diagram Outline Panel
-* **Confirmation warnings (no action needed)**: Each of the four AWS Assets you used has a red tools Confirmation warning, which is telling you that the Model does not match the resources in reality. The model is proposing the creation of each of these Resources once you click `Apply Changes` (you can see them listed in the `Changes Panel`). Once they are created, these Confirmations will turn green.
-* **A single Qualification warning (no action needed)**: As mentioned earlier, there's an orange Qualification warning on the `Ingress` rule, which we expect to be qualified for use once the `Security Group` is created because it will automatically pass the Group ID through.
+* **Four Changes notifications (red tools)**: (no action needed) These notifications tell you that the four AWS Assets you modeled don't exist yet. Once you click `Apply Changes` to create these resources, these Confirmations will turn green.
+* **Two Qualification warnings (orange explamation point)**: (no action needed) As mentioned earlier, there's a Qualification warning on the `Ingress` rule, will resovlve once the `Security Group` is created. There's also an orange Qualification warning on the `EC2 Instance`, which will be resolved once the `Key Pair` is created.  
 * Looks like we're good to go! 
 
 ## 11. Apply your changes
