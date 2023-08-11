@@ -151,7 +151,11 @@ impl AppState {
 
         let mut si = None;
         let release: Release = req.json().await?;
-        if release.version != current_version {
+
+        // The binary tags are now in the format bin/si/binary/version
+        // this future proofs us to ensure that we don't have different binaries
+        // of the same name
+        if release.version != format!("bin/si/binary/{}", current_version) {
             si = Some(release);
         }
 
