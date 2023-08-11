@@ -4,6 +4,7 @@ use thiserror::Error;
 pub mod cmd;
 mod containers;
 mod key_management;
+pub mod state;
 
 pub const CONTAINER_NAMES: &[&str] = &[
     "jaeger", "postgres", "nats", "otelcol", "council", "veritech", "pinga", "sdf", "web",
@@ -32,12 +33,16 @@ pub enum SiCliError {
     MissingDataDir(),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("toml deserialize error: {0}")]
+    TomlDeserialize(#[from] toml::de::Error),
     #[error("unable to download update, status = {0}")]
     UnableToDownloadUpdate(u16),
     #[error("unable to fetch containers update, status = {0}")]
     UnableToFetchContainersUpdate(u16),
     #[error("unable to fetch si update, status = {0}")]
     UnableToFetchSiUpdate(u16),
+    #[error("web portal is currently offline - please check that the system is running")]
+    WebPortal(),
 }
 
 pub type CliResult<T> = Result<T, SiCliError>;

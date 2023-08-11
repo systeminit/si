@@ -3,10 +3,11 @@
     <div class="flex flex-row items-center mb-sm">
       <div class="w-xl mr-md flex-none"><SiLogo /></div>
       <div class="flex flex-col grow">
-        <h1 class="text-2xl font-bold">Install System Initiative</h1>
+        <h1 class="text-3xl font-bold">Install System Initiative</h1>
         <p class="text-sm italic line-clamp-2">
-          Install or update to v{{ selectedVersion }} of System Initiative to
-          get started.
+          Install or update to v{{ selectedVersion
+          }}{{ selectedVersion === versions[0] ? " (latest)" : "" }} of System
+          Initiative to get started.
         </p>
         <!-- TODO(wendy) - add "latest version" text conditional -->
       </div>
@@ -20,7 +21,7 @@
       </div>
     </div>
     <div class="border border-neutral-400 rounded-lg p-sm">
-      <h1 class="font-bold text-lg">Operating System</h1>
+      <h1 class="font-bold text-2xl pb-xs">Operating System</h1>
       <div class="flex flex-row gap-2 mt-xs">
         <div
           v-for="platform in platforms"
@@ -38,13 +39,51 @@
           {{ platform }}
         </div>
       </div>
-      <div class="border-b border-neutral-400 my-md" />
-      <div class="font-bold">Shell script for installation</div>
+      <div class="border-b border-neutral-400 mb-md mt-sm" />
+      <div class="font-bold text-xl">Requirements</div>
+      <RichText class="py-sm">
+        Before installing System Initiative, you will need to have
+        <code>docker</code> installed. We suggest using
+        <a
+          class="font-bold dark:text-action-400 text-action-600"
+          href="https://www.docker.com/products/docker-desktop/"
+          target="_blank"
+          >Docker Desktop</a
+        >
+        or Docker Engine corresponding to your native architecture{{
+          selectedPlatform === "Linux"
+            ? " (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside WSL2)"
+            : ""
+        }}.
+      </RichText>
+      <div class="font-bold text-xl">Shell script for installation</div>
+      <p
+        class="text-sm italic dark:text-neutral-400 text-neutral-600 line-clamp-2"
+      >
+        Copy and paste the following command into your terminal and execute it:
+      </p>
       <RichText class="py-sm">
         <pre><code class="language-shell">$ curl https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
+      <div class="font-bold text-xl">Manual Installation</div>
+      <div>
+        <RichText class="py-sm">
+          In order to manually install System Initiative, please download one of
+          the binaries below. When the binary is downloaded, you can following
+          the commands as follows:
+        </RichText>
+        <RichText>
+          1. Extract the tarball and move the `si` binary to a directory
+          included in your system's <code class="language-shell">$PATH</code
+          ><br />
+          2. Verify that the installation works by running the CLI command:<br />
+        </RichText>
+        <RichText class="py-sm">
+          <pre><code class="language-shell">$ si --version</code></pre>
+        </RichText>
+      </div>
       <template v-if="selectedPlatformAssets.length > 0">
-        <div class="font-bold">
+        <div class="font-bold text-xl">
           Binary download{{ selectedPlatformAssets.length > 1 ? "s" : "" }} for
           {{ selectedPlatform }}
         </div>
@@ -55,7 +94,7 @@
         >
           <div class="flex flex-col">
             <div class="text-sm font-bold">{{ asset.name }}</div>
-            <div class="italic text-sm text-neutral-400">
+            <div class="italic text-sm dark:text-neutral-400 text-neutral-600">
               Version: {{ selectedVersion }}
             </div>
           </div>
@@ -70,7 +109,7 @@
           </a>
         </div>
       </template>
-      <div class="font-bold">Release information</div>
+      <div class="font-bold text-xl">Release information</div>
       <div
         class="border border-neutral-400 rounded p-sm my-sm flex flex-row justify-between items-center"
       >

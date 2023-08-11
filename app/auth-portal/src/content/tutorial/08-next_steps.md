@@ -24,7 +24,11 @@ You have _no idea_ how good it feels to have people we can talk to about System 
 
 ### Schedule an interview
 
+
+[Lets talk on Discord](https://discord.com/invite/system-init).
+
 We’d love to schedule a half-hour Zoom interview with you. [Please schedule time with Adam Jacob (CEO), Anna Saulwick (Director of Product), and Mark Dennard (Director of UX) via our Calendly](https://calendly.com/system_initiative/user-interview).
+
 
 ### Collaborate
 

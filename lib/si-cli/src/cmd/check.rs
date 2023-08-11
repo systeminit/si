@@ -1,23 +1,22 @@
 use crate::key_management::get_user_email;
+use crate::state::AppState;
 use crate::{CliResult, SiCliError};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
 use docker_api::Docker;
-use si_posthog::PosthogClient;
 
-pub async fn invoke(
-    posthog_client: &PosthogClient,
-    mode: String,
-    silent: bool,
-    is_preview: bool,
-) -> CliResult<()> {
-    let email = get_user_email().await?;
-    let _ = posthog_client.capture(
-        "si-command",
-        email,
-        serde_json::json!({"name": "check-dependencies", "mode": mode}),
-    );
+impl AppState {
+    pub async fn check(&self, silent: bool) -> CliResult<()> {
+        self.track(
+            get_user_email().await?,
+            serde_json::json!({"command-name": "check-dependencies"}),
+        );
+        invoke(silent, self.is_preview()).await?;
+        Ok(())
+    }
+}
 
+async fn invoke(silent: bool, is_preview: bool) -> CliResult<()> {
     if !silent {
         println!("Checking that the system is able to interact with the docker engine to control System Initiative...");
     }
