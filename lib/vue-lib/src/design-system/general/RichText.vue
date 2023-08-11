@@ -38,9 +38,17 @@ function adjustments() {
 
 function styleCodeElements() {
   if (!containerRef.value) return;
+
   const codeEls = containerRef.value.querySelectorAll("code");
+
   if (codeEls.length) hasCodeBlocks.value = true;
   codeEls.forEach((codeEl) => {
+    // remove old paste button
+    const oldPasteButtons = codeEl.querySelectorAll(".paste-button");
+    oldPasteButtons.forEach((button) => {
+      button.remove();
+    });
+
     const code = codeEl.textContent;
     // class added like "language-xyz", we'll default to js if nothing set
     let language: string | undefined;
@@ -63,11 +71,6 @@ function styleCodeElements() {
     const parent = codeEl.parentElement;
 
     if (parent && parent.tagName.toUpperCase() === "PRE") {
-      const oldPasteButtons = document.querySelectorAll(".paste-button");
-      oldPasteButtons.forEach((button) => {
-        button.remove();
-      });
-
       const pasteButton = document.createElement("div");
       pasteButton.classList.add(
         "absolute",
