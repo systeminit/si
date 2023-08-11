@@ -22,12 +22,12 @@ write_aws_credentials() {
 	EOF
   chmod 0600 "$HOME/.aws/credentials"
 
-  AWS=$(ls -d /nix/store/*aws*)/bin/aws
-  if ! $AWS sts get-caller-identity > /dev/null; then
-    echo ""
-    echo "Your AWS credentials are invalid, update them with 'si configure'"
-    exit 1
-  fi
+#  AWS=$(ls -d /nix/store/*aws*)/bin/aws
+#  if ! $AWS sts get-caller-identity > /dev/null; then
+#    echo ""
+#    echo "Your AWS credentials are invalid, update them with 'si configure'"
+#    exit 1
+#  fi
 
   # Remove environment variables from veritech's environment
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
