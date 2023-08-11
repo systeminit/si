@@ -291,6 +291,7 @@ watch([checkAuthReq, route], () => {
     if (
       ![
         "login",
+        "signup",
         "404",
         "legal",
         // allow viewing tutorial without login if VITE_PREVIEW_TUTORIAL set in env

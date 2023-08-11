@@ -2,37 +2,41 @@
   <RichText class="text-center">
     <h2>Welcome to System Initiative</h2>
     <p>
-      Please click the button to log in or to signup if you don't have an SI
-      account.
+      You are being redirected to Auth0 to complete login/signup. If you are not
+      automatically redirected, please
+      <a :href="AUTHORIZE_URL">click here</a> to continue.
     </p>
 
-    <p class="italic">
+    <!-- <p class="italic">
       <template v-if="countDownSeconds === 0">Redirecting...</template>
       <template v-else>
         You will be automatically redirected in {{ countDownSeconds }}
         {{ countDownSeconds === 1 ? "second" : "seconds" }}
       </template>
-    </p>
-    <VButton :href="LOGIN_URL" size="lg">Log in or Sign up!</VButton>
+    </p> -->
   </RichText>
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import { RichText, VButton } from "@si/vue-lib/design-system";
+import { onBeforeMount, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { RichText } from "@si/vue-lib/design-system";
 import { useHead } from "@vueuse/head";
 import { useAuthStore } from "@/store/auth.store";
 
-const API_URL = import.meta.env.VITE_AUTH_API_URL;
-const LOGIN_URL = `${API_URL}/auth/login`;
-
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
-const countDownSeconds = ref(5);
+const IS_SIGNUP = route.name === "signup";
 
-useHead({ title: "Login" });
+const API_URL = import.meta.env.VITE_AUTH_API_URL;
+// if on /signup we add an extra hint to tell auth0 to start on signup
+const AUTHORIZE_URL = `${API_URL}/auth/login${IS_SIGNUP ? "?signup=1" : ""}`;
+
+// const countDownSeconds = ref(0);
+
+useHead({ title: IS_SIGNUP ? "Sign Up" : "Login" });
 
 onBeforeMount(async () => {
   if (authStore.userIsLoggedIn) {
@@ -41,14 +45,14 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
-  setInterval(() => {
-    // in case redirecting fails or takes longer, dont want the timer to go negative
-    if (countDownSeconds.value === 0) return;
-
-    countDownSeconds.value--;
-    if (countDownSeconds.value === 0) {
-      window.location.replace(LOGIN_URL);
-    }
-  }, 1000);
+  window.location.replace(AUTHORIZE_URL);
+  // setInterval(() => {
+  //   // in case redirecting fails or takes longer, dont want the timer to go negative
+  //   if (countDownSeconds.value === 0) return;
+  //   countDownSeconds.value--;
+  //   if (countDownSeconds.value === 0) {
+  //     window.location.replace(AUTHORIZE_URL);
+  //   }
+  // }, 1000);
 });
 </script>

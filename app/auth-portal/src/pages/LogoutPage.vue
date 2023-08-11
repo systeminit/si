@@ -15,8 +15,7 @@ const router = useRouter();
 onMounted(async () => {
   if (authStore.userIsLoggedIn) {
     await authStore.logout();
-  } else {
-    await router.push({ name: "login" });
   }
+  window.location.href = "https://www.systeminit.com";
 });
 </script>

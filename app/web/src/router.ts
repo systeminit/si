@@ -145,6 +145,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/auth/LogoutPage.vue"), // just need something here for TS, but guard always redirects
   },
 
+  {
+    path: "/oops",
+    name: "oops",
+    meta: { public: true },
+    component: () => import("@/pages/OopsPage.vue"),
+  },
+
   // 404
   {
     path: "/:catchAll(.*)",

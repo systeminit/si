@@ -62,7 +62,10 @@
       >
         Copy and paste the following command into your terminal and execute it:
       </p>
-      <RichText class="py-sm">
+      <RichText
+        class="py-sm"
+        @mousedown="tracker.trackEvent('copy_install_script')"
+      >
         <pre><code class="language-shell">$ curl -sSf https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
       <div class="font-bold text-xl">Manual Installation</div>
@@ -102,6 +105,12 @@
             class="flex flex-row items-center text-action-500 font-bold cursor-pointer"
             :href="asset.url"
             target="_blank"
+            @mousedown="
+              tracker.trackEvent('binary_download_click', {
+                version: selectedVersion,
+                platform: selectedPlatform,
+              })
+            "
           >
             <!-- TODO(wendy) - download link goes here -->
             <div>Download</div>
@@ -123,6 +132,7 @@
           class="flex flex-row items-center text-action-500 font-bold cursor-pointer"
           :href="`https://github.com/systeminit/si/releases/tag/${selectedVersion}`"
           target="_blank"
+          @mousedown="tracker.trackEvent('changelog_click')"
         >
           <!-- TODO(wendy) - changelog link goes here -->
           <div>Github</div>
@@ -140,6 +150,7 @@ import clsx from "clsx";
 import { computed, onBeforeMount, ref } from "vue";
 import { Icon, VormInput, RichText } from "@si/vue-lib/design-system";
 import { Asset, useGithubStore } from "@/store/github.store";
+import { tracker } from "@/lib/posthog";
 import { useFeatureFlagsStore } from "../store/feature_flags.store";
 
 const featureFlagsStore = useFeatureFlagsStore();

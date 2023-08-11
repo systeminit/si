@@ -11,6 +11,7 @@
         'cursor-pointer',
       )
     "
+    @mousedown="tracker.trackEvent('workspace_launcher_widget_click')"
   >
     <Icon v-if="!compact" name="laptop" size="lg" />
     <Stack spacing="xs">
@@ -107,6 +108,7 @@ import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
 
 import { API_HTTP_URL } from "@/store/api";
+import { tracker } from "@/lib/posthog";
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId> },

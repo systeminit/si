@@ -16,7 +16,9 @@ router.get("/auth/login", async (ctx) => {
   // TODO: can read from querystring info about where request originated
   // so that we can shoot later directly back to the right place, skipping auth portal
 
-  const { randomState, url } = getAuth0LoginUrl();
+  // passing in a querystring signup=1 will show auth0's signup page instead of login
+  // it's almost exactly the same, but one less step if using a password
+  const { randomState, url } = getAuth0LoginUrl(!!ctx.request.query.signup);
 
   // save our auth request in the cache using our random state
   await setCache(
