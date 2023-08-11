@@ -125,7 +125,6 @@ interface GithubTag {
 interface LatestContainer {
   namespace: string;
   repository: string;
-  name: string;
   gitSha: string;
   digest: string;
 }
@@ -158,17 +157,20 @@ router.get("/github/containers/latest", async (ctx) => {
         );
       });
 
-      const prefixes = ["sdf", "veritech", "pinga", "council", "module-index", "web", "otelcol", "jaeger", "nats", "postgres"];
+      const prefixes = ["bin/sdf", "bin/veritech", "bin/pinga", "bin/council", "bin/module-index", "app/web", "component/otelcol", "component/jaeger", "component/nats", "component/postgres"];
       const latestContainers = [];
       for (const tag of data) {
         for (const prefix of prefixes) {
-          const start = `refs/tags/${prefix}/sha256-`;
+          const split = prefix.split("/");
+          const start = `refs/tags/${prefix}/image/`;
           if (tag.ref.startsWith(start)) {
+            const indexOfPrefix = prefixes.indexOf(prefix);
+            prefixes.splice(indexOfPrefix, 1);
+
             const digest = tag.ref.replace(start, "");
             latestContainers.push({
               namespace: "systeminit",
-              repository: prefix,
-              name: `${prefix}/sha256-${digest}`,
+              repository: split[split.length - 1],
               gitSha: tag.object.sha,
               digest,
             });

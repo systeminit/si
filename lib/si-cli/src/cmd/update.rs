@@ -38,7 +38,6 @@ pub struct Release {
 pub struct LatestContainer {
     pub namespace: String,
     pub repository: String,
-    pub name: String,
     pub git_sha: String,
     pub digest: String,
 }
