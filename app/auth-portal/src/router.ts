@@ -52,6 +52,8 @@ export const routerOptions: RouterOptions = {
       path: "/login-success",
       name: "login-success",
       redirect() {
+        if (import.meta.env.SSR) return { name: "tutorial" };
+
         // see App.vue for logic saving this redirect location
         const savedPath = storage.getItem("SI-LOGIN-REDIRECT");
         storage.removeItem("SI-LOGIN-REDIRECT");
