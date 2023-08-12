@@ -5,7 +5,7 @@ title: Deploy a containerized web application to an AWS EC2 Instance
 ## Deploy a containerized web application to an AWS EC2 instance
 Have this tutorial open in one browser window and your System Initiative workspace open in another. 
 
-If you already know how System Initiative works, and want to go straight to the summary of the tutorial below, [click here](#summary-version-of-the-tutorial). 
+If you already know how System Initiative works and want to go straight to the tutorial summary, [click here](#summary-version-of-the-tutorial). 
 
 ### The workspace
 Your System Initiative workspace will look like this:
@@ -59,9 +59,9 @@ To fix it, we need to configure the Docker `Image` in the Model to point at a va
 
 ![Docker image details panel](/tutorial-img/03-deploy_containerized_app/docker_image_details_panel.png)
 
-In the `Selected Assets Panel` (Attributes tab) change the `si/name` of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. You'll see the progress bar update, and shortly after that the Qualification icon will turn green, both on the Canvas and in the `Diagram Outline Panel`.
+In the `Selected Assets Panel` (Attributes tab), change the `si/name` of the Docker `Image` asset to `systeminit/whiskers`. Press 'Enter'. You'll see the progress bar update, and shortly after that, the Qualification icon will turn green, both on the Canvas and in the `Diagram Outline Panel`.
 
-Notice that, in addition to setting the `si/name` attribute, this action also sets `domain/image` to the same value. In System Initiative, Assets can infer configuration - either from their attributes or from relationships they have with other Assets. It's a powerful way to easily generate a correct configuration.
+Notice that, in addition to setting the `si/name` attribute, this action also sets `domain/image` to the same value. In System Initiative, Assets can infer configuration - either from their attributes or from relationships they have with other Assets. It's a powerful way to generate a correct configuration easily.
 
 Our Docker `Image` exposes a web server running on port 80. Once again, go to the `Selected Assets Panel` (Attributes tab), scroll down to the `domain/ExposedPorts[0]` attribute, and click the `+ Add to array` button. The progress bar will update, and you will see a new field for the ExposedPort.
 
@@ -105,7 +105,7 @@ You'll need to pick a Region for your deployment. Select the AWS `Region` asset 
 
 Notice that this Asset looks different from the previous two! An AWS `Region` is a configuration 'frame,' meaning that any Asset placed inside is automatically configured by it.
 
-You will see a red Qualification failure on the `Region`. Investigate in the `Diagram Outline Panel`, you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the Qualification for this `Region` turns from a red X to a green check - you're good to go. Notice System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
+You will see a red Qualification failure on the `Region`. Investigate in the `Diagram Outline Panel`, and you'll learn that it appears because you haven't decided which AWS Region to use. Select the `Region` frame, and go to the `Selected Assets Panel` (Attributes tab). Set the `domain/region` attribute to `us-east-2`. When the Qualification for this `Region` turns from a red X to a green check - you're good to go. Notice System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
 
 Resize the `Region` frame to be larger by clicking and dragging the corner of the frame. You can see in the lower right corner of the frame that it is not qualified - that's because you haven't decided which AWS Region to use.
 
@@ -122,7 +122,7 @@ Things should look like this:
 
 ![Ec2 Instance in Region Frame](/tutorial-img/03-deploy_containerized_app/ec2_instance_in_region_frame.png)
 
-Let's work backward, connecting all the things your `EC2 Instance` needs in order to function. Your `Butane` configuration has a matching `User Data` output socket to your new `EC2 Instance`'s `User Data` input socket. Let's connect them now.
+Let's work backward, connecting everything your `EC2 Instance` needs to function. Your `Butane` configuration has a matching `User Data` output socket to your new `EC2 Instance`'s `User Data` input socket. Let's connect them now.
 
 ![Connected Inside a Region](/tutorial-img/03-deploy_containerized_app/connected_inside_a_region.png)
 
@@ -144,7 +144,7 @@ Your `Ingress` rule has an orange warning on Qualification status. Click the war
 
 ![Warning on Ingress](/tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
 
-The configuration for this `Ingress` rule isn't qualified for use (yet!) - for it to work, it needs to know the Security Group ID. You don't have one of those yet, because the AWS `Security Group` doesn't exist yet (it won't exist until you've finished modeling and click `Apply Changes`). Since your `Ingress` rule is connected to your `Security Group` in the model, once the `Security Group` exists the the Security Group ID will pass through automatically and the warning will resolve itself.
+The configuration for this `Ingress` rule isn't qualified for use (yet!) - for it to work, it needs to know the Security Group ID. You don't have one of those yet, because the AWS `Security Group` doesn't exist yet (it won't exist until you've finished modeling and clicked `Apply Changes`). Since your `Ingress` rule is connected to your `Security Group` in the model, once the `Security Group` exists the Security Group ID will pass through automatically, and the warning will resolve itself.
 
 Investigate some automation in your model:  
 * Select the `Ingress` rule, and switch to the Code tab in the `Selected Assets Panel`. Check out how System Initiative has written the `IpPermissions` automatically. You now have a single configuration attribute, the ExposedPorts of your Docker `Image`, automatically configuring the Operating System, EC2 User Data, and your `Ingress` rule.
@@ -157,7 +157,7 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 There is one more open input socket on the `EC2 Instance`: the `Image ID` socket. In AWS EC2, you use an AMIs ID as the Image ID.
 
 * Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`. 
-* Connect the `Image ID` output socket on the `AMI` to the corrresponding input socket on the `EC2 Instance`. 
+* Connect the `Image ID` output socket on the `AMI` to the corresponding input socket on the `EC2 Instance`. 
 * Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and go to the `Selected Assets Panel` (Attributes tab) and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)). Click Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
@@ -172,7 +172,7 @@ Select the `EC2 Instance`, go to the `Selected Assets Panel`, (Attributes tab), 
 
 Review the `Diagram Outline Panel`: 
 * **Four Changes notifications (red tools)**: (no action needed)
-  * Each of the four AWS Assets you used has a red tools Changes notification, which is telling you that this resource does not exist yet. 
+  * Each of the four AWS Assets you used has a red tools Changes notification, which tells you that this resource does not exist yet. 
   * These Resources will be created once you click `Apply Changes` in a moment. Once they exist, these Confirmations will turn green.
 
 * **Two Qualification warnings (orange exclamation point)**: (no action needed) 
@@ -199,7 +199,7 @@ You will see a screen wipe, followed by a confetti cannon. The progress bar will
 ![Applied Changes](/tutorial-img/03-deploy_containerized_app/applied_changes.png)
 
 Three things to notice about the screen in front of you:
-* The name of the Change Set in the top left has changed to `head`. This means that the Model on your Canvas is read-only, and is a 1:1 representation of reality as it existed when the changes were last applied.
+* The name of the Change Set in the top left has changed to `head`. This means that the Model on your Canvas is read-only and is a 1:1 representation of reality as it existed when the changes were last applied.
 
  * The `Changes Panel` now shows only Applied Changes and no longer contains a Proposed Changes tab.
 
