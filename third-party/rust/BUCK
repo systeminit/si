@@ -462,6 +462,15 @@ cargo.rust_library(
     crate = "async_nats",
     crate_root = "async-nats-0.31.0.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "CARGO_MANIFEST_DIR": "async-nats-0.31.0.crate",
+        "CARGO_PKG_DESCRIPTION": "A async Rust NATS client",
+        "CARGO_PKG_NAME": "async-nats",
+        "CARGO_PKG_VERSION": "0.31.0",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "31",
+        "CARGO_PKG_VERSION_PATCH": "0",
+    },
     visibility = [],
     deps = [
         ":base64-0.21.2",
@@ -5058,7 +5067,7 @@ cargo.rust_library(
     deps = [
         ":http-0.2.9",
         ":hyper-0.14.26",
-        ":rustls-0.21.2",
+        ":rustls-0.21.6",
         ":tokio-1.28.2",
         ":tokio-rustls-0.24.1",
     ],
@@ -9692,7 +9701,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -9713,7 +9722,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -9734,7 +9743,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -9755,7 +9764,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -9776,7 +9785,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -9798,7 +9807,7 @@ cargo.rust_library(
                 ":once_cell-1.18.0",
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
-                ":rustls-0.21.2",
+                ":rustls-0.21.6",
                 ":rustls-pemfile-1.0.2",
                 ":tokio-1.28.2",
                 ":tokio-rustls-0.24.1",
@@ -10789,19 +10798,25 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "rustls",
+    actual = ":rustls-0.21.6",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
-    name = "rustls-0.21.2.crate",
-    sha256 = "e32ca28af694bc1bbf399c33a516dbdf1c90090b8ab23c2bc24f834aa2247f5f",
-    strip_prefix = "rustls-0.21.2",
-    urls = ["https://crates.io/api/v1/crates/rustls/0.21.2/download"],
+    name = "rustls-0.21.6.crate",
+    sha256 = "1d1feddffcfcc0b33f5c6ce9a29e341e4cd59c3f78e7ee45f4a40c038b1d6cbb",
+    strip_prefix = "rustls-0.21.6",
+    urls = ["https://crates.io/api/v1/crates/rustls/0.21.6/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "rustls-0.21.2",
-    srcs = [":rustls-0.21.2.crate"],
+    name = "rustls-0.21.6",
+    srcs = [":rustls-0.21.6.crate"],
     crate = "rustls",
-    crate_root = "rustls-0.21.2.crate/src/lib.rs",
+    crate_root = "rustls-0.21.6.crate/src/lib.rs",
     edition = "2021",
     features = [
         "dangerous_configuration",
@@ -10814,7 +10829,7 @@ cargo.rust_library(
     deps = [
         ":log-0.4.19",
         ":ring-0.16.20",
-        ":rustls-webpki-0.100.1",
+        ":rustls-webpki-0.101.3",
         ":sct-0.7.0",
     ],
 )
@@ -10873,32 +10888,6 @@ cargo.rust_library(
     edition = "2018",
     visibility = [],
     deps = [":base64-0.21.2"],
-)
-
-http_archive(
-    name = "rustls-webpki-0.100.1.crate",
-    sha256 = "d6207cd5ed3d8dca7816f8f3725513a34609c0c765bf652b8c3cb4cfd87db46b",
-    strip_prefix = "rustls-webpki-0.100.1",
-    urls = ["https://crates.io/api/v1/crates/rustls-webpki/0.100.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "rustls-webpki-0.100.1",
-    srcs = [":rustls-webpki-0.100.1.crate"],
-    crate = "webpki",
-    crate_root = "rustls-webpki-0.100.1.crate/src/lib.rs",
-    edition = "2018",
-    features = [
-        "alloc",
-        "default",
-        "std",
-    ],
-    visibility = [],
-    deps = [
-        ":ring-0.16.20",
-        ":untrusted-0.7.1",
-    ],
 )
 
 http_archive(
@@ -13227,6 +13216,7 @@ cargo.rust_binary(
         ":remain-0.2.8",
         ":reqwest-0.11.18",
         ":rust-s3-0.33.0",
+        ":rustls-0.21.6",
         ":sea-orm-0.11.3",
         ":serde-1.0.164",
         ":serde-aux-4.2.0",
@@ -13736,7 +13726,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":rustls-0.21.2",
+        ":rustls-0.21.6",
         ":tokio-1.28.2",
     ],
 )
