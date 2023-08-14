@@ -72,7 +72,6 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     skip_all,
     level = "debug",
     fields(
-        messaging.consumer_id = sub.metadata().messaging_consumer_id(),
         messaging.destination = sub.metadata().messaging_destination(),
         messaging.destination_kind = sub.metadata().messaging_destination_kind(),
         messaging.operation = sub.metadata().messaging_operation(),

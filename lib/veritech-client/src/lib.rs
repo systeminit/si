@@ -249,14 +249,14 @@ impl Client {
         let mut root_subscription = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         self.nats
-            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root.clone()), None, msg)
+            .publish_with_reply(subject, reply_mailbox_root.clone(), msg)
             .await?;
 
         tokio::select! {
             // Wait for one message on the result reply mailbox
             result = result_subscription.try_next() => {
-                root_subscription.unsubscribe().await?;
-                result_subscription.unsubscribe().await?;
+                root_subscription.unsubscribe_after(0).await?;
+                result_subscription.unsubscribe_after(0).await?;
                 match result? {
                     Some(result) => Ok(result.payload),
                     None => Err(ClientError::NoResult)
@@ -281,7 +281,7 @@ impl Client {
 
                 // In all cases, we're considering a message on this subscription to be fatal and
                 // will return with an error
-                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)??))
+                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)?))
             }
         }
     }
@@ -303,7 +303,7 @@ async fn forward_output_task(
             }
         }
     }
-    if let Err(err) = output_subscription.unsubscribe().await {
+    if let Err(err) = output_subscription.unsubscribe_after(0).await {
         warn!(error = ?err, "error when unsubscribing from output subscription");
     }
 }

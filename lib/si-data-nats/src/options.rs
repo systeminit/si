@@ -1,11 +1,11 @@
-use std::{io, path::Path, time::Duration};
+use std::{path::PathBuf, time::Duration};
 
 use super::{Client, Result};
 
 /// Connect options.
 #[derive(Debug, Default)]
 pub struct Options {
-    pub(crate) inner: nats::Options,
+    pub(crate) inner: async_nats::ConnectOptions,
 }
 
 impl Options {
@@ -26,8 +26,8 @@ impl Options {
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn with_token(token: &str) -> Self {
-        nats::Options::with_token(token).into()
+    pub fn with_token(token: String) -> Self {
+        async_nats::ConnectOptions::with_token(token).into()
     }
 
     /// Authenticate with NATS using a username and password.
@@ -36,14 +36,14 @@ impl Options {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::with_user_pass("derek", "s3cr3t!")
+    /// let nc = Options::with_user_and_password("derek", "s3cr3t!")
     ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn with_user_pass(user: &str, password: &str) -> Self {
-        nats::Options::with_user_pass(user, password).into()
+    pub fn with_user_and_password(user: String, password: String) -> Self {
+        async_nats::ConnectOptions::with_user_and_password(user, password).into()
     }
 
     /// Authenticate with NATS using a `.creds` file.
@@ -55,20 +55,22 @@ impl Options {
     ///
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::with_credentials("path/to/my.creds")
+    /// let nc = Options::with_credentials_file("path/to/my.creds")
     ///     .connect("connect.ngs.global", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
-    pub fn with_credentials(path: impl AsRef<Path>) -> Self {
-        nats::Options::with_credentials(path).into()
+    pub async fn with_credentials_file(path: PathBuf) -> Result<Self> {
+        Ok(async_nats::ConnectOptions::with_credentials_file(path)
+            .await?
+            .into())
     }
 
     /// Authenticate with NATS using a static credential str, using the creds file format.
     ///
-    /// Note that this is more hazardous than using the above `with_credentials` method because it
+    /// Note that this is more hazardous than using the above `with_credentials_file` method because it
     /// retains the secret in-memory for the lifetime of this client instead of zeroing the
-    /// credentials after holding them for a very short time, as the `with_credentials` method
+    /// credentials after holding them for a very short time, as the `with_credentials_file` method
     /// does.
     ///
     /// # Examples
@@ -89,62 +91,14 @@ impl Options {
     /// ------END USER NKEY SEED------
     /// ";
     ///
-    /// let nc = Options::with_static_credentials(creds)
+    /// let nc = Options::with_credentials(creds)
     ///     .expect("failed to parse static creds")
     ///     .connect("connect.ngs.global", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
-    pub fn with_static_credentials(creds: &str) -> Result<Self> {
-        Ok(nats::Options::with_static_credentials(creds)?.into())
-    }
-
-    /// Authenticate with a function that loads user JWT and a signature function.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// let seed = "SUANQDPB2RUOE4ETUA26CNX7FUKE5ZZKFCQIIW63OX225F2CO7UEXTM7ZY";
-    /// let kp = nkeys::KeyPair::from_seed(seed).unwrap();
-    ///
-    /// fn load_jwt() -> std::io::Result<String> {
-    ///     todo!()
-    /// }
-    ///
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::with_jwt(load_jwt, move |nonce| kp.sign(nonce).unwrap())
-    ///     .connect("localhost", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn with_jwt<J, S>(jwt_cb: J, sig_cb: S) -> Self
-    where
-        J: Fn() -> io::Result<String> + Send + Sync + 'static,
-        S: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
-    {
-        nats::Options::with_jwt(jwt_cb, sig_cb).into()
-    }
-
-    /// Authenticate with NATS using a public key and a signature function.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// let nkey = "UAMMBNV2EYR65NYZZ7IAK5SIR5ODNTTERJOBOF4KJLMWI45YOXOSWULM";
-    /// let seed = "SUANQDPB2RUOE4ETUA26CNX7FUKE5ZZKFCQIIW63OX225F2CO7UEXTM7ZY";
-    /// let kp = nkeys::KeyPair::from_seed(seed).unwrap();
-    ///
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::with_nkey(nkey, move |nonce| kp.sign(nonce).unwrap())
-    ///     .connect("localhost", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn with_nkey<F>(nkey: &str, sig_cb: F) -> Self
-    where
-        F: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
-    {
-        nats::Options::with_nkey(nkey, sig_cb).into()
+    pub fn with_credentials(creds: &str) -> Result<Self> {
+        Ok(async_nats::ConnectOptions::with_credentials(creds)?.into())
     }
 
     /// Set client certificate and private key files.
@@ -154,13 +108,13 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .client_cert("client-cert.pem", "client-key.pem")
+    ///     .add_client_certificate("client-cert.pem", "client-key.pem")
     ///     .connect("nats://localhost:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
-    pub fn client_cert(self, cert: impl AsRef<Path>, key: impl AsRef<Path>) -> Self {
-        self.inner.client_cert(cert, key).into()
+    pub fn add_client_certificate(self, cert: PathBuf, key: PathBuf) -> Self {
+        self.inner.add_client_certificate(cert, key).into()
     }
 
     /// Set the default TLS config that will be used for connections.
@@ -191,7 +145,7 @@ impl Options {
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn tls_client_config(self, tls_client_config: nats::rustls::ClientConfig) -> Self {
+    pub fn tls_client_config(self, tls_client_config: async_nats::rustls::ClientConfig) -> Self {
         self.inner.tls_client_config(tls_client_config).into()
     }
 
@@ -202,14 +156,14 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .with_name("My App")
+    ///     .name("My App")
     ///     .connect("demo.nats.io", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn with_name(self, name: &str) -> Self {
-        self.inner.with_name(name).into()
+    pub fn name(self, name: &str) -> Self {
+        self.inner.name(name).into()
     }
 
     /// Select option to not deliver messages that we have published.
@@ -227,48 +181,6 @@ impl Options {
     #[must_use]
     pub fn no_echo(self) -> Self {
         self.inner.no_echo().into()
-    }
-
-    /// Set the maximum number of reconnect attempts.  If no servers remain that are under this
-    /// threshold, then no further reconnect shall be attempted.  The reconnect attempt for a
-    /// server is reset upon successful connection.
-    ///
-    /// If None then there is no maximum number of attempts.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::new()
-    ///     .max_reconnects(3)
-    ///     .connect("demo.nats.io", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn max_reconnects<T: Into<Option<usize>>>(self, max_reconnects: T) -> Self {
-        self.inner.max_reconnects(max_reconnects).into()
-    }
-
-    /// Set the maximum amount of bytes to buffer when accepting outgoing traffic in disconnected
-    /// mode.
-    ///
-    /// The default value is 8mb.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::new()
-    ///     .reconnect_buffer_size(64 * 1024)
-    ///     .connect("demo.nats.io", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    #[must_use]
-    pub fn reconnect_buffer_size(self, reconnect_buffer_size: usize) -> Self {
-        self.inner
-            .reconnect_buffer_size(reconnect_buffer_size)
-            .into()
     }
 
     /// Establish a `Connection` with a NATS server.
@@ -302,88 +214,6 @@ impl Options {
         subject_prefix: Option<String>,
     ) -> Result<Client> {
         Client::connect_with_options(nats_url, subject_prefix, self).await
-    }
-
-    /// Set a callback to be executed when connectivity to a server has been lost.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::new()
-    ///     .disconnect_callback(|| println!("connection has been lost"))
-    ///     .connect("demo.nats.io", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn disconnect_callback<F>(self, cb: F) -> Self
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        self.inner.disconnect_callback(cb).into()
-    }
-
-    /// Set a callback to be executed when connectivity to a server has been reestablished.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::new()
-    ///     .reconnect_callback(|| println!("connection has been reestablished"))
-    ///     .connect("demo.nats.io", None)
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn reconnect_callback<F>(self, cb: F) -> Self
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        self.inner.reconnect_callback(cb).into()
-    }
-
-    // This is no longer valid - the upstream splits config between Nats and JetStream
-    // -- Adam
-    //
-    // we aren't using JetStream, so...
-    // Set a custom `JetStream` API prefix. This is useful when using `JetStream` through
-    // exports/imports.
-    //
-    // # Examples
-    //
-    // ```no_run
-    // # use si_data_nats::Options; tokio_test::block_on(async {
-    // let nc = Options::new()
-    //     .jetstream_api_prefix("some_exported_prefix".to_string())
-    //     .connect("demo.nats.io", None)
-    //     .await?;
-    // nc.drain().await?;
-    // # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    // ```
-    //#[must_use]
-    //pub fn jetstream_api_prefix(self, jetstream_prefix: String) -> Self {
-    //    self.inner.jetstream_api_prefix(jetstream_prefix).into()
-    //}
-
-    /// Set a callback to be executed when the client has been closed due to exhausting reconnect
-    /// retries to known servers or by completing a drain request.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// let nc = Options::new()
-    ///     .close_callback(|| println!("connection has been closed"))
-    ///     .connect("demo.nats.io", None)
-    ///     .await?;
-    /// nc.drain().await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    pub fn close_callback<F>(self, cb: F) -> Self
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        self.inner.close_callback(cb).into()
     }
 
     /// Set a callback to be executed for calculating the backoff duration to wait before a server
@@ -424,14 +254,14 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .tls_required(true)
+    ///     .require_tls(true)
     ///     .connect("tls://demo.nats.io:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn tls_required(self, tls_required: bool) -> Self {
-        self.inner.tls_required(tls_required).into()
+    pub fn require_tls(self, tls_required: bool) -> Self {
+        self.inner.require_tls(tls_required).into()
     }
 
     /// Adds a root certificate file.
@@ -443,18 +273,18 @@ impl Options {
     /// ```no_run
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let nc = Options::new()
-    ///     .add_root_certificate("my-certs.pem")
+    ///     .add_root_certificates("my-certs.pem")
     ///     .connect("tls://demo.nats.io:4443", None)
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
-    pub fn add_root_certificate(self, path: impl AsRef<Path>) -> Self {
-        self.inner.add_root_certificate(path).into()
+    pub fn add_root_certificates(self, path: PathBuf) -> Self {
+        self.inner.add_root_certificates(path).into()
     }
 }
 
-impl From<nats::Options> for Options {
-    fn from(inner: nats::Options) -> Self {
+impl From<async_nats::ConnectOptions> for Options {
+    fn from(inner: async_nats::ConnectOptions) -> Self {
         Self { inner }
     }
 }
