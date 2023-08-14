@@ -132,14 +132,9 @@ impl DockerClient {
             let h1 = tokio::spawn(async move {
                 let mut downloaded = 0;
 
-                let auth = RegistryAuth::builder()
-                    .username("stack72")
-                    .password("dckr_pat_dHhJ3jhygqHx2gCCZqchywQEvDQ")
-                    .build();
                 let pull_opts = PullOpts::builder()
                     .image(missing_container)
                     .tag("stable")
-                    .auth(auth)
                     .build();
                 let images = docker.images();
                 let mut stream = images.pull(&pull_opts);
