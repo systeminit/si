@@ -43,6 +43,7 @@ members = [
 ]
 
 [workspace.dependencies]
+async-nats = "0.31.0"
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
 axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
@@ -53,7 +54,7 @@ chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 colored = "2.0.4"
-comfy-table = {version ="7.0.1", features = ["crossterm", "tty", "custom_styling"] }
+comfy-table = { version = "7.0.1", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
@@ -66,6 +67,7 @@ diff = "0.1.13"
 directories = "5.0.1"
 docker-api = "0.14"
 dyn-clone = "1.0.11"
+flate2 = "1.0.26"
 futures = "0.3.28"
 futures-lite = "1.13.0"
 hex = "0.4.3"
@@ -80,12 +82,11 @@ itertools = "0.10.5"
 jwt-simple = "0.11.5"
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
-async-nats = "0.31"
 nix = "0.26.2"
 nkeys = "0.2.0"
 num_cpus = "1.15.0"
-open = "5.0.0"
 once_cell = "1.17.1"
+open = "5.0.0"
 opentelemetry = { version = "~0.18.0", features = ["rt-tokio", "trace"] } # pinned, pending new release of tracing-opentelemetry, 0.18
 opentelemetry-otlp = "~0.11.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
 opentelemetry-semantic-conventions = "~0.10.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
@@ -104,11 +105,11 @@ regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
+rustls = "0.21.6" # pinned, pending update from tokio-rustls for async-nats
+sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }
-toml = { version = "0.7.6" }
 serde_url_params = "0.2.1"
 serde_with = "3.0.0"
 serde_yaml = "0.9.21"
@@ -127,6 +128,7 @@ tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.18.0"
 tokio-util = { version = "0.7.8", features = ["codec"] }
+toml = { version = "0.7.6" }
 tower = "0.4.13"
 tower-http = { version = "0.4.0", features = ["cors", "trace"] }
 tracing = { version = "0.1" }
@@ -137,7 +139,6 @@ url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.3.2", features = ["serde", "v4"] }
 vfs = "0.9.0"
 vfs-tar = { version = "0.4.0", features = ["mmap"] }
-flate2 = "1.0.26"
 
 [patch.crates-io]
 # pending a potential merge and release of
