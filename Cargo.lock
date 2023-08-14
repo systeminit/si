@@ -4657,6 +4657,7 @@ dependencies = [
 name = "si-cli"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "base64 0.21.2",
  "color-eyre",
  "colored",
@@ -4677,6 +4678,7 @@ dependencies = [
  "si-posthog",
  "sodiumoxide",
  "tar",
+ "telemetry",
  "tempfile",
  "thiserror",
  "tokio",
