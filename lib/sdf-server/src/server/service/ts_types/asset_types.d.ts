@@ -41,9 +41,9 @@ class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
     setUiHidden(hidden: boolean): this;
     setValueFrom(valueFrom: ValueFrom): this;
 }
-type ValidationType = "customValidation" | "integerIsBetweenTwoIntegers" | "integerIsNotEmpty" | "stringEquals" | "stringHasPrefix" | "stringInStringArray" | "stringIsHexColor" | "stringIsNotEmpty" | "stringIsValidIpAddr";
+type ValidationKind = "customValidation" | "integerIsBetweenTwoIntegers" | "integerIsNotEmpty" | "stringEquals" | "stringHasPrefix" | "stringInStringArray" | "stringIsHexColor" | "stringIsNotEmpty" | "stringIsValidIpAddr";
 interface Validation {
-    type: ValidationType;
+    type: ValidationKind;
     funcUniqueId?: Record<string, unknown>;
     lowerBound?: number;
     upperBound?: number;
@@ -51,7 +51,7 @@ interface Validation {
     displayExpected?: boolean;
 }
 interface IValidationBuilder {
-    setType(type: ValidationType): this;
+    setKind(kind: ValidationKind): this;
     addFuncUniqueId(key: string, value: unknown): this;
     setLowerBound(value: number): this;
     setUpperBound(value: number): this;
@@ -67,7 +67,7 @@ class ValidationBuilder implements IValidationBuilder {
     setDisplayExpected(display: boolean): this;
     addExpected(expected: string): this;
     setLowerBound(value: number): this;
-    setType(type: ValidationType): this;
+    setKind(type: ValidationKind): this;
     setUpperBound(value: number): this;
 }
 type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secretSelect" | "select" | "text" | "textArea";

@@ -105,7 +105,7 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
     }
 }
 
-export type ValidationType =
+export type ValidationKind =
     | "customValidation"
     | "integerIsBetweenTwoIntegers"
     | "integerIsNotEmpty"
@@ -117,7 +117,7 @@ export type ValidationType =
     | "stringIsValidIpAddr";
 
 export interface Validation {
-    type: ValidationType;
+    kind: ValidationKind;
     funcUniqueId?: Record<string, unknown>;
     lowerBound?: number;
     upperBound?: number;
@@ -126,7 +126,7 @@ export interface Validation {
 }
 
 export interface IValidationBuilder {
-    setType(type: ValidationType): this;
+    setKind(kind: ValidationKind): this;
 
     addFuncUniqueId(key: string, value: unknown): this;
 
@@ -149,7 +149,7 @@ export class ValidationBuilder implements IValidationBuilder {
     }
 
     addFuncUniqueId(key: string, value: unknown): this {
-        if (this.validation.type !== "customValidation") {
+        if (this.validation.kind !== "customValidation") {
             return this;
         }
 
@@ -166,7 +166,7 @@ export class ValidationBuilder implements IValidationBuilder {
     }
 
     setDisplayExpected(display: boolean): this {
-        if (this.validation.type !== "stringInStringArray") {
+        if (this.validation.kind !== "stringInStringArray") {
             return this;
         }
 
@@ -176,9 +176,9 @@ export class ValidationBuilder implements IValidationBuilder {
 
     addExpected(expected: string): this {
         if (
-            this.validation.type !== "stringEquals" &&
-            this.validation.type !== "stringHasPrefix" &&
-            this.validation.type !== "stringInStringArray"
+            this.validation.kind !== "stringEquals" &&
+            this.validation.kind !== "stringHasPrefix" &&
+            this.validation.kind !== "stringInStringArray"
         ) {
             return this;
         }
@@ -192,20 +192,20 @@ export class ValidationBuilder implements IValidationBuilder {
     }
 
     setLowerBound(value: number): this {
-        if (this.validation.type !== "integerIsBetweenTwoIntegers") {
+        if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
             return this;
         }
         this.validation.lowerBound = value;
         return this;
     }
 
-    setType(type: ValidationType): this {
-        this.validation.type = type;
+    setKind(kind: ValidationKind): this {
+        this.validation.kind = kind;
         return this;
     }
 
     setUpperBound(value: number): this {
-        if (this.validation.type !== "integerIsBetweenTwoIntegers") {
+        if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
             return this;
         }
         this.validation.upperBound = value;
