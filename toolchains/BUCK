@@ -10,6 +10,7 @@ load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
+load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
 
 system_cxx_toolchain(
     name = "cxx",
@@ -56,5 +57,11 @@ pnpm_toolchain(
 si_rust_toolchain(
     name = "si_rust",
     rustfmt_toml = "root//:rustfmt.toml",
+    visibility = ["PUBLIC"],
+)
+
+shell_toolchain(
+    name = "shell",
+    editorconfig = "root//:.editorconfig",
     visibility = ["PUBLIC"],
 )

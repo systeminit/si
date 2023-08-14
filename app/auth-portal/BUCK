@@ -3,6 +3,9 @@ load(
     "eslint",
     "export_file",
     "package_node_modules",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
     "typescript_check",
     "vite_app",
 )
@@ -56,7 +59,7 @@ vite_app(
 )
 
 eslint(
-    name = "check-lint",
+    name = "check-lint-typescript",
     srcs = [":src"] + glob([".eslint*"]),
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
@@ -68,6 +71,33 @@ typescript_check(
     tsc_bin = "vue-tsc",
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
+)
+
+shell_srcs = glob(["public/install.sh"])
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = shell_srcs,
+)
+
+shfmt_check(
+    name = "check-format-shell",
+    srcs = shell_srcs,
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-typescript",
+        ":check-lint-shell",
+    ],
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-shell",
+    ],
 )
 
 #

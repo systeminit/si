@@ -71,27 +71,34 @@ def rust_binary(
     )
 
     _rustfmt_check(
-        name = "check-format",
+        name = "check-format-rust",
         srcs = srcs,
         crate_root = crate_root,
         visibility = visibility,
     )
 
+    if not rule_exists("check-format"):
+        _test_suite(
+            name = "check-format",
+            tests = [":check-format-rust"],
+            visibility = visibility,
+        )
+
     _clippy_check(
-        name = "check-lint-bin",
+        name = "check-lint-rust-bin",
         clippy_txt_dep = ":{}[clippy.txt]".format(name),
         visibility = visibility,
     )
 
     _clippy_check(
-        name = "check-lint-unit",
+        name = "check-lint-rust-unit",
         clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
         visibility = visibility,
     )
 
     extra_check_lint_targets = []
     for extra_test_target in extra_test_targets:
-        check_name = "check-lint-{}".format(extra_test_target.replace("test-", ""))
+        check_name = "check-lint-rust-{}".format(extra_test_target.replace("test-", ""))
         _clippy_check(
             name = check_name,
             clippy_txt_dep = "{}[clippy.txt]".format(extra_test_target),
@@ -100,20 +107,30 @@ def rust_binary(
         extra_check_lint_targets.append(":{}".format(check_name))
 
     _test_suite(
-        name = "check-lint",
+        name = "check-lint-rust",
         tests = [
-            ":check-lint-bin",
-            ":check-lint-unit",
+            ":check-lint-rust-bin",
+            ":check-lint-rust-unit",
         ] + extra_check_lint_targets,
         visibility = visibility,
     )
+
+    if not rule_exists("check-lint"):
+        _test_suite(
+            name = "check-lint",
+            tests = [
+                ":check-lint-rust-bin",
+                ":check-lint-rust-unit",
+            ] + extra_check_lint_targets,
+            visibility = visibility,
+        )
 
     _test_suite(
         name = "check",
         tests = [
             ":check-doc",
             ":check-format",
-            ":check-lint-bin",
+            ":check-lint",
         ],
         visibility = visibility,
     )
@@ -196,27 +213,34 @@ def rust_library(
     )
 
     _rustfmt_check(
-        name = "check-format",
+        name = "check-format-rust",
         srcs = srcs,
         crate_root = crate_root,
         visibility = visibility,
     )
 
+    if not rule_exists("check-format"):
+        _test_suite(
+            name = "check-format",
+            tests = [":check-format-rust"],
+            visibility = visibility,
+        )
+
     _clippy_check(
-        name = "check-lint-lib",
+        name = "check-lint-rust-lib",
         clippy_txt_dep = ":{}[clippy.txt]".format(name),
         visibility = visibility,
     )
 
     _clippy_check(
-        name = "check-lint-unit",
+        name = "check-lint-rust-unit",
         clippy_txt_dep = ":{}[clippy.txt]".format("test-unit"),
         visibility = visibility,
     )
 
     extra_check_lint_targets = []
     for extra_test_target in extra_test_targets:
-        check_name = "check-lint-{}".format(extra_test_target.replace(":", "").replace("test-", ""))
+        check_name = "check-lint-rust-{}".format(extra_test_target.replace(":", "").replace("test-", ""))
         _clippy_check(
             name = check_name,
             clippy_txt_dep = "{}[clippy.txt]".format(extra_test_target),
@@ -225,20 +249,30 @@ def rust_library(
         extra_check_lint_targets.append(":{}".format(check_name))
 
     _test_suite(
-        name = "check-lint",
+        name = "check-lint-rust",
         tests = [
-            ":check-lint-lib",
-            ":check-lint-unit",
+            ":check-lint-rust-lib",
+            ":check-lint-rust-unit",
         ] + extra_check_lint_targets,
         visibility = visibility,
     )
+
+    if not rule_exists("check-lint"):
+        _test_suite(
+            name = "check-lint",
+            tests = [
+                ":check-lint-rust-lib",
+                ":check-lint-rust-unit",
+            ] + extra_check_lint_targets,
+            visibility = visibility,
+        )
 
     _test_suite(
         name = "check",
         tests = [
             ":check-doc",
             ":check-format",
-            ":check-lint-lib",
+            ":check-lint",
         ],
         visibility = visibility,
     )

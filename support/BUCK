@@ -1,6 +1,36 @@
-load("@prelude-si//:macros.bzl", "sh_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "sh_binary",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
+)
 
 sh_binary(
     name = "buck2-update-prelude",
     main = "buck2-update-prelude.sh",
+)
+
+shfmt_check(
+    name = "check-format-shell",
+    srcs = glob(["**/*.sh"]),
+)
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = glob(["**/*.sh"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-shell",
+    ],
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-shell",
+    ],
 )

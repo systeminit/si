@@ -17,8 +17,8 @@ main() {
     die "Missing required environment variable: POSTGRES_PASSWORD"
   fi
 
-
   echo "--- Creating multiple databases; triggered by POSTGRES_MULTIPLE_DBS"
+  # shellcheck shell=sh disable=SC2207
   dbs=($(echo "$POSTGRES_MULTIPLE_DBS" | tr ',' '\n'))
   local db
   for db in "${dbs[@]}"; do

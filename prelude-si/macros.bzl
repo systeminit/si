@@ -4,11 +4,13 @@ load(
     _export_file = "export_file",
     _filegroup = "filegroup",
     _sh_binary = "sh_binary",
+    _test_suite = "test_suite",
 )
 alias = _alias
 export_file = _export_file
 filegroup = _filegroup
 sh_binary = _sh_binary
+test_suite = _test_suite
 
 load(
     "@prelude-si//macros:docker.bzl",
@@ -59,6 +61,14 @@ load(
 rust_binary = _rust_binary
 rust_library = _rust_library
 rust_test = _rust_test
+
+load(
+    "@prelude-si//macros:shell.bzl",
+    _shellcheck = "shellcheck",
+    _shfmt_check = "shfmt_check",
+)
+shellcheck = _shellcheck
+shfmt_check = _shfmt_check
 
 load(
     "@prelude-si//macros:tilt.bzl",

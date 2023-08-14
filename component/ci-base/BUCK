@@ -1,6 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
 )
 
 docker_image(
@@ -28,5 +31,29 @@ docker_image(
         "/workdir/tmp",
         "--volume",
         "/var/run/docker.sock:/var/run/docker.sock",
+    ],
+)
+
+shfmt_check(
+    name = "check-format-shell",
+    srcs = ["docker-entrypoint.sh"],
+)
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = ["docker-entrypoint.sh"],
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-shell",
+    ],
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-shell",
     ],
 )
