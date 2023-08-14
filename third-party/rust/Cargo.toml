@@ -19,6 +19,7 @@ path = "top/main.rs"
 # List of packages to be imported, with version constraints, features and all
 # options Cargo supports.
 [dependencies]
+async-nats = "0.31.0"
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
 axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
@@ -58,7 +59,6 @@ itertools = "0.10.5"
 jwt-simple = "0.11.5"
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
-async-nats = "0.31"
 nix = "0.26.2"
 nkeys = "0.2.0"
 num_cpus = "1.15.0"
@@ -83,6 +83,7 @@ regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
+rustls = "0.21.6" # pinned, pending update from tokio-rustls for async-nats
 sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
 self-replace = "1.3.5"
 serde = { version = "1.0.160", features = ["derive", "rc"] }
