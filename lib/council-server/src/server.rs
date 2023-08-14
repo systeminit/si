@@ -110,7 +110,7 @@ impl Server {
                     continue;
                 }
                 req = subscription.next() => match req {
-                    Some(Ok(msg)) => match (serde_json::from_slice::<Request>(msg.data()), msg.reply()) {
+                    Some(msg) => match (serde_json::from_slice::<Request>(msg.data()), msg.reply()) {
                         (Ok(req), Some(reply)) => (reply.to_owned(), req),
                         (Err(err), _) => {
                             error!("Unable to deserialize request: {err}");
@@ -120,10 +120,6 @@ impl Server {
                             error!("No reply channel provided: {msg:?}");
                             continue;
                         }
-                    }
-                    Some(Err(err)) => {
-                        error!("Internal error in nats, bailing out: {err}");
-                        break;
                     }
                     // FIXME: reconnect
                     None => break, // Happens if subscription has been unsubscribed or if connection is closed
