@@ -254,6 +254,8 @@
               jq
               pgcli
               reindeer
+              shellcheck
+              shfmt
               tilt
             ]
             # Directly add the build dependencies for the packages rather than
