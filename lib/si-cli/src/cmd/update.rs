@@ -8,7 +8,7 @@ use colored::Colorize;
 use docker_api::Docker;
 use flate2::read::GzDecoder;
 use inquire::Confirm;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Cursor;
 
@@ -33,7 +33,7 @@ pub struct Release {
     pub published_at: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LatestContainer {
     pub namespace: String,
@@ -237,6 +237,11 @@ async fn invoke(
                 }
 
                 app.start().await?;
+
+                app.track(
+                    get_user_email().await?,
+                    serde_json::json!({"command-name": "update-launcher", "updated-containers": &update.containers}),
+                );
             }
 
             if let Some(update) = &update.si {
@@ -254,12 +259,29 @@ async fn invoke(
                         && asset.name.to_lowercase().contains(&our_os.to_lowercase())
                     {
                         update_current_binary(&asset.url).await?;
+
+                        app.track(
+                            get_user_email().await?,
+                            serde_json::json!({"command-name": "update-launcher", "updated-binary": &asset.url}),
+                        );
                     }
                 }
             }
         }
-        Ok(false) => println!("See ya later ;)"),
-        Err(err) => println!("Error: Try again later!: {err}"),
+        Ok(false) => {
+            app.track(
+                get_user_email().await?,
+                serde_json::json!({"command-name": "update-launcher", "rejected-update": true}),
+            );
+            println!("Update aborted: Remaining on version {current_version} of the launcher")
+        }
+        Err(err) => {
+            app.track(
+                get_user_email().await?,
+                serde_json::json!({"command-name": "update-launcher", "update-error": err.to_string()}),
+            );
+            println!("Error: Try again later!: {err}")
+        }
     }
 
     Ok(())
