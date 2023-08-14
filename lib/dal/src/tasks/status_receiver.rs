@@ -140,8 +140,8 @@ impl StatusReceiver {
             }
         }
 
-        // Unsubscribe from subscription.
-        if let Err(e) = requests.unsubscribe().await {
+        // Unsubscribe from subscription without draining the channel
+        if let Err(e) = requests.unsubscribe_after(0).await {
             error!("could not unsubscribe from nats: {:?}", e);
         }
     }

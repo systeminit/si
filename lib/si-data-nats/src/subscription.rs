@@ -1,21 +1,18 @@
 use std::{
-    future::Future,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
 };
 
-use futures::{FutureExt, Stream};
+use futures::Stream;
 use telemetry::prelude::*;
-use tokio::task::{spawn_blocking, JoinHandle};
 
 use super::{ConnectionMetadata, Error, Message, Result};
 
 /// A `Subscription` receives `Message`s published to specific NATS `Subject`s.
 #[derive(Debug)]
 pub struct Subscription {
-    inner: nats::Subscription,
-    next: Option<NextMessage>,
+    inner: async_nats::Subscriber,
     #[allow(dead_code)]
     shutdown_tx: crossbeam_channel::Sender<()>,
     #[allow(dead_code)]
@@ -26,7 +23,7 @@ pub struct Subscription {
 
 impl Subscription {
     pub(crate) fn new(
-        inner: nats::Subscription,
+        inner: async_nats::Subscriber,
         subject: String,
         connection_metadata: Arc<ConnectionMetadata>,
         sub_span: Span,
@@ -53,7 +50,6 @@ impl Subscription {
 
         Self {
             inner,
-            next: None,
             shutdown_tx,
             shutdown_rx,
             metadata: Arc::new(metadata),
@@ -61,10 +57,7 @@ impl Subscription {
         }
     }
 
-    /// Unsubscribe a subscription immediately without draining.
-    ///
-    /// Use `drain` instead if you want any pending messages to be processed by a handler, if one
-    /// is configured.
+    /// Unsubscribe a subscription draining all remaining messages
     ///
     /// # Examples
     ///
@@ -89,23 +82,20 @@ impl Subscription {
             otel.status_message = Empty,
         )
     )]
-    pub async fn unsubscribe(self) -> Result<()> {
+    pub async fn unsubscribe_after(mut self, unsub_after: u64) -> Result<()> {
         let span = Span::current();
         span.follows_from(&self.sub_span);
 
-        spawn_blocking(move || self.inner.unsubscribe())
+        self.inner
+            .unsubscribe_after(unsub_after)
             .await
-            .map_err(|err| span.record_err(Error::Async(err)))?
-            .map_err(|err| span.record_err(Error::Nats(err)))?;
+            .map_err(|err| span.record_err(Error::NatsUnsubscribe(err)))?;
 
         span.record_ok();
         Ok(())
     }
 
-    /// Close a subscription. Same as `unsubscribe`
-    ///
-    /// Use `drain` instead if you want any pending messages to be processed by a handler, if one
-    /// is configured.
+    /// Unsubscribes from subscription after reaching given number of messages. This is the total number of messages received by this subscription in it’s whole lifespan. If it already reached or surpassed the passed value, it will immediately stop.
     ///
     /// # Examples
     ///
@@ -113,11 +103,11 @@ impl Subscription {
     /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// # let nc = Options::default().connect("demo.nats.io", None).await?;
     /// let sub = nc.subscribe("foo").await?;
-    /// sub.close().await?;
+    /// sub.unsubscribe_after(0).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[instrument(
-        name = "subscription.close",
+        name = "subscription.unsubscribe_after",
         skip_all,
         level = "debug",
         fields(
@@ -130,73 +120,14 @@ impl Subscription {
             otel.status_message = Empty,
         )
     )]
-    pub async fn close(self) -> Result<()> {
+    pub async fn unsubscribe(mut self) -> Result<()> {
         let span = Span::current();
         span.follows_from(&self.sub_span);
 
-        spawn_blocking(move || self.inner.close())
+        self.inner
+            .unsubscribe()
             .await
-            .map_err(|err| span.record_err(Error::Async(err)))?
-            .map_err(|err| span.record_err(Error::Nats(err)))?;
-
-        span.record_ok();
-        Ok(())
-    }
-
-    /// Send an unsubscription then flush the connection, allowing any unprocessed messages to be
-    /// handled by a handler function if one is configured.
-    ///
-    /// After the flush returns, we know that a round-trip to the server has happened after it
-    /// received our unsubscription, so we shut down the subscriber afterwards.
-    ///
-    /// A similar method exists on the `Connection` struct which will drain all subscriptions for
-    /// the NATS client, and transition the entire system into the closed state afterward.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use futures::StreamExt;
-    /// # use std::sync::{Arc, atomic::{AtomicBool, Ordering::SeqCst}};
-    /// # use std::thread;
-    /// # use std::time::Duration;
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// let mut sub = nc.subscribe("test.drain").await?;
-    ///
-    /// nc.publish("test.drain", "message").await?;
-    /// sub.drain().await?;
-    ///
-    /// let mut received = false;
-    /// while sub.next().await.is_some() {
-    ///     received = true;
-    /// }
-    ///
-    /// assert!(received);
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    #[instrument(
-        name = "subscription.drain",
-        skip_all,
-        level = "debug",
-        fields(
-            messaging.protocol = %self.metadata.messaging_protocol(),
-            messaging.system = %self.metadata.messaging_system(),
-            messaging.url = %self.metadata.messaging_url(),
-            net.transport = %self.metadata.net_transport(),
-            otel.kind = %FormattedSpanKind(SpanKind::Client),
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-        )
-    )]
-    pub async fn drain(&self) -> Result<()> {
-        let span = Span::current();
-        span.follows_from(&self.sub_span);
-
-        let inner = self.inner.clone();
-        spawn_blocking(move || inner.drain())
-            .await
-            .map_err(|err| span.record_err(Error::Async(err)))?
-            .map_err(|err| span.record_err(Error::Nats(err)))?;
+            .map_err(|err| span.record_err(Error::NatsUnsubscribe(err)))?;
 
         span.record_ok();
         Ok(())
@@ -215,109 +146,18 @@ impl Subscription {
     pub fn metadata(&self) -> &SubscriptionMessageMetadata {
         self.metadata.as_ref()
     }
-
-    fn next_message(&self) -> NextMessage {
-        let inner = self.inner.clone();
-        let shutdown_rx = self.shutdown_rx.clone();
-        NextMessage {
-            handle: spawn_blocking(move || {
-                // This blocking code will wait until either the next message arrives, or until a
-                // shutdown message is received on the shutdown channel. This select must happen
-                // within the blocking code body and therefore must also be a blocking select,
-                // hence the reason we're using crossbeam_channel here.
-                crossbeam_channel::select! {
-                    recv(shutdown_rx) -> _ => {
-                        trace!("subscription next message task received shutdown signal");
-                        None
-                    }
-                    recv(inner.receiver()) -> msg_result => {
-                        match msg_result {
-                            Ok(msg) => Some(msg),
-                            Err(err) => {
-                                // Unfortunately the underlying blocking API doesn't leave us with
-                                // many choices--we're in an error case but all we can do is return
-                                // Some(msg) or None and neither is strictly true. The upstream
-                                // crate "asynk" impl calls `msg.ok()` which would eat this error
-                                // and return None, so instead we're at least going to log this
-                                // event in case it causes more trouble. Silent errors are the root
-                                // of many long nights on call :(
-                                debug!(
-                                    error = ?err,
-                                    concat!(
-                                        "crossbeam select error on next message, returning None. ",
-                                        "NOTE: this happens normally on subscription shutdown ",
-                                        "but should not happen normally."
-                                    ),
-                                );
-                                None
-                            }
-                        }
-                    }
-                }
-            }),
-            metadata: self.metadata.as_connection_metadata(),
-        }
-    }
 }
 
 impl Stream for Subscription {
-    type Item = Result<Message>;
+    type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // If we have a `NextMessage` in progress, grab it and otherwise start a new one
-        let mut next = self.next.take().unwrap_or_else(|| self.next_message());
-
-        // Start the subscription span timing--we're doing this after the call above as that was a
-        // mutable borrow whereas this is an immutable borrow, and besides the wait time is in the
-        // poll, not an in-memory data manipulation
-        let entered = self.sub_span.enter();
-
-        // Poll the `NextMessage` future
-        match Pin::new(&mut next).poll(cx) {
-            // We got a new message, pass it on
-            Poll::Ready(Ok(Some(ready))) => Poll::Ready(Some(Ok(ready))),
-            // `NextMessage` yielded `None`, meaning the inner subscription is done, so close this
-            // stream out
-            Poll::Ready(Ok(None)) => Poll::Ready(None),
-            // `NextMessage` yielded an error, pass it along
-            Poll::Ready(Err(err)) => Poll::Ready(Some(Err(err))),
-            // `NextMessage` returned pending, so stash our future and return pending on the stream
-            Poll::Pending => {
-                // We're about to mutably borrow to stash our future, so drop the span timing to
-                // minimize borrow checker trickery
-                drop(entered);
-                // Stash the future for the next `poll_next` call
-                self.next.replace(next);
-                Poll::Pending
-            }
-        }
-    }
-}
-
-/// A future that yields the next message in a `Subscription`.
-///
-/// The implementation wraps an inner blocking API so we're driving a `spawn_blocking` `JoinHandle`
-/// to completion.
-#[derive(Debug)]
-struct NextMessage {
-    handle: JoinHandle<Option<nats::Message>>,
-    metadata: Arc<ConnectionMetadata>,
-}
-
-impl Future for NextMessage {
-    type Output = Result<Option<Message>>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // Poll our blocking task handle
-        match self.handle.poll_unpin(cx) {
-            // Our task completed and yielded a potential message, so convert into our `Message`
-            // type and pass it along
-            Poll::Ready(Ok(maybe_msg)) => Poll::Ready(Ok(
-                maybe_msg.map(|inner| Message::new(inner, self.metadata.clone()))
-            )),
-            // We got an error--a join handle error from tokio--so return that
-            Poll::Ready(Err(err)) => Poll::Ready(Err(Error::Async(err))),
-            // Our task is not yet complete, so return pending
+        match Pin::new(&mut self.inner).poll_next(cx) {
+            Poll::Ready(Some(msg)) => Poll::Ready(Some(Message::new(
+                msg,
+                self.metadata.as_connection_metadata(),
+            ))),
+            Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }
     }
@@ -336,11 +176,6 @@ pub struct SubscriptionMessageMetadata {
 }
 
 impl SubscriptionMessageMetadata {
-    /// Gets a reference to the subscription message metadata's messaging consumer id.
-    pub fn messaging_consumer_id(&self) -> &str {
-        self.connection_metadata.messaging_consumer_id()
-    }
-
     /// Gets a reference to the subscription message metadata's messaging destination.
     pub fn messaging_destination(&self) -> &str {
         self.messaging_destination.as_ref()

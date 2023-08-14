@@ -80,7 +80,7 @@ itertools = "0.10.5"
 jwt-simple = "0.11.5"
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
-nats = { version = "0.24.0" }
+async-nats = "0.31"
 nix = "0.26.2"
 nkeys = "0.2.0"
 num_cpus = "1.15.0"
