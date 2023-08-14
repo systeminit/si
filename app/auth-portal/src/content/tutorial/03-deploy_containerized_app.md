@@ -134,7 +134,7 @@ The next socket is for a __Security Group__ ID.
 * Grab a `Security Group` from the `Asset Panel`, drop it into the `Region` frame (I like to place the `Security Group` in the upper left corner of the `Region` frame). 
 * connect it to the `EC2 Instance`.
 * The `Security Group` is already qualified with a green checkmark. Easy! 
-* The `Security Group` has a red tools 'Changes' notification - like the one we saw earlier on the `EC2 Instance` - which lets you that this Resource does not exist yet. This will resolve later, when you click `Apply Changes`.
+* The `Security Group` has a red tools 'Changes' notification - like the one we saw earlier on the `EC2 Instance` - which lets you know that this Resource does not exist yet. This will resolve later, when you click `Apply Changes`.
 
 ![Security Group Added](/tutorial-img/03-deploy_containerized_app/security_group_added.png)
 
@@ -147,7 +147,7 @@ A cat adoption website that nobody can reach from the outside world would be a s
 
 Investigate the `Ingress` rule in the `Diagram Outline Panel`: 
 * Your `Ingress` rule has a red tools 'Changes' notification. You probably know by now that this is just letting you know the Resource doesn't exist yet. 
-* It also has has an orange Qualification warning. Click on the warning icon in the `Diagram Outline Panel` to see why:
+* It also has an orange Qualification warning. Click on the warning icon in the `Diagram Outline Panel` to see why:
 
 ![Warning on Ingress](/tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
 
@@ -168,7 +168,7 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 There is one more open input socket on the `EC2 Instance`: the Image ID socket. In AWS EC2, you use an __AMI ID__ as the Image ID.
 
 * Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`.
-* Connect the `Image ID` output socket on the `AMI` to the corrresponding input socket on the `EC2 Instance`. 
+* Connect the `Image ID` output socket on the `AMI` to the corresponding input socket on the `EC2 Instance`. 
 * Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID or a Filter. To address this, select the `AMI` and go to the `Selected Assets Panel` and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)). Click Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
@@ -183,7 +183,7 @@ Select the `EC2 Instance`, go to the `Selected Assets Panel`, scroll down to the
 
 Review the `Diagram Outline Panel`:
 * **Four 'Changes' notifications (red tools)**: (no action needed)
-  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resource does not exist yet. 
+  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resources do not exist yet. 
   * These Resources will be created once you click `Apply Changes` in a moment. Once they exist, these notifications will turn green.
 
 * **Two Qualification warnings (orange exclamation points)**: (no action needed) 
@@ -218,7 +218,7 @@ Three things to notice about the screen in front of you:
 
 Note that any new changes made to the Model will automatically open a new Change Set and will appear in the `Changes Panel` as `Proposed Changes`.
 
-You can inspect the data about your created Resources by selecting the relevant Asset and clicking the on the Resources tab of the `Selected Assets Panel`. Try it with your `EC2 Instance`: open the Resources tab, and notice that once AWS has provisioned your `EC2 Instance` the State will switch to running.
+You can inspect the data about your created Resources by selecting the relevant Asset and clicking on the Resources tab of the `Selected Assets Panel`. Try it with your `EC2 Instance`: open the Resources tab, and notice that once AWS has provisioned your `EC2 Instance` the State will switch to running.
 
 ![Running state on Ec2 Instance](/tutorial-img/03-deploy_containerized_app/running_state_on_ec2_instance.png)
 
@@ -299,7 +299,7 @@ If you want to walk through the action steps of this tutorial - without the cont
 
 ## 10. Review the Diagram Outline Panel
 * **Four 'Changes' notifications (red tools)**: (no action needed) These notifications tell you that the four AWS Assets you modeled don't exist yet. Once you click `Apply Changes` to create these resources, these notifications will turn green.
-* **Two Qualification warnings (orange explamation point)**: (no action needed) As mentioned earlier, there's a Qualification warning on the `Ingress` rule, will resovlve once the `Security Group` is created. There's also an orange Qualification warning on the `EC2 Instance`, which will be resolved once the `Key Pair` is created.  
+* **Two Qualification warnings (orange exclamation point)**: (no action needed) As mentioned earlier, there's a Qualification warning on the `Ingress` rule, which will resolve once the `Security Group` is created. There's also an orange Qualification warning on the `EC2 Instance`, which will be resolved once the `Key Pair` is created.  
 * Looks like we're good to go! 
 
 ## 11. Apply your changes
