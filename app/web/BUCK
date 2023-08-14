@@ -4,6 +4,9 @@ load(
     "eslint",
     "export_file",
     "package_node_modules",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
     "typescript_check",
     "vite_app",
 )
@@ -42,6 +45,16 @@ export_file(
     name = "docker-entrypoint.sh",
 )
 
+shfmt_check(
+    name = "check-format-shell",
+    srcs = [":docker-entrypoint.sh"],
+)
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = [":docker-entrypoint.sh"],
+)
+
 filegroup(
     name = "nginx_src",
     srcs = glob([
@@ -67,7 +80,7 @@ vite_app(
 )
 
 eslint(
-    name = "check-lint",
+    name = "check-lint-typescript",
     srcs = [":src"] + glob([".eslint*"]),
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
@@ -90,6 +103,21 @@ docker_image(
         "//app/web:docker-entrypoint.sh",
         "//app/web:nginx_src",
     ]
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-shell",
+    ],
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-typescript",
+        ":check-lint-shell",
+    ],
 )
 
 #

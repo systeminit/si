@@ -49,6 +49,10 @@ alias(
 )
 
 export_file(
+    name = ".editorconfig",
+)
+
+export_file(
     name = "clippy.toml",
 )
 

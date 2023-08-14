@@ -63,7 +63,7 @@
         Copy and paste the following command into your terminal and execute it:
       </p>
       <RichText class="py-sm">
-        <pre><code class="language-shell">$ curl https://auth.systeminit.com/install.sh | sh</code></pre>
+        <pre><code class="language-shell">$ curl -sSf https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
       <div class="font-bold text-xl">Manual Installation</div>
       <div>
