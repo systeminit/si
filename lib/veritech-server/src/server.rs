@@ -260,8 +260,8 @@ async fn process_resolver_function_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscription without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -416,8 +416,8 @@ async fn process_validation_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscription without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -535,8 +535,8 @@ async fn process_schema_variant_definition_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscription without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -649,8 +649,8 @@ async fn process_action_run_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscription without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -764,8 +764,8 @@ async fn process_reconciliation_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscription without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }

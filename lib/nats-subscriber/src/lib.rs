@@ -78,17 +78,7 @@ impl<T> Subscription<T> {
         SubscriptionBuilder::new(subject)
     }
 
-    /// Create a new [`subscription`](Self) for a given request shape `T`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
-    #[allow(dead_code)]
-    pub async fn drain(&self) -> SubscriberResult<()> {
-        self.inner.drain().await.map_err(SubscriberError::NatsDrain)
-    }
-
-    /// Unsubscribe from [NATS](https://nats.io).
+    /// Unsubscribe from [NATS](https://nats.io) draining all messages.
     ///
     /// # Errors
     ///
@@ -96,6 +86,18 @@ impl<T> Subscription<T> {
     pub async fn unsubscribe(self) -> SubscriberResult<()> {
         self.inner
             .unsubscribe()
+            .await
+            .map_err(SubscriberError::NatsUnsubscribe)
+    }
+
+    /// Unsubscribe from [NATS](https://nats.io) after draining some messages
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SubscriberError`] if the [`Subscription`] does not successfully unsubscribe.
+    pub async fn unsubscribe_after(self, unsub_after: u64) -> SubscriberResult<()> {
+        self.inner
+            .unsubscribe_after(unsub_after)
             .await
             .map_err(SubscriberError::NatsUnsubscribe)
     }
@@ -119,14 +121,17 @@ where
             // Convert this NATS message into the request type `T` and return any errors
             // for the caller to decide how to proceed (i.e. does the caller fail on first error,
             // ignore error items, etc.)
-            Poll::Ready(Some(Ok(nats_msg))) => {
+            Poll::Ready(Some(nats_msg)) => {
                 // Only check if the message has a final message header if our subscription config
                 // specified one (or used the default).
                 if let Some(final_message_header_key) = this.final_message_header_key {
                     // If the NATS message has a final message header, then treat this as an
                     // end-of-stream marker and close our stream.
                     if let Some(headers) = nats_msg.headers() {
-                        if headers.keys().any(|key| key == final_message_header_key) {
+                        if headers
+                            .iter()
+                            .any(|(key, _)| AsRef::<str>::as_ref(key) == final_message_header_key)
+                        {
                             trace!(
                                 "{} header detected in NATS message, closing stream",
                                 final_message_header_key
@@ -160,8 +165,6 @@ where
                     reply_mailbox,
                 })))
             }
-            // A NATS error occurred (async error or other i/o)
-            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(SubscriberError::NatsIo(err)))),
             // We see no more messages on the subject, so let's decide what to do
             Poll::Ready(None) => match this.final_message_header_key {
                 // If we are expecting a "final message" header key, then this is an unexpected

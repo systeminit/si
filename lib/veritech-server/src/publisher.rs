@@ -41,14 +41,10 @@ impl<'a> Publisher<'a> {
     }
 
     pub async fn finalize_output(&self) -> Result<()> {
-        let headers = [(FINAL_MESSAGE_HEADER_KEY, "true")].iter().collect();
+        let mut headers = si_data_nats::HeaderMap::new();
+        headers.insert(FINAL_MESSAGE_HEADER_KEY, "true");
         self.nats
-            .publish_with_reply_or_headers(
-                &self.reply_mailbox_output,
-                None::<String>,
-                Some(&headers),
-                vec![],
-            )
+            .publish_with_headers(&self.reply_mailbox_output, headers, vec![])
             .await
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.clone()))
     }

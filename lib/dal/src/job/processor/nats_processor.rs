@@ -75,7 +75,7 @@ impl JobQueueProcessor for NatsProcessor {
             .await
             .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
         self.client
-            .publish_request(
+            .publish_with_reply(
                 &self.pinga_subject,
                 &job_reply_inbox,
                 serde_json::to_vec(&job_info)
@@ -85,12 +85,8 @@ impl JobQueueProcessor for NatsProcessor {
             .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
 
         match reply_subscription.next().await {
-            Some(Ok(message)) => serde_json::from_slice::<BlockingJobResult>(message.data())
+            Some(message) => serde_json::from_slice::<BlockingJobResult>(message.data())
                 .map_err(|e| BlockingJobError::Serde(e.to_string()))?,
-            Some(Err(err)) => {
-                error!("Internal nats error: {err}");
-                Err(BlockingJobError::Nats(err.to_string()))
-            }
             None => Err(BlockingJobError::Nats(
                 "Subscription or connection no longer valid".to_string(),
             )),

@@ -6,7 +6,7 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:crossbeam-channel",
         "//third-party/rust:futures",
-        "//third-party/rust:nats",
+        "//third-party/rust:async-nats",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
