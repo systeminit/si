@@ -171,9 +171,10 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Array]: true,
   [FuncBackendResponseType.Boolean]: true,
   [FuncBackendResponseType.Integer]: true,
+  [FuncBackendResponseType.Json]: true,
+  [FuncBackendResponseType.Map]: true,
   [FuncBackendResponseType.Object]: true,
   [FuncBackendResponseType.String]: true,
-  [FuncBackendResponseType.Map]: true,
 
   [FuncBackendResponseType.CodeGeneration]: false,
   [FuncBackendResponseType.Qualification]: false,
