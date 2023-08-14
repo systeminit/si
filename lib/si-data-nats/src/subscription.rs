@@ -202,6 +202,10 @@ impl Subscription {
         Ok(())
     }
 
+    pub fn shutdown(&mut self) {
+        let _ = self.shutdown_tx.send(());
+    }
+
     /// Gets a reference to the subscription's span.
     pub fn span(&self) -> &Span {
         &self.sub_span

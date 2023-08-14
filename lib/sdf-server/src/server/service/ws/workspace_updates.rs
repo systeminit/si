@@ -91,6 +91,8 @@ mod workspace_updates {
     #[remain::sorted]
     #[derive(Debug, Error)]
     pub enum WorkspaceUpdatesError {
+        #[error("axum error: {0}")]
+        Axum(#[from] axum::Error),
         #[error("error processing nats message from subscription")]
         NatsIo(#[source] NatsError),
         #[error("failed to subscribe to subject {1}")]
@@ -131,30 +133,46 @@ mod workspace_updates {
         pub async fn process(mut self, ws: &mut WebSocket) -> Result<WorkspaceUpdatesClosing> {
             // Send all messages down the WebSocket until and unless an error is encountered, the
             // client websocket connection is closed, or the nats subscription naturally closes
-            while let Some(nats_msg) = self
-                .subscription
-                .try_next()
-                .await
-                .map_err(WorkspaceUpdatesError::NatsIo)?
-            {
-                let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.data()).to_string());
-
-                if let Err(err) = ws.send(msg).await {
-                    match err
-                        .source()
-                        .and_then(|err| err.downcast_ref::<tungstenite::Error>())
-                    {
-                        Some(ws_err) => match ws_err {
-                            // If the websocket has cleanly closed, we should cleanly finish as
-                            // well--this is not an error condition
-                            tungstenite::Error::ConnectionClosed
-                            | tungstenite::Error::AlreadyClosed => {
-                                trace!("websocket has cleanly closed, ending");
+            loop {
+                tokio::select! {
+                    msg = ws.recv() => {
+                        match msg {
+                            Some(Ok(_)) => {},
+                            Some(Err(err)) => {
+                                self.subscription.shutdown();
+                                return Err(err.into());
+                            }
+                            None => {
+                                self.subscription.shutdown();
                                 return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
                             }
-                            _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
-                        },
-                        None => return Err(WorkspaceUpdatesError::WsSendIo(err)),
+                        }
+                    }
+                    nats_msg = self.subscription.try_next() => {
+                        if let Some(nats_msg) = nats_msg.map_err(WorkspaceUpdatesError::NatsIo)? {
+                            let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.data()).to_string());
+
+                            if let Err(err) = ws.send(msg).await {
+                                match err
+                                    .source()
+                                    .and_then(|err| err.downcast_ref::<tungstenite::Error>())
+                                {
+                                    Some(ws_err) => match ws_err {
+                                        // If the websocket has cleanly closed, we should cleanly finish as
+                                        // well--this is not an error condition
+                                        tungstenite::Error::ConnectionClosed
+                                        | tungstenite::Error::AlreadyClosed => {
+                                            trace!("websocket has cleanly closed, ending");
+                                            return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
+                                        }
+                                        _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
+                                    },
+                                    None => return Err(WorkspaceUpdatesError::WsSendIo(err)),
+                                }
+                            }
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
