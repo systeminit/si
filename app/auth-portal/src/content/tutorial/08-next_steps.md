@@ -20,10 +20,6 @@ We love feedback and engaging with users on their experience using System Initia
 
 [Let's talk on Discord](https://discord.com/invite/system-init).
 
-### Schedule an interview
-
-We’d love to schedule a half-hour Zoom with you. Please schedule time with Adam Jacob (CEO), Mark Dennard (Director of UX), and Anna Saulwick (Director of Product) [via our Calendly](https://calendly.com/d/2gm-dhd-xvq/system-initiative-feedback-session).
-
 ### Collaborate
 
 We're excited for DevOps builders to get involved and start modeling and building systems in System Initiative, so please join us on Discord, talk about the Assets you want to see, and start making stuff with us! 
