@@ -45,7 +45,9 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
-  window.location.replace(AUTHORIZE_URL);
+  if (!authStore.userIsLoggedIn) {
+    window.location.replace(AUTHORIZE_URL);
+  }
   // setInterval(() => {
   //   // in case redirecting fails or takes longer, dont want the timer to go negative
   //   if (countDownSeconds.value === 0) return;

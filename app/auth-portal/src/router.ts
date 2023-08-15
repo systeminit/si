@@ -6,6 +6,7 @@ import posthog from "posthog-js";
 import storage from "local-storage-fallback";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
+import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import DashboardPage from "./pages/DashboardPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
@@ -18,6 +19,11 @@ export const routerOptions: RouterOptions = {
     { path: "/login", name: "login", component: LoginPage },
     { path: "/signup", name: "signup", component: LoginPage },
     { path: "/logout", name: "logout", component: LogoutPage },
+    {
+      path: "/logout-success",
+      name: "logout-success",
+      component: LogoutSuccessPage,
+    },
     {
       // public legal page, optionally can jump to specific doc
       path: "/legal/:docSlug?",
