@@ -115,10 +115,9 @@ async fn main() -> Result<()> {
         }
         Commands::Status(args) => {
             state.status(args.show_logs, args.log_lines).await?;
-        }
-        Commands::Report(_args) => {
-            state.report().await?;
-        }
+        } // Commands::Report(_args) => {
+          //     state.report().await?;
+          // }
     }
 
     drop(state);

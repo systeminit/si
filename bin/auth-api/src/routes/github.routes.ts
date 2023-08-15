@@ -1,4 +1,4 @@
-import _ from 'lodash';
+// import _ from 'lodash';
 import Axios from "axios";
 import { tryCatch } from "../lib/try-catch";
 import { ApiError } from "../lib/api-error";
@@ -110,6 +110,7 @@ router.get("/github/releases", async (ctx) => {
   ctx.body = await loadReleases();
 });
 
+/*
 interface GithubTag {
   ref: string;
   node_id: string;
@@ -131,8 +132,13 @@ interface LatestContainer {
 let containersCachedAt: Date | null = null;
 let containers: LatestContainer[] | null = null;
 let loadingContainers: boolean = false;
+*/
 
 router.get("/github/containers/latest", async (ctx) => {
+  ctx.body = [];
+
+  // TODO: re-enable container updates when we fix the tags
+  /*
   const seconds = Math.abs(Date.now() - (containersCachedAt?.getTime() ?? 0));
   if ((seconds > 180 * 1000 || !containers) && !loadingContainers) {
     loadingContainers = true;
@@ -195,4 +201,5 @@ router.get("/github/containers/latest", async (ctx) => {
   }
 
   ctx.body = containers ?? [];
+  */
 });

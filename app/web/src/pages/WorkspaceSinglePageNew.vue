@@ -13,11 +13,6 @@
         <ErrorMessage>Error loading your workspaces</ErrorMessage>
       </div>
     </template>
-    <template v-else-if="!selectedWorkspace">
-      <div class="flex-grow p-lg flex flex-col items-center">
-        <ErrorMessage>Cannot find workspace {{ workspacePk }}</ErrorMessage>
-      </div>
-    </template>
 
     <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
@@ -135,4 +130,21 @@ function handleUrlChange() {
     });
   }
 }
+
+watch(
+  [selectedWorkspace, workspacesReqStatus],
+  () => {
+    if (
+      workspacesReqStatus.value.isSuccess &&
+      selectedWorkspace.value === null
+    ) {
+      router.replace({
+        name: "home",
+      });
+    }
+  },
+  {
+    immediate: true,
+  },
+);
 </script>

@@ -197,6 +197,9 @@ onBeforeMount(async () => {
 });
 
 const selectedPlatform = ref("Linux");
+if (window && window.navigator.userAgent.includes("Mac")) {
+  selectedPlatform.value = "macOS";
+}
 const platforms = ["Linux", "macOS"];
 
 const selectedVersion = ref<string>();
