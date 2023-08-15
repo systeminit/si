@@ -9,6 +9,7 @@ We contributors to System Initiative:
 -----------
 * Adam Jacob (@adamhjk)
 * Fletcher Nichol (@fnichol)
+* Nick Gerace (@nickgerace)
 * Paul Stack (@stack72)
 * Paulo Cabral (@paulocsanz)
 * Victor Bustamante (@vbustamante)
