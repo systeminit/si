@@ -1,6 +1,6 @@
 use std::env;
 
-use futures::TryStreamExt;
+use futures::StreamExt;
 use si_data_nats::{Message, NatsClient, NatsConfig, Subscription};
 use telemetry::prelude::*;
 use tracing_subscriber::{
@@ -50,7 +50,7 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     let mut subscription = nats.subscribe(&subject).await?;
 
     let mut count = 0;
-    while let Some(message) = subscription.try_next().await? {
+    while let Some(message) = subscription.next().await {
         count += 1;
 
         process_message(message, count, &subscription);
@@ -58,7 +58,7 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         if let Some(max) = max_read {
             if count >= max {
                 debug!("hit max read, closing subscription and ending");
-                subscription.close().await?;
+                subscription.unsubscribe_after(0).await?;
                 break;
             }
         }
@@ -72,7 +72,6 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     skip_all,
     level = "debug",
     fields(
-        messaging.consumer_id = sub.metadata().messaging_consumer_id(),
         messaging.destination = sub.metadata().messaging_destination(),
         messaging.destination_kind = sub.metadata().messaging_destination_kind(),
         messaging.operation = sub.metadata().messaging_operation(),
