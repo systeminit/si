@@ -5,8 +5,6 @@ title: Deploy a containerized web application to an AWS EC2 Instance
 ## Deploy a containerized web application to an AWS EC2 instance
 Have this tutorial open in one browser window and your System Initiative workspace open in another.
 
-If you already know how System Initiative works and want to go straight to the tutorial summary, [click here](#summary-version-of-the-tutorial).
-
 ### The workspace
 Your System Initiative workspace will look like this:
 
@@ -131,11 +129,11 @@ Let's work backward, connecting all the things your `EC2 Instance` needs in orde
 
 With the `EC2 Instance` selected, you can look to the `Selected Assets Panel` to check that the user data has been populated: in the Attributes tab, look at the `domain/UserData` field; and in the Code tab, look at the generated JSON code.
 
-Let's work through the input sockets of your `EC2 Instance` from top to bottom: 
-The next socket is for a __Security Group__ ID. 
-* Grab a `Security Group` from the `Asset Panel`, drop it into the `Region` frame (I like to place the `Security Group` in the upper left corner of the `Region` frame). 
+Let's work through the input sockets of your `EC2 Instance` from top to bottom:
+The next socket is for a __Security Group__ ID.
+* Grab a `Security Group` from the `Asset Panel`, drop it into the `Region` frame (I like to place the `Security Group` in the upper left corner of the `Region` frame).
 * connect it to the `EC2 Instance`.
-* The `Security Group` is already qualified with a green checkmark. Easy! 
+* The `Security Group` is already qualified with a green checkmark. Easy!
 * The `Security Group` has a red tools 'Changes' notification - like the one we saw earlier on the `EC2 Instance` - which lets you know that this Resource does not exist yet. This will resolve later, when you click `Apply Changes`.
 
 ![Security Group Added](/tutorial-img/03-deploy_containerized_app/security_group_added.png)
@@ -147,8 +145,8 @@ A cat adoption website that nobody can reach from the outside world would be a s
 
 ![Connect a Security Group and Ingress Rule](/tutorial-img/03-deploy_containerized_app/connect_a_security_group_and_ingress_rule.png)
 
-Investigate the `Ingress` rule in the `Diagram Outline Panel`: 
-* Your `Ingress` rule has a red tools 'Changes' notification. You probably know by now that this is just letting you know the Resource doesn't exist yet. 
+Investigate the `Ingress` rule in the `Diagram Outline Panel`:
+* Your `Ingress` rule has a red tools 'Changes' notification. You probably know by now that this is just letting you know the Resource doesn't exist yet.
 * It also has an orange Qualification warning. Click on the warning icon in the `Diagram Outline Panel` to see why:
 
 ![Warning on Ingress](/tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
@@ -186,7 +184,7 @@ Select the `EC2 Instance`, go to the `Selected Assets Panel`, scroll down to the
 
 Review the `Diagram Outline Panel`:
 * **Four 'Changes' notifications (red tools)**: (no action needed)
-  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resources do not exist yet. 
+  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resources do not exist yet.
   * These Resources will be created once you click `Apply Changes` in a moment. Once they exist, these notifications will turn green.
 
 * **Two Qualification warnings (orange exclamation points)**: (no action needed)

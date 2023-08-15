@@ -7,27 +7,26 @@ hideWorkspaceLink: true
 
 We’re so excited to share what we’ve been building with you and for you to help us shape the Second Wave of DevOps.
 
-This open source release allows you to experience System Initiative and for us to shake out any issues you might encounter. It is ready for **developers** and **experts** in our space: those who want to contribute to the project by extending and improving the system and those that are ready to dig in with us to build and run their infrastructure in production.  
+This open beta release allows you to experience System Initiative and for us to shake out any issues you might encounter. It is ready for **developers** and **experts** in our space: those who want to contribute to the project by extending and improving the system and those that are ready to dig in with us to build and run their infrastructure. It's early. :)
 
 We ask that you:
 
 * Run through this tutorial to the end
 * Fill out a couple of surveys as you go
 * Talk about your experience or get help on [Discord](https://discord.com/invite/system-init)
-* Participate in a short interview about your experience
 
-For extra credit, you could: 
-* Talk with the community about the highest-priority Assets needed to model your system and/or get involved in making them
-* Work directly with us to build your whole system in production
+For extra credit, you could:
+* Talk with the community about the highest-priority assets needed to model your system and/or get involved in making them
+* Work directly with us to try and model your infrastructure
 
 In return, you will receive:
 
   * Our everlasting gratitude
-  * Our help in making System Initiative work for you 
+  * Our help in making System Initiative work for you
   * The ability to directly influence our direction and the product
-  * A particularly sweet bundle of amazing swag
+  * A particularly sweet bundle of amazing swag (while supplies last!)
 
-### This Tutorial 
+### This Tutorial
 
 You’re going to:
 * Install and run System Initiative locally
