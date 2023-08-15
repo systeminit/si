@@ -43,7 +43,7 @@ you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 > We recommend using [the upstream docs for hooking `direnv` into your shell](https://direnv.net/docs/hook.html), but here is an example on how to do it
 > on a system where `zsh` is the default shell.
 > In this example, the following is added to the end of `~/.zshrc`.
-> 
+>
 > ```zsh
 > if [ $(command -v direnv) ]; then
 >    eval "$(direnv hook zsh)"
@@ -139,9 +139,21 @@ buck2 run dev:stop
 For more information on how to use and develop the System Initiative software, talk to us on
 [our Discord server](https://discord.com/invite/system-init) and see the [docs](./docs) directory.
 
+## Open Source
+
+This repository contains the System Initiative software, covered under the [Apache License 2.0](LICENSE), except where noted (any System Initiative logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
+
+System Initiative is a product produced from this open source software, exclusively by System Initiative, Inc. It is distributed under our commercial terms.
+
+Others are allowed to make their own distribution of the software, but they cannot use any of the System Initiative trademarks, cloud services, etc.
+
+We explicitly grant permission for you to make a build that includes our trademarks while developing the System Initiative software itself. You may not publish or share the build, and you may not use that build to run System Initiative software for any other purpose.
+
+You can [learn more about the System Initiative software and Open Source in our FAQ](https://systeminit.com/open-source).
+
 ## Contributing
 
-System Initiative is Open Source software under the [Apache License 2.0](LICENSE), and is the [copyright of its contributors](NOTICE). If you would like to contribute to System Initiative, you must:
+The System Initiative software is Open Source under the [Apache License 2.0](LICENSE), and is the [copyright of its contributors](NOTICE). If you would like to contribute to the software, you must:
 
 1. Read the [Contributors](CONTRIBUTORS.md) file.
 2. Agree to the terms by having a commit in your pull request "signing" the file by adding your name and GitHub handle on a new line at the bottom of the file.
