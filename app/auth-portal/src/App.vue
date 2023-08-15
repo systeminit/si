@@ -291,6 +291,8 @@ watch([checkAuthReq, route], () => {
     if (
       ![
         "login",
+        "logout",
+        "logout-success",
         "signup",
         "404",
         "legal",
