@@ -21,7 +21,7 @@ const KEY_NODE_KIND_STR: &str = "node_kind";
 const VAL_VERSION_STR: &str = "1";
 
 /// The canonical serialized form of a new line.
-pub const NL: &str = "\n";
+pub const NL: char = '\n';
 
 /// An error that can be returned when working with tree and graph types.
 #[remain::sorted]
@@ -712,8 +712,15 @@ pub fn read_key_value_line<R: BufRead>(
         ));
     }
 
-    if line_value.trim_end().len() == len {
-        Ok(line_value.trim_end().to_owned())
+    if line_value.len().saturating_sub(1) == len {
+        let mut chars = line_value.chars();
+        chars.next_back();
+        Ok(chars.as_str().to_owned())
+    } else if len < line_value.len() {
+        Err(GraphError::ParseCustom(format!(
+            "Expected at most {len} characters, got {} characters in {line_value}",
+            line_value.len()
+        )))
     } else {
         let remaining_bytes = len - line_value.len();
         let mut remaining = vec![0; remaining_bytes + 1];
@@ -721,13 +728,12 @@ pub fn read_key_value_line<R: BufRead>(
             .read_exact(&mut remaining)
             .map_err(GraphError::IoRead)?;
 
-        let value = format!(
-            "{}{}",
-            line_value,
-            std::str::from_utf8(&remaining)
-                .map_err(GraphError::parse)?
-                .trim_end()
-        );
+        let mut remaining = std::str::from_utf8(&remaining)
+            .map_err(GraphError::parse)?
+            .chars();
+        remaining.next_back();
+
+        let value = format!("{}{}", line_value, remaining.as_str());
 
         Ok(value)
     }
