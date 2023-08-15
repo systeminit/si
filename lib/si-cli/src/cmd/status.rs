@@ -8,6 +8,7 @@ use docker_api::Docker;
 
 const RUNNING: &str = "    ✅    ";
 const NOT_RUNNING: &str = "    ❌    ";
+const WAITING: &str = "    🕒    ";
 
 impl AppState {
     pub async fn status(&self, show_logs: bool, log_lines: usize) -> CliResult<()> {
@@ -33,7 +34,7 @@ async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
             Cell::new("State").add_attribute(Attribute::Bold),
         ]);
 
-    let mut broken_containers = Vec::new();
+    let mut all_running = true;
     for name in CONTAINER_NAMES.iter() {
         let image_name = format!("systeminit/{0}:stable", name);
         let container_identifier = format!("local-{0}-1", name);
@@ -43,10 +44,10 @@ async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
         if let Some(existing) = existing_container {
             state = existing.state.unwrap();
             if state != "running" {
-                broken_containers.push(image_name.clone());
+                all_running = false;
             }
         } else {
-            broken_containers.push(image_name.clone());
+            all_running = false;
         }
 
         if show_logs {
@@ -54,19 +55,76 @@ async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
             get_container_logs(&docker, container_identifier.clone(), log_lines).await?;
         }
 
-        table.add_row(vec![
-            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-            Cell::new(if state == "running" {
-                RUNNING
-            } else {
-                NOT_RUNNING
-            }),
-        ]);
+        if container_identifier == "local-web-1" {
+            let web_path = "http://localhost:8080/";
+            let resp = reqwest::get(web_path).await;
+            match resp {
+                Ok(x) => {
+                    if x.status().as_u16() == 200 && state == "running" {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(RUNNING),
+                        ]);
+                    } else {
+                    }
+                }
+                Err(_) => {
+                    if state == "running" {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(WAITING),
+                        ]);
+                        all_running = false;
+                    } else {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(NOT_RUNNING),
+                        ]);
+                    }
+                }
+            }
+        } else if container_identifier == "local-sdf-1" {
+            let sdf_path = "http://localhost:5156/api/";
+            let resp = reqwest::get(sdf_path).await;
+            match resp {
+                Ok(x) => {
+                    if x.status().as_u16() == 200 && state == "running" {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(RUNNING),
+                        ]);
+                    }
+                }
+                Err(_) => {
+                    if state == "running" {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(WAITING),
+                        ]);
+                        all_running = false;
+                    } else {
+                        table.add_row(vec![
+                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                            Cell::new(NOT_RUNNING),
+                        ]);
+                    }
+                }
+            }
+        } else {
+            table.add_row(vec![
+                Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
+                Cell::new(if state == "running" {
+                    RUNNING
+                } else {
+                    NOT_RUNNING
+                }),
+            ]);
+        }
     }
 
     println!("{table}");
 
-    if broken_containers.is_empty() {
+    if all_running {
         println!("\nAll system components working as expected...")
     }
 

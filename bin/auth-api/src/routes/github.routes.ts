@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import Axios from "axios";
 import { tryCatch } from "../lib/try-catch";
 import { ApiError } from "../lib/api-error";
@@ -138,7 +139,7 @@ router.get("/github/containers/latest", async (ctx) => {
 
     try {
       const data: GithubTag[] = await tryCatch(async () => {
-        const req = await ghApi.get("/repos/systeminit/si/git/refs/tags", {
+        const req = await ghApi.get("/repos/systeminit/si/git/matching-refs/tags", {
           headers: {
             Accept: "application/vnd.github+json",
             Authorization: `Bearer ${process.env.GH_TOKEN}`,
@@ -154,10 +155,11 @@ router.get("/github/containers/latest", async (ctx) => {
           err.response.data.message,
         );
       });
+      const sortedData = _.orderBy(data, (d) => d.ref, 'desc');
 
       const prefixes = ["bin/sdf", "bin/veritech", "bin/pinga", "bin/council", "bin/module-index", "app/web", "component/otelcol", "component/jaeger", "component/nats", "component/postgres"];
       const latestContainers = [];
-      for (const tag of data) {
+      for (const tag of sortedData) {
         for (const prefix of prefixes) {
           const split = prefix.split("/");
           const start = `refs/tags/${prefix}/image/`;
