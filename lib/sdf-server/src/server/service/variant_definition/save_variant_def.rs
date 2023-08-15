@@ -1,12 +1,9 @@
-use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
+use super::SchemaVariantDefinitionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{
-    schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    Func, StandardModel, Visibility, WsEvent,
-};
+use dal::{schema::variant::definition::SchemaVariantDefinitionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -40,31 +37,7 @@ pub async fn save_variant_def(
 ) -> SchemaVariantDefinitionResult<Json<SaveVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
-        .await?
-        .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
-            request.id,
-        ))?;
-    variant_def.set_name(&ctx, request.name.clone()).await?;
-    variant_def
-        .set_menu_name(&ctx, request.menu_name.clone())
-        .await?;
-    variant_def
-        .set_category(&ctx, request.category.clone())
-        .await?;
-    variant_def.set_color(&ctx, request.color).await?;
-    variant_def.set_link(&ctx, request.link).await?;
-    variant_def
-        .set_description(&ctx, request.description)
-        .await?;
-
-    let mut asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
-        SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
-    )?;
-    asset_func
-        .set_code_plaintext(&ctx, Some(&request.code))
-        .await?;
-    asset_func.set_handler(&ctx, Some(request.handler)).await?;
+    super::save_variant_def(&ctx, &request).await?;
 
     track(
         &posthog_client,

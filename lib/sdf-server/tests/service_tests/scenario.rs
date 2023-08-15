@@ -412,11 +412,23 @@ impl ScenarioHarness {
         &mut self,
         visibility: &Visibility,
         asset_id: SchemaVariantDefinitionId,
+        asset_name: String,
+        menu_name: Option<String>,
+        code: String,
     ) {
         let request = ExecVariantDefRequest {
             id: asset_id,
+            name: asset_name,
+            menu_name,
+            category: "".to_string(),
+            color: "#FFFF00".to_string(),
+            link: Some("https://www.systeminit.com/".to_string()),
+            code,
+            handler: "createAsset".to_string(),
+            description: None,
             visibility: *visibility,
         };
+
         let response: ExecVariantDefResponse = self
             .query_post("/api/variant_def/exec_variant_def", &request)
             .await;
