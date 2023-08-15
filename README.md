@@ -1,14 +1,22 @@
 # System Initiative
 
-This is a monolithic repository containing the source for System Initiative (SI).
+[![Discord Server](https://img.shields.io/badge/discord-gray?style=flat-square&logo=discord)](https://discord.com/invite/system-init)
+[![Build status](https://badge.buildkite.com/ecdbcb0ae243a74976f62a95826ec1fce62707e6fe07e4b973.svg?style=flat-square)](https://buildkite.com/system-initiative/si-merge-main)
+
+This is a monolithic repository containing the System Initiative software.
 
 ## Quickstart
 
-Running SI locally can be done in a variety of ways, but this abbreviated section will focus on a single method for
-getting your environment ready to run the stack.
-For more information regarding environment setup and running SI locally, see [DEVELOPMENT_ENVIRONMENT](./docs/DEVELOPMENT_ENVIRONMENT.md).
+If you would like to get System Initiative (SI) up and running, navigate to the installation page on [our website](https://systeminit.com) to get started.
+If you would like to develop locally, follow the [Local Development Setup](#local-development-setup) instructions below.
 
-### Choose a Supported Platform
+## Local Development Setup
+
+Running the System Initiative software locally can be done in a variety of ways, but this abbreviated section will focus on a single method for
+getting your environment ready to run the stack.
+For more information and options on running SI locally, see the [development environment documentation](./docs/DEVELOPMENT_ENVIRONMENT.md).
+
+### (1) Choose a Supported Platform
 
 Let's start by choosing an officially supported platform.
 
@@ -22,7 +30,7 @@ Let's start by choosing an officially supported platform.
 * [NixOS](https://nixos.org/) and Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) will not likely work at this time
 * Systemd may need to be enabled on WSL2
 
-### Install Dependencies
+### (2) Install Dependencies
 
 Install dependencies on your chosen platform.
 
@@ -50,7 +58,7 @@ you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 > fi
 > ```
 
-### Enter the Repository Directory
+### (3) Enter the Repository Directory
 
 All commands need to be run from the `nix` environment.
 Since `direnv` is installed _and_ hooked into your shell, you can `cd` into
@@ -58,19 +66,15 @@ the repository and `nix` will boostrap the environment for you using the flake.
 
 _Please note: you may notice a large download of dependencies when entering the repository for the first time._
 
-### Configure Providers
+### (4) Configure Providers
 
-Configuring providers is optional for using SI, but may be required depending on the types of assets used.
+Configuring providers is optional for using the System Initiative software, but may be required depending on the types of assets used.
 
-#### AWS
-
-If you are using AWS assets, authentication with the `aws` CLI is required for SI to deploy and manage your infrastructure.
+If you are using AWS assets, authentication with the `aws` CLI is required to deploy and manage your infrastructure.
 
 ```bash
 aws configure
 ```
-
-#### Docker Hub
 
 Docker Hub authentication is not strictly needed if you only access public docker images, but to avoid being rate-limited when qualifying images, we recommend authenticating with the `docker` CLI.
 
@@ -78,7 +82,7 @@ Docker Hub authentication is not strictly needed if you only access public docke
 docker login
 ```
 
-### Running the Stack
+### (5) Running the Stack
 
 We use [**buck2**](https://github.com/facebook/buck2) to run the stack, run and build individual services and libraries, perform lints and tests, etc.
 
@@ -97,8 +101,8 @@ _Please note: the new file descriptor limit may not persist to future sessions._
 
 Once ready, we can build relevant services and run the entire stack locally.
 
-_Please note: if you have run SI before, the following command will delete all contents of the database.
-[Reach out to us in our Discord server if you have any questions](https://discord.com/invite/system-init)._
+_Please note: if you have used SI before, the following command will delete all contents of the database.
+Reach out to us [on Discord](https://discord.com/invite/system-init) if you have any questions._
 
 ```bash
 buck2 run dev:up
@@ -109,9 +113,9 @@ Every service should eventually have a green checkmark next to them, which ensur
 
 _Please note: database migrations may take some time to complete._
 
-If you would like to learn more on what's running, check out the [Architecture](#architecture) section.
+If you would like to learn more on what's running, check out the [Architecture](./docs/ARCHITECTURE.md) section.
 
-### Troubleshooting in Tilt
+### (6) Troubleshooting in Tilt
 
 If some services failed to start, you can restart them on the Tilt dashboard.
 
@@ -119,7 +123,7 @@ If some services failed to start, you can restart them on the Tilt dashboard.
 - A frontend service fails (e.g. `web`): restart the service individually
 - A dependent service fails (e.g. PostgreSQL): tear down the stack and restart
 
-### Tearing Down the Stack
+### (7) Tearing Down the Stack
 
 The following command will stop all running services and containers.
 It will also remove the containers and, consequentially, the data held in them.
@@ -137,7 +141,14 @@ buck2 run dev:stop
 ## Where Do I Learn More?
 
 For more information on how to use and develop the System Initiative software, talk to us on
-[our Discord server](https://discord.com/invite/system-init) and see the [docs](./docs) directory.
+[our Discord](https://discord.com/invite/system-init) and see the [docs](./docs) directory.
+
+## How Can I Contribute?
+
+To start, we recommend reading the [Open Source](#open-source) and [Contributing](#contributing) sources below.
+They provide information on licensing, contributor rights, and more.
+
+Afterwards, navigate to the [contributing guide](CONTRIBUTING.md) to get started.
 
 ## Open Source
 

@@ -52,7 +52,13 @@ ulimit -a
 Here is an example of a significant limit increase, where the argument provided after the flag represents the new desired number of file descriptors:
 
 ```bash
-ulimit -n 10240
+ulimit -n <file-descriptor-count>
+```
+
+To find an acceptable limit, run the health check command.
+
+```bash
+buck2 run dev:healthcheck
 ```
 
 ## Dependencies
@@ -147,13 +153,3 @@ For backend services like `veritech` and `sdf`, there will usually be an `INFO`-
 webserver has bound to a port and is ready to receive messages.
 This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence
 changes) and will vary from component to component.
-
-## (Outdated) Using CLion Run Configurations Instead of Terminal Panes
-
-_Please note: this section is a work in progress._
-
-This repository contains CLion run configurations for most of these targets, in addition to a `Run SI` compound target
-for running all the targets at once. They should be listed on the run menu automatically and are called
-`Prepare`, `Run [SDF | Veritech | Pinga | Web]` and `Teardown` (which is related to the next topic).
-
-Using them you should be able to run the whole stack via CLion's Run tool window instead of using multiple shells!
