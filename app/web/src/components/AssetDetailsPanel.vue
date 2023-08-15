@@ -167,7 +167,9 @@ const componentTypeOptions = [
 
 const updateAsset = () => {
   if (assetStore.selectedAsset) {
-    assetStore.SAVE_ASSET(assetStore.selectedAsset);
+    assetStore.assetsById[assetStore.selectedAsset.id] =
+      assetStore.selectedAsset;
+    assetStore.SAVE_ASSET(assetStore.selectedAsset.id);
   }
 };
 
