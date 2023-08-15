@@ -4,21 +4,21 @@ title: Customizing System Initiative by writing TypeScript Code
 
 ## Customizing System Initiative by writing TypeScript Code
 
-In the previous tutorial, you launched Whiskers R We running on a [Fedora CoreOS](https://getfedora.org/en/coreos) EC2 instance. You learned how Qualifications are used to tell us if an Asset meets all the requirements to function in the real world - like a built-in, real-time test for your Model. 
+In the previous tutorial, you launched Whiskers R We running on a [Fedora CoreOS](https://getfedora.org/en/coreos) EC2 instance. You learned how Qualifications are used to tell us if an Asset meets all the requirements to function in the real world - like a built-in, real-time test for your Model.
 
-The good folks at Whiskers R We want to ensure they are using the current stable version of the AMI for their AWS Region any time they launch a new instance in AWS. You will help them do that by writing a custom Qualification (using TypeScript) for all the AMIs on their Canvas.
+The good folks at Whiskers R We want to ensure they are using the current stable version of the Fedora CoreOS AMI for their AWS Region any time they launch a new instance in AWS. You will help them do that by writing a custom Qualification (using TypeScript) for all the AMIs in their workspace.
 
 ### Create a new Change Set
 
 Since you are changing how System Initiative works and updating your Model, you need to create a new Change Set. Click the 'New Change Set' icon <img src="/tutorial-img/06-customizing/new_change_set.png" alt="New Change Set Icon" class="inline" width="5%" height="5%"/> in the navigation bar at the top of the screen, and use the dialog to give your Change Set a name.
 
-<img src="/tutorial-img/06-customizing/create_change_set_dialog.png" alt="Create Change Set Dialog" width="50%" height="50%"/> 
+<img src="/tutorial-img/06-customizing/create_change_set_dialog.png" alt="Create Change Set Dialog" width="50%" height="50%"/>
 
 ### Using Real-Time Multiplayer capabilities to your advantage
 
 System Initiative is designed as a real-time multiplayer web application. What happens in your browser will immediately update all other users in the workspace, enabling easy collaboration. You can take advantage of this capability when customizing System Initiative to see the impact of your customizations on your Model in real-time.
 
-To get started, click the 'Copy Link' button in the main navigation at the top right of the screen, and use it to open System Initiative in a new browser window. 
+To get started, click the 'Copy Link' button in the main navigation at the top right of the screen, open a new new broswer window, and paste it as the URL.
 
 ![Copy Link](/tutorial-img/06-customizing/copy_link.png)
 
@@ -27,49 +27,58 @@ In one of the windows, click the Customize button <img src="/tutorial-img/06-cus
 ![Customize screen](/tutorial-img/06-customizing/model_and_customize_screens.png)
 
 ### The Customize interface
-Your Customize screen will look like this: 
+Your Customize screen will look like this:
 
 ![Customize screen](/tutorial-img/06-customizing/customize_screen.png)
 
 Here are a few things worth noticing before we get started:
-* In the top left, you can see the same Change Set selector you saw in the Model screen. 
-* Beneath that, there is a tab for Assets and another for Functions. This tutorial will focus on Functions. Select the `Function` tab now to open the `Function Panel`. 
+* In the top left, you can see the same Change Set selector you saw in the Model screen.
+* Beneath that, there is a tab for Assets and another for Functions. This tutorial will focus on Functions. Select the `Function` tab now to open the `Function Panel`.
   * At the top of the `Function Panel` is a `+ Function` button for creating new functions, followed by a search interface.
   * Below that, there is a list of functions grouped by their type.
-* At the center of the screen, there is a tabbed code editor (or there will be, just as soon as you select a function to work on). 
+* At the center of the screen, there is a tabbed code editor (or there will be, just as soon as you select a function to work on).
 * On the right side of the screen is the `Function Details Panel`, which will show the details of the currently selected function in the editor.
 
-### Looking at an existing function
+### Inspect an existing qualification function
 
 Click the `search functions` box and type 'docker'. You will see the list of functions narrow to those that match the search criteria:
 
-<img src="/tutorial-img/06-customizing/search_interface.png" alt="Search interface" width="70%" height="70%"/> 
+<img src="/tutorial-img/06-customizing/search_interface.png" alt="Search interface" width="70%" height="70%"/>
 
-Click the `Docker Image Exists` function from the Qualifications list, and the function will be loaded into the editor, with its Properties listed in the `Function Details Panel`. 
+Click the `si:qualificationDockerImageExists` function from the Qualifications list, and the function will be loaded into the editor, with its Properties listed in the `Function Details Panel`.
 
 ![Docker image exists](/tutorial-img/06-customizing/docker_image_exists.png)
 
-* At the top of the `Function Details Panel` are two buttons, `Execute` and `Revert`. 
-* Beneath that are the Attributes of the function: its Name, Display Name, the Entrypoint (the name of the function to execute - you can have more than one function in a single 'file'), and a Description. 
-* Underneath that, are two ways of associating this function with the Assets. We can apply it: 
-  * directly on a single Asset (not selected in this case); or 
+* At the top of the `Function Details Panel` are two buttons, `Execute` and `Revert`.
+* Beneath that are the Attributes of the function: its Name, Display Name, the Entrypoint (the name of the function to execute - you can have more than one function in a single 'file'), and a Description.
+* Underneath that are two ways of associating this function with Assets. We can either associate it:
+  * directly on a single Asset (not selected in this case); or
   * on __all__ the Assets of a given type. (you can see below that this 'Docker image exists' function is configured to run on all Docker Image Assets).
 
-<img src="/tutorial-img/06-customizing/run_on_assets_of_type_docker.png" alt="Run_on_Docker assets" width="72%" height="72%"/> 
+<img src="/tutorial-img/06-customizing/run_on_assets_of_type_docker.png" alt="Run_on_Docker assets" width="72%" height="72%"/>
 
 ### Breakdown of a Qualification function
 
 The Qualification function looks like this:
 
 ```js
-async function qualificationDockerImageExists(component: Input): Promise<Output> {
+async function qualificationDockerImageExists(
+  component: Input,
+): Promise<Output> {
   if (!component.domain?.image) {
     return {
       result: "failure",
-      message: "no image available"
-    }
+      message: "no image available",
+    };
   }
-  const child = await siExec.waitUntilEnd("skopeo", ["inspect", "--override-os", "linux", "--override-arch", "amd64", `docker://${component.domain.image}`]);
+  const child = await siExec.waitUntilEnd("skopeo", [
+    "inspect",
+    "--override-os",
+    "linux",
+    "--override-arch",
+    "amd64",
+    `docker://${component.domain.image}`,
+  ]);
   return {
     result: child.exitCode === 0 ? "success" : "failure",
     message: child.exitCode === 0 ? child.stdout : child.stderr,
@@ -88,14 +97,23 @@ _Note: Currently, functions are only partially sandboxed. In a future release of
 Try updating this function to show a slightly more helpful failure message when the name is the pre-generated default 'si-XXXX'. The new function body should be:
 
 ```js
-async function qualificationDockerImageExists(component: Input): Promise<Output> {
+async function qualificationDockerImageExists(
+  component: Input,
+): Promise<Output> {
   if (!component.domain?.image || component.domain?.image.startsWith("si-")) {
     return {
       result: "failure",
-      message: "no image available - set the domain/image attribute to something not auto-generated."
-    }
+      message: "no image available - set the domain/image attribute to something not auto-generated",
+    };
   }
-  const child = await siExec.waitUntilEnd("skopeo", ["inspect", "--override-os", "linux", "--override-arch", "amd64", `docker://${component.domain.image}`]);
+  const child = await siExec.waitUntilEnd("skopeo", [
+    "inspect",
+    "--override-os",
+    "linux",
+    "--override-arch",
+    "amd64",
+    `docker://${component.domain.image}`,
+  ]);
   return {
     result: child.exitCode === 0 ? "success" : "failure",
     message: child.exitCode === 0 ? child.stdout : child.stderr,
@@ -103,19 +121,19 @@ async function qualificationDockerImageExists(component: Input): Promise<Output>
 }
 ```
 
-You updated line 2 to read that it should return if the image is not set or if it starts with `si-`. You also updated line 5 to have a better failure message.
+You updated line 4 to read that it should return if the image is not set or if it starts with `si-`. You also updated line 7 to have a better failure message.
 
-Click the `Execute` button to run your function, and you should see the button spin and let you know that it finished without errors. If you have a syntax error, you will see it in the editor, and you'll also see an error message immediately beneath the `Execute` button. Fix, and press `Execute` again. 
+Click the `Execute` button to run your function, and you should see the button spin and let you know that it finished without errors. If you have a syntax error, you will see it in the editor, and you'll also see an error message immediately beneath the `Execute` button. Fix your code, and press `Execute` to try again.
 
 ![Execute error output](/tutorial-img/06-customizing/execute_error_output.png)
 
 ### Checking your work in the Model
 
-In the Model Window, add a Docker `Image` Asset to the Canvas, select it, then click on the Qualification failure in the `Diagram Outline Panel`. 
+In the Model Window, add a Docker `Image` Asset to the Canvas, select it, then click on the Qualification failure in the `Diagram Outline Panel`.
 
 ![Qualification in Model Window](/tutorial-img/06-customizing/qualification_in_model_window.png)
 
-Notice that the Qualification failure message has already been changed, and now helpfully tells us to set the `domain/image` attribute to something not auto-generated. Let's follow this advice. 
+Notice that the Qualification failure message has already been changed, and now helpfully tells us to set the `domain/image` attribute to something not auto-generated. Let's follow this advice.
 
 Select the Docker `Image` Asset, expand the `Selected Assets Panel`, set the `si/name` attribute of the Docker `Image` to "mysql", and press 'Enter'. You will see the progress bar update, and the Qualification will pass:
 
@@ -128,23 +146,23 @@ given AWS Region. This is the kind of thing folks often try to do with "Policy a
 
 In your Customization Window, remove your search filter from the search functions box, and close the tab for the 'Docker image exists' function by clicking the `X` on the tab:
 
-<p align="left"><img src="/tutorial-img/06-customizing/close_the_tab.png" alt="Close the tab" width="72%" height="72%"/> 
+<p align="left"><img src="/tutorial-img/06-customizing/close_the_tab.png" alt="Close the tab" width="72%" height="72%"/>
 
 Click the `+ Function` button, and select 'Qualification' from the dropdown menu. Your Customization Window should now look like this:
 
 ![Customization window ready to rock](/tutorial-img/06-customizing/customization_window_ready_to_rock.png)
 
-In the `Function Details Panel` set the `Name` of your Qualification to "Only Use Latest Fedora CoreOS Stable AMIs". Enter the same for the `Display name`. 
+In the `Function Details Panel` set the `Name` of your Qualification to "Only Use Latest Fedora CoreOS Stable AMIs". Enter the same for the `Display name`.
 
 Add a `Description` of "Ensures the AMI is using the latest stable Fedora CoreOS image in its region."
 
-Set your new Qualification to run on all `AMI` assets in your Canvas: click on the `Select assets of type` dropdown, select `AMI`, and press the `+ Add` button. 
+Set your new Qualification to run on all `AMI` assets in your Canvas: click on the `Select assets of type` dropdown, select `AMI`, and press the `+ Add` button.
 
-Configure the `Function Inputs` by checking the box for `Domain`, which allows System Initiative to interrogate the attributes of the ___Model___ within your Qualification. 
+Configure the `Function Inputs` by checking the box for `Domain`, which allows System Initiative to interrogate the attributes of the ___Model___ within your Qualification.
 
 You should see:
 
-<p align="left"><img src="/tutorial-img/06-customizing/function_details_complete.png" alt="Function details complete" width="72%" height="72%"/> 
+<p align="left"><img src="/tutorial-img/06-customizing/function_details_complete.png" alt="Function details complete" width="72%" height="72%"/>
 
 Click the `Execute` button in the `Function Details Panel` to attach your new functionality to all the AWS AMI assets.
 
@@ -215,9 +233,9 @@ async function qualification(component: Input): Promise<Output> {
 }
 ```
 
-* The code starts with a call to the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) - this call is asynchronous, and so you'll need to `await` it to get your response. 
-* The next line then waits until the entire response body has been received, and then deserializes from JSON into a TypeScript Object. 
-* The next four lines extract a map of all the current stable AMIs, indexed by region, and log the output. 
+* The code starts with a call to the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) - this call is asynchronous, and so you'll need to `await` it to get your response.
+* The next line then waits until the entire response body has been received, and then deserializes from JSON into a TypeScript Object.
+* The next four lines extract a map of all the current stable AMIs, indexed by region, and log the output.
 
 Press the `Execute` button, and then once again click the `View Details` link at the bottom of your custom Qualification, and you should see an output similar to this:
 
@@ -303,7 +321,7 @@ Press the 'Enter' key, and you will see the Qualification update to tell you the
 
 Now you can test the case where you have an invalid ImageID, but a valid Region. Set the `domain/region` attribute to 'us-east-2' and press 'Enter'.
 
-The Qualification failure helpfully tells you that your ImageId is incorrect and tells you what the valid ImageIds are. 
+The Qualification failure helpfully tells you that your ImageId is incorrect and tells you what the valid ImageIds are.
 
 ![Invalid ImageId but Valid Region Qualification](/tutorial-img/06-customizing/invalid_imageid_but_valid_region_qualification.png)
 
@@ -319,7 +337,7 @@ Nice work! You've added a new Qualification to System Initiative that reflects t
 
 ### How does this thing work?
 
-You ask excellent questions! Everything in System Initiative is a result of a TypeScript function execution. When you define a new Asset, you are defining the attributes it has, and setting functions for each value. As you have just seen, Qualifications are functions too. When System Initiative generates code for you - it's just a function that's reactive to the Asset's attributes. 
+You ask excellent questions! Everything in System Initiative is a result of a TypeScript function execution. When you define a new Asset, you are defining the attributes it has, and setting functions for each value. As you have just seen, Qualifications are functions too. When System Initiative generates code for you - it's just a function that's reactive to the Asset's attributes.
 
 System Initiative stitches this web of functions together into a reactive hyper-graph - allowing you to map any number of inputs to a function in the graph and then re-process the function if any of its inputs change. If you're familiar with how systems like [React](https://react.dev/) or [Vue](https://vuejs.org/) work, System Initiative is conceptually very similar.
 
