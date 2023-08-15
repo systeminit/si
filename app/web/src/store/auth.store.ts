@@ -8,6 +8,8 @@ import { posthog } from "@/utils/posthog";
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 
+const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
+
 // keys we use to store auth tokens in local storage
 const AUTH_LOCAL_STORAGE_KEYS = {
   USER: "si-auth",
@@ -88,10 +90,6 @@ export const useAuthStore = defineStore("auth", {
       const restoreAuthReq = await this.RESTORE_AUTH();
       if (!restoreAuthReq.result.success) {
         this.localLogout();
-
-        // not sure this is where we want to do this, but it's fine for now
-        const router = useRouter();
-        router.push({ name: "login" });
       }
     },
     localLogout() {
@@ -103,6 +101,8 @@ export const useAuthStore = defineStore("auth", {
         adminIsImpersonatingUser: false,
       });
       posthog.reset();
+
+      if (window) window.location.href = `${AUTH_PORTAL_URL}/logout`;
     },
 
     // split out so we can reuse for different login methods (password, oauth, magic link, signup, etc)
