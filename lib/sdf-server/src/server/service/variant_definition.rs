@@ -19,12 +19,15 @@ use dal::{
     FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncError, FuncId,
     InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, SchemaError,
     SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, StandardModelError,
-    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
+    TenancyError, TransactionsError, UserError, ValidationPrototype, ValidationPrototypeError,
+    WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
 use crate::server::state::AppState;
 use crate::service::func::FuncError as SdfFuncError;
+
+use self::save_variant_def::SaveVariantDefRequest;
 
 use super::func::get_leaf_function_inputs;
 
@@ -94,6 +97,8 @@ pub enum SchemaVariantDefinitionError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error("transparent")]
+    User(#[from] UserError),
     #[error(transparent)]
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("Schema Variant Definition {0} not found")]
@@ -116,6 +121,39 @@ impl IntoResponse for SchemaVariantDefinitionError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn save_variant_def(
+    ctx: &DalContext,
+    request: &SaveVariantDefRequest,
+) -> SchemaVariantDefinitionResult<()> {
+    let mut variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
+        .await?
+        .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
+            request.id,
+        ))?;
+    variant_def.set_name(ctx, request.name.clone()).await?;
+    variant_def
+        .set_menu_name(ctx, request.menu_name.clone())
+        .await?;
+    variant_def
+        .set_category(ctx, request.category.clone())
+        .await?;
+    variant_def.set_color(ctx, &request.color).await?;
+    variant_def.set_link(ctx, request.link.clone()).await?;
+    variant_def
+        .set_description(ctx, request.description.clone())
+        .await?;
+
+    let mut asset_func = Func::get_by_id(ctx, &variant_def.func_id()).await?.ok_or(
+        SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
+    )?;
+    asset_func
+        .set_code_plaintext(ctx, Some(&request.code))
+        .await?;
+    asset_func.set_handler(ctx, Some(&request.handler)).await?;
+
+    Ok(())
 }
 
 pub async fn is_variant_def_locked(

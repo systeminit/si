@@ -11,23 +11,15 @@ use dal::{
     func::intrinsics::IntrinsicFunc,
     pkg::import_pkg_from_pkg,
     schema::variant::definition::{
-        SchemaVariantDefinition, SchemaVariantDefinitionId, SchemaVariantDefinitionJson,
-        SchemaVariantDefinitionMetadataJson,
+        SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    Func, FuncBinding, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    Func, FuncBinding, HistoryActor, SchemaVariantId, StandardModel, User, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SiPkg};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExecVariantDefRequest {
-    pub id: SchemaVariantDefinitionId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
-
+pub type ExecVariantDefRequest = super::save_variant_def::SaveVariantDefRequest;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
@@ -44,6 +36,17 @@ pub async fn exec_variant_def(
     Json(request): Json<ExecVariantDefRequest>,
 ) -> SchemaVariantDefinitionResult<Json<ExecVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    // Ensure we save all details before "exec"
+    super::save_variant_def(&ctx, &request).await?;
+
+    let user = match ctx.history_actor() {
+        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        _ => None,
+    };
+    let user_email = user
+        .map(|user| user.email().to_owned())
+        .unwrap_or("unauthenticated user email".into());
 
     let mut variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
         .await?
@@ -108,7 +111,7 @@ pub async fn exec_variant_def(
     let schema_spec = metadata.to_spec(variant_spec)?;
     let pkg_spec = PkgSpec::builder()
         .name(metadata.clone().name)
-        .created_by("sally@systeminit.com")
+        .created_by(&user_email)
         .func(identity_func_spec)
         .func(asset_func_built.clone())
         .schema(schema_spec)

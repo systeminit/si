@@ -92,7 +92,7 @@ const onChange = () => {
   if (!selectedAsset.value || selectedAsset.value.code === editingAsset.value) {
     return;
   }
-  assetStore.SAVE_ASSET({
+  assetStore.enqueueAssetSave({
     ...selectedAsset.value,
     code: editingAsset.value,
   });
