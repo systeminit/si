@@ -68,7 +68,7 @@
 
         <pre
           @mousedown="tracker.trackEvent('copy_install_script')"
-        ><code class="language-shell">$ curl -sSf https://auth.systeminit.com/install.sh | sh</code></pre>
+        ><code class="language-shell">$ curl -sSfL https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
 
       <RichText class="pb-md">

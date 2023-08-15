@@ -92,7 +92,7 @@ main() {
   download "$asset_url" "$tmpdir/$asset"
 
   section "Installing '$asset'"
-  cd "$tmpdir"
+  cd "$tmpdir" || die "Failed to change directory with asset"
   extract_asset "$asset" || die "Failed to extract asset"
   cd "$initial_dir"
   install_bin "$tmpdir/$bin" "$dest/$bin" "$bin"
@@ -245,10 +245,9 @@ extract_asset() {
   asset="$1"
 
   need_cmd tar
-  need_cmd zcat
 
   info "Extracting $asset"
-  zcat "$asset" | indent tar xvf -
+  indent tar xvzf "$asset"
 }
 
 install_bin() {
