@@ -78,7 +78,13 @@ async fn authoring_flow_asset(
         .await;
 
     harness
-        .publish_asset(ctx.visibility(), asset.asset_id)
+        .publish_asset(
+            ctx.visibility(),
+            asset.asset_id,
+            schema_name.to_string(),
+            None,
+            asset_definition.to_string(),
+        )
         .await;
 
     // Let's add the new schema to our test harness cache

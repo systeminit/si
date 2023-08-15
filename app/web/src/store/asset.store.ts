@@ -4,6 +4,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
+import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFuncStore, FuncSummary, FuncId } from "./func/funcs.store";
@@ -82,6 +83,9 @@ export const useAssetStore = () => {
     // so we can give it a bad value and let it throw an error
     visibility_change_set_pk: changeSetId || "XXX",
   };
+
+  let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
+
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
@@ -247,23 +251,38 @@ export const useAssetStore = () => {
           });
         },
 
-        async SAVE_ASSET(asset: Asset) {
+        enqueueAssetSave(asset: Asset) {
           this.assetsById[asset.id] = asset;
-          return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
-            method: "post",
-            keyRequestStatusBy: asset.id,
-            url: "/variant_def/save_variant_def",
-            params: {
-              ...visibility,
-              ..._.omit(asset, [
-                "schemaVariantId",
-                "hasComponents",
-                "hasAttrFuncs",
-                "createdAt",
-                "updatedAt",
-              ]),
-            },
-          });
+          if (!assetSaveDebouncer) {
+            assetSaveDebouncer = keyedDebouncer((assetId: AssetId) => {
+              this.SAVE_ASSET(assetId);
+            }, 2000);
+          }
+          const assetSaveFunc = assetSaveDebouncer(asset.id);
+          if (assetSaveFunc) {
+            assetSaveFunc(asset.id);
+          }
+        },
+
+        async SAVE_ASSET(assetId: AssetId) {
+          const asset = this.assetsById[assetId];
+          if (asset) {
+            return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
+              method: "post",
+              keyRequestStatusBy: asset.id,
+              url: "/variant_def/save_variant_def",
+              params: {
+                ...visibility,
+                ..._.omit(asset, [
+                  "schemaVariantId",
+                  "hasComponents",
+                  "hasAttrFuncs",
+                  "createdAt",
+                  "updatedAt",
+                ]),
+              },
+            });
+          }
         },
 
         async LOAD_ASSET(assetId: AssetId) {
@@ -288,13 +307,23 @@ export const useAssetStore = () => {
         },
 
         async EXEC_ASSET(assetId: AssetId) {
+          const asset = this.assetsById[assetId];
           return new ApiRequest<
             { success: true; schemaVariantId: string },
-            Visibility & { id: AssetId }
+            AssetSaveRequest
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
-            params: { ...visibility, id: assetId },
+            params: {
+              ...visibility,
+              ..._.omit(asset, [
+                "schemaVariantId",
+                "hasComponents",
+                "hasAttrFuncs",
+                "createdAt",
+                "updatedAt",
+              ]),
+            },
           });
         },
       },

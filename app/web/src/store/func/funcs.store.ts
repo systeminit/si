@@ -9,6 +9,7 @@ import { FuncVariant } from "@/api/sdf/dal/func";
 
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
+import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -86,6 +87,8 @@ export const useFuncStore = () => {
     visibility_change_set_pk: selectedChangeSetId ?? nilId(),
   };
 
+  let funcSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
+
   return addStoreHooks(
     defineStore(`cs${selectedChangeSetId}/funcs`, {
       state: () => ({
@@ -95,7 +98,6 @@ export const useFuncStore = () => {
         inputSourceSockets: {} as InputSourceSockets,
         inputSourceProps: {} as InputSourceProps,
         outputSockets: {} as OutputSockets,
-        saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
         openFuncIds: [] as FuncId[],
         lastFuncExecutionLogByFuncId: {} as Record<FuncId, FuncExecutionLog>,
       }),
@@ -371,7 +373,6 @@ export const useFuncStore = () => {
 
         async SAVE_AND_EXEC_FUNC(funcId: FuncId) {
           const func = this.funcById(funcId);
-
           if (func) {
             trackEvent("func_save_and_exec", { id: func.id, name: func.name });
           }
@@ -524,8 +525,8 @@ export const useFuncStore = () => {
           // Lots of ways to handle this... we may want to handle this debouncing in the component itself
           // so the component has its own "draft" state that it passes back to the store when it's ready to save
           // however this should work for now, and lets the store handle this logic
-          if (!this.saveQueue[funcId]) {
-            this.saveQueue[funcId] = _.debounce(() => {
+          if (!funcSaveDebouncer) {
+            funcSaveDebouncer = keyedDebouncer((funcId: FuncId) => {
               const func = this.funcById(funcId);
               if (func) {
                 this.UPDATE_FUNC(func);
@@ -533,9 +534,9 @@ export const useFuncStore = () => {
             }, 2000);
           }
           // call debounced function which will trigger sending the save to the backend
-          const saveFunc = this.saveQueue[funcId];
+          const saveFunc = funcSaveDebouncer(funcId);
           if (saveFunc) {
-            saveFunc();
+            saveFunc(funcId);
           }
         },
       },

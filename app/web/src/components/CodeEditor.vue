@@ -47,7 +47,7 @@ const props = defineProps({
   typescript: { type: String },
   noLint: Boolean,
   noVim: Boolean,
-  debounceUpdate: { type: Boolean, default: true },
+  debounceUpdate: { type: Boolean, default: false },
 });
 
 const emit = defineEmits<{
