@@ -70,6 +70,23 @@
           darwin.apple_sdk.frameworks.SystemConfiguration
         ];
 
+      # This isn't an exact science, but confirming the system interpreter by
+      # running `ldd /bin/sh` in Docker containers running:
+      # - debian:9-slim
+      # - ubuntu:rolling
+      # - fedora:38
+      # - archlinux:latest
+      # - amazonlinux:latest
+      # - rockylinux:9-minimal
+      systemInterpreter =
+        {
+          "x86_64-linux" = "/lib64/ld-linux-x86-64.so.2";
+          "aarch64-linux" = "/lib/ld-linux-aarch64.so.1";
+          "x86_64-darwin" = "/dev/null";
+          "aarch64-darwin" = "/dev/null";
+        }
+        .${system};
+
       langJsExtraPkgs = with pkgs; [
         awscli
         butane
@@ -220,6 +237,53 @@
           sdf = binDerivation {pkgName = "sdf";};
 
           si = binDerivation {pkgName = "si";};
+
+          # Builds a standalone binary that is divorced from the Nix build and
+          # runtime environment
+          si-binary = buck2Derivation {
+            pathPrefix = "bin";
+            pkgName = "si";
+            stdBuildPhase = ''
+              # TODO(fnichol): we currently have a dynamically linked library of
+              # libc++abi being looked for in a `/nix/store` path when this
+              # binary is compiled on macOS, so for the meantime until this is
+              # fixed, we're going to perform a Cargo build of the binary (it
+              # does not suffer from this issue).
+              cargo build --bin "$name" --release
+              cp -pv "target/release/$name" "build/$name-$system"
+            '';
+            installPhase = ''
+              mkdir -pv "$out/bin"
+              cp -pv "build/$name-$system" "$out/bin/$name"
+            '';
+            dontPatchELF = true;
+            dontAutoPatchELF = true;
+            postFixup =
+              ""
+              + pkgs.lib.optionalString (pkgs.stdenv.isDarwin) ''
+                nix_lib="$(otool -L "$out/bin/$name" \
+                  | grep libiconv.dylib \
+                  | awk '{print $1}'
+                )"
+                install_name_tool \
+                  -change \
+                  "$nix_lib" \
+                  /usr/lib/libiconv.2.dylib \
+                  "$out/bin/$name" \
+                  2>/dev/null
+              ''
+              + pkgs.lib.optionalString (pkgs.stdenv.isLinux) ''
+                patchelf \
+                  --set-interpreter "${systemInterpreter}" \
+                  --remove-rpath \
+                  "$out/bin/$name"
+              ''
+              + ''
+                mkdir -pv "$out/tarballs"
+                tar cvf "$out/tarballs/$name-$system.tar" -C "$out/bin" "$name"
+                gzip -9 "$out/tarballs/$name-$system.tar"
+              '';
+          };
 
           veritech = binDerivation {pkgName = "veritech";};
 
