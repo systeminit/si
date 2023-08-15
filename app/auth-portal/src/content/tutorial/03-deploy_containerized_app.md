@@ -131,12 +131,12 @@ Let's work backward, connecting all the things your `EC2 Instance` needs in orde
 
 With the `EC2 Instance` selected, you can look to the `Selected Assets Panel` to check that the user data has been populated: in the Attributes tab, look at the `domain/UserData` field; and in the Code tab, look at the generated JSON code.
 
-Let's work through the input sockets of your `EC2 Instance` from top to bottom:
-The next socket is for a __Security Group__ ID.
-* Grab a `Security Group` from the `Asset Panel`, drop it into the `Region` frame (I like to place the `Security Group` in the upper left corner of the `Region` frame).
-* Connect it to the `EC2 Instance`.
-* The `Security Group` is already qualified with a green checkmark. Easy!
-* The `Security Group` has a red tools 'Changes' notification - like the one we saw earlier on the `EC2 Instance` - which lets you that this Resource does not exist yet. This will resolve later, when you click `Apply Changes`.
+Let's work through the input sockets of your `EC2 Instance` from top to bottom: 
+The next socket is for a __Security Group__ ID. 
+* Grab a `Security Group` from the `Asset Panel`, drop it into the `Region` frame (I like to place the `Security Group` in the upper left corner of the `Region` frame). 
+* connect it to the `EC2 Instance`.
+* The `Security Group` is already qualified with a green checkmark. Easy! 
+* The `Security Group` has a red tools 'Changes' notification - like the one we saw earlier on the `EC2 Instance` - which lets you know that this Resource does not exist yet. This will resolve later, when you click `Apply Changes`.
 
 ![Security Group Added](/tutorial-img/03-deploy_containerized_app/security_group_added.png)
 
@@ -147,9 +147,9 @@ A cat adoption website that nobody can reach from the outside world would be a s
 
 ![Connect a Security Group and Ingress Rule](/tutorial-img/03-deploy_containerized_app/connect_a_security_group_and_ingress_rule.png)
 
-Investigate the `Ingress` rule in the `Diagram Outline Panel`:
-* Your `Ingress` rule has a red tools 'Changes' notification. You probably know by now that this is just letting you know the Resource doesn't exist yet.
-* It also has has an orange Qualification warning. Click on the warning icon in the `Diagram Outline Panel` to see why:
+Investigate the `Ingress` rule in the `Diagram Outline Panel`: 
+* Your `Ingress` rule has a red tools 'Changes' notification. You probably know by now that this is just letting you know the Resource doesn't exist yet. 
+* It also has an orange Qualification warning. Click on the warning icon in the `Diagram Outline Panel` to see why:
 
 ![Warning on Ingress](/tutorial-img/03-deploy_containerized_app/warning_on_ingress.png)
 
@@ -186,7 +186,7 @@ Select the `EC2 Instance`, go to the `Selected Assets Panel`, scroll down to the
 
 Review the `Diagram Outline Panel`:
 * **Four 'Changes' notifications (red tools)**: (no action needed)
-  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resource does not exist yet.
+  * Each of the four AWS Assets you used has a red tools 'Changes' notification, which are telling you that these resources do not exist yet. 
   * These Resources will be created once you click `Apply Changes` in a moment. Once they exist, these notifications will turn green.
 
 * **Two Qualification warnings (orange exclamation points)**: (no action needed)
@@ -221,7 +221,7 @@ Three things to notice about the screen in front of you:
 
 * Looking at both the Canvas and the `Diagram Outline Panel`, the red tools 'Changes' notifications have now turned green. The Resources you modeled now exist in AWS, so there are no proposed Changes remaining.
 
-You can inspect the data about your created Resources by selecting the relevant Asset and clicking the on the Resource tab of the `Selected Assets Panel`. Try it with your `EC2 Instance`: open the Resource tab, and notice that once AWS has provisioned your `EC2 Instance` the State will switch to running.
+You can inspect the data about your created Resources by selecting the relevant Asset and clicking on the Resources tab of the `Selected Assets Panel`. Try it with your `EC2 Instance`: open the Resources tab, and notice that once AWS has provisioned your `EC2 Instance` the State will switch to running.
 
 ![Running state on Ec2 Instance](/tutorial-img/03-deploy_containerized_app/running_state_on_ec2_instance.png)
 
