@@ -10,12 +10,10 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
 
 const authStore = useAuthStore();
-const router = useRouter();
 
 onMounted(async () => {
   if (authStore.userIsLoggedIn) {
     await authStore.logout();
   }
-  window.location.href = "https://www.systeminit.com";
 });
 </script>

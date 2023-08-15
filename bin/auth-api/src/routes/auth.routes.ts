@@ -85,5 +85,5 @@ router.get("/auth/logout", async (ctx) => {
 router.get("/auth/logout-callback", async (ctx) => {
   // console.log("Logged out!");
   // ctx.body = { logout: true };
-  ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login`);
+  ctx.redirect(`${process.env.AUTH_PORTAL_URL}/logout-success`);
 });
