@@ -112,7 +112,7 @@ function adjustLinks() {
   const linkEls = containerRef.value.querySelectorAll("a");
   linkEls.forEach((linkEl) => {
     const url = linkEl.getAttribute("href");
-    if (url && !url.startsWith("#")) {
+    if (url && url.match(/^https?:\/\//)) {
       linkEl.setAttribute("target", "_blank");
     }
   });

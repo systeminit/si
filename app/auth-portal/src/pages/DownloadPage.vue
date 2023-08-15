@@ -5,18 +5,17 @@
       <div class="flex flex-col grow">
         <h1 class="text-3xl font-bold">Install System Initiative</h1>
         <p class="text-sm italic line-clamp-2">
-          Install or update to v{{ selectedVersion
-          }}{{ selectedVersion === versions[0] ? " (latest)" : "" }} of System
-          Initiative to get started.
+          Install or update System Initiative to get started
         </p>
         <!-- TODO(wendy) - add "latest version" text conditional -->
       </div>
-      <div v-if="versions.length > 1" class="w-40 flex-none">
+      <div v-if="versionDropdownOptions.length > 1" class="w-40 flex-none">
         <VormInput
           v-model="selectedVersion"
           noLabel
+          autoSelect
           type="dropdown"
-          :options="versions"
+          :options="versionDropdownOptions"
         />
       </div>
     </div>
@@ -40,56 +39,78 @@
         </div>
       </div>
       <div class="border-b border-neutral-400 mb-md mt-sm" />
-      <div class="font-bold text-xl">Requirements</div>
-      <RichText class="py-sm">
-        Before installing System Initiative, you will need to have
-        <code>docker</code> installed. We suggest using
-        <a
-          class="font-bold dark:text-action-400 text-action-600"
-          href="https://www.docker.com/products/docker-desktop/"
-          target="_blank"
-          >Docker Desktop</a
+
+      <RichText class="pb-md">
+        <h2>Requirements</h2>
+        <p>
+          Before installing System Initiative, you will need to have
+          <code>docker</code> installed. We suggest using
+          <a
+            href="https://www.docker.com/products/docker-desktop/"
+            target="_blank"
+            >Docker Desktop</a
+          >
+          or Docker Engine corresponding to your native architecture{{
+            selectedPlatform === "Linux"
+              ? " (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside WSL2)"
+              : ""
+          }}.
+        </p>
+      </RichText>
+      <RichText class="pb-md">
+        <h2 class="!mb-0">Shell script for installation</h2>
+        <div
+          class="text-sm italic dark:text-neutral-400 text-neutral-600 line-clamp-2"
         >
-        or Docker Engine corresponding to your native architecture{{
-          selectedPlatform === "Linux"
-            ? " (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside WSL2)"
-            : ""
-        }}.
+          Copy and paste the following command into your terminal and execute
+          it:
+        </div>
+
+        <pre
+          @mousedown="tracker.trackEvent('copy_install_script')"
+        ><code class="language-shell">$ curl -sSf https://auth.systeminit.com/install.sh | sh</code></pre>
       </RichText>
-      <div class="font-bold text-xl">Shell script for installation</div>
-      <p
-        class="text-sm italic dark:text-neutral-400 text-neutral-600 line-clamp-2"
-      >
-        Copy and paste the following command into your terminal and execute it:
-      </p>
-      <RichText
-        class="py-sm"
-        @mousedown="tracker.trackEvent('copy_install_script')"
-      >
-        <pre><code class="language-shell">$ curl -sSf https://auth.systeminit.com/install.sh | sh</code></pre>
-      </RichText>
-      <div class="font-bold text-xl">Manual Installation</div>
-      <div>
-        <RichText class="py-sm">
+
+      <RichText class="pb-md">
+        <h2>Manual Installation</h2>
+        <p>
           In order to manually install System Initiative, please download one of
           the binaries below. When the binary is downloaded, you can following
           the commands as follows:
-        </RichText>
-        <RichText>
+        </p>
+        <p>
           1. Extract the tarball and move the `si` binary to a directory
-          included in your system's <code class="language-shell">$PATH</code
-          ><br />
-          2. Verify that the installation works by running the CLI command:<br />
+          included in your system's <code class="language-shell">$PATH</code>
+          <br />
+          2. Verify that the installation works by running the CLI command:
+        </p>
+        <pre><code class="language-shell">$ si --version</code></pre>
+      </RichText>
+
+      <RichText class="pb-md">
+        <h2>Quick Start</h2>
+
+        <p>Use the si binary to get up and running quickly:</p>
+        <pre><code class="language-shell">$ si start</code></pre>
+
+        <p>
+          Head over to the
+          <RouterLink :to="{ name: 'tutorial' }">tutorial</RouterLink> for more
+          info.
+        </p>
+      </RichText>
+
+      <template
+        v-if="selectedPlatformAssets && selectedPlatformAssets.length > 0"
+      >
+        <RichText>
+          <h2>
+            Binary download{{
+              selectedPlatformAssets.length > 1 ? "s" : ""
+            }}
+            for {{ selectedPlatform }}
+          </h2>
         </RichText>
-        <RichText class="py-sm">
-          <pre><code class="language-shell">$ si --version</code></pre>
-        </RichText>
-      </div>
-      <template v-if="selectedPlatformAssets.length > 0">
-        <div class="font-bold text-xl">
-          Binary download{{ selectedPlatformAssets.length > 1 ? "s" : "" }} for
-          {{ selectedPlatform }}
-        </div>
         <div
           v-for="asset in selectedPlatformAssets"
           :key="asset.id"
@@ -118,6 +139,7 @@
           </a>
         </div>
       </template>
+
       <div class="font-bold text-xl">Release information</div>
       <div
         class="border border-neutral-400 rounded p-sm my-sm flex flex-row justify-between items-center"
@@ -140,16 +162,27 @@
         </a>
       </div>
     </div>
+    <RichText
+      class="mt-sm text-center text-sm text-neutral-500 dark:text-neutral-400"
+    >
+      <p>
+        By using System Initiative, you agree to its
+        <RouterLink :to="{ name: 'legal' }" target="_blank"
+          >licensing and privacy policy</RouterLink
+        >
+      </p>
+    </RichText>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useHead } from "@vueuse/head";
+import * as _ from "lodash-es";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import clsx from "clsx";
 import { computed, onBeforeMount, ref } from "vue";
 import { Icon, VormInput, RichText } from "@si/vue-lib/design-system";
-import { Asset, useGithubStore } from "@/store/github.store";
+import { useGithubStore } from "@/store/github.store";
 import { tracker } from "@/lib/posthog";
 import { useFeatureFlagsStore } from "../store/feature_flags.store";
 
@@ -159,51 +192,33 @@ const githubStore = useGithubStore();
 useHead({ title: "Download" });
 
 onBeforeMount(async () => {
-  await githubStore.LOAD_RELEASES();
-  if (githubStore.releases.length > 0) {
-    selectedVersion.value = githubStore.releases[0].version;
-  }
-  // console.log(githubStore.releases);
-});
-
-const releasesArray = computed(() => {
-  return githubStore.releases;
-});
-
-const releasesByVersion = computed(() => {
-  return releasesArray.value
-    .map((release) => ({ [release.version]: release }))
-    .reduce((acc, val) => ({ ...acc, ...val }), {});
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  githubStore.LOAD_RELEASES();
 });
 
 const selectedPlatform = ref("Linux");
 const platforms = ["Linux", "macOS"];
 
 const selectedVersion = ref<string>();
-const versions = computed(() => {
-  return releasesArray.value.map((release) => {
-    const split = release.version.split("/");
-    return split[split.length - 1];
-  });
-});
+const versionDropdownOptions = computed(() =>
+  githubStore.releases.map((release) => {
+    const versionAndSha = release.version.split("/").pop() || "";
+    const [versionOnly, _sha] = versionAndSha.split("-");
+    return {
+      value: release.version,
+      label: versionOnly,
+    };
+  }),
+);
 
 const selectedPlatformAssets = computed(() => {
-  const assets = [] as Asset[];
-
-  if (!selectedVersion.value) return assets;
-
-  releasesByVersion.value[selectedVersion.value].assets.forEach(
-    (asset: Asset) => {
-      if (
-        selectedPlatform.value.toLowerCase() === "macos"
-          ? asset.name.toLowerCase().includes("darwin")
-          : asset.name.toLowerCase().includes("linux")
-      ) {
-        assets.push(asset);
-      }
-    },
+  if (!selectedVersion.value) return;
+  const selectedVersionData =
+    githubStore.releasesByVersion[selectedVersion.value];
+  return _.filter(selectedVersionData.assets, (a) =>
+    selectedPlatform.value.toLowerCase() === "macos"
+      ? a.name.toLowerCase().includes("darwin")
+      : a.name.toLowerCase().includes("linux"),
   );
-
-  return assets;
 });
 </script>

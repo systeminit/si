@@ -66,7 +66,6 @@
     "@types/koa-bodyparser": "^4.3.10",
     "@types/koa__cors": "^3.3.1",
     "@types/koa__router": "^12.0.0",
-    "@types/lodash": "^4.14.191",
     "@types/luxon": "^3.3.0",
     "@types/node": "^18.15.11",
     "@types/request-ip": "^0.0.37",
