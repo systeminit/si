@@ -2,6 +2,7 @@ import Axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { trackEvent } from "@/utils/tracking";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -42,18 +43,33 @@ function injectBearerTokenAuth(config: AxiosRequestConfig) {
 sdfApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
 async function handleForcedChangesetRedirection(response: AxiosResponse) {
-  const setActiveChangeset = useChangeSetsStore().setActiveChangeset;
-
-  // TODO(victor) I made this a field with a prefix just to make it work and test the experience
-  // It probably makes sense to make this come as a header from the backend so only this interceptor needs
-  // to care about it
   if (response.headers.force_changeset_pk) {
-    await setActiveChangeset(response.headers.force_changeset_pk);
+    const changeSetsStore = useChangeSetsStore();
+    await changeSetsStore.setActiveChangeset(
+      response.headers.force_changeset_pk,
+    );
   }
 
   return response;
 }
 
+async function handleProxyTimeouts(response: AxiosResponse) {
+  // some weird timeouts happening and triggering nginx 404 when running via the CLI
+  // here we will try to detect them, track it, and give user some help
+  if (
+    response.status === 404 &&
+    response.headers?.["content-type"] !== "application/json"
+  ) {
+    trackEvent("api_404_timeout");
+    // redirect to oops page after short timeout so we give tracker a chance to send event
+    setTimeout(() => {
+      if (window) window.location.href = "/oops";
+    }, 500);
+  }
+  return response;
+}
+
+sdfApiInstance.interceptors.response.use(handleProxyTimeouts);
 sdfApiInstance.interceptors.response.use(handleForcedChangesetRedirection);
 
 export const authApiInstance = Axios.create({

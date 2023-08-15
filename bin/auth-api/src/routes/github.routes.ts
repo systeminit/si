@@ -46,9 +46,8 @@ const loadReleases = async (): Promise<Release[]> => {
         return req.data;
       }, (err) => {
         throw new ApiError(
-          err.response.statusText,
-          "GITHUB_LIST_RELEASES_FAILURE",
-          err.response.data.message,
+          'Conflict',
+          `Fetching relases from github failed: ${err.response.statusText} - ${err.response.data.message}`,
         );
       });
 
@@ -98,9 +97,8 @@ router.get("/github/releases/latest", async (ctx) => {
   const latest = (await loadReleases())[0];
   if (!latest) {
     throw new ApiError(
-      "NotFound",
-      "GITHUB_LATEST_RELEASE_NOT_FOUND",
-      "not found",
+      "Conflict",
+      "Could not find the latest release on Github",
     );
   }
 

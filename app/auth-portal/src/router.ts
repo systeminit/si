@@ -16,6 +16,7 @@ export const routerOptions: RouterOptions = {
   routes: [
     { path: "/", name: "home", redirect: { name: "login" } },
     { path: "/login", name: "login", component: LoginPage },
+    { path: "/signup", name: "signup", component: LoginPage },
     { path: "/logout", name: "logout", component: LogoutPage },
     {
       // public legal page, optionally can jump to specific doc
@@ -67,7 +68,7 @@ export const routerOptions: RouterOptions = {
 export function initRouterGuards(router: Router) {
   router.beforeEach((from, to) => {
     if (!to.name || !_.isString(to.name)) return;
-    if (["login", "logout", "404"].includes(to.name)) return;
+    if (["login", "signup", "logout", "404"].includes(to.name)) return;
     // TODO: might want to do something here...?
   });
 

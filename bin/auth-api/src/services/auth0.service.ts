@@ -21,7 +21,7 @@ const auth0Api = Axios.create({
 
 export type Auth0UserData = Auth0.UserData;
 
-export function getAuth0LoginUrl() {
+export function getAuth0LoginUrl(signup = false) {
   // lots of ways to generate this, but... nanoid is pretty good and already url-safe
   const randomState = nanoid(16);
 
@@ -31,6 +31,7 @@ export function getAuth0LoginUrl() {
     redirect_uri: LOGIN_CALLBACK_URL,
     state: randomState,
     scope: "openid profile email",
+    ...signup && { screen_hint: 'signup' },
     // `connection=CONNECTION` // not quite sure
     // prompt=none // for silent authentication - https://auth0.com/docs/authenticate/login/configure-silent-authentication
     // audience -- can be used to specify which "api" we are connecting to?

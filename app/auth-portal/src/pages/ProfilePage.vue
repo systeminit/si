@@ -347,9 +347,7 @@ async function tellUsMoreHandler(skip: boolean) {
   if (validationMethods.hasError()) return;
 
   if (!skip) {
-    tracker.trackEvent("tell_us_more_answers", {
-      stepTwoData,
-    });
+    tracker.trackEvent("tell_us_more_answers", stepTwoData);
   }
 
   const completeProfileReq = await authStore.COMPLETE_PROFILE(

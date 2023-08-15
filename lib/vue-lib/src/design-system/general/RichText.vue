@@ -111,7 +111,10 @@ function adjustLinks() {
   if (!containerRef.value) return;
   const linkEls = containerRef.value.querySelectorAll("a");
   linkEls.forEach((linkEl) => {
-    linkEl.setAttribute("target", "_blank");
+    const url = linkEl.getAttribute("href");
+    if (url && !url.startsWith("#")) {
+      linkEl.setAttribute("target", "_blank");
+    }
   });
 }
 
