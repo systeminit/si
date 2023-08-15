@@ -424,6 +424,9 @@ importers:
       '@types/koa__router':
         specifier: ^12.0.0
         version: 12.0.0
+      '@types/lodash':
+        specifier: ^4.14.182
+        version: 4.14.197
       '@types/luxon':
         specifier: ^3.3.0
         version: 3.3.0
