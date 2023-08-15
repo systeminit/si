@@ -48,7 +48,7 @@ pub(crate) struct Args {
     #[arg(long, short, env = "SI_LAUNCHER_MODE", default_value = "local")]
     mode: String,
     /// Show a preview of what the System Initiative Launcher will do
-    #[arg(long, short, default_value = "false")]
+    #[arg(long, short = 'p', default_value = "false")]
     pub is_preview: bool,
     /// The engine in which to launch System Initiate Containers
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
@@ -106,11 +106,11 @@ pub(crate) struct ConfigureArgs {
 #[derive(Debug, clap::Args)]
 pub(crate) struct StatusArgs {
     /// Shows the logs from the containers
-    #[clap(short, long)]
+    #[clap(long)]
     pub show_logs: bool,
 
     /// The number of log lines to show when `show_logs` is used
-    #[arg(long, short, default_value = "10")]
+    #[arg(long, short = 'l', default_value = "10")]
     pub log_lines: usize,
 }
 
@@ -142,7 +142,7 @@ pub(crate) struct UpdateArgs {
 #[derive(Debug, clap::Args)]
 pub(crate) struct InstallArgs {
     /// Skip the system check as part of the install command
-    #[clap(short, long)]
+    #[clap(long)]
     pub skip_check: bool,
 }
 
