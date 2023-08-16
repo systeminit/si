@@ -57,7 +57,7 @@
       ref="contributeAssetModalRef"
       title="Contribute Assets"
       label="Contribute to System Initiative"
-      loadingText="Engaging photon torpedos..."
+      :loadingText="_.sample(contributeLoadingTexts)"
       :preSelectedSchemaVariantId="assetStore.selectedAsset?.schemaVariantId"
       autoVersion
       @export-success="onExport"
@@ -74,6 +74,7 @@
 </template>
 
 <script lang="ts" setup>
+import * as _ from "lodash-es";
 import { onMounted, computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
@@ -99,6 +100,29 @@ const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
+
+const contributeLoadingTexts = [
+  "Engaging Photon Torpedos...",
+  "Reticulating Splines...",
+  "Revolutionizing DevOps...",
+  "Calibrating Hyperspace Matrix...",
+  "Syncing Neural Circuitry...",
+  "Optimizing Tachyon Weave...",
+  "Tuning Fractal Harmonics...",
+  "Reshuffling Multiverse Threads...",
+  "Harmonizing Subspace Arrays...",
+  "Modulating Cybernetic Matrices...",
+  "Configuring Exo-Geometric Arrays...",
+  "Initializing Flux Capacitors...",
+  "Balancing Subatomic Resonance...",
+  "Fine-tuning Quantum Entanglement...",
+  "Matrixing Hyperdimensional Grids...",
+  "Coalescing Esoteric Code...",
+  "Syncopating Quantum Flux...",
+  "Reformatting Reality Lattice...",
+  "Fine-tuning Temporal Flux...",
+  "Syncing Cosmic Harmonics...",
+];
 
 const props = defineProps({
   assetId: { type: String },
