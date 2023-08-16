@@ -6,6 +6,8 @@ mod containers;
 mod key_management;
 pub mod state;
 
+pub use containers::DockerClient;
+
 pub const CONTAINER_NAMES: &[&str] = &[
     "jaeger", "postgres", "nats", "otelcol", "council", "veritech", "pinga", "sdf", "web",
 ];
