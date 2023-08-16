@@ -24,7 +24,7 @@ buck2 test <crate>:test
 To see all options, use `buck2 targets` with a `:` character at the end.
 
 ```bash
-buck2 test <crate>:
+buck2 targets <crate>:
 ```
 
 ## Running Individual Tests

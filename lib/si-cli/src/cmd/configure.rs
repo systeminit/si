@@ -2,8 +2,7 @@ use crate::key_management::{
     does_credentials_file_exist, get_credentials, get_si_data_dir, get_user_email,
     write_veritech_credentials,
 };
-use crate::state::AppState;
-use crate::CliResult;
+use crate::{state::AppState, CliResult, SiCliError};
 use inquire::{Password, PasswordDisplayMode};
 
 impl AppState {
@@ -44,6 +43,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
                 raw_creds.aws_access_key_id = aws_access_key;
                 requires_rewrite = true;
             }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
             Err(_) => {
                 println!("An error happened when asking for your AWS Access Key, try again later.")
             }
@@ -62,6 +62,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
                 raw_creds.aws_secret_access_key = aws_secret_access_key;
                 requires_rewrite = true;
             }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
             Err(_) => println!(
                 "An error happened when asking for your AWS Secret Access Key, try again later."
             ),
@@ -80,6 +81,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
                 raw_creds.docker_hub_user_name = Some(docker_hub_user_name);
                 requires_rewrite = true;
             }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
             Err(_) => println!("Skipped adding a docker hub user name"),
         }
     }
@@ -97,6 +99,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
                 raw_creds.docker_hub_credential = Some(docker_hub_token_or_password);
                 requires_rewrite = true;
             }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
             Err(_) => println!("Skipped adding a docker hub user name"),
         }
     }
@@ -116,6 +119,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
                 raw_creds.si_email = Some(si_email);
                 requires_rewrite = true;
             }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
             Err(_) => println!("Skipped adding a SI email address"),
         }
     }

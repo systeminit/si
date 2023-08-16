@@ -15,6 +15,8 @@ pub const CONTAINER_NAMES: &[&str] = &[
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SiCliError {
+    #[error("ctrl+c")]
+    CtrlC,
     #[error("docker api: {0}")]
     Docker(#[from] docker_api::Error),
     #[error("container search failed: {0}")]
