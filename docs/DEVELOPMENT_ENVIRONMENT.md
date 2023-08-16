@@ -27,6 +27,9 @@ Linux (GNU) is officially supported on both x86_64 (amd64) and aarch64 (arm64) a
 [NixOS](https://nixos.org/) is not supported at this time, but may be desired in the future.
 Linux with MUSL instead of GNU is also not currently supported.
 
+In general, GNU-based distros that are roughly [FHS-compliant](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) work.
+Those include, but are not limited to the following: Ubuntu, Fedora, Debian, Arch Linux, and openSUSE.
+
 ### Windows
 
 Using native Windows is not supported at this time, but may be desired in the future.
@@ -91,12 +94,13 @@ For Docker Desktop, the version corresponding to your native architecture should
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine (i.e. installing and using
 `docker` within the distro and not interacting with the host).
 
+Regardless of platform, you may need to configure credentials in `~/.local/share`.
+
 #### Rancher Desktop
 
-Since [Rancher Desktop](https://rancherdesktop.io/) provides the ability to use the [moby](https://github.com/moby/moby),
+Since [Rancher Desktop](https://rancherdesktop.io/) provides the ability to use [moby](https://github.com/moby/moby),
 you can use it to run and develop the System Initiative software.
 However, it is untested, and you may need to further configuration depending on your platform.
-For example, on WSL2 via Windows, you may need to configure credentials in `~/.local/share`.
 
 ### (Optional) Direnv
 
