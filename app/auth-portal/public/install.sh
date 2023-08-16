@@ -199,7 +199,7 @@ parse_cli_args() {
   shift "$((OPTIND - 1))"
 
   case "$PLATFORM" in
-    x86-64-darwin | x86_64-linux | aarch64-darwin | aarch64-linux) ;;
+    x86_64-darwin | x86_64-linux | aarch64-darwin | aarch64-linux) ;;
     *) die "Installation failed, unsupported platform: '$PLATFORM'" ;;
   esac
 }
