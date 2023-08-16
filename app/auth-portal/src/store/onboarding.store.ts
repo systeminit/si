@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { watch } from "vue";
 import Axios from "axios";
 import { posthog } from "posthog-js";
+import storage from "local-storage-fallback";
 import { tracker } from "@/lib/posthog";
 import { useAuthStore } from "./auth.store";
 
@@ -84,10 +85,12 @@ export const useOnboardingStore = () => {
 
           // this is first time user has dev setup online, track it
           if (
-            !this.stepsCompleted.dev_setup &&
+            !this.stepsCompleted.install_and_run_system_initiative &&
+            !storage.getItem("tracked-dev-env-online") &&
             this.devFrontendOnline &&
             this.devBackendOnline
           ) {
+            storage.setItem("tracked-dev-env-online", "y");
             tracker.trackEvent("dev_env_online");
             // will toggle posthog.isFeatureEnabled("vro_dev-setup-completed") &&
           }
@@ -133,14 +136,14 @@ export const useOnboardingStore = () => {
           { immediate: true },
         );
 
-        const checkDevEnvInteval = setInterval(this.checkDevEnvOnline, 5000);
+        const checkDevEnvInterval = setInterval(this.checkDevEnvOnline, 5000);
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         this.checkDevEnvOnline();
 
         return () => {
           stopWatchLoggedIn();
           clearInterval(refreshFeatureFlagInterval);
-          clearInterval(checkDevEnvInteval);
+          clearInterval(checkDevEnvInterval);
         };
       },
     }),
