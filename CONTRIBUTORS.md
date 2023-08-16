@@ -8,8 +8,15 @@ We contributors to System Initiative:
 
 -----------
 * Adam Jacob (@adamhjk)
+* Anna Saulwick (@AnnaAtMax)
+* Brit Myers (@britmyerss)
 * Fletcher Nichol (@fnichol)
+* Jacob Helwig (@jhelwig)
+* Mahir Lupinacci (@mahirl)
 * Nick Gerace (@nickgerace)
 * Paul Stack (@stack72)
 * Paulo Cabral (@paulocsanz)
+* Theo Ephraim (@theoephraim)
 * Victor Bustamante (@vbustamante)
+* Wendy Bujalski (@wendybujalski)
+* Zack Hamm (@zacharyhamm)
