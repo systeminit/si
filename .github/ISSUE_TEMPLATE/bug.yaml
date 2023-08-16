@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report an issue
-labels: [ triage ]
+labels: [ linear ]
 body:
   - type: markdown
     attributes:
