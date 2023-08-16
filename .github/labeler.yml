@@ -73,6 +73,7 @@ A-si-discord-bot:
   - .prettierrc.js
 A-si:
   - bin/si/**/*
+  - lib/si-cli/**/*
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)
