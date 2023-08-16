@@ -80,8 +80,13 @@ pub async fn get_credentials() -> CliResult<Credentials> {
 }
 
 pub async fn get_user_email() -> CliResult<String> {
-    let credentials = get_credentials().await?;
+    let data_dir_exists = get_si_data_dir().await;
+    if data_dir_exists.is_err() {
+        // If the data_dir doesn't exist then we should default to sally for now
+        return Ok("sally@systeminit.com".to_string());
+    }
 
+    let credentials = get_credentials().await?;
     if let Some(email) = credentials.si_email {
         Ok(email)
     } else {

@@ -3,7 +3,6 @@ use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::models::{ContainerSummary, ImageSummary, PingInfo};
 use docker_api::opts::{
     ContainerFilter, ContainerListOpts, ImageListOpts, ImageRemoveOpts, LogsOpts, PullOpts,
-    RegistryAuth,
 };
 use docker_api::Docker;
 use futures::StreamExt;
