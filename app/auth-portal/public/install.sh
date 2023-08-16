@@ -49,9 +49,7 @@ main() {
   program="install.sh"
 
   local gh_repo bin
-  # TODO(fnichol): restore original repo
-  # gh_repo="systeminit/si"
-  gh_repo="stack72/test-download"
+  gh_repo="systeminit/si"
   bin="si"
 
   setup_cleanups

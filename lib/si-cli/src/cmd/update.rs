@@ -56,12 +56,6 @@ async fn update_current_binary(url: &str) -> CliResult<()> {
         current_exe
     };
 
-    // TODO: remove this line when we open source
-    let url = url.replace(
-        "/systeminit/si/releases/download/",
-        "/stack72/test-download/releases/download/",
-    );
-
     let req = reqwest::get(url).await?;
     if req.status().as_u16() != 200 {
         println!(
