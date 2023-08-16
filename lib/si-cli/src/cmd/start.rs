@@ -254,10 +254,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     continue;
                 }
 
-                println!("Starting existing {0}", container_name.clone());
+                println!("Deleting existing container {0}", container_name.clone());
                 let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
-                continue;
+                non_running_container.delete().await?;
             }
 
             if is_preview {
