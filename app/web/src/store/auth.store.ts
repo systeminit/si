@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import jwtDecode from "jwt-decode";
-import { useRouter } from "vue-router";
 import { ApiRequest } from "@si/vue-lib/pinia";
 import { posthog } from "@/utils/posthog";
 
