@@ -1,6 +1,7 @@
 # System Initiative
 
 [![Discord Server](https://img.shields.io/badge/discord-gray?style=flat-square&logo=discord)](https://discord.com/invite/system-init)
+[![Build dashboard](https://img.shields.io/badge/dashboard-gray?style=flat-square&logo=buildkite)](https://buildkite.com/system-initiative)
 [![Build status](https://badge.buildkite.com/ecdbcb0ae243a74976f62a95826ec1fce62707e6fe07e4b973.svg?style=flat-square)](https://buildkite.com/system-initiative/si-merge-main)
 
 This is a monolithic repository containing the System Initiative software.
