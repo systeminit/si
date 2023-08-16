@@ -18,6 +18,7 @@ pub struct DockerReleaseInfo {
     pub git_sha: String,
     pub created_at: String,
     pub image: String,
+    pub version: String,
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +73,11 @@ impl DockerClient {
                 git_sha: container
                     .labels
                     .get("org.opencontainers.image.revision")
+                    .unwrap()
+                    .to_string(),
+                version: container
+                    .labels
+                    .get("org.opencontainers.image.version")
                     .unwrap()
                     .to_string(),
                 created_at: container
