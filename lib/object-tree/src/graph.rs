@@ -27,6 +27,9 @@ pub const NL: char = '\n';
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum GraphError {
+    /// When a checked arithmetic operation returns [`None`]
+    #[error("checked arithmetic failed: {0}")]
+    CheckedArithmeticFailure(&'static str),
     /// When parsing a serialized node representation and a valid version was found
     #[error("invalid node version when parsing from bytes: {0}")]
     InvalidNodeVersion(String),
@@ -42,6 +45,9 @@ pub enum GraphError {
     /// When multiple root nodes were found while traversing a tree
     #[error("root node already set, cannot have multiple roots in tree")]
     MultipleRootNode,
+    /// When a node weight is not found for a given index
+    #[error("node weight not found for index ({0}): {1}")]
+    NodeWeightNotFound(usize, &'static str),
     /// When parsing a serialized node from bytes returns an error
     #[error("error parsing node from bytes: {0}")]
     Parse(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
@@ -407,12 +413,24 @@ impl<T> HashingTree<T> {
         let mut dfspo = DfsPostOrder::new(&self.graph, self.root_idx);
 
         while let Some(node_idx) = dfspo.next(&self.graph) {
-            let node = &self.graph[node_idx];
+            let node = self
+                .graph
+                .node_weight(node_idx)
+                .ok_or(GraphError::NodeWeightNotFound(
+                    node_idx.index(),
+                    "could not find node for next item in dfspo",
+                ))?;
 
             // Create an entry for each direct child
             let mut entries = Vec::new();
             for child_idx in self.graph.neighbors_directed(node_idx, Outgoing) {
-                let child_node = &self.graph[child_idx];
+                let child_node =
+                    self.graph
+                        .node_weight(child_idx)
+                        .ok_or(GraphError::NodeWeightNotFound(
+                            child_idx.index(),
+                            "could not find child weight for index",
+                        ))?;
                 let child_hash = self.hashes.get(&child_idx).ok_or_else(|| {
                     GraphError::UnhashedChild(
                         node.inner.name().to_string(),
@@ -449,7 +467,14 @@ impl<T> HashingTree<T> {
             parent_idx: Option<NodeIndex>,
         }
 
-        let other_root_node = self.graph[self.root_idx].clone();
+        let other_root_node = self
+            .graph
+            .node_weight(self.root_idx)
+            .ok_or(GraphError::NodeWeightNotFound(
+                self.root_idx.index(),
+                "could not find weight for other root node",
+            ))?
+            .clone();
         let other_root_node_hash = self
             .hashes
             .get(&self.root_idx)
@@ -480,7 +505,14 @@ impl<T> HashingTree<T> {
             };
 
             for other_child_idx in self.graph.neighbors_directed(entry.other_idx, Outgoing) {
-                let other_node = self.graph[other_child_idx].clone();
+                let other_node = self
+                    .graph
+                    .node_weight(other_child_idx)
+                    .ok_or(GraphError::NodeWeightNotFound(
+                        other_child_idx.index(),
+                        "could not find other child node for index",
+                    ))?
+                    .clone();
                 let other_node_hash = self
                     .hashes
                     .get(&other_child_idx)
@@ -722,8 +754,21 @@ pub fn read_key_value_line<R: BufRead>(
             line_value.len()
         )))
     } else {
-        let remaining_bytes = len - line_value.len();
-        let mut remaining = vec![0; remaining_bytes + 1];
+        // Safe remaining bytes operation.
+        let remaining_bytes =
+            len.checked_sub(line_value.len())
+                .ok_or(GraphError::CheckedArithmeticFailure(
+                    "could not compute remaining bytes",
+                ))?;
+
+        // Safe length operation.
+        let length = remaining_bytes
+            .checked_add(1)
+            .ok_or(GraphError::CheckedArithmeticFailure(
+                "could not compute length for remaining vec",
+            ))?;
+
+        let mut remaining = vec![0; length];
         reader
             .read_exact(&mut remaining)
             .map_err(GraphError::IoRead)?;

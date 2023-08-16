@@ -42,11 +42,23 @@ impl TarWriter {
         let mut dfspo = DfsPostOrder::new(graph, root_idx);
 
         while let Some(node_idx) = dfspo.next(graph) {
-            let node = graph[node_idx].clone();
+            let node = graph
+                .node_weight(node_idx)
+                .ok_or(GraphError::NodeWeightNotFound(
+                    node_idx.index(),
+                    "tar writer: could not find next node for index for dfspo",
+                ))?
+                .clone();
 
             let mut entries = Vec::new();
             for child_idx in graph.neighbors_directed(node_idx, Outgoing) {
-                let child_node = &graph[child_idx];
+                let child_node =
+                    graph
+                        .node_weight(child_idx)
+                        .ok_or(GraphError::NodeWeightNotFound(
+                            child_idx.index(),
+                            "tar writer: could not find child node for index",
+                        ))?;
                 entries.push(NodeEntry::new(
                     child_node.kind(),
                     child_node.hash(),
@@ -62,10 +74,16 @@ impl TarWriter {
             )?;
         }
 
+        let root_node = graph
+            .node_weight(root_idx)
+            .ok_or(GraphError::NodeWeightNotFound(
+                root_idx.index(),
+                "tar writer: could not find root node for index",
+            ))?;
         write_tar_entry(
             &mut tar_builder,
             ref_path("root"),
-            graph[root_idx].hash().to_string().as_bytes(),
+            root_node.hash().to_string().as_bytes(),
         )?;
         tar_builder.finish()?;
 
