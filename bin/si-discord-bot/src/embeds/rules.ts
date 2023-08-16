@@ -9,7 +9,7 @@ export function rulesMessage(): MessageEmbed {
 These are the rules:
 
 ***1. Code of Conduct:***
-Please follow **[Rust's Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct)**.
+Please follow **[Our Code of Conduct](https://github.com/systeminit/si/blob/main/CODE_OF_CONDUCT.md)**.
 Report any violations or issues to an ${getRoleMention("Admin")}.
 
 We strive to make our community a welcoming, inclusive, and positive space, and reserve the right to remove any community member who impedes that goal.
