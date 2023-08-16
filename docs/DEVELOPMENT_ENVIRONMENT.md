@@ -91,6 +91,13 @@ For Docker Desktop, the version corresponding to your native architecture should
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine (i.e. installing and using
 `docker` within the distro and not interacting with the host).
 
+#### Rancher Desktop
+
+Since [Rancher Desktop](https://rancherdesktop.io/) provides the ability to use the [moby](https://github.com/moby/moby),
+you can use it to run and develop the System Initiative software.
+However, it is untested, and you may need to further configuration depending on your platform.
+For example, on WSL2 via Windows, you may need to configure credentials in `~/.local/share`.
+
 ### (Optional) Direnv
 
 [Direnv](https://direnv.net/) (version >= 2.30) with [nix-direnv](https://github.com/nix-community/nix-direnv) can

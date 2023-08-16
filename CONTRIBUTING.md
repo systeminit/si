@@ -107,8 +107,7 @@ Above all, ensure that the format described at the beginning is preserved.
 
 When making changes, ensure the following:
 
-- Alphabetical ordering is retained
-  - Ordering is based on the beginning of the line and is case-insensitive
+- Your individual line was appended to the bottom of the list
 - No additional newlines were added
 - Your individual line has no trailing or leading spaces
 - Your individual line matches the aforementioned format
