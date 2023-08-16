@@ -1,22 +1,22 @@
+use crate::containers::DockerClient;
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, SiCliError};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;
-use docker_api::Docker;
 
 impl AppState {
-    pub async fn check(&self, silent: bool) -> CliResult<()> {
+    pub async fn check(&self, docker: &DockerClient, silent: bool) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "check-dependencies"}),
         );
-        invoke(silent, self.is_preview()).await?;
+        invoke(docker, silent, self.is_preview()).await?;
         Ok(())
     }
 }
 
-async fn invoke(silent: bool, is_preview: bool) -> CliResult<()> {
+async fn invoke(docker: &DockerClient, silent: bool, is_preview: bool) -> CliResult<()> {
     if !silent {
         println!("Checking that the system is able to interact with the docker engine to control System Initiative...");
     }
@@ -25,7 +25,6 @@ async fn invoke(silent: bool, is_preview: bool) -> CliResult<()> {
         return Ok(());
     }
 
-    let docker = Docker::unix("//var/run/docker.sock");
     if let Err(_e) = docker.ping().await {
         return Err(SiCliError::DockerEngine);
     }

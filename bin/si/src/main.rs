@@ -1,6 +1,6 @@
 use crate::args::{Commands, Engine};
-use color_eyre::Result;
-use si_cli::state::AppState;
+use color_eyre::{eyre::eyre, Result};
+use si_cli::{state::AppState, DockerClient};
 use std::sync::Arc;
 use telemetry_application::{prelude::*, TelemetryConfig};
 use tokio::sync::oneshot::Sender;
@@ -32,6 +32,24 @@ async fn main() -> Result<()> {
 
     tokio::spawn(wait_for_posthog_flush(ph_done_sender, ph_sender));
 
+    let docker_socket_candidates = vec![
+        #[allow(clippy::disallowed_methods)] // Used to determine a path relative to users's home
+        std::path::Path::new(&std::env::var("HOME")?)
+            .join(".docker")
+            .join("run")
+            .join("docker.sock"),
+        std::path::Path::new("/var/run/docker.sock").to_path_buf(),
+    ];
+
+    let docker_socket = docker_socket_candidates
+        .iter()
+        .find(|candidate| candidate.exists())
+        .ok_or(eyre!(
+            "failed to determine Docker socket location; candidates={docker_socket_candidates:?}"
+        ))?;
+
+    let docker = DockerClient::unix(docker_socket);
+
     let state = AppState::new(
         ph_client,
         Arc::from(current_version),
@@ -52,7 +70,10 @@ async fn main() -> Result<()> {
     let auth_api_host = std::env::var("AUTH_API").ok();
 
     if !matches!(args.command, Commands::Update(_)) {
-        match state.find(current_version, auth_api_host.as_deref()).await {
+        match state
+            .find(&docker, current_version, auth_api_host.as_deref())
+            .await
+        {
             Ok(update) => {
                 if update.si.is_some() {
                     println!("Launcher update found, please run `si update` to install it");
@@ -80,32 +101,33 @@ async fn main() -> Result<()> {
 
     match args.command {
         Commands::Install(_args) => {
-            state.install().await?;
+            state.install(&docker).await?;
         }
         Commands::Check(_args) => {
-            state.check(false).await?;
+            state.check(&docker, false).await?;
         }
         Commands::Launch(args) => {
             state.launch(args.metrics).await?;
         }
         Commands::Start(_args) => {
-            state.start().await?;
+            state.start(&docker).await?;
         }
         Commands::Configure(args) => {
             state.configure(args.force_reconfigure).await?;
         }
         Commands::Delete(_args) => {
-            state.delete().await?;
+            state.delete(&docker).await?;
         }
         Commands::Restart(_args) => {
-            state.restart().await?;
+            state.restart(&docker).await?;
         }
         Commands::Stop(_args) => {
-            state.stop().await?;
+            state.stop(&docker).await?;
         }
         Commands::Update(args) => {
             state
                 .update(
+                    &docker,
                     current_version,
                     auth_api_host.as_deref(),
                     args.skip_confirmation,
@@ -114,7 +136,9 @@ async fn main() -> Result<()> {
                 .await?;
         }
         Commands::Status(args) => {
-            state.status(args.show_logs, args.log_lines).await?;
+            state
+                .status(&docker, args.show_logs, args.log_lines)
+                .await?;
         } // Commands::Report(_args) => {
           //     state.report().await?;
           // }

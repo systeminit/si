@@ -1,29 +1,33 @@
-use crate::containers::{get_container_logs, get_existing_container};
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::*;
+
+use crate::containers::DockerClient;
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
-use comfy_table::presets::UTF8_FULL;
-use comfy_table::*;
-use docker_api::Docker;
 
 const RUNNING: &str = "    ✅    ";
 const NOT_RUNNING: &str = "    ❌    ";
 const WAITING: &str = "    🕒    ";
 
 impl AppState {
-    pub async fn status(&self, show_logs: bool, log_lines: usize) -> CliResult<()> {
+    pub async fn status(
+        &self,
+        docker: &DockerClient,
+        show_logs: bool,
+        log_lines: usize,
+    ) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "system-status"}),
         );
-        invoke(show_logs, log_lines).await?;
+        invoke(docker, show_logs, log_lines).await?;
         Ok(())
     }
 }
 
-async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
+async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
-    let docker = Docker::unix("//var/run/docker.sock");
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -38,8 +42,9 @@ async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
     for name in CONTAINER_NAMES.iter() {
         let image_name = format!("systeminit/{0}:stable", name);
         let container_identifier = format!("local-{0}-1", name);
-        let existing_container =
-            get_existing_container(&docker, container_identifier.clone()).await?;
+        let existing_container = docker
+            .get_existing_container(container_identifier.clone())
+            .await?;
         let mut state = "".to_string();
         if let Some(existing) = existing_container {
             state = existing.state.unwrap();
@@ -52,7 +57,9 @@ async fn invoke(show_logs: bool, log_lines: usize) -> CliResult<()> {
 
         if show_logs {
             println!("\n\nShowing container logs for {0}", image_name.clone());
-            get_container_logs(&docker, container_identifier.clone(), log_lines).await?;
+            docker
+                .get_container_logs(container_identifier.clone(), log_lines)
+                .await?;
         }
 
         if container_identifier == "local-web-1" {
