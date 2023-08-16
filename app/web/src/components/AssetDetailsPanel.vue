@@ -211,7 +211,7 @@ const executeAsset = async () => {
           assetStore.selectedAssetId,
           schemaVariantId,
         );
-        await assetStore.LOAD_ASSET(schemaVariantId); // TODO(Wendy) - This call is failing which leads to issues on the front end that go away on page refresh!
+        await assetStore.LOAD_ASSET(assetStore.selectedAssetId);
         await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
       }
     }
