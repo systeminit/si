@@ -96,7 +96,7 @@ You'll see that System Initiative used the relationship between the `Docker Imag
 
 ![Code View](/tutorial-img/03-deploy_containerized_app/code_view.png)
 
-System Initiative inferred the correct configuration for our CoreOS instance, and generated the neccessary code automatically.
+System Initiative inferred the correct configuration for our CoreOS instance, and generated the necessary code automatically.
 
 #### Modeling the deployment of your CoreOS instance to AWS
 
@@ -106,7 +106,7 @@ In order to get things running in AWS, you'll need to pick a `Region` for your d
 
 Notice that this Asset looks different from the previous two. An `AWS Region` is a configuration 'frame,' meaning that any asset placed inside is automatically configured by it.
 
-You will see a red Qualification failure on the `Region`. Investigate in the `Diagram Outline Panel` and you'll see the cause: you haven't yet decided which AWS Region to use. With the `Region` frame selected, go to the `Selected Assets Panel`, and set the `domain/region` attribute to `us-east-2`. When the Qualification for this `Region` turns from a red X to a green check - you're good to go. Notice System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
+To set the region for the `Region` frame (and any Asset you put inside it), make sure it is selected, then go to the `Selected Assets Panel`, and set the `domain/region` attribute to `us-east-2`. Notice System Initiative has also helpfully inferred the `si/name` of the `Region` for you!
 
 Resize the `Region` frame to be larger by clicking and dragging the corner of the frame.
 
@@ -169,7 +169,7 @@ Returning to your `EC2 Instance`'s input sockets, the next socket is the Key Nam
 There is one more open input socket on the `EC2 Instance`: the Image ID socket. In AWS EC2, you use an __AMI ID__ as the Image ID.
 
 * Click the AWS `AMI` asset in the `Asset Panel`, then place it within the `Region` frame on the Canvas below the `Key Pair`.
-* Connect the `Image ID` output socket on the `AMI` to the corrresponding input socket on the `EC2 Instance`.
+* Connect the `Image ID` output socket on the `AMI` to the corresponding input socket on the `EC2 Instance`.
 * Click on the Qualification failure in the `Diagram Outline Panel` to see that it needs an Image ID. To address this, select the `AMI` and go to the `Selected Assets Panel` and populate <code>domain/ImageId</code> with <code>ami-0ed17ac79c5602c98</code> ([or the latest AMI for us-east-2 available on the CoreOS Download page](https://getfedora.org/en/coreos/download?tab=cloud_launchable&stream=stable&arch=x86_64)). Click Enter and see the Qualification for this `AMI` asset turn from a red X to a green checkmark.
 
 ![AMI joins the party](/tutorial-img/03-deploy_containerized_app/ami_joins_the_party.png)
