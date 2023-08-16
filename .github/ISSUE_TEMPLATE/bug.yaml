@@ -6,6 +6,8 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this report! Please give us as much context in the form below to help us solve this.
+
+        If you have a question or topic of conversation that does not fit our issue template(s), reach out to us [on Discord](https://discord.com/invite/system-init).
   - type: textarea
     id: what-happened
     attributes:
@@ -26,9 +28,10 @@ body:
       label: Operating system
       description: 'The operating system you are running System Initiative on'
       options:
-        - Linux / Unix
+        - Linux
         - macOS
-        - windows
+        - Windows via WSL2
+        - Other (please specify)
     validations:
       required: true
   - type: dropdown
@@ -37,8 +40,9 @@ body:
       label: Architecture
       description: 'The OS architecture you are running System Initiative on'
       options:
-        - am64d / x86_64
-        - arm64 / aarch64
+        - x86_64 / amd64
+        - aarch64 / arm64
+        - Other (please specify)
     validations:
       required: true
   - type: dropdown
@@ -51,6 +55,7 @@ body:
         - Chrome
         - Safari
         - Microsoft Edge
+        - Other (please specify)
   - type: checkboxes
     id: terms
     attributes:
