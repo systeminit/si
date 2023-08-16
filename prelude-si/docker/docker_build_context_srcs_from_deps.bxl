@@ -60,7 +60,9 @@ docker_build_context_srcs_from_deps = bxl(
 )
 
 def _normalize_target_str(dep: str.type) -> str.type:
-    if dep.startswith("//"):
+    if dep.startswith("root//"):
+        return dep
+    elif dep.startswith("//"):
         return "root" + dep
     else:
         return "root//{}".format(dep)

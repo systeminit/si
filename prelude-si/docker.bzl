@@ -50,7 +50,7 @@ docker_image = rule(
             doc = """Mapping of sources files to the relative directory in a Dockerfile context..""",
         ),
         "build_deps": attrs.list(
-            attrs.string(),
+            attrs.dep(),
             default = [],
             doc = """Buck2 targets that could be built in an image.""",
         ),
@@ -219,7 +219,7 @@ def docker_build_context(ctx: "context") -> DockerBuildContext.type:
         cmd.add(cmd_args(src, format = "{}=" + rel_path))
     for dep in ctx.attrs.build_deps or []:
         cmd.add("--dep")
-        cmd.add(dep)
+        cmd.add(dep.label.raw_target())
     cmd.add(context_tree.as_output())
 
     ctx.actions.run(cmd, category = "docker_build_context")
