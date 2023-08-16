@@ -67,8 +67,6 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
-                .expose(PublishPort::tcp(4317), HostPort::new(4317))
-                .expose(PublishPort::tcp(55679), HostPort::new(55679))
                 .links(["local-jaeger-1:jaeger"])
                 .build();
 
@@ -108,7 +106,6 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
-                .expose(PublishPort::tcp(5317), HostPort::new(5317))
                 .expose(PublishPort::tcp(16686), HostPort::new(16686))
                 .build();
 
@@ -148,7 +145,6 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
-                .expose(PublishPort::tcp(4222), HostPort::new(4222))
                 .command(vec!["--config", "nats-server.conf", "-DVV"])
                 .build();
 
@@ -188,7 +184,6 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
-                .expose(PublishPort::tcp(5432), HostPort::new(5432))
                 .env(vec![
                     "POSTGRES_PASSWORD=bugbear",
                     "PGPASSWORD=bugbear",
