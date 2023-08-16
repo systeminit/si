@@ -20,3 +20,4 @@ We contributors to System Initiative:
 * Victor Bustamante (@vbustamante)
 * Wendy Bujalski (@wendybujalski)
 * Zack Hamm (@zacharyhamm)
+* Dan Miller (@jazzdan)
