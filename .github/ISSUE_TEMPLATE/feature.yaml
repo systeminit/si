@@ -6,6 +6,8 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this feature request! Please fill the form below.
+
+        If you have a question or topic of conversation that does not fit our issue template(s), reach out to us [on Discord](https://discord.com/invite/system-init).
   - type: textarea
     id: is-it-a-problem
     attributes:
