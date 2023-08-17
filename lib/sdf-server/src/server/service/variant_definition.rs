@@ -144,6 +144,9 @@ pub async fn save_variant_def(
     variant_def
         .set_description(ctx, request.description.clone())
         .await?;
+    variant_def
+        .set_component_type(ctx, request.component_type)
+        .await?;
 
     let mut asset_func = Func::get_by_id(ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
