@@ -136,6 +136,9 @@ const schemaVariantsForExport = ref<string[]>([]);
 const packageExportReq = ref<PkgExportRequest>({ ...emptyExportPackageReq });
 
 const addSchemaVariantToExport = () => {
+  if (!selectedSchemaVariant.value) {
+    return;
+  }
   schemaVariantsForExport.value.push(selectedSchemaVariant.value);
   selectedSchemaVariant.value = undefined;
 };
