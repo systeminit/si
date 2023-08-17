@@ -88,7 +88,7 @@
         .${system};
 
       langJsExtraPkgs = with pkgs; [
-        awscli
+        awscli2
         butane
         skopeo
       ];
