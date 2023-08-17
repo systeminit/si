@@ -9,9 +9,11 @@ use dal::{
         SchemaVariantDefinition, SchemaVariantDefinitionError as DalSchemaVariantDefinitionError,
         SchemaVariantDefinitionId,
     },
-    Schema, SchemaError, StandardModel, Visibility, WsEvent,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, Schema,
+    SchemaError, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use std::env::var;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +30,7 @@ pub struct CloneVariantDefResponse {
     pub success: bool,
 }
 
-pub async fn create_variant_def(
+pub async fn clone_variant_def(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
@@ -60,6 +62,13 @@ pub async fn create_variant_def(
 
     let menu_name = variant_def.menu_name().map(|mn| format!("{mn} Clone"));
 
+    // We need to duplicate the func because variant definitions and their functions have a
+    // one-to-one relationship.
+    let func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
+        SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
+    )?;
+    let duplicated_func = func.duplicate(&ctx).await?;
+
     let variant_def = SchemaVariantDefinition::new(
         &ctx,
         name,
@@ -69,7 +78,7 @@ pub async fn create_variant_def(
         variant_def.color().to_owned(),
         *variant_def.component_kind(),
         variant_def.description().map(|d| d.to_string()),
-        variant_def.func_id(),
+        *duplicated_func.id(),
     )
     .await?;
 

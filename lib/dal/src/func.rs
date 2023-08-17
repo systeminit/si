@@ -10,9 +10,10 @@ use thiserror::Error;
 
 use crate::func::argument::FuncArgumentError;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    DalContext, FuncBinding, FuncDescriptionContents, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
+    standard_model_accessor_ro, DalContext, FuncBinding, FuncDescriptionContents,
+    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -149,6 +150,38 @@ impl Func {
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
+    }
+
+    /// Creates a new [`Func`] from [`self`](Func). All relevant fields are duplicated, but rows
+    /// existing on relationship tables (e.g. "belongs_to" or "many_to_many") are not.
+    pub async fn duplicate(&self, ctx: &DalContext) -> FuncResult<Self> {
+        // Generate a unique name and make sure it's not in use
+        let mut new_unique_name;
+        loop {
+            new_unique_name = format!("{}{}", self.name(), generate_unique_id(4));
+            if Self::find_by_name(&ctx, &new_unique_name).await?.is_none() {
+                break;
+            };
+        }
+
+        let mut new_func = Self::new(
+            &ctx,
+            new_unique_name,
+            *self.backend_kind(),
+            *self.backend_response_type(),
+        )
+        .await?;
+
+        // Duplicate all fields on the func that do not come in through the constructor.
+        new_func.set_display_name(ctx, self.display_name()).await?;
+        new_func.set_description(ctx, self.description()).await?;
+        new_func.set_link(ctx, self.link()).await?;
+        new_func.set_hidden(ctx, self.hidden).await?;
+        new_func.set_builtin(ctx, self.builtin).await?;
+        new_func.set_handler(ctx, self.handler()).await?;
+        new_func.set_code_base64(ctx, self.code_base64()).await?;
+
+        Ok(new_func)
     }
 
     #[allow(clippy::result_large_err)]
