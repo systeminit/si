@@ -1,5 +1,7 @@
 <template>
   <div class="text-black dark:text-white">
+    <DeployNotification />
+
     <template v-if="BROWSER_IS_MOBILE">
       <div class="fixed inset-0 flex items-center justify-center p-md">
         <div
@@ -201,6 +203,7 @@ import storage from "local-storage-fallback";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
 import { useFeatureFlagsStore } from "./store/feature_flags.store";
+import DeployNotification from "./components/DeployNotification.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
