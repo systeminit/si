@@ -143,7 +143,11 @@ pub(crate) struct StopArgs {}
 pub(crate) struct CheckArgs {}
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct DeleteArgs {}
+pub(crate) struct DeleteArgs {
+    /// Keep containers so you don't have to redownload them every time
+    #[clap(long, env = "SI_KEEP_IMAGES_ON_DELETE")]
+    pub keep_images: bool,
+}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct UpdateArgs {

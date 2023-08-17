@@ -146,6 +146,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { nilId } from "@/utils/nilId";
+import { useComponentsStore } from "@/store/components.store";
 import ColorPicker from "./ColorPicker.vue";
 
 defineProps<{
@@ -153,6 +154,7 @@ defineProps<{
 }>();
 
 const changeSetsStore = useChangeSetsStore();
+const componentsStore = useComponentsStore();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
@@ -211,7 +213,9 @@ const executeAsset = async () => {
           assetStore.selectedAssetId,
           schemaVariantId,
         );
+        // We need to reload both schemas and assets since they're stored separately
         await assetStore.LOAD_ASSET(assetStore.selectedAssetId);
+        await componentsStore.FETCH_AVAILABLE_SCHEMAS();
         await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
       }
     }
