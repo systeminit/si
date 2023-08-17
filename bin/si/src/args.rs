@@ -54,6 +54,11 @@ pub(crate) struct Args {
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
     #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]
     engine: String,
+    /// A path to a docker.sock file. The default paths checked are `/var/run/docker.sock`
+    /// and `$HOME/.docker/run/docker.sock"`. Passing a value here will be an explicit
+    /// usage of that location.
+    #[arg(long, env = "SI_DOCKER_SOCK")]
+    pub docker_sock: Option<String>,
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
