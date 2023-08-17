@@ -138,7 +138,7 @@ impl AppState {
                     continue;
                 }
 
-                if current.git_sha != latest.git_sha {
+                if current.version != latest.digest {
                     containers.push(latest);
                 }
                 continue 'outer;
