@@ -3,6 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
+use dal::ComponentType;
 use dal::{schema::variant::definition::SchemaVariantDefinitionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +19,7 @@ pub struct SaveVariantDefRequest {
     pub code: String,
     pub handler: String,
     pub description: Option<String>,
+    pub component_type: ComponentType,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
