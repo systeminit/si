@@ -9,6 +9,8 @@ pub struct AppState {
     version: Arc<str>,
     mode: Arc<str>,
     is_preview: bool,
+    web_host: String,
+    web_port: u32,
 }
 
 impl AppState {
@@ -17,12 +19,16 @@ impl AppState {
         version: Arc<str>,
         mode: Arc<str>,
         is_preview: bool,
+        web_host: String,
+        web_port: u32,
     ) -> Self {
         Self {
             posthog_client: posthog_client.into(),
             version,
             mode,
             is_preview,
+            web_host,
+            web_port,
         }
     }
 
@@ -36,6 +42,14 @@ impl AppState {
 
     pub fn is_preview(&self) -> bool {
         self.is_preview
+    }
+
+    pub fn web_host(&self) -> String {
+        self.web_host.clone()
+    }
+
+    pub fn web_port(&self) -> u32 {
+        self.web_port
     }
 
     pub fn posthog_client(&self) -> &PosthogClient {

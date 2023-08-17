@@ -8,7 +8,10 @@ use crate::{CliResult, CONTAINER_NAMES};
 use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
 
 impl AppState {
-    pub async fn start(&self, docker: &DockerClient) -> CliResult<()> {
+    pub async fn start(
+        &self,
+        docker: &DockerClient,
+    ) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "start-system"}),
@@ -424,13 +427,17 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
+
+            let host_ip = app.web_host();
+            let host_port = app.web_port();
+
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
                 .links(vec!["local-sdf-1:sdf"])
                 .env(["SI_LOG=trace"])
                 .network_mode("bridge")
-                .expose(PublishPort::tcp(8080), HostPort::new(8080))
+                .expose(PublishPort::tcp(8080), HostPort::with_ip(host_port, host_ip))
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
