@@ -381,11 +381,11 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .expose(PublishPort::tcp(5156), HostPort::new(5156))
                 .volumes([
                     format!(
-                        "{}:/run/sdf/cyclone_encryption.key",
+                        "{}:/run/sdf/cyclone_encryption.key:Z",
                         si_data_dir.join("cyclone_encryption.key").display()
                     ),
                     format!(
-                        "{}:/run/sdf/jwt_signing_public_key.pem",
+                        "{}:/run/sdf/jwt_signing_public_key.pem:Z",
                         si_data_dir.join("jwt_signing_public_key.pem").display()
                     ),
                 ])
