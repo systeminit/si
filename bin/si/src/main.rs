@@ -128,8 +128,8 @@ async fn main() -> Result<()> {
         Commands::Configure(args) => {
             state.configure(args.force_reconfigure).await?;
         }
-        Commands::Delete(_args) => {
-            state.delete(&docker).await?;
+        Commands::Delete(args) => {
+            state.delete(&docker, args.keep_images).await?;
         }
         Commands::Restart(_args) => {
             state.restart(&docker).await?;
