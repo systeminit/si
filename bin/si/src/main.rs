@@ -23,6 +23,12 @@ async fn main() -> Result<()> {
     let mode = args.mode();
     let is_preview = args.is_preview;
 
+    let docker_sock = if let Some(sock) = args.docker_sock.clone() {
+        sock
+    } else {
+        "".to_string()
+    };
+
     let current_version = VERSION.trim();
 
     debug!(arguments =?args, "parsed cli arguments");
@@ -41,14 +47,21 @@ async fn main() -> Result<()> {
         std::path::Path::new("/var/run/docker.sock").to_path_buf(),
     ];
 
-    let docker_socket = docker_socket_candidates
-        .iter()
-        .find(|candidate| candidate.exists())
-        .ok_or(eyre!(
-            "failed to determine Docker socket location; candidates={docker_socket_candidates:?}"
+    let docker: DockerClient;
+    if let "" = docker_sock.as_str() {
+        let socket = docker_socket_candidates
+            .iter()
+            .find(|candidate| candidate.exists())
+            .ok_or(eyre!(
+            "failed to determine Docker socket location. Set a custom location using `--docker-sock` \
+            or `SI_DOCKER_SOCK`; candidates={docker_socket_candidates:?}"
         ))?;
-
-    let docker = DockerClient::unix(docker_socket);
+        docker = DockerClient::unix(socket)
+    } else {
+        println!("Checking for user supplied docker.sock");
+        let path = std::path::Path::new(docker_sock.as_str()).to_path_buf();
+        docker = DockerClient::unix(path);
+    }
 
     let state = AppState::new(
         ph_client,
