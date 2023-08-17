@@ -359,6 +359,6 @@ pub fn routes() -> Router<AppState> {
         )
         .route(
             "/clone_variant_def",
-            post(clone_variant_def::create_variant_def),
+            post(clone_variant_def::clone_variant_def),
         )
 }

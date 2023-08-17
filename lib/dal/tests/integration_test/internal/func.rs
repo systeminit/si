@@ -151,7 +151,7 @@ async fn func_argument_find_by_name_for_func(ctx: &DalContext) {
     );
 
     assert!(
-        FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, func_id,)
+        FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, func_id)
             .await
             .expect("Could not create argument in head")
             .visibility()
@@ -172,4 +172,59 @@ async fn func_argument_find_by_name_for_func(ctx: &DalContext) {
     assert!(arg.visibility().in_change_set());
     assert_eq!(name, arg.name());
     assert_eq!(func_id, arg.func_id());
+}
+
+/// Recommended to run with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=none
+/// ```
+#[test]
+async fn duplicate(ctx: &DalContext) {
+    let mut func = Func::new(
+        ctx,
+        "we-are-open-source",
+        FuncBackendKind::Array,
+        FuncBackendResponseType::Action,
+    )
+    .await
+    .expect("could not create func");
+
+    func.set_hidden(ctx, true)
+        .await
+        .expect("could not set hidden");
+    func.set_handler(ctx, Some("the-openest-of-source"))
+        .await
+        .expect("could not set handler");
+
+    let new_func = func.duplicate(ctx).await.expect("could not duplicate func");
+
+    // Ensure the ID is new.
+    assert_ne!(
+        func.id(),     // expected
+        new_func.id(), // actual
+    );
+
+    // Ensure untouched fields are identical.
+    assert_eq!(
+        func.description(),     // expected
+        new_func.description()  // actual
+    );
+    assert_eq!(
+        func.builtin(),     // expected
+        new_func.builtin()  // actual
+    );
+
+    // Ensure set fields are identical.
+    assert_eq!(
+        func.backend_kind(),     // expected
+        new_func.backend_kind()  // actual
+    );
+    assert_eq!(
+        func.hidden(),     // expected
+        new_func.hidden()  // actual
+    );
+    assert_eq!(
+        func.handler(),     // expected
+        new_func.handler()  // actual
+    );
 }
