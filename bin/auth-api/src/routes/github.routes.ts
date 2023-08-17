@@ -161,7 +161,7 @@ router.get("/github/containers/latest", async (ctx) => {
       });
       const sortedData = _.orderBy(data, (d) => d.ref, 'desc');
 
-      const prefixes = ["bin/sdf", "bin/veritech", "bin/pinga", "bin/council", "bin/module-index", "app/web", "component/otelcol", "component/jaeger", "component/nats", "component/postgres"];
+      const prefixes = ["bin/sdf", "bin/veritech", "bin/pinga", "bin/council", "app/web", "component/otelcol", "component/jaeger", "component/nats", "component/postgres"];
       const latestContainers = [];
       for (const tag of sortedData) {
         for (const prefix of prefixes) {
