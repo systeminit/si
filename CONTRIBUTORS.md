@@ -21,3 +21,4 @@ We contributors to System Initiative:
 * Wendy Bujalski (@wendybujalski)
 * Zack Hamm (@zacharyhamm)
 * Dan Miller (@jazzdan)
+* Neil Hanlon (@NeilHanlon)
