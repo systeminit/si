@@ -51,13 +51,13 @@ pub(crate) struct Args {
     #[arg(long, short = 'p', default_value = "false")]
     pub is_preview: bool,
     
-    /// Allows starting the service and binding to a specific IP
-    #[arg(long = "host", default_value = "127.0.0.1")]
-    pub bind_host: String,
+    /// Allows starting the web service and binding to a specific IP
+    #[arg(long = "web-host", env = "SI_WEB_ADDRESS", default_value = "127.0.0.1")]
+    pub web_host: String,
 
-    /// Allows starting the service and binding to a specific port
-    #[arg(long = "port", default_value = "8080")]
-    pub bind_port: u32,
+    /// Allows starting the web service and binding to a specific port
+    #[arg(long = "web-port", env = "SI_WEB_PORT", default_value = "8080")]
+    pub web_port: u32,
 
     /// The engine in which to launch System Initiate Containers
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]

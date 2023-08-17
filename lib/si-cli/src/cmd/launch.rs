@@ -7,7 +7,7 @@ use std::time::Duration;
 
 impl AppState {
     pub async fn launch(&self, launch_metrics: bool) -> CliResult<()> {
-        invoke(launch_metrics, self.bind_host(), self.bind_port()).await?;
+        invoke(launch_metrics, self.web_host(), self.web_port()).await?;
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "launch-ui"}),
@@ -16,15 +16,15 @@ impl AppState {
     }
 }
 
-async fn invoke(launch_metrics: bool, bind_host: String, bind_port: u32) -> CliResult<()> {
+async fn invoke(launch_metrics: bool, web_host: String, web_port: u32) -> CliResult<()> {
     let path = if launch_metrics {
-        format!("http://{0}:16686", bind_host)
+        "http://localhost:16686"
     } else {
-        format!("http://{0}:{1}", bind_host, bind_port)
+        format!("http://{0}:{1}", web_host, web_port)
     };
 
-    if path == format!("http://{0}:{1}", bind_host, bind_port) {
-        check_web(bind_port).await?;
+    if path == format!("http://{0}:{1}", web_host, web_port) {
+        check_web(web_port).await?;
         check_sdf().await?;
     }
 
@@ -38,8 +38,8 @@ async fn invoke(launch_metrics: bool, bind_host: String, bind_port: u32) -> CliR
     Ok(())
 }
 
-async fn check_web(bind_port: u32) -> CliResult<()> {
-    let path = format!("http://localhost:{0}", bind_port);
+async fn check_web(web_port: u32) -> CliResult<()> {
+    let path = format!("http://localhost:{0}", web_port);
     let resp = reqwest::get(path).await;
     if let Err(_e) = resp {
         return Err(SiCliError::WebPortal());

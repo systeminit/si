@@ -428,8 +428,8 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container_name.clone()
             );
 
-            let host_ip = app.bind_host();
-            let host_port = app.bind_port();
+            let host_ip = app.web_host();
+            let host_port = app.web_port();
 
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())

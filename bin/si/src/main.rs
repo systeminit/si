@@ -29,8 +29,8 @@ async fn main() -> Result<()> {
         "".to_string()
     };
 
-    let bind_host = args.bind_host.clone();
-    let bind_port = args.bind_port;
+    let web_host = args.web_host.clone();
+    let web_port = args.web_port;
 
     let current_version = VERSION.trim();
 
@@ -71,8 +71,8 @@ async fn main() -> Result<()> {
         Arc::from(current_version),
         Arc::from(mode.to_string()),
         is_preview,
-        bind_host,
-        bind_port,
+        web_host,
+        web_port,
     );
 
     println!(

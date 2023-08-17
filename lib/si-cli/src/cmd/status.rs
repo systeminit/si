@@ -77,7 +77,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, show_logs: bool, log_line
         }
 
         if container_identifier == "local-web-1" {
-            let web_path = format!("http://{0}:{1}/", app.bind_host(), app.bind_port());
+            let web_path = format!("http://{0}:{1}/", app.web_host(), app.web_port());
             let resp = reqwest::get(web_path).await;
             if resp.is_err() && state == ContainerState::Running {
                 state = ContainerState::Waiting;
