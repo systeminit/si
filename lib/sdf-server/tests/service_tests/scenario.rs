@@ -19,9 +19,9 @@ use dal::component::confirmation::view::{ConfirmationView, RecommendationView};
 use dal::schema::variant::definition::SchemaVariantDefinitionId;
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
-    AttributeValueId, ComponentId, ComponentView, ComponentViewProperties, DalContext, Diagram,
-    FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket, StandardModel,
-    Visibility,
+    AttributeValueId, ComponentId, ComponentType, ComponentView, ComponentViewProperties,
+    DalContext, Diagram, FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId,
+    Socket, StandardModel, Visibility,
 };
 use names::{Generator, Name};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
@@ -424,6 +424,7 @@ impl ScenarioHarness {
             color: "#FFFF00".to_string(),
             link: Some("https://www.systeminit.com/".to_string()),
             code,
+            component_type: ComponentType::Component,
             handler: "createAsset".to_string(),
             description: None,
             visibility: *visibility,
@@ -451,6 +452,7 @@ impl ScenarioHarness {
             color: "#FFFF00".to_string(),
             link: Some("https://www.systeminit.com/".to_string()),
             code,
+            component_type: ComponentType::Component,
             handler: "createAsset".to_string(),
             description: None,
             visibility: *visibility,
