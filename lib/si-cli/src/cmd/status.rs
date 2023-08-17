@@ -21,7 +21,7 @@ impl AppState {
             get_user_email().await?,
             serde_json::json!({"command-name": "system-status"}),
         );
-        invoke(docker, show_logs, log_lines).await?;
+        invoke(self, docker, show_logs, log_lines).await?;
         Ok(())
     }
 }
@@ -40,7 +40,7 @@ enum ContainerState {
     Waiting,
 }
 
-async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> CliResult<()> {
+async fn invoke(app: &AppState, docker: &DockerClient, show_logs: bool, log_lines: usize) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
 
     let mut container_status = Vec::new();
@@ -77,7 +77,7 @@ async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> Cli
         }
 
         if container_identifier == "local-web-1" {
-            let web_path = "http://localhost:8080/";
+            let web_path = format!("http://{0}:{1}/", app.bind_host(), app.bind_port());
             let resp = reqwest::get(web_path).await;
             if resp.is_err() && state == ContainerState::Running {
                 state = ContainerState::Waiting;

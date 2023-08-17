@@ -7,7 +7,7 @@ use std::time::Duration;
 
 impl AppState {
     pub async fn launch(&self, launch_metrics: bool) -> CliResult<()> {
-        invoke(launch_metrics).await?;
+        invoke(launch_metrics, self.bind_host(), self.bind_port()).await?;
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "launch-ui"}),
@@ -16,30 +16,31 @@ impl AppState {
     }
 }
 
-async fn invoke(launch_metrics: bool) -> CliResult<()> {
+async fn invoke(launch_metrics: bool, bind_host: String, bind_port: u32) -> CliResult<()> {
     let path = if launch_metrics {
-        "http://localhost:16686"
+        format!("http://{0}:16686", bind_host)
     } else {
-        "http://localhost:8080"
+        format!("http://{0}:{1}", bind_host, bind_port)
     };
 
-    if path == "http://localhost:8080" {
-        check_web().await?;
+    if path == format!("http://{0}:{1}", bind_host, bind_port) {
+        check_web(bind_port).await?;
         check_sdf().await?;
     }
 
     println!("Opening URL: {}", path);
-    match open::that(path) {
+    match open::that(path.clone()) {
         Ok(()) => Ok(()),
-        Err(_err) => Err(SiCliError::FailToLaunch(path.to_string())),
+        Err(_err) => Err(SiCliError::FailToLaunch(path)),
     }
     .expect("issue opening url");
 
     Ok(())
 }
 
-async fn check_web() -> CliResult<()> {
-    let resp = reqwest::get("http://localhost:8080").await;
+async fn check_web(bind_port: u32) -> CliResult<()> {
+    let path = format!("http://localhost:{0}", bind_port);
+    let resp = reqwest::get(path).await;
     if let Err(_e) = resp {
         return Err(SiCliError::WebPortal());
     }

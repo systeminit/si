@@ -50,6 +50,15 @@ pub(crate) struct Args {
     /// Show a preview of what the System Initiative Launcher will do
     #[arg(long, short = 'p', default_value = "false")]
     pub is_preview: bool,
+    
+    /// Allows starting the service and binding to a specific IP
+    #[arg(long = "host", default_value = "127.0.0.1")]
+    pub bind_host: String,
+
+    /// Allows starting the service and binding to a specific port
+    #[arg(long = "port", default_value = "8080")]
+    pub bind_port: u32,
+
     /// The engine in which to launch System Initiate Containers
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
     #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]
@@ -94,6 +103,7 @@ pub(crate) struct LaunchArgs {
     /// Allows the launching of the metrics collection endpoint
     #[clap(long)]
     pub metrics: bool,
+    
 }
 
 // #[derive(Debug, clap::Args)]
@@ -120,7 +130,8 @@ pub(crate) struct StatusArgs {
 }
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct StartArgs {}
+pub(crate) struct StartArgs {
+}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct RestartArgs {}

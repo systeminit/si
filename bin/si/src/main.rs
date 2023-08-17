@@ -29,6 +29,9 @@ async fn main() -> Result<()> {
         "".to_string()
     };
 
+    let bind_host = args.bind_host.clone();
+    let bind_port = args.bind_port;
+
     let current_version = VERSION.trim();
 
     debug!(arguments =?args, "parsed cli arguments");
@@ -68,6 +71,8 @@ async fn main() -> Result<()> {
         Arc::from(current_version),
         Arc::from(mode.to_string()),
         is_preview,
+        bind_host,
+        bind_port,
     );
 
     println!(
