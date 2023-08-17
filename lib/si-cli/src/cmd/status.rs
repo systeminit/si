@@ -26,17 +26,24 @@ impl AppState {
     }
 }
 
+#[derive(Debug)]
+struct Status {
+    name: String,
+    state: ContainerState,
+    version: String,
+}
+
+#[derive(Debug, PartialEq)]
+enum ContainerState {
+    Running,
+    NotRunning,
+    Waiting,
+}
+
 async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_width(100)
-        .set_header(vec![
-            Cell::new("Container Image").add_attribute(Attribute::Bold),
-            Cell::new("State").add_attribute(Attribute::Bold),
-        ]);
+
+    let mut container_status = Vec::new();
 
     let mut all_running = true;
     for name in CONTAINER_NAMES.iter() {
@@ -45,14 +52,21 @@ async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> Cli
         let existing_container = docker
             .get_existing_container(container_identifier.clone())
             .await?;
-        let mut state = "".to_string();
-        if let Some(existing) = existing_container {
-            state = existing.state.unwrap();
-            if state != "running" {
+        let mut version = "".to_string();
+        let mut state = ContainerState::NotRunning;
+        if let Some(container) = existing_container {
+            version = container
+                .labels
+                .unwrap()
+                .get("org.opencontainers.image.version")
+                .unwrap()
+                .to_string();
+            let raw_state = container.state.unwrap();
+            if raw_state == "running" {
+                state = ContainerState::Running;
+            } else {
                 all_running = false;
             }
-        } else {
-            all_running = false;
         }
 
         if show_logs {
@@ -65,70 +79,47 @@ async fn invoke(docker: &DockerClient, show_logs: bool, log_lines: usize) -> Cli
         if container_identifier == "local-web-1" {
             let web_path = "http://localhost:8080/";
             let resp = reqwest::get(web_path).await;
-            match resp {
-                Ok(x) => {
-                    if x.status().as_u16() == 200 && state == "running" {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(RUNNING),
-                        ]);
-                    } else {
-                    }
-                }
-                Err(_) => {
-                    if state == "running" {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(WAITING),
-                        ]);
-                        all_running = false;
-                    } else {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(NOT_RUNNING),
-                        ]);
-                    }
-                }
+            if resp.is_err() && state == ContainerState::Running {
+                state = ContainerState::Waiting;
             }
-        } else if container_identifier == "local-sdf-1" {
+        }
+
+        if container_identifier == "local-sdf-1" {
             let sdf_path = "http://localhost:5156/api/";
             let resp = reqwest::get(sdf_path).await;
-            match resp {
-                Ok(x) => {
-                    if x.status().as_u16() == 200 && state == "running" {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(RUNNING),
-                        ]);
-                    }
-                }
-                Err(_) => {
-                    if state == "running" {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(WAITING),
-                        ]);
-                        all_running = false;
-                    } else {
-                        table.add_row(vec![
-                            Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                            Cell::new(NOT_RUNNING),
-                        ]);
-                    }
-                }
+            if resp.is_err() && state == ContainerState::Running {
+                state = ContainerState::Waiting;
             }
-        } else {
-            table.add_row(vec![
-                Cell::new(image_name.clone()).add_attribute(Attribute::Bold),
-                Cell::new(if state == "running" {
-                    RUNNING
-                } else {
-                    NOT_RUNNING
-                }),
-            ]);
         }
+
+        container_status.push(Status {
+            name: image_name,
+            state,
+            version,
+        })
     }
 
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_width(100)
+        .set_header(vec![
+            Cell::new("Container Image").add_attribute(Attribute::Bold),
+            Cell::new("State").add_attribute(Attribute::Bold),
+            Cell::new("Container Version").add_attribute(Attribute::Bold),
+        ]);
+    for container_status in container_status {
+        table.add_row(vec![
+            Cell::new(container_status.name).add_attribute(Attribute::Bold),
+            Cell::new(match container_status.state {
+                ContainerState::Running => RUNNING,
+                ContainerState::NotRunning => NOT_RUNNING,
+                ContainerState::Waiting => WAITING,
+            }),
+            Cell::new(container_status.version),
+        ]);
+    }
     println!("{table}");
 
     if all_running {
