@@ -134,7 +134,7 @@ pub async fn get_si_data_dir() -> Result<PathBuf, SiCliError> {
         let si_data_dir = base_dirs.data_dir().join("SI");
         let si_dir_exists = si_data_dir.as_path().is_dir();
         if !si_dir_exists {
-            fs::create_dir(si_data_dir.as_path())?;
+            fs::create_dir_all(si_data_dir.as_path())?;
         }
         return Ok(si_data_dir);
     }
