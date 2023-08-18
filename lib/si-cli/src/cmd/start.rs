@@ -272,6 +272,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 "SI_VERITECH__NATS__URL=nats".to_string(),
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317".to_string(),
             ];
+            if app.with_function_debug_logs() {
+                env_vars.push("SI_LOG=debug".to_string());
+            }
             env_vars.append(&mut veritech_credentials);
             let create_opts = ContainerCreateOpts::builder()
                 .name(container_name.clone())

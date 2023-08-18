@@ -68,6 +68,9 @@ pub(crate) struct Args {
     /// usage of that location.
     #[arg(long, env = "SI_DOCKER_SOCK")]
     pub docker_sock: Option<String>,
+    /// Enable debug logs for function executions via veritech
+    #[clap(long)]
+    pub with_function_debug_logs: bool,
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
