@@ -68,7 +68,7 @@
                   ),
                 )
               "
-              @click.stop="emit('closeTab', tab.props.slug)"
+              @click.prevent.stop="emit('closeTab', tab.props.slug)"
             >
               <Icon name="x" size="xs" />
             </button>
