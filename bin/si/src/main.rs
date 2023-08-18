@@ -73,6 +73,7 @@ async fn main() -> Result<()> {
         is_preview,
         web_host,
         web_port,
+        args.with_function_debug_logs,
     );
 
     println!(

@@ -11,6 +11,7 @@ pub struct AppState {
     is_preview: bool,
     web_host: String,
     web_port: u32,
+    with_function_debug_logs: bool,
 }
 
 impl AppState {
@@ -21,6 +22,7 @@ impl AppState {
         is_preview: bool,
         web_host: String,
         web_port: u32,
+        with_function_debug_logs: bool,
     ) -> Self {
         Self {
             posthog_client: posthog_client.into(),
@@ -29,6 +31,7 @@ impl AppState {
             is_preview,
             web_host,
             web_port,
+            with_function_debug_logs,
         }
     }
 
@@ -38,6 +41,10 @@ impl AppState {
 
     pub fn mode(&self) -> &str {
         self.mode.deref()
+    }
+
+    pub fn with_function_debug_logs(&self) -> bool {
+        self.with_function_debug_logs
     }
 
     pub fn is_preview(&self) -> bool {
