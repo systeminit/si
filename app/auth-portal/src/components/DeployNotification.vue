@@ -51,6 +51,7 @@ function reloadBrowser() {
 }
 
 function getRunningHash() {
+  if (import.meta.env.SSR) return "";
   // look for script tag of our main entrypoint that includes a hash
   const scriptEls = document.querySelectorAll("script[src^='/assets/app-']");
   for (const scriptEl of scriptEls) {
@@ -64,6 +65,7 @@ function stopInterval() {
   if (window && intervalId) window.clearInterval(intervalId);
 }
 onMounted(() => {
+  if (import.meta.env.SSR) return;
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   check();
   intervalId = window.setInterval(check, 2 * 60 * 1000);
