@@ -66,4 +66,7 @@ export default defineConfig({
       },
     ],
   },
+  build: {
+    manifest: true,
+  },
 });
