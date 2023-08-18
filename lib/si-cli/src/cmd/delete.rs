@@ -4,11 +4,7 @@ use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
 
 impl AppState {
-    pub async fn delete(
-        &self,
-        docker: &DockerClient,
-        keep_images: bool
-    ) -> CliResult<()> {
+    pub async fn delete(&self, docker: &DockerClient, keep_images: bool) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "delete-system"}),
@@ -18,7 +14,12 @@ impl AppState {
     }
 }
 
-async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool, keep_images: bool) -> CliResult<()> {
+async fn invoke(
+    app: &AppState,
+    docker: &DockerClient,
+    is_preview: bool,
+    keep_images: bool,
+) -> CliResult<()> {
     app.check(docker, true).await?;
 
     if is_preview {

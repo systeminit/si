@@ -50,7 +50,7 @@ pub(crate) struct Args {
     /// Show a preview of what the System Initiative Launcher will do
     #[arg(long, short = 'p', default_value = "false")]
     pub is_preview: bool,
-    
+
     /// Allows starting the web service and binding to a specific IP
     #[arg(long = "web-host", env = "SI_WEB_ADDRESS", default_value = "127.0.0.1")]
     pub web_host: String,
@@ -103,7 +103,6 @@ pub(crate) struct LaunchArgs {
     /// Allows the launching of the metrics collection endpoint
     #[clap(long)]
     pub metrics: bool,
-    
 }
 
 // #[derive(Debug, clap::Args)]
@@ -130,8 +129,7 @@ pub(crate) struct StatusArgs {
 }
 
 #[derive(Debug, clap::Args)]
-pub(crate) struct StartArgs {
-}
+pub(crate) struct StartArgs {}
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct RestartArgs {}

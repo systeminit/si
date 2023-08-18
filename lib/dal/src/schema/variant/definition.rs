@@ -440,10 +440,10 @@ impl SchemaVariantDefinitionJson {
             builder.try_link(link.as_str())?;
         }
         for input_socket in &self.input_sockets {
-            builder.socket(input_socket.to_spec(true)?);
+            builder.socket(input_socket.to_spec(true, identity_func_unique_id)?);
         }
         for output_socket in &self.output_sockets {
-            builder.socket(output_socket.to_spec(false)?);
+            builder.socket(output_socket.to_spec(false, identity_func_unique_id)?);
         }
 
         builder.func_unique_id(asset_func_spec_unique_id);
@@ -860,7 +860,11 @@ pub struct SocketDefinition {
 }
 
 impl SocketDefinition {
-    pub fn to_spec(&self, is_input: bool) -> SchemaVariantDefinitionResult<SocketSpec> {
+    pub fn to_spec(
+        &self,
+        is_input: bool,
+        identity_func_unique_id: FuncUniqueId,
+    ) -> SchemaVariantDefinitionResult<SocketSpec> {
         let mut builder = SocketSpec::builder();
         builder.name(&self.name);
         if is_input {
@@ -880,6 +884,7 @@ impl SocketDefinition {
             builder.ui_hidden(false);
         }
         if let Some(value_from) = &self.value_from {
+            builder.func_unique_id(identity_func_unique_id);
             builder.input(value_from.to_spec());
         }
 
