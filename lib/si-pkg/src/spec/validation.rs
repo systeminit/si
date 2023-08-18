@@ -14,7 +14,9 @@ pub enum ValidationSpec {
         func_unique_id: Hash,
     },
     IntegerIsBetweenTwoIntegers {
+        #[serde(alias = "lowerBound")]
         lower_bound: i64,
+        #[serde(alias = "upperBound")]
         upper_bound: i64,
     },
     IntegerIsNotEmpty,
@@ -26,6 +28,7 @@ pub enum ValidationSpec {
     },
     StringInStringArray {
         expected: Vec<String>,
+        #[serde(alias = "displayExpected")]
         display_expected: bool,
     },
     StringIsHexColor,
