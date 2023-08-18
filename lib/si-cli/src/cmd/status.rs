@@ -40,7 +40,12 @@ enum ContainerState {
     Waiting,
 }
 
-async fn invoke(app: &AppState, docker: &DockerClient, show_logs: bool, log_lines: usize) -> CliResult<()> {
+async fn invoke(
+    app: &AppState,
+    docker: &DockerClient,
+    show_logs: bool,
+    log_lines: usize,
+) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
 
     let mut container_status = Vec::new();
