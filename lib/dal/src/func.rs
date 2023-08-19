@@ -159,13 +159,13 @@ impl Func {
         let mut new_unique_name;
         loop {
             new_unique_name = format!("{}{}", self.name(), generate_unique_id(4));
-            if Self::find_by_name(&ctx, &new_unique_name).await?.is_none() {
+            if Self::find_by_name(ctx, &new_unique_name).await?.is_none() {
                 break;
             };
         }
 
         let mut new_func = Self::new(
-            &ctx,
+            ctx,
             new_unique_name,
             *self.backend_kind(),
             *self.backend_response_type(),

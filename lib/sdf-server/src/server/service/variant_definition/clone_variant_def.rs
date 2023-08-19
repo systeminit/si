@@ -9,11 +9,9 @@ use dal::{
         SchemaVariantDefinition, SchemaVariantDefinitionError as DalSchemaVariantDefinitionError,
         SchemaVariantDefinitionId,
     },
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, Schema,
-    SchemaError, StandardModel, Visibility, WsEvent,
+    Func, Schema, SchemaError, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use std::env::var;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

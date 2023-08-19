@@ -1,13 +1,14 @@
-use crate::containers::DockerClient;
-use crate::key_management::get_user_email;
-use crate::state::AppState;
-use crate::{CliResult, SiCliError};
 use colored::Colorize;
 use flate2::read::GzDecoder;
 use inquire::Confirm;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::Cursor;
+use std::{env, io::Cursor};
+use telemetry::prelude::*;
+
+use crate::{
+    containers::DockerClient, key_management::get_user_email, state::AppState, CliResult,
+    SiCliError,
+};
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -48,14 +49,6 @@ pub struct Update {
 static HOST: &str = "https://auth-api.systeminit.com";
 
 async fn update_current_binary(url: &str) -> CliResult<()> {
-    let current_exe = std::env::current_exe()?;
-
-    let exe_path = if current_exe.is_symlink() {
-        fs::read_link(current_exe)?
-    } else {
-        current_exe
-    };
-
     let req = reqwest::get(url).await?;
     if req.status().as_u16() != 200 {
         println!(
@@ -80,10 +73,17 @@ async fn update_current_binary(url: &str) -> CliResult<()> {
     })
     .await??;
 
-    println!("Overwriting current binary");
-    tokio::fs::rename(tempdir.path().join("si"), exe_path).await?;
+    let current_exe = env::current_exe()?;
+    let new_binary = tempdir.path().join("si");
+
+    println!("Replacing '{}' with new binary", current_exe.display());
+    tokio::task::spawn_blocking(move || self_replace::self_replace(new_binary)).await??;
 
     println!("Binary updated!");
+
+    if let Err(err) = tokio::task::spawn_blocking(move || tempdir.close()).await? {
+        debug!(err = ?err, "tempdir failed to successfully delete");
+    }
 
     Ok(())
 }
@@ -192,7 +192,7 @@ async fn invoke(
     }
 
     if let Some(update) = &update.si {
-        let version = &update.version;
+        let version = update.version.split('/').last().unwrap_or(&update.version);
         println!("Launcher update found: from {current_version} to {version}",);
     }
 
