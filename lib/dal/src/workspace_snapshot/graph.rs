@@ -105,7 +105,7 @@ impl WorkspaceSnapshotGraph {
         // Because outgoing edges are part of a node's identity, we create a new "from" node
         // as we are effectively writing to that node (we'll need to update the merkle tree
         // hash), and everything in the graph should be treated as copy-on-write.
-        let new_from_node_index = self.copy_node_index(change_set, from_node_index)?;
+        let new_from_node_index = self.copy_node_index(from_node_index)?;
 
         // Add the new edge to the new version of the "from" node.
         let new_edge_index =
@@ -135,14 +135,11 @@ impl WorkspaceSnapshotGraph {
 
     fn copy_node_index(
         &mut self,
-        change_set: &ChangeSet,
         node_index_to_copy: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let new_node_index = self.graph.add_node(
-            self.get_node_weight(node_index_to_copy)?
-                .new_with_incremented_vector_clock(change_set)?,
-        );
-
+        let new_node_index = self
+            .graph
+            .add_node(self.get_node_weight(node_index_to_copy)?.clone());
         Ok(new_node_index)
     }
 
@@ -202,17 +199,22 @@ impl WorkspaceSnapshotGraph {
                         // `onto`.
                         to_rebase_node_indexes.push(self.root_index);
                     } else {
-                        to_rebase_node_indexes.extend(
-                            self.get_node_index_by_lineage(onto_node_weight.lineage_id())
-                                .map_err(|err| {
-                                    error!(
-                                        "Unable to find NodeIndex(es) for lineage_id {}: {}",
-                                        onto_node_weight.lineage_id(),
-                                        err,
-                                    );
-                                    event
-                                })?,
-                        );
+                        // Only retain node indexes... or indices... if they are part of the current
+                        // graph. There may still be garbage from previous updates to the graph
+                        // laying around.
+                        let mut potential_to_rebase_node_indexes = self
+                            .get_node_index_by_lineage(onto_node_weight.lineage_id())
+                            .map_err(|err| {
+                                error!(
+                                    "Unable to find NodeIndex(es) for lineage_id {}: {}",
+                                    onto_node_weight.lineage_id(),
+                                    err,
+                                );
+                                event
+                            })?;
+                        potential_to_rebase_node_indexes
+                            .retain(|node_index| self.has_path_to_root(*node_index));
+                        to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
                     }
                 }
 
@@ -432,7 +434,7 @@ impl WorkspaceSnapshotGraph {
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let original_node_index = self.get_node_index_by_id(id)?;
-        let new_node_index = self.copy_node_index(change_set, original_node_index)?;
+        let new_node_index = self.copy_node_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
         node_weight.new_content_hash(new_content_hash)?;
 
@@ -918,7 +920,7 @@ impl WorkspaceSnapshotGraph {
         edge_kind: EdgeWeightKind,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let mut edges_to_remove = Vec::new();
-        let new_source_node_index = dbg!(self.copy_node_index(change_set, source_node_index)?);
+        let new_source_node_index = dbg!(self.copy_node_index(source_node_index)?);
         self.replace_references(change_set, dbg!(source_node_index), new_source_node_index)?;
 
         for edgeref in self
@@ -959,7 +961,7 @@ impl WorkspaceSnapshotGraph {
                 let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
                     Some(found_new_node_index) => *found_new_node_index,
                     None => {
-                        let new_node_index = self.copy_node_index(change_set, old_node_index)?;
+                        let new_node_index = self.copy_node_index(old_node_index)?;
                         old_to_new_node_indices.insert(old_node_index, new_node_index);
                         new_node_index
                     }
@@ -975,10 +977,7 @@ impl WorkspaceSnapshotGraph {
                     if let Some((_, destination_node_index)) =
                         self.graph.edge_endpoints(edge_reference.id())
                     {
-                        edges_to_create.push((
-                            edge_weight.new_with_incremented_vector_clocks(change_set)?,
-                            destination_node_index,
-                        ));
+                        edges_to_create.push((edge_weight.clone(), destination_node_index));
                     }
                 }
 
@@ -1088,9 +1087,14 @@ fn ordering_node_indexes_for_node_index(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::workspace_snapshot::node_weight::NodeWeight::Content;
     use crate::{ComponentId, ContentHash, FuncId, PropId, SchemaId, SchemaVariantId};
-    use serde_json::to_string;
+    use pretty_assertions_sorted::assert_eq;
+
+    #[derive(Debug, PartialEq)]
+    struct ConflictsAndUpdates {
+        conflicts: Vec<Conflict>,
+        updates: Vec<Update>,
+    }
 
     #[test]
     fn new() {
@@ -1378,7 +1382,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Constellation".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Constellation")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1402,7 +1406,7 @@ mod test {
                 NodeWeight::new_content(
                     change_set,
                     component_id,
-                    ContentAddress::Component(ContentHash::new("Crimson Fleet".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Crimson Fleet")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1467,7 +1471,7 @@ mod test {
                 .merkle_tree_hash(), // actual
         );
 
-        let updated_content_hash = ContentHash::new("new_content".as_bytes());
+        let updated_content_hash = ContentHash::from("new_content");
         graph
             .update_content(change_set, component_id.into(), updated_content_hash)
             .expect("Unable to update Component content hash");
@@ -1541,7 +1545,7 @@ mod test {
                 NodeWeight::new_content(
                     initial_change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Schema A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1554,7 +1558,7 @@ mod test {
                 NodeWeight::new_content(
                     initial_change_set,
                     schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1595,7 +1599,7 @@ mod test {
                 NodeWeight::new_content(
                     new_change_set,
                     component_id,
-                    ContentAddress::Schema(ContentHash::new("Component A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Component A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1648,7 +1652,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Schema A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1661,7 +1665,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1703,7 +1707,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     new_onto_component_id,
-                    ContentAddress::Component(ContentHash::new("Component B".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Component B")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1772,7 +1776,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Schema A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1785,7 +1789,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1827,7 +1831,7 @@ mod test {
                 NodeWeight::new_content(
                     new_change_set,
                     component_id,
-                    ContentAddress::Component(ContentHash::new("Component A".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Component A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1866,7 +1870,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     new_onto_component_id,
-                    ContentAddress::Component(ContentHash::new("Component B".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Component B")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1935,7 +1939,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Schema A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1948,7 +1952,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -1983,7 +1987,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     component_id,
-                    ContentAddress::Component(ContentHash::new("Component A".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Component A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -2023,7 +2027,7 @@ mod test {
             .update_content(
                 new_change_set,
                 component_id,
-                ContentHash::new("Updated Component A".as_bytes()),
+                ContentHash::from("Updated Component A"),
             )
             .expect("Unable to update Component A");
 
@@ -2035,7 +2039,7 @@ mod test {
             .update_content(
                 base_change_set,
                 component_id,
-                ContentHash::new("Base Updated Component A".as_bytes()),
+                ContentHash::from("Base Updated Component A"),
             )
             .expect("Unable to update Component A");
 
@@ -2076,7 +2080,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_id,
-                    ContentAddress::Schema(ContentHash::new("Schema A".as_bytes())),
+                    ContentAddress::Schema(ContentHash::from("Schema A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -2089,7 +2093,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     schema_variant_id,
-                    ContentAddress::SchemaVariant(ContentHash::new("Schema Variant A".as_bytes())),
+                    ContentAddress::SchemaVariant(ContentHash::from("Schema Variant A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -2124,7 +2128,7 @@ mod test {
                 NodeWeight::new_content(
                     base_change_set,
                     component_id,
-                    ContentAddress::Component(ContentHash::new("Component A".as_bytes())),
+                    ContentAddress::Component(ContentHash::from("Component A")),
                 )
                 .expect("Unable to create NodeWeight"),
             )
@@ -2179,7 +2183,7 @@ mod test {
             .update_content(
                 new_change_set,
                 component_id,
-                ContentHash::new("Updated Component A".as_bytes()),
+                ContentHash::from("Updated Component A"),
             )
             .expect("Unable to update Component A");
 
@@ -2200,5 +2204,314 @@ mod test {
             conflicts
         );
         assert_eq!(Vec::<Update>::new(), updates);
+    }
+
+    #[test]
+    fn detect_conflicts_and_updates_complex() {
+        let initial_change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let base_change_set = &initial_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        // Docker Image Schema
+        let docker_image_schema_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let docker_image_schema_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    docker_image_schema_id,
+                    ContentAddress::Schema(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                docker_image_schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+
+        // Docker Image Schema Variant
+        let docker_image_schema_variant_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let docker_image_schema_variant_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    docker_image_schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema Variant A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(docker_image_schema_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                docker_image_schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        // Nginx Docker Image Component
+        let nginx_docker_image_component_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let nginx_docker_image_component_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    nginx_docker_image_component_id,
+                    ContentAddress::Component(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Component A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                nginx_docker_image_component_index,
+            )
+            .expect("Unable to add root -> component edge");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(nginx_docker_image_component_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                base_graph
+                    .get_node_index_by_id(docker_image_schema_variant_id)
+                    .expect("Cannot get NodeIndex"),
+            )
+            .expect("Unable to add component -> schema variant edge");
+
+        // Alpine Component
+        let alpine_component_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let alpine_component_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    alpine_component_id,
+                    ContentAddress::Component(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Component A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                alpine_component_index,
+            )
+            .expect("Unable to add root -> component edge");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(alpine_component_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                base_graph
+                    .get_node_index_by_id(docker_image_schema_variant_id)
+                    .expect("Cannot get NodeIndex"),
+            )
+            .expect("Unable to add component -> schema variant edge");
+
+        // Butane Schema
+        let butane_schema_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let butane_schema_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    butane_schema_id,
+                    ContentAddress::Schema(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                butane_schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+
+        // Butane Schema Variant
+        let butane_schema_variant_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let butane_schema_variant_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    butane_schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema Variant A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(butane_schema_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                butane_schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        // Nginx Butane Component
+        let nginx_butane_component_id = base_change_set
+            .generate_ulid()
+            .expect("Cannot generate Ulid");
+        let nginx_butane_node_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    nginx_butane_component_id,
+                    ContentAddress::Component(ContentHash::from("first")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema Variant A");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                nginx_butane_node_index,
+            )
+            .expect("Unable to add root -> component edge");
+        base_graph
+            .add_edge(
+                base_change_set,
+                base_graph
+                    .get_node_index_by_id(nginx_butane_component_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                base_graph
+                    .get_node_index_by_id(butane_schema_variant_id)
+                    .expect("Cannot get NodeIndex"),
+            )
+            .expect("Unable to add component -> schema variant edge");
+
+        base_graph.cleanup();
+        println!("Initial base graph (Root {:?}):", base_graph.root_index);
+        base_graph.dot();
+
+        // Create a new change set to cause some problems!
+        let new_change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let new_change_set = &new_change_set;
+        let mut new_graph = base_graph.clone();
+
+        // Create a modify removed item conflict.
+        base_graph
+            .remove_edge(
+                base_change_set,
+                base_graph.root_index,
+                base_graph
+                    .get_node_index_by_id(nginx_butane_component_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeightKind::Uses,
+            )
+            .expect("Unable to update the component");
+        new_graph
+            .update_content(
+                new_change_set,
+                nginx_butane_component_id,
+                ContentHash::from("second"),
+            )
+            .expect("Unable to update the component");
+
+        // Create a node content conflict.
+        base_graph
+            .update_content(
+                base_change_set,
+                docker_image_schema_variant_id,
+                ContentHash::from("oopsie"),
+            )
+            .expect("Unable to update the component");
+        new_graph
+            .update_content(
+                new_change_set,
+                docker_image_schema_variant_id,
+                ContentHash::from("poopsie"),
+            )
+            .expect("Unable to update the component");
+
+        // Create a pure update.
+        new_graph
+            .update_content(
+                new_change_set,
+                docker_image_schema_id,
+                ContentHash::from("bg3"),
+            )
+            .expect("Unable to update the schema");
+
+        let (conflicts, updates) = new_graph
+            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .expect("Unable to detect conflicts and updates");
+
+        println!("base graph current root: {:?}", base_graph.root_index);
+        base_graph.dot();
+        println!("new graph current root: {:?}", new_graph.root_index);
+        new_graph.dot();
+
+        let expected_conflicts = vec![
+            Conflict::ModifyRemovedItem(
+                new_graph
+                    .get_node_index_by_id(nginx_butane_component_id)
+                    .expect("Unable to get component NodeIndex"),
+            ),
+            Conflict::NodeContent {
+                onto: base_graph
+                    .get_node_index_by_id(docker_image_schema_variant_id)
+                    .expect("Unable to get component NodeIndex"),
+                to_rebase: new_graph
+                    .get_node_index_by_id(docker_image_schema_variant_id)
+                    .expect("Unable to get component NodeIndex"),
+            },
+        ];
+        // assert_eq!(expected_conflicts, conflicts);
+
+        let expected_updates = Vec::<Update>::new();
+        // assert_eq!(Vec::<Update>::new(), updates);
+
+        assert_eq!(
+            ConflictsAndUpdates {
+                conflicts: expected_conflicts,
+                updates: expected_updates,
+            },
+            ConflictsAndUpdates { conflicts, updates },
+        );
     }
 }
