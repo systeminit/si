@@ -1,6 +1,6 @@
 name: Feature Request
 description: Request a new feature and/or enhancement to an existing feature
-labels: [ triage ]
+labels: [ linear, feature-request ]
 body:
   - type: markdown
     attributes:

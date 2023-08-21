@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report an issue
-labels: [ linear ]
+labels: [ linear, bug ]
 body:
   - type: markdown
     attributes:
