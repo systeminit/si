@@ -552,7 +552,7 @@ checksum = "0754613691538d51f329cce9af41d7b7ca150bc973056f1156611489475f54f7"
 dependencies = [
  "borsh-derive-internal",
  "borsh-schema-derive-internal",
- "proc-macro-crate",
+ "proc-macro-crate 0.1.5",
  "proc-macro2",
  "syn 1.0.109",
 ]
@@ -1174,6 +1174,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "base64 0.21.2",
+ "blake3",
  "buck2-resources",
  "chrono",
  "convert_case 0.6.0",
@@ -1329,7 +1330,7 @@ dependencies = [
  "anyhow",
  "html-escape",
  "nom",
- "ordered-float",
+ "ordered-float 2.10.0",
 ]
 
 [[package]]
@@ -1991,6 +1992,44 @@ dependencies = [
  "fnv",
  "log",
  "regex",
+]
+
+[[package]]
+name = "gobbler"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "gobbler-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "gobbler-server"
+version = "0.1.0"
+dependencies = [
+ "buck2-resources",
+ "dal",
+ "dal-test",
+ "derive_builder",
+ "futures",
+ "nats-subscriber",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-rabbitmq",
+ "si-settings",
+ "si-test-macros",
+ "stream-cancel",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "ulid",
+ "veritech-client",
 ]
 
 [[package]]
@@ -2977,6 +3016,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_enum"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
+dependencies = [
+ "num_enum_derive",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
+dependencies = [
+ "proc-macro-crate 1.3.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.18",
+]
+
+[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3137,6 +3197,15 @@ name = "ordered-float"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "ordered-float"
+version = "3.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fc2dbde8f8a79f2102cc474ceb0ad68e3b80b85289ea62389b60e66777e4213"
 dependencies = [
  "num-traits",
 ]
@@ -3572,6 +3641,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-crate"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
+dependencies = [
+ "once_cell",
+ "toml_edit",
+]
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3695,6 +3774,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b9ab9c7eadfd8df19006f1cf1a4aed13540ed5cbc047010ece5826e10825488"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rabbitmq-stream-client"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "735d6cecec44dc27382b962309c05de47d40727ff9898a501ec8fadec76be9a8"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "dashmap",
+ "futures",
+ "pin-project",
+ "rabbitmq-stream-protocol",
+ "rand",
+ "rustls-pemfile 1.0.3",
+ "thiserror",
+ "tokio",
+ "tokio-rustls 0.24.1",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "rabbitmq-stream-protocol"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed68734bea9f111e2541f7d1cb8f2b109959839173589183e09e53771d62092f"
+dependencies = [
+ "byteorder",
+ "chrono",
+ "derive_more",
+ "num_enum",
+ "ordered-float 3.7.0",
+ "uuid",
 ]
 
 [[package]]
@@ -3890,7 +4006,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "rustls 0.21.2",
- "rustls-pemfile 1.0.2",
+ "rustls-pemfile 1.0.3",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -4136,9 +4252,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pemfile"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d194b56d58803a43635bdc398cd17e383d6f71f9182b9a192c127ca42494a59b"
+checksum = "2d3987094b1d07b653b7dfdc3f70ce9a1da9c51ac18c1b06b662e4f9a0e9f4b2"
 dependencies = [
  "base64 0.21.2",
 ]
@@ -4769,6 +4885,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-rabbitmq"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "futures-lite",
+ "pin-project-lite",
+ "rabbitmq-stream-client",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-test-macros",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "ulid",
+]
+
+[[package]]
 name = "si-settings"
 version = "0.1.0"
 dependencies = [
@@ -5018,7 +5153,7 @@ dependencies = [
  "rand",
  "rust_decimal",
  "rustls 0.20.8",
- "rustls-pemfile 1.0.2",
+ "rustls-pemfile 1.0.3",
  "serde",
  "serde_json",
  "sha1",
@@ -5334,11 +5469,12 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.28.2"
+version = "1.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d7b1cfd2aa4011f2de74c2c4c63665e27a71006b0a192dcd2710272e73dfa2"
+checksum = "532826ff75199d5833b9d2c5fe410f29235e25704ee5f0ef599fb51c21f4a4da"
 dependencies = [
  "autocfg",
+ "backtrace",
  "bytes",
  "libc",
  "mio",

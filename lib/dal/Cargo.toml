@@ -10,6 +10,7 @@ publish = false
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
+blake3 = { workspace = true }
 chrono = { workspace = true }
 convert_case = { workspace = true }
 council-server = { path = "../../lib/council-server" }
@@ -19,6 +20,7 @@ dyn-clone = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 iftree = { workspace = true }
+itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
