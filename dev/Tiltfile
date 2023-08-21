@@ -8,6 +8,7 @@ groups = {
         "nats",
         "otelcol",
         "postgres",
+        "rabbitmq",
     ],
     "backend": [
         "council",
@@ -65,7 +66,7 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres", "rabbitmq"]
 for service in compose_services:
     dc_resource(service, labels = ["platform"])
 

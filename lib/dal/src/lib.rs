@@ -26,6 +26,7 @@ pub mod change_set;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
+pub mod content;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
@@ -65,6 +66,7 @@ pub mod user;
 pub mod validation;
 pub mod visibility;
 pub mod workspace;
+pub mod workspace_snapshot;
 pub mod ws_event;
 
 pub use action::{Action, ActionError, ActionId};
@@ -98,6 +100,7 @@ pub use component::{
     resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
     ComponentError, ComponentId, ComponentView, ComponentViewProperties,
 };
+use content::hash::ContentHash;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
@@ -169,6 +172,8 @@ pub use validation::resolver::{
 };
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
+pub use workspace_snapshot::WorkspaceSnapshot;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[remain::sorted]

@@ -1,0 +1,26 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "gobbler",
+    deps = [
+        "//lib/gobbler-server:gobbler-server",
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    resources = {
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+    },
+)
+
+docker_image(
+    name = "image",
+    image_name = "gobbler",
+    build_deps = ["//bin/gobbler:gobbler"]
+)
