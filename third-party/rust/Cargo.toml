@@ -77,6 +77,7 @@ postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
 proc-macro2 = "1.0.56"
 quote = "1.0.27"
+rabbitmq-stream-client = "0.3.0"
 rand = "0.8.5"
 refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"

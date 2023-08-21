@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "bin/council",
     "bin/cyclone",
+    "bin/gobbler",
     "bin/module-index",
     "bin/pinga",
     "bin/sdf",
@@ -22,6 +23,7 @@ members = [
     "lib/dal",
     "lib/dal-test",
     "lib/deadpool-cyclone",
+    "lib/gobbler-server",
     "lib/module-index-client",
     "lib/module-index-server",
     "lib/nats-subscriber",
@@ -31,6 +33,7 @@ members = [
     "lib/si-data-nats",
     "lib/si-data-pg",
     "lib/si-pkg",
+    "lib/si-rabbitmq",
     "lib/si-settings",
     "lib/si-std",
     "lib/si-test-macros",
@@ -53,7 +56,7 @@ chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 colored = "2.0.4"
-comfy-table = {version ="7.0.1", features = ["crossterm", "tty", "custom_styling"] }
+comfy-table = { version = "7.0.1", features = ["crossterm", "tty", "custom_styling"] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
@@ -100,13 +103,14 @@ postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
 proc-macro2 = "1.0.56"
 quote = "1.0.27"
+rabbitmq-stream-client = "0.3.0"
 rand = "0.8.5"
 refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"]}
+sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
 self-replace = "1.3.5"
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
