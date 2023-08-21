@@ -281,7 +281,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .image(format!("{0}:stable", container.clone()))
                 .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
                 .env(env_vars)
-                .volumes([format!("{}:/run/cyclone", si_data_dir.display())])
+                .volumes([format!("{}:/run/cyclone:z", si_data_dir.display())])
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -331,7 +331,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     "SI_PINGA__PG__HOSTNAME=postgres",
                     "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
                 ])
-                .volumes([format!("{}:/run/pinga", si_data_dir.display())])
+                .volumes([format!("{}:/run/pinga:z", si_data_dir.display())])
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -384,11 +384,11 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .expose(PublishPort::tcp(5156), HostPort::new(5156))
                 .volumes([
                     format!(
-                        "{}:/run/sdf/cyclone_encryption.key:Z",
+                        "{}:/run/sdf/cyclone_encryption.key:z",
                         si_data_dir.join("cyclone_encryption.key").display()
                     ),
                     format!(
-                        "{}:/run/sdf/jwt_signing_public_key.pem:Z",
+                        "{}:/run/sdf/jwt_signing_public_key.pem:z",
                         si_data_dir.join("jwt_signing_public_key.pem").display()
                     ),
                 ])
