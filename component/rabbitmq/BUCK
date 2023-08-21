@@ -1,0 +1,17 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "rabbitmq",
+    build_args = {
+        "BASE_VERSION": "3.12-management-alpine",
+    },
+    run_docker_args = [
+        "--publish",
+        "5672:5672",
+        "--publish",
+        "15672:15672",
+    ],
+)
