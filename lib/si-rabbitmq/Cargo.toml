@@ -1,0 +1,20 @@
+[package]
+name = "si-rabbitmq"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+futures = { workspace = true }
+futures-lite = { workspace = true }
+pin-project-lite = { workspace = true }
+rabbitmq-stream-client = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-test-macros = { path = "../../lib/si-test-macros" }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+ulid = { workspace = true }

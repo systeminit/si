@@ -30,6 +30,7 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:hex",
         "//third-party/rust:iftree",
+        "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",
         "//third-party/rust:once_cell",

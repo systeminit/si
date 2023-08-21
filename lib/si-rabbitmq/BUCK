@@ -1,0 +1,21 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-rabbitmq",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-test-macros:si-test-macros",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
+        "//third-party/rust:futures-lite",
+        "//third-party/rust:pin-project-lite",
+        "//third-party/rust:rabbitmq-stream-client",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

@@ -1,0 +1,67 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "gobbler-server",
+    deps = [
+        "//lib/buck2-resources:buck2-resources",
+        "//lib/dal:dal",
+        "//lib/nats-subscriber:nats-subscriber",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/si-rabbitmq:si-rabbitmq",
+        "//lib/si-settings:si-settings",
+        "//lib/si-test-macros:si-test-macros",
+        "//lib/telemetry-rs:telemetry",
+        "//lib/veritech-client:veritech-client",
+        "//third-party/rust:derive_builder",
+        "//third-party/rust:futures",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:stream-cancel",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-stream",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//lib/dal:dal",
+        "//lib/dal-test:dal-test",
+        "//lib/si-pkg:si-pkg",
+        "//lib/si-rabbitmq:si-rabbitmq",
+        "//lib/si-test-macros:si-test-macros",
+        "//lib/veritech-client:veritech-client",
+        "//third-party/rust:base64",
+        "//third-party/rust:itertools",
+        "//third-party/rust:pretty_assertions_sorted",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:sodiumoxide",
+        "//third-party/rust:strum",
+        "//third-party/rust:tempfile",
+        "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
+    ],
+    crate_root = "tests/integration.rs",
+    srcs = glob(["tests/**/*.rs"]),
+    env = {
+        "CARGO_PKG_NAME": "integration",
+    },
+    resources = {
+        "cyclone": "//bin/cyclone:cyclone",
+        "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
+        "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
+        "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
+        "lang-js": "//bin/lang-js:lang-js",
+        "pkgs_path": "//pkgs:pkgs",
+        "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
+    },
+)
+
