@@ -424,11 +424,6 @@ async fn model_and_fix_flow_whiskers(
             "domain": {
                 "region": "us-east-2",
             },
-            "qualification": {
-                "si:qualificationAwsRegionHasRegionSet": {
-                    "result": "success",
-                },
-            },
         }], // expected
         region
             .view(&ctx)
