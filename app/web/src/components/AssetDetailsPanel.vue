@@ -149,7 +149,7 @@ import { nilId } from "@/utils/nilId";
 import { useComponentsStore } from "@/store/components.store";
 import ColorPicker from "./ColorPicker.vue";
 
-defineProps<{
+const props = defineProps<{
   assetId?: string;
 }>();
 
@@ -157,7 +157,14 @@ const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
-const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
+const loadAssetReqStatus = assetStore.getRequestStatus(
+  "LOAD_ASSET",
+  props.assetId,
+);
+const executeAssetReqStatus = assetStore.getRequestStatus(
+  "EXEC_ASSET",
+  props.assetId,
+);
 const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
 
@@ -206,7 +213,7 @@ const executeAsset = async () => {
   if (assetStore.selectedAssetId) {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
-      executeAssetModalRef.value.open();
+      executeAssetModalRef.value?.open();
       const { schemaVariantId } = result.result.data;
       if (schemaVariantId !== nilId()) {
         assetStore.setSchemaVariantIdForAsset(
@@ -221,11 +228,6 @@ const executeAsset = async () => {
     }
   }
 };
-
-const executeAssetReqStatus = assetStore.getRequestStatus(
-  "EXEC_ASSET",
-  assetStore.selectedAsset?.id,
-);
 
 const cloneAsset = async () => {
   if (assetStore.selectedAsset?.id) {
