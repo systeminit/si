@@ -314,6 +314,7 @@ export const useAssetStore = () => {
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
+            keyRequestStatusBy: assetId,
             params: {
               ...visibility,
               ..._.omit(asset, [

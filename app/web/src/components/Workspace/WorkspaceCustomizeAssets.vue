@@ -48,7 +48,9 @@
           singleModelScreen
           @detached="onDetach"
         />
-        <AssetDetailsPanel v-else :assetId="assetId" />
+        <!-- the key here is to force remounting so we get the proper asset
+        request statuses -->
+        <AssetDetailsPanel v-else :key="assetId" :assetId="assetId" />
       </template>
       <div
         v-else
@@ -58,7 +60,11 @@
       </div>
     </div>
     <template v-else>
-      <AssetDetailsPanel v-if="assetId && !funcId" :assetId="assetId" />
+      <AssetDetailsPanel
+        v-if="assetId && !funcId"
+        :key="assetId"
+        :assetId="assetId"
+      />
       <FuncDetails
         v-else-if="assetId && funcId"
         :funcId="funcId"
