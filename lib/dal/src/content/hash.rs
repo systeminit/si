@@ -28,6 +28,12 @@ impl From<&Value> for ContentHash {
     }
 }
 
+impl From<&str> for ContentHash {
+    fn from(input: &str) -> Self {
+        Self::new(input.as_bytes())
+    }
+}
+
 impl Default for ContentHash {
     fn default() -> Self {
         Self::new("".as_bytes())
