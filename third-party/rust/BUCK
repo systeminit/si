@@ -1608,6 +1608,27 @@ cargo.rust_library(
     visibility = [],
 )
 
+http_archive(
+    name = "bytes-0.5.6.crate",
+    sha256 = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38",
+    strip_prefix = "bytes-0.5.6",
+    urls = ["https://crates.io/api/v1/crates/bytes/0.5.6/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "bytes-0.5.6",
+    srcs = [":bytes-0.5.6.crate"],
+    crate = "bytes",
+    crate_root = "bytes-0.5.6.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = [],
+)
+
 alias(
     name = "bytes",
     actual = ":bytes-1.4.0",
@@ -2187,6 +2208,58 @@ cargo.rust_library(
     crate_root = "constant_time_eq-0.2.6.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
+)
+
+http_archive(
+    name = "containers-api-0.8.0.crate",
+    sha256 = "ef94b0ff8338282b35bafb408eb0a3e53ba05bdb3b36840589ab9a67a6682593",
+    strip_prefix = "containers-api-0.8.0",
+    urls = ["https://crates.io/api/v1/crates/containers-api/0.8.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "containers-api-0.8.0",
+    srcs = [":containers-api-0.8.0.crate"],
+    crate = "containers_api",
+    crate_root = "containers-api-0.8.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "chrono",
+        "default",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "macos-arm64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":hyperlocal-0.8.0"],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":chrono-0.4.26",
+        ":flate2-1.0.26",
+        ":futures-util-0.3.28",
+        ":http-0.2.9",
+        ":hyper-0.14.26",
+        ":log-0.4.19",
+        ":mime-0.3.17",
+        ":paste-1.0.12",
+        ":pin-project-1.1.0",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":tar-0.4.38",
+        ":thiserror-1.0.40",
+        ":tokio-1.28.2",
+        ":url-2.4.0",
+    ],
 )
 
 http_archive(
@@ -4516,6 +4589,30 @@ cargo.rust_library(
         ":pin-project-lite-0.2.9",
         ":pin-utils-0.1.0",
         ":slab-0.4.8",
+    ],
+)
+
+http_archive(
+    name = "futures_codec-0.4.1.crate",
+    sha256 = "ce54d63f8b0c75023ed920d46fd71d0cbbb830b0ee012726b5b4f506fb6dea5b",
+    strip_prefix = "futures_codec-0.4.1",
+    urls = ["https://crates.io/api/v1/crates/futures_codec/0.4.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "futures_codec-0.4.1",
+    srcs = [":futures_codec-0.4.1.crate"],
+    crate = "futures_codec",
+    crate_root = "futures_codec-0.4.1.crate/src/lib.rs",
+    edition = "2018",
+    features = ["default"],
+    visibility = [],
+    deps = [
+        ":bytes-0.5.6",
+        ":futures-0.3.28",
+        ":memchr-2.5.0",
+        ":pin-project-0.4.30",
     ],
 )
 
@@ -8544,6 +8641,24 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "pin-project-0.4.30.crate",
+    sha256 = "3ef0f924a5ee7ea9cbcea77529dba45f8a9ba9f622419fe3386ca581a3ae9d5a",
+    strip_prefix = "pin-project-0.4.30",
+    urls = ["https://crates.io/api/v1/crates/pin-project/0.4.30/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "pin-project-0.4.30",
+    srcs = [":pin-project-0.4.30.crate"],
+    crate = "pin_project",
+    crate_root = "pin-project-0.4.30.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [":pin-project-internal-0.4.30"],
+)
+
+http_archive(
     name = "pin-project-1.1.0.crate",
     sha256 = "c95a7476719eab1e366eaf73d0260af3021184f18177925b07f54b30089ceead",
     strip_prefix = "pin-project-1.1.0",
@@ -8559,6 +8674,29 @@ cargo.rust_library(
     edition = "2018",
     visibility = [],
     deps = [":pin-project-internal-1.1.0"],
+)
+
+http_archive(
+    name = "pin-project-internal-0.4.30.crate",
+    sha256 = "851c8d0ce9bebe43790dedfc86614c23494ac9f423dd618d3a61fc693eafe61e",
+    strip_prefix = "pin-project-internal-0.4.30",
+    urls = ["https://crates.io/api/v1/crates/pin-project-internal/0.4.30/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "pin-project-internal-0.4.30",
+    srcs = [":pin-project-internal-0.4.30.crate"],
+    crate = "pin_project_internal",
+    crate_root = "pin-project-internal-0.4.30.crate/src/lib.rs",
+    edition = "2018",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.60",
+        ":quote-1.0.28",
+        ":syn-1.0.109",
+    ],
 )
 
 http_archive(
@@ -8751,6 +8889,74 @@ cargo.rust_library(
     crate_root = "pkg-config-0.3.27.crate/src/lib.rs",
     edition = "2015",
     visibility = [],
+)
+
+alias(
+    name = "podman-api",
+    actual = ":podman-api-0.10.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "podman-api-0.10.0.crate",
+    sha256 = "4d0ade207138f12695cb4be3b590283f1cf764c5c4909f39966c4b4b0dba7c1e",
+    strip_prefix = "podman-api-0.10.0",
+    urls = ["https://crates.io/api/v1/crates/podman-api/0.10.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "podman-api-0.10.0",
+    srcs = [":podman-api-0.10.0.crate"],
+    crate = "podman_api",
+    crate_root = "podman-api-0.10.0.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "chrono",
+        "default",
+    ],
+    visibility = [],
+    deps = [
+        ":base64-0.13.1",
+        ":byteorder-1.4.3",
+        ":bytes-1.4.0",
+        ":chrono-0.4.26",
+        ":containers-api-0.8.0",
+        ":flate2-1.0.26",
+        ":futures-util-0.3.28",
+        ":futures_codec-0.4.1",
+        ":log-0.4.19",
+        ":paste-1.0.12",
+        ":podman-api-stubs-0.9.0",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+        ":tar-0.4.38",
+        ":thiserror-1.0.40",
+        ":tokio-1.28.2",
+        ":url-2.4.0",
+    ],
+)
+
+http_archive(
+    name = "podman-api-stubs-0.9.0.crate",
+    sha256 = "2d280c623f633a0dded88feab9e387f98451506431d5b7308a858c643305dcee",
+    strip_prefix = "podman-api-stubs-0.9.0",
+    urls = ["https://crates.io/api/v1/crates/podman-api-stubs/0.9.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "podman-api-stubs-0.9.0",
+    srcs = [":podman-api-stubs-0.9.0.crate"],
+    crate = "podman_api_stubs",
+    crate_root = "podman-api-stubs-0.9.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":chrono-0.4.26",
+        ":serde-1.0.164",
+        ":serde_json-1.0.97",
+    ],
 )
 
 http_archive(
@@ -13463,6 +13669,7 @@ cargo.rust_binary(
         ":pathdiff-0.2.1",
         ":petgraph-0.6.3",
         ":pin-project-lite-0.2.9",
+        ":podman-api-0.10.0",
         ":postgres-types-0.2.5",
         ":pretty_assertions_sorted-1.2.3",
         ":proc-macro2-1.0.60",

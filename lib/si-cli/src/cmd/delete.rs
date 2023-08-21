@@ -1,26 +1,20 @@
-use crate::containers::DockerClient;
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
 
 impl AppState {
-    pub async fn delete(&self, docker: &DockerClient, keep_images: bool) -> CliResult<()> {
+    pub async fn delete(&self, keep_images: bool) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "delete-system"}),
         );
-        invoke(self, docker, self.is_preview(), keep_images).await?;
+        invoke(self, self.is_preview(), keep_images).await?;
         Ok(())
     }
 }
 
-async fn invoke(
-    app: &AppState,
-    docker: &DockerClient,
-    is_preview: bool,
-    keep_images: bool,
-) -> CliResult<()> {
-    app.check(docker, true).await?;
+async fn invoke(app: &AppState, is_preview: bool, keep_images: bool) -> CliResult<()> {
+    app.check(true).await?;
 
     if is_preview {
         println!("Deleted the following containers and associated images:");
@@ -32,16 +26,22 @@ async fn invoke(
             println!("{}", container_name);
             continue;
         }
-        let container_summary = docker
+        let container_summary = app
+            .container_engine()
             .get_existing_container(container_name.clone())
             .await?;
         if let Some(container_summary) = container_summary {
-            docker
-                .delete_container(container_summary, container_name.clone())
+            app.container_engine()
+                .delete_container(
+                    container_summary.id.unwrap().to_string(),
+                    container_name.clone(),
+                )
                 .await?;
 
             if !keep_images {
-                docker.cleanup_image(name.to_string()).await?;
+                app.container_engine()
+                    .cleanup_image(name.to_string())
+                    .await?;
             }
         }
     }

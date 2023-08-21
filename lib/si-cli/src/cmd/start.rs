@@ -1,27 +1,25 @@
-use crate::containers::DockerClient;
 use crate::key_management::{
     ensure_encryption_keys, ensure_jwt_public_signing_key, format_credentials_for_veritech,
     get_si_data_dir, get_user_email,
 };
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
-use docker_api::opts::{ContainerCreateOpts, HostPort, PublishPort};
 
 impl AppState {
-    pub async fn start(&self, docker: &DockerClient) -> CliResult<()> {
+    pub async fn start(&self) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "start-system"}),
         );
-        invoke(self, docker, self.is_preview()).await?;
+        invoke(self, self.is_preview()).await?;
         Ok(())
     }
 }
 
-async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliResult<()> {
+async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
     app.configure(false).await?;
-    app.check(docker, false).await?;
-    app.install(docker).await?;
+    app.check(false).await?;
+    app.install().await?;
 
     if is_preview {
         println!("Started the following containers:");
@@ -35,7 +33,8 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
         let container = format!("systeminit/{0}", name);
         let container_name = format!("local-{0}-1", name);
         if container == "systeminit/otelcol" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -46,8 +45,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -64,18 +64,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(["local-jaeger-1:jaeger"])
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_otelcol(container_name.clone(), container.clone())
+                .await?;
         }
         if container == "systeminit/jaeger" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -86,8 +82,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -104,18 +101,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .expose(PublishPort::tcp(16686), HostPort::new(16686))
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_jaeger(container_name.clone(), container.clone())
+                .await?;
         }
         if container == "systeminit/nats" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -126,8 +119,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -144,18 +138,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .command(vec!["--config", "nats-server.conf", "-DVV"])
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_nats(container_name.clone(), container.clone())
+                .await?;
         }
         if container == "systeminit/postgres" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -166,8 +156,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -184,23 +175,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .env(vec![
-                    "POSTGRES_PASSWORD=bugbear",
-                    "PGPASSWORD=bugbear",
-                    "POSTGRES_USER=si",
-                    "POSTGRES_DB=si",
-                ])
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_postgres(container_name.clone(), container.clone())
+                .await?;
         }
         if container == "systeminit/council" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -211,8 +193,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -229,22 +212,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
-                .env(vec![
-                    "SI_COUNCIL__NATS__URL=nats",
-                    "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
-                ])
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_council(container_name.clone(), container.clone())
+                .await?;
         }
         if container == "systeminit/veritech" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -254,9 +229,12 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     continue;
                 }
 
-                println!("Deleting existing container {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.delete().await?;
+                app.container_engine()
+                    .delete_container(
+                        existing.id.as_ref().unwrap().to_string(),
+                        container_name.clone(),
+                    )
+                    .await?;
             }
 
             if is_preview {
@@ -273,28 +251,20 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container_name.clone()
             );
             let mut veritech_credentials = format_credentials_for_veritech().await?;
-            let mut env_vars = vec![
-                "SI_VERITECH__NATS__URL=nats".to_string(),
-                "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317".to_string(),
-            ];
-            if app.with_function_debug_logs() {
-                env_vars.push("SI_LOG=debug".to_string());
-            }
-            env_vars.append(&mut veritech_credentials);
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
-                .env(env_vars)
-                .volumes([format!("{}:/run/cyclone:z", si_data_dir.display())])
-                .restart_policy("on-failure", 3)
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_veritech(
+                    container_name.clone(),
+                    container.clone(),
+                    veritech_credentials.as_mut(),
+                    si_data_dir.clone(),
+                    app.with_function_debug_logs(),
+                )
+                .await?;
         }
         if container == "systeminit/pinga" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -305,8 +275,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -324,28 +295,17 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container_name.clone()
             );
 
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(vec![
-                    "local-nats-1:nats",
-                    "local-postgres-1:postgres",
-                    "local-otelcol-1:otelcol",
-                ])
-                .env(vec![
-                    "SI_PINGA__NATS__URL=nats",
-                    "SI_PINGA__PG__HOSTNAME=postgres",
-                    "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
-                ])
-                .volumes([format!("{}:/run/pinga:z", si_data_dir.display())])
-                .restart_policy("on-failure", 3)
-                .build();
-
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_pinga(
+                    container_name.clone(),
+                    container.clone(),
+                    si_data_dir.clone(),
+                )
+                .await?;
         }
         if container == "systeminit/sdf" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -356,8 +316,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -374,39 +335,18 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container.clone(),
                 container_name.clone()
             );
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(vec![
-                    "local-nats-1:nats",
-                    "local-postgres-1:postgres",
-                    "local-otelcol-1:otelcol",
-                ])
-                .env(vec![
-                    "SI_SDF__NATS__URL=nats",
-                    "SI_SDF__PG__HOSTNAME=postgres",
-                    "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
-                ])
-                .network_mode("bridge")
-                .expose(PublishPort::tcp(5156), HostPort::new(5156))
-                .restart_policy("on-failure", 3)
-                .volumes([
-                    format!(
-                        "{}:/run/sdf/cyclone_encryption.key:z",
-                        si_data_dir.join("cyclone_encryption.key").display()
-                    ),
-                    format!(
-                        "{}:/run/sdf/jwt_signing_public_key.pem:z",
-                        si_data_dir.join("jwt_signing_public_key.pem").display()
-                    ),
-                ])
-                .build();
 
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+            app.container_engine()
+                .create_sdf(
+                    container_name.clone(),
+                    container.clone(),
+                    si_data_dir.clone(),
+                )
+                .await?;
         }
         if container == "systeminit/web" {
-            let container_summary = docker
+            let container_summary = app
+                .container_engine()
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
@@ -417,8 +357,9 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 }
 
                 println!("Starting existing {0}", container_name.clone());
-                let non_running_container = docker.containers().get(existing.id.as_ref().unwrap());
-                non_running_container.start().await?;
+                app.container_engine()
+                    .start_container(existing.id.as_ref().unwrap().to_string())
+                    .await?;
                 continue;
             }
 
@@ -436,24 +377,14 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 container_name.clone()
             );
 
-            let host_ip = app.web_host();
-            let host_port = app.web_port();
-
-            let create_opts = ContainerCreateOpts::builder()
-                .name(container_name.clone())
-                .image(format!("{0}:stable", container.clone()))
-                .links(vec!["local-sdf-1:sdf"])
-                .env(["SI_LOG=trace"])
-                .network_mode("bridge")
-                .restart_policy("on-failure", 3)
-                .expose(
-                    PublishPort::tcp(8080),
-                    HostPort::with_ip(host_port, host_ip),
+            app.container_engine()
+                .create_web(
+                    container_name.clone(),
+                    container.clone(),
+                    app.web_port(),
+                    app.web_host(),
                 )
-                .build();
-
-            let container = docker.containers().create(&create_opts).await?;
-            container.start().await?;
+                .await?;
         }
     }
 

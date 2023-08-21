@@ -5,10 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{env, io::Cursor};
 use telemetry::prelude::*;
 
-use crate::{
-    containers::DockerClient, key_management::get_user_email, state::AppState, CliResult,
-    SiCliError,
-};
+use crate::{key_management::get_user_email, state::AppState, CliResult, SiCliError};
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -91,7 +88,6 @@ async fn update_current_binary(url: &str) -> CliResult<()> {
 impl AppState {
     pub async fn update(
         &self,
-        docker: &DockerClient,
         current_version: &str,
         host: Option<&str>,
         skip_confirmation: bool,
@@ -101,24 +97,11 @@ impl AppState {
             get_user_email().await?,
             serde_json::json!({"command-name": "update-launcher"}),
         );
-        invoke(
-            self,
-            docker,
-            current_version,
-            host,
-            skip_confirmation,
-            only_binary,
-        )
-        .await?;
+        invoke(self, current_version, host, skip_confirmation, only_binary).await?;
         Ok(())
     }
 
-    pub async fn find(
-        &self,
-        docker: &DockerClient,
-        current_version: &str,
-        host: Option<&str>,
-    ) -> CliResult<Update> {
+    pub async fn find(&self, current_version: &str, host: Option<&str>) -> CliResult<Update> {
         let host = if let Some(host) = host { host } else { HOST };
 
         let req = reqwest::get(format!("{host}/github/containers/latest")).await?;
@@ -128,7 +111,7 @@ impl AppState {
             ));
         }
 
-        let current_containers = docker.get_container_details().await?;
+        let current_containers = self.container_engine().get_container_details().await?;
 
         let mut containers = Vec::new();
         let latest_containers: Vec<LatestContainer> = req.json().await?;
@@ -169,7 +152,6 @@ impl AppState {
 
 async fn invoke(
     app: &AppState,
-    docker: &DockerClient,
     current_version: &str,
     host: Option<&str>,
     skip_confirmation: bool,
@@ -181,7 +163,7 @@ async fn invoke(
     #[cfg(all(not(target_os = "linux"), target_vendor = "apple"))]
     let our_os = "Darwin";
 
-    let update = app.find(docker, current_version, host).await?;
+    let update = app.find(current_version, host).await?;
     if !only_binary {
         for image in &update.containers {
             println!(
@@ -228,22 +210,28 @@ async fn invoke(
     match ans {
         Ok(true) => {
             if !only_binary && !update.containers.is_empty() {
-                app.stop(docker).await?;
+                app.stop().await?;
 
                 for container in &update.containers {
                     let container_name = format!("local-{0}-1", container.repository);
-                    let container_summary = docker
+                    let container_summary = app
+                        .container_engine()
                         .get_existing_container(container_name.clone())
                         .await?;
                     if let Some(container_summary) = container_summary {
-                        docker
-                            .delete_container(container_summary, container_name.clone())
+                        app.container_engine()
+                            .delete_container(
+                                container_summary.id.unwrap().to_string(),
+                                container_name.clone(),
+                            )
                             .await?;
-                        docker.cleanup_image(container_name.to_string()).await?;
+                        app.container_engine()
+                            .cleanup_image(container_name.to_string())
+                            .await?;
                     }
                 }
 
-                app.start(docker).await?;
+                app.start().await?;
 
                 app.track(
                     get_user_email().await?,
