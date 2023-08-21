@@ -5,14 +5,15 @@ use petgraph::stable_graph::NodeIndex;
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Conflict {
+    // TODO(nick,jacob): this variant will not be possible until ordering is in place.
     ChildOrder {
         ours: NodeIndex,
         theirs: NodeIndex,
     },
     ModifyRemovedItem(NodeIndex),
     NodeContent {
-        to_rebase: NodeIndex,
         onto: NodeIndex,
+        to_rebase: NodeIndex,
     },
     RemoveModifiedItem {
         container: NodeIndex,
