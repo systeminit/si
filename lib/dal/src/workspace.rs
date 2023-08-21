@@ -37,6 +37,7 @@ pub enum WorkspaceError {
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 
 pk!(WorkspacePk);
+pk!(WorkspaceId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceSignup {

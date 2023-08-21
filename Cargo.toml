@@ -4,42 +4,45 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
-    "bin/council",
-    "bin/cyclone",
-    "bin/module-index",
-    "bin/pinga",
-    "bin/sdf",
-    "bin/si",
-    "bin/veritech",
-    "lib/auth-api-client",
-    "lib/buck2-resources",
-    "lib/bytes-lines-codec",
-    "lib/config-file",
-    "lib/cyclone-client",
-    "lib/cyclone-core",
-    "lib/cyclone-server",
-    "lib/council-server",
-    "lib/dal",
-    "lib/dal-test",
-    "lib/deadpool-cyclone",
-    "lib/module-index-client",
-    "lib/module-index-server",
-    "lib/nats-subscriber",
-    "lib/object-tree",
-    "lib/pinga-server",
-    "lib/sdf-server",
-    "lib/si-data-nats",
-    "lib/si-data-pg",
-    "lib/si-pkg",
-    "lib/si-settings",
-    "lib/si-std",
-    "lib/si-test-macros",
-    "lib/si-posthog-rs",
-    "lib/telemetry-application-rs",
-    "lib/telemetry-rs",
-    "lib/veritech-client",
-    "lib/veritech-core",
-    "lib/veritech-server",
+  "bin/council",
+  "bin/cyclone",
+  "bin/gobbler",
+  "bin/module-index",
+  "bin/pinga",
+  "bin/sdf",
+  "bin/si",
+  "bin/veritech",
+  "lib/auth-api-client",
+  "lib/buck2-resources",
+  "lib/bytes-lines-codec",
+  "lib/config-file",
+  "lib/cyclone-client",
+  "lib/cyclone-core",
+  "lib/cyclone-server",
+  "lib/council-server",
+  "lib/dal",
+  "lib/dal-test",
+  "lib/deadpool-cyclone",
+  "lib/gobbler-server",
+  "lib/module-index-client",
+  "lib/module-index-server",
+  "lib/nats-subscriber",
+  "lib/object-tree",
+  "lib/pinga-server",
+  "lib/sdf-server",
+  "lib/si-data-nats",
+  "lib/si-data-pg",
+  "lib/si-pkg",
+  "lib/si-rabbitmq",
+  "lib/si-settings",
+  "lib/si-std",
+  "lib/si-test-macros",
+  "lib/si-posthog-rs",
+  "lib/telemetry-application-rs",
+  "lib/telemetry-rs",
+  "lib/veritech-client",
+  "lib/veritech-core",
+  "lib/veritech-server",
 ]
 
 [workspace.dependencies]
@@ -54,7 +57,11 @@ chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 colored = "2.0.4"
-comfy-table = { version = "7.0.1", features = ["crossterm", "tty", "custom_styling"] }
+comfy-table = { version = "7.0.1", features = [
+  "crossterm",
+  "tty",
+  "custom_styling",
+] }
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
@@ -72,8 +79,15 @@ futures = "0.3.28"
 futures-lite = "1.13.0"
 hex = "0.4.3"
 http = "0.2.9"
-hyper = { version = "0.14.26", features = ["client", "http1", "runtime", "server"] }
-hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] }
+hyper = { version = "0.14.26", features = [
+  "client",
+  "http1",
+  "runtime",
+  "server",
+] }
+hyperlocal = { version = "0.8.0", default-features = false, features = [
+  "client",
+] }
 iftree = "1.0.4"
 indicatif = "0.17.5"
 indoc = "2.0.1"
@@ -87,7 +101,10 @@ nkeys = "0.2.0"
 num_cpus = "1.15.0"
 once_cell = "1.17.1"
 open = "5.0.0"
-opentelemetry = { version = "~0.18.0", features = ["rt-tokio", "trace"] } # pinned, pending new release of tracing-opentelemetry, 0.18
+opentelemetry = { version = "~0.18.0", features = [
+  "rt-tokio",
+  "trace",
+] } # pinned, pending new release of tracing-opentelemetry, 0.18
 opentelemetry-otlp = "~0.11.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
 opentelemetry-semantic-conventions = "~0.10.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
 ouroboros = "0.15.6"
@@ -100,14 +117,27 @@ postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
 proc-macro2 = "1.0.56"
 quote = "1.0.27"
+rabbitmq-stream-client = "0.3.0"
 rand = "0.8.5"
 refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
 remain = "0.2.8"
-reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
-rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
+reqwest = { version = "0.11.17", default-features = false, features = [
+  "rustls-tls",
+  "json",
+  "multipart",
+] }
+rust-s3 = { version = "0.33.0", default-features = false, features = [
+  "tokio-rustls-tls",
+] }
 rustls = "0.21.6" # pinned, pending update from tokio-rustls for async-nats
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
+sea-orm = { version = "0.11", features = [
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+  "macros",
+  "with-chrono",
+  "debug-print",
+] }
 self-replace = "1.3.5"
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
@@ -121,10 +151,16 @@ strum = { version = "0.24.1", features = ["derive"] }
 syn = { version = "2.0.15", features = ["full", "extra-traits"] }
 tar = "0.4.38"
 tempfile = "3.5.0"
-test-log = { version = "0.2.11", default-features = false, features = ["trace"] }
+test-log = { version = "0.2.11", default-features = false, features = [
+  "trace",
+] }
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["full"] }
-tokio-postgres = { version = "0.7.8", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
+tokio-postgres = { version = "0.7.8", features = [
+  "runtime",
+  "with-chrono-0_4",
+  "with-serde_json-1",
+] }
 tokio-serde = { version = "0.8.0", features = ["json"] }
 tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
