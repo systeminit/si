@@ -26,7 +26,7 @@
 
       <div class="ml-xs flex-none">
         <VButton
-          v-if="featureFlagsStore.SINGLE_MODEL_SCREEN"
+          v-if="featureFlagsStore.SINGLE_MODEL_SCREEN && showRefreshButton"
           icon="refresh"
           variant="ghost"
           loadingIcon="refresh-active"
@@ -88,6 +88,7 @@ const props = defineProps({
   // can set to override bar fill
   progressPercent: { type: Number },
   barLabel: { type: String },
+  showRefreshButton: { type: Boolean, default: true },
 });
 
 const computedProgressPercent = computed(() => {

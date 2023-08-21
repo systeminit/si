@@ -5,7 +5,11 @@
         <SidebarSubpanelTitle class="border-t-0">
           <div class="flex flex-row grow">
             <span class="mr-auto">Diagram Outline</span>
-            <Icon v-if="fetchComponentsReq.isPending" name="loader" size="sm" />
+            <Icon
+              v-if="fetchComponentsReq.isPending || fixesAreRunning"
+              name="loader"
+              size="sm"
+            />
           </div>
         </SidebarSubpanelTitle>
 
@@ -100,6 +104,8 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import ComponentOutlineNode from "./ComponentOutlineNode2.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+
+defineProps<{ fixesAreRunning: boolean }>();
 
 const outlineRef = ref<HTMLElement>();
 

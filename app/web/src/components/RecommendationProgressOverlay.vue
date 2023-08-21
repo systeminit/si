@@ -6,6 +6,7 @@
     :doneCount="fixState.executed"
     :totalCount="fixState.total"
     :barLabel="fixState.mode === 'syncing' ? 'Synced' : 'Applied'"
+    :showRefreshButton="false"
   />
   <GlobalStatusOverlay v-else />
 </template>
@@ -29,9 +30,9 @@ const fixState = computed(() => {
     const executed = fixesStore.completedFixesOnRunningBatch.length;
 
     // Reload confirmations if all recommendations have been applied!
-    let summary = "Applying recommendations...";
+    let summary = "Applying actions...";
     if (total > 0 && total === executed) {
-      summary = "Recommendations applied!";
+      summary = "Finishing up actions...";
       fixesStore.LOAD_CONFIRMATIONS();
     }
 

@@ -19,6 +19,7 @@
           variant="ghost"
           icon="git-branch"
           size="sm"
+          :disabled="fixesStore.fixesAreInProgress"
           @click="openCreateModal"
         />
       </div>
@@ -99,11 +100,13 @@ import {
 } from "@si/vue-lib/design-system";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFixesStore } from "@/store/fixes.store";
 import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 
 const changeSetsStore = useChangeSetsStore();
+const fixesStore = useFixesStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 const selectedChangeSetName = computed(
