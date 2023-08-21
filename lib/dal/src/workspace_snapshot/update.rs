@@ -15,7 +15,9 @@ pub enum Update {
     },
     RemoveEdge(EdgeIndex),
     ReplaceSubgraph {
+        // "onto"
         new: NodeIndex,
+        // "to_rebase"
         old: NodeIndex,
     },
 }
