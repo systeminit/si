@@ -9,7 +9,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
+      - "POSTGRES_MULTIPLE_DBS=si_auth,si_module_index,si_test,si_test_dal,si_test_sdf_server,si_test_gobbler"
     ports:
       - "5432:5432"
 
@@ -35,3 +35,11 @@ services:
       - "55679:55679"
     depends_on:
       - jaeger
+
+  rabbitmq:
+    # FIXME(nick): use our own rabbitmq once on "main".
+    # image: systeminit/rabbitmq:stable
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"

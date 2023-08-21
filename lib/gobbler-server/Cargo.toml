@@ -1,0 +1,31 @@
+[package]
+name = "gobbler-server"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
+dal = { path = "../../lib/dal" }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-rabbitmq = { path = "../../lib/si-rabbitmq" }
+si-settings = { path = "../../lib/si-settings" }
+si-test-macros = { path = "../../lib/si-test-macros" }
+stream-cancel = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+ulid = { workspace = true }
+veritech-client = { path = "../../lib/veritech-client" }
+
+[dev-dependencies]
+dal-test = { path = "../../lib/dal-test" }
