@@ -4,13 +4,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use content::hash::ContentHash;
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::SymmetricCryptoService;
+use si_data_nats::{NatsClient, NatsError};
+use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum::{Display, EnumString, EnumVariantNames};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
+use veritech_client::{Client, CycloneEncryptionKey};
+
+use crate::builtins::SelectedTestBuiltinSchemas;
 
 pub use action::{Action, ActionError, ActionId};
 pub use action_prototype::{
@@ -96,14 +103,11 @@ pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretPk,
     SecretResult, SecretVersion,
 };
-use si_data_nats::{NatsClient, NatsError};
-use si_data_pg::{PgError, PgPool, PgPoolError};
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use status::{
     StatusUpdate, StatusUpdateError, StatusUpdateResult, StatusUpdater, StatusUpdaterError,
 };
-use telemetry::prelude::*;
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
@@ -114,12 +118,11 @@ pub use validation::prototype::{
 pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
-use veritech_client::CycloneEncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
+pub use workspace_snapshot::WorkspaceSnapshot;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
-
-use crate::builtins::SelectedTestBuiltinSchemas;
 
 pub mod action;
 pub mod action_prototype;
@@ -131,6 +134,7 @@ pub mod change_set;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
+pub mod content;
 pub mod context;
 pub mod diagram;
 pub mod edge;
@@ -170,6 +174,7 @@ pub mod user;
 pub mod validation;
 pub mod visibility;
 pub mod workspace;
+pub mod workspace_snapshot;
 pub mod ws_event;
 
 #[remain::sorted]
