@@ -68,6 +68,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
                 .links(["local-jaeger-1:jaeger"])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -107,6 +108,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
                 .expose(PublishPort::tcp(16686), HostPort::new(16686))
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -146,6 +148,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .name(container_name.clone())
                 .image(format!("{0}:stable", container.clone()))
                 .command(vec!["--config", "nats-server.conf", "-DVV"])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -190,6 +193,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     "POSTGRES_USER=si",
                     "POSTGRES_DB=si",
                 ])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -233,6 +237,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     "SI_COUNCIL__NATS__URL=nats",
                     "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
                 ])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -282,6 +287,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
                 .env(env_vars)
                 .volumes([format!("{}:/run/cyclone:z", si_data_dir.display())])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -332,6 +338,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                     "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
                 ])
                 .volumes([format!("{}:/run/pinga:z", si_data_dir.display())])
+                .restart_policy("on-failure", 3)
                 .build();
 
             let container = docker.containers().create(&create_opts).await?;
@@ -382,6 +389,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 ])
                 .network_mode("bridge")
                 .expose(PublishPort::tcp(5156), HostPort::new(5156))
+                .restart_policy("on-failure", 3)
                 .volumes([
                     format!(
                         "{}:/run/sdf/cyclone_encryption.key:z",
@@ -437,6 +445,7 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
                 .links(vec!["local-sdf-1:sdf"])
                 .env(["SI_LOG=trace"])
                 .network_mode("bridge")
+                .restart_policy("on-failure", 3)
                 .expose(
                     PublishPort::tcp(8080),
                     HostPort::with_ip(host_port, host_ip),
