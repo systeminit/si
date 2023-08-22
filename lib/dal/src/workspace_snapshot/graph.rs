@@ -436,6 +436,7 @@ impl WorkspaceSnapshotGraph {
         let original_node_index = self.get_node_index_by_id(id)?;
         let new_node_index = self.copy_node_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
+        node_weight.increment_vector_clock(change_set)?;
         node_weight.new_content_hash(new_content_hash)?;
 
         self.replace_references(change_set, original_node_index, new_node_index)
