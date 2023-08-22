@@ -10,6 +10,9 @@ on:
 jobs:
   check-is-community:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     env:
       SI_STAFF: "adamhjk AnnaAtMax britmyerss fnichol jhelwig mahirl nickgerace stack72 paulocsanz theoephraim vbustamante wendybujalski zacharyhamm"
     steps:
