@@ -495,7 +495,7 @@ cargo.rust_library(
         ":regex-1.8.4",
         ":ring-0.16.20",
         ":rustls-native-certs-0.6.3",
-        ":rustls-pemfile-1.0.2",
+        ":rustls-pemfile-1.0.3",
         ":rustls-webpki-0.101.3",
         ":serde-1.0.164",
         ":serde_json-1.0.97",
@@ -503,7 +503,7 @@ cargo.rust_library(
         ":serde_repr-0.1.12",
         ":thiserror-1.0.40",
         ":time-0.3.22",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":tokio-retry-0.3.0",
         ":tokio-rustls-0.24.1",
         ":tracing-0.1.37",
@@ -2260,7 +2260,7 @@ cargo.rust_library(
         ":serde_json-1.0.97",
         ":tar-0.4.38",
         ":thiserror-1.0.40",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":url-2.4.0",
     ],
 )
@@ -5277,7 +5277,7 @@ cargo.rust_library(
         ":http-0.2.9",
         ":hyper-0.14.26",
         ":rustls-0.21.6",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":tokio-rustls-0.24.1",
     ],
 )
@@ -8971,7 +8971,7 @@ cargo.rust_library(
         ":serde_json-1.0.97",
         ":tar-0.4.38",
         ":thiserror-1.0.40",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":url-2.4.0",
     ],
 )
@@ -9333,7 +9333,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":once_cell-1.18.0",
-        ":toml_edit-0.19.10",
+        ":toml_edit-0.19.14",
     ],
 )
 
@@ -10192,8 +10192,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10213,8 +10213,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10234,8 +10234,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10255,8 +10255,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10276,8 +10276,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10298,8 +10298,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -11353,7 +11353,7 @@ cargo.rust_library(
         ),
     },
     visibility = [],
-    deps = [":rustls-pemfile-1.0.2"],
+    deps = [":rustls-pemfile-1.0.3"],
 )
 
 http_archive(
@@ -14192,7 +14192,7 @@ cargo.rust_library(
     deps = [
         ":pin-project-1.1.0",
         ":rand-0.8.5",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
     ],
 )
 
@@ -14245,7 +14245,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":rustls-0.21.6",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
     ],
 )
 
