@@ -53,6 +53,17 @@ impl NodeWeight {
         }
     }
 
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Content(content_weight) => {
+                content_weight.increment_vector_clock(change_set)
+            }
+            NodeWeight::Ordering(ordering_weight) => {
+                ordering_weight.increment_vector_clock(change_set)
+            }
+        }
+    }
+
     pub fn lineage_id(&self) -> Ulid {
         match self {
             NodeWeight::Content(content_weight) => content_weight.lineage_id(),
