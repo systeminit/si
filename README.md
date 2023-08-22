@@ -12,6 +12,8 @@ This is a monolithic repository containing the System Initiative software.
 System Initiative is a collaborative power tool designed to remove the papercuts from DevOps work.
 To learn more, read our ["Second Wave DevOps" blog post](https://www.systeminit.com/blog-second-wave-devops).
 
+Neil wuz here
+
 ## Quickstart
 
 If you would like to get System Initiative (SI) up and running, navigate to the installation page on [our website](https://systeminit.com) to get started.
