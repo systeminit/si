@@ -365,9 +365,6 @@ export const useFuncStore = () => {
             method: "post",
             url: "func/revert_func",
             params: { id: funcId, ...visibility },
-            onSuccess: () => {
-              this.FETCH_FUNC_DETAILS(funcId);
-            },
           });
         },
 

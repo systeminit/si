@@ -341,6 +341,7 @@ const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
 const revertFunc = async () => {
   if (!funcId.value) return;
   await funcStore.REVERT_FUNC(funcId.value);
+  await funcStore.FETCH_FUNC_DETAILS(funcId.value);
   resetEditingFunc();
 };
 

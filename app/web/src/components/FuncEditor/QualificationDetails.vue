@@ -81,6 +81,7 @@ watch(
   ([mv, svOpts, componentOpts]) => {
     selectedVariants.value = toOptionValues(svOpts, mv.schemaVariantIds);
     selectedComponents.value = toOptionValues(componentOpts, mv.componentIds);
+    inputs.value = mv.inputs;
   },
   { immediate: true },
 );
