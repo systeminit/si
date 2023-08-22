@@ -114,21 +114,23 @@ impl AppState {
         let current_containers = self.container_engine().get_container_details().await?;
 
         let mut containers = Vec::new();
-        let latest_containers: Vec<LatestContainer> = req.json().await?;
-        'outer: for latest in latest_containers {
-            for current in &current_containers {
-                if current.image != format!("{}/{}", latest.namespace, latest.repository) {
-                    continue;
+        if !current_containers.is_empty() {
+            let latest_containers: Vec<LatestContainer> = req.json().await?;
+            'outer: for latest in latest_containers {
+                for current in &current_containers {
+                    if current.image != format!("{}/{}", latest.namespace, latest.repository) {
+                        continue;
+                    }
+
+                    if current.version != latest.digest {
+                        containers.push(latest);
+                    }
+                    continue 'outer;
                 }
 
-                if current.version != latest.digest {
-                    containers.push(latest);
-                }
-                continue 'outer;
+                // If we don't have the container locally we should fetch it
+                containers.push(latest);
             }
-
-            // If we don't have the container locally we should fetch it
-            containers.push(latest);
         }
 
         let req = reqwest::get(format!("{host}/github/releases/latest")).await?;
