@@ -281,28 +281,13 @@ impl WorkspaceSnapshotGraph {
                     }
 
                     if onto_ordering_node_index.is_none() {
-                        let onto_ordering_node_indexes =
-                            ordering_node_indexes_for_node_index(onto, onto_node_index);
-                        if onto_ordering_node_indexes.len() > 1 {
-                            error!(
-                                "Too many ordering nodes found for onto NodeIndex {:?}",
-                                onto_node_index
-                            );
-                            return Err(event);
-                        }
-                        onto_ordering_node_index = onto_ordering_node_indexes.get(0).copied();
+                        onto_ordering_node_index = onto
+                            .ordering_node_index_for_container(onto_node_index)
+                            .map_err(|_| event)?;
                     }
-                    let to_rebase_ordering_node_indexes =
-                        ordering_node_indexes_for_node_index(self, to_rebase_node_index);
-                    if to_rebase_ordering_node_indexes.len() > 1 {
-                        error!(
-                            "Too many ordering nodes found for to_rebase NodeIndex {:?}",
-                            to_rebase_node_index
-                        );
-                        return Err(event);
-                    }
-                    let to_rebase_ordering_node_index =
-                        to_rebase_ordering_node_indexes.get(0).copied();
+                    let to_rebase_ordering_node_index = self
+                        .ordering_node_index_for_container(to_rebase_node_index)
+                        .map_err(|_| event)?;
 
                     match (to_rebase_ordering_node_index, onto_ordering_node_index) {
                         (None, None) => {
@@ -908,6 +893,24 @@ impl WorkspaceSnapshotGraph {
     fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
         algo::has_path_connecting(&self.graph, start, node, None)
             && algo::has_path_connecting(&self.graph, node, end, None)
+    }
+
+    pub fn ordering_node_index_for_container(
+        &self,
+        container_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        let onto_ordering_node_indexes =
+            ordering_node_indexes_for_node_index(self, container_node_index);
+        if onto_ordering_node_indexes.len() > 1 {
+            error!(
+                "Too many ordering nodes found for container NodeIndex {:?}",
+                container_node_index
+            );
+            return Err(WorkspaceSnapshotGraphError::TooManyOrderingForNode(
+                container_node_index,
+            ));
+        }
+        Ok(onto_ordering_node_indexes.get(0).copied())
     }
 
     /// [`StableGraph`] guarantees the stability of [`NodeIndex`] across removals, however there
