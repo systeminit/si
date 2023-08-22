@@ -20,7 +20,7 @@
     "check": "pnpm run lint:strict && npm run build:check",
     "dev": "pnpm run start",
     "start": "vite",
-    "serve": "vite preview --port 8081",
+    "serve": "vite preview --port 8080",
     "test": "echo 'Sorry, no tests yet!'",
     "vite:clean": "./script/clean-vite-cache.sh",
     "cypress:run": "cypress run",

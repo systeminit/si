@@ -87,6 +87,14 @@ export default (opts: { mode: string }) => {
         },
       },
     },
+    preview: {
+      proxy: {
+        "/api": {
+          target: config.DEV_API_PROXY_URL,
+          ws: true,
+        },
+      },
+    },
     resolve: {
       alias: [
         {
@@ -95,6 +103,8 @@ export default (opts: { mode: string }) => {
         },
       ],
     },
-    define: {},
+    build: {
+      manifest: true,
+    },
   });
 };
