@@ -8,6 +8,7 @@ pub mod podman_engine;
 
 #[async_trait]
 pub trait ContainerEngine {
+    fn get_engine_identifier(&self) -> String;
     async fn ping(&self) -> CliResult<()>;
     async fn missing_containers(&self) -> Result<Vec<String>, SiCliError>;
     async fn download_missing_containers(&self, missing_containers: Vec<String>) -> CliResult<()>;
