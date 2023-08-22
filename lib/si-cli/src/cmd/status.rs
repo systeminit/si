@@ -1,27 +1,20 @@
-use comfy_table::presets::UTF8_FULL;
-use comfy_table::*;
-
-use crate::containers::DockerClient;
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::*;
 
 const RUNNING: &str = "    ✅    ";
 const NOT_RUNNING: &str = "    ❌    ";
 const WAITING: &str = "    🕒    ";
 
 impl AppState {
-    pub async fn status(
-        &self,
-        docker: &DockerClient,
-        show_logs: bool,
-        log_lines: usize,
-    ) -> CliResult<()> {
+    pub async fn status(&self, show_logs: bool, log_lines: usize) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "system-status"}),
         );
-        invoke(self, docker, show_logs, log_lines).await?;
+        invoke(self, show_logs, log_lines).await?;
         Ok(())
     }
 }
@@ -40,12 +33,7 @@ enum ContainerState {
     Waiting,
 }
 
-async fn invoke(
-    app: &AppState,
-    docker: &DockerClient,
-    show_logs: bool,
-    log_lines: usize,
-) -> CliResult<()> {
+async fn invoke(app: &AppState, show_logs: bool, log_lines: usize) -> CliResult<()> {
     println!("Checking the status of System Initiative Software");
 
     let mut container_status = Vec::new();
@@ -54,7 +42,8 @@ async fn invoke(
     for name in CONTAINER_NAMES.iter() {
         let image_name = format!("systeminit/{0}:stable", name);
         let container_identifier = format!("local-{0}-1", name);
-        let existing_container = docker
+        let existing_container = app
+            .container_engine()
             .get_existing_container(container_identifier.clone())
             .await?;
         let mut version = "".to_string();
@@ -76,7 +65,7 @@ async fn invoke(
 
         if show_logs {
             println!("\n\nShowing container logs for {0}", image_name.clone());
-            docker
+            app.container_engine()
                 .get_container_logs(container_identifier.clone(), log_lines)
                 .await?;
         }

@@ -1,22 +1,20 @@
-use crate::containers::DockerClient;
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
-use docker_api::opts::{ContainerFilter, ContainerListOpts, ContainerStopOpts};
 
 impl AppState {
-    pub async fn stop(&self, docker: &DockerClient) -> CliResult<()> {
+    pub async fn stop(&self) -> CliResult<()> {
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "check-dependencies"}),
         );
-        invoke(self, docker, self.is_preview()).await?;
+        invoke(self, self.is_preview()).await?;
         Ok(())
     }
 }
 
-async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliResult<()> {
-    app.check(docker, true).await?;
+async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
+    app.check(true).await?;
 
     if is_preview {
         println!("Stopped the following containers:");
@@ -28,30 +26,15 @@ async fn invoke(app: &AppState, docker: &DockerClient, is_preview: bool) -> CliR
             println!("{}", container_identifier.clone());
             continue;
         }
-        let filter = ContainerFilter::Name(container_identifier.clone());
-        let list_opts = ContainerListOpts::builder()
-            .filter([filter])
-            .all(true)
-            .build();
-        let containers = docker
-            .containers()
-            .list(&list_opts)
-            .await
-            .expect("Issue making Docker Image Search");
-        if !containers.is_empty() {
-            let container = containers.first().unwrap();
-            if let Some(state) = container.state.as_ref() {
-                if *state == "running" {
-                    let existing_id = container.id.as_ref().unwrap();
-                    println!("Stopping Container: {}", container_identifier.clone());
-                    docker
-                        .containers()
-                        .get(existing_id)
-                        .stop(&ContainerStopOpts::builder().build())
-                        .await
-                        .expect("Issue stopping docker container");
-                }
-            }
+
+        let existing = app
+            .container_engine()
+            .get_existing_container(container_identifier.clone())
+            .await?;
+        if existing.is_some() {
+            app.container_engine()
+                .stop_container(existing.unwrap().id.unwrap().to_string())
+                .await?;
         }
     }
 

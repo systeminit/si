@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 axum = { workspace = true }
+async-trait = { workspace = true }
 base64 = { workspace = true }
 color-eyre = { workspace = true }
 colored = { workspace = true }
@@ -19,6 +20,7 @@ futures = { workspace = true }
 indicatif = { workspace = true }
 inquire = { workspace = true }
 open = { workspace = true }
+podman-api = { workspace = true }
 rand = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }

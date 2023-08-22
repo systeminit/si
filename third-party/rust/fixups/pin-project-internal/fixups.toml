@@ -1,0 +1,18 @@
+omit_targets = []
+extra_srcs = []
+rustc_flags = []
+cfgs = []
+features = []
+omit_features = []
+extra_deps = []
+omit_deps = []
+cargo_env = false
+
+[env]
+
+[[buildscript]]
+unresolved = "Unresolved build script at ../../../../../.cargo/registry/src/index.crates.io-6f17d22bba15001f/pin-project-internal-0.4.30/build.rs. Dependencies:"
+
+[extra_mapped_srcs]
+
+[platform_fixup]

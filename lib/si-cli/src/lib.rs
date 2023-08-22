@@ -1,12 +1,12 @@
+use color_eyre::eyre::ErrReport;
 use color_eyre::Result;
+use std::env::VarError;
 use thiserror::Error;
 
 pub mod cmd;
-mod containers;
+pub mod engine;
 mod key_management;
 pub mod state;
-
-pub use containers::DockerClient;
 
 pub const CONTAINER_NAMES: &[&str] = &[
     "jaeger", "postgres", "nats", "otelcol", "council", "veritech", "pinga", "sdf", "web",
@@ -23,6 +23,8 @@ pub enum SiCliError {
     DockerContainerSearch(String),
     #[error("unable to connect to the docker engine")]
     DockerEngine,
+    #[error("err report: {0}")]
+    ErrReport(#[from] ErrReport),
     #[error("failed to launch web url {0}")]
     FailToLaunch(String),
     #[error("incorrect installation type {0}")]
@@ -35,6 +37,8 @@ pub enum SiCliError {
     Join(#[from] tokio::task::JoinError),
     #[error("Unable to find local data dir. Expected format `$HOME/.local/share` or `$HOME/Library/Application Support`")]
     MissingDataDir(),
+    #[error("podman api: {0}")]
+    Podman(#[from] podman_api::Error),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("toml deserialize error: {0}")]
@@ -45,6 +49,8 @@ pub enum SiCliError {
     UnableToFetchContainersUpdate(u16),
     #[error("unable to fetch si update, status = {0}")]
     UnableToFetchSiUpdate(u16),
+    #[error("env var: {0}")]
+    Var(#[from] VarError),
     #[error("web portal is currently offline - please check that the system is running")]
     WebPortal(),
 }

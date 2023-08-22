@@ -1,3 +1,4 @@
+use crate::engine::ContainerEngine;
 use axum::extract::FromRef;
 use std::env;
 use std::ops::Deref;
@@ -12,9 +13,11 @@ pub struct AppState {
     web_host: String,
     web_port: u32,
     with_function_debug_logs: bool,
+    container_engine: Arc<Box<dyn ContainerEngine>>,
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         posthog_client: impl Into<PosthogClient>,
         version: Arc<str>,
@@ -23,6 +26,7 @@ impl AppState {
         web_host: String,
         web_port: u32,
         with_function_debug_logs: bool,
+        container_engine: Arc<Box<dyn ContainerEngine>>,
     ) -> Self {
         Self {
             posthog_client: posthog_client.into(),
@@ -32,6 +36,7 @@ impl AppState {
             web_host,
             web_port,
             with_function_debug_logs,
+            container_engine,
         }
     }
 
@@ -61,6 +66,11 @@ impl AppState {
 
     pub fn posthog_client(&self) -> &PosthogClient {
         &self.posthog_client
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn container_engine(&self) -> &Box<dyn ContainerEngine> {
+        self.container_engine.deref()
     }
 
     pub fn track(&self, distinct_id: String, mut properties: serde_json::Value) {
