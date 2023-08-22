@@ -37,9 +37,7 @@ services:
       - jaeger
 
   rabbitmq:
-    # FIXME(nick): use our own rabbitmq once on "main".
-    # image: systeminit/rabbitmq:stable
-    image: rabbitmq:3.12-management-alpine
+    image: systeminit/rabbitmq:stable
     ports:
-      - "5672:5672"
+      - "5552:5552"
       - "15672:15672"
