@@ -10,7 +10,7 @@ docker_image(
     },
     run_docker_args = [
         "--publish",
-        "5672:5672",
+        "5552:5552",
         "--publish",
         "15672:15672",
     ],

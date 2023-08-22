@@ -3881,10 +3881,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "735d6cecec44dc27382b962309c05de47d40727ff9898a501ec8fadec76be9a8"
 dependencies = [
  "async-trait",
- "bytes",
+ "bytes 1.4.0",
  "dashmap",
  "futures",
- "pin-project",
+ "pin-project 1.1.0",
  "rabbitmq-stream-protocol",
  "rand",
  "rustls-pemfile 1.0.3",
