@@ -1,4 +1,4 @@
-//! This library provides the ability to [connect](Connection) to [RabbitMQ](https://rabbitmq.com)
+//! This library provides the ability to [connect](StreamManager) to [RabbitMQ](https://rabbitmq.com)
 //! nodes, [produce](Producer) stream messages, and [consume](Consumer) stream messages.
 
 #![warn(
@@ -28,7 +28,7 @@ mod consumer;
 mod error;
 mod producer;
 
-pub use connection::Connection;
+pub use connection::StreamManager;
 pub use consumer::Consumer;
 pub use error::RabbitError;
 pub use error::RabbitResult;

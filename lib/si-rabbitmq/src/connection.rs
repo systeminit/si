@@ -5,12 +5,12 @@ use crate::error::RabbitResult;
 
 /// A connection to a RabbitMQ node.
 #[allow(missing_debug_implementations)]
-pub struct Connection {
+pub struct StreamManager {
     environment: Environment,
 }
 
-impl Connection {
-    /// Creates a new [`Connection`], which contains a connection to a RabbitMQ node.
+impl StreamManager {
+    /// Creates a new [`StreamManager`], which contains a connection to a RabbitMQ node.
     pub async fn new() -> RabbitResult<Self> {
         let environment = Environment::builder()
             .host("localhost")
