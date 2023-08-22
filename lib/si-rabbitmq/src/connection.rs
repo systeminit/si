@@ -14,7 +14,9 @@ impl Connection {
     pub async fn new() -> RabbitResult<Self> {
         let environment = Environment::builder()
             .host("localhost")
-            .port(5672)
+            .username("guest")
+            .password("guest")
+            .port(5552)
             .build()
             .await?;
         Ok(Self { environment })

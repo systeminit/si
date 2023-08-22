@@ -59,7 +59,7 @@ rust_test(
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
         "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
-        "lang-js": "//bin/lang-js:lang-js",
+        "lang-js": "//bin/lang-js:bin",
         "pkgs_path": "//pkgs:pkgs",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
     },
