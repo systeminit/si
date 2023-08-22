@@ -7,6 +7,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
+use chrono::Utc;
+use convert_case::{Case, Casing};
 use dal::{
     func::intrinsics::IntrinsicFunc,
     pkg::import_pkg_from_pkg,
@@ -20,6 +22,7 @@ use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec
 use std::collections::HashMap;
 
 pub type ExecVariantDefRequest = super::save_variant_def::SaveVariantDefRequest;
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
@@ -37,8 +40,10 @@ pub async fn exec_variant_def(
 ) -> SchemaVariantDefinitionResult<Json<ExecVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
+
     // Ensure we save all details before "exec"
-    super::save_variant_def(&ctx, &request).await?;
+    super::save_variant_def(&ctx, &request, Some(scaffold_func_name)).await?;
 
     let user = match ctx.history_actor() {
         HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
@@ -175,4 +180,10 @@ pub async fn exec_variant_def(
         func_exec_response: func_resp.to_owned(),
         schema_variant_id,
     }))
+}
+
+fn generate_scaffold_func_name(name: String) -> String {
+    let version = Utc::now().format("%Y%m%d%H%M").to_string();
+    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
+    generated_name
 }

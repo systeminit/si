@@ -126,6 +126,7 @@ impl IntoResponse for SchemaVariantDefinitionError {
 pub async fn save_variant_def(
     ctx: &DalContext,
     request: &SaveVariantDefRequest,
+    updated_func_name: Option<String>,
 ) -> SchemaVariantDefinitionResult<()> {
     let mut variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
         .await?
@@ -155,6 +156,10 @@ pub async fn save_variant_def(
         .set_code_plaintext(ctx, Some(&request.code))
         .await?;
     asset_func.set_handler(ctx, Some(&request.handler)).await?;
+
+    if let Some(updated_name) = updated_func_name {
+        asset_func.set_name(ctx, updated_name).await?;
+    }
 
     Ok(())
 }

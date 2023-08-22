@@ -39,7 +39,7 @@ pub async fn save_variant_def(
 ) -> SchemaVariantDefinitionResult<Json<SaveVariantDefResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    super::save_variant_def(&ctx, &request).await?;
+    super::save_variant_def(&ctx, &request, None).await?;
 
     track(
         &posthog_client,
