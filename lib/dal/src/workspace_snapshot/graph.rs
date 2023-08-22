@@ -2470,9 +2470,9 @@ mod test {
             .expect("Unable to update the component");
 
         // Create a pure update.
-        new_graph
+        base_graph
             .update_content(
-                new_change_set,
+                base_change_set,
                 docker_image_schema_id,
                 ContentHash::from("bg3"),
             )
@@ -2502,10 +2502,14 @@ mod test {
                     .expect("Unable to get component NodeIndex"),
             },
         ];
-        // assert_eq!(expected_conflicts, conflicts);
-
-        let expected_updates = Vec::<Update>::new();
-        // assert_eq!(Vec::<Update>::new(), updates);
+        let expected_updates = vec![Update::ReplaceSubgraph {
+            new: base_graph
+                .get_node_index_by_id(docker_image_schema_id)
+                .expect("Unable to get NodeIndex"),
+            old: new_graph
+                .get_node_index_by_id(docker_image_schema_id)
+                .expect("Unable to get NodeIndex"),
+        }];
 
         assert_eq!(
             ConflictsAndUpdates {
