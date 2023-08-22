@@ -27,7 +27,7 @@ jobs:
             echo "Successfully checked the author against the staff list"
           fi
       - name: Label PR
-        if: steps.check_author.outputs.requires-community-tag == true
+        if: steps.check_author.outputs.requires-community-tag == 'true'
         uses: actions-ecosystem/action-add-labels@v1
         with:
           number: ${{ github.event.pull_request.number }}
