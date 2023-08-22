@@ -1,0 +1,28 @@
+name: Is Community User Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  check-is-community:
+    runs-on: ubuntu-latest
+    env:
+      SI_STAFF: "adamhjk AnnaAtMax britmyerss fnichol jhelwig mahirl nickgerace stack72 paulocsanz theoephraim vbustamante wendybujalski zacharyhamm"
+    steps:
+      - name: Checkout code
+        id: check_author
+        run: |
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          if [[ SI_STAFF =~ (^|[[:space:]])$PR_AUTHOR($|[[:space:]]) ]]; then
+            echo "requires-community-tag=true" >> $GITHUB_OUTPUT
+          fi
+      - name: Label PR
+        if: steps.check_author.outputs.requires-community-tag == 'true'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          number: ${{ github.event.pull_request.number }}
+          labels: community
