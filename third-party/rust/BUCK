@@ -471,8 +471,10 @@ cargo.rust_library(
     edition = "2021",
     env = {
         "CARGO_MANIFEST_DIR": "async-nats-0.31.0.crate",
+        "CARGO_PKG_AUTHORS": "Tomasz Pietrek <tomasz@nats.io>:Casper Beyer <caspervonb@pm.me>",
         "CARGO_PKG_DESCRIPTION": "A async Rust NATS client",
         "CARGO_PKG_NAME": "async-nats",
+        "CARGO_PKG_REPOSITORY": "https://github.com/nats-io/nats.rs",
         "CARGO_PKG_VERSION": "0.31.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "31",
@@ -493,7 +495,7 @@ cargo.rust_library(
         ":regex-1.8.4",
         ":ring-0.16.20",
         ":rustls-native-certs-0.6.3",
-        ":rustls-pemfile-1.0.2",
+        ":rustls-pemfile-1.0.3",
         ":rustls-webpki-0.101.3",
         ":serde-1.0.164",
         ":serde_json-1.0.97",
@@ -501,7 +503,7 @@ cargo.rust_library(
         ":serde_repr-0.1.12",
         ":thiserror-1.0.40",
         ":time-0.3.22",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":tokio-retry-0.3.0",
         ":tokio-rustls-0.24.1",
         ":tracing-0.1.37",
@@ -671,8 +673,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "attohttpc-0.22.0.crate",
+        "CARGO_PKG_AUTHORS": "Simon Bernier St-Pierre <git@sbstp.ca>",
         "CARGO_PKG_DESCRIPTION": "Small and lightweight HTTP client",
         "CARGO_PKG_NAME": "attohttpc",
+        "CARGO_PKG_REPOSITORY": "https://github.com/sbstp/attohttpc",
         "CARGO_PKG_VERSION": "0.22.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "22",
@@ -2182,7 +2186,7 @@ cargo.rust_library(
         ":serde_json-1.0.97",
         ":tar-0.4.38",
         ":thiserror-1.0.40",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":url-2.4.0",
     ],
 )
@@ -2439,8 +2443,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "crossbeam-utils-0.8.16.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Utilities for concurrent programming",
         "CARGO_PKG_NAME": "crossbeam-utils",
+        "CARGO_PKG_REPOSITORY": "https://github.com/crossbeam-rs/crossbeam",
         "CARGO_PKG_VERSION": "0.8.16",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
@@ -4213,8 +4219,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "futures-channel-0.3.28.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Channels for asynchronous communication using futures-rs.\n",
         "CARGO_PKG_NAME": "futures-channel",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/futures-rs",
         "CARGO_PKG_VERSION": "0.3.28",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
@@ -4250,8 +4258,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "futures-core-0.3.28.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "The core traits and types in for the `futures` library.\n",
         "CARGO_PKG_NAME": "futures-core",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/futures-rs",
         "CARGO_PKG_VERSION": "0.3.28",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
@@ -4443,8 +4453,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "futures-task-0.3.28.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Tools for working with tasks.\n",
         "CARGO_PKG_NAME": "futures-task",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/futures-rs",
         "CARGO_PKG_VERSION": "0.3.28",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
@@ -4479,8 +4491,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "futures-util-0.3.28.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Common utilities and extension traits for the futures-rs library.\n",
         "CARGO_PKG_NAME": "futures-util",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/futures-rs",
         "CARGO_PKG_VERSION": "0.3.28",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
@@ -5172,7 +5186,7 @@ cargo.rust_library(
         ":http-0.2.9",
         ":hyper-0.14.26",
         ":rustls-0.21.6",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":tokio-rustls-0.24.1",
     ],
 )
@@ -6894,8 +6908,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "names-0.14.0.crate",
+        "CARGO_PKG_AUTHORS": "Fletcher Nichol <fnichol@nichol.ca>",
         "CARGO_PKG_DESCRIPTION": "A random name generator with names suitable for use in container\ninstances, project names, application instances, etc.\n",
         "CARGO_PKG_NAME": "names",
+        "CARGO_PKG_REPOSITORY": "https://github.com/fnichol/names",
         "CARGO_PKG_VERSION": "0.14.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "14",
@@ -6915,8 +6931,10 @@ cargo.rust_binary(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "names-0.14.0.crate",
+        "CARGO_PKG_AUTHORS": "Fletcher Nichol <fnichol@nichol.ca>",
         "CARGO_PKG_DESCRIPTION": "A random name generator with names suitable for use in container\ninstances, project names, application instances, etc.\n",
         "CARGO_PKG_NAME": "names",
+        "CARGO_PKG_REPOSITORY": "https://github.com/fnichol/names",
         "CARGO_PKG_VERSION": "0.14.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "14",
@@ -7736,8 +7754,10 @@ cargo.rust_library(
     edition = "2021",
     env = {
         "CARGO_MANIFEST_DIR": "opentelemetry-otlp-0.11.0.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Exporter for the OpenTelemetry Collector",
         "CARGO_PKG_NAME": "opentelemetry-otlp",
+        "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry-otlp",
         "CARGO_PKG_VERSION": "0.11.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "11",
@@ -7908,8 +7928,10 @@ cargo.rust_library(
     edition = "2021",
     env = {
         "CARGO_MANIFEST_DIR": "opentelemetry_sdk-0.18.0.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "The SDK for the OpenTelemetry metrics collection and distributed tracing framework",
         "CARGO_PKG_NAME": "opentelemetry_sdk",
+        "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust",
         "CARGO_PKG_VERSION": "0.18.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "18",
@@ -8858,7 +8880,7 @@ cargo.rust_library(
         ":serde_json-1.0.97",
         ":tar-0.4.38",
         ":thiserror-1.0.40",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
         ":url-2.4.0",
     ],
 )
@@ -8901,8 +8923,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "portable-atomic-1.4.0.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
         "CARGO_PKG_NAME": "portable-atomic",
+        "CARGO_PKG_REPOSITORY": "https://github.com/taiki-e/portable-atomic",
         "CARGO_PKG_VERSION": "1.4.0",
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "4",
@@ -8924,8 +8948,10 @@ cargo.rust_binary(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "portable-atomic-1.4.0.crate",
+        "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
         "CARGO_PKG_NAME": "portable-atomic",
+        "CARGO_PKG_REPOSITORY": "https://github.com/taiki-e/portable-atomic",
         "CARGO_PKG_VERSION": "1.4.0",
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "4",
@@ -9147,8 +9173,10 @@ cargo.rust_library(
     edition = "2021",
     env = {
         "CARGO_MANIFEST_DIR": "prettyplease-0.1.25.crate",
+        "CARGO_PKG_AUTHORS": "David Tolnay <dtolnay@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "A minimal `syn` syntax tree pretty-printer",
         "CARGO_PKG_NAME": "prettyplease",
+        "CARGO_PKG_REPOSITORY": "https://github.com/dtolnay/prettyplease",
         "CARGO_PKG_VERSION": "0.1.25",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "1",
@@ -9214,7 +9242,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":once_cell-1.18.0",
-        ":toml_edit-0.19.10",
+        ":toml_edit-0.19.14",
     ],
 )
 
@@ -10073,8 +10101,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10094,8 +10122,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10115,8 +10143,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10136,8 +10164,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10157,8 +10185,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -10179,8 +10207,8 @@ cargo.rust_library(
                 ":percent-encoding-2.3.0",
                 ":pin-project-lite-0.2.9",
                 ":rustls-0.21.6",
-                ":rustls-pemfile-1.0.2",
-                ":tokio-1.28.2",
+                ":rustls-pemfile-1.0.3",
+                ":tokio-1.29.1",
                 ":tokio-rustls-0.24.1",
                 ":tokio-util-0.7.8",
                 ":webpki-roots-0.22.6",
@@ -11055,18 +11083,12 @@ cargo.rust_library(
     ],
     platform = {
         "linux-arm64": dict(
-            named_deps = {
-                "libc_errno": ":errno-0.3.1",
-            },
             deps = [
                 ":libc-0.2.146",
                 ":linux-raw-sys-0.3.8",
             ],
         ),
         "linux-x86_64": dict(
-            named_deps = {
-                "libc_errno": ":errno-0.3.1",
-            },
             deps = [
                 ":libc-0.2.146",
                 ":linux-raw-sys-0.3.8",
@@ -11240,7 +11262,7 @@ cargo.rust_library(
         ),
     },
     visibility = [],
-    deps = [":rustls-pemfile-1.0.2"],
+    deps = [":rustls-pemfile-1.0.3"],
 )
 
 http_archive(
@@ -14078,7 +14100,7 @@ cargo.rust_library(
     deps = [
         ":pin-project-1.1.0",
         ":rand-0.8.5",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
     ],
 )
 
@@ -14131,7 +14153,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":rustls-0.21.6",
-        ":tokio-1.28.2",
+        ":tokio-1.29.1",
     ],
 )
 
@@ -14424,8 +14446,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "tonic-0.8.3.crate",
+        "CARGO_PKG_AUTHORS": "Lucio Franco <luciofranco14@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "A gRPC over HTTP/2 implementation focused on high performance, interoperability, and flexibility.\n",
         "CARGO_PKG_NAME": "tonic",
+        "CARGO_PKG_REPOSITORY": "https://github.com/hyperium/tonic",
         "CARGO_PKG_VERSION": "0.8.3",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
@@ -14830,8 +14854,10 @@ cargo.rust_library(
     edition = "2018",
     env = {
         "CARGO_MANIFEST_DIR": "tracing-opentelemetry-0.18.0.crate",
+        "CARGO_PKG_AUTHORS": "Julian Tescher <julian@tescher.me>:Tokio Contributors <team@tokio.rs>",
         "CARGO_PKG_DESCRIPTION": "OpenTelemetry integration for tracing",
         "CARGO_PKG_NAME": "tracing-opentelemetry",
+        "CARGO_PKG_REPOSITORY": "https://github.com/tokio-rs/tracing",
         "CARGO_PKG_VERSION": "0.18.0",
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "18",
