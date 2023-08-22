@@ -32,6 +32,16 @@ const domainSelected = ref(props.modelValue.includes("domain"));
 const resourceSelected = ref(props.modelValue.includes("resource"));
 
 watch(
+  () => props.modelValue,
+  (inputs) => {
+    codeSelected.value = inputs.includes("code");
+    deletedAtSelected.value = inputs.includes("deletedAt");
+    domainSelected.value = inputs.includes("domain");
+    resourceSelected.value = inputs.includes("resource");
+  },
+);
+
+watch(
   [codeSelected, deletedAtSelected, domainSelected, resourceSelected],
   ([code, deletedAt, domain, resource]) => {
     const leafInputLocations: LeafInputLocation[] = [];

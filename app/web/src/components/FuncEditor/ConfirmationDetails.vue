@@ -80,6 +80,7 @@ watch(
       schemaVariantOptions.value,
       mv.schemaVariantIds,
     );
+    inputs.value = mv.inputs;
   },
   { immediate: true },
 );
