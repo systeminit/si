@@ -26,7 +26,7 @@ jobs:
             echo "Successfully checked the author against the staff list"
           fi
       - name: Label PR
-        if: steps.check_author.outputs.requires-community-tag == true
+        if: steps.check_author.outputs.requires-community-tag == 'true'
         uses: actions/github-script@v5
         with:
           script: |
