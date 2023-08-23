@@ -1,7 +1,7 @@
 name: Is Community User Check
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -27,8 +27,13 @@ jobs:
             echo "Successfully checked the author against the staff list"
           fi
       - name: Label PR
-        if: steps.check_author.outputs.requires-community-tag == true
-        uses: actions-ecosystem/action-add-labels@v1
+        if: steps.check_author.outputs.requires-community-tag == 'true'
+        uses: actions/github-script@v5
         with:
-          number: ${{ github.event.pull_request.number }}
-          labels: community
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.pull_request.number }},
+              labels: ['community']
+            });
