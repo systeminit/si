@@ -20,6 +20,8 @@ pub mod ordering_node_weight;
 pub enum NodeWeightError {
     #[error("Cannot set content hash directly on node weight kind")]
     CannotSetContentHashOnKind,
+    #[error("Cannot set content order directly on node weight kind")]
+    CannotSetOrderOnKind,
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
@@ -96,13 +98,6 @@ impl NodeWeight {
         }
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        match self {
-            NodeWeight::Content(content_weight) => content_weight.new_content_hash(content_hash),
-            NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
-        }
-    }
-
     pub fn new_content(
         change_set: &ChangeSet,
         content_id: Ulid,
@@ -111,6 +106,13 @@ impl NodeWeight {
         Ok(NodeWeight::Content(ContentNodeWeight::new(
             change_set, content_id, kind,
         )?))
+    }
+
+    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.new_content_hash(content_hash),
+            NodeWeight::Ordering(_) => Err(NodeWeightError::CannotSetContentHashOnKind),
+        }
     }
 
     pub fn new_with_incremented_vector_clock(
@@ -133,6 +135,13 @@ impl NodeWeight {
         match self {
             NodeWeight::Content(content_weight) => content_weight.set_merkle_tree_hash(new_hash),
             NodeWeight::Ordering(ordering_weight) => ordering_weight.set_merkle_tree_hash(new_hash),
+        }
+    }
+
+    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
+        match self {
+            NodeWeight::Content(_) => Err(NodeWeightError::CannotSetOrderOnKind),
+            NodeWeight::Ordering(ordering_weight) => ordering_weight.set_order(change_set, order),
         }
     }
 

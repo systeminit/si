@@ -90,12 +90,8 @@ impl OrderingNodeWeight {
         self.merkle_tree_hash = new_hash;
     }
 
-    pub fn set_order<'a>(
-        &mut self,
-        change_set: &ChangeSet,
-        order: impl AsRef<&'a [Ulid]>,
-    ) -> NodeWeightResult<()> {
-        self.order = Vec::from(*order.as_ref());
+    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
+        self.order = order;
         self.update_content_hash();
         self.increment_seen_vector_clock(change_set)?;
 
