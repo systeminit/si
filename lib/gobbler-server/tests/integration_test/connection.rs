@@ -1,6 +1,6 @@
 use dal::workspace_snapshot::change_set::ChangeSet;
 use dal::{DalContext, WorkspaceSnapshot};
-use si_rabbitmq::StreamManager;
+use si_rabbitmq::Environment;
 use si_test_macros::gobbler_test as test;
 
 /// Recommended to run with the following environment variable:
@@ -21,5 +21,5 @@ async fn create_snapshot(ctx: &DalContext) {
 /// ```
 #[test]
 async fn connect_to_queue(_ctx: &DalContext) {
-    let _ = StreamManager::new().await.expect("could not connect");
+    let _ = Environment::new().await.expect("could not connect");
 }
