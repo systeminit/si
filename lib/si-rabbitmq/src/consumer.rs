@@ -1,37 +1,60 @@
 use crate::environment::Environment;
 use futures::StreamExt;
 use rabbitmq_stream_client::error::ConsumerDeliveryError;
-use rabbitmq_stream_client::types::Delivery;
-use rabbitmq_stream_client::Consumer as UpstreamConsumer;
+use rabbitmq_stream_client::types::{Delivery, Message, OffsetSpecification};
+use rabbitmq_stream_client::{Consumer as UpstreamConsumer, ConsumerHandle};
+use telemetry::prelude::*;
 use tokio::task;
 
 use crate::RabbitResult;
 
 /// An interface for consuming RabbitMQ stream messages.
 #[allow(missing_debug_implementations)]
-pub struct Consumer(UpstreamConsumer);
+pub struct Consumer {
+    inner: UpstreamConsumer,
+}
 
 impl Consumer {
     /// Creates a new [`Consumer`] for consuming RabbitMQ stream messages.
     pub async fn new(environment: &Environment, stream: &str) -> RabbitResult<Self> {
-        let consumer = environment.inner().consumer().build(stream).await?;
-        Ok(Self(consumer))
+        let inner = environment
+            .inner()
+            .consumer()
+            .offset(OffsetSpecification::First)
+            .build(stream)
+            .await?;
+        Ok(Self { inner })
     }
 
-    /// Starts a consumer task that watches the stream.
-    pub async fn start(
-        mut self,
-        processing_func: fn(delivery: Result<Delivery, ConsumerDeliveryError>),
-    ) -> RabbitResult<()> {
-        let handle = self.0.handle();
-        task::spawn(async move {
-            while let Some(delivery) = self.0.next().await {
-                processing_func(delivery)
+    pub async fn next(&mut self) -> RabbitResult<Option<Result<Delivery, ConsumerDeliveryError>>> {
+        Ok(self.inner.next().await)
+    }
+
+    pub fn handle(&self) -> ConsumerHandle {
+        self.inner.handle()
+    }
+
+    pub fn process_delivery(&self, delivery: &Delivery) -> RabbitResult<Option<String>> {
+        let maybe_data = delivery
+            .message()
+            .data()
+            .map(|data| String::from_utf8(data.to_vec()));
+        Ok(match maybe_data {
+            Some(data) => Some(data?),
+            None => None,
+        })
+    }
+}
+
+impl Drop for Consumer {
+    fn drop(&mut self) {
+        let handle = self.handle();
+
+        // Close the consumer associated to the handle provided.
+        task::spawn(async {
+            if let Err(e) = handle.close().await {
+                warn!("error when closing consumer on drop: {e}");
             }
         });
-
-        // TODO(nick): handle when close happens more precisely.
-        handle.close().await?;
-        Ok(())
     }
 }
