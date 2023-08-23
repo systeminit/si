@@ -1,4 +1,5 @@
-use rabbitmq_stream_client::types::ByteCapacity;
+use rabbitmq_stream_client::error::StreamDeleteError;
+use rabbitmq_stream_client::types::{ByteCapacity, ResponseCode};
 use rabbitmq_stream_client::Environment as UpstreamEnvironment;
 
 use crate::error::RabbitResult;
@@ -37,6 +38,15 @@ impl Environment {
     }
 
     pub async fn delete_stream(&self, stream: impl AsRef<str>) -> RabbitResult<()> {
-        Ok(self.inner.delete_stream(stream.as_ref()).await?)
+        match self.inner.delete_stream(stream.as_ref()).await {
+            Ok(()) => Ok(()),
+            Err(e) => match e {
+                StreamDeleteError::Delete {
+                    status: ResponseCode::StreamDoesNotExist,
+                    stream: _,
+                } => Ok(()),
+                e => Err(e.into()),
+            },
+        }
     }
 }
