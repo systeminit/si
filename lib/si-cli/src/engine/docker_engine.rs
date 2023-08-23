@@ -57,6 +57,10 @@ impl DockerEngine {
 
 #[async_trait]
 impl ContainerEngine for DockerEngine {
+    fn get_engine_identifier(&self) -> String {
+        "docker".to_string()
+    }
+
     async fn ping(&self) -> CliResult<()> {
         self.docker.ping().await?;
         Ok(())

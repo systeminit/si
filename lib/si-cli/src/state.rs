@@ -91,6 +91,10 @@ impl AppState {
         prop_map.insert("mode".to_string(), serde_json::json!(self.mode()));
         prop_map.insert("os".to_string(), serde_json::json!(env::consts::OS));
         prop_map.insert("arch".to_string(), serde_json::json!(env::consts::ARCH));
+        prop_map.insert(
+            "container_engine".to_string(),
+            serde_json::json!(self.container_engine().get_engine_identifier()),
+        );
 
         ph_client
             .capture("si-command", distinct_id, properties)

@@ -18,6 +18,10 @@ impl PodmanEngine {
 
 #[async_trait]
 impl ContainerEngine for PodmanEngine {
+    fn get_engine_identifier(&self) -> String {
+        "podman".to_string()
+    }
+
     async fn ping(&self) -> CliResult<()> {
         let ping_info = self.podman.ping().await?;
         dbg!(&ping_info);
