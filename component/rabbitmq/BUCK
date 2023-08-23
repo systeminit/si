@@ -13,5 +13,7 @@ docker_image(
         "5552:5552",
         "--publish",
         "15672:15672",
+        "--env",
+        "RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_stream advertised_host localhost"
     ],
 )
