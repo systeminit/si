@@ -1,4 +1,4 @@
-//! This library provides the ability to [connect](StreamManager) to [RabbitMQ](https://rabbitmq.com)
+//! This library provides the ability to [connect](Environment) to [RabbitMQ](https://rabbitmq.com)
 //! nodes, [produce](Producer) stream messages, and [consume](Consumer) stream messages.
 
 #![warn(
@@ -23,13 +23,13 @@
     clippy::missing_panics_doc
 )]
 
-mod connection;
 mod consumer;
+mod environment;
 mod error;
 mod producer;
 
-pub use connection::StreamManager;
 pub use consumer::Consumer;
+pub use environment::Environment;
 pub use error::RabbitError;
 pub use error::RabbitResult;
 pub use producer::Producer;

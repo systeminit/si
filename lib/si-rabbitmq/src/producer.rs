@@ -1,7 +1,7 @@
 use rabbitmq_stream_client::types::Message;
 use rabbitmq_stream_client::{Dedup, NoDedup, Producer as UpstreamProducer};
 
-use crate::connection::StreamManager;
+use crate::environment::Environment;
 use crate::{RabbitError, RabbitResult};
 
 /// An interface for producing and sending RabbitMQ stream messages.
@@ -14,11 +14,11 @@ pub struct Producer {
 impl Producer {
     /// Creates a new [`Producer`] for producing and sending RabbitMQ stream messages.
     pub async fn new(
-        connection: &StreamManager,
+        environment: &Environment,
         name: impl AsRef<str>,
         stream: impl AsRef<str>,
     ) -> RabbitResult<Self> {
-        let producer = connection
+        let producer = environment
             .inner()
             .producer()
             .name(name.as_ref())
