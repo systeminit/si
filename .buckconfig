@@ -5,6 +5,7 @@ prelude = prelude
 prelude-si = prelude-si
 toolchains = toolchains
 none = none
+none = true
 
 [repository_aliases]
 config = prelude
