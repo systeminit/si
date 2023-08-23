@@ -2,6 +2,7 @@ use rabbitmq_stream_client::error::{
     ClientError, ConsumerCloseError, ConsumerCreateError, ProducerCloseError, ProducerCreateError,
     ProducerPublishError, StreamCreateError, StreamDeleteError,
 };
+use std::string::FromUtf8Error;
 use thiserror::Error;
 
 #[allow(missing_docs)]
@@ -14,9 +15,11 @@ pub enum RabbitError {
     ConsumerClose(#[from] ConsumerCloseError),
     #[error("consumer create error: {0}")]
     ConsumerCreate(#[from] ConsumerCreateError),
+    #[error("from utf-8 error: {0}")]
+    FromUtf8(#[from] FromUtf8Error),
     #[error("producer close error: {0}")]
     ProducerClose(#[from] ProducerCloseError),
-    #[error("cannot send because the producer is closed")]
+    #[error("can no longer use producer because it has been closed")]
     ProducerClosed,
     #[error("producer create error: {0}")]
     ProducerCreate(#[from] ProducerCreateError),
