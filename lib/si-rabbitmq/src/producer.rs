@@ -1,5 +1,7 @@
 use rabbitmq_stream_client::types::Message;
 use rabbitmq_stream_client::{Dedup, NoDedup, Producer as UpstreamProducer};
+use telemetry::prelude::warn;
+use tokio::task;
 
 use crate::environment::Environment;
 use crate::{RabbitError, RabbitResult};
@@ -7,7 +9,7 @@ use crate::{RabbitError, RabbitResult};
 /// An interface for producing and sending RabbitMQ stream messages.
 #[allow(missing_debug_implementations)]
 pub struct Producer {
-    producer: UpstreamProducer<Dedup>,
+    inner: UpstreamProducer<Dedup>,
     closed: bool,
 }
 
@@ -18,14 +20,14 @@ impl Producer {
         name: impl AsRef<str>,
         stream: impl AsRef<str>,
     ) -> RabbitResult<Self> {
-        let producer = environment
+        let inner = environment
             .inner()
             .producer()
             .name(name.as_ref())
             .build(stream.as_ref())
             .await?;
         Ok(Self {
-            producer,
+            inner,
             closed: false,
         })
     }
@@ -35,7 +37,7 @@ impl Producer {
         if self.closed {
             return Err(RabbitError::ProducerClosed);
         }
-        self.producer
+        self.inner
             .send_with_confirm(Message::builder().body(message).build())
             .await?;
         Ok(())
@@ -46,7 +48,7 @@ impl Producer {
         if self.closed {
             return Err(RabbitError::ProducerClosed);
         }
-        self.producer
+        self.inner
             .batch_send_with_confirm(
                 messages
                     .into_iter()
@@ -57,9 +59,9 @@ impl Producer {
         Ok(())
     }
 
-    /// Closes the producer connection and renders the producer unusable.
+    // Closes the producer connection and renders the producer unusable.
     pub async fn close(mut self) -> RabbitResult<()> {
-        self.producer.close().await?;
+        self.inner.close().await?;
         self.closed = true;
         Ok(())
     }
