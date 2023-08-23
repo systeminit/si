@@ -2057,6 +2057,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "pretty_assertions_sorted",
  "remain",
  "serde",
  "serde_json",
