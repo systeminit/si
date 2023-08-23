@@ -2,7 +2,7 @@ use colored::Colorize;
 use flate2::read::GzDecoder;
 use inquire::Confirm;
 use serde::{Deserialize, Serialize};
-use std::{env, io::Cursor};
+use std::{env, fs, io::Cursor};
 use telemetry::prelude::*;
 
 use crate::{key_management::get_user_email, state::AppState, CliResult, SiCliError};
@@ -70,7 +70,10 @@ async fn update_current_binary(url: &str) -> CliResult<()> {
     })
     .await??;
 
-    let current_exe = env::current_exe()?;
+    let mut current_exe = env::current_exe()?;
+    if current_exe.is_symlink() {
+        current_exe = fs::read_link(current_exe)?;
+    }
     let new_binary = tempdir.path().join("si");
 
     println!("Replacing '{}' with new binary", current_exe.display());

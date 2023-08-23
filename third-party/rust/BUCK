@@ -17,6 +17,13 @@ git_fetch(
     visibility = [],
 )
 
+git_fetch(
+    name = "systeminit/self-replace.git",
+    repo = "https://github.com/systeminit/self-replace.git",
+    rev = "702afa3e3ccc1d683bd7141a56f2dd4459f979f0",
+    visibility = [],
+)
+
 http_archive(
     name = "Inflector-0.11.4.crate",
     sha256 = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3",
@@ -11845,19 +11852,11 @@ alias(
     visibility = ["PUBLIC"],
 )
 
-http_archive(
-    name = "self-replace-1.3.5.crate",
-    sha256 = "a0e7c919783db74b5995f13506069227e4721d388bea4a8ac3055acac864ac16",
-    strip_prefix = "self-replace-1.3.5",
-    urls = ["https://crates.io/api/v1/crates/self-replace/1.3.5/download"],
-    visibility = [],
-)
-
 cargo.rust_library(
     name = "self-replace-1.3.5",
-    srcs = [":self-replace-1.3.5.crate"],
+    srcs = [":systeminit/self-replace.git"],
     crate = "self_replace",
-    crate_root = "self-replace-1.3.5.crate/src/lib.rs",
+    crate_root = "systeminit/self-replace/src/lib.rs",
     edition = "2018",
     platform = {
         "windows-gnu": dict(

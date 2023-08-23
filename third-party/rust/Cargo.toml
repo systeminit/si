@@ -123,3 +123,6 @@ vfs-tar = { version = "0.4.0", features = ["mmap"] }
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
+# pending a potential merge and release of
+# https://github.com/mitsuhiko/self-replace/pull/18
+self-replace = { git = "https://github.com/systeminit/self-replace.git", branch = "unix-current-exe-read-link" }
