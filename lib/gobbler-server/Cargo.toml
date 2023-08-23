@@ -29,3 +29,4 @@ veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
+pretty_assertions_sorted = { workspace = true }
