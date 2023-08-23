@@ -1,6 +1,6 @@
 use dal::DalContext;
 use dal_test::random_identifier_string;
-use si_rabbitmq::{Producer, StreamManager};
+use si_rabbitmq::{Environment, Producer};
 use si_test_macros::gobbler_test as test;
 
 /// Recommended to run with the following environment variable:
@@ -10,13 +10,13 @@ use si_test_macros::gobbler_test as test;
 #[test]
 async fn produce(_ctx: &DalContext) {
     let stream = &random_identifier_string();
-    let manager = StreamManager::new().await.expect("could not connect");
-    manager
+    let environment = Environment::new().await.expect("could not connect");
+    environment
         .create_stream(stream)
         .await
         .expect("could not create stream");
 
-    let mut producer = Producer::new(&manager, "producer", stream)
+    let mut producer = Producer::new(&environment, "producer", stream)
         .await
         .expect("could not create producer");
     producer

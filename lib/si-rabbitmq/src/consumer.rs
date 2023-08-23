@@ -1,4 +1,4 @@
-use crate::connection::StreamManager;
+use crate::environment::Environment;
 use futures::StreamExt;
 use rabbitmq_stream_client::error::ConsumerDeliveryError;
 use rabbitmq_stream_client::types::Delivery;
@@ -13,8 +13,8 @@ pub struct Consumer(UpstreamConsumer);
 
 impl Consumer {
     /// Creates a new [`Consumer`] for consuming RabbitMQ stream messages.
-    pub async fn new(connection: &StreamManager, stream: &str) -> RabbitResult<Self> {
-        let consumer = connection.inner().consumer().build(stream).await?;
+    pub async fn new(environment: &Environment, stream: &str) -> RabbitResult<Self> {
+        let consumer = environment.inner().consumer().build(stream).await?;
         Ok(Self(consumer))
     }
 
