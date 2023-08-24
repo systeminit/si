@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
 load(
     "@prelude//cxx:cxx_library_utility.bzl",
     "cxx_attr_exported_linker_flags",
@@ -44,7 +45,7 @@ load("@prelude//utils:utils.bzl", "filter_and_map_idx")
 load(":apple_bundle_types.bzl", "AppleBundleInfo")
 load(":apple_frameworks.bzl", "to_framework_name")
 
-def prebuilt_apple_framework_impl(ctx: "context") -> ["provider"]:
+def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
     providers = []
 
     framework_directory_artifact = ctx.attrs.framework
@@ -79,6 +80,7 @@ def prebuilt_apple_framework_impl(ctx: "context") -> ["provider"]:
         )
         providers.append(create_merged_link_info(
             ctx,
+            get_cxx_toolchain_info(ctx).pic_behavior,
             {link_style: LinkInfos(default = link) for link_style in LinkStyle},
         ))
 

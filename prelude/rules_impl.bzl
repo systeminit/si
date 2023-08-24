@@ -14,6 +14,9 @@ load("@prelude//apple:apple_rules_impl.bzl", _apple_extra_attributes = "extra_at
 
 # Configuration
 load("@prelude//configurations:rules.bzl", _config_extra_attributes = "extra_attributes", _config_implemented_rules = "implemented_rules")
+
+# C++ - LLVM
+load("@prelude//cxx:bitcode.bzl", "llvm_link_bitcode_impl")
 load("@prelude//cxx:cxx.bzl", "cxx_binary_impl", "cxx_library_impl", "cxx_precompiled_header_impl", "cxx_test_impl", "prebuilt_cxx_library_impl")
 load("@prelude//cxx:cxx_toolchain.bzl", "cxx_toolchain_extra_attributes", "cxx_toolchain_impl")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo", "CxxToolchainInfo")
@@ -191,6 +194,9 @@ extra_implemented_rules = struct(
     prebuilt_cxx_library = prebuilt_cxx_library_impl,
     prebuilt_cxx_library_group = prebuilt_cxx_library_group_impl,
 
+    # C++ / LLVM
+    llvm_link_bitcode = llvm_link_bitcode_impl,
+
     #git
     git_fetch = git_fetch_impl,
 
@@ -289,7 +295,8 @@ def _python_executable_attrs():
 
     # allow non-default value for the args below
     updated_attrs.update({
-        "binary_linker_flags": attrs.list(attrs.arg(), default = []),
+        "anonymous_link_groups": attrs.bool(default = False),
+        "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "compiler_flags": attrs.list(attrs.arg(), default = []),
         "constraint_overrides": attrs.list(attrs.string(), default = []),
         "cxx_main": attrs.source(default = "prelude//python/tools:embedded_main.cpp"),
@@ -301,7 +308,18 @@ def _python_executable_attrs():
         "link_group_map": link_group_map_attr(),
         "link_group_min_binary_node_count": attrs.option(attrs.int(), default = None),
         "link_style": attrs.enum(LinkableDepType, default = "static"),
-        "make_pex": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "main_function": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """
+            Fully qualified name of a Python function that will serve as the main entry point of the binary.
+
+            This should usually be a function defined within one of the
+            dependencies of this target. This attribute should be preferred over
+            `main_module` or `main`, and it is an error to specify more than one of these.
+        """,
+        ),
+        "make_py_package": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         # entries for the generated __manifest__ python module
         "manifest_module_entries": attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.any())), default = None),
         "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
@@ -332,11 +350,12 @@ def _python_test_attrs():
 
 def _cxx_binary_and_test_attrs():
     return {
+        "anonymous_link_groups": attrs.bool(default = False),
         "auto_link_groups": attrs.bool(default = False),
         # Linker flags that only apply to the executable link, used for link
         # strategies (e.g. link groups) which may link shared libraries from
         # top-level binary context.
-        "binary_linker_flags": attrs.list(attrs.arg(), default = []),
+        "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "bolt_flags": attrs.list(attrs.arg(), default = []),
         "bolt_gdb_index": attrs.option(attrs.source(), default = None),
         "bolt_profile": attrs.option(attrs.source(), default = None),
@@ -415,7 +434,11 @@ inlined_extra_attributes = {
         **_cxx_binary_and_test_attrs()
     ),
     "cxx_toolchain": cxx_toolchain_extra_attributes(is_toolchain_rule = False),
+
+    # Generic rule to build from a command
     "genrule": genrule_attributes(),
+
+    # Go
     "go_binary": {
         "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
         "resources": attrs.list(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), default = []),
@@ -464,13 +487,16 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_haskell_toolchain": toolchains_common.haskell(),
     },
+    "llvm_link_bitcode": {
+        "_cxx_toolchain": toolchains_common.cxx(),
+    },
     "ndk_toolchain": {
         "cxx_toolchain": attrs.toolchain_dep(providers = [CxxToolchainInfo, CxxPlatformInfo]),
     },
     "prebuilt_cxx_library": {
         "exported_header_style": attrs.enum(IncludeType, default = "system"),
         "header_dirs": attrs.option(attrs.list(attrs.source(allow_directory = True)), default = None),
-        "linker_flags": attrs.list(attrs.arg(), default = []),
+        "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "platform_header_dirs": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.source(allow_directory = True)))), default = None),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "public_include_directories": attrs.set(attrs.string(), sorted = True, default = []),
@@ -481,6 +507,9 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_omnibus_environment": omnibus_environment_attr(),
         "_target_os_type": buck.target_os_type_arg(),
+    },
+    "prebuilt_cxx_library_group": {
+        "_cxx_toolchain": toolchains_common.cxx(),
     },
 
     #python

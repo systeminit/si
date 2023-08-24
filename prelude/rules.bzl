@@ -7,6 +7,7 @@
 
 load("@prelude//configurations:rules.bzl", _config_implemented_rules = "implemented_rules")
 load("@prelude//decls/common.bzl", "prelude_rule")
+load("@prelude//is_full_meta_repo.bzl", "is_full_meta_repo")
 
 # Combine the attributes we generate, we the custom implementations we have.
 load("@prelude//rules_impl.bzl", "extra_attributes", "extra_implemented_rules", "rule_decl_records", "toolchain_rule_names", "transitions")
@@ -20,7 +21,7 @@ def _unimplemented_impl(name):
     # some features disabled.
     return partial(_unimplemented, name)
 
-def _mk_rule(rule_spec: "") -> "rule":
+def _mk_rule(rule_spec: typing.Any) -> "rule":
     name = rule_spec.name
     attributes = rule_spec.attrs
 
@@ -37,12 +38,18 @@ def _mk_rule(rule_spec: "") -> "rule":
 
     # Fat platforms is an idea specific to our toolchains, so doesn't apply to
     # open source. Ideally this restriction would be done at the toolchain level.
-    fat_platform_compatible = True # @oss-enable
+    if not is_full_meta_repo():
+        fat_platform_compatible = True
 
+    attributes = dict(attributes)
     if not fat_platform_compatible:
         # copy so we don't try change the passed in object
-        attributes = dict(attributes)
         attributes["_cxx_toolchain_target_configuration"] = attrs.dep(default = "fbcode//buck2/platform/execution:fat_platform_incompatible")
+
+    # Add _apple_platforms to all rules so that we may query the target platform to use until we support configuration
+    # modifiers and can use them to set the configuration to use for operations.
+    # Map of string identifer to platform.
+    attributes["_apple_platforms"] = attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {})
 
     extra_args = {}
     cfg = transitions.get(name)
@@ -88,7 +95,7 @@ def _flatten_decls():
             decls[rule] = getattr(decl_set, rule)
     return decls
 
-def _update_rules(rules: {str.type: ""}, extra_attributes: ""):
+def _update_rules(rules: dict[str, typing.Any], extra_attributes: typing.Any):
     for k in dir(extra_attributes):
         v = getattr(extra_attributes, k)
         if k in rules:

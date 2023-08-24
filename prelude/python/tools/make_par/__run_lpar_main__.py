@@ -15,7 +15,8 @@ def __invoke_main():
     import runpy
     import sys
 
-    module = os.getenv("FB_LPAR_MAIN_MODULE")
+    module = os.getenv("FB_PAR_MAIN_MODULE")
+    main_function = os.getenv("FB_PAR_MAIN_FUNCTION")
 
     # Allow users to decorate the main module. In normal Python invocations
     # this can be done by prefixing the arguments with `-m decoratingmodule`.
@@ -35,41 +36,23 @@ def __invoke_main():
     sys.argv[0] = os.getenv("FB_LPAR_INVOKED_NAME")
     del sys.path[0]
 
-    # Read `PYTHONDEBUGWITHPDB` before we cleanup the `os` module.
-    debug_with_pdb = bool(os.environ.pop("PYTHONDEBUGWITHPDB", None))
+    if main_function:
+        assert module
+        from importlib import import_module
+
+        mod = import_module(module)
+        main = getattr(mod, main_function)
+        # This is normally done by `runpy._run_module_as_main`, and is
+        # important to make multiprocessing work
+        sys.modules["__main__"] = mod
+        main()
+        return
 
     del os
     del sys
 
-    # Allow users to run the main module under pdb. Encode the call into the
-    # startup script, because pdb does not support the -c argument we use to invoke
-    # our startup wrapper.
-    #
-    # Note: use pop to avoid leaking the environment variable to the child process.
-    if debug_with_pdb:
-        import os
-        from pdb import Pdb
-
-        pdb = Pdb()
-
-        # Support passing initial commands to pdb. We cannot pass the -c argument
-        # to pdb. Instead, allow users to pass initial commands through the
-        # PYTHONPDBINITIALCOMMANDS env var, separated by the | character.
-        #
-        # Note: use pop to avoid leaking the environment variable to the child
-        # process.
-        initial_commands = os.environ.pop("PYTHONPDBINITIALCOMMANDS", None)
-        if initial_commands:
-            pdb.rcLines.extend(initial_commands.split("|"))
-
-        del os
-
-        # pyre-fixme[16]: Module `runpy` has no attribute `_run_module_as_main`.
-        pdb.runcall(runpy._run_module_as_main, module, False)
-
-    else:
-        # pyre-fixme[16]: Module `runpy` has no attribute `_run_module_as_main`.
-        runpy._run_module_as_main(module, False)
+    # pyre-fixme[16]: Module `runpy` has no attribute `_run_module_as_main`.
+    runpy._run_module_as_main(module, False)
 
 
 __invoke_main()

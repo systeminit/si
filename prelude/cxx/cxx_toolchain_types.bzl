@@ -9,6 +9,8 @@ load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 
 LinkerType = ["gnu", "darwin", "windows"]
 
+ShlibInterfacesMode = enum("disabled", "enabled", "defined_only")
+
 # TODO(T110378149): Consider whether it makes sense to move these things to
 # configurations/constraints rather than part of the toolchain.
 LinkerInfo = provider(fields = [
@@ -20,8 +22,8 @@ LinkerInfo = provider(fields = [
     "archive_objects_locally",
     # "archiver_platform",
     # "" on Unix, "exe" on Windows
-    "binary_extension",  # str.type
-    "generate_linker_maps",  # bool.type
+    "binary_extension",  # str
+    "generate_linker_maps",  # bool
     # Whether to run native links locally.  We support this for fbcode platforms
     # to avoid issues with C++ static links (see comment in
     # `platform/cxx_toolchains.bzl` for details).
@@ -31,32 +33,32 @@ LinkerInfo = provider(fields = [
     # GiBs of object files (which can also lead to RE errors/timesouts etc).
     "link_libraries_locally",
     "link_style",  # LinkStyle.type
-    "link_weight",  # int.type
+    "link_weight",  # int
     "link_ordering",  # LinkOrdering.type
     "linker",
     "linker_flags",
     "lto_mode",
     "mk_shlib_intf",
     # "o" on Unix, "obj" on Windows
-    "object_file_extension",  # str.type
-    "shlib_interfaces",
+    "object_file_extension",  # str
+    "shlib_interfaces",  # ShlibInterfacesMode.type
     "shared_dep_runtime_ld_flags",
     # "lib{}.so" on Linux, "lib{}.dylib" on Mac, "{}.dll" on Windows
-    "shared_library_name_format",  # str.type
-    "shared_library_versioned_name_format",  # str.type
+    "shared_library_name_format",  # str
+    "shared_library_versioned_name_format",  # str
     "static_dep_runtime_ld_flags",
     # "a" on Unix, "lib" on Windows
-    "static_library_extension",  # str.type
+    "static_library_extension",  # str
     "static_pic_dep_runtime_ld_flags",
     "requires_archives",
     "requires_objects",
     "supports_distributed_thinlto",
-    "supports_pic",
     "independent_shlib_interface_linker_flags",
     "type",  # of "LinkerType" type
     "use_archiver_flags",
     "force_full_hybrid_if_capable",
-    "is_pdb_generated",  # bool.type
+    "is_pdb_generated",  # bool
+    "produce_interface_from_stub_shared_library",  # bool
 ])
 
 BinaryUtilitiesInfo = provider(fields = [
@@ -126,6 +128,17 @@ CxxObjectFormat = enum(
     "swift",
 )
 
+PicBehavior = enum(
+    # Regardless of whether -fPIC is specified explicitly
+    # every compiled artifact will have a position-independent representation.
+    # This should be the the default when targeting x86_64 + arm64.
+    "always_enabled",
+    # The -fPIC flag is known and changes the compiled artifact.
+    "supported",
+    # The -fPIC flag is unknown to this platform.
+    "not_supported",
+)
+
 # TODO(T110378094): We should consider if we can change this from a hardcoded
 # list of compiler_info to something more general. We could maybe do a list of
 # compiler_info where each one also declares what extensions it supports.
@@ -151,12 +164,15 @@ CxxToolchainInfo = provider(fields = [
     "llvm_link",
     "dist_lto_tools_info",
     "use_dep_files",
+    "clang_remarks",
     "clang_trace",
     "cpp_dep_tracking_mode",
     "cuda_dep_tracking_mode",
     "strip_flags_info",
     "split_debug_mode",
     "bolt_enabled",
+    "pic_behavior",
+    "dumpbin_toolchain_path",
 ])
 
 # Stores "platform"/flavor name used to resolve *platform_* arguments
@@ -173,7 +189,7 @@ def _validate_linker_info(info: LinkerInfo.type):
     if info.supports_distributed_thinlto and not info.requires_objects:
         fail("distributed thinlto requires enabling `requires_objects`")
 
-def is_bitcode_format(format: CxxObjectFormat.type) -> bool.type:
+def is_bitcode_format(format: CxxObjectFormat.type) -> bool:
     return format in [CxxObjectFormat("bitcode"), CxxObjectFormat("embedded-bitcode")]
 
 def cxx_toolchain_infos(
@@ -194,6 +210,7 @@ def cxx_toolchain_infos(
         mk_hmap = None,
         use_distributed_thinlto = False,
         use_dep_files = False,
+        clang_remarks = None,
         clang_trace = False,
         cpp_dep_tracking_mode = DepTrackingMode("none"),
         cuda_dep_tracking_mode = DepTrackingMode("none"),
@@ -202,7 +219,9 @@ def cxx_toolchain_infos(
         split_debug_mode = SplitDebugMode("none"),
         bolt_enabled = False,
         llvm_link = None,
-        platform_deps_aliases = []):
+        platform_deps_aliases = [],
+        pic_behavior = PicBehavior("supported"),
+        dumpbin_toolchain_path = None):
     """
     Creates the collection of cxx-toolchain Infos for a cxx toolchain.
 
@@ -233,12 +252,15 @@ def cxx_toolchain_infos(
         dist_lto_tools_info = dist_lto_tools_info,
         use_distributed_thinlto = use_distributed_thinlto,
         use_dep_files = use_dep_files,
+        clang_remarks = clang_remarks,
         clang_trace = clang_trace,
         cpp_dep_tracking_mode = cpp_dep_tracking_mode,
         cuda_dep_tracking_mode = cuda_dep_tracking_mode,
         strip_flags_info = strip_flags_info,
         split_debug_mode = split_debug_mode,
         bolt_enabled = bolt_enabled,
+        pic_behavior = pic_behavior,
+        dumpbin_toolchain_path = dumpbin_toolchain_path,
     )
 
     # Provide placeholder mappings, used primarily by cxx_genrule.

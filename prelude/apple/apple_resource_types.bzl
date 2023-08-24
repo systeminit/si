@@ -17,19 +17,19 @@ AppleResourceDestination = enum(
 
 # Defines _where_ resources need to be placed in an `apple_bundle`
 AppleResourceSpec = record(
-    files = field([["artifact", "dependency"]], []),
-    dirs = field(["artifact"], []),
-    content_dirs = field(["artifact"], []),
+    files = field(list[[Artifact, Dependency]], []),
+    dirs = field(list[Artifact], []),
+    content_dirs = field(list[Artifact], []),
     destination = AppleResourceDestination.type,
-    variant_files = field(["artifact"], []),
+    variant_files = field(list[Artifact], []),
     # Map from locale to list of files for that locale, e.g.
     # `{ "ru.lproj" : ["Localizable.strings"] }`
-    named_variant_files = field({str.type: ["artifact"]}, {}),
-    codesign_files_on_copy = field(bool.type, False),
+    named_variant_files = field(dict[str, list[Artifact]], {}),
+    codesign_files_on_copy = field(bool, False),
 )
 
 # Used when invoking `ibtool`, `actool` and `momc`
 AppleResourceProcessingOptions = record(
-    prefer_local = field(bool.type, False),
-    allow_cache_upload = field(bool.type, False),
+    prefer_local = field(bool, False),
+    allow_cache_upload = field(bool, False),
 )

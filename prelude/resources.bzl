@@ -5,18 +5,20 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//utils:arglike.bzl", "ArgLike")  # @unused Used as a type
+
 # Resources for transitive deps, shared by C++ and Rust.
 ResourceInfo = provider(fields = [
     # A map containing all resources from transitive dependencies.  The keys
     # are rule labels and the values are maps of resource names (the name used
     # to lookup the resource at runtime) and the actual resource artifact.
-    "resources",  # {"label": {str.type: ("artifact", ["hidden"])}}
+    "resources",  # {"label": {str: ("artifact", ["hidden"])}}
 ])
 
 def gather_resources(
-        label: "label",
-        resources: {str.type: ("artifact", ["_arglike"])} = {},
-        deps: ["dependency"] = []) -> {"label": {str.type: ("artifact", ["_arglike"])}}:
+        label: Label,
+        resources: dict[str, (Artifact, list[ArgLike])] = {},
+        deps: list[Dependency] = []) -> dict[Label, dict[str, (Artifact, list[ArgLike])]]:
     """
     Return the resources for this rule and its transitive deps.
     """
@@ -35,10 +37,10 @@ def gather_resources(
     return all_resources
 
 def create_resource_db(
-        ctx: "context",
-        name: str.type,
-        binary: "artifact",
-        resources: {str.type: ("artifact", ["_arglike"])}) -> "artifact":
+        ctx: AnalysisContext,
+        name: str,
+        binary: Artifact,
+        resources: dict[str, (Artifact, list[ArgLike])]) -> Artifact:
     """
     Generate a resource DB for resources for the given binary, relativized to
     the binary's working directory.

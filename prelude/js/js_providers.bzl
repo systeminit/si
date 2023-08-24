@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-def _artifacts(value: "artifact"):
+def _artifacts(value: Artifact):
     return value
 
 TransitiveOutputsTSet = transitive_set(args_projections = {"artifacts": _artifacts})
@@ -19,7 +19,7 @@ JsLibraryInfo = provider(
 
 JsBundleInfo = provider(
     fields = [
-        "bundle_name",  # str.type
+        "bundle_name",  # str
         # Directory containing the built JavaScript.
         "built_js",  # "artifact",
         # Source map belonging to the built JavaScript.
@@ -35,9 +35,9 @@ JsBundleInfo = provider(
 )
 
 def get_transitive_outputs(
-        actions: "actions",
-        value: ["artifact", None] = None,
-        deps: [JsLibraryInfo.type] = []) -> TransitiveOutputsTSet.type:
+        actions: AnalysisActions,
+        value: [Artifact, None] = None,
+        deps: list[JsLibraryInfo.type] = []) -> TransitiveOutputsTSet.type:
     kwargs = {}
     if value:
         kwargs["value"] = value

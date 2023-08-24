@@ -14,14 +14,14 @@ load(
 load("@prelude//java:java_toolchain.bzl", "AbiGenerationMode", "JavaToolchainInfo")
 load("@prelude//utils:utils.bzl", "expect")
 
-def get_path_separator() -> "string":
+def get_path_separator() -> str:
     # TODO: msemko : replace with system-dependent path-separator character
     # On UNIX systems, this character is ':'; on Microsoft Windows systems it is ';'.
     return ":"
 
-def derive_javac(javac_attribute: [str.type, "dependency", "artifact"]) -> [str.type, "RunInfo", "artifact"]:
+def derive_javac(javac_attribute: [str, Dependency, Artifact]) -> [str, RunInfo.type, Artifact]:
     javac_attr_type = type(javac_attribute)
-    if javac_attr_type == "dependency":
+    if isinstance(javac_attribute, Dependency):
         javac_run_info = javac_attribute.get(RunInfo)
         if javac_run_info:
             return javac_run_info
@@ -32,12 +32,12 @@ def derive_javac(javac_attribute: [str.type, "dependency", "artifact"]) -> [str.
     if javac_attr_type == "artifact":
         return javac_attribute
 
-    if javac_attr_type == str.type:
+    if javac_attr_type == type(""):
         return javac_attribute
 
     fail("Type of attribute javac {} that equals to {} is not supported.\n Supported types are \"dependency\", \"artifact\" and \"string\".".format(javac_attr_type, javac_attribute))
 
-def get_java_version_attributes(ctx: "context") -> (int.type, int.type):
+def get_java_version_attributes(ctx: AnalysisContext) -> (int, int):
     java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo]
     java_version = ctx.attrs.java_version
     java_source = ctx.attrs.source
@@ -61,7 +61,7 @@ def get_java_version_attributes(ctx: "context") -> (int.type, int.type):
 
     return (source, target)
 
-def to_java_version(java_version: str.type) -> int.type:
+def to_java_version(java_version: str) -> int:
     if java_version.startswith("1."):
         expect(len(java_version) == 3, "Supported java version number format is 1.X, where X is a single digit number, but it was set to {}", java_version)
         java_version_number = int(java_version[2:])
@@ -81,11 +81,11 @@ def get_abi_generation_mode(abi_generation_mode):
     }[abi_generation_mode]
 
 def get_default_info(
-        actions: "actions",
-        java_toolchain: "JavaToolchainInfo",
+        actions: AnalysisActions,
+        java_toolchain: JavaToolchainInfo.type,
         outputs: ["JavaCompileOutputs", None],
         packaging_info: "JavaPackagingInfo",
-        extra_sub_targets: dict.type = {}) -> DefaultInfo.type:
+        extra_sub_targets: dict = {}) -> DefaultInfo.type:
     sub_targets = get_classpath_subtarget(actions, packaging_info)
     default_info = DefaultInfo()
     if outputs:
@@ -107,16 +107,16 @@ def get_default_info(
         )
     return default_info
 
-def declare_prefixed_name(name: str.type, prefix: [str.type, None]) -> str.type:
+def declare_prefixed_name(name: str, prefix: [str, None]) -> str:
     if not prefix:
         return name
 
     return "{}_{}".format(prefix, name)
 
 def get_class_to_source_map_info(
-        ctx: "context",
+        ctx: AnalysisContext,
         outputs: ["JavaCompileOutputs", None],
-        deps: ["dependency"]) -> (JavaClassToSourceMapInfo.type, dict.type):
+        deps: list[Dependency]) -> (JavaClassToSourceMapInfo.type, dict):
     sub_targets = {}
     class_to_srcs = None
     if not ctx.attrs._is_building_android_binary and outputs != None:
@@ -124,9 +124,8 @@ def get_class_to_source_map_info(
             actions = ctx.actions,
             java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo],
             name = ctx.attrs.name + ".class_to_srcs.json",
-            jar = outputs.classpath_entry.abi,
+            jar = outputs.classpath_entry.full_library,
             srcs = ctx.attrs.srcs,
-            jar_path = outputs.classpath_entry.full_library,
         )
         sub_targets["class-to-srcs"] = [DefaultInfo(default_output = class_to_srcs)]
     class_to_src_map_info = create_class_to_source_map_info(
@@ -136,7 +135,7 @@ def get_class_to_source_map_info(
     )
     return (class_to_src_map_info, sub_targets)
 
-def get_classpath_subtarget(actions: "actions", packaging_info: "JavaPackagingInfo") -> {str.type: ["provider"]}:
+def get_classpath_subtarget(actions: AnalysisActions, packaging_info: "JavaPackagingInfo") -> dict[str, list[Provider]]:
     proj = packaging_info.packaging_deps.project_as_args("full_jar_args")
     output = actions.write("classpath", proj)
     return {"classpath": [DefaultInfo(output, other_outputs = [proj])]}

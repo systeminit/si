@@ -23,7 +23,7 @@ load("@prelude//decls/common.bzl", "Traversal")
 def resource_group_map_attr():
     return attrs.option(attrs.dep(providers = [ResourceGroupInfo]), default = None)
 
-def _impl(ctx: "context") -> ["provider"]:
+def _impl(ctx: AnalysisContext) -> list[Provider]:
     resource_groups = parse_groups_definitions(ctx.attrs.map, lambda root: root.label)
 
     # Extract deps from the roots via the raw attrs, as `parse_groups_definitions`
@@ -45,7 +45,7 @@ def _impl(ctx: "context") -> ["provider"]:
             create_group(
                 group = group,
                 # User provided mappings may contain entries that don't support
-                # ResourceGraph, which `create_resource_graph` removes above.
+                # ResourceGraphInfo, which `create_resource_graph` removes above.
                 # So make sure we remove them from the mappings too, otherwise
                 # `compute_mappings` crashes on the inconsistency.
                 mappings = [

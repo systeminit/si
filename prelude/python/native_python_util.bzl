@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkInfo",
@@ -32,24 +33,24 @@ LinkableProvidersTSet = transitive_set()
 CxxExtensionLinkInfo = provider(
     fields = [
         "linkable_providers",  # LinkableProvidersTSet.type
-        "artifacts",  # {str.type: "_a"}
-        "python_module_names",  # {str.type: str.type}
+        "artifacts",  # {str: "_a"}
+        "python_module_names",  # {str: str}
         "dlopen_deps",  # {"label": LinkableProviders.type}
         # Native python extensions that can't be linked into the main executable.
-        "unembeddable_extensions",  # {str.type: LinkableProviders.type}
+        "unembeddable_extensions",  # {str: LinkableProviders.type}
         # Native libraries that are only available as shared libs.
-        "shared_only_libs",  # {"label": LinkableProviders.type}
+        "shared_only_libs",  # {Label: LinkableProviders.type}
     ],
 )
 
 def merge_cxx_extension_info(
-        actions: "actions",
-        deps: ["dependency"],
+        actions: AnalysisActions,
+        deps: list[Dependency],
         linkable_providers: [LinkableProviders.type, None] = None,
-        artifacts: {str.type: "_a"} = {},
-        python_module_names: {str.type: str.type} = {},
-        unembeddable_extensions: {str.type: LinkableProviders.type} = {},
-        shared_deps: ["dependency"] = []) -> CxxExtensionLinkInfo.type:
+        artifacts: dict[str, typing.Any] = {},
+        python_module_names: dict[str, str] = {},
+        unembeddable_extensions: dict[str, LinkableProviders.type] = {},
+        shared_deps: list[Dependency] = []) -> CxxExtensionLinkInfo.type:
     linkable_provider_children = []
     artifacts = dict(artifacts)
     python_module_names = dict(python_module_names)
@@ -95,13 +96,13 @@ def merge_cxx_extension_info(
     )
 
 def rewrite_static_symbols(
-        ctx: "context",
-        suffix: str.type,
-        pic_objects: ["artifact"],
-        non_pic_objects: ["artifact"],
-        libraries: {LinkStyle.type: LinkInfos.type},
-        cxx_toolchain: "CxxToolchainInfo",
-        suffix_all: bool.type = False) -> {LinkStyle.type: LinkInfos.type}:
+        ctx: AnalysisContext,
+        suffix: str,
+        pic_objects: list[Artifact],
+        non_pic_objects: list[Artifact],
+        libraries: dict[LinkStyle.type, LinkInfos.type],
+        cxx_toolchain: CxxToolchainInfo.type,
+        suffix_all: bool = False) -> dict[LinkStyle.type, LinkInfos.type]:
     symbols_file = _write_syms_file(
         ctx = ctx,
         name = ctx.label.name + "_rename_syms",
@@ -164,12 +165,12 @@ def rewrite_static_symbols(
     return updated_libraries
 
 def _write_syms_file(
-        ctx: "context",
-        name: str.type,
-        objects: ["artifact"],
-        suffix: str.type,
-        cxx_toolchain: "CxxToolchainInfo",
-        suffix_all: bool.type = False) -> "artifact":
+        ctx: AnalysisContext,
+        name: str,
+        objects: list[Artifact],
+        suffix: str,
+        cxx_toolchain: CxxToolchainInfo.type,
+        suffix_all: bool = False) -> Artifact:
     """
     Take a list of objects and append a suffix to all  defined symbols.
     """
@@ -188,6 +189,7 @@ def _write_syms_file(
     # Compile symbols defined by all object files into a de-duplicated list of symbols to rename
     # --no-sort tells nm not to sort the output because we are sorting it to dedupe anyway
     # --defined-only prints only the symbols defined by this extension this way we won't rename symbols defined externally e.g. PyList_GetItem, etc...
+    # --extern-only if suffix_all is not set, we are only interested in the externally visible PyInit symbols
     # -j print only the symbol name
     # sed removes filenames generated from objcopy (lines ending with ":") and empty lines
     # sort -u sorts the combined list of symbols and removes any duplicate entries
@@ -195,8 +197,8 @@ def _write_syms_file(
     # objcopy uses a list of symbol name followed by updated name e.g. 'PyInit_hello PyInit_hello_package_module'
     script = (
         "set -euo pipefail; " +  # fail if any command in the script fails
-        '"$NM" --no-sort --defined-only -j @"$OBJECTS" | sed "/:$/d;/^$/d" | sort -u'
-    )
+        '"$NM" --no-sort --defined-only -j {}@"$OBJECTS" | sed "/:$/d;/^$/d"'
+    ).format("--extern-only " if not suffix_all else "")
 
     if not suffix_all:
         script += ' | grep "^PyInit_"'
@@ -207,13 +209,14 @@ def _write_syms_file(
     script += ' | grep -v "^\\(__\\)\\?\\(a\\|t\\)san"'
 
     script += (
-        ' | awk \'{{print $1" "$1"_{suffix}"}}\' > '.format(suffix = suffix) +
+        ' | awk \'{{print $1" "$1"_{suffix}"}}\' | sort -u > '.format(suffix = suffix) +
         '"$SYMSFILE";'
     )
 
     ctx.actions.run(
         [
-            "/bin/bash",
+            "/usr/bin/env",
+            "bash",
             "-c",
             script,
         ],
@@ -225,11 +228,11 @@ def _write_syms_file(
     return symbols_file
 
 def suffix_symbols(
-        ctx: "context",
-        suffix: str.type,
-        objects: ["artifact"],
-        symbols_file: "artifact",
-        cxx_toolchain: "CxxToolchainInfo") -> (ObjectsLinkable.type, ObjectsLinkable.type):
+        ctx: AnalysisContext,
+        suffix: str,
+        objects: list[Artifact],
+        symbols_file: Artifact,
+        cxx_toolchain: CxxToolchainInfo.type) -> (ObjectsLinkable.type, ObjectsLinkable.type):
     """
     Take a list of objects and append a suffix to all  defined symbols.
     """
@@ -257,7 +260,8 @@ def suffix_symbols(
         # Usage: objcopy [option(s)] in-file [out-file]
         ctx.actions.run(
             [
-                "/bin/bash",
+                "/usr/bin/env",
+                "bash",
                 "-c",
                 script,
             ],

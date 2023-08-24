@@ -18,16 +18,16 @@ JuliaToolchainInfo = provider(fields = [
 ])
 
 JllInfo = record(
-    name = field(str.type),
-    libs = field(dict.type),  # Julia name to label
+    name = field(str),
+    libs = field(dict),  # Julia name to label
 )
 
 JuliaLibrary = record(
-    uuid = str.type,
-    src_labels = "",
-    srcs = "",
-    project_toml = "",
-    label = field("label"),
+    uuid = str,
+    src_labels = typing.Any,
+    srcs = typing.Any,
+    project_toml = typing.Any,
+    label = field(Label),
     jll = field([JllInfo.type, None]),
 )
 
@@ -51,15 +51,15 @@ JuliaLibraryInfo = provider(fields = [
 ])
 
 def create_julia_library_info(
-        actions: "actions",
-        label: "label",
-        uuid: str.type = "",
-        src_labels: "" = [],
-        project_toml: "" = None,
-        srcs: "" = [],
-        deps: [JuliaLibraryInfo.type] = [],
+        actions: AnalysisActions,
+        label: Label,
+        uuid: str = "",
+        src_labels: typing.Any = [],
+        project_toml: typing.Any = None,
+        srcs: typing.Any = [],
+        deps: list[JuliaLibraryInfo.type] = [],
         jll: [JllInfo.type, None] = None,
-        shlibs: [SharedLibraryInfo.type] = []) -> "JuliaLibraryInfo":
+        shlibs: list[SharedLibraryInfo.type] = []) -> JuliaLibraryInfo.type:
     julia_tsets = JuliaLibrary(
         uuid = uuid,
         label = label,

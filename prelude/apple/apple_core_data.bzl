@@ -11,7 +11,7 @@ load(":apple_core_data_types.bzl", "AppleCoreDataSpec")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(":resource_groups.bzl", "create_resource_graph")
 
-def apple_core_data_impl(ctx: "context") -> ["provider"]:
+def apple_core_data_impl(ctx: AnalysisContext) -> list[Provider]:
     spec = AppleCoreDataSpec(
         path = ctx.attrs.path,
     )
@@ -24,7 +24,7 @@ def apple_core_data_impl(ctx: "context") -> ["provider"]:
     )
     return [DefaultInfo(), graph]
 
-def compile_apple_core_data(ctx: "context", specs: [AppleCoreDataSpec.type], product_name: str.type) -> ["artifact", None]:
+def compile_apple_core_data(ctx: AnalysisContext, specs: list[AppleCoreDataSpec.type], product_name: str) -> [Artifact, None]:
     if len(specs) == 0:
         return None
 
@@ -44,6 +44,7 @@ def compile_apple_core_data(ctx: "context", specs: [AppleCoreDataSpec.type], pro
     wrapper_script, _ = ctx.actions.write(
         "momc_wrapper.sh",
         [
+            cmd_args("set -euo pipefail"),
             cmd_args('export TMPDIR="$(mktemp -d)"'),
             cmd_args(momc_commands),
             cmd_args(output, format = 'mkdir -p {} && cp -r "$TMPDIR"/ {}'),
@@ -55,13 +56,13 @@ def compile_apple_core_data(ctx: "context", specs: [AppleCoreDataSpec.type], pro
     ctx.actions.run(combined_command, prefer_local = processing_options.prefer_local, allow_cache_upload = processing_options.allow_cache_upload, category = "apple_core_data")
     return output
 
-def _get_momc_command(ctx: "context", core_data_spec: AppleCoreDataSpec.type, product_name: str.type, output_directory: "cmd_args") -> "cmd_args":
+def _get_momc_command(ctx: AnalysisContext, core_data_spec: AppleCoreDataSpec.type, product_name: str, output_directory: cmd_args) -> cmd_args:
     return cmd_args([
         ctx.attrs._apple_toolchain[AppleToolchainInfo].momc,
         "--sdkroot",
         ctx.attrs._apple_toolchain[AppleToolchainInfo].sdk_path,
         "--" + get_apple_sdk_name(ctx) + "-deployment-target",
-        get_bundle_min_target_version(ctx),
+        get_bundle_min_target_version(ctx, ctx.attrs.binary),
         "--module",
         product_name,
         core_data_spec.path,

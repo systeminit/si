@@ -6,19 +6,20 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 
-def extract_symbol_names(
-        ctx: "context",
-        name: str.type,
-        objects: ["artifact"],
-        category: str.type,
-        identifier: [str.type, None] = None,
-        undefined_only: bool.type = False,
-        dynamic: bool.type = False,
-        prefer_local: bool.type = False,
-        local_only: bool.type = False,
-        global_only: bool.type = False) -> "artifact":
+def _extract_symbol_names(
+        ctx: AnalysisContext,
+        name: str,
+        objects: list[Artifact],
+        category: str,
+        identifier: [str, None] = None,
+        undefined_only: bool = False,
+        dynamic: bool = False,
+        prefer_local: bool = False,
+        local_only: bool = False,
+        global_only: bool = False) -> Artifact:
     """
     Generate a file with a sorted list of symbol names extracted from the given
     native objects.
@@ -59,7 +60,8 @@ def extract_symbol_names(
 
     ctx.actions.run(
         [
-            "/bin/bash",
+            "/usr/bin/env",
+            "bash",
             "-c",
             cmd_args(output.as_output(), format = script),
             "",
@@ -74,40 +76,118 @@ def extract_symbol_names(
     )
     return output
 
-def extract_undefined_syms(ctx: "context", output: "artifact", category_prefix: str.type, prefer_local: bool.type) -> "artifact":
+_SymbolsInfo = provider(fields = [
+    "artifact",  # "artifact"
+])
+
+def _anon_extract_symbol_names_impl(ctx):
+    output = _extract_symbol_names(
+        ctx = ctx,
+        category = ctx.attrs.category,
+        dynamic = ctx.attrs.dynamic,
+        global_only = ctx.attrs.global_only,
+        identifier = ctx.attrs.identifier,
+        local_only = ctx.attrs.local_only,
+        name = ctx.attrs.output,
+        objects = ctx.attrs.objects,
+        prefer_local = ctx.attrs.prefer_local,
+        undefined_only = ctx.attrs.undefined_only,
+    )
+    return [DefaultInfo(), _SymbolsInfo(artifact = output)]
+
+# Anonymous wrapper for `extract_symbol_names`.
+_anon_extract_symbol_names_impl_rule = rule(
+    impl = _anon_extract_symbol_names_impl,
+    attrs = {
+        "category": attrs.string(),
+        "dynamic": attrs.bool(default = False),
+        "global_only": attrs.bool(default = False),
+        "identifier": attrs.option(attrs.string(), default = None),
+        "local_only": attrs.bool(default = False),
+        "objects": attrs.list(attrs.source()),
+        "output": attrs.string(),
+        "prefer_local": attrs.bool(default = False),
+        "undefined_only": attrs.bool(default = False),
+        "_cxx_toolchain": attrs.dep(providers = [CxxToolchainInfo]),
+    },
+)
+
+def extract_symbol_names(
+        ctx: AnalysisContext,
+        name: str,
+        anonymous: bool = False,
+        **kwargs) -> [Artifact, "promise_artifact"]:
+    """
+    Generate a file with a sorted list of symbol names extracted from the given
+    native objects.
+    """
+
+    if anonymous:
+        anon_providers = ctx.actions.anon_target(
+            _anon_extract_symbol_names_impl_rule,
+            dict(
+                _cxx_toolchain = ctx.attrs._cxx_toolchain,
+                output = name,
+                **kwargs
+            ),
+        )
+        return ctx.actions.artifact_promise(
+            anon_providers.map(lambda p: p[_SymbolsInfo].artifact),
+            short_path = paths.join("__symbols__", name),
+        )
+    else:
+        return _extract_symbol_names(
+            ctx = ctx,
+            name = name,
+            **kwargs
+        )
+
+def extract_undefined_syms(
+        ctx: AnalysisContext,
+        output: Artifact,
+        category_prefix: str,
+        prefer_local: bool = False,
+        anonymous: bool = False) -> Artifact:
     return extract_symbol_names(
-        ctx,
-        output.short_path + ".undefined_syms.txt",
-        [output],
+        ctx = ctx,
+        name = output.short_path + ".undefined_syms.txt",
+        objects = [output],
         dynamic = True,
         global_only = True,
         undefined_only = True,
         category = "{}_undefined_syms".format(category_prefix),
         identifier = output.short_path,
         prefer_local = prefer_local,
+        anonymous = anonymous,
     )
 
-def extract_global_syms(ctx: "context", output: "artifact", category_prefix: str.type, prefer_local: bool.type) -> "artifact":
+def extract_global_syms(
+        ctx: AnalysisContext,
+        output: Artifact,
+        category_prefix: str,
+        prefer_local: bool = False,
+        anonymous: bool = False) -> Artifact:
     return extract_symbol_names(
-        ctx,
-        output.short_path + ".global_syms.txt",
-        [output],
+        ctx = ctx,
+        name = output.short_path + ".global_syms.txt",
+        objects = [output],
         dynamic = True,
         global_only = True,
         category = "{}_global_syms".format(category_prefix),
         identifier = output.short_path,
         prefer_local = prefer_local,
+        anonymous = anonymous,
     )
 
 def _create_symbols_file_from_script(
-        actions: "actions",
-        name: str.type,
-        script: str.type,
-        symbol_files: ["artifact"],
-        category: str.type,
-        prefer_local: bool.type,
-        weight_percentage: int.type,
-        identifier: [str.type, None] = None) -> "artifact":
+        actions: AnalysisActions,
+        name: str,
+        script: str,
+        symbol_files: list[Artifact],
+        category: str,
+        prefer_local: bool,
+        weight_percentage: int,
+        identifier: [str, None] = None) -> Artifact:
     """
     Generate a symbols file from from the given objects and
     link args.
@@ -117,7 +197,8 @@ def _create_symbols_file_from_script(
     all_symbol_files = cmd_args(all_symbol_files).hidden(symbol_files)
     output = actions.declare_output(name)
     cmd = [
-        "/bin/bash",
+        "/usr/bin/env",
+        "bash",
         "-c",
         script,
         "",
@@ -134,12 +215,12 @@ def _create_symbols_file_from_script(
     return output
 
 def get_undefined_symbols_args(
-        ctx: "context",
-        name: str.type,
-        symbol_files: ["artifact"],
-        category: [str.type, None] = None,
-        identifier: [str.type, None] = None,
-        prefer_local: bool.type = False) -> cmd_args.type:
+        ctx: AnalysisContext,
+        name: str,
+        symbol_files: list[Artifact],
+        category: [str, None] = None,
+        identifier: [str, None] = None,
+        prefer_local: bool = False) -> cmd_args.type:
     if get_cxx_toolchain_info(ctx).linker_info.type == "gnu":
         # linker script is only supported in gnu linkers
         linker_script = create_undefined_symbols_linker_script(
@@ -162,12 +243,12 @@ def get_undefined_symbols_args(
     return cmd_args(argsfile, format = "@{}")
 
 def create_undefined_symbols_argsfile(
-        actions: "actions",
-        name: str.type,
-        symbol_files: ["artifact"],
-        category: [str.type, None] = None,
-        identifier: [str.type, None] = None,
-        prefer_local: bool.type = False) -> "artifact":
+        actions: AnalysisActions,
+        name: str,
+        symbol_files: list[Artifact],
+        category: [str, None] = None,
+        identifier: [str, None] = None,
+        prefer_local: bool = False) -> Artifact:
     """
     Combine files with sorted lists of symbols names into an argsfile to pass
     to the linker to mark these symbols as undefined via `-u`.
@@ -188,12 +269,12 @@ LC_ALL=C sort -S 10% -u -m --files0-from="$2.files0.txt" | sed "s/^/-u/" > "$2"
     )
 
 def create_undefined_symbols_linker_script(
-        actions: "actions",
-        name: str.type,
-        symbol_files: ["artifact"],
-        category: [str.type, None] = None,
-        identifier: [str.type, None] = None,
-        prefer_local: bool.type = False) -> "artifact":
+        actions: AnalysisActions,
+        name: str,
+        symbol_files: list[Artifact],
+        category: [str, None] = None,
+        identifier: [str, None] = None,
+        prefer_local: bool = False) -> Artifact:
     """
     Combine files with sorted lists of symbols names into a linker script
     to mark these symbols as undefined via EXTERN.
@@ -216,12 +297,12 @@ echo ")" >> "$2";
     )
 
 def create_global_symbols_version_script(
-        actions: "actions",
-        name: str.type,
-        symbol_files: ["artifact"],
-        identifier: [str.type, None] = None,
-        category: [str.type, None] = None,
-        prefer_local: bool.type = False) -> "artifact":
+        actions: AnalysisActions,
+        name: str,
+        symbol_files: list[Artifact],
+        identifier: [str, None] = None,
+        category: [str, None] = None,
+        prefer_local: bool = False) -> Artifact:
     """
     Combine files with sorted lists of symbols names into an argsfile to pass
     to the linker to mark these symbols as undefined (e.g. `-m`).
@@ -246,12 +327,12 @@ echo "};" >> "$2"
     )
 
 def create_dynamic_list_version_script(
-        actions: "actions",
-        name: str.type,
-        symbol_files: ["artifact"],
-        identifier: [str.type, None] = None,
-        category: [str.type, None] = None,
-        prefer_local: bool.type = False) -> "artifact":
+        actions: AnalysisActions,
+        name: str,
+        symbol_files: list[Artifact],
+        identifier: [str, None] = None,
+        category: [str, None] = None,
+        prefer_local: bool = False) -> Artifact:
     """
     Combine files with sorted lists of symbols names into a dynamic list version
     file that can be passed to the linked (e.g. via `--dynamic-list=<file>`).

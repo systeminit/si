@@ -27,9 +27,9 @@ load(
     "create_python_library_info",
     "gather_dep_libraries",
 )
-load(":source_db.bzl", "create_source_db_no_deps_from_manifest")
+load(":source_db.bzl", "create_python_source_db_info", "create_source_db_no_deps_from_manifest")
 
-def prebuilt_python_library_impl(ctx: "context") -> ["provider"]:
+def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
     providers = []
 
     # Extract prebuilt wheel and wrap in python library provider.
@@ -37,7 +37,7 @@ def prebuilt_python_library_impl(ctx: "context") -> ["provider"]:
     extracted_src = ctx.actions.declare_output("{}_extracted".format(ctx.label.name), dir = True)
     ctx.actions.run([ctx.attrs._extract[RunInfo], ctx.attrs.binary_src, "--output", extracted_src.as_output()], category = "py_extract_prebuilt_library")
     deps, shared_deps = gather_dep_libraries([ctx.attrs.deps])
-    src_manifest = create_manifest_for_source_dir(ctx, "binary_src", extracted_src)
+    src_manifest = create_manifest_for_source_dir(ctx, "binary_src", extracted_src, exclude = "\\.pyc$")
     bytecode = compile_manifests(ctx, [src_manifest])
     library_info = create_python_library_info(
         ctx.actions,
@@ -62,7 +62,7 @@ def prebuilt_python_library_impl(ctx: "context") -> ["provider"]:
     )
     providers.append(linkable_graph)
 
-    sub_targets = {"source-db-no-deps": [create_source_db_no_deps_from_manifest(ctx, src_manifest), library_info]}
+    sub_targets = {"source-db-no-deps": [create_source_db_no_deps_from_manifest(ctx, src_manifest), create_python_source_db_info(library_info.manifests)]}
     providers.append(DefaultInfo(default_output = ctx.attrs.binary_src, sub_targets = sub_targets))
 
     # C++ resources.

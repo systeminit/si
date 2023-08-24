@@ -5,15 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//cxx:cxx_toolchain_types.bzl", "LinkerInfo")
 load("@prelude//linking:link_info.bzl", "Archive")
 load("@prelude//utils:utils.bzl", "value_or")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 
 def _archive_flags(
-        archiver_type: str.type,
-        linker_type: str.type,
-        use_archiver_flags: bool.type,
-        thin: bool.type) -> [str.type]:
+        archiver_type: str,
+        linker_type: str,
+        use_archiver_flags: bool,
+        thin: bool) -> list[str]:
     if not use_archiver_flags:
         return []
 
@@ -46,7 +47,7 @@ def _archive_flags(
     return [flags]
 
 # Create a static library from a list of object files.
-def _archive(ctx: "context", name: str.type, args: "cmd_args", thin: bool.type, prefer_local: bool.type) -> "artifact":
+def _archive(ctx: AnalysisContext, name: str, args: cmd_args, thin: bool, prefer_local: bool) -> Artifact:
     archive_output = ctx.actions.declare_output(name)
     toolchain = get_cxx_toolchain_info(ctx)
     command = cmd_args(toolchain.linker_info.archiver)
@@ -78,7 +79,7 @@ def _archive(ctx: "context", name: str.type, args: "cmd_args", thin: bool.type, 
     ctx.actions.run(command, category = category, identifier = name, prefer_local = prefer_local)
     return archive_output
 
-def _archive_locally(ctx: "context", linker_info: "LinkerInfo") -> bool.type:
+def _archive_locally(ctx: AnalysisContext, linker_info: LinkerInfo.type) -> bool:
     archive_locally = linker_info.archive_objects_locally
     if hasattr(ctx.attrs, "_archive_objects_locally_override"):
         return value_or(ctx.attrs._archive_objects_locally_override, archive_locally)
@@ -86,10 +87,10 @@ def _archive_locally(ctx: "context", linker_info: "LinkerInfo") -> bool.type:
 
 # Creates a static library given a list of object files.
 def make_archive(
-        ctx: "context",
-        name: str.type,
-        objects: ["artifact"],
-        args: ["cmd_args", None] = None) -> Archive.type:
+        ctx: AnalysisContext,
+        name: str,
+        objects: list[Artifact],
+        args: [cmd_args, None] = None) -> Archive.type:
     if len(objects) == 0:
         fail("no objects to archive")
 

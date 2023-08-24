@@ -40,7 +40,7 @@ def erlang_application(
         extra_includes = [],
         labels = [],
         **kwargs):
-    if read_config("erlang", "application_only_dependencies"):
+    if read_root_config("erlang", "application_only_dependencies"):
         kwargs["shell_libs"] = []
         kwargs["resources"] = []
 
@@ -77,20 +77,20 @@ def erlang_application(
 
 # convenience macro to specify the includes-only target based on the base-application
 # target name
-def _extra_include_name(name: "string") -> "string":
+def _extra_include_name(name: str) -> str:
     return name + "_includes_only"
 
 def erlang_tests(
         erlang_app_rule,
         erlang_test_rule,
-        suites: ["string"] = [],
-        deps: ["string"] = [],
-        resources: ["string"] = [],
-        srcs: ["string"] = [],
-        property_tests: ["string"] = [],
-        config_files: ["string"] = [],
-        use_default_configs: "bool" = True,
-        use_default_deps: "bool" = True,
+        suites: list[str] = [],
+        deps: list[str] = [],
+        resources: list[str] = [],
+        srcs: list[str] = [],
+        property_tests: list[str] = [],
+        config_files: list[str] = [],
+        use_default_configs: bool = True,
+        use_default_deps: bool = True,
         **common_attributes):
     """
     Generate multiple erlang_test targets based on the `suites` field.

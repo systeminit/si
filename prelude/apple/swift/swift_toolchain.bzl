@@ -8,9 +8,9 @@
 load(":swift_toolchain_types.bzl", "SdkUncompiledModuleInfo", "SwiftObjectFormat", "SwiftToolchainInfo")
 
 def traverse_sdk_modules_graph(
-        swift_sdk_module_name_to_deps: {str.type: "dependency"},
-        clang_sdk_module_name_to_deps: {str.type: "dependency"},
-        sdk_module_dep: "dependency"):
+        swift_sdk_module_name_to_deps: dict[str, Dependency],
+        clang_sdk_module_name_to_deps: dict[str, Dependency],
+        sdk_module_dep: Dependency):
     if SdkUncompiledModuleInfo not in sdk_module_dep:
         return
 
@@ -69,5 +69,7 @@ def swift_toolchain_impl(ctx):
             swift_stdlib_tool = ctx.attrs.swift_stdlib_tool[RunInfo],
             swift_stdlib_tool_flags = ctx.attrs.swift_stdlib_tool_flags,
             runtime_run_paths = ctx.attrs.runtime_run_paths,
+            supports_swift_cxx_interoperability_mode = ctx.attrs.supports_swift_cxx_interoperability_mode,
+            supports_cxx_interop_requirement_at_import = ctx.attrs.supports_cxx_interop_requirement_at_import,
         ),
     ]

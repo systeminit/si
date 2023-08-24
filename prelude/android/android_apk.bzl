@@ -6,13 +6,13 @@
 # of this source tree.
 
 load("@prelude//android:android_binary.bzl", "get_binary_info")
-load("@prelude//android:android_providers.bzl", "AndroidApkInfo", "AndroidApkUnderTestInfo", "ExopackageInfo")
+load("@prelude//android:android_providers.bzl", "AndroidApkInfo", "AndroidApkUnderTestInfo", "AndroidBinaryNativeLibsInfo", "AndroidBinaryResourcesInfo", "DexFilesInfo", "ExopackageInfo")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//java:java_providers.bzl", "KeystoreInfo")
 load("@prelude//java/utils:java_utils.bzl", "get_path_separator")
 load("@prelude//utils:set.bzl", "set")
 
-def android_apk_impl(ctx: "context") -> ["provider"]:
+def android_apk_impl(ctx: AnalysisContext) -> list[Provider]:
     android_binary_info = get_binary_info(ctx, use_proto_format = False)
     java_packaging_deps = android_binary_info.java_packaging_deps
     sub_targets = android_binary_info.sub_targets
@@ -48,6 +48,7 @@ def android_apk_impl(ctx: "context") -> ["provider"]:
             platforms = android_binary_info.deps_by_platform.keys(),
             primary_platform = android_binary_info.primary_platform,
             resource_infos = set([info.raw_target for info in resources_info.unfiltered_resource_infos]),
+            r_dot_java_packages = dedupe([info.specified_r_dot_java_package for info in resources_info.unfiltered_resource_infos if info.specified_r_dot_java_package]),
             shared_libraries = set([shared_lib.label.raw_target() for shared_lib in native_library_info.apk_under_test_shared_libraries]),
         ),
         DefaultInfo(default_output = output_apk, other_outputs = _get_exopackage_outputs(exopackage_info), sub_targets = sub_targets),
@@ -61,14 +62,14 @@ def android_apk_impl(ctx: "context") -> ["provider"]:
     ]
 
 def build_apk(
-        label: "label",
-        actions: "actions",
+        label: Label,
+        actions: AnalysisActions,
         keystore: KeystoreInfo.type,
         android_toolchain: AndroidToolchainInfo.type,
-        dex_files_info: "DexFilesInfo",
-        native_library_info: "AndroidBinaryNativeLibsInfo",
-        resources_info: "AndroidBinaryResourcesInfo",
-        compress_resources_dot_arsc: bool.type = False) -> "artifact":
+        dex_files_info: DexFilesInfo.type,
+        native_library_info: AndroidBinaryNativeLibsInfo.type,
+        resources_info: AndroidBinaryResourcesInfo.type,
+        compress_resources_dot_arsc: bool = False) -> Artifact:
     output_apk = actions.declare_output("{}.apk".format(label.name))
 
     apk_builder_args = cmd_args([
@@ -87,6 +88,8 @@ def build_apk(
         android_toolchain.zipalign[RunInfo],
     ])
 
+    if android_toolchain.package_meta_inf_version_files:
+        apk_builder_args.add("--package-meta-inf-version-files")
     if compress_resources_dot_arsc:
         apk_builder_args.add("--compress-resources-dot-arsc")
 
@@ -122,7 +125,7 @@ def build_apk(
 
     return output_apk
 
-def get_install_info(ctx: "context", output_apk: "artifact", manifest: "artifact", exopackage_info: [ExopackageInfo.type, None]) -> InstallInfo.type:
+def get_install_info(ctx: AnalysisContext, output_apk: Artifact, manifest: Artifact, exopackage_info: [ExopackageInfo.type, None]) -> InstallInfo.type:
     files = {
         ctx.attrs.name: output_apk,
         "manifest": manifest,
@@ -162,7 +165,7 @@ def get_install_info(ctx: "context", output_apk: "artifact", manifest: "artifact
         files = files,
     )
 
-def _get_exopackage_outputs(exopackage_info: ExopackageInfo.type) -> ["artifact"]:
+def _get_exopackage_outputs(exopackage_info: ExopackageInfo.type) -> list[Artifact]:
     outputs = []
     secondary_dex_exopackage_info = exopackage_info.secondary_dex_info
     if secondary_dex_exopackage_info:
@@ -185,22 +188,22 @@ def _get_exopackage_outputs(exopackage_info: ExopackageInfo.type) -> ["artifact"
 
     return outputs
 
-def generate_install_config(ctx: "context") -> "artifact":
+def generate_install_config(ctx: AnalysisContext) -> Artifact:
     data = get_install_config()
     return ctx.actions.write_json("install_android_options.json", data)
 
-def get_install_config() -> {str.type: ""}:
+def get_install_config() -> dict[str, typing.Any]:
     # TODO: read from toolchains
     install_config = {
-        "adb_restart_on_failure": read_config("adb", "adb_restart_on_failure", "true"),
-        "agent_port_base": read_config("adb", "agent_port_base", "2828"),
-        "always_use_java_agent": read_config("adb", "always_use_java_agent", "false"),
-        "is_zstd_compression_enabled": read_config("adb", "is_zstd_compression_enabled", "false"),
-        "multi_install_mode": read_config("adb", "multi_install_mode", "false"),
-        "skip_install_metadata": read_config("adb", "skip_install_metadata", "false"),
+        "adb_restart_on_failure": read_root_config("adb", "adb_restart_on_failure", "true"),
+        "agent_port_base": read_root_config("adb", "agent_port_base", "2828"),
+        "always_use_java_agent": read_root_config("adb", "always_use_java_agent", "false"),
+        "is_zstd_compression_enabled": read_root_config("adb", "is_zstd_compression_enabled", "false"),
+        "multi_install_mode": read_root_config("adb", "multi_install_mode", "false"),
+        "skip_install_metadata": read_root_config("adb", "skip_install_metadata", "false"),
     }
 
-    adb_executable = read_config("android", "adb", None)
+    adb_executable = read_root_config("android", "adb", None)
     if adb_executable:
         install_config["adb_executable"] = adb_executable
 

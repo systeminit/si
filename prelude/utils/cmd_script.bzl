@@ -24,17 +24,17 @@ ScriptOs = enum("unix", "windows")
 #     return cmd_args(linker_wrapper, format = "-Clinker={}")
 #
 def cmd_script(
-        ctx: "context",
-        name: str.type,
-        cmd: "cmd_args",
-        os: ScriptOs.type) -> "cmd_args":
+        ctx: AnalysisContext,
+        name: str,
+        cmd: cmd_args,
+        os: ScriptOs.type) -> cmd_args:
     shell_quoted = cmd_args(cmd, quote = "shell")
 
     if os == ScriptOs("unix"):
         wrapper, _ = ctx.actions.write(
             ctx.actions.declare_output("{}.sh".format(name)),
             [
-                "#!/bin/bash",
+                "#!/usr/bin/env bash",
                 cmd_args(cmd_args(shell_quoted, delimiter = " \\\n"), format = "{} \"$@\"\n"),
             ],
             is_executable = True,

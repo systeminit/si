@@ -40,7 +40,7 @@ load("@prelude//utils:utils.bzl", "expect", "flatten")
 #
 # There is also an `android_app_modularity` rule that just prints out details of the Voltron
 # module graph and is used for any subsequent verification.
-def android_app_modularity_impl(ctx: "context") -> ["provider"]:
+def android_app_modularity_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs._build_only_native_code:
         return [
             # Add an unused default output in case this target is used as an attr.source() anywhere.
@@ -78,18 +78,30 @@ def android_app_modularity_impl(ctx: "context") -> ["provider"]:
         ]).hidden(targets_to_jars_args)
 
     if ctx.attrs.should_include_libraries:
-        targets_to_so_names_args = [cmd_args([str(shared_lib.label.raw_target()), so_name, str(shared_lib.can_be_asset)], delimiter = " ") for so_name, shared_lib in traversed_shared_library_info.items()]
+        targets_to_so_names_args = [cmd_args([str(shared_lib.label.raw_target()), so_name], delimiter = " ") for so_name, shared_lib in traversed_shared_library_info.items()]
         targets_to_so_names = ctx.actions.write("targets_to_so_names.txt", targets_to_so_names_args)
         cmd.add([
             "--targets-to-so-names",
             targets_to_so_names,
         ]).hidden(targets_to_so_names_args)
 
+        traversed_prebuilt_native_library_dirs = android_packageable_info.prebuilt_native_library_dirs.traverse() if android_packageable_info.prebuilt_native_library_dirs else []
+        targets_to_non_assets_prebuilt_native_library_dirs_args = [
+            cmd_args(prebuilt_native_library_dir.raw_target, prebuilt_native_library_dir.dir, delimiter = " ")
+            for prebuilt_native_library_dir in traversed_prebuilt_native_library_dirs
+            if not prebuilt_native_library_dir.is_asset and not prebuilt_native_library_dir.for_primary_apk
+        ]
+        targets_to_non_assets_prebuilt_native_library_dirs = ctx.actions.write("targets_to_non_assets_prebuilt_native_library_dirs.txt", targets_to_non_assets_prebuilt_native_library_dirs_args)
+        cmd.add([
+            "--targets-to-non-asset-prebuilt-native-library-dirs",
+            targets_to_non_assets_prebuilt_native_library_dirs,
+        ]).hidden(targets_to_non_assets_prebuilt_native_library_dirs_args)
+
     ctx.actions.run(cmd, category = "apk_module_graph")
 
     return [DefaultInfo(default_output = output)]
 
-def get_target_to_module_mapping(ctx: "context", deps_by_platform: {str.type: ["dependency"]}) -> ["artifact", None]:
+def get_target_to_module_mapping(ctx: AnalysisContext, deps_by_platform: dict[str, list[Dependency]]) -> [Artifact, None]:
     if not ctx.attrs.application_module_configs:
         return None
 
@@ -121,14 +133,14 @@ def get_target_to_module_mapping(ctx: "context", deps_by_platform: {str.type: ["
     return output
 
 def _get_base_cmd_and_output(
-        actions: "actions",
-        label: "label",
-        android_packageable_infos: ["AndroidPackageableInfo"],
-        shared_libraries: ["SharedLibrary"],
-        android_toolchain: "AndroidToolchainInfo",
-        application_module_configs: {str.type: ["dependency"]},
-        application_module_dependencies: [{str.type: [str.type]}, None],
-        application_module_blocklist: [[["dependency"]], None]) -> ("cmd_args", "artifact"):
+        actions: AnalysisActions,
+        label: Label,
+        android_packageable_infos: list[AndroidPackageableInfo.type],
+        shared_libraries: list["SharedLibrary"],
+        android_toolchain: AndroidToolchainInfo.type,
+        application_module_configs: dict[str, list[Dependency]],
+        application_module_dependencies: [dict[str, list[str]], None],
+        application_module_blocklist: [list[list[Dependency]], None]) -> (cmd_args, Artifact):
     deps_map = {}
     for android_packageable_info in android_packageable_infos:
         if android_packageable_info.deps:
@@ -182,25 +194,25 @@ def _get_base_cmd_and_output(
 
 ROOT_MODULE = "dex"
 
-def is_root_module(module: str.type) -> bool.type:
+def is_root_module(module: str) -> bool:
     return module == ROOT_MODULE
 
-def all_targets_in_root_module(_module: str.type) -> str.type:
+def all_targets_in_root_module(_module: str) -> str:
     return ROOT_MODULE
 
 APKModuleGraphInfo = record(
-    module_list = [str.type],
-    target_to_module_mapping_function = "function",
-    module_to_canary_class_name_function = "function",
-    module_to_module_deps_function = "function",
+    module_list = list[str],
+    target_to_module_mapping_function = typing.Callable,
+    module_to_canary_class_name_function = typing.Callable,
+    module_to_module_deps_function = typing.Callable,
 )
 
 def get_root_module_only_apk_module_graph_info() -> APKModuleGraphInfo.type:
-    def root_module_canary_class_name(module: str.type):
+    def root_module_canary_class_name(module: str):
         expect(is_root_module(module))
         return "secondary"
 
-    def root_module_deps(module: str.type):
+    def root_module_deps(module: str):
         expect(is_root_module(module))
         return []
 
@@ -212,8 +224,8 @@ def get_root_module_only_apk_module_graph_info() -> APKModuleGraphInfo.type:
     )
 
 def get_apk_module_graph_info(
-        ctx: "context",
-        apk_module_graph_file: "artifact",
+        ctx: AnalysisContext,
+        apk_module_graph_file: Artifact,
         artifacts) -> APKModuleGraphInfo.type:
     apk_module_graph_lines = artifacts[apk_module_graph_file].read_string().split("\n")
     module_count = int(apk_module_graph_lines[0])
@@ -236,15 +248,15 @@ def get_apk_module_graph_info(
         target, module = line.split(" ")
         target_to_module_mapping[target] = module
 
-    def target_to_module_mapping_function(raw_target: str.type) -> str.type:
+    def target_to_module_mapping_function(raw_target: str) -> str:
         mapped_module = target_to_module_mapping.get(raw_target)
         expect(mapped_module != None, "No module found for target {}!".format(raw_target))
         return mapped_module
 
-    def module_to_canary_class_name_function(voltron_module: str.type) -> str.type:
+    def module_to_canary_class_name_function(voltron_module: str) -> str:
         return module_to_canary_class_name_map.get(voltron_module)
 
-    def module_to_module_deps_function(voltron_module: str.type) -> list.type:
+    def module_to_module_deps_function(voltron_module: str) -> list:
         return module_to_module_deps_map.get(voltron_module)
 
     return APKModuleGraphInfo(

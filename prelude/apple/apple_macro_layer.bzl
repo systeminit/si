@@ -12,13 +12,13 @@ load(
 )
 
 AppleBuckConfigAttributeOverride = record(
-    name = field(str.type),
-    section = field(str.type, default = "apple"),
-    key = field(str.type),
-    positive_values = field([[str.type], [bool.type]], default = ["True", "true"]),
-    value_if_true = field([str.type, bool.type, None], default = True),
-    value_if_false = field([str.type, bool.type, None], default = False),
-    skip_if_false = field(bool.type, default = False),
+    name = field(str),
+    section = field(str, default = "apple"),
+    key = field(str),
+    positive_values = field([list[str], list[bool]], default = ["True", "true"]),
+    value_if_true = field([str, bool, None], default = True),
+    value_if_false = field([str, bool, None], default = False),
+    skip_if_false = field(bool, default = False),
 )
 
 APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE = AppleBuckConfigAttributeOverride(
@@ -28,9 +28,9 @@ APPLE_LINK_LIBRARIES_LOCALLY_OVERRIDE = AppleBuckConfigAttributeOverride(
     skip_if_false = True,
 )
 
-APPLE_STRIPPED_OVERRIDE = AppleBuckConfigAttributeOverride(
-    name = "stripped",
-    key = "stripped_override",
+APPLE_STRIPPED_DEFAULT = AppleBuckConfigAttributeOverride(
+    name = "_stripped_default",
+    key = "stripped_default",
     skip_if_false = True,
 )
 
@@ -48,10 +48,10 @@ _APPLE_BINARY_LOCAL_EXECUTION_OVERRIDES = [
     ),
 ]
 
-def apple_macro_layer_set_bool_override_attrs_from_config(overrides: [AppleBuckConfigAttributeOverride.type]) -> {str.type: "selector"}:
+def apple_macro_layer_set_bool_override_attrs_from_config(overrides: list[AppleBuckConfigAttributeOverride.type]) -> dict[str, Select]:
     attribs = {}
     for override in overrides:
-        config_value = read_config(override.section, override.key, None)
+        config_value = read_root_config(override.section, override.key, None)
         if config_value != None:
             config_is_true = config_value in override.positive_values
             if not config_is_true and override.skip_if_false:
@@ -59,19 +59,32 @@ def apple_macro_layer_set_bool_override_attrs_from_config(overrides: [AppleBuckC
             attribs[override.name] = select({
                 "DEFAULT": override.value_if_true if config_is_true else override.value_if_false,
                 # Do not set attribute value for host tools
-                "ovr_config//platform/macos/constraints:execution-platform-transitioned": None,
+                "ovr_config//platform/execution/constraints:execution-platform-transitioned": None,
             })
     return attribs
 
 def apple_library_macro_impl(apple_library_rule = None, **kwargs):
     kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config(_APPLE_LIBRARY_LOCAL_EXECUTION_OVERRIDES))
-    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_OVERRIDE]))
+    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_DEFAULT]))
     apple_library_rule(**kwargs)
 
-def apple_binary_macro_impl(apple_binary_rule = None, **kwargs):
+def apple_binary_macro_impl(apple_binary_rule = None, apple_universal_executable = None, **kwargs):
     kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config(_APPLE_BINARY_LOCAL_EXECUTION_OVERRIDES))
-    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_OVERRIDE]))
-    apple_binary_rule(**kwargs)
+    kwargs.update(apple_macro_layer_set_bool_override_attrs_from_config([APPLE_STRIPPED_DEFAULT]))
+
+    binary_name = kwargs.pop("name")
+
+    if kwargs.pop("supports_universal", False):
+        universal_wrapper_name = binary_name
+        binary_name = universal_wrapper_name + "ThinBinary"
+        apple_universal_executable(
+            name = universal_wrapper_name,
+            executable = ":" + binary_name,
+            labels = kwargs.get("labels"),
+            visibility = kwargs.get("visibility"),
+        )
+
+    apple_binary_rule(name = binary_name, **kwargs)
 
 def apple_package_macro_impl(apple_package_rule = None, **kwargs):
     kwargs.update(apple_package_config())
