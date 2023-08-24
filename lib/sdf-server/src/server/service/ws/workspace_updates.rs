@@ -79,7 +79,7 @@ mod workspace_updates {
     use axum::extract::ws::{self, WebSocket};
     use dal::WorkspacePk;
     use futures::StreamExt;
-    use si_data_nats::{NatsClient, NatsError, Subscription};
+    use si_data_nats::{NatsClient, NatsError, Subscriber};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;
@@ -112,42 +112,36 @@ mod workspace_updates {
     impl WorkspaceUpdates {
         pub async fn start(self) -> Result<WorkspaceUpdatesStarted> {
             let subject = format!("si.workspace_pk.{}.>", self.workspace_pk);
-            let subscription = self
+            let subscriber = self
                 .nats
                 .subscribe(&subject)
                 .await
                 .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject))?;
 
-            Ok(WorkspaceUpdatesStarted { subscription })
+            Ok(WorkspaceUpdatesStarted { subscriber })
         }
     }
 
     #[derive(Debug)]
     pub struct WorkspaceUpdatesStarted {
-        subscription: Subscription,
+        subscriber: Subscriber,
     }
 
     impl WorkspaceUpdatesStarted {
         pub async fn process(mut self, ws: &mut WebSocket) -> Result<WorkspaceUpdatesClosing> {
             // Send all messages down the WebSocket until and unless an error is encountered, the
-            // client websocket connection is closed, or the nats subscription naturally closes
+            // client websocket connection is closed, or the nats subscriber naturally closes
             loop {
                 tokio::select! {
                     msg = ws.recv() => {
                         match msg {
                             Some(Ok(_)) => {},
-                            Some(Err(err)) => {
-                                self.subscription.shutdown();
-                                return Err(err.into());
-                            }
-                            None => {
-                                self.subscription.shutdown();
-                                return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
-                            }
+                            Some(Err(err)) => return Err(err.into()),
+                            None => return Ok(WorkspaceUpdatesClosing { ws_is_closed: true }),
                         }
                     }
-                    Some(nats_msg) = self.subscription.next() => {
-                        let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.data()).to_string());
+                    Some(nats_msg) = self.subscriber.next() => {
+                        let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.payload()).to_string());
 
                         if let Err(err) = ws.send(msg).await {
                             match err

@@ -32,7 +32,7 @@ impl Message {
 
     /// Gets a reference to the message contents.
     #[must_use]
-    pub fn data(&self) -> &[u8] {
+    pub fn payload(&self) -> &[u8] {
         &self.inner.payload
     }
 

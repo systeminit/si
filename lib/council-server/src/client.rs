@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use si_data_nats::{NatsClient, Subscription};
+use si_data_nats::{NatsClient, Subscriber};
 use std::time::Duration;
 use telemetry::prelude::*;
 
@@ -78,7 +78,7 @@ pub struct Client {
     change_set_id: Id,
     pub_channel: String,
     reply_channel: String,
-    subscription: Subscription,
+    subscriber: Subscriber,
     nats: NatsClient,
 }
 
@@ -94,7 +94,7 @@ impl Client {
         Ok(Self {
             pub_channel,
             change_set_id,
-            subscription: nats.subscribe(&reply_channel).await?,
+            subscriber: nats.subscribe(&reply_channel).await?,
             reply_channel,
             nats,
         })
@@ -109,12 +109,12 @@ impl Client {
         }
     }
 
-    // None means subscription has been unsubscribed or that the connection has been closed
+    // None means subscriber has been unsubscribed or that the connection has been closed
     pub async fn fetch_response(&mut self) -> Result<Option<Response>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
         // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
         let msg = loop {
-            let res = tokio::time::timeout(Duration::from_secs(60), self.subscription.next()).await;
+            let res = tokio::time::timeout(Duration::from_secs(60), self.subscriber.next()).await;
 
             match res {
                 Ok(msg) => break msg,
@@ -126,10 +126,10 @@ impl Client {
 
         match msg {
             Some(msg) => {
-                if msg.data().is_empty() {
+                if msg.payload().is_empty() {
                     return Err(Error::NoListenerAvailable);
                 }
-                Ok(Some(serde_json::from_slice::<Response>(msg.data())?))
+                Ok(Some(serde_json::from_slice::<Response>(msg.payload())?))
             }
             None => Ok(None),
         }

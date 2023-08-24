@@ -477,14 +477,14 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     // Create a dedicated Council server with a unique subject prefix for each test
     let council_server = council_server(test_context.config.nats.clone()).await?;
     let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
-    let (subscription_started_tx, mut subscription_started_rx) = tokio::sync::watch::channel(());
+    let (subscriber_started_tx, mut subscriber_started_rx) = tokio::sync::watch::channel(());
     tokio::spawn(async move {
         council_server
-            .run(subscription_started_tx, shutdown_request_rx)
+            .run(subscriber_started_tx, shutdown_request_rx)
             .await
             .unwrap()
     });
-    subscription_started_rx.changed().await?;
+    subscriber_started_rx.changed().await?;
 
     // Start up a Pinga server as a task exclusively to allow the migrations to run
     info!("starting Pinga server for initial migrations");

@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 use futures::StreamExt;
-use nats_subscriber::{Request, SubscriberError, Subscription};
+use nats_subscriber::{Request, Subscriber, SubscriberError};
 use serde::Deserialize;
 use serde::Serialize;
 use si_data_nats::NatsError;
@@ -68,8 +68,8 @@ pub struct StatusReceiver {
     /// [`DalContext`](crate::DalContext), connect to [NATS](https://nats.io), connect to the
     /// database and interact with essential services.
     services_context: ServicesContext,
-    /// A [NATS](https://nats.io) subscription to listen for [`requests`](StatusReceiverRequest).
-    requests: Subscription<StatusReceiverRequest>,
+    /// A [NATS](https://nats.io) subscriber to listen for [`requests`](StatusReceiverRequest).
+    requests: Subscriber<StatusReceiverRequest>,
 }
 
 impl StatusReceiver {
@@ -77,8 +77,8 @@ impl StatusReceiver {
     pub async fn new(services_context: ServicesContext) -> StatusReceiverResult<Self> {
         // TODO(nick): add ability to alter nats subject or add prefix.
         let nats = services_context.nats_conn();
-        let requests: Subscription<StatusReceiverRequest> =
-            Subscription::create(STATUS_RECEIVER_REQUEST_SUBJECT)
+        let requests: Subscriber<StatusReceiverRequest> =
+            Subscriber::create(STATUS_RECEIVER_REQUEST_SUBJECT)
                 .queue_name(STATUS_RECEIVER_QUEUE_NAME)
                 .start(nats)
                 .await?;
@@ -104,7 +104,7 @@ impl StatusReceiver {
     #[instrument(name = "status_receiver.start_task", skip_all, level = "debug")]
     async fn start_task(
         services_context: ServicesContext,
-        mut requests: Subscription<StatusReceiverRequest>,
+        mut requests: Subscriber<StatusReceiverRequest>,
         mut shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
         loop {
@@ -140,7 +140,7 @@ impl StatusReceiver {
             }
         }
 
-        // Unsubscribe from subscription without draining the channel
+        // Unsubscribe from subscriber without draining the channel
         if let Err(e) = requests.unsubscribe_after(0).await {
             error!("could not unsubscribe from nats: {:?}", e);
         }

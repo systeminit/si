@@ -1,7 +1,7 @@
 use std::env;
 
 use futures::StreamExt;
-use si_data_nats::{Message, NatsClient, NatsConfig, Subscription};
+use si_data_nats::{Message, NatsClient, NatsConfig, Subscriber};
 use telemetry::prelude::*;
 use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
@@ -47,23 +47,23 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     let config = NatsConfig::default();
     let nats = NatsClient::new(&config).await?;
 
-    let mut subscription = nats.subscribe(&subject).await?;
+    let mut subscriber = nats.subscribe(&subject).await?;
 
     let mut count = 0;
-    while let Some(message) = subscription.next().await {
+    while let Some(message) = subscriber.next().await {
         count += 1;
 
-        process_message(message, count, &subscription);
+        process_message(message, count, &subscriber);
 
         if let Some(max) = max_read {
             if count >= max {
-                debug!("hit max read, closing subscription and ending");
-                subscription.unsubscribe_after(0).await?;
+                debug!("hit max read, closing subscriber and ending");
+                subscriber.unsubscribe_after(0).await?;
                 break;
             }
         }
     }
-    info!("subscription stream completed");
+    info!("subscriber stream completed");
 
     Ok(())
 }
@@ -86,9 +86,9 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         otel.status_message = Empty,
     )
 )]
-fn process_message(message: Message, count: u32, sub: &Subscription) {
+fn process_message(message: Message, count: u32, sub: &Subscriber) {
     Span::current().follows_from(sub.span());
 
-    let data = String::from_utf8_lossy(message.data());
+    let data = String::from_utf8_lossy(message.payload());
     info!(message = ?message, data = data.as_ref(), count);
 }

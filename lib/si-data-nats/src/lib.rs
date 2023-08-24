@@ -15,14 +15,14 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+mod connect_options;
 mod message;
-mod options;
-mod subscription;
+mod subscriber;
 
 pub use async_nats::{header::HeaderMap, rustls};
+pub use connect_options::ConnectOptions;
 pub use message::Message;
-pub use options::Options;
-pub use subscription::Subscription;
+pub use subscriber::Subscriber;
 
 pub type NatsError = Error;
 
@@ -97,9 +97,25 @@ impl Client {
         Self::connect_with_options(
             &config.url,
             config.subject_prefix.clone(),
-            Options::default(),
+            ConnectOptions::default(),
         )
         .await
+    }
+
+    /// Returns last received info from the server.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main () -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// println!("info: {:?}", client.server_info());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn server_info(&self) -> async_nats::ServerInfo {
+        self.inner.server_info()
     }
 
     #[instrument(
@@ -129,13 +145,16 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// let nc = Client::connect_with_options(
     ///         "demo.nats.io",
     ///         None,
-    ///         Options::default(),
+    ///         ConnectOptions::default(),
     ///     ).await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// In the below case, the second server is configured to use TLS but the first one is not.
@@ -143,14 +162,17 @@ impl Client {
     /// that is your intention.
     ///
     /// ```no_run
-    /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// let nc = Client::connect_with_options(
     ///         "nats://demo.nats.io:4222,tls://demo.nats.io:4443",
     ///         None,
-    ///         Options::default(),
+    ///         ConnectOptions::default(),
     ///     )
     ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client::connect_with_options",
@@ -169,7 +191,7 @@ impl Client {
     pub async fn connect_with_options(
         nats_url: impl Into<String>,
         subject_prefix: Option<String>,
-        options: Options,
+        options: ConnectOptions,
     ) -> Result<Self> {
         let nats_url = nats_url.into();
 
@@ -201,15 +223,21 @@ impl Client {
         })
     }
 
-    /// Create a subscription for the given NATS connection.
+    /// Subscribes to a subject to receive [messages][Message].
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// let sub = nc.subscribe("foo").await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// use futures::StreamExt;
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut subscription = client.subscribe("events.>".into()).await?;
+    /// while let Some(message) = subscription.next().await {
+    ///     println!("received message: {:?}", message);
+    /// }
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.subscribe",
@@ -230,7 +258,7 @@ impl Client {
             otel.status_message = Empty,
         )
     )]
-    pub async fn subscribe(&self, subject: impl Into<String>) -> Result<Subscription> {
+    pub async fn subscribe(&self, subject: impl Into<String>) -> Result<Subscriber> {
         let span = Span::current();
 
         let subject = subject.into();
@@ -243,7 +271,7 @@ impl Client {
             .await
             .map_err(|err| span.record_err(Error::NatsSubscribe(err)))?;
 
-        Ok(Subscription::new(
+        Ok(Subscriber::new(
             sub,
             subject,
             self.metadata.clone(),
@@ -251,15 +279,23 @@ impl Client {
         ))
     }
 
-    /// Create a queue subscription for the given NATS connection.
+    /// Subscribes to a subject with a queue group to receive [messages][Message].
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// let sub = nc.queue_subscribe("foo", "production").await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// use futures::StreamExt;
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut subscription = client
+    ///     .queue_subscribe("events.>".into(), "queue".into())
+    ///     .await?;
+    /// while let Some(message) = subscription.next().await {
+    ///     println!("received message: {:?}", message);
+    /// }
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.queue_subscribe",
@@ -270,7 +306,7 @@ impl Client {
             messaging.destination_kind = "topic",
             messaging.operation = "receive",
             messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.subscription.queue = Empty,
+            messaging.subscriber.queue = Empty,
             messaging.system = %self.metadata.messaging_system,
             messaging.url = %self.metadata.messaging_url,
             net.transport = %self.metadata.net_transport,
@@ -284,13 +320,13 @@ impl Client {
         &self,
         subject: impl Into<String>,
         queue: impl Into<String>,
-    ) -> Result<Subscription> {
+    ) -> Result<Subscriber> {
         let span = Span::current();
 
         let subject = subject.into();
         let queue = queue.into();
         span.record("messaging.destination", subject.as_str());
-        span.record("messaging.subscription.queue", queue.as_str());
+        span.record("messaging.subscriber.queue", queue.as_str());
         span.record("otel.name", format!("{} receive", &subject).as_str());
         let sub_subject = subject.clone();
         let sub = self
@@ -299,7 +335,7 @@ impl Client {
             .await
             .map_err(|err| span.record_err(Error::NatsSubscribe(err)))?;
 
-        Ok(Subscription::new(
+        Ok(Subscriber::new(
             sub,
             subject,
             self.metadata.clone(),
@@ -307,15 +343,18 @@ impl Client {
         ))
     }
 
-    /// Publish a message on the given subject.
+    /// Publish a [Message] to a given subject.
     ///
     /// # Examples
-    ///
     /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// nc.publish("foo", "Hello World!").await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// client
+    ///     .publish("events.data".into(), "payload".into())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn publish(&self, subject: impl Into<String>, msg: impl Into<Vec<u8>>) -> Result<()> {
         let span = Span::current();
@@ -338,29 +377,29 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
     /// let reply = nc.new_inbox();
-    /// let rsub = nc.subscribe(&reply).await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// let rsub = nc.subscribe(reply).await?;
+    /// # Ok(())
+    /// # }
     /// ```
     #[must_use]
     pub fn new_inbox(&self) -> String {
         self.inner.new_inbox()
     }
 
-    /// Publish a message on the given subject as a request and receive the response.
+    /// Sends the request with headers.
     ///
     /// # Examples
-    ///
     /// ```no_run
-    /// # use futures::{TryStreamExt};
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
-    /// # nc.subscribe("foo").await?;
-    /// let resp = nc.request("foo", "Help me?").await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let response = client.request("service".into(), "data".into()).await?;
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.request",
@@ -401,19 +440,17 @@ impl Client {
         Ok(Message::new(msg, self.metadata.clone()))
     }
 
-    /// Flush a NATS connection by sending a `PING` protocol and waiting for the responding `PONG`.
-    ///
-    /// Will fail with `TimedOut` if the server does not respond with in 10 seconds. Will fail with
-    /// `NotConnected` if the server is not currently connected. Will fail with `BrokenPipe` if the
-    /// connection to the server is lost.
+    /// Flushes the internal buffer ensuring that all messages are sent.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// nc.flush().await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// client.flush().await?;
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.flush",
@@ -441,25 +478,25 @@ impl Client {
         Ok(())
     }
 
-    /// Publish a message with a reply subject
+    /// Publish a [Message] to a given subject, with specified response subject
+    /// to which the subscriber can respond.
+    /// This method does not await for the response.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use futures::StreamExt;
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// let mut sub = nc.subscribe("foo.headers").await?;
-    /// let headers = [("header1", "value1"),
-    ///                ("header2", "value2")].iter().collect();
-    /// let reply_to = None::<String>;
-    /// nc.publish_with_reply(
-    ///     "foo.reply",
-    ///     "reply",
-    ///     "Hello World!"
-    /// ).await?;
-    /// nc.flush().await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// client
+    ///     .publish_with_reply(
+    ///         "events.data".into(),
+    ///         "reply_subject".into(),
+    ///         "payload".into(),
+    ///     )
+    ///     .await?;
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.publish_with_reply",
@@ -500,26 +537,24 @@ impl Client {
         Ok(())
     }
 
-    /// Publish a message with a headers set.
+    /// Publish a [Message] with headers to a given subject.
     ///
     /// # Examples
-    ///
-    /// ```no_run
-    /// # use futures::StreamExt;
-    /// # use si_data_nats::Options; tokio_test::block_on(async {
-    /// # let nc = Options::default().connect("demo.nats.io", None).await?;
-    /// let mut sub = nc.subscribe("foo.headers").await?;
-    /// let headers = [("header1", "value1"),
-    ///                ("header2", "value2")].iter().collect();
-    /// nc.publish_with_headers(
-    ///     "foo.headers",
-    ///     &headers,
-    ///     "Hello World!"
-    /// ).await?;
-    /// nc.flush().await?;
-    /// let message = sub.next().await.unwrap()?;
-    /// assert_eq!(message.headers().unwrap().len(), 2);
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// use std::str::FromStr;
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut headers = async_nats::HeaderMap::new();
+    /// headers.insert(
+    ///     "X-Header",
+    ///     async_nats::HeaderValue::from_str("Value").unwrap(),
+    /// );
+    /// client
+    ///     .publish_with_headers("events.data".into(), headers, "payload".into())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
     /// ```
     #[instrument(
         name = "client.publish_with_headers",

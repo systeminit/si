@@ -26,17 +26,17 @@ impl Server {
 
     pub async fn run(
         self,
-        subscription_started_tx: watch::Sender<()>,
+        subscriber_started_tx: watch::Sender<()>,
         mut shutdown_request_rx: watch::Receiver<()>,
     ) -> Result<()> {
         let channel_suffix = "council.*";
-        let subscription_channel = if let Some(prefix) = self.nats.metadata().subject_prefix() {
+        let subscriber_channel = if let Some(prefix) = self.nats.metadata().subject_prefix() {
             format!("{}.{}", prefix, channel_suffix)
         } else {
             channel_suffix.to_string()
         };
-        let mut subscription = loop {
-            match self.nats.subscribe(subscription_channel.clone()).await {
+        let mut subscriber = loop {
+            match self.nats.subscribe(subscriber_channel.clone()).await {
                 Ok(sub) => break sub,
                 Err(err) => {
                     error!("Unable to subscribe to the council request channel on nats: {err}");
@@ -44,7 +44,7 @@ impl Server {
                 }
             }
         };
-        let _ = subscription_started_tx.send(());
+        let _ = subscriber_started_tx.send(());
 
         let mut sigterm_watcher = signal::unix::signal(signal::unix::SignalKind::terminate())?;
         let (our_shutdown_request_tx, mut our_shutdown_request_rx) =
@@ -109,8 +109,8 @@ impl Server {
                     }
                     continue;
                 }
-                req = subscription.next() => match req {
-                    Some(msg) => match (serde_json::from_slice::<Request>(msg.data()), msg.reply()) {
+                req = subscriber.next() => match req {
+                    Some(msg) => match (serde_json::from_slice::<Request>(msg.payload()), msg.reply()) {
                         (Ok(req), Some(reply)) => (reply.to_owned(), req),
                         (Err(err), _) => {
                             error!("Unable to deserialize request: {err}");
@@ -122,7 +122,7 @@ impl Server {
                         }
                     }
                     // FIXME: reconnect
-                    None => break, // Happens if subscription has been unsubscribed or if connection is closed
+                    None => break, // Happens if subscriber has been unsubscribed or if connection is closed
                 },
                 Ok(()) = shutdown_request_rx.changed() => {
                     info!("Worker task received shutdown notification: stopping");

@@ -1,4 +1,4 @@
-//! This library contains tools for creating subscriptions to [NATS](https://nats.io) with native
+//! This library contains tools for creating subscribers to [NATS](https://nats.io) with native
 //! Rust types.
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
@@ -19,7 +19,7 @@ use si_data_nats::NatsError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub use crate::builder::SubscriptionBuilder;
+pub use crate::builder::SubscriberBuilder;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -27,26 +27,26 @@ pub use crate::builder::SubscriptionBuilder;
 pub enum SubscriberError {
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
-    #[error("failed to drain from nats subscription")]
+    #[error("failed to drain from nats subscriber")]
     NatsDrain(#[source] NatsError),
-    #[error("nats io error when reading from subscription")]
+    #[error("nats io error when reading from subscriber")]
     NatsIo(#[source] NatsError),
     #[error("failed to subscribe to nats topic")]
     NatsSubscribe(#[source] NatsError),
-    #[error("failed to unsubscribe from nats subscription")]
+    #[error("failed to unsubscribe from nats subscriber")]
     NatsUnsubscribe(#[source] NatsError),
     #[error("no return mailbox specified; bug! message data: {0:?}")]
     NoReplyMailbox(Vec<u8>),
-    #[error("the nats subscription closed before seeing a final message (expected key: {0})")]
-    UnexpectedNatsSubscriptionClosed(String),
+    #[error("the nats subscriber closed before seeing a final message (expected key: {0})")]
+    UnexpectedNatsSubscriberClosed(String),
 }
 
 type SubscriberResult<T> = Result<T, SubscriberError>;
 
-/// Contains the Rust type expected in the subscription stream.
+/// Contains the Rust type expected in the subscriber stream.
 #[derive(Debug)]
 pub struct Request<T> {
-    /// The Rust type expected in the subscription stream.
+    /// The Rust type expected in the subscriber stream.
     pub payload: T,
     /// An optional reply mailbox.
     pub reply_mailbox: Option<String>,
@@ -60,11 +60,11 @@ impl<T> Request<T> {
 }
 
 pin_project! {
-    /// A subscription corresponding to a [NATS](https://nats.io) subject.
+    /// A subscriber corresponding to a [NATS](https://nats.io) subject.
     #[derive(Debug)]
-    pub struct Subscription<T> {
+    pub struct Subscriber<T> {
         #[pin]
-        inner: si_data_nats::Subscription,
+        inner: si_data_nats::Subscriber,
         _phantom: PhantomData<T>,
         subject: String,
         final_message_header_key: Option<String>,
@@ -72,17 +72,17 @@ pin_project! {
     }
 }
 
-impl<T> Subscription<T> {
-    /// Provides the [`builder`](SubscriptionBuilder) for creating a [`Subscription`].
-    pub fn create(subject: impl Into<String>) -> SubscriptionBuilder<T> {
-        SubscriptionBuilder::new(subject)
+impl<T> Subscriber<T> {
+    /// Provides the [`builder`](SubscriberBuilder) for creating a [`Subscriber`].
+    pub fn create(subject: impl Into<String>) -> SubscriberBuilder<T> {
+        SubscriberBuilder::new(subject)
     }
 
     /// Unsubscribe from [NATS](https://nats.io) draining all messages.
     ///
     /// # Errors
     ///
-    /// Returns [`SubscriberError`] if the [`Subscription`] does not successfully unsubscribe.
+    /// Returns [`SubscriberError`] if the [`Subscriber`] does not successfully unsubscribe.
     pub async fn unsubscribe(self) -> SubscriberResult<()> {
         self.inner
             .unsubscribe()
@@ -94,7 +94,7 @@ impl<T> Subscription<T> {
     ///
     /// # Errors
     ///
-    /// Returns [`SubscriberError`] if the [`Subscription`] does not successfully unsubscribe.
+    /// Returns [`SubscriberError`] if the [`Subscriber`] does not successfully unsubscribe.
     pub async fn unsubscribe_after(self, unsub_after: u64) -> SubscriberResult<()> {
         self.inner
             .unsubscribe_after(unsub_after)
@@ -102,13 +102,13 @@ impl<T> Subscription<T> {
             .map_err(SubscriberError::NatsUnsubscribe)
     }
 
-    /// Returns the NATS subject to which this subscription is subscribed.
+    /// Returns the NATS subject to which this subscriber is subscribed.
     pub fn subject(&self) -> &str {
         &self.subject
     }
 }
 
-impl<T> Stream for Subscription<T>
+impl<T> Stream for Subscriber<T>
 where
     T: DeserializeOwned,
 {
@@ -122,7 +122,7 @@ where
             // for the caller to decide how to proceed (i.e. does the caller fail on first error,
             // ignore error items, etc.)
             Poll::Ready(Some(nats_msg)) => {
-                // Only check if the message has a final message header if our subscription config
+                // Only check if the message has a final message header if our subscriber config
                 // specified one (or used the default).
                 if let Some(final_message_header_key) = this.final_message_header_key {
                     // If the NATS message has a final message header, then treat this as an
@@ -170,7 +170,7 @@ where
                 // If we are expecting a "final message" header key, then this is an unexpected
                 // problem
                 Some(key) => Poll::Ready(Some(Err(
-                    SubscriberError::UnexpectedNatsSubscriptionClosed(key.to_string()),
+                    SubscriberError::UnexpectedNatsSubscriberClosed(key.to_string()),
                 ))),
                 // If we are not expecting a "final message" header key, then we can successfully
                 // close the stream
