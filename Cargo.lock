@@ -2018,6 +2018,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "gobbler-client"
+version = "0.1.0"
+dependencies = [
+ "gobbler-server",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-rabbitmq",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "ulid",
+]
+
+[[package]]
 name = "gobbler-server"
 version = "0.1.0"
 dependencies = [
@@ -4906,18 +4921,13 @@ name = "si-rabbitmq"
 version = "0.1.0"
 dependencies = [
  "futures",
- "futures-lite",
- "pin-project-lite",
  "rabbitmq-stream-client",
  "remain",
  "serde",
  "serde_json",
- "si-data-nats",
- "si-test-macros",
  "telemetry",
  "thiserror",
  "tokio",
- "ulid",
 ]
 
 [[package]]
