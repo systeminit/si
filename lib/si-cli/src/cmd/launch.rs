@@ -2,8 +2,9 @@ use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, SiCliError};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::thread;
+use std::process::Command;
 use std::time::Duration;
+use std::{env, thread};
 
 impl AppState {
     pub async fn launch(&self, launch_metrics: bool) -> CliResult<()> {
@@ -28,13 +29,22 @@ async fn invoke(launch_metrics: bool, web_host: String, web_port: u32) -> CliRes
         check_sdf().await?;
     }
 
-    println!("Opening URL: {}", path);
-    match open::that(path.clone()) {
-        Ok(()) => Ok(()),
-        Err(_err) => Err(SiCliError::FailToLaunch(path)),
-    }
-    .expect("issue opening url");
+    let output = if cfg!(target_os = "macos") {
+        Command::new("open").arg(path.clone()).output()
+    } else if cfg!(target_os = "linux") {
+        Command::new("xdg-open").arg(path.clone()).output()
+    } else {
+        // This should NEVER get called but I added it in here just incase
+        return Err(SiCliError::UnsupportedOperatingSystem(
+            env::consts::OS.to_string(),
+        ));
+    };
 
+    if let Err(_err) = output {
+        return Err(SiCliError::FailToLaunch(path));
+    }
+
+    println!("Successfully opened URL: {}", path);
     Ok(())
 }
 

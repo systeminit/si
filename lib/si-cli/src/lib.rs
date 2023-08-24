@@ -49,6 +49,8 @@ pub enum SiCliError {
     UnableToFetchContainersUpdate(u16),
     #[error("unable to fetch si update, status = {0}")]
     UnableToFetchSiUpdate(u16),
+    #[error("unsupported operating system: {0}")]
+    UnsupportedOperatingSystem(String),
     #[error("env var: {0}")]
     Var(#[from] VarError),
     #[error("web portal is currently offline - please check that the system is running")]
