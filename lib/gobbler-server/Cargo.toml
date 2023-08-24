@@ -5,6 +5,7 @@ edition = "2021"
 rust-version = "1.64"
 publish = false
 
+# TODO(nick): validate all these dependencies.
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
