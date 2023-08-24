@@ -3166,4 +3166,293 @@ mod test {
                 .expect("Unable to find ordered children for node")
         );
     }
+
+    #[test]
+    fn remove_ordered_node() {
+        let change_set = ChangeSet::new().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let schema_id = change_set.generate_ulid().expect("Cannot generate Ulid");
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_id,
+                    ContentAddress::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_id = change_set.generate_ulid().expect("Cannot generate Ulid");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+
+        graph
+            .add_edge(
+                change_set,
+                graph.root_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let func_id = change_set.generate_ulid().expect("Cannot generate Ulid");
+        let func_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    func_id,
+                    ContentAddress::Func(ContentHash::new(
+                        FuncId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add func");
+        graph
+            .add_edge(
+                change_set,
+                graph.root_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                func_index,
+            )
+            .expect("Unable to add root -> func edge");
+
+        let prop_id = change_set.generate_ulid().expect("Cannot generate Ulid");
+        let prop_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    prop_id,
+                    ContentAddress::Prop(ContentHash::new(
+                        PropId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add prop");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(schema_variant_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                prop_index,
+            )
+            .expect("Unable to add schema variant -> prop edge");
+        graph
+            .add_unordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Cannot get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(func_id)
+                    .expect("Cannot get NodeIndex"),
+            )
+            .expect("Unable to add prop -> func edge");
+        graph.cleanup();
+        graph.dot();
+
+        let ordered_prop_1_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let ordered_prop_1_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    ordered_prop_1_id,
+                    ContentAddress::Prop(ContentHash::new(
+                        ordered_prop_1_id.to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add ordered prop");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Unable to get NodeWeight for prop"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create uses edge weight"),
+                ordered_prop_1_index,
+            )
+            .expect("Unable to add prop -> ordered_prop_1 edge");
+
+        let ordered_prop_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let ordered_prop_2_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    ordered_prop_2_id,
+                    ContentAddress::Prop(ContentHash::new(
+                        ordered_prop_2_id.to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add ordered prop");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Unable to get NodeWeight for prop"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create uses edge weight"),
+                ordered_prop_2_index,
+            )
+            .expect("Unable to add prop -> ordered_prop_2 edge");
+
+        let ordered_prop_3_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let ordered_prop_3_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    ordered_prop_3_id,
+                    ContentAddress::Prop(ContentHash::new(
+                        ordered_prop_3_id.to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add ordered prop");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Unable to get NodeWeight for prop"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create uses edge weight"),
+                ordered_prop_3_index,
+            )
+            .expect("Unable to add prop -> ordered_prop_3 edge");
+
+        let ordered_prop_4_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let ordered_prop_4_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    ordered_prop_4_id,
+                    ContentAddress::Prop(ContentHash::new(
+                        ordered_prop_4_id.to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add ordered prop");
+        graph
+            .add_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Unable to get NodeWeight for prop"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Uses)
+                    .expect("Unable to create uses edge weight"),
+                ordered_prop_4_index,
+            )
+            .expect("Unable to add prop -> ordered_prop_4 edge");
+
+        graph.cleanup();
+        graph.dot();
+
+        assert_eq!(
+            vec![
+                ordered_prop_1_index,
+                ordered_prop_2_index,
+                ordered_prop_3_index,
+                ordered_prop_4_index,
+            ],
+            graph
+                .ordered_children_for_node(
+                    graph
+                        .get_node_index_by_id(prop_id)
+                        .expect("Unable to get prop NodeIndex")
+                )
+                .expect("Unable to find ordered children for node")
+        );
+
+        graph
+            .remove_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(prop_id)
+                    .expect("Unable to get NodeIndex for prop"),
+                ordered_prop_2_index,
+                EdgeWeightKind::Uses,
+            )
+            .expect("Unable to update order of prop's children");
+
+        assert_eq!(
+            vec![
+                ordered_prop_1_index,
+                ordered_prop_3_index,
+                ordered_prop_4_index,
+            ],
+            graph
+                .ordered_children_for_node(
+                    graph
+                        .get_node_index_by_id(prop_id)
+                        .expect("Unable to get prop NodeIndex")
+                )
+                .expect("Unable to find ordered children for node")
+        );
+        if let NodeWeight::Ordering(ordering_weight) = graph
+            .get_node_weight(
+                graph
+                    .ordering_node_index_for_container(
+                        graph
+                            .get_node_index_by_id(prop_id)
+                            .expect("Unable to find ordering node for prop"),
+                    )
+                    .expect("Error getting ordering NodeIndex for prop")
+                    .expect("Unable to find ordering NodeIndex"),
+            )
+            .expect("Unable to get ordering NodeWeight for ordering node")
+        {
+            assert_eq!(
+                &vec![ordered_prop_1_id, ordered_prop_3_id, ordered_prop_4_id],
+                ordering_weight.order()
+            );
+        } else {
+            panic!("Unable to destructure ordering node weight");
+        }
+    }
 }
