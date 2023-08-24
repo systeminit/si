@@ -218,7 +218,7 @@ async fn invoke(
                 app.stop().await?;
 
                 for container in &update.containers {
-                    let container_name = format!("local-{0}-1", container.repository);
+                    let container_name = format!("local-{0}-1", container.repository.clone());
                     let container_summary = app
                         .container_engine()
                         .get_existing_container(container_name.clone())
@@ -231,7 +231,7 @@ async fn invoke(
                             )
                             .await?;
                         app.container_engine()
-                            .cleanup_image(container_name.to_string())
+                            .cleanup_image(container.repository.clone())
                             .await?;
                     }
                 }
