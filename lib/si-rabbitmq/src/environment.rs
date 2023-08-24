@@ -1,8 +1,10 @@
-use rabbitmq_stream_client::error::StreamDeleteError;
+use rabbitmq_stream_client::error::{StreamCreateError, StreamDeleteError};
 use rabbitmq_stream_client::types::{ByteCapacity, ResponseCode};
 use rabbitmq_stream_client::Environment as UpstreamEnvironment;
 
 use crate::error::RabbitResult;
+
+const STREAM_LENGTH_CAPACTIY_IN_MEGABYTES: u64 = 10;
 
 /// A connection to a RabbitMQ node.
 #[allow(missing_debug_implementations)]
@@ -28,23 +30,37 @@ impl Environment {
         &self.inner
     }
 
-    pub async fn create_stream(&self, stream: impl AsRef<str>) -> RabbitResult<()> {
-        Ok(self
+    /// Attempts to create the stream and returns a boolean indicates if the stream was actually
+    /// created (i.e. "false" if it already exists).
+    pub async fn create_stream(&self, stream: impl AsRef<str>) -> RabbitResult<bool> {
+        match self
             .inner
             .stream_creator()
-            .max_length(ByteCapacity::KB(400))
+            .max_length(ByteCapacity::MB(STREAM_LENGTH_CAPACTIY_IN_MEGABYTES))
             .create(stream.as_ref())
-            .await?)
+            .await
+        {
+            Ok(()) => Ok(false),
+            Err(e) => match e {
+                StreamCreateError::Create {
+                    status: ResponseCode::StreamAlreadyExists,
+                    stream: _,
+                } => Ok(true),
+                e => Err(e.into()),
+            },
+        }
     }
 
-    pub async fn delete_stream(&self, stream: impl AsRef<str>) -> RabbitResult<()> {
+    /// Attempts to delete the stream and returns a boolean indicates if the stream was actually
+    /// deleted (i.e. "false" if it does not currently exist).
+    pub async fn delete_stream(&self, stream: impl AsRef<str>) -> RabbitResult<bool> {
         match self.inner.delete_stream(stream.as_ref()).await {
-            Ok(()) => Ok(()),
+            Ok(()) => Ok(true),
             Err(e) => match e {
                 StreamDeleteError::Delete {
                     status: ResponseCode::StreamDoesNotExist,
                     stream: _,
-                } => Ok(()),
+                } => Ok(false),
                 e => Err(e.into()),
             },
         }
