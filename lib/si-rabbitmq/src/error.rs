@@ -1,6 +1,7 @@
 use rabbitmq_stream_client::error::{
-    ClientError, ConsumerCloseError, ConsumerCreateError, ProducerCloseError, ProducerCreateError,
-    ProducerPublishError, StreamCreateError, StreamDeleteError,
+    ClientError, ConsumerCloseError, ConsumerCreateError, ConsumerDeliveryError,
+    ProducerCloseError, ProducerCreateError, ProducerPublishError, StreamCreateError,
+    StreamDeleteError,
 };
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -15,6 +16,8 @@ pub enum RabbitError {
     ConsumerClose(#[from] ConsumerCloseError),
     #[error("consumer create error: {0}")]
     ConsumerCreate(#[from] ConsumerCreateError),
+    #[error("consumer delivery error: {0}")]
+    ConsumerDelivery(#[from] ConsumerDeliveryError),
     #[error("from utf-8 error: {0}")]
     FromUtf8(#[from] FromUtf8Error),
     #[error("producer close error: {0}")]
@@ -25,6 +28,8 @@ pub enum RabbitError {
     ProducerCreate(#[from] ProducerCreateError),
     #[error("producer publish error: {0}")]
     ProducerPublish(#[from] ProducerPublishError),
+    #[error("serde_json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("stream create error: {0}")]
     StreamCreate(#[from] StreamCreateError),
     #[error("stream delete error: {0}")]
