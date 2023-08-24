@@ -1,7 +1,6 @@
 use rabbitmq_stream_client::types::Message;
-use rabbitmq_stream_client::{Dedup, NoDedup, Producer as UpstreamProducer};
-use telemetry::prelude::warn;
-use tokio::task;
+use rabbitmq_stream_client::{Dedup, Producer as UpstreamProducer};
+use serde::Serialize;
 
 use crate::environment::Environment;
 use crate::{RabbitError, RabbitResult};
@@ -32,34 +31,46 @@ impl Producer {
         })
     }
 
+    /// Creates a new [`Producer`] for replying to the sender from an inbound stream.
+    pub async fn for_reply(
+        environment: &Environment,
+        inbound_stream: impl AsRef<str>,
+        reply_to_stream: impl AsRef<str>,
+    ) -> RabbitResult<Self> {
+        let inbound_stream = inbound_stream.as_ref();
+        let reply_to_stream = reply_to_stream.as_ref();
+        Self::new(
+            &environment,
+            format!("{inbound_stream}-reply-{reply_to_stream}"),
+            reply_to_stream,
+        )
+        .await
+    }
+
     /// Sends a single message to a stream.
-    pub async fn send_single(&mut self, message: impl Into<Vec<u8>>) -> RabbitResult<()> {
+    pub async fn send_single<T: Serialize>(
+        &mut self,
+        input: T,
+        reply_to: Option<String>,
+    ) -> RabbitResult<()> {
         if self.closed {
             return Err(RabbitError::ProducerClosed);
         }
-        self.inner
-            .send_with_confirm(Message::builder().body(message).build())
-            .await?;
-        Ok(())
-    }
-
-    /// Sends a batch of messages to a stream.
-    pub async fn send_batch(&mut self, messages: Vec<impl Into<Vec<u8>>>) -> RabbitResult<()> {
-        if self.closed {
-            return Err(RabbitError::ProducerClosed);
+        let value = serde_json::to_value(input)?;
+        let mut message_builder = Message::builder().body(serde_json::to_vec(&value)?);
+        if let Some(reply_to) = reply_to {
+            message_builder = message_builder
+                .properties()
+                .reply_to(reply_to)
+                .message_builder();
         }
-        self.inner
-            .batch_send_with_confirm(
-                messages
-                    .into_iter()
-                    .map(|m| Message::builder().body(m.into()).build())
-                    .collect(),
-            )
-            .await?;
+        let message = message_builder.build();
+
+        self.inner.send_with_confirm(message).await?;
         Ok(())
     }
 
-    // Closes the producer connection and renders the producer unusable.
+    /// Closes the producer connection and renders the producer unusable.
     pub async fn close(mut self) -> RabbitResult<()> {
         self.inner.close().await?;
         self.closed = true;
