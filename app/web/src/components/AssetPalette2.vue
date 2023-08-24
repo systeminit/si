@@ -49,15 +49,20 @@
               class="select-none border-b-2 dark:border-neutral-600"
             >
               <SiNodeSprite
-                :class="
-                  componentsStore.selectedInsertSchemaId === schema.id
-                    ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                    : ''
-                "
                 :color="schema.color"
                 :name="schema.displayName"
-                class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer"
-                @mousedown.left="onSelect(schema.id)"
+                :class="
+                  clsx(
+                    'border border-transparent',
+                    fixesAreRunning
+                      ? 'hover:cursor-progress'
+                      : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
+                    componentsStore.selectedInsertSchemaId === schema.id
+                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                      : '',
+                  )
+                "
+                @mousedown.left="onSelect(schema.id, fixesAreRunning)"
                 @click.right.prevent
               />
             </li>
@@ -83,10 +88,13 @@
 import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+
+defineProps<{ fixesAreRunning: boolean }>();
 
 const instructionsRef = ref();
 
@@ -134,7 +142,12 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string) {
+function onSelect(schemaId: string, fixesAreRunning: boolean) {
+  if (fixesAreRunning) {
+    // Prevent selection while fixes are running
+    return;
+  }
+
   componentsStore.selectedInsertSchemaId = schemaId;
   selecting.value = true;
 }

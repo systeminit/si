@@ -117,6 +117,7 @@ export const useFixesStore = () => {
         >,
       }),
       getters: {
+        fixesAreInProgress: (state) => !!state.runningFixBatch,
         enabledRecommendations(): Recommendation[] {
           return _.values(this.recommendationsSelection)
             .filter(({ selected }) => selected)

@@ -6,10 +6,17 @@
     :minSize="250"
   >
     <template #subpanel1>
-      <ComponentOutline class="" @right-click-item="onOutlineRightClick" />
+      <ComponentOutline
+        class=""
+        :fixesAreRunning="fixesAreRunning"
+        @right-click-item="onOutlineRightClick"
+      />
     </template>
     <template #subpanel2>
-      <AssetPalette class="border-t dark:border-neutral-600" />
+      <AssetPalette
+        class="border-t dark:border-neutral-600"
+        :fixesAreRunning="fixesAreRunning"
+      />
     </template>
   </ResizablePanel>
 
@@ -26,7 +33,7 @@
     >
       <ReadOnlyBanner show-refresh-all-button />
     </div-->
-    <GlobalStatusOverlay />
+    <RecommendationProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
@@ -318,6 +325,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import RecommendationSprite from "@/components/RecommendationSprite2.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { nilId } from "@/utils/nilId";
+import RecommendationProgressOverlay from "@/components/RecommendationProgressOverlay.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette2.vue";
@@ -336,7 +344,6 @@ import {
   HoverElementEvent,
 } from "../GenericDiagram/diagram_types";
 import ComponentOutline from "../ComponentOutline/ComponentOutline2.vue";
-import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
@@ -345,6 +352,12 @@ import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
+
+const fixesAreRunning = computed(
+  () =>
+    fixesStore.fixesAreInProgress ||
+    changeSetStore.getRequestStatus("APPLY_CHANGE_SET2").value.isPending,
+);
 
 const diffs = computed(() => {
   const arr = Object.values(componentsStore.componentsById)
@@ -804,6 +817,7 @@ const typeDisplayName = (action = "delete") => {
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
+  const disabled = fixesStore.fixesAreInProgress;
   if (selectedEdgeId.value) {
     // single selected edge
     if (selectedEdge.value?.changeStatus === "deleted") {
@@ -811,12 +825,14 @@ const rightClickMenuItems = computed(() => {
         label: "Restore edge",
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
+        disabled,
       });
     } else {
       items.push({
         label: "Delete edge",
         icon: "trash",
         onSelect: triggerDeleteSelection,
+        disabled,
       });
     }
   } else if (selectedComponentId.value && selectedComponent.value) {
@@ -828,6 +844,7 @@ const rightClickMenuItems = computed(() => {
         }"`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
+        disabled,
       });
     } else {
       items.push({
@@ -836,6 +853,7 @@ const rightClickMenuItems = computed(() => {
         }"`,
         icon: "trash",
         onSelect: triggerDeleteSelection,
+        disabled,
       });
     }
   } else if (selectedComponentIds.value.length) {
@@ -848,6 +866,7 @@ const rightClickMenuItems = computed(() => {
         )}`,
         icon: "trash",
         onSelect: triggerDeleteSelection,
+        disabled,
       });
     }
     if (restorableSelectedComponents.value.length > 0) {
@@ -858,6 +877,7 @@ const rightClickMenuItems = computed(() => {
         )}`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,
+        disabled,
       });
     }
   }
@@ -867,6 +887,7 @@ const rightClickMenuItems = computed(() => {
       label: "Refresh resource",
       icon: "refresh",
       onSelect: refreshResourceForSelectedComponent,
+      disabled,
     });
   }
   return items;

@@ -9,6 +9,7 @@
         'flex gap-xs items-center p-xs pr-sm cursor-pointer rounded-sm children:pointer-events-none',
         isFocused && 'bg-action-500',
         !menuCtx.isCheckable.value && !icon && !$slots.icon && 'pl-sm',
+        disabled && 'text-gray-500',
       )
     "
     role="menuitem"
