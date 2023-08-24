@@ -1,15 +1,17 @@
 [package]
-name = "si-rabbitmq"
+name = "gobbler-client"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.64"
 publish = false
 
 [dependencies]
-futures = { workspace = true }
-rabbitmq-stream-client = { workspace = true }
+gobbler-server = { path = "../../lib/gobbler-server" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-rabbitmq = { path = "../../lib/si-rabbitmq" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+ulid = { workspace = true }
