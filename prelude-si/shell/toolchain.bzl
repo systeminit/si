@@ -7,7 +7,7 @@ ShellToolchainInfo = provider(
     ],
 )
 
-def shell_toolchain_impl(ctx) -> [[DefaultInfo.type, ShellToolchainInfo.type]]:
+def shell_toolchain_impl(ctx) -> list[[DefaultInfo, ShellToolchainInfo]]:
     """
     A shell toolchain.
     """

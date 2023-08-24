@@ -19,10 +19,10 @@ load(
     "get_re_executor_from_props",
 )
 
-def shellcheck_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def shellcheck_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     shell_toolchain = ctx.attrs._shell_toolchain[ShellToolchainInfo]
     sources_ctx = sources_context(ctx)
@@ -95,10 +95,10 @@ shellcheck = rule(
     },
 )
 
-def shfmt_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def shfmt_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     shell_toolchain = ctx.attrs._shell_toolchain[ShellToolchainInfo]
     sources_ctx = sources_context(ctx)
@@ -172,10 +172,10 @@ shfmt_check = rule(
 )
 
 SourcesContext = record(
-    srcs_tree = field("artifact"),
+    srcs_tree = field(Artifact),
 )
 
-def sources_context(ctx: "context") -> SourcesContext.type:
+def sources_context(ctx: AnalysisContext) -> SourcesContext:
     srcs_tree = ctx.actions.declare_output("__src")
 
     shell_toolchain = ctx.attrs._shell_toolchain[ShellToolchainInfo]

@@ -1,4 +1,4 @@
-def nix_flake_lock_impl(ctx: "context") -> [DefaultInfo.type]:
+def nix_flake_lock_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("flake.lock")
 
     output = ctx.actions.copy_file(out, ctx.attrs.src)

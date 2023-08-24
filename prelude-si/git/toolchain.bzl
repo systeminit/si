@@ -2,7 +2,7 @@ GitToolchainInfo = provider(fields = [
     "git_info",
 ])
 
-def git_toolchain_impl(ctx) -> [[DefaultInfo.type, GitToolchainInfo.type]]:
+def git_toolchain_impl(ctx) -> list[[DefaultInfo, GitToolchainInfo]]:
     """
     A Git toolchain.
     """
