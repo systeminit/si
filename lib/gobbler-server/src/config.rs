@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
+use dal::CycloneKeyPair;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
@@ -9,12 +10,10 @@ use si_settings::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub use dal::CycloneKeyPair;
-pub use si_settings::{StandardConfig, StandardConfigFile};
-use ulid::Ulid;
+use crate::StandardConfig;
+use crate::StandardConfigFile;
 
-const DEFAULT_CONCURRENCY_LIMIT: usize = 5;
-
+#[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -36,6 +35,7 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
+/// The set of configuration options for building a [`Server`].
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
@@ -46,11 +46,8 @@ pub struct Config {
 
     cyclone_encryption_key_path: CanonicalFile,
 
-    #[builder(default = "default_concurrency_limit()")]
-    concurrency: usize,
-
-    #[builder(default = "random_instance_id()")]
-    instance_id: String,
+    #[builder(default = "false")]
+    recreate_management_stream: bool,
 }
 
 impl StandardConfig for Config {
@@ -81,17 +78,13 @@ impl Config {
         self.cyclone_encryption_key_path.as_path()
     }
 
-    /// Gets the config's concurrency limit.
-    pub fn concurrency(&self) -> usize {
-        self.concurrency
-    }
-
-    /// Gets the config's instance ID.
-    pub fn instance_id(&self) -> &str {
-        self.instance_id.as_ref()
+    /// Gets the toggle on if the RabbitMQ Stream will be re-created
+    pub fn recreate_management_stream(&self) -> bool {
+        self.recreate_management_stream
     }
 }
 
+/// The configuration file for creating a [`Server`].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default)]
@@ -100,10 +93,8 @@ pub struct ConfigFile {
     nats: NatsConfig,
     #[serde(default = "default_cyclone_encryption_key_path")]
     cyclone_encryption_key_path: String,
-    #[serde(default = "default_concurrency_limit")]
-    concurrency_limit: usize,
-    #[serde(default = "random_instance_id")]
-    instance_id: String,
+    #[serde(default = "default_recreate_management_stream")]
+    recreate_management_stream: bool,
 }
 
 impl Default for ConfigFile {
@@ -112,8 +103,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
-            concurrency_limit: default_concurrency_limit(),
-            instance_id: random_instance_id(),
+            recreate_management_stream: false,
         }
     }
 }
@@ -132,26 +122,21 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
-        config.concurrency(value.concurrency_limit);
-        config.instance_id(value.instance_id);
+        config.recreate_management_stream(value.recreate_management_stream);
         config.build().map_err(Into::into)
     }
-}
-
-fn random_instance_id() -> String {
-    Ulid::new().to_string()
 }
 
 fn default_cyclone_encryption_key_path() -> String {
     "/run/gobbler/cyclone_encryption.key".to_string()
 }
 
-fn default_concurrency_limit() -> usize {
-    DEFAULT_CONCURRENCY_LIMIT
+fn default_recreate_management_stream() -> bool {
+    false
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
-pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
