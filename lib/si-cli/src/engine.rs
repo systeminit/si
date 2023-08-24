@@ -20,6 +20,8 @@ pub trait ContainerEngine {
     async fn downloaded_systeminit_containers_list(
         &self,
     ) -> Result<Vec<SiImageSummary>, SiCliError>;
+    async fn create_network(&self) -> CliResult<()>;
+    async fn delete_network(&self) -> CliResult<()>;
     async fn start_container(&self, id: String) -> CliResult<()>;
     async fn stop_container(&self, id: String) -> CliResult<()>;
     async fn create_otelcol(&self, name: String, image: String) -> CliResult<()>;
@@ -87,6 +89,56 @@ impl From<docker_api::models::ContainerSummary> for SiContainerSummary {
     fn from(container: docker_api::models::ContainerSummary) -> SiContainerSummary {
         SiContainerSummary {
             created: container.created,
+            id: container.id,
+            image: container.image,
+            labels: container.labels,
+            status: container.status,
+            state: container.state,
+        }
+    }
+}
+
+impl From<podman_api::models::LibpodImageSummary> for SiImageSummary {
+    fn from(image: podman_api::models::LibpodImageSummary) -> SiImageSummary {
+        let containers = match image.containers {
+            Some(count) => count as isize,
+            None => 0,
+        };
+
+        let created = match image.created {
+            Some(seconds) => seconds as isize,
+            None => 0,
+        };
+
+        let id = match image.id {
+            Some(id) => id,
+            None => "".to_owned(),
+        };
+
+        let labels = match image.labels {
+            Some(labels) => labels,
+            None => HashMap::new(),
+        };
+
+        let repo_tags = match image.repo_tags {
+            Some(repo_tags) => repo_tags,
+            None => Vec::new(),
+        };
+
+        SiImageSummary {
+            containers,
+            created,
+            id,
+            labels,
+            repo_tags,
+        }
+    }
+}
+
+impl From<podman_api::models::ListContainer> for SiContainerSummary {
+    fn from(container: podman_api::models::ListContainer) -> SiContainerSummary {
+        SiContainerSummary {
+            created: container.created.map(|created| created.timestamp()),
             id: container.id,
             image: container.image,
             labels: container.labels,

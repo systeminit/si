@@ -303,6 +303,14 @@ impl ContainerEngine for DockerEngine {
         Ok(())
     }
 
+    async fn create_network(&self) -> CliResult<()> {
+        Ok(())
+    }
+
+    async fn delete_network(&self) -> CliResult<()> {
+        Ok(())
+    }
+
     async fn create_otelcol(&self, name: String, image: String) -> CliResult<()> {
         let create_opts = ContainerCreateOpts::builder()
             .name(name.clone())
