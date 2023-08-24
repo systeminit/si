@@ -10,7 +10,7 @@ use dal::{
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
-use nats_subscriber::{Request, SubscriberError, Subscription};
+use nats_subscriber::{Request, SubscriberError};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use stream_cancel::StreamExt as StreamCancelStreamExt;
@@ -297,7 +297,7 @@ impl Subscriber {
 
         let messaging_destination = Arc::new(subject.clone());
 
-        Ok(Subscription::create(subject)
+        Ok(nats_subscriber::Subscriber::create(subject)
             .queue_name(NATS_JOBS_DEFAULT_QUEUE)
             .start(&nats)
             .await?

@@ -102,7 +102,7 @@ impl Server {
                 let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
                 // Note the channel parameter corresponds to the number of channels that may be
                 // maintained when the sender is guaranteeing delivery. While this number may end
-                // of being related to the number of subscriptions, it's not
+                // of being related to the number of subscribers, it's not
                 // necessarily the same number.
                 let (shutdown_broadcast_tx, _) = broadcast::channel(16);
 
@@ -260,8 +260,8 @@ async fn process_resolver_function_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -416,8 +416,8 @@ async fn process_validation_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -535,8 +535,8 @@ async fn process_schema_variant_definition_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -649,8 +649,8 @@ async fn process_action_run_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -764,8 +764,8 @@ async fn process_reconciliation_requests(
         }
     }
 
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
+    // Unsubscribe from subscriber without draining the channel
+    requests.unsubscribe_after(0).await?;
 
     Ok(())
 }
@@ -845,12 +845,12 @@ fn prepare_graceful_shutdown(
             tx: oneshot::Sender<()>,
             shutdown_broadcast_tx: broadcast::Sender<()>,
         ) {
-            // Send shutdown to all long running subscriptions, so they can cleanly terminate
+            // Send shutdown to all long running subscribers, so they can cleanly terminate
             if shutdown_broadcast_tx.send(()).is_err() {
                 error!("all broadcast shutdown receivers have already been dropped");
             }
             // Send graceful shutdown to main server thread which stops it from accepting requests.
-            // We'll do this step last so as to let all subscriptions have a chance to shutdown.
+            // We'll do this step last so as to let all subscribers have a chance to shutdown.
             if tx.send(()).is_err() {
                 error!("the server graceful shutdown receiver has already dropped");
             }

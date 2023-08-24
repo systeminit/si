@@ -272,7 +272,7 @@ impl DependentValuesUpdate {
                     council_server::Response::Shutdown => break,
                 },
                 // FIXME: reconnect
-                None => break, // Happens if subscription has been unsubscribed or if connection is closed
+                None => break, // Happens if subscriber has been unsubscribed or if connection is closed
             }
 
             WsEvent::change_set_written(ctx)

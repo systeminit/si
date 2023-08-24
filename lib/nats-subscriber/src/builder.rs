@@ -1,33 +1,33 @@
-//! This module contains [`SubscriptionBuilder`], which is used for creating
-//! [`Subscriptions`](crate::Subscription).
+//! This module contains [`SubscriberBuilder`], which is used for creating
+//! [`Subscribers`](crate::Subscriber).
 
 use std::marker::PhantomData;
 
 use si_data_nats::NatsClient;
 
-use crate::{SubscriberError, SubscriberResult, Subscription};
+use crate::{Subscriber, SubscriberError, SubscriberResult};
 
-/// The [`builder`](Self) used for creating a [`Subscription`].
-pub struct SubscriptionBuilder<T> {
+/// The [`builder`](Self) used for creating a [`Subscriber`].
+pub struct SubscriberBuilder<T> {
     /// The [NATS](https://nats.io) subject used.
     pub subject: String,
     /// Indicates the final type of the [`Request`](crate::Request).
     _phantom: PhantomData<T>,
 
-    /// If provided, the [`Subscription`] will use [`NatsClient::queue_subscribe`]. Otherwise, it
+    /// If provided, the [`Subscriber`] will use [`NatsClient::queue_subscribe`]. Otherwise, it
     /// [`NatsClient::subscribe`].
     pub queue_name: Option<String>,
-    /// If a key is provided, the [`Subscription`] will only close successfully if a "final message"
+    /// If a key is provided, the [`Subscriber`] will only close successfully if a "final message"
     /// is seen. Otherwise, it can close successfully without receiving a "final message".
     pub final_message_header_key: Option<String>,
-    /// If set, the [`Subscription`] will check for a reply mailbox in the
+    /// If set, the [`Subscriber`] will check for a reply mailbox in the
     /// [`Request`](crate::Request).
     /// Otherwise, it will not perform the check.
     pub check_for_reply_mailbox: bool,
 }
 
-impl<T> SubscriptionBuilder<T> {
-    /// Create a new [`builder`](SubscriptionBuilder) for building a [`Subscription`].
+impl<T> SubscriberBuilder<T> {
+    /// Create a new [`builder`](SubscriberBuilder) for building a [`Subscriber`].
     pub fn new(subject: impl Into<String>) -> Self {
         Self {
             subject: subject.into(),
@@ -38,13 +38,13 @@ impl<T> SubscriptionBuilder<T> {
         }
     }
 
-    /// Start a new [`Subscription`] for a given [`request`](crate::Request) shape `T`. This will
+    /// Start a new [`Subscriber`] for a given [`request`](crate::Request) shape `T`. This will
     /// consume [`Self`].
     ///
     /// # Errors
     ///
-    /// Returns [`SubscriberError`] if a [`Subscription`] could not be created.
-    pub async fn start(self, nats: &NatsClient) -> SubscriberResult<Subscription<T>> {
+    /// Returns [`SubscriberError`] if a [`Subscriber`] could not be created.
+    pub async fn start(self, nats: &NatsClient) -> SubscriberResult<Subscriber<T>> {
         let inner = if let Some(queue_name) = self.queue_name {
             nats.queue_subscribe(self.subject.clone(), queue_name)
                 .await
@@ -55,7 +55,7 @@ impl<T> SubscriptionBuilder<T> {
                 .map_err(SubscriberError::NatsSubscribe)?
         };
 
-        Ok(Subscription {
+        Ok(Subscriber {
             inner,
             _phantom: PhantomData::<T>,
             subject: self.subject,

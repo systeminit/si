@@ -1,5 +1,5 @@
 use futures::{StreamExt, TryStreamExt};
-use nats_subscriber::{SubscriberError, Subscription};
+use nats_subscriber::{Subscriber, SubscriberError};
 use serde::{de::DeserializeOwned, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -212,31 +212,31 @@ impl Client {
         let msg = serde_json::to_vec(request).map_err(ClientError::JSONSerialize)?;
         let reply_mailbox_root = self.nats.new_inbox();
 
-        // Construct a subscription stream for the result
-        let result_subscription_subject = reply_mailbox_for_result(&reply_mailbox_root);
+        // Construct a subscriber stream for the result
+        let result_subscriber_subject = reply_mailbox_for_result(&reply_mailbox_root);
         trace!(
-            messaging.destination = &result_subscription_subject.as_str(),
+            messaging.destination = &result_subscriber_subject.as_str(),
             "subscribing for result messages"
         );
-        let mut result_subscription: Subscription<FunctionResult<S>> =
-            Subscription::create(result_subscription_subject)
+        let mut result_subscriber: Subscriber<FunctionResult<S>> =
+            Subscriber::create(result_subscriber_subject)
                 .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
                 .start(&self.nats)
                 .await?;
 
-        // Construct a subscription stream for output messages
-        let output_subscription_subject = reply_mailbox_for_output(&reply_mailbox_root);
+        // Construct a subscriber stream for output messages
+        let output_subscriber_subject = reply_mailbox_for_output(&reply_mailbox_root);
         trace!(
-            messaging.destination = &output_subscription_subject.as_str(),
+            messaging.destination = &output_subscriber_subject.as_str(),
             "subscribing for output messages"
         );
-        let output_subscription = Subscription::create(output_subscription_subject)
+        let output_subscriber = Subscriber::create(output_subscriber_subject)
             .final_message_header_key(FINAL_MESSAGE_HEADER_KEY)
             .start(&self.nats)
             .await?;
 
         // Spawn a task to forward output to the sender provided by the caller
-        tokio::spawn(forward_output_task(output_subscription, output_tx));
+        tokio::spawn(forward_output_task(output_subscriber, output_tx));
 
         // Submit the request message
         let subject = subject.into();
@@ -246,23 +246,23 @@ impl Client {
         );
 
         // Root reply mailbox will receive a reply if nobody is listening to the channel `subject`
-        let mut root_subscription = self.nats.subscribe(reply_mailbox_root.clone()).await?;
+        let mut root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         self.nats
-            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root.clone()), None, msg)
+            .publish_with_reply(subject, reply_mailbox_root.clone(), msg)
             .await?;
 
         tokio::select! {
             // Wait for one message on the result reply mailbox
-            result = result_subscription.try_next() => {
-                root_subscription.unsubscribe().await?;
-                result_subscription.unsubscribe().await?;
+            result = result_subscriber.try_next() => {
+                root_subscriber.unsubscribe_after(0).await?;
+                result_subscriber.unsubscribe_after(0).await?;
                 match result? {
                     Some(result) => Ok(result.payload),
                     None => Err(ClientError::NoResult)
                 }
             }
-            reply = root_subscription.next() => {
+            reply = root_subscriber.next() => {
                 match &reply {
                     Some(maybe_msg) => {
                         error!(
@@ -274,24 +274,24 @@ impl Client {
                     None => {
                         error!(
                             subject = reply_mailbox_root,
-                            "reply subject prefix subscription unexpectedly closed"
+                            "reply subject prefix subscriber unexpectedly closed"
                         )
                     }
                 };
 
-                // In all cases, we're considering a message on this subscription to be fatal and
+                // In all cases, we're considering a message on this subscriber to be fatal and
                 // will return with an error
-                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)??))
+                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)?))
             }
         }
     }
 }
 
 async fn forward_output_task(
-    mut output_subscription: Subscription<OutputStream>,
+    mut output_subscriber: Subscriber<OutputStream>,
     output_tx: mpsc::Sender<OutputStream>,
 ) {
-    while let Some(msg) = output_subscription.next().await {
+    while let Some(msg) = output_subscriber.next().await {
         match msg {
             Ok(output) => {
                 if let Err(err) = output_tx.send(output.payload).await {
@@ -299,11 +299,11 @@ async fn forward_output_task(
                 }
             }
             Err(err) => {
-                warn!(error = ?err, "output forwarder received an error on its subscription")
+                warn!(error = ?err, "output forwarder received an error on its subscriber")
             }
         }
     }
-    if let Err(err) = output_subscription.unsubscribe().await {
-        warn!(error = ?err, "error when unsubscribing from output subscription");
+    if let Err(err) = output_subscriber.unsubscribe_after(0).await {
+        warn!(error = ?err, "error when unsubscribing from output subscriber");
     }
 }

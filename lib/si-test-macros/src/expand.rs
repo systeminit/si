@@ -319,11 +319,11 @@ pub(crate) trait FnSetupExpander {
             {
                 let (_, shutdown_request_rx) = ::tokio::sync::watch::channel(());
                 let (
-                    subscription_started_tx,
-                    mut subscription_started_rx
+                    subscriber_started_tx,
+                    mut subscriber_started_rx
                 ) = ::tokio::sync::watch::channel(());
-                ::tokio::spawn(#council_server.run(subscription_started_tx, shutdown_request_rx));
-                subscription_started_rx.changed().await.unwrap()
+                ::tokio::spawn(#council_server.run(subscriber_started_tx, shutdown_request_rx));
+                subscriber_started_rx.changed().await.unwrap()
             }
         });
         self.set_start_council_server(Some(()));

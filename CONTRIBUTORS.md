@@ -15,7 +15,7 @@ We contributors to System Initiative:
 * Mahir Lupinacci (@mahirl)
 * Nick Gerace (@nickgerace)
 * Paul Stack (@stack72)
-* Paulo Cabral (@paulocsanz)
+* Paulo Cabral Sanz (@paulocsanz)
 * Theo Ephraim (@theoephraim)
 * Victor Bustamante (@vbustamante)
 * Wendy Bujalski (@wendybujalski)

@@ -59,9 +59,9 @@ async fn run(
 
     let config = council_server::server::Config::try_from(args)?;
     let server = council_server::Server::new_with_config(config).await?;
-    let (subscription_started_tx, _subscription_started_rx) = watch::channel(());
+    let (subscriber_started_tx, _subscriber_started_rx) = watch::channel(());
     server
-        .run(subscription_started_tx, shutdown_request_rx.clone())
+        .run(subscriber_started_tx, shutdown_request_rx.clone())
         .await?;
     Ok(())
 }

@@ -1,5 +1,5 @@
-use futures::TryStreamExt;
-use si_data_nats::{NatsClient, Subscription};
+use futures::StreamExt;
+use si_data_nats::{NatsClient, Subscriber};
 use std::time::Duration;
 use telemetry::prelude::*;
 
@@ -24,12 +24,7 @@ impl PubClient {
     pub async fn finished_creating_values(&self) -> Result<()> {
         let message = serde_json::to_vec(&Request::ValueCreationDone)?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
         Ok(())
     }
@@ -40,12 +35,7 @@ impl PubClient {
             dependency_graph,
         })?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
         Ok(())
     }
@@ -56,12 +46,7 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
         Ok(())
     }
@@ -72,12 +57,7 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
         Ok(())
     }
@@ -87,12 +67,7 @@ impl PubClient {
             change_set_id: self.change_set_id,
         })?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
         Ok(())
     }
@@ -103,7 +78,7 @@ pub struct Client {
     change_set_id: Id,
     pub_channel: String,
     reply_channel: String,
-    subscription: Subscription,
+    subscriber: Subscriber,
     nats: NatsClient,
 }
 
@@ -119,7 +94,7 @@ impl Client {
         Ok(Self {
             pub_channel,
             change_set_id,
-            subscription: nats.subscribe(&reply_channel).await?,
+            subscriber: nats.subscribe(&reply_channel).await?,
             reply_channel,
             nats,
         })
@@ -134,16 +109,15 @@ impl Client {
         }
     }
 
-    // None means subscription has been unsubscribed or that the connection has been closed
+    // None means subscriber has been unsubscribed or that the connection has been closed
     pub async fn fetch_response(&mut self) -> Result<Option<Response>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
         // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
         let msg = loop {
-            let res =
-                tokio::time::timeout(Duration::from_secs(60), self.subscription.try_next()).await;
+            let res = tokio::time::timeout(Duration::from_secs(60), self.subscriber.next()).await;
 
             match res {
-                Ok(msg) => break msg?,
+                Ok(msg) => break msg,
                 Err(_) => {
                     warn!(change_set_id = ?self.change_set_id, pub_channel = ?self.pub_channel, reply_channel = ?self.reply_channel, "Council client waiting for response for 60 seconds");
                 }
@@ -152,10 +126,10 @@ impl Client {
 
         match msg {
             Some(msg) => {
-                if msg.data().is_empty() {
+                if msg.payload().is_empty() {
                     return Err(Error::NoListenerAvailable);
                 }
-                Ok(Some(serde_json::from_slice::<Response>(msg.data())?))
+                Ok(Some(serde_json::from_slice::<Response>(msg.payload())?))
             }
             None => Ok(None),
         }
@@ -164,12 +138,7 @@ impl Client {
     pub async fn wait_to_create_values(&mut self) -> Result<State> {
         let message = serde_json::to_vec(&Request::CreateValues)?;
         self.nats
-            .publish_with_reply_or_headers(
-                &self.pub_channel,
-                Some(&self.reply_channel),
-                None,
-                message,
-            )
+            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
             .await?;
 
         match self.fetch_response().await? {
