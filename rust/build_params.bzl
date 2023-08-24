@@ -30,23 +30,23 @@ CrateType = enum(
 )
 
 # Crate type is intended for consumption by Rust code
-def crate_type_rust_linkage(crate_type: CrateType.type) -> bool.type:
+def crate_type_rust_linkage(crate_type: CrateType.type) -> bool:
     return crate_type.value in ("rlib", "dylib", "proc-macro")
 
 # Crate type is intended for native linkage (eg C++)
-def crate_type_native_linkage(crate_type: CrateType.type) -> bool.type:
+def crate_type_native_linkage(crate_type: CrateType.type) -> bool:
     return crate_type.value in ("cdylib", "staticlib")
 
 # Crate type which invokes the linker
-def crate_type_linked(crate_type: CrateType.type) -> bool.type:
+def crate_type_linked(crate_type: CrateType.type) -> bool:
     return crate_type.value in ("bin", "dylib", "proc-macro", "cdylib")
 
 # Crate type which should include transitive deps
-def crate_type_transitive_deps(crate_type: CrateType.type) -> bool.type:
+def crate_type_transitive_deps(crate_type: CrateType.type) -> bool:
     return crate_type.value in ("rlib", "dylib", "staticlib")  # not sure about staticlib
 
 # Crate type which should always need codegen
-def crate_type_codegen(crate_type: CrateType.type) -> bool.type:
+def crate_type_codegen(crate_type: CrateType.type) -> bool:
     return crate_type_linked(crate_type) or crate_type_native_linkage(crate_type)
 
 # -Crelocation-model= from --print relocation-models
@@ -76,23 +76,27 @@ Emit = enum(
 )
 
 # Emitting this artifact generates code
-def emit_needs_codegen(emit: Emit.type) -> bool.type:
+def emit_needs_codegen(emit: Emit.type) -> bool:
     return emit.value in ("asm", "llvm-bc", "llvm-ir", "obj", "link", "mir")
 
+# Represents a way of invoking rustc to produce an artifact. These values are computed from
+# information such as the rule type, linkstyle, crate type, etc.
 BuildParams = record(
     crate_type = field(CrateType.type),
     reloc_model = field(RelocModel.type),
     dep_link_style = field(LinkStyle.type),  # what link_style to use for dependencies
-    # XXX This needs to be OS-specific
-    prefix = field(str.type),
-    suffix = field(str.type),
+    # A prefix and suffix to use for the name of the produced artifact. Note that although we store
+    # these in this type, they are in principle computable from the remaining fields and the OS.
+    # Keeping them here just turns out to be a little more convenient.
+    prefix = field(str),
+    suffix = field(str),
 )
 
 RustcFlags = record(
     crate_type = field(CrateType.type),
     reloc_model = field(RelocModel.type),
     dep_link_style = field(LinkStyle.type),
-    platform_to_affix = field("function"),
+    platform_to_affix = field(typing.Callable),
 )
 
 # Filenames used for various emitted forms
@@ -110,7 +114,7 @@ _EMIT_PREFIX_SUFFIX = {
 }
 
 # Return the filename for a particular emitted artifact type
-def output_filename(cratename: str.type, emit: Emit.type, buildparams: BuildParams.type, extra: [str.type, None] = None) -> str.type:
+def output_filename(cratename: str, emit: Emit.type, buildparams: BuildParams.type, extra: [str, None] = None) -> str:
     epfx, esfx = _EMIT_PREFIX_SUFFIX[emit]
     prefix = epfx if epfx != None else buildparams.prefix
     suffix = esfx if esfx != None else buildparams.suffix
@@ -133,14 +137,14 @@ _RUST_STATIC_NON_PIC_LIBRARY = 7
 _NATIVE_LINKABLE_STATIC_PIC = 8
 _NATIVE_LINKABLE_STATIC_NON_PIC = 9
 
-def _executable_prefix_suffix(linker_type: str.type, target_os_type: OsLookup.type) -> (str.type, str.type):
+def _executable_prefix_suffix(linker_type: str, target_os_type: OsLookup.type) -> (str, str):
     return {
         "darwin": ("", ""),
         "gnu": ("", ".exe") if target_os_type.platform == "windows" else ("", ""),
         "windows": ("", ".exe"),
     }[linker_type]
 
-def _library_prefix_suffix(linker_type: str.type, target_os_type: OsLookup.type) -> (str.type, str.type):
+def _library_prefix_suffix(linker_type: str, target_os_type: OsLookup.type) -> (str, str):
     return {
         "darwin": ("lib", ".dylib"),
         "gnu": ("", ".dll") if target_os_type.platform == "windows" else ("lib", ".so"),
@@ -259,7 +263,7 @@ _INPUTS = {
     ("library", False, "static", "static", "c++"): _NATIVE_LINKABLE_STATIC_NON_PIC,
 }
 
-def _get_flags(build_kind_key: int.type, target_os_type: OsLookup.type) -> (RustcFlags.type, RelocModel.type):
+def _get_flags(build_kind_key: int, target_os_type: OsLookup.type) -> (RustcFlags.type, RelocModel.type):
     flags = _BUILD_PARAMS[build_kind_key]
 
     # On Windows we should always use pic reloc model.
@@ -271,11 +275,11 @@ def _get_flags(build_kind_key: int.type, target_os_type: OsLookup.type) -> (Rust
 # whether its a proc-macro, linkage information and language.
 def build_params(
         rule: RuleType.type,
-        proc_macro: bool.type,
+        proc_macro: bool,
         link_style: LinkStyle.type,
         preferred_linkage: Linkage.type,
         lang: LinkageLang.type,
-        linker_type: str.type,
+        linker_type: str,
         target_os_type: OsLookup.type) -> BuildParams.type:
     if rule == RuleType("binary") and proc_macro:
         # It's complicated: this is a rustdoc test for a procedural macro crate.

@@ -7,6 +7,10 @@
 
 load("@prelude//:paths.bzl", "paths")
 load(
+    "@prelude//apple:xcode.bzl",
+    "get_project_root_file",
+)
+load(
     "@prelude//cxx:compile.bzl",
     "CxxSrcWithFlags",  # @unused Used as a type
 )
@@ -21,6 +25,7 @@ load(
     "@prelude//cxx:preprocessor.bzl",
     "CPreprocessor",
     "CPreprocessorArgs",
+    "CPreprocessorInfo",
     "cxx_inherited_preprocessor_infos",
     "cxx_merge_cpreprocessors",
     "cxx_private_preprocessor_info",
@@ -55,10 +60,10 @@ _LINKAGE_FOR_LINK_STYLE = {
 }
 
 def _cgo(
-        ctx: "context",
-        srcs: ["artifact"],
-        own_pre: [CPreprocessor.type],
-        inherited_pre: ["CPreprocessorInfo"]) -> (["artifact"], ["artifact"], ["artifact"]):
+        ctx: AnalysisContext,
+        srcs: list[Artifact],
+        own_pre: list[CPreprocessor.type],
+        inherited_pre: list[CPreprocessorInfo.type]) -> (list[Artifact], list[Artifact], list[Artifact]):
     """
     Run `cgo` on `.go` sources to generate Go, C, and C-Header sources.
     """
@@ -115,13 +120,16 @@ def _cgo(
 
     return go_srcs, c_headers, c_srcs
 
-def cgo_library_impl(ctx: "context") -> ["provider"]:
+def cgo_library_impl(ctx: AnalysisContext) -> list[Provider]:
     pkg_name = go_attr_pkg_name(ctx)
+
+    project_root_file = get_project_root_file(ctx)
 
     # Gather preprocessor inputs.
     (own_pre, _) = cxx_private_preprocessor_info(
         ctx,
         cxx_get_regular_cxx_headers_layout(ctx),
+        project_root_file = project_root_file,
     )
     inherited_pre = cxx_inherited_preprocessor_infos(ctx.attrs.deps)
 
@@ -168,13 +176,10 @@ def cgo_library_impl(ctx: "context") -> ["provider"]:
         [own_pre, cgo_headers_pre],
         inherited_pre,
         [],
-        None,
         linkage,
     )
 
-    compiled_objects = c_compile_cmds.objects
-    if link_style != "static":
-        compiled_objects = c_compile_cmds.pic_objects
+    compiled_objects = c_compile_cmds.pic.objects
 
     # Merge all sources together to pass to the Go compile step.
     all_srcs = cmd_args(go_srcs + compiled_objects)

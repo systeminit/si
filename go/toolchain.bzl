@@ -27,10 +27,12 @@ GoToolchainInfo = provider(fields = [
     "linker_flags_shared",
     "linker_flags_static",
     "packer",
+    "prebuilt_stdlib",
+    "prebuilt_stdlib_shared",
     "tags",
 ])
 
-def get_toolchain_cmd_args(toolchain: "GoToolchainInfo", go_root = True) -> "cmd_args":
+def get_toolchain_cmd_args(toolchain: GoToolchainInfo.type, go_root = True) -> cmd_args:
     cmd = cmd_args("env")
     if toolchain.env_go_arch != None:
         cmd.add("GOARCH={}".format(toolchain.env_go_arch))

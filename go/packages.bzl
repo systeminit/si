@@ -5,22 +5,24 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:artifacts.bzl", "ArtifactGroupInfo")
+load("@prelude//go:toolchain.bzl", "GoToolchainInfo")
 load("@prelude//utils:utils.bzl", "value_or")
 
 GoPkg = record(
     # Built w/ `-shared`.
-    shared = field("artifact"),
+    shared = field(Artifact),
     # Built w/o `-shared`.
-    static = field("artifact"),
+    static = field(Artifact),
 )
 
-def go_attr_pkg_name(ctx: "context") -> str.type:
+def go_attr_pkg_name(ctx: AnalysisContext) -> str:
     """
     Return the Go package name for the given context corresponding to a rule.
     """
     return value_or(ctx.attrs.package_name, ctx.label.package)
 
-def merge_pkgs(pkgss: [{str.type: "_pkg"}]) -> {str.type: "_pkg"}:
+def merge_pkgs(pkgss: list[dict[str, typing.Any]]) -> dict[str, typing.Any]:
     """
     Merge mappings of packages into a single mapping, throwing an error on
     conflicts.
@@ -36,7 +38,7 @@ def merge_pkgs(pkgss: [{str.type: "_pkg"}]) -> {str.type: "_pkg"}:
 
     return all_pkgs
 
-def pkg_artifacts(pkgs: {str.type: GoPkg.type}, shared: bool.type = False) -> {str.type: "artifact"}:
+def pkg_artifacts(pkgs: dict[str, GoPkg.type], shared: bool = False) -> dict[str, Artifact]:
     """
     Return a map package name to a `shared` or `static` package artifact.
     """
@@ -44,3 +46,18 @@ def pkg_artifacts(pkgs: {str.type: GoPkg.type}, shared: bool.type = False) -> {s
         name: pkg.shared if shared else pkg.static
         for name, pkg in pkgs.items()
     }
+
+def stdlib_pkg_artifacts(toolchain: GoToolchainInfo.type, shared: bool = False) -> dict[str, Artifact]:
+    """
+    Return a map package name to a `shared` or `static` package artifact of stdlib.
+    """
+
+    prebuilt_stdlib = toolchain.prebuilt_stdlib_shared if shared else toolchain.prebuilt_stdlib
+    stdlib_pkgs = prebuilt_stdlib[ArtifactGroupInfo].artifacts
+    pkgs = {}
+    for pkg in stdlib_pkgs:
+        _, _, pkg_relpath = pkg.short_path.removeprefix("prebuilt_std/").partition("/")  # like net/http.a
+        name = pkg_relpath.removesuffix(".a")  # like net/http
+        pkgs[name] = pkg
+
+    return pkgs

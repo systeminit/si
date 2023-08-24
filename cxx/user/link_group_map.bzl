@@ -7,6 +7,11 @@
 
 load(
     "@prelude//cxx:groups.bzl",
+    "BuildTargetFilter",  # @unused Used as a type
+    "FilterType",
+    "Group",  # @unused Used as a type
+    "GroupMapping",  # @unused Used as a type
+    "LabelFilter",  # @unused Used as a type
     "parse_groups_definitions",
 )
 load(
@@ -32,12 +37,16 @@ load(
     "SharedLibraryInfo",
 )
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
+load(
+    "@prelude//utils:build_target_pattern.bzl",
+    "BuildTargetPattern",  # @unused Used as a type
+)
 load("@prelude//decls/common.bzl", "Linkage", "Traversal")
 
 def _v1_attrs(
-        optional_root: bool.type = False,
+        optional_root: bool = False,
         # Whether we should parse `root` fields as a `dependency`, instead of a `label`.
-        root_is_dep: bool.type = True):
+        root_is_dep: bool = True):
     if root_is_dep:
         attrs_root = attrs.dep(providers = [
             LinkGroupLibInfo,
@@ -94,7 +103,51 @@ def link_group_map_attr():
         default = None,
     )
 
-def _impl(ctx: "context") -> ["provider"]:
+def _make_json_info_for_build_target_pattern(build_target_pattern: BuildTargetPattern.type) -> dict[str, typing.Any]:
+    # `BuildTargetPattern` contains lambdas which are not serializable, so
+    # have to generate the JSON representation
+    return {
+        "cell": build_target_pattern.cell,
+        "kind": build_target_pattern.kind,
+        "name": build_target_pattern.name,
+        "path": build_target_pattern.path,
+    }
+
+def _make_json_info_for_group_mapping_filters(filters: list[[BuildTargetFilter.type, LabelFilter.type]]) -> list[dict[str, typing.Any]]:
+    json_filters = []
+    for filter in filters:
+        if filter._type == FilterType("label"):
+            json_filters += [{"regex": str(filter.regex)}]
+        elif filter._type == FilterType("pattern"):
+            json_filters += [_make_json_info_for_build_target_pattern(filter.pattern)]
+        else:
+            fail("Unknown filter type: " + filter)
+    return json_filters
+
+def _make_json_info_for_group_mapping(group_mapping: GroupMapping.type) -> dict[str, typing.Any]:
+    return {
+        "filters": _make_json_info_for_group_mapping_filters(group_mapping.filters),
+        "preferred_linkage": group_mapping.preferred_linkage,
+        "root": group_mapping.root,
+        "traversal": group_mapping.traversal,
+    }
+
+def _make_json_info_for_group(group: Group.type) -> dict[str, typing.Any]:
+    return {
+        "attrs": group.attrs,
+        "mappings": [_make_json_info_for_group_mapping(mapping) for mapping in group.mappings],
+        "name": group.name,
+    }
+
+def _make_info_subtarget_providers(ctx: AnalysisContext, link_group_info: LinkGroupInfo.type) -> list[Provider]:
+    info_json = {
+        "groups": {name: _make_json_info_for_group(group) for name, group in link_group_info.groups.items()},
+        "mappings": link_group_info.mappings,
+    }
+    json_output = ctx.actions.write_json("link_group_map_info.json", info_json)
+    return [DefaultInfo(default_output = json_output)]
+
+def _impl(ctx: AnalysisContext) -> list[Provider]:
     # Extract graphs from the roots via the raw attrs, as `parse_groups_definitions`
     # parses them as labels.
     linkable_graph = create_linkable_graph(
@@ -106,9 +159,12 @@ def _impl(ctx: "context") -> ["provider"]:
         ],
     )
     link_groups = parse_groups_definitions(ctx.attrs.map, lambda root: root.label)
+    link_group_info = build_link_group_info(linkable_graph, link_groups)
     return [
-        DefaultInfo(),
-        build_link_group_info(linkable_graph, link_groups),
+        DefaultInfo(sub_targets = {
+            "info": _make_info_subtarget_providers(ctx, link_group_info),
+        }),
+        link_group_info,
     ]
 
 registration_spec = RuleRegistrationSpec(

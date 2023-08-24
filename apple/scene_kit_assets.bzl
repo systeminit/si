@@ -11,7 +11,7 @@ load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(":resource_groups.bzl", "create_resource_graph")
 load(":scene_kit_assets_types.bzl", "SceneKitAssetsSpec")
 
-def scene_kit_assets_impl(ctx: "context") -> ["provider"]:
+def scene_kit_assets_impl(ctx: AnalysisContext) -> list[Provider]:
     spec = SceneKitAssetsSpec(
         path = ctx.attrs.path,
     )
@@ -24,7 +24,7 @@ def scene_kit_assets_impl(ctx: "context") -> ["provider"]:
     )
     return [DefaultInfo(), graph]
 
-def compile_scene_kit_assets(ctx: "context", specs: [SceneKitAssetsSpec.type]) -> ["artifact", None]:
+def compile_scene_kit_assets(ctx: AnalysisContext, specs: list[SceneKitAssetsSpec.type]) -> [Artifact, None]:
     if len(specs) == 0:
         return None
 
@@ -43,6 +43,7 @@ def compile_scene_kit_assets(ctx: "context", specs: [SceneKitAssetsSpec.type]) -
     wrapper_script, _ = ctx.actions.write(
         "copy_scene_kit_assets_wrapper.sh",
         [
+            cmd_args("set -euo pipefail"),
             cmd_args('export TMPDIR="$(mktemp -d)"'),
             cmd_args(copy_scene_kit_assets_cmds),
             cmd_args(output, format = 'mkdir -p {} && cp -r "$TMPDIR"/ {}'),
@@ -54,7 +55,7 @@ def compile_scene_kit_assets(ctx: "context", specs: [SceneKitAssetsSpec.type]) -
     ctx.actions.run(combined_command, prefer_local = processing_options.prefer_local, allow_cache_upload = processing_options.allow_cache_upload, category = "scene_kit_assets")
     return output
 
-def _get_copy_scene_kit_assets_cmd(ctx: "context", scene_kit_assets_spec: SceneKitAssetsSpec.type) -> "cmd_args":
+def _get_copy_scene_kit_assets_cmd(ctx: AnalysisContext, scene_kit_assets_spec: SceneKitAssetsSpec.type) -> cmd_args:
     scnassets_folder = scene_kit_assets_spec.path.basename
     return cmd_args([
         ctx.attrs._apple_toolchain[AppleToolchainInfo].copy_scene_kit_assets,
@@ -62,5 +63,5 @@ def _get_copy_scene_kit_assets_cmd(ctx: "context", scene_kit_assets_spec: SceneK
         "-o",
         cmd_args(scnassets_folder, format = "$TMPDIR/{}"),
         "--target-platform=" + get_apple_sdk_name(ctx),
-        "--target-version=" + get_bundle_min_target_version(ctx),
+        "--target-version=" + get_bundle_min_target_version(ctx, ctx.attrs.binary),
     ], delimiter = " ")

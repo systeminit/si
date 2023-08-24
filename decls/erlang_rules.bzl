@@ -19,7 +19,7 @@ common_attributes = {
 
 common_shell_attributes = (
     {
-        "shell_configs": attrs.set(attrs.dep(), default = read_config("erlang", "shell_configs", "").split(), doc = """
+        "shell_configs": attrs.set(attrs.dep(), default = read_root_config("erlang", "shell_configs", "").split(), doc = """
             This attribute allows to set config files for the shell. The dependencies that are typically used
             here are `export_file` targets.
         """),
@@ -111,13 +111,13 @@ rules_attributes = {
                 **NOTE**: _This mechanism is added to circumvent unclean dependency relationships and the goal for
                 developers should be to reduce usages of this field._ **DO NOT ADD ANY MORE USAGES!!**
             """),
-            "includes": attrs.list(attrs.source(), default = [], doc = """
-                The public header files accessible via `-include_lib("appname/include/header.hrl")` from other erlang files.
-            """),
-            "metadata": attrs.option(attrs.dict(key = attrs.string(), value = attrs.one_of(attrs.string(), attrs.list(attrs.string()))), default = None, doc = """
-                The metadata field can be used to specify extra key-value pairs which is are not defined in
+            "extra_properties": attrs.option(attrs.dict(key = attrs.string(), value = attrs.one_of(attrs.string(), attrs.list(attrs.string()))), default = None, doc = """
+                The extra_properties field can be used to specify extra key-value pairs which is are not defined in
                 [application_opt()](https://www.erlang.org/doc/man/application.html#load-2). The key-value pair will be stored in the
                 applications `.app` file and can be accessed by `file:consult/1`.
+            """),
+            "includes": attrs.list(attrs.source(), default = [], doc = """
+                The public header files accessible via `-include_lib("appname/include/header.hrl")` from other erlang files.
             """),
             "mod": attrs.option(attrs.tuple(attrs.string(), attrs.list(attrs.string())), default = None, doc = """
                 The `mod` field specifies the equivalent field in the generated `*.app` files. The format is similar, with the
@@ -195,9 +195,8 @@ rules_attributes = {
                 [`permanent`](https://www.erlang.org/doc/man/application.html#type-restart_type).
             """),
         "include_erts": attrs.bool(default = False, doc = """
-                **Note**: This is not implemented yet.
-
                 This field controls wether OTP applications and the Erlang runtime system should be included as part of the release.
+                Please note, that at the moment the erts folder is just `erts/`.
             """),
         "multi_toolchain": attrs.option(attrs.list(attrs.dep()), default = None, doc = """
                 This field controls wether the release should be built with a single toolchain, or multiple toolchains. In the
@@ -238,7 +237,7 @@ rules_attributes = {
             "extra_ct_hooks": attrs.list(attrs.string(), default = [], doc = """
                 List of additional Common Test hooks. The strings are interpreted as Erlang terms.
             """),
-            "preamble": attrs.string(default = read_config("erlang", "erlang_test_preamble", "test:info(),test:ensure_initialized(),user_drv:start()."), doc = """
+            "preamble": attrs.string(default = read_root_config("erlang", "erlang_test_preamble", "test:info(),test:ensure_initialized(),test:start_shell()."), doc = """
             """),
             "property_tests": attrs.list(attrs.dep(), default = [], doc = """
             """),
@@ -257,7 +256,7 @@ rules_attributes = {
                 implicit 'erlang_test' target suite_SUITE will be generated.
             """),
             "_cli_lib": attrs.dep(default = "prelude//erlang/common_test/test_cli_lib:test_cli_lib"),
-            "_ct_opts": attrs.string(default = read_config("erlang", "erlang_test_ct_opts", "")),
+            "_ct_opts": attrs.string(default = read_root_config("erlang", "erlang_test_ct_opts", "")),
             "_providers": attrs.string(),
             "_test_binary": attrs.dep(default = "prelude//erlang/common_test/test_binary:escript"),
             "_test_binary_lib": attrs.dep(default = "prelude//erlang/common_test/test_binary:test_binary"),

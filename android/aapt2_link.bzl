@@ -5,30 +5,32 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "Aapt2LinkInfo")
+load("@prelude//android:android_providers.bzl", "Aapt2LinkInfo", "AndroidResourceInfo", "RESOURCE_PRIORITY_LOW")
+load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 
 BASE_PACKAGE_ID = 0x7f
+ZIP_NOTHING_TO_DO_EXIT_CODE = 12
 
 def get_aapt2_link(
-        ctx: "context",
-        android_toolchain: "AndroidToolchainInfo",
-        aapt2_compile_rules: ["artifact"],
-        android_manifest: "artifact",
-        includes_vector_drawables: bool.type,
-        no_auto_version: bool.type,
-        no_version_transitions: bool.type,
-        no_auto_add_overlay: bool.type,
-        no_resource_removal: bool.type,
-        should_keep_raw_values: bool.type,
-        package_id_offset: int.type,
-        resource_stable_ids: ["artifact", None],
-        preferred_density: [str.type, None],
-        min_sdk: [str.type, None],
-        filter_locales: bool.type,
-        locales: [str.type],
-        compiled_resource_apks: ["artifact"],
-        additional_aapt2_params: [str.type],
-        extra_filtered_resources: [str.type]) -> (Aapt2LinkInfo.type, Aapt2LinkInfo.type):
+        ctx: AnalysisContext,
+        android_toolchain: AndroidToolchainInfo.type,
+        resource_infos: list[AndroidResourceInfo.type],
+        android_manifest: Artifact,
+        includes_vector_drawables: bool,
+        no_auto_version: bool,
+        no_version_transitions: bool,
+        no_auto_add_overlay: bool,
+        no_resource_removal: bool,
+        should_keep_raw_values: bool,
+        package_id_offset: int,
+        resource_stable_ids: [Artifact, None],
+        preferred_density: [str, None],
+        min_sdk: [str, None],
+        filter_locales: bool,
+        locales: list[str],
+        compiled_resource_apks: list[Artifact],
+        additional_aapt2_params: list[str],
+        extra_filtered_resources: list[str]) -> (Aapt2LinkInfo.type, Aapt2LinkInfo.type):
     link_infos = []
     for use_proto_format in [False, True]:
         if use_proto_format:
@@ -86,6 +88,14 @@ def get_aapt2_link(
         for compiled_resource_apk in compiled_resource_apks:
             aapt2_command.add(["-I", compiled_resource_apk])
 
+        # put low priority resources first so that they get overwritten by higher priority resources
+        low_priority_aapt2_compile_rules = []
+        normal_priority_aapt2_compile_rules = []
+        for resource_info in resource_infos:
+            if resource_info.aapt2_compile_output:
+                (low_priority_aapt2_compile_rules if resource_info.res_priority == RESOURCE_PRIORITY_LOW else normal_priority_aapt2_compile_rules).append(resource_info.aapt2_compile_output)
+        aapt2_compile_rules = low_priority_aapt2_compile_rules + normal_priority_aapt2_compile_rules
+
         aapt2_compile_rules_args_file = ctx.actions.write("{}/aapt2_compile_rules_args_file".format(identifier), cmd_args(aapt2_compile_rules, delimiter = " "))
         aapt2_command.add("-R")
         aapt2_command.add(cmd_args(aapt2_compile_rules_args_file, format = "@{}"))
@@ -100,16 +110,19 @@ def get_aapt2_link(
         #
         # This is a faster filtering step that just uses zip -d to remove entries from the archive.
         # It's also superbly dangerous.
+        #
+        # If zip -d returns that there was nothing to do, then we don't fail.
         if len(extra_filtered_resources) > 0:
             filtered_resources_apk = ctx.actions.declare_output("{}/filtered-resource-apk.ap_".format(identifier))
             filter_resources_sh_cmd = cmd_args([
                 "sh",
                 "-c",
-                'cp "$1" "$2" && chmod 644 "$2" && zip -d "$2" "$3"',
+                'cp "$1" "$2" && chmod 644 "$2"; zip -d "$2" "$3"; if [$? -eq $4]; then\nexit 0\nfi\nexit $?;',
                 "--",
                 resources_apk,
                 filtered_resources_apk.as_output(),
                 extra_filtered_resources,
+                str(ZIP_NOTHING_TO_DO_EXIT_CODE),
             ])
             ctx.actions.run(filter_resources_sh_cmd, category = "aapt2_filter_resources", identifier = identifier)
             primary_resources_apk = filtered_resources_apk
@@ -125,11 +138,11 @@ def get_aapt2_link(
     return link_infos[0], link_infos[1]
 
 def get_module_manifest_in_proto_format(
-        ctx: "context",
-        android_toolchain: "AndroidToolchainInfo",
-        android_manifest: "artifact",
-        primary_resources_apk: "artifact",
-        module_name: str.type) -> "artifact":
+        ctx: AnalysisContext,
+        android_toolchain: AndroidToolchainInfo.type,
+        android_manifest: Artifact,
+        primary_resources_apk: Artifact,
+        module_name: str) -> Artifact:
     aapt2_command = cmd_args(android_toolchain.aapt2)
     aapt2_command.add("link")
 

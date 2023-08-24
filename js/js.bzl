@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//android:android.bzl", "android_toolchain")
+load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//js:js_bundle.bzl", "js_bundle_impl")
 load("@prelude//js:js_bundle_genrule.bzl", "js_bundle_genrule_impl")
 load("@prelude//js:js_library.bzl", "js_library_impl")
@@ -21,17 +22,12 @@ def _select_platform():
 
 def _is_release():
     return select({
-        "DEFAULT": False,
+        "DEFAULT": select({
+            "DEFAULT": False,
+            "fbsource//tools/build_defs/android/config:build_mode_opt": True,
+        }),
         "config//build_mode/constraints:release": True,
     })
-
-def _is_build_only_native_code():
-    return select(
-        {
-            "DEFAULT": False,
-            "fbsource//xplat/buck2/platform/android:build_only_native_code": True,
-        },
-    )
 
 implemented_rules = {
     "js_bundle": js_bundle_impl,
@@ -63,7 +59,7 @@ extra_attributes = {
     },
     "js_library": {
         "worker": attrs.exec_dep(),
-        "_build_only_native_code": attrs.bool(default = _is_build_only_native_code()),
+        "_build_only_native_code": attrs.bool(default = is_build_only_native_code()),
         "_is_release": attrs.bool(
             default = _is_release(),
         ),

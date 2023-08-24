@@ -25,16 +25,20 @@ load(
 )
 
 _SelectionCriteria = record(
-    include_build_target_patterns = field([BuildTargetPattern.type], []),
-    include_regular_expressions = field(["regex"], []),
-    exclude_build_target_patterns = field([BuildTargetPattern.type], []),
-    exclude_regular_expressions = field(["regex"], []),
+    include_build_target_patterns = field(list[BuildTargetPattern.type], []),
+    include_regular_expressions = field(list["regex"], []),
+    exclude_build_target_patterns = field(list[BuildTargetPattern.type], []),
+    exclude_regular_expressions = field(list["regex"], []),
 )
 
 AppleSelectiveDebuggingInfo = provider(fields = [
     "scrub_binary",  # function
     "filter",  # function
 ])
+
+AppleSelectiveDebuggingFilteredDebugInfo = record(
+    map = field(dict[Label, list[Artifact]]),
+)
 
 # The type of selective debugging json input to utilze.
 _SelectiveDebuggingJsonTypes = [
@@ -49,7 +53,7 @@ _SelectiveDebuggingJsonType = enum(*_SelectiveDebuggingJsonTypes)
 
 _LOCAL_LINK_THRESHOLD = 0.2
 
-def _impl(ctx: "context") -> ["provider"]:
+def _impl(ctx: AnalysisContext) -> list[Provider]:
     json_type = _SelectiveDebuggingJsonType(ctx.attrs.json_type)
 
     # process inputs and provide them up the graph with typing
@@ -86,7 +90,7 @@ def _impl(ctx: "context") -> ["provider"]:
         exclude_regular_expressions = exclude_regular_expressions,
     )
 
-    def scrub_binary(inner_ctx, executable: "artifact", executable_link_execution_preference: LinkExecutionPreference.type, adhoc_codesign_tool: ["RunInfo", None]) -> "artifact":
+    def scrub_binary(inner_ctx, executable: Artifact, executable_link_execution_preference: LinkExecutionPreference.type, adhoc_codesign_tool: [RunInfo.type, None]) -> Artifact:
         inner_cmd = cmd_args(cmd)
         output = inner_ctx.actions.declare_output("debug_scrubbed/{}".format(executable.short_path))
 
@@ -109,14 +113,16 @@ def _impl(ctx: "context") -> ["provider"]:
         )
         return output
 
-    def filter_debug_info(debug_info: "transitive_set_iterator") -> ["artifact"]:
-        selected_debug_info = []
-        for info in debug_info:
-            if _is_label_included(info.label, selection_criteria):
-                selected_debug_info.extend(info.artifacts)
-        return selected_debug_info
+    def filter_debug_info(debug_info: "transitive_set_iterator") -> AppleSelectiveDebuggingFilteredDebugInfo.type:
+        map = {}
+        for infos in debug_info:
+            for info in infos:
+                if _is_label_included(info.label, selection_criteria):
+                    map[info.label] = info.artifacts
 
-    def preference_for_links(links: ["label"], deps_preferences: [LinkExecutionPreferenceInfo.type]) -> LinkExecutionPreference.type:
+        return AppleSelectiveDebuggingFilteredDebugInfo(map = map)
+
+    def preference_for_links(links: list[Label], deps_preferences: list[LinkExecutionPreferenceInfo.type]) -> LinkExecutionPreference.type:
         # If any dependent links were run locally, prefer that the current link is also performed locally,
         # to avoid needing to upload the previous link.
         dep_prefered_local = is_any(lambda info: info.preference == LinkExecutionPreference("local"), deps_preferences)
@@ -159,7 +165,7 @@ registration_spec = RuleRegistrationSpec(
     },
 )
 
-def _is_label_included(label: "label", selection_criteria: _SelectionCriteria.type) -> bool.type:
+def _is_label_included(label: Label, selection_criteria: _SelectionCriteria.type) -> bool:
     # If no include criteria are provided, we then include everything, as long as it is not excluded.
     if selection_criteria.include_build_target_patterns or selection_criteria.include_regular_expressions:
         if not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.include_build_target_patterns, selection_criteria.include_regular_expressions):
@@ -168,7 +174,7 @@ def _is_label_included(label: "label", selection_criteria: _SelectionCriteria.ty
     # If included (above snippet), ensure that this target is not excluded.
     return not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.exclude_build_target_patterns, selection_criteria.exclude_regular_expressions)
 
-def _check_if_label_matches_patterns_or_expressions(label: "label", patterns: ["BuildTargetPattern"], expressions: ["regex"]) -> bool.type:
+def _check_if_label_matches_patterns_or_expressions(label: Label, patterns: list["BuildTargetPattern"], expressions: list["regex"]) -> bool:
     for pattern in patterns:
         if pattern.matches(label):
             return True

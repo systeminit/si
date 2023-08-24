@@ -5,6 +5,10 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load(
+    "@prelude//:artifact_tset.bzl",
+    "project_artifacts",
+)
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//apple:apple_stripping.bzl", "apple_strip_args")
 # @oss-disable: load("@prelude//apple/meta_only:linker_outputs.bzl", "add_extra_linker_outputs") 
@@ -12,14 +16,24 @@ load(
     "@prelude//apple/swift:swift_compilation.bzl",
     "compile_swift",
     "get_swift_anonymous_targets",
+    "get_swift_debug_infos",
+    "get_swift_dependency_info",
+    "get_swiftmodule_linkable",
     "uses_explicit_modules",
 )
 load("@prelude//apple/swift:swift_types.bzl", "SWIFT_EXTENSION")
+load(
+    "@prelude//cxx:argsfiles.bzl",
+    "CompileArgsfiles",
+)
 load("@prelude//cxx:cxx_executable.bzl", "cxx_executable")
 load("@prelude//cxx:cxx_library_utility.bzl", "cxx_attr_deps", "cxx_attr_exported_deps")
 load("@prelude//cxx:cxx_sources.bzl", "get_srcs_with_flags")
-load("@prelude//cxx:cxx_types.bzl", "CxxRuleConstructorParams")
-load("@prelude//cxx:debug.bzl", "project_external_debug_info")
+load(
+    "@prelude//cxx:cxx_types.bzl",
+    "CxxRuleAdditionalParams",
+    "CxxRuleConstructorParams",
+)
 load(
     "@prelude//cxx:headers.bzl",
     "cxx_attr_headers",
@@ -35,20 +49,23 @@ load(
     "CPreprocessor",
     "CPreprocessorArgs",
 )
+load("@prelude//utils:arglike.bzl", "ArgLike")
+load("@prelude//utils:utils.bzl", "expect")
 load(":apple_bundle_types.bzl", "AppleBundleLinkerMapInfo", "AppleMinDeploymentVersionInfo")
 load(":apple_bundle_utility.bzl", "get_bundle_infos_from_graph", "merge_bundle_linker_maps_info")
 load(":apple_code_signing_types.bzl", "AppleEntitlementsInfo")
-load(":apple_dsym.bzl", "AppleDebuggableInfo", "DEBUGINFO_SUBTARGET", "DSYM_SUBTARGET", "get_apple_dsym")
+load(":apple_dsym.bzl", "DSYM_SUBTARGET", "get_apple_dsym")
 load(":apple_frameworks.bzl", "get_framework_search_path_flags")
 load(":apple_sdk_metadata.bzl", "IPhoneSimulatorSdkMetadata", "MacOSXCatalystSdkMetadata")
 load(":apple_target_sdk_version.bzl", "get_min_deployment_version_for_node", "get_min_deployment_version_target_linker_flags", "get_min_deployment_version_target_preprocessor_flags")
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo")
-load(":apple_utility.bzl", "get_apple_cxx_headers_layout")
+load(":apple_utility.bzl", "get_apple_cxx_headers_layout", "get_apple_stripped_attr_value_with_default_fallback")
+load(":debug.bzl", "AppleDebuggableInfo", "DEBUGINFO_SUBTARGET")
 load(":resource_groups.bzl", "create_resource_graph")
 load(":xcode.bzl", "apple_populate_xcode_attributes")
 
-def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
-    def get_apple_binary_providers(deps_providers) -> ["provider"]:
+def apple_binary_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
+    def get_apple_binary_providers(deps_providers) -> list[Provider]:
         # FIXME: Ideally we'd like to remove the support of "bridging header",
         # cause it affects build time and in general considered a bad practise.
         # But we need it for now to achieve compatibility with BUCK1.
@@ -56,6 +73,7 @@ def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
 
         cxx_srcs, swift_srcs = _filter_swift_srcs(ctx)
 
+        framework_search_path_flags = get_framework_search_path_flags(ctx)
         swift_compile = compile_swift(
             ctx,
             swift_srcs,
@@ -63,6 +81,7 @@ def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
             deps_providers,
             [],
             None,
+            framework_search_path_flags,
             objc_bridging_header_flags,
         )
         swift_object_files = [swift_compile.object_file] if swift_compile else []
@@ -74,16 +93,35 @@ def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
         extra_link_flags = get_min_deployment_version_target_linker_flags(ctx) + _entitlements_link_flags(ctx) + extra_linker_output_flags
 
         framework_search_path_pre = CPreprocessor(
-            relative_args = CPreprocessorArgs(args = [get_framework_search_path_flags(ctx)]),
+            relative_args = CPreprocessorArgs(args = [framework_search_path_flags]),
         )
+
+        swift_dependency_info = swift_compile.dependency_info if swift_compile else get_swift_dependency_info(ctx, None, None)
+        swiftmodule = swift_compile.swiftmodule if swift_compile else None
+        swift_debug_info = get_swift_debug_infos(ctx, swiftmodule, swift_dependency_info)
+
+        swiftmodule_linkable = get_swiftmodule_linkable(swift_compile)
+
+        stripped = get_apple_stripped_attr_value_with_default_fallback(ctx)
         constructor_params = CxxRuleConstructorParams(
             rule_type = "apple_binary",
             headers_layout = get_apple_cxx_headers_layout(ctx),
             extra_link_flags = extra_link_flags,
             srcs = cxx_srcs,
+            additional = CxxRuleAdditionalParams(
+                srcs = swift_srcs,
+                argsfiles = swift_compile.argsfiles if swift_compile else CompileArgsfiles(),
+                # We need to add any swift modules that we include in the link, as
+                # these will end up as `N_AST` entries that `dsymutil` will need to
+                # follow.
+                static_external_debug_info = swift_debug_info.static,
+                shared_external_debug_info = swift_debug_info.shared,
+            ),
+            swiftmodule_linkable = swiftmodule_linkable,
             extra_link_input = swift_object_files,
+            extra_link_input_has_external_debug_info = True,
             extra_preprocessors = get_min_deployment_version_target_preprocessor_flags(ctx) + [framework_search_path_pre] + swift_preprocessor,
-            strip_executable = ctx.attrs.stripped,
+            strip_executable = stripped,
             strip_args_factory = apple_strip_args,
             cxx_populate_xcode_attributes_func = apple_populate_xcode_attributes,
             link_group_info = get_link_group_info(ctx),
@@ -93,19 +131,24 @@ def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
         )
         cxx_output = cxx_executable(ctx, constructor_params)
 
-        external_debug_info = project_external_debug_info(
+        debug_info = project_artifacts(
             actions = ctx.actions,
-            label = ctx.label,
-            infos = [cxx_output.external_debug_info],
+            tsets = [cxx_output.external_debug_info],
         )
+        if stripped:
+            expect(cxx_output.unstripped_binary != None, "Expect to save unstripped_binary when stripped is enabled")
+            cxx_output.sub_targets["unstripped"] = [DefaultInfo(default_output = cxx_output.unstripped_binary)]
+            dsym_input_binary = cxx_output.unstripped_binary
+        else:
+            dsym_input_binary = cxx_output.binary
         dsym_artifact = get_apple_dsym(
             ctx = ctx,
-            executable = cxx_output.binary,
-            external_debug_info = external_debug_info,
-            action_identifier = cxx_output.binary.short_path,
+            executable = dsym_input_binary,
+            debug_info = debug_info,
+            action_identifier = dsym_input_binary.short_path,
         )
         cxx_output.sub_targets[DSYM_SUBTARGET] = [DefaultInfo(default_output = dsym_artifact)]
-        cxx_output.sub_targets[DEBUGINFO_SUBTARGET] = [DefaultInfo(other_outputs = external_debug_info)]
+        cxx_output.sub_targets[DEBUGINFO_SUBTARGET] = [DefaultInfo(other_outputs = debug_info)]
         cxx_output.sub_targets.update(extra_linker_output_providers)
 
         min_version = get_min_deployment_version_for_node(ctx)
@@ -125,8 +168,9 @@ def apple_binary_impl(ctx: "context") -> [["provider"], "promise"]:
             DefaultInfo(default_output = cxx_output.binary, sub_targets = cxx_output.sub_targets),
             RunInfo(args = cmd_args(cxx_output.binary).hidden(cxx_output.runtime_files)),
             AppleEntitlementsInfo(entitlements_file = ctx.attrs.entitlements_file),
-            AppleDebuggableInfo(dsyms = [dsym_artifact], external_debug_info = cxx_output.external_debug_info),
+            AppleDebuggableInfo(dsyms = [dsym_artifact], debug_info_tset = cxx_output.external_debug_info),
             cxx_output.xcode_data,
+            cxx_output.compilation_db,
             merge_bundle_linker_maps_info(bundle_infos),
         ] + [resource_graph] + min_version_providers
 
@@ -140,11 +184,11 @@ _SDK_NAMES_NEED_ENTITLEMENTS_IN_BINARY = [
     MacOSXCatalystSdkMetadata.name,
 ]
 
-def _needs_entitlements_in_binary(ctx: "context") -> bool.type:
+def _needs_entitlements_in_binary(ctx: AnalysisContext) -> bool:
     apple_toolchain_info = ctx.attrs._apple_toolchain[AppleToolchainInfo]
     return apple_toolchain_info.sdk_name in _SDK_NAMES_NEED_ENTITLEMENTS_IN_BINARY
 
-def _entitlements_link_flags(ctx: "context") -> [""]:
+def _entitlements_link_flags(ctx: AnalysisContext) -> list[typing.Any]:
     return [
         "-Xlinker",
         "-sectcreate",
@@ -156,7 +200,7 @@ def _entitlements_link_flags(ctx: "context") -> [""]:
         ctx.attrs.entitlements_file,
     ] if (ctx.attrs.entitlements_file and _needs_entitlements_in_binary(ctx)) else []
 
-def _filter_swift_srcs(ctx: "context") -> (["CxxSrcWithFlags"], ["CxxSrcWithFlags"]):
+def _filter_swift_srcs(ctx: AnalysisContext) -> (list["CxxSrcWithFlags"], list["CxxSrcWithFlags"]):
     cxx_srcs = []
     swift_srcs = []
     for s in get_srcs_with_flags(ctx):
@@ -166,7 +210,7 @@ def _filter_swift_srcs(ctx: "context") -> (["CxxSrcWithFlags"], ["CxxSrcWithFlag
             cxx_srcs.append(s)
     return cxx_srcs, swift_srcs
 
-def _get_bridging_header_flags(ctx: "context") -> ["_arglike"]:
+def _get_bridging_header_flags(ctx: AnalysisContext) -> list[ArgLike]:
     if ctx.attrs.bridging_header:
         objc_bridging_header_flags = [
             # Disable bridging header -> PCH compilation to mitigate an issue in Xcode 13 beta.

@@ -12,10 +12,10 @@ load("@prelude//js:js_utils.bzl", "RAM_BUNDLE_TYPES", "TRANSFORM_PROFILES", "get
 load("@prelude//utils:utils.bzl", "expect")
 
 def _build_js_bundle(
-        ctx: "context",
-        bundle_name_out: str.type,
+        ctx: AnalysisContext,
+        bundle_name_out: str,
         js_bundle_info: JsBundleInfo.type,
-        named_output: str.type) -> JsBundleInfo.type:
+        named_output: str) -> JsBundleInfo.type:
     env_vars = {
         "DEPENDENCIES": cmd_args(js_bundle_info.dependencies_file),
         "JS_BUNDLE_NAME": cmd_args(js_bundle_info.bundle_name),
@@ -73,10 +73,10 @@ def _build_js_bundle(
     )
 
 def _get_extra_providers(
-        ctx: "context",
-        skip_resources: bool.type,
-        initial_target: ["provider_collection", "dependency"],
-        js_bundle_out: JsBundleInfo.type) -> ["provider"]:
+        ctx: AnalysisContext,
+        skip_resources: bool,
+        initial_target: ["provider_collection", Dependency],
+        js_bundle_out: JsBundleInfo.type) -> list[Provider]:
     providers = []
     android_resource_info = initial_target.get(AndroidResourceInfo)
     if android_resource_info:
@@ -88,6 +88,7 @@ def _get_extra_providers(
             manifest_file = None,
             r_dot_java_package = None if skip_resources else android_resource_info.r_dot_java_package,
             res = None if skip_resources else android_resource_info.res,
+            res_priority = android_resource_info.res_priority,
             text_symbols = None if skip_resources else android_resource_info.text_symbols,
         )
         providers.append(new_android_resource_info)
@@ -97,7 +98,7 @@ def _get_extra_providers(
 
     return providers
 
-def js_bundle_genrule_impl(ctx: "context") -> ["provider"]:
+def js_bundle_genrule_impl(ctx: AnalysisContext) -> list[Provider]:
     sub_targets = {}
     for transform_profile in TRANSFORM_PROFILES:
         for ram_bundle_name in RAM_BUNDLE_TYPES.keys():

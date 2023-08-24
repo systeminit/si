@@ -8,7 +8,7 @@
 load(":apple_resource_types.bzl", "AppleResourceDestination", "AppleResourceSpec")
 load(":resource_groups.bzl", "create_resource_graph")
 
-def apple_resource_impl(ctx: "context") -> ["provider"]:
+def apple_resource_impl(ctx: AnalysisContext) -> list[Provider]:
     destination = ctx.attrs.destination or "resources"
     resource_spec = AppleResourceSpec(
         files = ctx.attrs.files,
@@ -21,7 +21,7 @@ def apple_resource_impl(ctx: "context") -> ["provider"]:
     )
 
     # `files` can contain `apple_library()` which in turn can have `apple_resource()` deps
-    file_deps = [file_or_dep for file_or_dep in ctx.attrs.files if type(file_or_dep) == "dependency"]
+    file_deps = [file_or_dep for file_or_dep in ctx.attrs.files if isinstance(file_or_dep, Dependency)]
     deps = file_deps + ctx.attrs.resources_from_deps
     graph = create_resource_graph(
         ctx = ctx,

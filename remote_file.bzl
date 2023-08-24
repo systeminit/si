@@ -10,7 +10,7 @@ load("@prelude//utils:utils.bzl", "expect", "value_or")
 
 _ROOT = "https://maven.thefacebook.com/nexus/content/groups/public"
 
-def _from_mvn_url(url: str.type) -> str.type:
+def _from_mvn_url(url: str) -> str:
     """
     Convert `mvn:` style URIs to a URL.
     """
@@ -50,7 +50,7 @@ def _from_mvn_url(url: str.type) -> str.type:
     )
 
 # Implementation of the `remote_file` build rule.
-def remote_file_impl(ctx: "context") -> ["provider"]:
+def remote_file_impl(ctx: AnalysisContext) -> list[Provider]:
     url = ctx.attrs.url
     if url.startswith("mvn:"):
         url = _from_mvn_url(url)

@@ -12,13 +12,14 @@ load(
 )
 load("@prelude//utils:utils.bzl", "from_named_set", "value_or")
 load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
-load(":make_pex.bzl", "PexProviders", "make_default_info")
+load(":interface.bzl", "EntryPointKind")
+load(":make_py_package.bzl", "PexProviders", "make_default_info")
 load(":python_binary.bzl", "python_executable")
 load(":python_library.bzl", "py_attr_resources", "qualify_srcs")
 
 def _write_test_modules_list(
-        ctx: "context",
-        srcs: {str.type: "artifact"}) -> (str.type, "artifact"):
+        ctx: AnalysisContext,
+        srcs: dict[str, Artifact]) -> (str, Artifact):
     """
     Generate a python source file with a list of all test modules.
     """
@@ -33,7 +34,7 @@ def _write_test_modules_list(
     contents += "]\n"
     return name, ctx.actions.write(name, contents)
 
-def python_test_executable(ctx: "context") -> PexProviders.type:
+def python_test_executable(ctx: AnalysisContext) -> PexProviders.type:
     main_module = value_or(ctx.attrs.main_module, "__test_main__")
 
     srcs = qualify_srcs(ctx.label, ctx.attrs.base_module, from_named_set(ctx.attrs.srcs))
@@ -49,13 +50,14 @@ def python_test_executable(ctx: "context") -> PexProviders.type:
 
     return python_executable(
         ctx,
-        main_module,
+        (EntryPointKind("module"), main_module),
         srcs,
         resources,
         compile = value_or(ctx.attrs.compile, False),
+        allow_cache_upload = False,
     )
 
-def python_test_impl(ctx: "context") -> ["provider"]:
+def python_test_impl(ctx: AnalysisContext) -> list[Provider]:
     pex = python_test_executable(ctx)
     test_cmd = pex.run_cmd
 

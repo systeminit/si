@@ -27,10 +27,10 @@ LinkExecutionPreferenceInfo = provider(fields = [
 ])
 
 _ActionExecutionAttributes = record(
-    full_hybrid = field(bool.type, default = False),
-    local_only = field(bool.type, default = False),
-    prefer_local = field(bool.type, default = False),
-    prefer_remote = field(bool.type, default = False),
+    full_hybrid = field(bool, default = False),
+    local_only = field(bool, default = False),
+    prefer_local = field(bool, default = False),
+    prefer_remote = field(bool, default = False),
 )
 
 def link_execution_preference_attr():
@@ -47,7 +47,7 @@ def link_execution_preference_attr():
     The default is None, expressing that no preference has been set on the target itself.
     """)
 
-def get_link_execution_preference(ctx, links: ["label"]) -> LinkExecutionPreference.type:
+def get_link_execution_preference(ctx, links: list[Label]) -> LinkExecutionPreference.type:
     if not hasattr(ctx.attrs, "link_execution_preference"):
         fail("`get_link_execution_preference` called on a rule that does not support link_execution_preference!")
 
@@ -57,7 +57,7 @@ def get_link_execution_preference(ctx, links: ["label"]) -> LinkExecutionPrefere
     if not link_execution_preference:
         return LinkExecutionPreference("any")
 
-    if not type(link_execution_preference) == "dependency":
+    if not isinstance(link_execution_preference, Dependency):
         return LinkExecutionPreference(link_execution_preference)
 
     all_deps = cxx_attr_deps(ctx) + cxx_attr_exported_deps(ctx)

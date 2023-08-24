@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "merge_android_packageable_info")
+load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "RESOURCE_PRIORITY_NORMAL", "merge_android_packageable_info")
 load("@prelude//android:android_resource.bzl", "JAVA_PACKAGE_FILENAME", "aapt2_compile", "get_text_symbols")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//js:js_providers.bzl", "JsBundleInfo", "JsLibraryInfo", "get_transitive_outputs")
@@ -13,10 +13,10 @@ load("@prelude//js:js_utils.bzl", "RAM_BUNDLE_TYPES", "TRANSFORM_PROFILES", "get
 load("@prelude//utils:utils.bzl", "expect", "map_idx")
 
 def _build_dependencies_file(
-        ctx: "context",
-        transform_profile: str.type,
-        flavors: [str.type],
-        transitive_js_library_outputs: "transitive_set_args_projection") -> "artifact":
+        ctx: AnalysisContext,
+        transform_profile: str,
+        flavors: list[str],
+        transitive_js_library_outputs: "transitive_set_args_projection") -> Artifact:
     dependencies_file = ctx.actions.declare_output("{}/dependencies_file", transform_profile)
 
     # ctx.attrs.extra_json can contain attrs.arg().
@@ -56,14 +56,14 @@ def _build_dependencies_file(
     return dependencies_file
 
 def _build_js_bundle(
-        ctx: "context",
-        bundle_name: str.type,
-        ram_bundle_name: str.type,
-        ram_bundle_command: str.type,
-        transform_profile: str.type,
-        flavors: [str.type],
+        ctx: AnalysisContext,
+        bundle_name: str,
+        ram_bundle_name: str,
+        ram_bundle_command: str,
+        transform_profile: str,
+        flavors: list[str],
         transitive_js_library_outputs: "transitive_set_args_projection",
-        dependencies_file: "artifact") -> JsBundleInfo.type:
+        dependencies_file: Artifact) -> JsBundleInfo.type:
     base_dir = "{}_{}".format(ram_bundle_name, transform_profile) if ram_bundle_name else transform_profile
     assets_dir = ctx.actions.declare_output("{}/assets_dir".format(base_dir))
     bundle_dir_output = ctx.actions.declare_output("{}/js".format(base_dir), dir = True)
@@ -127,7 +127,7 @@ def _build_js_bundle(
         dependencies_file = dependencies_file,
     )
 
-def _get_fallback_transform_profile(ctx: "context") -> str.type:
+def _get_fallback_transform_profile(ctx: AnalysisContext) -> str:
     if ctx.attrs.fallback_transform_profile in TRANSFORM_PROFILES:
         return ctx.attrs.fallback_transform_profile
 
@@ -136,10 +136,10 @@ def _get_fallback_transform_profile(ctx: "context") -> str.type:
 
     fail("Invalid fallback_transform_profile attribute {}!".format(ctx.attrs.fallback_transform_profile))
 
-def _get_default_providers(js_bundle_info: JsBundleInfo.type) -> ["provider"]:
+def _get_default_providers(js_bundle_info: JsBundleInfo.type) -> list[Provider]:
     return [DefaultInfo(default_output = js_bundle_info.built_js)]
 
-def _get_android_resource_info(ctx: "context", js_bundle_info: JsBundleInfo.type, identifier: str.type) -> "AndroidResourceInfo":
+def _get_android_resource_info(ctx: AnalysisContext, js_bundle_info: JsBundleInfo.type, identifier: str) -> AndroidResourceInfo.type:
     aapt2_compile_output = aapt2_compile(
         ctx,
         js_bundle_info.res,
@@ -156,10 +156,11 @@ def _get_android_resource_info(ctx: "context", js_bundle_info: JsBundleInfo.type
         manifest_file = None,
         r_dot_java_package = r_dot_java_package,
         res = js_bundle_info.res,
+        res_priority = RESOURCE_PRIORITY_NORMAL,
         text_symbols = get_text_symbols(ctx, js_bundle_info.res, [], identifier),
     )
 
-def _get_extra_providers(ctx: "context", js_bundle_info: JsBundleInfo.type, identifier: str.type) -> ["provider"]:
+def _get_extra_providers(ctx: AnalysisContext, js_bundle_info: JsBundleInfo.type, identifier: str) -> list[Provider]:
     providers = [js_bundle_info]
     if ctx.attrs._platform == "android":
         resource_info = _get_android_resource_info(ctx, js_bundle_info, identifier)
@@ -170,7 +171,7 @@ def _get_extra_providers(ctx: "context", js_bundle_info: JsBundleInfo.type, iden
 
     return providers
 
-def js_bundle_impl(ctx: "context") -> ["provider"]:
+def js_bundle_impl(ctx: AnalysisContext) -> list[Provider]:
     sub_targets = {}
     default_outputs = []
     extra_unnamed_output_providers = None

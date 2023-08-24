@@ -6,10 +6,11 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
 
 # Infer the likely package name for the given path based on conventional
 # source root components.
-def get_src_package(src_root_prefixes: [str.type], src_root_elements: [str.type], path: str.type) -> str.type:
+def get_src_package(src_root_prefixes: list[str], src_root_elements: list[str], path: str) -> str:
     for prefix in src_root_prefixes:
         if path.startswith(prefix):
             return paths.relativize(
@@ -25,10 +26,10 @@ def get_src_package(src_root_prefixes: [str.type], src_root_elements: [str.type]
     return path
 
 def get_resources_map(
-        java_toolchain: "JavaToolchainInfo",
-        package: str.type,
-        resources: ["artifact"],
-        resources_root: [str.type, None]) -> {str.type: "artifact"}:
+        java_toolchain: JavaToolchainInfo.type,
+        package: str,
+        resources: list[Artifact],
+        resources_root: [str, None]) -> dict[str, Artifact]:
     # As in v1, root the resource root via the current package.
     if resources_root != None:
         resources_root = paths.normalize(paths.join(package, resources_root))
@@ -49,6 +50,9 @@ def get_resources_map(
                 full_resource,
                 resources_root,
             )
+            if not resource_name:
+                # Match v1 behavior: https://fburl.com/code/x7zhlz5m
+                resource_name = resource.short_path
         else:
             resource_name = get_src_package(java_toolchain.src_root_prefixes, java_toolchain.src_root_elements, full_resource)
         resources_to_copy[resource_name] = resource

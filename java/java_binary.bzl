@@ -16,18 +16,18 @@ load(
     "get_java_packaging_info",
 )
 
-def _generate_script(generate_wrapper: bool.type, native_libs: {str.type: "SharedLibrary"}) -> bool.type:
+def _generate_script(generate_wrapper: bool, native_libs: dict[str, "SharedLibrary"]) -> bool:
     # if `generate_wrapper` is set and no native libs then it should be a wrapper script as result,
     # otherwise fat jar will be generated (inner jar or script will be included inside a final fat jar)
     return generate_wrapper and len(native_libs) == 0
 
 def _create_fat_jar(
-        ctx: "context",
+        ctx: AnalysisContext,
         java_toolchain: JavaToolchainInfo.type,
-        jars: "cmd_args",
-        native_libs: {str.type: "SharedLibrary"},
-        do_not_create_inner_jar: bool.type,
-        generate_wrapper: bool.type) -> ["artifact"]:
+        jars: cmd_args,
+        native_libs: dict[str, "SharedLibrary"],
+        do_not_create_inner_jar: bool,
+        generate_wrapper: bool) -> list[Artifact]:
     extension = "sh" if _generate_script(generate_wrapper, native_libs) else "jar"
     output = ctx.actions.declare_output("{}.{}".format(ctx.label.name, extension))
 
@@ -125,19 +125,19 @@ def _create_fat_jar(
 
 def _get_run_cmd(
         attrs: struct.type,
-        script_mode: bool.type,
-        main_artifact: "artifact",
-        java_toolchain: JavaToolchainInfo.type) -> "cmd_args":
+        script_mode: bool,
+        main_artifact: Artifact,
+        java_toolchain: JavaToolchainInfo.type) -> cmd_args:
     if script_mode:
-        return cmd_args(["/bin/bash", main_artifact])
+        return cmd_args(["/usr/bin/env", "bash", main_artifact])
     else:
         return cmd_args([java_toolchain.java[RunInfo]] + attrs.java_args_for_run_info + ["-jar", main_artifact])
 
-def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo.type) -> ["artifact"]:
+def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo.type) -> list[Artifact]:
     default_info = java_toolchain.java[DefaultInfo]
     return default_info.default_outputs + default_info.other_outputs
 
-def java_binary_impl(ctx: "context") -> ["provider"]:
+def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     """
      java_binary() rule implementation
 
