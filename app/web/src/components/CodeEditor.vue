@@ -217,13 +217,14 @@ const mountEditor = async () => {
     ]),
   });
 
+  view?.destroy();
   view = new EditorView({
     state: editorState,
     parent: editorMount.value,
   });
 };
 
-watch(editorMount, mountEditor, { immediate: true });
+watch([props, editorMount], mountEditor);
 
 function onLocalSave() {
   emitUpdatedValue();
