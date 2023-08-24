@@ -93,7 +93,7 @@ impl OrderingNodeWeight {
     pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
         self.order = order;
         self.update_content_hash();
-        self.increment_seen_vector_clock(change_set)?;
+        self.increment_vector_clock(change_set)?;
 
         Ok(())
     }
