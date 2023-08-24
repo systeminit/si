@@ -289,11 +289,17 @@ impl ContainerEngine for DockerEngine {
     }
 
     async fn stop_container(&self, id: String) -> CliResult<()> {
-        self.docker
-            .containers()
-            .get(id)
-            .stop(&ContainerStopOpts::builder().build())
-            .await?;
+        let container = self.docker.containers().get(id);
+        let inspectations = container.inspect().await?;
+
+        if let Some(state) = inspectations.state {
+            if let Some(true) = state.running {
+                println!("Stopping container {}", inspectations.name.unwrap());
+                container
+                    .stop(&ContainerStopOpts::builder().build())
+                    .await?;
+            }
+        }
         Ok(())
     }
 

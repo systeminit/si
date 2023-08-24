@@ -32,7 +32,6 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
             .get_existing_container(container_identifier.clone())
             .await?;
         if existing.is_some() {
-            println!("Stopping container {}", container_identifier.clone());
             app.container_engine()
                 .stop_container(existing.unwrap().id.unwrap().to_string())
                 .await?;
