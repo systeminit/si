@@ -7,8 +7,8 @@ use petgraph::stable_graph::NodeIndex;
 pub enum Conflict {
     // TODO(nick,jacob): this variant will not be possible until ordering is in place.
     ChildOrder {
-        ours: NodeIndex,
-        theirs: NodeIndex,
+        onto: NodeIndex,
+        to_rebase: NodeIndex,
     },
     ModifyRemovedItem(NodeIndex),
     NodeContent {
