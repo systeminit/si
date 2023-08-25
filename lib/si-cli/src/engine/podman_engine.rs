@@ -16,6 +16,7 @@ impl PodmanEngine {
     }
 }
 
+#[allow(clippy::diverging_sub_expression)] // TODO(fnichol): remove when `todo!()`s are gone
 #[async_trait]
 impl ContainerEngine for PodmanEngine {
     fn get_engine_identifier(&self) -> String {
