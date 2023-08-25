@@ -38,7 +38,7 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import StatusIndicatorIcon, {
   IconType,
-} from "@/components/StatusIndicatorIcon2.vue";
+} from "@/components/StatusIndicatorIcon.vue";
 import Popover from "../Popover.vue";
 
 const props = defineProps({

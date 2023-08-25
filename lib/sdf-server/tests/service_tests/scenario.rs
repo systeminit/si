@@ -561,6 +561,7 @@ impl ScenarioHarness {
         assert!(!ctx.visibility().is_head());
         let request = ApplyChangeSetRequest {
             change_set_pk: ctx.visibility().change_set_pk,
+            list: Vec::new(),
         };
         let _response: ApplyChangeSetResponse = self
             .query_post("/api/change_set/apply_change_set", &request)

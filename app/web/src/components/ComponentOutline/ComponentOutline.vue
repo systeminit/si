@@ -1,20 +1,30 @@
 <template>
-  <div ref="outlineRef" class="flex flex-col absolute inset-0">
-    <RequestStatusMessage
-      v-if="fetchComponentsReq.isPending && !rootComponents.length"
-      :requestStatus="fetchComponentsReq"
-      loadingMessage="Loading..."
-    />
-    <template v-else-if="fetchComponentsReq.isError">
-      <ErrorMessage :requestStatus="fetchComponentsReq" />
-    </template>
-    <template v-else>
-      <ScrollArea>
-        <template v-if="rootComponents.length" #top>
-          <!-- search bar - dont need to show if no components -->
-          <SiSearch autoSearch @search="onSearchUpdated" />
-        </template>
+  <div ref="outlineRef" class="flex flex-col">
+    <ScrollArea>
+      <template #top>
+        <SidebarSubpanelTitle class="border-t-0">
+          <div class="flex flex-row grow">
+            <span class="mr-auto">Diagram Outline</span>
+            <Icon
+              v-if="fetchComponentsReq.isPending || fixesAreRunning"
+              name="loader"
+              size="sm"
+            />
+          </div>
+        </SidebarSubpanelTitle>
 
+        <!-- search bar - dont need to show if no components -->
+        <SiSearch
+          v-if="rootComponents.length"
+          autoSearch
+          @search="onSearchUpdated"
+        />
+      </template>
+
+      <template v-if="fetchComponentsReq.isError">
+        <ErrorMessage :requestStatus="fetchComponentsReq" />
+      </template>
+      <template v-else>
         <!-- filtered / search mode -->
         <template v-if="filterModeActive">
           <ComponentOutlineNode
@@ -26,11 +36,22 @@
 
         <!-- tree mode -->
         <template v-else>
-          <template v-if="!rootComponents.length">
-            <div class="px-xs py-lg text-neutral-400 text-center italic">
-              Your model is currently empty.
+          <div v-if="!rootComponents.length" class="flex flex-col items-center">
+            <div class="w-52">
+              <EmptyStateIcon name="no-components" />
             </div>
-          </template>
+            <div class="text-xl text-neutral-400 dark:text-neutral-300 mt-2">
+              Drag & Drop
+            </div>
+            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+              Drag & Drop assets on to the canvas and start modeling your
+              infrastructure
+            </div>
+            <div class="text-sm px-xs pt-3 text-neutral-400 text-center italic">
+              Assets are reusable infrastructure components such as key pairs,
+              docker images EC2 instances etc.
+            </div>
+          </div>
           <template v-else>
             <ComponentOutlineNode
               v-for="component in rootComponents"
@@ -39,8 +60,8 @@
             />
           </template>
         </template>
-      </ScrollArea>
-    </template>
+      </template>
+    </ScrollArea>
   </div>
 </template>
 
@@ -76,15 +97,15 @@ import {
   ref,
 } from "vue";
 import * as _ from "lodash-es";
-import {
-  ErrorMessage,
-  RequestStatusMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-
 import { ComponentId, useComponentsStore } from "@/store/components.store";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
+import EmptyStateIcon from "../EmptyStateIcon.vue";
+
+defineProps<{ fixesAreRunning: boolean }>();
 
 const outlineRef = ref<HTMLElement>();
 

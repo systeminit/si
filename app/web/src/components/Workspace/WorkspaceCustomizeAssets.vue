@@ -3,11 +3,6 @@
   <ResizablePanel rememberSizeKey="func-picker" side="left" :minSize="300">
     <template #subpanel1>
       <div class="flex flex-col h-full">
-        <ChangeSetPanel
-          v-if="!FF_SINGLE_MODEL_SCREEN"
-          class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-        />
-
         <div class="relative flex-grow">
           <CustomizeTabs tabContentSlug="assets">
             <AssetListPanel :assetId="assetStore.selectedAssetId" />
@@ -30,10 +25,7 @@
     </div>
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
-    <div
-      v-if="FF_SINGLE_MODEL_SCREEN"
-      class="absolute w-full flex flex-col h-full"
-    >
+    <div class="absolute w-full flex flex-col h-full">
       <div
         v-if="!changeSetsStore.headSelected"
         class="p-xs border-b dark:border-neutral-500"
@@ -61,39 +53,21 @@
           :assetId="assetStore.selectedAssetId"
         />
       </template>
-      <div
-        v-else
-        class="p-sm text-center text-neutral-400 dark:text-neutral-300"
-      >
+      <div class="p-sm text-center text-neutral-400 dark:text-neutral-300">
         Select an asset to edit it.
       </div>
     </div>
-    <template v-else>
-      <AssetDetailsPanel
-        v-if="assetStore.selectedAssetId && !assetStore.selectedFuncId"
-        :key="assetStore.selectedAssetId"
-        :assetId="assetStore.selectedAssetId"
-      />
-      <FuncDetails
-        v-else-if="assetStore.selectedAssetId && assetStore.selectedFuncId"
-        :funcId="assetStore.selectedFuncId"
-        :schemaVariantId="assetStore.selectedAsset?.schemaVariantId"
-        @detached="onDetach"
-      />
-    </template>
   </ResizablePanel>
 </template>
 
 <script lang="ts" setup>
-import { computed, watch } from "vue";
+import { watch } from "vue";
 import { ResizablePanel } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import ChangeSetPanel from "../ChangeSetPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -102,11 +76,6 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
-const FF_SINGLE_MODEL_SCREEN = computed(
-  () => featureFlagsStore.SINGLE_MODEL_SCREEN,
-);
-
 const changeSetsStore = useChangeSetsStore();
 
 const assetStore = useAssetStore();

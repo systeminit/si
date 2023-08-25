@@ -76,6 +76,7 @@ async fn apply_change_set(
     ctx.commit().await.expect("cannot commit txn");
     let request = ApplyChangeSetRequest {
         change_set_pk: change_set.pk,
+        list: Vec::new(),
     };
 
     let _response: ApplyChangeSetResponse = api_request_auth_json_body(

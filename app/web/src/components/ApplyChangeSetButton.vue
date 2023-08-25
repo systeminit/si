@@ -51,7 +51,7 @@ import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
 import { VButton, Modal } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
-import RecommendationSprite from "@/components/RecommendationSprite2.vue";
+import RecommendationSprite from "@/components/RecommendationSprite.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useFixesStore } from "@/store/fixes.store";
@@ -84,7 +84,7 @@ const route = useRoute();
 const applyButtonRef = ref();
 
 const applyChangeSetReqStatus =
-  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET2");
+  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
 let jsConfetti: JSConfetti;
 const confettis = [
@@ -105,7 +105,7 @@ onMounted(() => {
 // Applies the current change set
 const applyChangeSet = async () => {
   if (!route.name) return;
-  await changeSetsStore.APPLY_CHANGE_SET2(fixesStore.enabledRecommendations);
+  await changeSetsStore.APPLY_CHANGE_SET(fixesStore.enabledRecommendations);
   window.localStorage.setItem("applied-changes", "true");
   router.replace({
     name: route.name,

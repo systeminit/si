@@ -101,7 +101,7 @@ import {
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFixesStore } from "@/store/fixes.store";
-import Wipe from "./Wipe.vue";
+import Wipe from "../../Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 

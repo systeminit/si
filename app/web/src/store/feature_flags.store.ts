@@ -3,19 +3,11 @@ import { addStoreHooks } from "@si/vue-lib/pinia";
 import * as _ from "lodash-es";
 import { posthog } from "@/utils/posthog";
 
-type FlagStoreKey =
-  | "SINGLE_MODEL_SCREEN"
-  | "MODULES_TAB"
-  | "CONTRIBUTE_BUTTON"
-  | "SECRETS";
+type FlagStoreKey = "CONTRIBUTE_BUTTON" | "MODULES_TAB" | "SECRETS";
 
 // The key to this object is the flag name on PostHog, the "storeKey" property is the
 // key used when accessing it from the Pinia feature flag store
 const FLAGS: { [key: string]: { storeKey: FlagStoreKey; default: boolean } } = {
-  one_screen_to_rule_them_all: {
-    storeKey: "SINGLE_MODEL_SCREEN",
-    default: false,
-  },
   modules_tab: {
     storeKey: "MODULES_TAB",
     default: false,

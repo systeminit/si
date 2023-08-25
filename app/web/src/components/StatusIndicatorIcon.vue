@@ -11,10 +11,10 @@ const CONFIG = {
     unmodified: { iconName: "minus", tone: "neutral" },
   },
   confirmation: {
-    success: { iconName: "check-square", tone: "success" },
-    failure: { iconName: "x-square", tone: "destructive" },
+    success: { iconName: "check-circle", tone: "success" },
+    failure: { iconName: "tools", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
-    _default: { iconName: "minus", tone: "neutral" },
+    _default: { iconName: "check-circle", tone: "success" },
   },
   qualification: {
     success: { iconName: "check-circle", tone: "success" },
@@ -64,6 +64,10 @@ const props = defineProps({
   type: { type: String as PropType<IconType>, required: true },
   status: { type: String },
   size: { type: String as PropType<IconSizes> },
+  tone: {
+    type: String as PropType<Tones>,
+    required: false,
+  },
 });
 
 const iconName = computed<IconNames>(
@@ -74,6 +78,7 @@ const iconName = computed<IconNames>(
 );
 const iconTone = computed<Tones>(
   () =>
+    props.tone ||
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
     "warning",

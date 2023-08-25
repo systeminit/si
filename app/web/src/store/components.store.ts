@@ -3,7 +3,6 @@ import * as _ from "lodash-es";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 import {
   DiagramEdgeDef,
@@ -127,19 +126,6 @@ const qualificationStatusToIconMap: Record<
 };
 
 const confirmationStatusToIconMap: Record<
-  ConfirmationStatus,
-  DiagramStatusIcon
-> = {
-  success: { icon: "check-square", tone: "success" },
-  failure: { icon: "x-square", tone: "error" },
-  running: { icon: "loader", tone: "info" },
-  neverStarted: {
-    icon: "x-square",
-    tone: "error",
-  },
-};
-
-const confirmationStatusToIconMap2: Record<
   ConfirmationStatus,
   DiagramStatusIcon
 > = {
@@ -316,7 +302,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const qualificationsStore = useQualificationsStore();
           const fixesStore = useFixesStore();
           const statusStore = useStatusStore();
-          const featureFlagsStore = useFeatureFlagsStore();
 
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
@@ -328,27 +313,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const confirmationStatus =
               fixesStore.statusByComponentId[componentId];
 
-            let statusIcons: DiagramStatusIcon[] = _.compact([
-              qualificationStatusToIconMap[qualificationStatus ?? "failure"],
+            const statusIcons: DiagramStatusIcon[] = _.compact([
               confirmationStatus
                 ? confirmationStatusToIconMap[confirmationStatus]
                 : {
                     icon: "minus",
                     tone: "neutral",
                   },
+              qualificationStatusToIconMap[qualificationStatus ?? "failure"],
             ]);
-
-            if (featureFlagsStore.SINGLE_MODEL_SCREEN) {
-              statusIcons = _.compact([
-                confirmationStatus
-                  ? confirmationStatusToIconMap2[confirmationStatus]
-                  : {
-                      icon: "minus",
-                      tone: "neutral",
-                    },
-                qualificationStatusToIconMap[qualificationStatus ?? "failure"],
-              ]);
-            }
 
             return {
               ...component,
