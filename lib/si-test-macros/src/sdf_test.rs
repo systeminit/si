@@ -10,7 +10,7 @@
 //! * [`tokio::test` macro](https://github.com/tokio-rs/tokio/blob/121769c762ad6b1686ecd0e8618005aab8b7e980/tokio-macros/src/entry.rs)
 //! * [`test_env_log::test` macro](https://github.com/d-e-s-o/test-log/blob/544dbac50321aaf580959ad7a7997358517db198/src/lib.rs)
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -209,31 +209,31 @@ struct SdfTestFnSetupExpander {
     code: TokenStream,
     args: Punctuated<Expr, Comma>,
 
-    test_context: Option<Arc<Ident>>,
-    nats_subject_prefix: Option<Arc<Ident>>,
-    council_server: Option<Arc<Ident>>,
+    test_context: Option<Rc<Ident>>,
+    nats_subject_prefix: Option<Rc<Ident>>,
+    council_server: Option<Rc<Ident>>,
     start_council_server: Option<()>,
-    pinga_server: Option<Arc<Ident>>,
-    pinga_shutdown_handle: Option<Arc<Ident>>,
+    pinga_server: Option<Rc<Ident>>,
+    pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
-    veritech_server: Option<Arc<Ident>>,
-    veritech_shutdown_handle: Option<Arc<Ident>>,
+    veritech_server: Option<Rc<Ident>>,
+    veritech_shutdown_handle: Option<Rc<Ident>>,
     start_veritech_server: Option<()>,
-    services_context: Option<Arc<Ident>>,
-    dal_context_builder: Option<Arc<Ident>>,
-    workspace_signup: Option<(Arc<Ident>, Arc<Ident>)>,
-    workspace_pk: Option<Arc<Ident>>,
-    dal_context_default: Option<Arc<Ident>>,
-    dal_context_default_mut: Option<Arc<Ident>>,
-    dal_context_head: Option<Arc<Ident>>,
-    dal_context_head_ref: Option<Arc<Ident>>,
-    dal_context_head_mut_ref: Option<Arc<Ident>>,
-    jwt_public_signing_key: Option<Arc<Ident>>,
-    signup_secret: Option<Arc<Ident>>,
-    posthog_client: Option<Arc<Ident>>,
-    router: Option<Arc<Ident>>,
-    auth_token: Option<Arc<Ident>>,
-    auth_token_ref: Option<Arc<Ident>>,
+    services_context: Option<Rc<Ident>>,
+    dal_context_builder: Option<Rc<Ident>>,
+    workspace_signup: Option<(Rc<Ident>, Rc<Ident>)>,
+    workspace_pk: Option<Rc<Ident>>,
+    dal_context_default: Option<Rc<Ident>>,
+    dal_context_default_mut: Option<Rc<Ident>>,
+    dal_context_head: Option<Rc<Ident>>,
+    dal_context_head_ref: Option<Rc<Ident>>,
+    dal_context_head_mut_ref: Option<Rc<Ident>>,
+    jwt_public_signing_key: Option<Rc<Ident>>,
+    signup_secret: Option<Rc<Ident>>,
+    posthog_client: Option<Rc<Ident>>,
+    router: Option<Rc<Ident>>,
+    auth_token: Option<Rc<Ident>>,
+    auth_token_ref: Option<Rc<Ident>>,
 }
 
 impl SdfTestFnSetupExpander {
@@ -273,7 +273,7 @@ impl SdfTestFnSetupExpander {
         !self.args.is_empty()
     }
 
-    fn setup_jwt_public_signing_key(&mut self) -> Arc<Ident> {
+    fn setup_jwt_public_signing_key(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.jwt_public_signing_key {
             return ident.clone();
         }
@@ -282,12 +282,12 @@ impl SdfTestFnSetupExpander {
         self.code_extend(quote! {
             let #var = ::dal_test::jwt_public_signing_key().await?;
         });
-        self.jwt_public_signing_key = Some(Arc::new(var));
+        self.jwt_public_signing_key = Some(Rc::new(var));
 
         self.jwt_public_signing_key.as_ref().unwrap().clone()
     }
 
-    fn setup_signup_secret(&mut self) -> Arc<Ident> {
+    fn setup_signup_secret(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.signup_secret {
             return ident.clone();
         }
@@ -296,12 +296,12 @@ impl SdfTestFnSetupExpander {
         self.code_extend(quote! {
             let #var: ::si_std::SensitiveString = "sign-me-up".into();
         });
-        self.signup_secret = Some(Arc::new(var));
+        self.signup_secret = Some(Rc::new(var));
 
         self.signup_secret.as_ref().unwrap().clone()
     }
 
-    fn setup_posthog_client(&mut self) -> Arc<Ident> {
+    fn setup_posthog_client(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.posthog_client {
             return ident.clone();
         }
@@ -319,12 +319,12 @@ impl SdfTestFnSetupExpander {
                 client
             };
         });
-        self.posthog_client = Some(Arc::new(var));
+        self.posthog_client = Some(Rc::new(var));
 
         self.posthog_client.as_ref().unwrap().clone()
     }
 
-    fn setup_router(&mut self) -> Arc<Ident> {
+    fn setup_router(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.router {
             return ident.clone();
         }
@@ -351,12 +351,12 @@ impl SdfTestFnSetupExpander {
                 service
             };
         });
-        self.router = Some(Arc::new(var));
+        self.router = Some(Rc::new(var));
 
         self.router.as_ref().unwrap().clone()
     }
 
-    fn setup_auth_token(&mut self) -> Arc<Ident> {
+    fn setup_auth_token(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.auth_token {
             return ident.clone();
         }
@@ -368,12 +368,12 @@ impl SdfTestFnSetupExpander {
         self.code_extend(quote! {
             let #var = ::dal_test::AuthToken(#auth_token.clone());
         });
-        self.auth_token = Some(Arc::new(var));
+        self.auth_token = Some(Rc::new(var));
 
         self.auth_token.as_ref().unwrap().clone()
     }
 
-    fn setup_auth_token_ref(&mut self) -> Arc<Ident> {
+    fn setup_auth_token_ref(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.auth_token_ref {
             return ident.clone();
         }
@@ -385,7 +385,7 @@ impl SdfTestFnSetupExpander {
         self.code_extend(quote! {
             let #var = ::dal_test::AuthTokenRef(&#auth_token);
         });
-        self.auth_token_ref = Some(Arc::new(var));
+        self.auth_token_ref = Some(Rc::new(var));
 
         self.auth_token_ref.as_ref().unwrap().clone()
     }
@@ -407,27 +407,27 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
         self.args.push(arg);
     }
 
-    fn test_context(&self) -> Option<&Arc<Ident>> {
+    fn test_context(&self) -> Option<&Rc<Ident>> {
         self.test_context.as_ref()
     }
 
-    fn set_test_context(&mut self, value: Option<Arc<Ident>>) {
+    fn set_test_context(&mut self, value: Option<Rc<Ident>>) {
         self.test_context = value;
     }
 
-    fn nats_subject_prefix(&self) -> Option<&Arc<Ident>> {
+    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>> {
         self.nats_subject_prefix.as_ref()
     }
 
-    fn set_nats_subject_prefix(&mut self, value: Option<Arc<Ident>>) {
+    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>) {
         self.nats_subject_prefix = value;
     }
 
-    fn council_server(&self) -> Option<&Arc<Ident>> {
+    fn council_server(&self) -> Option<&Rc<Ident>> {
         self.council_server.as_ref()
     }
 
-    fn set_council_server(&mut self, value: Option<Arc<Ident>>) {
+    fn set_council_server(&mut self, value: Option<Rc<Ident>>) {
         self.council_server = value;
     }
 
@@ -439,19 +439,19 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
         self.start_council_server = value;
     }
 
-    fn pinga_server(&self) -> Option<&Arc<Ident>> {
+    fn pinga_server(&self) -> Option<&Rc<Ident>> {
         self.pinga_server.as_ref()
     }
 
-    fn set_pinga_server(&mut self, value: Option<Arc<Ident>>) {
+    fn set_pinga_server(&mut self, value: Option<Rc<Ident>>) {
         self.pinga_server = value;
     }
 
-    fn pinga_shutdown_handle(&self) -> Option<&Arc<Ident>> {
+    fn pinga_shutdown_handle(&self) -> Option<&Rc<Ident>> {
         self.pinga_shutdown_handle.as_ref()
     }
 
-    fn set_pinga_shutdown_handle(&mut self, value: Option<Arc<Ident>>) {
+    fn set_pinga_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
         self.pinga_shutdown_handle = value;
     }
 
@@ -463,19 +463,19 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
         self.start_pinga_server = value;
     }
 
-    fn veritech_server(&self) -> Option<&Arc<Ident>> {
+    fn veritech_server(&self) -> Option<&Rc<Ident>> {
         self.veritech_server.as_ref()
     }
 
-    fn set_veritech_server(&mut self, value: Option<Arc<Ident>>) {
+    fn set_veritech_server(&mut self, value: Option<Rc<Ident>>) {
         self.veritech_server = value;
     }
 
-    fn veritech_shutdown_handle(&self) -> Option<&Arc<Ident>> {
+    fn veritech_shutdown_handle(&self) -> Option<&Rc<Ident>> {
         self.veritech_shutdown_handle.as_ref()
     }
 
-    fn set_veritech_shutdown_handle(&mut self, value: Option<Arc<Ident>>) {
+    fn set_veritech_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
         self.veritech_shutdown_handle = value;
     }
 
@@ -487,75 +487,75 @@ impl FnSetupExpander for SdfTestFnSetupExpander {
         self.start_veritech_server = value;
     }
 
-    fn services_context(&self) -> Option<&Arc<Ident>> {
+    fn services_context(&self) -> Option<&Rc<Ident>> {
         self.services_context.as_ref()
     }
 
-    fn set_services_context(&mut self, value: Option<Arc<Ident>>) {
+    fn set_services_context(&mut self, value: Option<Rc<Ident>>) {
         self.services_context = value;
     }
 
-    fn dal_context_builder(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_builder(&self) -> Option<&Rc<Ident>> {
         self.dal_context_builder.as_ref()
     }
 
-    fn set_dal_context_builder(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_builder(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_builder = value;
     }
 
-    fn workspace_signup(&self) -> Option<&(Arc<Ident>, Arc<Ident>)> {
+    fn workspace_signup(&self) -> Option<&(Rc<Ident>, Rc<Ident>)> {
         self.workspace_signup.as_ref()
     }
 
-    fn set_workspace_signup(&mut self, value: Option<(Arc<Ident>, Arc<Ident>)>) {
+    fn set_workspace_signup(&mut self, value: Option<(Rc<Ident>, Rc<Ident>)>) {
         self.workspace_signup = value;
     }
 
-    fn workspace_pk(&self) -> Option<&Arc<Ident>> {
+    fn workspace_pk(&self) -> Option<&Rc<Ident>> {
         self.workspace_pk.as_ref()
     }
 
-    fn set_workspace_pk(&mut self, value: Option<Arc<Ident>>) {
+    fn set_workspace_pk(&mut self, value: Option<Rc<Ident>>) {
         self.workspace_pk = value;
     }
 
-    fn dal_context_default(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_default(&self) -> Option<&Rc<Ident>> {
         self.dal_context_default.as_ref()
     }
 
-    fn set_dal_context_default(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_default(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_default = value;
     }
 
-    fn dal_context_default_mut(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_default_mut(&self) -> Option<&Rc<Ident>> {
         self.dal_context_default_mut.as_ref()
     }
 
-    fn set_dal_context_default_mut(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_default_mut(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_default_mut = value;
     }
 
-    fn dal_context_head(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_head(&self) -> Option<&Rc<Ident>> {
         self.dal_context_head.as_ref()
     }
 
-    fn set_dal_context_head(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_head(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_head = value;
     }
 
-    fn dal_context_head_ref(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_head_ref(&self) -> Option<&Rc<Ident>> {
         self.dal_context_head_ref.as_ref()
     }
 
-    fn set_dal_context_head_ref(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_head_ref(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_head_ref = value;
     }
 
-    fn dal_context_head_mut_ref(&self) -> Option<&Arc<Ident>> {
+    fn dal_context_head_mut_ref(&self) -> Option<&Rc<Ident>> {
         self.dal_context_head_mut_ref.as_ref()
     }
 
-    fn set_dal_context_head_mut_ref(&mut self, value: Option<Arc<Ident>>) {
+    fn set_dal_context_head_mut_ref(&mut self, value: Option<Rc<Ident>>) {
         self.dal_context_head_mut_ref = value;
     }
 }
