@@ -49,12 +49,14 @@
             href="https://www.docker.com/products/docker-desktop/"
             target="_blank"
             >Docker Desktop</a
-          >
-          or Docker Engine corresponding to your native architecture{{
+          >, Docker Engine corresponding to your native architecture{{
             selectedPlatform === "Linux"
               ? " (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside WSL2)"
               : ""
-          }}.
+          }}
+          or <a href="https://podman.io/" target="_blank">Podman</a>
+          (please ensure that the podman machine has a lot of available memory
+          and cpu available for running System Initiative).
         </p>
       </RichText>
       <RichText class="pb-md">
