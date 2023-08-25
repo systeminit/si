@@ -2,6 +2,7 @@ use crate::engine::{ContainerEngine, ContainerReleaseInfo, SiContainerSummary, S
 use crate::{CliResult, SiCliError, CONTAINER_NAMES};
 use async_trait::async_trait;
 use color_eyre::eyre::eyre;
+use directories::UserDirs;
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use podman_api::models::{ContainerMount, Namespace, PerNetworkOptions, PortMapping};
@@ -11,6 +12,7 @@ use podman_api::opts::{
 };
 use podman_api::Podman;
 use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
 
 pub struct PodmanEngine {
@@ -27,14 +29,37 @@ impl PodmanEngine {
             "".to_string()
         };
 
-        let podman_socket_candidates = vec![
-            #[allow(clippy::disallowed_methods)]
-            // To determine a path to the user's runtime directory.
-            std::path::Path::new(&std::env::var("XDG_RUNTIME_DIR")?)
-                .join("podman")
-                .join("podman.sock"),
-            std::path::Path::new("/var/run/podman.sock").to_path_buf(),
-        ];
+        let mut podman_socket_candidates = Vec::new();
+
+        if cfg!(target_os = "macos") {
+            if let Some(user_dirs) = UserDirs::new() {
+                podman_socket_candidates.push(
+                    user_dirs
+                        .home_dir()
+                        .join(".local")
+                        .join("share")
+                        .join("containers")
+                        .join("podman")
+                        .join("machine")
+                        .join("qemu")
+                        .join("podman.sock"),
+                );
+            }
+        } else if cfg!(target_os = "linux") {
+            podman_socket_candidates.push(
+                #[allow(clippy::disallowed_methods)]
+                std::path::Path::new(&std::env::var("XDG_RUNTIME_DIR")?)
+                    .join("podman")
+                    .join("podman.sock"),
+            );
+        } else {
+            // This should NEVER get called but I added it in here just incase
+            return Err(SiCliError::UnsupportedOperatingSystem(
+                env::consts::OS.to_string(),
+            ));
+        };
+
+        podman_socket_candidates.push(std::path::Path::new("/var/run/podman.sock").to_path_buf());
 
         let podman: Podman;
         if let "" = podman_sock.as_str() {
@@ -549,7 +574,7 @@ impl ContainerEngine for PodmanEngine {
             .mounts(vec![ContainerMount {
                 destination: Some("/run/cyclone".to_owned()),
                 source: Some(data_dir.display().to_string()),
-                options: Some(vec!["z".to_owned()]),
+                options: Some(get_container_mount_opts()),
                 _type: Some("bind".to_owned()),
                 uid_mappings: None,
                 gid_mappings: None,
@@ -592,7 +617,7 @@ impl ContainerEngine for PodmanEngine {
             .mounts(vec![ContainerMount {
                 destination: Some("/run/pinga".to_owned()),
                 source: Some(data_dir.display().to_string()),
-                options: Some(vec!["z".to_owned()]),
+                options: Some(get_container_mount_opts()),
                 _type: Some("bind".to_owned()),
                 uid_mappings: None,
                 gid_mappings: None,
@@ -648,7 +673,7 @@ impl ContainerEngine for PodmanEngine {
                             .display()
                             .to_string(),
                     ),
-                    options: Some(vec!["z".to_owned()]),
+                    options: Some(get_container_mount_opts()),
                     _type: Some("bind".to_owned()),
                     uid_mappings: None,
                     gid_mappings: None,
@@ -661,7 +686,7 @@ impl ContainerEngine for PodmanEngine {
                             .display()
                             .to_string(),
                     ),
-                    options: Some(vec!["z".to_owned()]),
+                    options: Some(get_container_mount_opts()),
                     _type: Some("bind".to_owned()),
                     uid_mappings: None,
                     gid_mappings: None,
@@ -723,4 +748,13 @@ impl ContainerEngine for PodmanEngine {
             .await?;
         Ok(())
     }
+}
+
+fn get_container_mount_opts() -> Vec<String> {
+    let mut mount_options = vec!["ro".to_string()];
+    if cfg!(target_os = "linux") {
+        mount_options.push("z".to_string())
+    }
+
+    mount_options
 }
