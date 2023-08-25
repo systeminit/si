@@ -11,7 +11,7 @@ const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 // keys we use to store auth tokens in local storage
 const AUTH_LOCAL_STORAGE_KEYS = {
-  USER: "si-auth",
+  USER_TOKEN: "si-auth",
 };
 
 type TokenData = {
@@ -31,17 +31,20 @@ export const useAuthStore = defineStore("auth", {
     token: null as string | null,
     workspacePk: null as string | null,
     userPk: null as string | null,
-    adminIsImpersonatingUser: false,
 
     // TODO: these maybe should live in another module related to the user/org/groups/etc
     user: null as User | null,
     workspace: null as Workspace | null,
   }),
   getters: {
+    // previously we checked only for the token existing
+    // but when the DB is reset, the token is still set but the backend DB is empty
+    // so we must wait for the backend to be re-initialized
     userIsLoggedIn: (state) => !!state.token,
+    userIsLoggedInAndInitialized: (state) => !!state.token && state.user?.pk,
   },
   actions: {
-    // fetches user + workspace info - called on page refresh
+    // fetches user + workspace info from SDF - called on page refresh
     async RESTORE_AUTH() {
       return new ApiRequest<Omit<LoginResponse, "jwt">>({
         url: "/session/restore_authentication",
@@ -52,11 +55,12 @@ export const useAuthStore = defineStore("auth", {
         onFail(e) {
           /* eslint-disable-next-line no-console */
           console.log("RESTORE AUTH FAILED!", e);
-          // trigger logout?
         },
       });
     },
 
+    // exchanges a code from the auth portal/api to auth with sdf
+    // and initializes workspace/user if necessary
     async AUTH_CONNECT(payload: { code: string }) {
       return new ApiRequest<LoginResponse>({
         method: "post",
@@ -68,10 +72,28 @@ export const useAuthStore = defineStore("auth", {
       });
     },
 
+    // uses existing auth token (jwt) to re-fetch and initialize workspace/user from auth api
+    // this is needed if user is still logged inbut the running SI instance DB is empty
+    // for example after updating containers via the launcher
+    async AUTH_RECONNECT() {
+      return new ApiRequest<Omit<LoginResponse, "jwt">>({
+        url: "/session/reconnect",
+        onSuccess: (response) => {
+          this.user = response.user;
+          this.workspace = response.workspace;
+        },
+        onFail(e) {
+          /* eslint-disable-next-line no-console */
+          console.log("AUTH RECONNECT FAILED!", e);
+          // trigger logout?
+        },
+      });
+    },
+
     // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
     async initFromStorage() {
       // check regular user token (we will likely have a different token for admin auth later)
-      const token = storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER);
+      const token = storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN);
       if (!token) return;
 
       // token contains user pk and biling account pk
@@ -81,23 +103,43 @@ export const useAuthStore = defineStore("auth", {
         token,
         userPk,
         workspacePk,
-        // adminIsImpersonatingUser: isImpersonating,
       });
 
       // this endpoint re-fetches the user and workspace
       // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
       const restoreAuthReq = await this.RESTORE_AUTH();
       if (!restoreAuthReq.result.success) {
-        this.localLogout();
+        const errMessage: string =
+          restoreAuthReq.result.errBody?.error?.message;
+        const errCode: string = restoreAuthReq.result.errBody?.error?.code;
+
+        if (errCode === "WORKSPACE_NOT_INITIALIZED") {
+          // db is migrated, but workspace does not exist, probably because it has been reset
+          const _reconnectReq = await this.AUTH_RECONNECT();
+          // TODO: react to failure here?
+        } else if (
+          // db is totally empty and needs migrations to run
+          // TODO: can we catch this more broadly in the backend and return a specific error code?
+          errMessage.includes("relation") &&
+          errMessage.includes("does not exist")
+        ) {
+          /* eslint-disable no-console, no-alert */
+          console.log("db needs migrations");
+          // TODO: probably show a better error than an alert
+          alert(
+            "Looks like your database needs migrations - please restart SDF",
+          );
+        } else {
+          this.localLogout();
+        }
       }
     },
     localLogout() {
-      storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER);
+      storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN);
       this.$patch({
         token: null,
         userPk: null,
         workspacePk: null,
-        adminIsImpersonatingUser: false,
       });
       posthog.reset();
 
@@ -115,7 +157,7 @@ export const useAuthStore = defineStore("auth", {
         workspace: loginResponse.workspace,
       });
       // store the token in localstorage
-      storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, loginResponse.token);
+      storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN, loginResponse.token);
       // identify the user in posthog
       posthog.identify(loginResponse.user.pk, {
         email: loginResponse.user.email,

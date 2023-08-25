@@ -54,7 +54,9 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   // boolean tracking whether we are expecting connection to be active
   // currently only logic is if user is logged in
-  const connectionShouldBeEnabled = computed(() => authStore.userIsLoggedIn);
+  const connectionShouldBeEnabled = computed(
+    () => authStore.userIsLoggedInAndInitialized,
+  );
 
   // trigger connect / close as necessary
   watch(

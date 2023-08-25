@@ -51,7 +51,7 @@ export const useWorkspacesStore = addStoreHooks(
     onActivated() {
       const authStore = useAuthStore();
       watch(
-        () => authStore.userIsLoggedIn,
+        () => authStore.userIsLoggedInAndInitialized,
         (loggedIn) => {
           if (loggedIn) this.FETCH_USER_WORKSPACES();
         },
