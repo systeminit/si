@@ -106,10 +106,12 @@ impl ContentNodeWeight {
         self.lineage_id
     }
 
-    pub fn mark_seen(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
         self.vector_clock_recently_seen
-            .inc(change_set)
-            .map_err(Into::into)
+            .inc_to(change_set, seen_at.clone());
+        if self.vector_clock_first_seen.entry_for(change_set).is_none() {
+            self.vector_clock_first_seen.inc_to(change_set, seen_at);
+        }
     }
 
     pub fn merge_clocks(
