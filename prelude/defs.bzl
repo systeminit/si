@@ -5,8 +5,10 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@fbsource//tools/build_defs/buck2:is_buck2.bzl", "is_buck2")
 load(":native.bzl", "native")
+
+def is_buck2():
+    return True
 
 def export_prelude(srcs):
     native.filegroup(
