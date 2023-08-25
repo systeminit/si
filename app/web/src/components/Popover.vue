@@ -29,6 +29,8 @@ const props = defineProps({
     type: String as PropType<"top" | "middle" | "bottom">,
     default: "middle",
   },
+  // override the default positioning logic and give the popover a fixed position
+  fixedPosition: { type: Object as PropType<{ x: number; y: number }> },
 });
 
 const internalRef = ref<HTMLElement>();
@@ -102,8 +104,12 @@ function startListening() {
 
 function readjustPosition() {
   if (!internalRef.value) return;
-
   isRepositioning.value = false;
+
+  if (props.fixedPosition) {
+    anchorPos.value = { x: props.fixedPosition.x, y: props.fixedPosition.y };
+    return;
+  }
 
   let anchorRect;
   if (anchorEl.value) {
