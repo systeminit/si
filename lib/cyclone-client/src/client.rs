@@ -941,7 +941,7 @@ mod tests {
             handler: "validate".to_string(),
             value: "a string is a sequence of bytes".into(),
             code_base64: base64_encode(
-                r#"function validate(value) {
+                "function validate(value) {
                     console.log('i came here to chew bubblegum and validate prop values');
                     console.log('and i\'m all out of gum');
                     if (value === 'a string is a sequence of bytes') {
@@ -949,7 +949,7 @@ mod tests {
                     } else {
                         return { valid: false, message: value + ' is not what i expected' };
                     }
-                }"#,
+                }",
             ),
         };
         let mut progress = client
