@@ -1,5 +1,6 @@
 //! Edges
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -43,6 +44,12 @@ impl EdgeWeight {
 
     pub fn kind(&self) -> EdgeWeightKind {
         self.kind
+    }
+
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
+        if self.vector_clock_first_seen.entry_for(change_set).is_none() {
+            self.vector_clock_first_seen.inc_to(change_set, seen_at);
+        }
     }
 
     pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
