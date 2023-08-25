@@ -44,12 +44,12 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     .await
     .expect("could not create func");
     let qualification_func_id = *qualification_func.id();
-    let code = r##"function isQualified(input) {
+    let code = r#"function isQualified(input) {
         return {
             result: (input.domain?.poop ?? false) ? 'success' : 'failure',
             message: "must be present when result is not 'success'",
         };
-    }"##;
+    }"#;
     qualification_func
         .set_code_plaintext(ctx, Some(code))
         .await
