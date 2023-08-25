@@ -83,11 +83,6 @@ async fn main() -> Result<()> {
         }
     }
 
-    if let Engine::Podman = args.engine() {
-        println!("Podman isn't supported as an engine at this time! It's coming soon though...");
-        return Ok(());
-    }
-
     if is_preview {
         println!("Preview mode... System Initiative would have taken the following actions");
     }

@@ -17,7 +17,7 @@ impl AppState {
 
 async fn invoke(app: &AppState, silent: bool, is_preview: bool) -> CliResult<()> {
     if !silent {
-        println!("Checking that the system is able to interact with the docker engine to control System Initiative...");
+        println!("Checking that the system is able to interact with the container engine to control System Initiative...");
     }
 
     if is_preview {
@@ -25,7 +25,7 @@ async fn invoke(app: &AppState, silent: bool, is_preview: bool) -> CliResult<()>
     }
 
     if let Err(_e) = app.container_engine().ping().await {
-        return Err(SiCliError::DockerEngine);
+        return Err(SiCliError::ContainerEngine);
     }
 
     if !silent {
@@ -35,7 +35,7 @@ async fn invoke(app: &AppState, silent: bool, is_preview: bool) -> CliResult<()>
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_width(100)
             .add_row(vec![
-                Cell::new("Docker Engine Active").add_attribute(Attribute::Bold),
+                Cell::new("Container Engine Active").add_attribute(Attribute::Bold),
                 Cell::new("    ✅    "),
             ]);
 

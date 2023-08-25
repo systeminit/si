@@ -15,14 +15,14 @@ pub const CONTAINER_NAMES: &[&str] = &[
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SiCliError {
+    #[error("unable to connect to the container engine")]
+    ContainerEngine,
     #[error("ctrl+c")]
     CtrlC,
     #[error("docker api: {0}")]
     Docker(#[from] docker_api::Error),
     #[error("container search failed: {0}")]
     DockerContainerSearch(String),
-    #[error("unable to connect to the docker engine")]
-    DockerEngine,
     #[error("err report: {0}")]
     ErrReport(#[from] ErrReport),
     #[error("failed to launch web url {0}")]

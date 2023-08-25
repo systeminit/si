@@ -46,5 +46,7 @@ async fn invoke(app: &AppState, is_preview: bool, keep_images: bool) -> CliResul
         }
     }
 
+    app.container_engine().delete_network().await?;
+
     Ok(())
 }

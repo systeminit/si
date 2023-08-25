@@ -29,6 +29,8 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
     ensure_jwt_public_signing_key().await?;
     let si_data_dir = get_si_data_dir().await?;
 
+    app.container_engine().create_network().await?;
+
     for name in CONTAINER_NAMES.iter() {
         let container = format!("systeminit/{0}", name);
         let container_name = format!("local-{0}-1", name);
