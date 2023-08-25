@@ -73,6 +73,15 @@ impl NodeWeight {
         }
     }
 
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
+        match self {
+            NodeWeight::Content(content_weight) => content_weight.mark_seen_at(change_set, seen_at),
+            NodeWeight::Ordering(ordering_weight) => {
+                ordering_weight.mark_seen_at(change_set, seen_at)
+            }
+        }
+    }
+
     pub fn merge_clocks(
         &mut self,
         change_set: &ChangeSet,
