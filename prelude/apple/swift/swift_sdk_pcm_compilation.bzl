@@ -10,7 +10,7 @@ load("@prelude//apple:apple_utility.bzl", "expand_relative_prefixed_sdk_path", "
 load(":apple_sdk_modules_utility.bzl", "SDKDepTSet", "get_compiled_sdk_deps_tset")
 load(":swift_toolchain_types.bzl", "SdkCompiledModuleInfo", "SdkUncompiledModuleInfo", "WrappedSdkCompiledModuleInfo")
 
-def get_shared_pcm_compilation_args(target: str.type, module_name: str.type) -> "cmd_args":
+def get_shared_pcm_compilation_args(target: str, module_name: str) -> cmd_args:
     cmd = cmd_args()
     cmd.add([
         "-emit-pcm",
@@ -24,12 +24,6 @@ def get_shared_pcm_compilation_args(target: str.type, module_name: str.type) -> 
         "-fno-implicit-modules",
         "-Xcc",
         "-fno-implicit-module-maps",
-        # Disable debug info in pcm files. This is required to avoid embedding absolute paths
-        # and ending up with mismatched pcm file sizes.
-        "-Xcc",
-        "-Xclang",
-        "-Xcc",
-        "-fmodule-format=raw",
         # Embed all input files into the PCM so we don't need to include module map files when
         # building remotely.
         # https://github.com/apple/llvm-project/commit/fb1e7f7d1aca7bcfc341e9214bda8b554f5ae9b6
@@ -52,7 +46,7 @@ def get_shared_pcm_compilation_args(target: str.type, module_name: str.type) -> 
 
     return cmd
 
-def _remove_path_components_from_right(path: str.type, count: int.type):
+def _remove_path_components_from_right(path: str, count: int):
     path_components = path.split("/")
     removed_path = "/".join(path_components[0:-count])
     return removed_path
@@ -87,9 +81,9 @@ def _add_sdk_module_search_path(cmd, uncompiled_sdk_module_info, apple_toolchain
     ])
 
 def get_swift_sdk_pcm_anon_targets(
-        ctx: "context",
-        uncompiled_sdk_deps: ["dependency"],
-        swift_cxx_args: [str.type]):
+        ctx: AnalysisContext,
+        uncompiled_sdk_deps: list[Dependency],
+        swift_cxx_args: list[str]):
     deps = [
         {
             "dep": uncompiled_sdk_dep,
@@ -102,8 +96,8 @@ def get_swift_sdk_pcm_anon_targets(
     ]
     return [(_swift_sdk_pcm_compilation, d) for d in deps]
 
-def _swift_sdk_pcm_compilation_impl(ctx: "context") -> ["promise", ["provider"]]:
-    def k(sdk_pcm_deps_providers) -> ["provider"]:
+def _swift_sdk_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provider]]:
+    def k(sdk_pcm_deps_providers) -> list[Provider]:
         uncompiled_sdk_module_info = ctx.attrs.dep[SdkUncompiledModuleInfo]
         module_name = uncompiled_sdk_module_info.module_name
         apple_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo]
@@ -151,16 +145,12 @@ def _swift_sdk_pcm_compilation_impl(ctx: "context") -> ["promise", ["provider"]]
 
         _add_sdk_module_search_path(cmd, uncompiled_sdk_module_info, apple_toolchain)
 
-        # T142915880 There is an issue with hard links,
-        # when we compile pcms remotely on linux machines.
-        local_only = True
-
         ctx.actions.run(
             cmd,
             category = "sdk_swift_pcm_compile",
             identifier = module_name,
-            local_only = local_only,
-            allow_cache_upload = local_only,
+            # Swift compiler requires unique inodes for all input files.
+            unique_input_inodes = True,
         )
 
         compiled_sdk = SdkCompiledModuleInfo(

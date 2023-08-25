@@ -10,7 +10,7 @@ PnpmToolchainInfo = provider(fields = [
     "run_pnpm_script",
 ])
 
-def pnpm_toolchain_impl(ctx) -> [[DefaultInfo.type, PnpmToolchainInfo.type]]:
+def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
     """
     A Pnpm toolchain.
     """

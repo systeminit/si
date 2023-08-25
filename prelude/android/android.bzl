@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//android:cpu_filters.bzl", "ALL_CPU_FILTERS")
 load("@prelude//java:dex_toolchain.bzl", "DexToolchainInfo")
 load("@prelude//java:java.bzl", "AbiGenerationMode", "dex_min_sdk_version", "select_java_test_toolchain")
 load("@prelude//java:java_toolchain.bzl", "JavaPlatformInfo", "JavaTestToolchainInfo", "JavaToolchainInfo")
@@ -23,7 +24,8 @@ load(":android_prebuilt_aar.bzl", "android_prebuilt_aar_impl")
 load(":android_resource.bzl", "android_resource_impl")
 load(":android_toolchain.bzl", "AndroidPlatformInfo", "AndroidToolchainInfo")
 load(":apk_genrule.bzl", "apk_genrule_impl")
-load(":configuration.bzl", "cpu_split_transition", "cpu_split_transition_instrumentation_test_apk", "cpu_transition", "do_not_build_only_native_code_transition", "is_building_android_binary_attr")
+load(":build_only_native_code.bzl", "is_build_only_native_code")
+load(":configuration.bzl", "cpu_split_transition", "cpu_transition", "is_building_android_binary_attr")
 load(":gen_aidl.bzl", "gen_aidl_impl")
 load(":prebuilt_native_library.bzl", "prebuilt_native_library_impl")
 load(":robolectric_test.bzl", "robolectric_test_impl")
@@ -77,14 +79,6 @@ def _kotlin_toolchain():
         ],
     )
 
-def is_build_only_native_code():
-    return select(
-        {
-            "DEFAULT": False,
-            "fbsource//xplat/buck2/platform/android:build_only_native_code": True,
-        },
-    )
-
 implemented_rules = {
     "android_aar": android_aar_impl,
     "android_app_modularity": android_app_modularity_impl,
@@ -104,13 +98,23 @@ implemented_rules = {
 }
 
 # Can't load `read_bool` here because it will cause circular load.
-FORCE_SINGLE_CPU = read_config("buck2", "android_force_single_cpu") in ("True", "true")
-FORCE_SINGLE_DEFAULT_CPU = read_config("buck2", "android_force_single_default_cpu") in ("True", "true")
+FORCE_SINGLE_CPU = read_root_config("buck2", "android_force_single_cpu") in ("True", "true")
+FORCE_SINGLE_DEFAULT_CPU = read_root_config("buck2", "android_force_single_default_cpu") in ("True", "true")
 
 extra_attributes = {
     "android_aar": {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
+        "compress_asset_libraries": attrs.default_only(attrs.bool(default = False)),
+        "cpu_filters": attrs.list(attrs.enum(TargetCpuType), default = ALL_CPU_FILTERS),
+        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
+        "min_sdk_version": attrs.option(attrs.int(), default = None),
+        "package_asset_libraries": attrs.default_only(attrs.bool(default = True)),
         "resources_root": attrs.option(attrs.string(), default = None),
+        "_android_toolchain": android_toolchain(),
+        "_is_building_android_binary": attrs.default_only(attrs.bool(default = True)),
+        "_is_force_single_cpu": attrs.default_only(attrs.bool(default = FORCE_SINGLE_CPU)),
+        "_is_force_single_default_cpu": attrs.default_only(attrs.bool(default = FORCE_SINGLE_DEFAULT_CPU)),
+        "_java_toolchain": java_toolchain_for_android(),
     },
     "android_app_modularity": {
         "_android_toolchain": android_toolchain(),
@@ -161,9 +165,9 @@ extra_attributes = {
     },
     "android_instrumentation_apk": {
         "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),  # Match default in V1
-        "apk": attrs.transition_dep(cfg = do_not_build_only_native_code_transition),
+        "apk": attrs.dep(),
         "cpu_filters": attrs.list(attrs.enum(TargetCpuType), default = []),
-        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition_instrumentation_test_apk), default = []),
+        "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
         "dex_tool": attrs.string(default = "d8"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -228,6 +232,7 @@ extra_attributes = {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "resources_root": attrs.option(attrs.string(), default = None),
         "robolectric_runtime_dependencies": attrs.list(attrs.source(), default = []),
+        "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
         "_android_toolchain": android_toolchain(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
         "_is_building_android_binary": attrs.default_only(attrs.bool(default = False)),

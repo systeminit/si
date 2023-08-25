@@ -7,7 +7,7 @@ SiRustToolchainInfo = provider(
     ],
 )
 
-def si_rust_toolchain_impl(ctx) -> [[DefaultInfo.type, SiRustToolchainInfo.type]]:
+def si_rust_toolchain_impl(ctx) -> list[[DefaultInfo, SiRustToolchainInfo]]:
     """
     An extended Rust toolchain.
     """

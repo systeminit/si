@@ -7,6 +7,7 @@
 
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo")
 load("@prelude//linking:shared_libraries.bzl", "traverse_shared_library_info")
+load("@prelude//utils:arglike.bzl", "ArgLike")
 load("@prelude//utils:utils.bzl", "flatten")
 load(":compile.bzl", "PycInvalidationMode")
 load(":interface.bzl", "PythonLibraryInterface", "PythonLibraryManifestsInterface")
@@ -14,13 +15,13 @@ load(":manifest.bzl", "ManifestInfo")
 load(":toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
 
 PythonLibraryManifests = record(
-    label = field("label"),
+    label = field(Label),
     srcs = field([ManifestInfo.type, None]),
     src_types = field([ManifestInfo.type, None], None),
-    resources = field([(ManifestInfo.type, ["_arglike"]), None]),
-    bytecode = field([{PycInvalidationMode.type: ManifestInfo.type}, None]),
+    resources = field([(ManifestInfo.type, list[ArgLike]), None]),
+    bytecode = field([dict[PycInvalidationMode.type, ManifestInfo.type], None]),
     dep_manifest = field([ManifestInfo.type, None]),
-    extensions = field([{str.type: "_a"}, None]),
+    extensions = field([dict[str, typing.Any], None]),
 )
 
 def _bytecode_artifacts(invalidation_mode: PycInvalidationMode.type):
@@ -48,7 +49,7 @@ def _hidden_resources(value: PythonLibraryManifests.type):
         return []
     return value.resources[1]
 
-def _has_hidden_resources(children: [bool.type], value: [PythonLibraryManifests.type, None]):
+def _has_hidden_resources(children: list[bool], value: [PythonLibraryManifests.type, None]):
     if value:
         if value.resources and len(value.resources[1]) > 0:
             return True
@@ -79,6 +80,11 @@ def _source_type_manifests(value: PythonLibraryManifests.type):
         return []
     return value.src_types.manifest
 
+def _source_type_manifest_jsons(value: PythonLibraryManifests.type):
+    if value.src_types == None:
+        return None
+    return (value.label.raw_target(), value.src_types.manifest)
+
 def _source_type_artifacts(value: PythonLibraryManifests.type):
     if value.src_types == None:
         return []
@@ -107,6 +113,9 @@ PythonLibraryManifestsTSet = transitive_set(
         "{}_manifests".format(prefix): _bytecode_manifests(mode)
         for mode, prefix in _BYTECODE_PROJ_PREFIX.items()
     }.items()),
+    json_projections = {
+        "source_type_manifests_json": _source_type_manifest_jsons,
+    },
     reductions = {
         "has_hidden_resources": _has_hidden_resources,
     },
@@ -144,7 +153,7 @@ def manifests_to_interface(manifests: PythonLibraryManifestsTSet.type) -> Python
         resource_artifacts_with_paths = lambda: [(a, p) for m in manifests.traverse() if m != None and m.resources != None for a, p in m.resources[0].artifacts],
     )
 
-def get_python_deps(ctx: "context"):
+def get_python_deps(ctx: AnalysisContext):
     python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
     cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
     return flatten(

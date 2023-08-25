@@ -31,12 +31,13 @@ load(
     "GoPkg",  # @Unused used as type
     "merge_pkgs",
     "pkg_artifacts",
+    "stdlib_pkg_artifacts",
 )
 load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_cmd_args")
 
 # Provider wrapping packages used for linking.
 GoPkgLinkInfo = provider(fields = [
-    "pkgs",  # {str.type: "artifact"}
+    "pkgs",  # {str: "artifact"}
 ])
 
 GoBuildMode = enum(
@@ -44,17 +45,17 @@ GoBuildMode = enum(
     "c_shared",
 )
 
-def _build_mode_param(mode: GoBuildMode.type) -> str.type:
+def _build_mode_param(mode: GoBuildMode.type) -> str:
     if mode == GoBuildMode("executable"):
         return "exe"
     if mode == GoBuildMode("c_shared"):
         return "c-shared"
     fail("unexpected: {}", mode)
 
-def get_inherited_link_pkgs(deps: ["dependency"]) -> {str.type: GoPkg.type}:
+def get_inherited_link_pkgs(deps: list[Dependency]) -> dict[str, GoPkg.type]:
     return merge_pkgs([d[GoPkgLinkInfo].pkgs for d in deps if GoPkgLinkInfo in d])
 
-def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["dependency"], link_style: LinkStyle.type):
+def _process_shared_dependencies(ctx: AnalysisContext, artifact: Artifact, deps: list[Dependency], link_style: LinkStyle.type):
     """
     Provides files and linker args needed to for binaries with shared library linkage.
     - the runtime files needed to run binary linked with shared libraries
@@ -73,7 +74,6 @@ def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["d
 
     extra_link_args, runtime_files, _ = executable_shared_lib_arguments(
         ctx.actions,
-        ctx.label,
         ctx.attrs._go_toolchain[GoToolchainInfo].cxx_toolchain_for_linking,
         artifact,
         shared_libs,
@@ -82,15 +82,15 @@ def _process_shared_dependencies(ctx: "context", artifact: "artifact", deps: ["d
     return (runtime_files, extra_link_args)
 
 def link(
-        ctx: "context",
-        main: "artifact",
-        pkgs: {str.type: "artifact"} = {},
-        deps: ["dependency"] = [],
+        ctx: AnalysisContext,
+        main: Artifact,
+        pkgs: dict[str, Artifact] = {},
+        deps: list[Dependency] = [],
         build_mode: GoBuildMode.type = GoBuildMode("executable"),
-        link_mode: [str.type, None] = None,
+        link_mode: [str, None] = None,
         link_style: LinkStyle.type = LinkStyle("static"),
-        linker_flags: [""] = [],
-        shared: bool.type = False):
+        linker_flags: list[typing.Any] = [],
+        shared: bool = False):
     go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
     if go_toolchain.env_go_os == "windows":
         executable_extension = ".exe"
@@ -117,12 +117,19 @@ def link(
     all_pkgs = merge_pkgs([
         pkgs,
         pkg_artifacts(get_inherited_link_pkgs(deps), shared = shared),
+        stdlib_pkg_artifacts(go_toolchain, shared = shared),
     ])
-    pkgs_dir = ctx.actions.symlinked_dir(
-        "__link_pkgs__",
-        {name + path.extension: path for name, path in all_pkgs.items()},
-    )
-    cmd.add("-L", pkgs_dir)
+
+    importcfg_content = []
+    for name_, pkg_ in all_pkgs.items():
+        # Hack: we use cmd_args get "artifact" valid path and write it to a file.
+        importcfg_content.append(cmd_args("packagefile ", name_, "=", pkg_, delimiter = ""))
+
+    importcfg = ctx.actions.declare_output("importcfg")
+    ctx.actions.write(importcfg.as_output(), importcfg_content)
+
+    cmd.add("-importcfg", importcfg)
+    cmd.hidden(all_pkgs.values())
 
     runtime_files, extra_link_args = _process_shared_dependencies(ctx, output, deps, link_style)
 

@@ -27,20 +27,20 @@ load(
     "PnpmToolchainInfo",
 )
 
-TypescriptRunnableDistInfo = provider(fields = {
-    "runnable_dist": "artifact",
-    "bin": str.type,
-})
+TypescriptRunnableDistInfo = provider(fields = [
+    "runnable_dist", # [Artifact]
+    "bin", # [str]
+])
 
 def _npm_test_impl(
-    ctx: "context",
-    program_run_info: RunInfo.type,
-    program_args: "cmd_args",
-    test_info_type: str.type,
-) -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+    ctx: AnalysisContext,
+    program_run_info: RunInfo,
+    program_args: cmd_args,
+    test_info_type: str,
+) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_build_ctx = package_build_context(ctx)
@@ -87,10 +87,10 @@ def _npm_test_impl(
         DefaultInfo(default_output = args_file),
     ]
 
-def eslint_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def eslint_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     args = cmd_args()
     args.add(ctx.attrs.directories)
@@ -189,10 +189,10 @@ eslint = rule(
     },
 )
 
-def typescript_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def typescript_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     args = cmd_args()
     args.add("--noEmit")
@@ -273,7 +273,7 @@ typescript_check = rule(
     },
 )
 
-def node_pkg_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def node_pkg_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     bin_name = ctx.attrs.bin_name or ctx.attrs.name
     out = ctx.actions.declare_output(bin_name)
 
@@ -337,7 +337,7 @@ node_pkg_bin = rule(
     },
 )
 
-def npm_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type, TemplatePlaceholderInfo.type]]:
+def npm_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, TemplatePlaceholderInfo]]:
     bin_name = ctx.attrs.bin_name or ctx.attrs.name
 
     exe = ctx.actions.declare_output(bin_name)
@@ -396,7 +396,7 @@ npm_bin = rule(
     },
 )
 
-def package_node_modules_impl(ctx: "context") -> ["provider"]:
+def package_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     node_modules_ctx = node_modules_context(ctx, ctx.attrs.prod_only)
     return [DefaultInfo(default_output = node_modules_ctx.root)]
 
@@ -435,7 +435,7 @@ package_node_modules = rule(
     },
 )
 
-def pnpm_lock_impl(ctx: "context") -> [DefaultInfo.type]:
+def pnpm_lock_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("pnpm-lock.yaml")
 
     output = ctx.actions.copy_file(out, ctx.attrs.src)
@@ -455,7 +455,7 @@ pnpm_lock = rule(
     },
 )
 
-def pnpm_workspace_impl(ctx: "context") -> [[DefaultInfo.type, ArtifactGroupInfo.type]]:
+def pnpm_workspace_impl(ctx: AnalysisContext) -> list[[DefaultInfo, ArtifactGroupInfo]]:
     out = ctx.actions.declare_output("pnpm-workspace.yaml")
 
     output = ctx.actions.copy_file(out, ctx.attrs.src)
@@ -483,7 +483,7 @@ pnpm_workspace = rule(
     },
 )
 
-def typescript_dist_impl(ctx: "context") -> [DefaultInfo.type]:
+def typescript_dist_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("dist", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -555,10 +555,10 @@ typescript_dist = rule(
     }
 )
 
-def typescript_runnable_dist_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    TypescriptRunnableDistInfo.type,
+def typescript_runnable_dist_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    TypescriptRunnableDistInfo,
 ]]:
     runnable_dist_ctx = package_runnable_dist_context(ctx)
     out = runnable_dist_ctx.tree
@@ -600,7 +600,7 @@ typescript_runnable_dist = rule(
     }
 )
 
-def typescript_runnable_dist_bin_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     base_path = ctx.attrs.typescript_runnable_dist[DefaultInfo].default_outputs[0]
     bin = ctx.attrs.typescript_runnable_dist[TypescriptRunnableDistInfo].bin
     cd_path = cmd_args([base_path, paths.dirname(bin)], delimiter = "/")
@@ -645,7 +645,7 @@ typescript_runnable_dist_bin = rule(
     }
 )
 
-def vite_app_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def vite_app_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     out = ctx.actions.declare_output("dist", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -732,7 +732,7 @@ vite_app = rule(
     },
 )
 
-def workspace_node_modules_impl(ctx: "context") -> ["provider"]:
+def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("root", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -777,14 +777,14 @@ workspace_node_modules = rule(
 )
 
 NodeModulesContext = record(
-    root = field("artifact"),
+    root = field(Artifact),
 )
 
 def node_modules_context(
-    ctx: "context",
-    prod_only: bool.type = False,
-    out_dir: str.type = "root",
-) -> NodeModulesContext.type:
+    ctx: AnalysisContext,
+    prod_only: bool = False,
+    out_dir: str = "root",
+) -> NodeModulesContext:
     out = ctx.actions.declare_output(out_dir, dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -816,10 +816,10 @@ def node_modules_context(
 
 PackageBuildContext = record(
     # Root of a workspace source tree containing a pruned sub-package and all node_modules
-    srcs_tree = field("artifact"),
+    srcs_tree = field(Artifact),
 )
 
-def package_build_context(ctx: "context") -> PackageBuildContext.type:
+def package_build_context(ctx: AnalysisContext) -> PackageBuildContext:
     srcs_tree = ctx.actions.declare_output("__src")
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -851,13 +851,13 @@ def package_build_context(ctx: "context") -> PackageBuildContext.type:
     )
 
 PackageDistContext = record(
-    tree = field("artifact"),
+    tree = field(Artifact),
 )
 
 def package_runnable_dist_context(
-    ctx: "context",
-    dist_path: ["artifact", None] = None,
-) -> PackageDistContext.type:
+    ctx: AnalysisContext,
+    dist_path: [Artifact, None] = None,
+) -> PackageDistContext:
     out = ctx.actions.declare_output("runnable_dist", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -884,7 +884,7 @@ def package_runnable_dist_context(
         tree = out,
     )
 
-def pnpm_task_library_impl(ctx: "context") -> ["provider"]:
+def pnpm_task_library_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     script = ctx.actions.write("pnpm-run.sh", """\
 #!/usr/bin/env bash
 set -euo pipefail
@@ -918,7 +918,7 @@ pnpm_task_library = rule(impl = pnpm_task_library_impl, attrs = {
     "outs": attrs.list(attrs.string(), default = [], doc = "List of outputs to copy"),
 })
 
-def pnpm_task_binary_impl(ctx: "context") -> ["provider"]:
+def pnpm_task_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     script = ctx.actions.write("pnpm-run.sh", """\
 #!/usr/bin/env bash
 set -euo pipefail
@@ -942,7 +942,7 @@ pnpm_task_binary = rule(impl = pnpm_task_binary_impl, attrs = {
     "deps": attrs.list(attrs.source(), default = [], doc = """List of dependencies we require"""),
 })
 
-def pnpm_task_test_impl(ctx: "context") -> ["provider"]:
+def pnpm_task_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo, ExternalRunnerTestInfo]]:
     script = ctx.actions.write("pnpm-run.sh", """\
 #!/usr/bin/env bash
 set -euo pipefail

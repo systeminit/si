@@ -10,6 +10,8 @@
 load("@prelude//:cache_mode.bzl", "CacheModeInfo")
 load("@prelude//:genrule_local_labels.bzl", "genrule_labels_require_local")
 load("@prelude//:genrule_toolchain.bzl", "GenruleToolchainInfo")
+load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
+load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
 
@@ -32,6 +34,8 @@ _BUILD_ROOT_LABELS = {label: True for label in [
     "udf_sql",
     "redex_genrule",  # T148016945
     "pxl",  # T151533831
+    "app_modules_genrule",  # produces JSON containing file paths that are read from the root dir.
+    "android_langpack_strings",  # produces JSON containing file paths that are read from the root dir.
 ]}
 
 # In Buck1 the SRCS environment variable is only set if the substring SRCS is on the command line.
@@ -40,31 +44,31 @@ _BUILD_ROOT_LABELS = {label: True for label in [
 # that behavior.
 _NO_SRCS_ENVIRONMENT_LABEL = "no_srcs_environment"
 
-def _requires_build_root(ctx: "context") -> bool.type:
+def _requires_build_root(ctx: AnalysisContext) -> bool:
     for label in ctx.attrs.labels:
         if label in _BUILD_ROOT_LABELS:
             return True
     return False
 
-def _requires_local(ctx: "context") -> bool.type:
+def _requires_local(ctx: AnalysisContext) -> bool:
     return genrule_labels_require_local(ctx.attrs.labels)
 
-def _ignore_artifacts(ctx: "context") -> bool.type:
+def _ignore_artifacts(ctx: AnalysisContext) -> bool:
     return "buck2_ignore_artifacts" in ctx.attrs.labels
 
-def _requires_no_srcs_environment(ctx: "context") -> bool.type:
+def _requires_no_srcs_environment(ctx: AnalysisContext) -> bool:
     return _NO_SRCS_ENVIRONMENT_LABEL in ctx.attrs.labels
 
 # We don't want to use cache mode in open source because the config keys that drive it aren't wired up
-# @oss-disable: _USE_CACHE_MODE = True 
-_USE_CACHE_MODE = False # @oss-enable
+_USE_CACHE_MODE = is_full_meta_repo()
 
 # Extra attributes required by every genrule based on genrule_impl
-def genrule_attributes() -> {str.type: "attribute"}:
+def genrule_attributes() -> dict[str, "attribute"]:
     attributes = {
         "metadata_env_var": attrs.option(attrs.string(), default = None),
         "metadata_path": attrs.option(attrs.string(), default = None),
         "no_outputs_cleanup": attrs.bool(default = False),
+        "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
         "_genrule_toolchain": attrs.default_only(attrs.toolchain_dep(default = "toolchains//:genrule", providers = [GenruleToolchainInfo])),
     }
 
@@ -74,13 +78,13 @@ def genrule_attributes() -> {str.type: "attribute"}:
 
     return attributes
 
-def _get_cache_mode(ctx: "context") -> CacheModeInfo.type:
+def _get_cache_mode(ctx: AnalysisContext) -> CacheModeInfo.type:
     if _USE_CACHE_MODE:
         return ctx.attrs._cache_mode[CacheModeInfo]
     else:
         return CacheModeInfo(allow_cache_uploads = False, cache_bust_genrules = False)
 
-def genrule_impl(ctx: "context") -> ["provider"]:
+def genrule_impl(ctx: AnalysisContext) -> list[Provider]:
     # Directories:
     #   sh - sh file
     #   src - sources files
@@ -90,7 +94,7 @@ def genrule_impl(ctx: "context") -> ["provider"]:
     # Buck2 clears the output directory before execution, and thus src/sh too.
     return process_genrule(ctx, ctx.attrs.out, ctx.attrs.outs)
 
-def _declare_output(ctx: "context", path: str.type) -> "artifact":
+def _declare_output(ctx: AnalysisContext, path: str) -> Artifact:
     if path == ".":
         return ctx.actions.declare_output("out", dir = True)
     elif path.endswith("/"):
@@ -98,7 +102,7 @@ def _declare_output(ctx: "context", path: str.type) -> "artifact":
     else:
         return ctx.actions.declare_output("out", path)
 
-def _project_output(out: "artifact", path: str.type) -> "artifact":
+def _project_output(out: Artifact, path: str) -> Artifact:
     if path == ".":
         return out
     elif path.endswith("/"):
@@ -107,11 +111,11 @@ def _project_output(out: "artifact", path: str.type) -> "artifact":
         return out.project(path, hide_prefix = True)
 
 def process_genrule(
-        ctx: "context",
-        out_attr: [str.type, None],
-        outs_attr: [dict.type, None],
-        extra_env_vars: dict.type = {},
-        identifier: [str.type, None] = None) -> ["provider"]:
+        ctx: AnalysisContext,
+        out_attr: [str, None],
+        outs_attr: [dict, None],
+        extra_env_vars: dict = {},
+        identifier: [str, None] = None) -> list[Provider]:
     if (out_attr != None) and (outs_attr != None):
         fail("Only one of `out` and `outs` should be set. Got out=`%s`, outs=`%s`" % (repr(out_attr), repr(outs_attr)))
 
@@ -124,12 +128,10 @@ def process_genrule(
 
     # TODO(cjhopman): verify output paths are ".", "./", or forward-relative.
     if out_attr != None:
-        out_env = out_attr
         out_artifact = _declare_output(ctx, out_attr)
         named_outputs = {}
         default_outputs = [out_artifact]
     elif outs_attr != None:
-        out_env = ""
         out_artifact = ctx.actions.declare_output("out", dir = True)
 
         named_outputs = {
@@ -195,7 +197,7 @@ def process_genrule(
     env_vars = {
         "ASAN_OPTIONS": cmd_args("detect_leaks=0,detect_odr_violation=0"),
         "GEN_DIR": cmd_args("GEN_DIR_DEPRECATED"),  # ctx.relpath(ctx.output_root_dir(), srcs_path)
-        "OUT": cmd_args(srcs_artifact, format = path_sep.join([".", "{}", "..", "out", out_env.replace("/", path_sep)])),
+        "OUT": cmd_args(out_artifact.as_output()),
         "SRCDIR": cmd_args(srcs_artifact, format = path_sep.join([".", "{}"])),
         "SRCS": srcs,
     } | {k: cmd_args(v) for k, v in getattr(ctx.attrs, "env", {}).items()}
@@ -261,12 +263,27 @@ def process_genrule(
     # into the sandboxed source dir and relative all paths to that.
     if not _requires_build_root(ctx):
         srcs_dir = srcs_artifact
-        if not is_windows:
+
+        if is_windows:
+            rewrite_scratch_path = cmd_args(
+                cmd_args(ctx.label.project_root).relative_to(srcs_artifact),
+                format = 'set "BUCK_SCRATCH_PATH={}/$BUCK_SCRATCH_PATH"',
+            )
+        else:
             srcs_dir = cmd_args(srcs_dir, quote = "shell")
+            rewrite_scratch_path = cmd_args(
+                cmd_args(ctx.label.project_root, quote = "shell").relative_to(srcs_artifact),
+                format = "export BUCK_SCRATCH_PATH={}/$BUCK_SCRATCH_PATH",
+            )
+
         script = (
-            # Change to the directory that genrules expect.
-            [cmd_args(srcs_dir, format = "cd {}")] +
-            # Relative all paths in the command to the sandbox dir.
+            [
+                # Rewrite BUCK_SCRATCH_PATH
+                rewrite_scratch_path,
+                # Change to the directory that genrules expect.
+                cmd_args(srcs_dir, format = "cd {}"),
+            ] +
+            # Relativize all paths in the command to the sandbox dir.
             [cmd.relative_to(srcs_artifact) for cmd in script]
         )
 
@@ -286,7 +303,7 @@ def process_genrule(
     if is_windows:
         script_args = ["cmd.exe", "/v:off", "/c", sh_script]
     else:
-        script_args = ["/bin/bash", "-e", sh_script]
+        script_args = ["/usr/bin/env", "bash", "-e", sh_script]
 
     # Only set metadata arguments when they are non-null
     metadata_args = {}

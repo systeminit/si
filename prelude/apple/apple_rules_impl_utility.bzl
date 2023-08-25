@@ -5,10 +5,12 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//apple:apple_bundle_attrs.bzl", "get_apple_info_plist_build_system_identification_attrs")
 load("@prelude//apple:apple_bundle_types.bzl", "AppleBundleResourceInfo")
 load("@prelude//apple:apple_code_signing_types.bzl", "CodeSignType")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 load("@prelude//apple/user:apple_selective_debugging.bzl", "AppleSelectiveDebuggingInfo")
+load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//apple/user:resource_group_map.bzl", "resource_group_map_attr")
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
 load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
@@ -38,7 +40,7 @@ APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME = "use_entitlements_whe
 
 def _apple_bundle_like_common_attrs():
     # `apple_bundle()` and `apple_test()` share a common set of extra attrs
-    return {
+    attribs = {
         # FIXME: prelude// should be standalone (not refer to fbsource//)
         "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
@@ -51,10 +53,14 @@ def _apple_bundle_like_common_attrs():
         "_fast_adhoc_signing_enabled": attrs.bool(default = False),
         "_incremental_bundling_enabled": attrs.bool(default = False),
         "_profile_bundling_enabled": attrs.bool(default = False),
+        # FIXME: prelude// should be standalone (not refer to fbsource//)
+        "_provisioning_profiles": attrs.dep(default = "fbsource//xplat/buck2/platform/apple:provisioning_profiles"),
         "_resource_bundle": attrs.option(attrs.dep(providers = [AppleBundleResourceInfo]), default = None),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_CONFIG_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME: attrs.bool(default = False),
     }
+    attribs.update(get_apple_info_plist_build_system_identification_attrs())
+    return attribs
 
 def apple_test_extra_attrs():
     # To build an `apple_test`, one needs to first build a shared `apple_library` then
@@ -81,6 +87,7 @@ def apple_test_extra_attrs():
         "stripped": attrs.bool(default = False),
         "_apple_toolchain": get_apple_toolchain_attr(),
         "_ios_booted_simulator": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:ios_booted_simulator", providers = [LocalResourceInfo])),
+        "_ios_unbooted_simulator": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:ios_unbooted_simulator", providers = [LocalResourceInfo])),
         "_macos_idb_companion": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:macos_idb_companion", providers = [LocalResourceInfo])),
         "_omnibus_environment": omnibus_environment_attr(),
     }
@@ -89,12 +96,13 @@ def apple_test_extra_attrs():
 
 def apple_bundle_extra_attrs():
     attribs = {
+        "binary": attrs.option(attrs.split_transition_dep(cfg = cpu_split_transition), default = None),
         "resource_group_map": resource_group_map_attr(),
         "selective_debugging": attrs.option(attrs.dep(providers = [AppleSelectiveDebuggingInfo]), default = None),
+        "split_arch_dsym": attrs.bool(default = False),
+        "universal": attrs.option(attrs.bool(), default = None),
         "_apple_toolchain": _get_apple_bundle_toolchain_attr(),
         "_codesign_entitlements": attrs.option(attrs.source(), default = None),
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_provisioning_profiles": attrs.dep(default = "fbsource//xplat/buck2/platform/apple:provisioning_profiles"),
     }
     attribs.update(_apple_bundle_like_common_attrs())
     return attribs

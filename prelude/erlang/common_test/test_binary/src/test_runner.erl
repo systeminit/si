@@ -151,8 +151,7 @@ provide_output_file(
         output_dir = OutputDir,
         tests = Tests,
         suite = Suite,
-        output_format = OutputFormat,
-        test_spec_file = TestSpecFile
+        output_format = OutputFormat
     } = _TestEnv,
     ResultExec,
     Status
@@ -219,7 +218,7 @@ provide_output_file(
                         collect_results_broken_run(Tests, Suite, ErrorMsg, ResultExec, OutLog)
                 end
         end,
-    {ok, ResultOuptuFile} =
+    {ok, _ResultOuptuFile} =
         case OutputFormat of
             xml ->
                 junit_interfacer:write_xml_output(OutputDir, Results, Suite, ResultExec, OutLog);
@@ -228,17 +227,9 @@ provide_output_file(
         end,
     JsonLogs = execution_logs:create_dir_summary(OutputDir),
     file:write_file(filename:join(OutputDir, "logs.json"), jsone:encode(JsonLogs)),
-    FilesToUpload = [
-        ResultsFile,
-        ResultOuptuFile,
-        epmd_manager:get_epmd_out_path(OutputDir),
-        test_logger:get_log_file(OutputDir, ct_executor),
-        test_logger:get_std_out(OutputDir, ct_executor),
-        test_logger:get_log_file(OutputDir, test_runner),
-        test_logger:get_std_out(OutputDir, test_runner),
-        TestSpecFile
-    ],
-    test_artifact_directory:prepare(FilesToUpload, OutputDir).
+    test_artifact_directory:link_to_artifact_dir(test_logger:get_std_out(OutputDir, ct_executor), OutputDir),
+    test_artifact_directory:link_to_artifact_dir(test_logger:get_std_out(OutputDir, test_runner), OutputDir),
+    test_artifact_directory:prepare(OutputDir).
 
 trimmed_content_file(File) ->
     case file:open(File, [read]) of

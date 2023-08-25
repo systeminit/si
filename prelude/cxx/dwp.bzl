@@ -6,20 +6,24 @@
 # of this source tree.
 
 load("@prelude//:local_only.bzl", "link_cxx_binary_locally")
+load("@prelude//utils:arglike.bzl", "ArgLike")  # @unused Used as a type
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
+load(":debug.bzl", "SplitDebugMode")
 
-def dwp_available(ctx: "context"):
-    dwp = get_cxx_toolchain_info(ctx).binary_utilities_info.dwp
-    return dwp != None
+def dwp_available(ctx: AnalysisContext):
+    toolchain = get_cxx_toolchain_info(ctx)
+    dwp = toolchain.binary_utilities_info.dwp
+    split_debug_mode = toolchain.split_debug_mode
+    return dwp != None and split_debug_mode != SplitDebugMode("none")
 
 def run_dwp_action(
-        ctx: "context",
-        obj: "artifact",
-        identifier: [str.type, None],
-        category_suffix: [str.type, None],
-        referenced_objects: ["_arglike", ["artifact"]],
-        dwp_output: "artifact",
-        local_only: bool.type):
+        ctx: AnalysisContext,
+        obj: Artifact,
+        identifier: [str, None],
+        category_suffix: [str, None],
+        referenced_objects: [ArgLike, list[Artifact]],
+        dwp_output: Artifact,
+        local_only: bool):
     args = cmd_args()
     dwp = get_cxx_toolchain_info(ctx).binary_utilities_info.dwp
 
@@ -44,20 +48,20 @@ def run_dwp_action(
     )
 
 def dwp(
-        ctx: "context",
+        ctx: AnalysisContext,
         # Executable/library to extra dwo paths from.
-        obj: "artifact",
+        obj: Artifact,
         # An identifier that will uniquely name this link action in the context of a category. Useful for
         # differentiating multiple link actions in the same rule.
-        identifier: [str.type, None],
+        identifier: [str, None],
         # A category suffix that will be added to the category of the link action that is generated.
-        category_suffix: [str.type, None],
+        category_suffix: [str, None],
         # All `.o`/`.dwo` paths referenced in `obj`.
         # TODO(T110378122): Ideally, referenced objects are a list of artifacts,
         # but currently we don't track them properly.  So, we just pass in the full
         # link line and extract all inputs from that, which is a bit of an
         # overspecification.
-        referenced_objects: ["_arglike", ["artifact"]]) -> "artifact":
+        referenced_objects: [ArgLike, list[Artifact]]) -> Artifact:
     # gdb/lldb expect to find a file named $file.dwp next to $file.
     output = ctx.actions.declare_output(obj.short_path + ".dwp")
     run_dwp_action(

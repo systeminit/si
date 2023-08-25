@@ -24,7 +24,7 @@ load("@prelude//rust:rust_toolchain.bzl", "RustToolchainInfo")
 load("@prelude//rust:targets.bzl", "targets")
 load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
 
-def _cargo_buildscript_impl(ctx: "context") -> ["provider"]:
+def _cargo_buildscript_impl(ctx: AnalysisContext) -> list[Provider]:
     toolchain_info = ctx.attrs._rust_toolchain[RustToolchainInfo]
 
     cwd = ctx.actions.declare_output("cwd", dir = True)
@@ -118,14 +118,7 @@ def buildscript_run(
             name = filegroup_name,
             srcs = {
                 path.removeprefix(prefix_with_trailing_slash): path
-                for path in glob(
-                    include = ["{}/**".format(prefix)],
-                    exclude = [
-                        "{}/METADATA.bzl".format(prefix),
-                        "{}/rust-toolchain".format(prefix),
-                        "{}/rust-toolchain.toml".format(prefix),
-                    ],
-                )
+                for path in glob(["{}/**".format(prefix)])
             },
             copy = False,
             visibility = [],

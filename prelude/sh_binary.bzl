@@ -18,7 +18,7 @@ def _derive_link(artifact):
 
     return paths.join(artifact.owner.package, artifact.owner.name)
 
-def _generate_script(name: str.type, main: "artifact", resources: ["artifact"], actions: "actions", is_windows: bool.type) -> ("artifact", "artifact"):
+def _generate_script(name: str, main: Artifact, resources: list[Artifact], actions: AnalysisActions, is_windows: bool) -> (Artifact, Artifact):
     main_path = main.short_path
     if is_windows:
         main_link = main_path if main_path.endswith(".bat") or main_path.endswith(".cmd") else main_path + ".bat"
@@ -43,7 +43,7 @@ def _generate_script(name: str.type, main: "artifact", resources: ["artifact"], 
     # BUCK_DEFAULT_RUNTIME_RESOURCES).
     if not is_windows:
         script_content = cmd_args([
-            "#!/bin/bash",
+            "#!/usr/bin/env bash",
             "set -e",
             # This is awkward for two reasons: args doesn't support format strings
             # and will insert a newline between items and so __RESOURCES_ROOT
@@ -84,7 +84,7 @@ def _generate_script(name: str.type, main: "artifact", resources: ["artifact"], 
             # Fully qualified script path.
             "set __SRC=%~f0",
             # This is essentially a realpath.
-            'for /f "tokens=2 delims=[]" %%a in (\'dir %__SRC% ^|find "<SYMLINK>"\') do set "__SRC=%%a"',
+            'for /f "tokens=2 delims=[]" %%a in (\'dir %__SRC% ^|%SYSTEMROOT%\\System32\\find.exe "<SYMLINK>"\') do set "__SRC=%%a"',
             # Get parent folder.
             'for %%a in ("%__SRC%") do set "__SCRIPT_DIR=%%~dpa"',
             "set BUCK_SH_BINARY_VERSION_UNSTABLE=2",

@@ -6,10 +6,10 @@
 # of this source tree.
 
 RuleRegistrationSpec = record(
-    name = field(str.type),
-    impl = field("function"),
-    attrs = field({str.type: "attribute"}),
+    name = field(str),
+    impl = field(typing.Callable),
+    attrs = field(dict[str, "attribute"]),
     cfg = field([None, "transition"], None),
-    is_toolchain_rule = field(bool.type, False),
-    doc = field(str.type, ""),
+    is_toolchain_rule = field(bool, False),
+    doc = field(str, ""),
 )

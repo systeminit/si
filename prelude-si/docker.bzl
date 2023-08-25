@@ -2,13 +2,13 @@ load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
 load("//git:toolchain.bzl", "GitToolchainInfo")
 
-DockerImageInfo = provider(fields = {
-    "tar_archive": "artifact",
-    "metadata": "artifact",
-    "tags": "artifact",
-})
+DockerImageInfo = provider(fields = [
+    "tar_archive", # [Artifact]
+    "metadata", # [Artifact]
+    "tags", # [Artifact]
+])
 
-def docker_image_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type, DockerImageInfo.type]]:
+def docker_image_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, DockerImageInfo]]:
     docker_build_ctx = docker_build_context(ctx)
     image_info = build_docker_image(ctx, docker_build_ctx)
     run_args = docker_run_args(ctx, image_info)
@@ -99,7 +99,7 @@ docker_image = rule(
     },
 )
 
-def docker_image_release_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     cli_args = ctx.actions.declare_output("args.txt")
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
@@ -140,7 +140,7 @@ docker_image_release = rule(
     },
 )
 
-def docker_image_promote_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def docker_image_promote_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     cli_args = ctx.actions.declare_output("args.txt")
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
@@ -196,10 +196,10 @@ docker_image_promote = rule(
 )
 
 DockerBuildContext = record(
-    context_tree = field("artifact"),
+    context_tree = field(Artifact),
 )
 
-def docker_build_context(ctx: "context") -> DockerBuildContext.type:
+def docker_build_context(ctx: AnalysisContext) -> DockerBuildContext:
     context_tree = ctx.actions.declare_output("__docker_context")
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
@@ -228,10 +228,7 @@ def docker_build_context(ctx: "context") -> DockerBuildContext.type:
         context_tree = context_tree,
     )
 
-def build_docker_image(
-    ctx: "context",
-    docker_build_ctx: DockerBuildContext.type,
-) -> DockerImageInfo.type:
+def build_docker_image(ctx: AnalysisContext, docker_build_ctx: DockerBuildContext) -> DockerImageInfo:
     if ctx.attrs.full_image_name:
         image_name = ctx.attrs.full_image_name
     elif ctx.attrs.organization:
@@ -280,7 +277,7 @@ def build_docker_image(
         tags = tags,
     )
 
-def docker_run_args(ctx: "context", archive: DockerImageInfo.type) -> "cmd_args":
+def docker_run_args(ctx: AnalysisContext, archive: DockerImageInfo) -> cmd_args:
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
 
     cmd = cmd_args(

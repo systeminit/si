@@ -29,6 +29,7 @@ load(
 load(
     ":erlang_utils.bzl",
     "file_mapping",
+    "list_dedupe",
     "preserve_structure",
     "to_term_args",
 )
@@ -36,15 +37,15 @@ load(
 def erlang_tests_macro(
         erlang_app_rule,
         erlang_test_rule,
-        suites: ["string"],
-        deps: ["string"] = [],
-        resources: ["string"] = [],
-        property_tests: ["string"] = [],
-        config_files: ["string"] = [],
-        srcs: ["string"] = [],
-        use_default_configs: "bool" = True,
-        use_default_deps: "bool" = True,
-        **common_attributes: "dict") -> None:
+        suites: list[str],
+        deps: list[str] = [],
+        resources: list[str] = [],
+        property_tests: list[str] = [],
+        config_files: list[str] = [],
+        srcs: list[str] = [],
+        use_default_configs: bool = True,
+        use_default_deps: bool = True,
+        **common_attributes: dict) -> None:
     """
     Generate multiple erlang_test targets based on the `suites` field.
     Also adds the default 'config' and 'deps' from the buck2 config.
@@ -73,10 +74,10 @@ def erlang_tests_macro(
 
     # add default apps
 
-    default_deps = read_config("erlang", "erlang_tests_default_apps", None) if use_default_deps else None
-    default_config_files = read_config("erlang", "erlang_tests_default_config", None) if use_default_configs else None
-    trampoline = read_config("erlang", "erlang_tests_trampoline", None) if use_default_configs else None
-    providers = read_config("erlang", "erlang_test_providers", "") if use_default_configs else ""
+    default_deps = read_root_config("erlang", "erlang_tests_default_apps", None) if use_default_deps else None
+    default_config_files = read_root_config("erlang", "erlang_tests_default_config", None) if use_default_configs else None
+    trampoline = read_root_config("erlang", "erlang_tests_trampoline", None) if use_default_configs else None
+    providers = read_root_config("erlang", "erlang_test_providers", "") if use_default_configs else ""
 
     if default_config_files:
         config_files += default_config_files.split()
@@ -93,6 +94,12 @@ def erlang_tests_macro(
             property_tests = [prop_target]
 
     common_attributes["labels"] = common_attributes.get("labels", []) + ["tpx-enable-artifact-reporting", "test-framework=39:erlang_common_test"]
+
+    additional_labels = read_config("erlang", "test_labels", None)
+    if additional_labels != None:
+        common_attributes["labels"] += additional_labels.split()
+
+    common_attributes["labels"] = list_dedupe(common_attributes["labels"])
 
     for suite in suites:
         # forward resources and deps fields and generate erlang_test target
@@ -121,7 +128,7 @@ def erlang_tests_macro(
             **common_attributes
         )
 
-def erlang_test_impl(ctx: "context") -> ["provider"]:
+def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     toolchains = select_toolchains(ctx)
     primary_toolchain_name = get_primary(ctx)
     primary_toolchain = toolchains[primary_toolchain_name]
@@ -257,7 +264,7 @@ def erlang_test_impl(ctx: "context") -> ["provider"]:
     ]
 
 # Copied from erlang_application.
-def _build_default_info(dependencies: ErlAppDependencies, output_dir: "artifact") -> "provider":
+def _build_default_info(dependencies: ErlAppDependencies, output_dir: Artifact) -> Provider:
     """ generate default_outputs and DefaultInfo provider
     """
     outputs = []
@@ -270,12 +277,12 @@ def _build_default_info(dependencies: ErlAppDependencies, output_dir: "artifact"
     return DefaultInfo(default_output = output_dir, other_outputs = outputs)
 
 def _write_test_info_file(
-        ctx: "context",
-        test_suite: "string",
+        ctx: AnalysisContext,
+        test_suite: str,
         dependencies: ErlAppDependencies,
-        test_dir: "artifact",
-        config_files: ["artifact"],
-        erl_cmd: ["cmd_args", "artifact"]) -> "artifact":
+        test_dir: Artifact,
+        config_files: list[Artifact],
+        erl_cmd: [cmd_args, Artifact]) -> Artifact:
     tests_info = {
         "config_files": config_files,
         "ct_opts": ctx.attrs._ct_opts,
@@ -293,7 +300,7 @@ def _write_test_info_file(
     )
     return test_info_file
 
-def _list_code_paths(dependencies: ErlAppDependencies) -> ["cmd_args"]:
+def _list_code_paths(dependencies: ErlAppDependencies) -> list[cmd_args]:
     """lists all ebin/ dirs from the test targets dependencies"""
     folders = []
     for dependency in dependencies.values():
@@ -310,7 +317,7 @@ def _list_code_paths(dependencies: ErlAppDependencies) -> ["cmd_args"]:
             folders.append(cmd_args(dep_info.output_dir, format = '"{}"'))
     return folders
 
-def _build_resource_dir(ctx, resources: "list", target_dir: "string") -> "artifact":
+def _build_resource_dir(ctx, resources: list, target_dir: str) -> Artifact:
     """ build mapping for suite data directory
 
     generating the necessary mapping information for the suite data directory
@@ -318,7 +325,7 @@ def _build_resource_dir(ctx, resources: "list", target_dir: "string") -> "artifa
     """
     include_symlinks = {}
     for resource in resources:
-        files = resource[DefaultInfo].default_outputs + resource[DefaultInfo].other_outputs
+        files = resource[DefaultInfo].default_outputs
         for file in files:
             include_symlinks[file.short_path] = file
     return ctx.actions.symlinked_dir(
@@ -327,11 +334,11 @@ def _build_resource_dir(ctx, resources: "list", target_dir: "string") -> "artifa
     )
 
 def link_output(
-        ctx: "context",
-        test_suite: "string",
+        ctx: AnalysisContext,
+        test_suite: str,
         build_environment: "BuildEnvironment",
-        data_dir: "artifact",
-        property_dir: "artifact") -> "artifact":
+        data_dir: Artifact,
+        property_dir: Artifact) -> Artifact:
     """Link the data_dirs and the test_suite beam in a single output folder."""
     link_spec = {}
     beam = build_environment.app_beams[test_suite]
@@ -341,7 +348,7 @@ def link_output(
     link_spec[ctx.attrs.suite.basename] = ctx.attrs.suite
     return ctx.actions.symlinked_dir(ctx.attrs.name, link_spec)
 
-def generate_file_map_target(suite: "string", dir_name: "string") -> "string":
+def generate_file_map_target(suite: str, dir_name: str) -> str:
     suite_dir = paths.dirname(suite)
     suite_name = paths.basename(suite)
     files = glob([paths.join(suite_dir, dir_name, "**")])

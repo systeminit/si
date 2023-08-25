@@ -5,13 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//java:dex_toolchain.bzl", "DexToolchainInfo")
+
 DexLibraryInfo = provider(
     fields = [
         # the .dex.jar file. May be None if there were not any Java classes to dex. If None, the
         # remaining fields should be ignored.
         "dex",  # ["artifact", None]
         # a unique string identifier for this DEX file
-        "identifier",  # [str.type, None]
+        "identifier",  # [str, None]
         # the names of the .class files that went into the DEX file
         "class_names",  # ["artifact", None]
         # resources that are referenced by the classes in this DEX file
@@ -24,12 +26,12 @@ DexLibraryInfo = provider(
 )
 
 def get_dex_produced_from_java_library(
-        ctx: "context",
-        dex_toolchain: "DexToolchainInfo",
-        jar_to_dex: "artifact",
-        needs_desugar: bool.type = False,
-        desugar_deps: ["artifact"] = [],
-        weight_factor: int.type = 1) -> "DexLibraryInfo":
+        ctx: AnalysisContext,
+        dex_toolchain: DexToolchainInfo.type,
+        jar_to_dex: Artifact,
+        needs_desugar: bool = False,
+        desugar_deps: list[Artifact] = [],
+        weight_factor: int = 1) -> DexLibraryInfo.type:
     # TODO(T102963008) check whether the java_library actually contains any classes
 
     d8_cmd = cmd_args(dex_toolchain.d8_command[RunInfo])

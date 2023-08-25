@@ -46,12 +46,12 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     .await
     .expect("could not create func");
     let code_generation_func_id = *code_generation_func.id();
-    let code = r##"function generate(input) {
+    let code = r#"function generate(input) {
         return {
             code: (input?.domain?.poop ?? ""),
             format: "json"
         };
-    }"##;
+    }"#;
     code_generation_func
         .set_code_plaintext(ctx, Some(code))
         .await

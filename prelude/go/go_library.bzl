@@ -27,7 +27,7 @@ load(":compile.bzl", "GoPkgCompileInfo", "GoTestInfo", "compile", "get_filtered_
 load(":link.bzl", "GoPkgLinkInfo", "get_inherited_link_pkgs")
 load(":packages.bzl", "GoPkg", "go_attr_pkg_name", "merge_pkgs")
 
-def go_library_impl(ctx: "context") -> ["provider"]:
+def go_library_impl(ctx: AnalysisContext) -> list[Provider]:
     pkgs = {}
     default_output = None
     pkg_name = None
@@ -41,6 +41,7 @@ def go_library_impl(ctx: "context") -> ["provider"]:
             srcs = srcs,
             deps = ctx.attrs.deps + ctx.attrs.exported_deps,
             compile_flags = ctx.attrs.compiler_flags,
+            assemble_flags = ctx.attrs.assembler_flags,
             shared = False,
         )
 
@@ -50,6 +51,7 @@ def go_library_impl(ctx: "context") -> ["provider"]:
             srcs = srcs,
             deps = ctx.attrs.deps + ctx.attrs.exported_deps,
             compile_flags = ctx.attrs.compiler_flags,
+            assemble_flags = ctx.attrs.assembler_flags,
             shared = True,
         )
 

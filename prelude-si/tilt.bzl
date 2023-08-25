@@ -1,4 +1,4 @@
-def tilt_up_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def tilt_up_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     return _invoke_tilt(ctx, "up")
 
 tilt_up = rule(
@@ -21,7 +21,7 @@ tilt_up = rule(
     },
 )
 
-def tilt_down_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def tilt_down_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     return _invoke_tilt(ctx, "down")
 
 tilt_down = rule(
@@ -44,7 +44,7 @@ tilt_down = rule(
     },
 )
 
-def tilt_docker_compose_stop_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def tilt_docker_compose_stop_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     docker_compose_file = "{}/{}".format(
         ctx.label.package,
         ctx.attrs.docker_compose_file,
@@ -81,7 +81,7 @@ tilt_docker_compose_stop = rule(
     },
 )
 
-def _invoke_tilt(ctx: "context", subcmd: str.type) -> [[DefaultInfo.type, RunInfo.type]]:
+def _invoke_tilt(ctx: AnalysisContext, subcmd: str) -> list[[DefaultInfo, RunInfo]]:
     tiltfile = "{}/{}".format(
         ctx.label.package,
         ctx.attrs.tiltfile,

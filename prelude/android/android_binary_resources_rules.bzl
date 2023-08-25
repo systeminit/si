@@ -8,7 +8,7 @@
 load("@prelude//:resources.bzl", "gather_resources")
 load("@prelude//android:aapt2_link.bzl", "get_aapt2_link", "get_module_manifest_in_proto_format")
 load("@prelude//android:android_manifest.bzl", "generate_android_manifest")
-load("@prelude//android:android_providers.bzl", "AndroidBinaryResourcesInfo", "AndroidResourceInfo", "ExopackageResourcesInfo")
+load("@prelude//android:android_providers.bzl", "AndroidBinaryResourcesInfo", "AndroidPackageableInfo", "AndroidResourceInfo", "ExopackageResourcesInfo")
 load("@prelude//android:android_resource.bzl", "aapt2_compile")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:r_dot_java.bzl", "generate_r_dot_javas")
@@ -18,18 +18,19 @@ load("@prelude//utils:utils.bzl", "expect")
 load("@prelude//decls/android_rules.bzl", "RType")
 
 def get_android_binary_resources_info(
-        ctx: "context",
-        deps: ["dependency"],
-        android_packageable_info: "AndroidPackageableInfo",
-        java_packaging_deps: ["JavaPackagingDep"],
-        use_proto_format: bool.type,
-        referenced_resources_lists: ["artifact"],
-        apk_module_graph_file: ["artifact", None] = None,
-        manifest_entries: dict.type = {},
+        ctx: AnalysisContext,
+        deps: list[Dependency],
+        android_packageable_info: AndroidPackageableInfo.type,
+        java_packaging_deps: list["JavaPackagingDep"],
+        use_proto_format: bool,
+        referenced_resources_lists: list[Artifact],
+        apk_module_graph_file: [Artifact, None] = None,
+        manifest_entries: dict = {},
         resource_infos_to_exclude: [set_type, None] = None,
-        generate_strings_and_ids_separately: [bool.type, None] = True,
-        aapt2_min_sdk: [str.type, None] = None,
-        aapt2_preferred_density: [str.type, None] = None) -> "AndroidBinaryResourcesInfo":
+        r_dot_java_packages_to_exclude: [list[str], None] = [],
+        generate_strings_and_ids_separately: [bool, None] = True,
+        aapt2_min_sdk: [str, None] = None,
+        aapt2_preferred_density: [str, None] = None) -> AndroidBinaryResourcesInfo.type:
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     unfiltered_resource_infos = [
         resource_info
@@ -42,12 +43,12 @@ def get_android_binary_resources_info(
         android_toolchain,
     )
 
-    android_manifest = _get_manifest(ctx, android_packageable_info, manifest_entries)
+    android_manifest = get_manifest(ctx, android_packageable_info, manifest_entries)
 
     non_proto_format_aapt2_link_info, proto_format_aapt2_link_info = get_aapt2_link(
         ctx,
         ctx.attrs._android_toolchain[AndroidToolchainInfo],
-        [resource_info.aapt2_compile_output for resource_info in resource_infos if resource_info.aapt2_compile_output != None],
+        resource_infos,
         android_manifest,
         includes_vector_drawables = getattr(ctx.attrs, "includes_vector_drawables", False),
         no_auto_version = getattr(ctx.attrs, "no_auto_version_resources", False),
@@ -79,7 +80,7 @@ def get_android_binary_resources_info(
 
     prebuilt_jars = [packaging_dep.jar for packaging_dep in java_packaging_deps if packaging_dep.is_prebuilt_jar]
 
-    cxx_resources = _get_cxx_resources(ctx, deps)
+    cxx_resources = get_cxx_resources(ctx, deps)
     is_exopackaged_enabled_for_resources = "resources" in getattr(ctx.attrs, "exopackage_modes", [])
     primary_resources_apk, exopackaged_assets, exopackaged_assets_hash = _merge_assets(
         ctx,
@@ -139,6 +140,7 @@ def get_android_binary_resources_info(
         getattr(ctx.attrs, "resource_union_package", None),
         referenced_resources_lists,
         generate_strings_and_ids_separately = generate_strings_and_ids_separately,
+        remove_classes = r_dot_java_packages_to_exclude,
     )
     string_source_map = _maybe_generate_string_source_map(
         ctx.actions,
@@ -177,9 +179,9 @@ def get_android_binary_resources_info(
     )
 
 def _maybe_filter_resources(
-        ctx: "context",
-        resources: [AndroidResourceInfo.type],
-        android_toolchain: AndroidToolchainInfo.type) -> ([AndroidResourceInfo.type], ["artifact", None], ["artifact", None], ["artifact"]):
+        ctx: AnalysisContext,
+        resources: list[AndroidResourceInfo.type],
+        android_toolchain: AndroidToolchainInfo.type) -> (list[AndroidResourceInfo.type], [Artifact, None], [Artifact, None], list[Artifact]):
     resources_filter_strings = getattr(ctx.attrs, "resource_filter", [])
     resources_filter = _get_resources_filter(resources_filter_strings)
     resource_compression_mode = getattr(ctx.attrs, "resource_compression", "disabled")
@@ -326,11 +328,11 @@ def _maybe_filter_resources(
     )
 
 ResourcesFilter = record(
-    densities = [str.type],
-    downscale = bool.type,
+    densities = list[str],
+    downscale = bool,
 )
 
-def _get_resources_filter(resources_filter_strings: [str.type]) -> [ResourcesFilter.type, None]:
+def _get_resources_filter(resources_filter_strings: list[str]) -> [ResourcesFilter.type, None]:
     if not resources_filter_strings:
         return None
 
@@ -342,11 +344,11 @@ def _get_resources_filter(resources_filter_strings: [str.type]) -> [ResourcesFil
     return ResourcesFilter(densities = densities, downscale = downscale)
 
 def _maybe_generate_string_source_map(
-        actions: "actions",
-        should_build_source_string_map: bool.type,
-        resource_infos: [AndroidResourceInfo.type],
+        actions: AnalysisActions,
+        should_build_source_string_map: bool,
+        resource_infos: list[AndroidResourceInfo.type],
         android_toolchain: AndroidToolchainInfo.type,
-        is_voltron_string_source_map: bool.type = False) -> ["artifact", None]:
+        is_voltron_string_source_map: bool = False) -> [Artifact, None]:
     if not should_build_source_string_map or len(resource_infos) == 0:
         return None
 
@@ -370,11 +372,11 @@ def _maybe_generate_string_source_map(
     return output
 
 def _maybe_package_strings_as_assets(
-        ctx: "context",
-        string_files_list: ["artifact", None],
-        string_files_res_dirs: ["artifact"],
-        r_dot_txt: "artifact",
-        android_toolchain: AndroidToolchainInfo.type) -> ["artifact", None]:
+        ctx: AnalysisContext,
+        string_files_list: [Artifact, None],
+        string_files_res_dirs: list[Artifact],
+        r_dot_txt: Artifact,
+        android_toolchain: AndroidToolchainInfo.type) -> [Artifact, None]:
     resource_compression_mode = getattr(ctx.attrs, "resource_compression", "disabled")
     is_store_strings_as_assets = _is_store_strings_as_assets(resource_compression_mode)
     expect(is_store_strings_as_assets == (string_files_list != None))
@@ -409,10 +411,10 @@ def _maybe_package_strings_as_assets(
 
     return string_assets_zip
 
-def _get_manifest(
-        ctx: "context",
-        android_packageable_info: "AndroidPackageableInfo",
-        manifest_entries: dict.type) -> "artifact":
+def get_manifest(
+        ctx: AnalysisContext,
+        android_packageable_info: AndroidPackageableInfo.type,
+        manifest_entries: dict) -> Artifact:
     robolectric_manifest = getattr(ctx.attrs, "robolectric_manifest", None)
     if robolectric_manifest:
         return robolectric_manifest
@@ -420,13 +422,13 @@ def _get_manifest(
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     if ctx.attrs.manifest:
         expect(ctx.attrs.manifest_skeleton == None, "Only one of manifest and manifest_skeleton should be declared")
-        if type(ctx.attrs.manifest) == "dependency":
+        if isinstance(ctx.attrs.manifest, Dependency):
             android_manifest = ctx.attrs.manifest[DefaultInfo].default_outputs[0]
         else:
             android_manifest = ctx.attrs.manifest
     else:
         expect(ctx.attrs.manifest_skeleton != None, "Must declare one of manifest and manifest_skeleton")
-        if type(ctx.attrs.manifest_skeleton) == "dependency":
+        if isinstance(ctx.attrs.manifest_skeleton, Dependency):
             manifest_skeleton = ctx.attrs.manifest_skeleton[DefaultInfo].default_outputs[0]
         else:
             manifest_skeleton = ctx.attrs.manifest_skeleton
@@ -441,7 +443,7 @@ def _get_manifest(
         )
 
     if android_toolchain.set_application_id_to_specified_package:
-        android_manifest_with_replaced_application_id = ctx.actions.declare_output("android_manifest_with_replaced_application_id")
+        android_manifest_with_replaced_application_id = ctx.actions.declare_output("android_manifest_with_replaced_application_id/AndroidManifest.xml")
         replace_application_id_placeholders_cmd = cmd_args([
             ctx.attrs._android_toolchain[AndroidToolchainInfo].replace_application_id_placeholders[RunInfo],
             "--manifest",
@@ -458,19 +460,19 @@ def _get_manifest(
         return android_manifest
 
 def _get_module_manifests(
-        ctx: "context",
-        android_packageable_info: "AndroidPackageableInfo",
-        manifest_entries: dict.type,
-        apk_module_graph_file: ["artifact", None],
-        use_proto_format: bool.type,
-        primary_resources_apk: "artifact") -> ["artifact"]:
+        ctx: AnalysisContext,
+        android_packageable_info: AndroidPackageableInfo.type,
+        manifest_entries: dict,
+        apk_module_graph_file: [Artifact, None],
+        use_proto_format: bool,
+        primary_resources_apk: Artifact) -> list[Artifact]:
     if not apk_module_graph_file:
         return []
 
     if not ctx.attrs.module_manifest_skeleton:
         return []
 
-    if type(ctx.attrs.module_manifest_skeleton) == "dependency":
+    if isinstance(ctx.attrs.module_manifest_skeleton, Dependency):
         module_manifest_skeleton = ctx.attrs.module_manifest_skeleton[DefaultInfo].default_outputs[0]
     else:
         module_manifest_skeleton = ctx.attrs.module_manifest_skeleton
@@ -480,7 +482,7 @@ def _get_module_manifests(
     module_manifests_dir = ctx.actions.declare_output("module_manifests_dir", dir = True)
     android_manifests = list(android_packageable_info.manifests.traverse()) if android_packageable_info.manifests else []
 
-    def get_manifests_modular(ctx: "context", artifacts, outputs):
+    def get_manifests_modular(ctx: AnalysisContext, artifacts, outputs):
         apk_module_graph_info = get_apk_module_graph_info(ctx, apk_module_graph_file, artifacts)
         get_module_from_target = apk_module_graph_info.target_to_module_mapping_function
         module_to_manifests = {}
@@ -528,11 +530,11 @@ def _get_module_manifests(
 # Returns the "primary resources APK" (i.e. the resource that are packaged into the primary APK),
 # and optionally an "exopackaged assets APK" and the hash for that APK.
 def _merge_assets(
-        ctx: "context",
-        is_exopackaged_enabled_for_resources: bool.type,
-        base_apk: "artifact",
-        resource_infos: ["AndroidResourceInfo"],
-        cxx_resources: ["artifact", None]) -> ("artifact", ["artifact", None], ["artifact", None]):
+        ctx: AnalysisContext,
+        is_exopackaged_enabled_for_resources: bool,
+        base_apk: Artifact,
+        resource_infos: list[AndroidResourceInfo.type],
+        cxx_resources: [Artifact, None]) -> (Artifact, [Artifact, None], [Artifact, None]):
     assets_dirs = [resource_info.assets for resource_info in resource_infos if resource_info.assets]
     if cxx_resources != None:
         assets_dirs.extend([cxx_resources])
@@ -563,9 +565,9 @@ def _merge_assets(
         return merged_assets_output, None, None
 
 def get_effective_banned_duplicate_resource_types(
-        duplicate_resource_behavior: str.type,
-        allowed_duplicate_resource_types: [str.type],
-        banned_duplicate_resource_types: [str.type]) -> [str.type]:
+        duplicate_resource_behavior: str,
+        allowed_duplicate_resource_types: list[str],
+        banned_duplicate_resource_types: list[str]) -> list[str]:
     if duplicate_resource_behavior == "allow_by_default":
         expect(
             len(allowed_duplicate_resource_types) == 0,
@@ -581,7 +583,7 @@ def get_effective_banned_duplicate_resource_types(
     else:
         fail("Unrecognized duplicate_resource_behavior: {}".format(duplicate_resource_behavior))
 
-def _get_cxx_resources(ctx: "context", deps: ["dependency"]) -> ["artifact", None]:
+def get_cxx_resources(ctx: AnalysisContext, deps: list[Dependency], dir_name: str = "cxx_resources_dir") -> [Artifact, None]:
     cxx_resources = gather_resources(
         label = ctx.label,
         resources = {},
@@ -594,7 +596,7 @@ def _get_cxx_resources(ctx: "context", deps: ["dependency"]) -> ["artifact", Non
         for name, (resource, _other) in resource_map.items():
             symlink_tree_dict["cxx-resources/{}".format(name)] = resource
 
-    return ctx.actions.symlinked_dir("cxx_resources_dir", symlink_tree_dict) if symlink_tree_dict else None
+    return ctx.actions.symlinked_dir(dir_name, symlink_tree_dict) if symlink_tree_dict else None
 
-def _is_store_strings_as_assets(resource_compression: str.type) -> bool.type:
+def _is_store_strings_as_assets(resource_compression: str) -> bool:
     return resource_compression == "enabled_strings_only" or resource_compression == "enabled_with_strings_as_assets"

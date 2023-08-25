@@ -14,12 +14,12 @@ def validate_uri(_s):
     return True
 
 prelude_rule = record(
-    name = field(str.type),
-    docs = field([str.type, None], None),
-    examples = field([str.type, None], None),
-    further = field([str.type, None], None),
-    attrs = field({str.type: "attribute"}),
-    impl = field(["function", None], None),
+    name = field(str),
+    docs = field([str, None], None),
+    examples = field([str, None], None),
+    further = field([str, None], None),
+    attrs = field(dict[str, "attribute"]),
+    impl = field([typing.Callable, None], None),
 )
 
 AbiGenerationMode = ["unknown", "class", "source", "migrating_to_source_only", "source_only", "unrecognized"]
@@ -231,6 +231,19 @@ def _re_opts_for_tests_arg() -> "attribute":
         default = None,
     )
 
+def _allow_cache_upload_arg():
+    return {
+        "allow_cache_upload": attrs.bool(
+            default = False,
+            doc = """
+            Whether to allow uploading the output of this rule to be uploaded
+            to cache when the action is executed locally if the configuration
+            allows (i.e. there is a cache configured and the client has
+            permission to write to it).
+            """,
+        ),
+    }
+
 buck = struct(
     name_arg = _name_arg,
     deps_query_arg = _deps_query_arg,
@@ -247,4 +260,5 @@ buck = struct(
     test_rule_timeout_ms = _test_rule_timeout_ms,
     re_opts_for_tests_arg = _re_opts_for_tests_arg,
     target_os_type_arg = _target_os_type_arg,
+    allow_cache_upload_arg = _allow_cache_upload_arg,
 )

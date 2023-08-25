@@ -5,13 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//utils:utils.bzl", "expect")
+
 SECONDARY_DEX = 1
 NATIVE_LIBRARY = 2
 RESOURCES = 4
 MODULES = 8
 ARCH64 = 16
 
-def get_exopackage_flags(exopackage_modes: [str.type]) -> int.type:
+def get_exopackage_flags(exopackage_modes: list[str]) -> int:
+    expect("modules" not in exopackage_modes, "Modular exopackage is not supported!")
     flags = 0
 
     for (name, flag) in [

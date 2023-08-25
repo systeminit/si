@@ -48,7 +48,7 @@ def _docker_build_context_srcs_from_deps_impl(ctx):
     for path in paths:
         ctx.output.print(path)
 
-docker_build_context_srcs_from_deps = bxl(
+docker_build_context_srcs_from_deps = bxl_main(
     impl = _docker_build_context_srcs_from_deps_impl,
     cli_args = {
         "dep": cli_args.list(
@@ -59,7 +59,7 @@ docker_build_context_srcs_from_deps = bxl(
     },
 )
 
-def _normalize_target_str(dep: str.type) -> str.type:
+def _normalize_target_str(dep: str) -> str:
     if dep.startswith("root//"):
         return dep
     elif dep.startswith("//"):
@@ -67,7 +67,7 @@ def _normalize_target_str(dep: str.type) -> str.type:
     else:
         return "root//{}".format(dep)
 
-def _normalize_file_str(raw_file: str.type) -> str.type:
+def _normalize_file_str(raw_file: str) -> str:
     if raw_file.startswith("root//"):
         return raw_file.replace("root//", "")
     else:

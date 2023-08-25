@@ -316,7 +316,7 @@
               docker-compose
               gh
               jq
-              pgcli
+              # pgcli
               reindeer
               shellcheck
               shfmt

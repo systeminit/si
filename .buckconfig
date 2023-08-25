@@ -7,14 +7,22 @@ toolchains = toolchains
 none = none
 
 [repository_aliases]
+buck = none
 config = prelude
 fbcode = none
-fbcode_macros = none
 fbsource = none
-buck = none
 
 [parser]
 target_platform_detector_spec = target:root//...->prelude//platforms:default
 
 [project]
-ignore = .git,target,node_modules,app/**/node_modules,bin/**/node_modules,lib/**/node_modules,third-party/rust/.cargo/**/BUCK,third-party/rust/vendor/**/BUCK,.idea
+ignore = \
+  .git, \
+  .idea, \
+  app/**/node_modules, \
+  bin/**/node_modules, \
+  lib/**/node_modules, \
+  node_modules, \
+  target, \
+  third-party/rust/.cargo/**/BUCK, \
+  third-party/rust/vendor/**/BUCK
