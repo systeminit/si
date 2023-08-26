@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-def inject_test_run_info(ctx: "context", test_info: ExternalRunnerTestInfo.type) -> ["provider"]:
+def inject_test_run_info(ctx: AnalysisContext, test_info: ExternalRunnerTestInfo.type) -> list[Provider]:
     # Access this here so we get failures in CI if we forget to inject it
     # anywhere, regardless of whether an `env` is used.
     inject_test_env = ctx.attrs._inject_test_env[RunInfo]
@@ -26,12 +26,12 @@ def inject_test_run_info(ctx: "context", test_info: ExternalRunnerTestInfo.type)
 
     return [test_info, RunInfo(args = [inject_test_env, env_file, "--", test_info.command])]
 
-def _maybe_relativize_path(test_info: ExternalRunnerTestInfo.type, cell_root: "cell_root", arg: "cmd_args") -> "cmd_args":
+def _maybe_relativize_path(test_info: ExternalRunnerTestInfo.type, cell_root: "cell_root", arg: cmd_args) -> cmd_args:
     if test_info.run_from_project_root:
         return arg
     return arg.relative_to(cell_root)
 
-def _exclude_test_env_from_run_info(ctx: "context"):
+def _exclude_test_env_from_run_info(ctx: AnalysisContext):
     # Antlir assumes that $(exe ...) is a single, relative path, so if we make
     # it multiple commands here, it'll break.
     return "antlir_inner_test" in ctx.attrs.labels

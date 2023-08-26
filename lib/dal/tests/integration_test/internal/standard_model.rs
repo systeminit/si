@@ -74,7 +74,7 @@ async fn list(ctx: &DalContext) {
         .expect("could not get schema by id");
     assert!(
         !at_head.iter().any(
-            |el| vec![first_schema.id(), second_schema.id(), third_schema.id()].contains(&el.id())
+            |el| [first_schema.id(), second_schema.id(), third_schema.id()].contains(&el.id())
         ),
         "schemas are in the set"
     );
@@ -83,12 +83,9 @@ async fn list(ctx: &DalContext) {
         .await
         .expect("could not list schema");
     assert!(
-        at_change_set.iter().any(|el| vec![
-            first_schema.id(),
-            second_schema.id(),
-            third_schema.id()
-        ]
-        .contains(&el.id())),
+        at_change_set.iter().any(
+            |el| [first_schema.id(), second_schema.id(), third_schema.id()].contains(&el.id())
+        ),
         "schemas aren't in the set"
     );
 }

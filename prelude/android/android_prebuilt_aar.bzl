@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "PrebuiltNativeLibraryDir", "merge_android_packageable_info")
+load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "PrebuiltNativeLibraryDir", "RESOURCE_PRIORITY_LOW", "RESOURCE_PRIORITY_NORMAL", "merge_android_packageable_info")
 load("@prelude//android:android_resource.bzl", "aapt2_compile", "extract_package_from_manifest")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load(
@@ -16,7 +16,7 @@ load(
 )
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
 
-def android_prebuilt_aar_impl(ctx: "context") -> ["provider"]:
+def android_prebuilt_aar_impl(ctx: AnalysisContext) -> list[Provider]:
     manifest = ctx.actions.declare_output("AndroidManifest.xml")
     all_classes_jar = ctx.actions.declare_output("classes.jar")
     r_dot_txt = ctx.actions.declare_output("R.txt")
@@ -29,7 +29,7 @@ def android_prebuilt_aar_impl(ctx: "context") -> ["provider"]:
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     unpack_aar_tool = android_toolchain.unpack_aar[RunInfo]
     java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo]
-    jar_tool = java_toolchain.jar
+    jar_builder_tool = cmd_args(java_toolchain.jar_builder, delimiter = " ")
 
     unpack_aar_cmd = [
         unpack_aar_tool,
@@ -51,8 +51,8 @@ def android_prebuilt_aar_impl(ctx: "context") -> ["provider"]:
         annotation_jars_dir.as_output(),
         "--proguard-config-path",
         proguard_config.as_output(),
-        "--jar-tool",
-        jar_tool,
+        "--jar-builder-tool",
+        jar_builder_tool,
     ]
 
     ctx.actions.run(unpack_aar_cmd, category = "android_unpack_aar")
@@ -65,6 +65,7 @@ def android_prebuilt_aar_impl(ctx: "context") -> ["provider"]:
         manifest_file = manifest,
         r_dot_java_package = extract_package_from_manifest(ctx, manifest),
         res = res,
+        res_priority = RESOURCE_PRIORITY_LOW if android_toolchain.prebuilt_aar_resources_have_low_priority else RESOURCE_PRIORITY_NORMAL,
         text_symbols = r_dot_txt,
     )
 

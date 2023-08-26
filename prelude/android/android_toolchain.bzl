@@ -11,6 +11,7 @@ AndroidPlatformInfo = provider(fields = [
 
 AndroidToolchainInfo = provider(fields = [
     "aapt2",
+    "aar_builder",
     "adb",
     "aidl",
     "android_jar",
@@ -38,11 +39,14 @@ AndroidToolchainInfo = provider(fields = [
     "instrumentation_test_runner_main_class",
     "manifest_utils",
     "merge_android_resources",
+    "merge_android_resource_sources",
     "merge_assets",
     "mini_aapt",
     "native_libs_as_assets_metadata",
     "optimized_proguard_config",
+    "package_meta_inf_version_files",
     "package_strings_as_assets",
+    "prebuilt_aar_resources_have_low_priority",
     "proguard_config",
     "proguard_jar",
     "proguard_max_heap_size",

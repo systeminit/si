@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//android:configuration.bzl", "is_building_android_binary_attr")
 load("@prelude//android:min_sdk_version.bzl", "get_min_sdk_version_constraint_value_name", "get_min_sdk_version_range")
 load("@prelude//java:dex_toolchain.bzl", "DexToolchainInfo")
@@ -55,7 +56,7 @@ def select_dex_toolchain():
 def dex_min_sdk_version():
     min_sdk_version_dict = {"DEFAULT": None}
     for min_sdk in get_min_sdk_version_range():
-        constraint = "fbsource//xplat/buck2/platform/android:{}".format(get_min_sdk_version_constraint_value_name(min_sdk))
+        constraint = "prelude//android/constraints:{}".format(get_min_sdk_version_constraint_value_name(min_sdk))
         min_sdk_version_dict[constraint] = min_sdk
 
     return select(min_sdk_version_dict)
@@ -67,14 +68,6 @@ def select_java_test_toolchain():
 def select_prebuilt_jar_toolchain():
     # FIXME: prelude// should be standalone (not refer to fbcode//)
     return "fbcode//buck2/platform:prebuilt_jar"
-
-def is_build_only_native_code():
-    return select(
-        {
-            "DEFAULT": False,
-            "fbsource//xplat/buck2/platform/android:build_only_native_code": True,
-        },
-    )
 
 implemented_rules = {
     "jar_genrule": jar_genrule_impl,
@@ -139,6 +132,7 @@ extra_attributes = {
         "abi_generation_mode": attrs.option(attrs.enum(AbiGenerationMode), default = None),
         "javac": attrs.option(attrs.one_of(attrs.dep(), attrs.source()), default = None),
         "resources_root": attrs.option(attrs.string(), default = None),
+        "unbundled_resources_root": attrs.option(attrs.source(allow_directory = True), default = None),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
         "_is_building_android_binary": attrs.default_only(attrs.bool(default = False)),
         "_java_test_toolchain": attrs.exec_dep(

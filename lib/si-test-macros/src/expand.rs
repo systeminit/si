@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::quote;
@@ -203,64 +203,64 @@ pub(crate) trait FnSetupExpander {
     fn code_extend<I: IntoIterator<Item = TokenTree>>(&mut self, stream: I);
     fn push_arg(&mut self, arg: Expr);
 
-    fn test_context(&self) -> Option<&Arc<Ident>>;
-    fn set_test_context(&mut self, value: Option<Arc<Ident>>);
+    fn test_context(&self) -> Option<&Rc<Ident>>;
+    fn set_test_context(&mut self, value: Option<Rc<Ident>>);
 
-    fn nats_subject_prefix(&self) -> Option<&Arc<Ident>>;
-    fn set_nats_subject_prefix(&mut self, value: Option<Arc<Ident>>);
+    fn nats_subject_prefix(&self) -> Option<&Rc<Ident>>;
+    fn set_nats_subject_prefix(&mut self, value: Option<Rc<Ident>>);
 
-    fn council_server(&self) -> Option<&Arc<Ident>>;
-    fn set_council_server(&mut self, value: Option<Arc<Ident>>);
+    fn council_server(&self) -> Option<&Rc<Ident>>;
+    fn set_council_server(&mut self, value: Option<Rc<Ident>>);
 
     fn start_council_server(&self) -> Option<()>;
     fn set_start_council_server(&mut self, value: Option<()>);
 
-    fn pinga_server(&self) -> Option<&Arc<Ident>>;
-    fn set_pinga_server(&mut self, value: Option<Arc<Ident>>);
+    fn pinga_server(&self) -> Option<&Rc<Ident>>;
+    fn set_pinga_server(&mut self, value: Option<Rc<Ident>>);
 
-    fn pinga_shutdown_handle(&self) -> Option<&Arc<Ident>>;
-    fn set_pinga_shutdown_handle(&mut self, value: Option<Arc<Ident>>);
+    fn pinga_shutdown_handle(&self) -> Option<&Rc<Ident>>;
+    fn set_pinga_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
 
     fn start_pinga_server(&self) -> Option<()>;
     fn set_start_pinga_server(&mut self, value: Option<()>);
 
-    fn veritech_server(&self) -> Option<&Arc<Ident>>;
-    fn set_veritech_server(&mut self, value: Option<Arc<Ident>>);
+    fn veritech_server(&self) -> Option<&Rc<Ident>>;
+    fn set_veritech_server(&mut self, value: Option<Rc<Ident>>);
 
-    fn veritech_shutdown_handle(&self) -> Option<&Arc<Ident>>;
-    fn set_veritech_shutdown_handle(&mut self, value: Option<Arc<Ident>>);
+    fn veritech_shutdown_handle(&self) -> Option<&Rc<Ident>>;
+    fn set_veritech_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
 
     fn start_veritech_server(&self) -> Option<()>;
     fn set_start_veritech_server(&mut self, value: Option<()>);
 
-    fn services_context(&self) -> Option<&Arc<Ident>>;
-    fn set_services_context(&mut self, value: Option<Arc<Ident>>);
+    fn services_context(&self) -> Option<&Rc<Ident>>;
+    fn set_services_context(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_builder(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_builder(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_builder(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_builder(&mut self, value: Option<Rc<Ident>>);
 
-    fn workspace_signup(&self) -> Option<&(Arc<Ident>, Arc<Ident>)>;
-    fn set_workspace_signup(&mut self, value: Option<(Arc<Ident>, Arc<Ident>)>);
+    fn workspace_signup(&self) -> Option<&(Rc<Ident>, Rc<Ident>)>;
+    fn set_workspace_signup(&mut self, value: Option<(Rc<Ident>, Rc<Ident>)>);
 
-    fn workspace_pk(&self) -> Option<&Arc<Ident>>;
-    fn set_workspace_pk(&mut self, value: Option<Arc<Ident>>);
+    fn workspace_pk(&self) -> Option<&Rc<Ident>>;
+    fn set_workspace_pk(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_default(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_default(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_default(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_default(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_default_mut(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_default_mut(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_default_mut(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_default_mut(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_head(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_head(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_head(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_head(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_head_ref(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_head_ref(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_head_ref(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_head_ref(&mut self, value: Option<Rc<Ident>>);
 
-    fn dal_context_head_mut_ref(&self) -> Option<&Arc<Ident>>;
-    fn set_dal_context_head_mut_ref(&mut self, value: Option<Arc<Ident>>);
+    fn dal_context_head_mut_ref(&self) -> Option<&Rc<Ident>>;
+    fn set_dal_context_head_mut_ref(&mut self, value: Option<Rc<Ident>>);
 
-    fn setup_test_context(&mut self) -> Arc<Ident> {
+    fn setup_test_context(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.test_context() {
             return ident.clone();
         }
@@ -269,12 +269,12 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let test_context = ::dal_test::TestContext::global(crate::TEST_PG_DBNAME).await?;
         });
-        self.set_test_context(Some(Arc::new(var)));
+        self.set_test_context(Some(Rc::new(var)));
 
         self.test_context().unwrap().clone()
     }
 
-    fn setup_nats_subject_prefix(&mut self) -> Arc<Ident> {
+    fn setup_nats_subject_prefix(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.nats_subject_prefix() {
             return ident.clone();
         }
@@ -283,12 +283,12 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = ::dal_test::random_identifier_string();
         });
-        self.set_nats_subject_prefix(Some(Arc::new(var)));
+        self.set_nats_subject_prefix(Some(Rc::new(var)));
 
         self.nats_subject_prefix().unwrap().clone()
     }
 
-    fn setup_council_server(&mut self) -> Arc<Ident> {
+    fn setup_council_server(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.council_server() {
             return ident.clone();
         }
@@ -302,7 +302,7 @@ pub(crate) trait FnSetupExpander {
                 #test_context.nats_config().clone(),
             ).await?;
         });
-        self.set_council_server(Some(Arc::new(var)));
+        self.set_council_server(Some(Rc::new(var)));
 
         self.council_server().unwrap().clone()
     }
@@ -329,7 +329,7 @@ pub(crate) trait FnSetupExpander {
         self.set_start_council_server(Some(()));
     }
 
-    fn setup_pinga_server(&mut self) -> Arc<Ident> {
+    fn setup_pinga_server(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.pinga_server() {
             return ident.clone();
         }
@@ -341,12 +341,12 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = ::dal_test::pinga_server(&#services_context)?;
         });
-        self.set_pinga_server(Some(Arc::new(var)));
+        self.set_pinga_server(Some(Rc::new(var)));
 
         self.pinga_server().unwrap().clone()
     }
 
-    fn setup_pinga_shutdown_handle(&mut self) -> Arc<Ident> {
+    fn setup_pinga_shutdown_handle(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.pinga_shutdown_handle() {
             return ident.clone();
         }
@@ -358,7 +358,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = #pinga_server.shutdown_handle();
         });
-        self.set_pinga_shutdown_handle(Some(Arc::new(var)));
+        self.set_pinga_shutdown_handle(Some(Rc::new(var)));
 
         self.pinga_shutdown_handle().unwrap().clone()
     }
@@ -377,7 +377,7 @@ pub(crate) trait FnSetupExpander {
         self.set_start_pinga_server(Some(()));
     }
 
-    fn setup_veritech_server(&mut self) -> Arc<Ident> {
+    fn setup_veritech_server(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.veritech_server() {
             return ident.clone();
         }
@@ -391,12 +391,12 @@ pub(crate) trait FnSetupExpander {
                 #test_context.nats_config().clone(),
             ).await?;
         });
-        self.set_veritech_server(Some(Arc::new(var)));
+        self.set_veritech_server(Some(Rc::new(var)));
 
         self.veritech_server().unwrap().clone()
     }
 
-    fn setup_veritech_shutdown_handle(&mut self) -> Arc<Ident> {
+    fn setup_veritech_shutdown_handle(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.veritech_shutdown_handle() {
             return ident.clone();
         }
@@ -408,7 +408,7 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = #veritech_server.shutdown_handle();
         });
-        self.set_veritech_shutdown_handle(Some(Arc::new(var)));
+        self.set_veritech_shutdown_handle(Some(Rc::new(var)));
 
         self.veritech_shutdown_handle().unwrap().clone()
     }
@@ -427,7 +427,7 @@ pub(crate) trait FnSetupExpander {
         self.set_start_veritech_server(Some(()));
     }
 
-    fn setup_services_context(&mut self) -> Arc<Ident> {
+    fn setup_services_context(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.services_context() {
             return ident.clone();
         }
@@ -439,12 +439,12 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = #test_context.create_services_context().await;
         });
-        self.set_services_context(Some(Arc::new(var)));
+        self.set_services_context(Some(Rc::new(var)));
 
         self.services_context().unwrap().clone()
     }
 
-    fn setup_dal_context_builder(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_builder(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_builder() {
             return ident.clone();
         }
@@ -458,12 +458,12 @@ pub(crate) trait FnSetupExpander {
             let #var = #services_context.clone().into_builder(false);
         });
 
-        self.set_dal_context_builder(Some(Arc::new(var)));
+        self.set_dal_context_builder(Some(Rc::new(var)));
 
         self.dal_context_builder().unwrap().clone()
     }
 
-    fn setup_workspace_signup(&mut self) -> (Arc<Ident>, Arc<Ident>) {
+    fn setup_workspace_signup(&mut self) -> (Rc<Ident>, Rc<Ident>) {
         if let Some(idents) = self.workspace_signup() {
             return idents.clone();
         }
@@ -487,12 +487,12 @@ pub(crate) trait FnSetupExpander {
                 r
             };
         });
-        self.set_workspace_signup(Some((Arc::new(var_nw), Arc::new(var_auth_token))));
+        self.set_workspace_signup(Some((Rc::new(var_nw), Rc::new(var_auth_token))));
 
         self.workspace_signup().unwrap().clone()
     }
 
-    fn setup_workspace_pk(&mut self) -> Arc<Ident> {
+    fn setup_workspace_pk(&mut self) -> Rc<Ident> {
         if let Some(idents) = self.workspace_pk() {
             return idents.clone();
         }
@@ -504,12 +504,12 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let #var = *#nw.workspace.pk();
         });
-        self.set_workspace_pk(Some(Arc::new(var)));
+        self.set_workspace_pk(Some(Rc::new(var)));
 
         self.workspace_pk().unwrap().clone()
     }
 
-    fn setup_dal_context_default(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_default(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_default() {
             return ident.clone();
         }
@@ -535,12 +535,12 @@ pub(crate) trait FnSetupExpander {
                 ctx
             };
         });
-        self.set_dal_context_default(Some(Arc::new(var)));
+        self.set_dal_context_default(Some(Rc::new(var)));
 
         self.dal_context_default().unwrap().clone()
     }
 
-    fn setup_dal_context_default_mut(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_default_mut(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_default_mut() {
             return ident.clone();
         }
@@ -566,12 +566,12 @@ pub(crate) trait FnSetupExpander {
                 ctx
             };
         });
-        self.set_dal_context_default_mut(Some(Arc::new(var)));
+        self.set_dal_context_default_mut(Some(Rc::new(var)));
 
         self.dal_context_default_mut().unwrap().clone()
     }
 
-    fn setup_dal_context_head(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_head(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_head() {
             return ident.clone();
         }
@@ -593,12 +593,12 @@ pub(crate) trait FnSetupExpander {
                 ::dal_test::DalContextHead(ctx)
             };
         });
-        self.set_dal_context_head(Some(Arc::new(var)));
+        self.set_dal_context_head(Some(Rc::new(var)));
 
         self.dal_context_head().unwrap().clone()
     }
 
-    fn setup_dal_context_head_ref(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_head_ref(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_head_ref() {
             return ident.clone();
         }
@@ -621,12 +621,12 @@ pub(crate) trait FnSetupExpander {
             };
             let #var = ::dal_test::DalContextHeadRef(&_dchr);
         });
-        self.set_dal_context_head_ref(Some(Arc::new(var)));
+        self.set_dal_context_head_ref(Some(Rc::new(var)));
 
         self.dal_context_head_ref().unwrap().clone()
     }
 
-    fn setup_dal_context_head_mut_ref(&mut self) -> Arc<Ident> {
+    fn setup_dal_context_head_mut_ref(&mut self) -> Rc<Ident> {
         if let Some(ident) = self.dal_context_head_mut_ref() {
             return ident.clone();
         }
@@ -649,7 +649,7 @@ pub(crate) trait FnSetupExpander {
             };
             let #var = ::dal_test::DalContextHeadMutRef(&mut _dchmr);
         });
-        self.set_dal_context_head_mut_ref(Some(Arc::new(var)));
+        self.set_dal_context_head_mut_ref(Some(Rc::new(var)));
 
         self.dal_context_head_mut_ref().unwrap().clone()
     }

@@ -66,7 +66,6 @@ impl FuncDispatch for FuncBackendJsValidation {
                         })
                         .await
                         .map_err(|_| FuncBackendError::SendError)?;
-                } else {
                 }
             }
         }

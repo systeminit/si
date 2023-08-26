@@ -11,10 +11,10 @@ load(
     "get_re_executor_from_props",
 )
 
-def cargo_clippy_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def cargo_clippy_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     run_cmd_args = cmd_args([
         "cargo",
@@ -82,7 +82,7 @@ cargo_clippy = rule(
     },
 )
 
-def cargo_clippy_fix_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def cargo_clippy_fix_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     run_cmd_args = cmd_args([
         "cargo",
         "clippy",
@@ -120,10 +120,10 @@ cargo_clippy_fix = rule(
     },
 )
 
-def cargo_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def cargo_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     run_cmd_args = cmd_args([
         "cargo",
@@ -190,7 +190,7 @@ cargo_check = rule(
     },
 )
 
-def cargo_doc_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def cargo_doc_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     run_cmd_args = cmd_args([
         "cargo",
         "doc",
@@ -223,10 +223,10 @@ cargo_doc = rule(
     },
 )
 
-def cargo_doc_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def cargo_doc_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     run_cmd_args = cmd_args([
         "cargo",
@@ -305,7 +305,7 @@ cargo_doc_check = rule(
     },
 )
 
-def cargo_fmt_impl(ctx: "context") -> [[DefaultInfo.type, RunInfo.type]]:
+def cargo_fmt_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     run_cmd_args = cmd_args([
         "cargo",
         "fmt",
@@ -338,10 +338,10 @@ cargo_fmt = rule(
     },
 )
 
-def cargo_fmt_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def cargo_fmt_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     run_cmd_args = cmd_args([
         "cargo",

@@ -10,21 +10,29 @@ load(":merge.bxl", "do_merge")
 load(":query.bxl", "do_query")
 
 def _build_entry_point(ctx: "bxl_ctx") -> None:
+    bxl_actions = ctx.bxl_actions(
+        exec_deps = "prelude//python/tools/sourcedb_merger:legacy_merge",
+        target_platform = "prelude//platforms:default",
+    )
+    actions = bxl_actions.actions
+
     query = ctx.cquery()
-    actions = ctx.actions_factory
     targets = do_query(ctx, query, actions, [query.eval(target) for target in ctx.cli_args.target])
     built_sourcedbs = do_build(ctx, targets)
 
+    # Ensure all source files are materialized
+    ctx.output.ensure_multiple(built_sourcedbs.values())
+
+    # Ensure merged sourcedb is materialized
     merged_sourcedb = do_merge(
         ctx,
-        actions,
+        bxl_actions,
         built_sourcedbs,
-        merger_target = "prelude//python/tools/sourcedb_merger:legacy_merge",
         command_category = "pyre_legacy_merge_sourcedb",
     )
     ctx.output.print_json({"db": merged_sourcedb.abs_path()})
 
-build = bxl(
+build = bxl_main(
     doc = """Build Python sourcedb for Pyre classic type checking server.
 
     It takes a list of target patterns (usually obtained from Pyre local configuration

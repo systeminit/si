@@ -6,8 +6,9 @@
 # of this source tree.
 
 load("@prelude//cxx:cxx_context.bzl", "get_cxx_toolchain_info")
+load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 
-def strip_debug_info(ctx: "context", name: str.type, obj: "artifact") -> "artifact":
+def strip_debug_info(ctx: AnalysisContext, name: str, obj: Artifact) -> Artifact:
     """
     Strip debug information from an object.
     """
@@ -17,19 +18,22 @@ def strip_debug_info(ctx: "context", name: str.type, obj: "artifact") -> "artifa
     ctx.actions.run(cmd, category = "strip_debug", identifier = name)
     return output
 
-def strip_shared_library(ctx: "context", cxx_toolchain: "CxxToolchainInfo", shared_lib: "artifact", strip_flags: "cmd_args") -> "artifact":
+def strip_object(ctx: AnalysisContext, cxx_toolchain: CxxToolchainInfo.type, unstripped: Artifact, strip_flags: cmd_args, category_suffix: [str, None] = None) -> Artifact:
     """
-    Strip unneeded information from a shared library.
+    Strip unneeded information from binaries / shared libs.
     """
     strip = cxx_toolchain.binary_utilities_info.strip
-    stripped_lib = ctx.actions.declare_output("stripped/{}".format(shared_lib.short_path))
+    stripped_lib = ctx.actions.declare_output("stripped/{}".format(unstripped.short_path))
 
     # TODO(T109996375) support configuring the flags used for stripping
     cmd = cmd_args()
     cmd.add(strip)
     cmd.add(strip_flags)
-    cmd.add([shared_lib, "-o", stripped_lib.as_output()])
+    cmd.add([unstripped, "-o", stripped_lib.as_output()])
 
-    ctx.actions.run(cmd, category = "strip_shared_lib", identifier = shared_lib.short_path)
+    effective_category_suffix = category_suffix if category_suffix else "shared_lib"
+    category = "strip_{}".format(effective_category_suffix)
+
+    ctx.actions.run(cmd, category = category, identifier = unstripped.short_path)
 
     return stripped_lib

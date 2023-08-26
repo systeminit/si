@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::cell::RefCell;
-use std::sync::Arc;
+use std::rc::Rc;
 use thiserror::Error;
 
 use crate::schema::SchemaUiMenu;
@@ -42,20 +42,20 @@ pub struct Category {
     //
     // Love,
     // Adam
-    pub items: Arc<RefCell<Vec<Arc<RefCell<MenuItem>>>>>,
+    pub items: Rc<RefCell<Vec<Rc<RefCell<MenuItem>>>>>,
 }
 
 impl Category {
     pub fn new(name: impl Into<String>) -> Self {
         let name = name.into();
-        let items = Arc::new(RefCell::new(Vec::new()));
+        let items = Rc::new(RefCell::new(Vec::new()));
         Category { name, items }
     }
 
     pub fn push(&self, menu_item: MenuItem) {
         self.items
             .borrow_mut()
-            .push(Arc::new(RefCell::new(menu_item)));
+            .push(Rc::new(RefCell::new(menu_item)));
     }
 }
 
@@ -108,7 +108,7 @@ impl MenuItem {
 pub struct MenuItems {
     // Same thing here - we probably need some of these, but
     // likely not all of them? -- Adam
-    list: Arc<RefCell<Vec<Arc<RefCell<MenuItem>>>>>,
+    list: Rc<RefCell<Vec<Rc<RefCell<MenuItem>>>>>,
 }
 
 impl Default for MenuItems {
@@ -120,13 +120,13 @@ impl Default for MenuItems {
 impl MenuItems {
     pub fn new() -> Self {
         MenuItems {
-            list: Arc::new(RefCell::new(Vec::new())),
+            list: Rc::new(RefCell::new(Vec::new())),
         }
     }
 
     /// Search the list of menu items for the path given, and return the menu item
     /// when it is found.
-    pub fn item_for_path(&self, path: &[String]) -> NodeMenuResult<Arc<RefCell<MenuItem>>> {
+    pub fn item_for_path(&self, path: &[String]) -> NodeMenuResult<Rc<RefCell<MenuItem>>> {
         let mut current_list = self.list.clone();
         let final_path_index = if path.is_empty() { 0 } else { path.len() - 1 };
         for (path_idx, path_part) in path.iter().enumerate() {
@@ -167,7 +167,7 @@ impl MenuItems {
                 if path.is_empty() {
                     self.list
                         .borrow_mut()
-                        .push(Arc::new(RefCell::new(menu_item)));
+                        .push(Rc::new(RefCell::new(menu_item)));
                 } else {
                     let mut insert_into = self.list.clone();
                     for (path_idx, path_part) in path.iter().enumerate() {
@@ -177,7 +177,7 @@ impl MenuItems {
                             }
                             _ => {
                                 let new_category =
-                                    Arc::new(RefCell::new(MenuItem::category(path_part.clone())));
+                                    Rc::new(RefCell::new(MenuItem::category(path_part.clone())));
                                 insert_into.borrow_mut().push(new_category.clone());
                                 insert_into = new_category.borrow().inner_category()?.items.clone();
                             }
@@ -185,7 +185,7 @@ impl MenuItems {
                     }
                     insert_into
                         .borrow_mut()
-                        .push(Arc::new(RefCell::new(menu_item)));
+                        .push(Rc::new(RefCell::new(menu_item)));
                 }
             }
             _ => {}
@@ -193,7 +193,7 @@ impl MenuItems {
         Ok(())
     }
 
-    pub fn list(&self) -> Arc<RefCell<Vec<Arc<RefCell<MenuItem>>>>> {
+    pub fn list(&self) -> Rc<RefCell<Vec<Rc<RefCell<MenuItem>>>>> {
         self.list.clone()
     }
 

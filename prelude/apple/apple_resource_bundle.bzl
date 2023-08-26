@@ -38,6 +38,8 @@
 #          +------>|      Binary       |<--------+
 #                  +-------------------+
 
+load("@prelude//apple:apple_bundle_attrs.bzl", "get_apple_info_plist_build_system_identification_attrs")
+
 _RESOURCE_BUNDLE_FIELDS = [
     "asset_catalogs_compilation_options",
     "binary",
@@ -51,19 +53,30 @@ _RESOURCE_BUNDLE_FIELDS = [
     "product_name",
     "resource_group",
     "resource_group_map",
-]
+    "within_view",
+    "visibility",
+] + get_apple_info_plist_build_system_identification_attrs().keys()
 
-def make_resource_bundle_rule(apple_resource_bundle_rule, **kwargs) -> [None, str.type]:
+def _is_resources_toolchain_enabled() -> bool:
+    is_arvr_query_mode = read_root_config("fb", "arvr_query_mode") in ("True", "true")
+    if is_arvr_query_mode:
+        # Avoid returning buck2-only targets
+        return False
+
+    return (read_root_config("apple", "resources_toolchain_enabled", "true").lower() == "true")
+
+def make_resource_bundle_rule(apple_resource_bundle_rule, **kwargs) -> [None, str]:
     # The `apple_resource_bundle()` target will _always_ be Xcode-based, so resources can always be used
     # from there. `resources_toolchain_enabled` exists only as a killswitch (or for testing/debugging purposes).
     # By default, we consistently get all resources from `apple_resource_bundle()` target across all OSes and
     # toolchains.
-    resources_toolchain_enabled = (read_config("apple", "resources_toolchain_enabled", "true").lower() == "true")
+    resources_toolchain_enabled = _is_resources_toolchain_enabled()
     if not resources_toolchain_enabled:
         return None
 
     resource_bundle_name = kwargs["name"] + "__ResourceBundle_Private"
     resource_bundle_kwargs = {
+        "labels": ["generated"],
         "_bundle_target_name": kwargs["name"],
         "_compile_resources_locally_override": kwargs["_compile_resources_locally_override"],
     }

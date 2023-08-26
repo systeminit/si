@@ -5,7 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//cxx:debug.bzl", "project_external_debug_info")
+load("@prelude//:artifact_tset.bzl", "project_artifacts")
+load("@prelude//utils:arglike.bzl", "ArgLike")
 load(":toolchain.bzl", "PythonToolchainInfo")
 
 # Manifests are files containing information how to map sources into a package.
@@ -14,16 +15,16 @@ load(":toolchain.bzl", "PythonToolchainInfo")
 # origin of this source (used for error messages in tooling that uses these).
 ManifestInfo = record(
     # The actual manifest file (in the form of a JSON file).
-    manifest = field("artifact"),
+    manifest = field(Artifact),
     # All artifacts that are referenced in the manifest.
-    artifacts = field([["artifact", "_arglike"]]),
+    artifacts = field(list[[Artifact, ArgLike]]),
 )
 
 # Parse imports from a *.py file to generate a list of required modules
 def create_dep_manifest_for_source_map(
-        ctx: "context",
+        ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo.type,
-        srcs: {str.type: "artifact"}) -> ManifestInfo.type:
+        srcs: dict[str, Artifact]) -> ManifestInfo.type:
     entries = []
     artifacts = []
     for path, artifact in srcs.items():
@@ -36,7 +37,7 @@ def create_dep_manifest_for_source_map(
         cmd.add(cmd_args(artifact))
         cmd.add(cmd_args(dep_manifest.as_output()))
         ctx.actions.run(cmd, category = "generate_dep_manifest", identifier = out_name)
-        entries.append((dep_manifest, path))
+        entries.append((dep_manifest, path, ctx.label.raw_target()))
         artifacts.append(dep_manifest)
 
     manifest = ctx.actions.write_json("dep.manifest", entries)
@@ -46,18 +47,18 @@ def create_dep_manifest_for_source_map(
     )
 
 def _write_manifest(
-        ctx: "context",
-        name: str.type,
-        entries: [(str.type, "artifact", str.type)]) -> "artifact":
+        ctx: AnalysisContext,
+        name: str,
+        entries: list[(str, Artifact, str)]) -> Artifact:
     """
     Serialize the given source manifest entries to a JSON file.
     """
     return ctx.actions.write_json(name + ".manifest", entries)
 
 def create_manifest_for_entries(
-        ctx: "context",
-        name: str.type,
-        entries: [(str.type, "artifact", str.type)]) -> ManifestInfo.type:
+        ctx: AnalysisContext,
+        name: str,
+        entries: list[(str, Artifact, str)]) -> ManifestInfo.type:
     """
     Generate a source manifest for the given list of sources.
     """
@@ -67,9 +68,9 @@ def create_manifest_for_entries(
     )
 
 def create_manifest_for_source_map(
-        ctx: "context",
-        param: str.type,
-        srcs: {str.type: "artifact"}) -> ManifestInfo.type:
+        ctx: AnalysisContext,
+        param: str,
+        srcs: dict[str, Artifact]) -> ManifestInfo.type:
     """
     Generate a source manifest for the given map of sources from the given rule.
     """
@@ -81,9 +82,10 @@ def create_manifest_for_source_map(
     )
 
 def create_manifest_for_source_dir(
-        ctx: "context",
-        param: str.type,
-        extracted: "artifact") -> ManifestInfo.type:
+        ctx: AnalysisContext,
+        param: str,
+        extracted: Artifact,
+        exclude: [str, None]) -> ManifestInfo.type:
     """
     Generate a source manifest for the given directory of sources from the given
     rule.
@@ -93,16 +95,18 @@ def create_manifest_for_source_dir(
     cmd.add("--origin={}".format(ctx.label.raw_target()))
     cmd.add(cmd_args(manifest.as_output(), format = "--output={}"))
     cmd.add(extracted)
+    if exclude != None:
+        cmd.add("--exclude={}".format(exclude))
     ctx.actions.run(cmd, category = "py_source_manifest", identifier = param)
 
     # TODO: enumerate directory?
     return ManifestInfo(manifest = manifest, artifacts = [(extracted, param)])
 
 def create_manifest_for_extensions(
-        ctx: "context",
-        extensions: {str.type: ("_a", "label")},
+        ctx: AnalysisContext,
+        extensions: dict[str, (typing.Any, Label)],
         # Whether to include DWP files.
-        dwp: bool.type = False) -> ManifestInfo.type:
+        dwp: bool = False) -> ManifestInfo.type:
     entries = []
     for dest, (lib, label) in extensions.items():
         entries.append((dest, lib.output, str(label.raw_target())))
@@ -114,7 +118,7 @@ def create_manifest_for_extensions(
     # in the manifest, as python packaging may also consume debug paths which
     # were referenced in native code.
     for name, (lib, _) in extensions.items():
-        for dbginfo in project_external_debug_info(ctx.actions, ctx.label, [lib.external_debug_info]):
+        for dbginfo in project_artifacts(ctx.actions, [lib.external_debug_info]):
             manifest.artifacts.append((dbginfo, name))
 
     return manifest

@@ -64,11 +64,11 @@ NO_MATCH_LABEL = "NO_MATCH"
 # Representation of a parsed group mapping
 GroupMapping = record(
     # The root to apply this mapping to.
-    root = field(["label", None], None),
+    root = field([Label, None], None),
     # The type of traversal to use.
     traversal = field(Traversal.type, Traversal("tree")),
     # Optional filter type to apply to the traversal.
-    filters = field([[BuildTargetFilter.type, LabelFilter.type]], []),
+    filters = field(list[[BuildTargetFilter.type, LabelFilter.type]], []),
     # Preferred linkage for this target when added to a link group.
     preferred_linkage = field([Linkage.type, None], None),
 )
@@ -84,33 +84,33 @@ _VALID_ATTRS = [
 # Representation of group attributes
 GroupAttrs = record(
     # Use distributed thinlto to build the link group shared library.
-    enable_distributed_thinlto = field(bool.type, False),
+    enable_distributed_thinlto = field(bool, False),
     # Enable this link group if the binary's node count exceeds the given threshold
-    enable_if_node_count_exceeds = field([int.type, None], None),
+    enable_if_node_count_exceeds = field([int, None], None),
     # Discard all dependencies in the link group, useful for dropping unused dependencies
     # from the build graph.
-    discard_group = field(bool.type, False),
+    discard_group = field(bool, False),
     # Adds additional linker flags used to link the link group shared object.
-    linker_flags = field(list.type, []),
+    linker_flags = field(list, []),
     # Adds additional linker flags to apply to dependents that link against the
     # link group's shared object.
-    exported_linker_flags = field(list.type, []),
+    exported_linker_flags = field(list, []),
 )
 
 # Representation of a parsed group
 Group = record(
     # The name for this group.
-    name = str.type,
+    name = str,
     # The mappings that are part of this group.
-    mappings = [GroupMapping.type],
+    mappings = list[GroupMapping.type],
     attrs = GroupAttrs.type,
 )
 
 # Creates a group from an existing group, overwriting any properties provided
 def create_group(
         group: Group.type,
-        name: [None, str.type] = None,
-        mappings: [None, [GroupMapping.type]] = None,
+        name: [None, str] = None,
+        mappings: [None, list[GroupMapping.type]] = None,
         attrs: [None, GroupAttrs.type] = None):
     return Group(
         name = value_or(name, group.name),
@@ -119,10 +119,10 @@ def create_group(
     )
 
 def parse_groups_definitions(
-        map: list.type,
+        map: list,
         # Function to parse a root label from the input type, allowing different
         # callers to have different top-level types for the `root`s.
-        parse_root: "function" = lambda d: d) -> [Group.type]:
+        parse_root: typing.Callable = lambda d: d) -> list[Group.type]:
     groups = []
     for map_entry in map:
         name = map_entry[0]
@@ -156,7 +156,7 @@ def parse_groups_definitions(
 
     return groups
 
-def _parse_traversal_from_mapping(entry: str.type) -> Traversal.type:
+def _parse_traversal_from_mapping(entry: str) -> Traversal.type:
     if entry == "tree":
         return Traversal("tree")
     elif entry == "node":
@@ -164,7 +164,7 @@ def _parse_traversal_from_mapping(entry: str.type) -> Traversal.type:
     else:
         fail("Unrecognized group traversal type: " + entry)
 
-def _parse_filter(entry: str.type) -> [BuildTargetFilter.type, LabelFilter.type]:
+def _parse_filter(entry: str) -> [BuildTargetFilter.type, LabelFilter.type]:
     for prefix in ("label:", "tag:"):
         label_regex = strip_prefix(prefix, entry)
         if label_regex != None:
@@ -183,14 +183,14 @@ def _parse_filter(entry: str.type) -> [BuildTargetFilter.type, LabelFilter.type]
 
     fail("Invalid group mapping filter: {}\nFilter must begin with `label:`, `tag:`, or `pattern:`.".format(entry))
 
-def _parse_filter_from_mapping(entry: [[str.type], str.type, None]) -> [[BuildTargetFilter.type, LabelFilter.type]]:
+def _parse_filter_from_mapping(entry: [list[str], str, None]) -> list[[BuildTargetFilter.type, LabelFilter.type]]:
     if type(entry) == type([]):
         return [_parse_filter(e) for e in entry]
-    if type(entry) == str.type:
+    if type(entry) == type(""):
         return [_parse_filter(entry)]
     return []
 
-def compute_mappings(groups: [Group.type], graph_map: {"label": "_b"}) -> {"label": str.type}:
+def compute_mappings(groups: list[Group.type], graph_map: dict[Label, typing.Any]) -> dict[Label, str]:
     """
     Returns the group mappings {target label -> group name} based on the provided groups and graph.
     """
@@ -212,8 +212,8 @@ def compute_mappings(groups: [Group.type], graph_map: {"label": "_b"}) -> {"labe
     return target_to_group_map
 
 def _find_targets_in_mapping(
-        graph_map: {"label": "_b"},
-        mapping: GroupMapping.type) -> ["label"]:
+        graph_map: dict[Label, typing.Any],
+        mapping: GroupMapping.type) -> list[Label]:
     # If we have no filtering, we don't need to do any traversal to find targets to include.
     if not mapping.filters:
         if mapping.root == None:
@@ -232,7 +232,7 @@ def _find_targets_in_mapping(
 
     def matches_target(
             target,  # "label"
-            labels) -> bool.type:  # labels: [str.type]
+            labels) -> bool:  # labels: [str]
         # All filters must match to select this node.
         for filter in mapping.filters:
             if filter._type == FilterType("label"):
@@ -242,7 +242,7 @@ def _find_targets_in_mapping(
                 return False
         return True
 
-    def find_matching_targets(node):  # "label" -> ["label"]:
+    def find_matching_targets(node):  # Label -> [Label]:
         graph_node = graph_map[node]
         if matches_target(node, graph_node.labels):
             matching_targets[node] = None
@@ -264,14 +264,14 @@ def _find_targets_in_mapping(
 # Types removed to avoid unnecessary type checking which degrades performance.
 def _update_target_to_group_mapping(
         graph_map,  # {"label": "_b"}
-        target_to_group_map,  #: {"label": str.type}
+        target_to_group_map,  #: {"label": str}
         node_traversed_targets,  #: {"label": None}
-        group,  #  str.type,
+        group,  #  str,
         mapping,  # GroupMapping.type,
-        target):  # "label"
+        target):  # Label
     def assign_target_to_group(
-            target: "label",
-            node_traversal: bool.type) -> bool.type:
+            target: Label,
+            node_traversal: bool) -> bool:
         # If the target hasn't already been assigned to a group, assign it to the
         # first group claiming the target. Return whether the target was already assigned.
         if target not in target_to_group_map:
@@ -282,7 +282,7 @@ def _update_target_to_group_mapping(
         else:
             return True
 
-    def transitively_add_targets_to_group_mapping(node: "label") -> ["label"]:
+    def transitively_add_targets_to_group_mapping(node: Label) -> list[Label]:
         previously_processed = assign_target_to_group(target = node, node_traversal = False)
 
         # If the node has been previously processed, and it was via tree (not node), all child nodes have been assigned

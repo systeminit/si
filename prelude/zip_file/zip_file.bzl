@@ -7,7 +7,7 @@
 
 load(":zip_file_toolchain.bzl", "ZipFileToolchainInfo")
 
-def zip_file_impl(ctx: "context") -> ["provider"]:
+def zip_file_impl(ctx: AnalysisContext) -> list[Provider]:
     """
      zip_file() rule implementation
 

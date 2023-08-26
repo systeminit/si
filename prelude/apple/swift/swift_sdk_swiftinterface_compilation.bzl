@@ -14,9 +14,9 @@ load(":swift_sdk_pcm_compilation.bzl", "get_swift_sdk_pcm_anon_targets")
 load(":swift_toolchain_types.bzl", "SdkCompiledModuleInfo", "SdkUncompiledModuleInfo", "WrappedSdkCompiledModuleInfo")
 
 def get_swift_interface_anon_targets(
-        ctx: "context",
-        uncompiled_sdk_deps: ["dependency"],
-        swift_cxx_args: [str.type]):
+        ctx: AnalysisContext,
+        uncompiled_sdk_deps: list[Dependency],
+        swift_cxx_args: list[str]):
     deps = [
         {
             "dep": uncompiled_sdk_dep,
@@ -29,8 +29,8 @@ def get_swift_interface_anon_targets(
     ]
     return [(_swift_interface_compilation, d) for d in deps]
 
-def _swift_interface_compilation_impl(ctx: "context") -> ["promise", ["provider"]]:
-    def k(sdk_deps_providers) -> ["provider"]:
+def _swift_interface_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provider]]:
+    def k(sdk_deps_providers) -> list[Provider]:
         uncompiled_sdk_module_info = ctx.attrs.dep[SdkUncompiledModuleInfo]
         uncompiled_module_info_name = uncompiled_sdk_module_info.module_name
 

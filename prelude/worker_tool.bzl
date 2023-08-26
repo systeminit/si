@@ -9,11 +9,11 @@ load("@prelude//utils:utils.bzl", "expect")
 
 WorkerToolInfo = provider(
     fields = [
-        "command",  # "cmd_args"
+        "command",  # cmd_args
     ],
 )
 
-def worker_tool(ctx: "context") -> ["provider"]:
+def worker_tool(ctx: AnalysisContext) -> list[Provider]:
     """
      worker_tool() rule implementation
 

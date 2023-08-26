@@ -19,8 +19,8 @@ SwiftObjectFormat = enum(
 SwiftToolchainInfo = provider(fields = [
     "architecture",
     "can_toolchain_emit_obj_c_header_textually",  # bool
-    "uncompiled_swift_sdk_modules_deps",  # {str.type: dependency} Expose deps of uncompiled Swift SDK modules.
-    "uncompiled_clang_sdk_modules_deps",  # {str.type: dependency} Expose deps of uncompiled Clang SDK modules.
+    "uncompiled_swift_sdk_modules_deps",  # {str: dependency} Expose deps of uncompiled Swift SDK modules.
+    "uncompiled_clang_sdk_modules_deps",  # {str: dependency} Expose deps of uncompiled Clang SDK modules.
     "compiler_flags",
     "compiler",
     "prefix_serialized_debugging_options",  # bool
@@ -29,7 +29,9 @@ SwiftToolchainInfo = provider(fields = [
     "sdk_path",
     "swift_stdlib_tool_flags",
     "swift_stdlib_tool",
-    "runtime_run_paths",  # [str.type]
+    "runtime_run_paths",  # [str]
+    "supports_swift_cxx_interoperability_mode",  # bool
+    "supports_cxx_interop_requirement_at_import",  # bool
 ])
 
 # A provider that represents a non-yet-compiled SDK (Swift or Clang) module,
@@ -41,7 +43,7 @@ SdkUncompiledModuleInfo = provider(fields = [
     "is_swiftmodule",  # If True then represents a swiftinterface, otherwise Clang's modulemap.
     "partial_cmd",  # Partial arguments, required to compile a particular SDK module.
     "input_relative_path",  # A relative prefixed path to a textual swiftinterface/modulemap file within an SDK.
-    "deps",  # ["dependency"]
+    "deps",  # [Dependency]
 ])
 
 WrappedSdkCompiledModuleInfo = provider(fields = [
@@ -59,5 +61,5 @@ SdkCompiledModuleInfo = provider(fields = [
 ])
 
 SdkSwiftOverlayInfo = provider(fields = [
-    "overlays",  # {str.type: [str.type]} A mapping providing a list of overlay module names for each underlying module
+    "overlays",  # {str: [str]} A mapping providing a list of overlay module names for each underlying module
 ])

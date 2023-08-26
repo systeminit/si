@@ -21,20 +21,20 @@ _ARCHIVE_EXTS = _TAR_FLAGS.keys() + [
     "zip",
 ]
 
-def _url_path(url: str.type) -> str.type:
+def _url_path(url: str) -> str:
     if "?" in url:
         return url.split("?")[0]
     else:
         return url
 
-def _type_from_url(url: str.type) -> [str.type, None]:
+def _type_from_url(url: str) -> [str, None]:
     url_path = _url_path(url)
     for filename_ext in _ARCHIVE_EXTS:
         if url_path.endswith("." + filename_ext):
             return filename_ext
     return None
 
-def _type(ctx: "context") -> str.type:
+def _type(ctx: AnalysisContext) -> str:
     url = ctx.attrs.urls[0]
     typ = ctx.attrs.type
     if typ == None:
@@ -44,10 +44,10 @@ def _type(ctx: "context") -> str.type:
     return typ
 
 def _unarchive_cmd(
-        ext_type: str.type,
-        exec_is_windows: bool.type,
-        archive: "artifact",
-        strip_prefix: [str.type, None]) -> "cmd_args":
+        ext_type: str,
+        exec_is_windows: bool,
+        archive: Artifact,
+        strip_prefix: [str, None]) -> cmd_args:
     if exec_is_windows:
         # So many hacks.
         if ext_type == "tar.zst":
@@ -98,20 +98,26 @@ def _unarchive_cmd(
     else:
         fail()
 
-def _tar_strip_prefix_flags(strip_prefix: [str.type, None]) -> [str.type]:
+def _tar_strip_prefix_flags(strip_prefix: [str, None]) -> list[str]:
     if strip_prefix:
         # count nonempty path components in the prefix
         count = len(filter(lambda c: c != "", strip_prefix.split("/")))
         return ["--strip-components=" + str(count), strip_prefix]
     return []
 
-def http_archive_impl(ctx: "context") -> ["provider"]:
+def http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
     expect(len(ctx.attrs.urls) == 1, "multiple `urls` not supported: {}".format(ctx.attrs.urls))
     expect(len(ctx.attrs.vpnless_urls) < 2, "multiple `vpnless_urls` not supported: {}".format(ctx.attrs.vpnless_urls))
 
     # The HTTP download is local so it makes little sense to run actions
-    # remotely, unless we can defer them.
-    local_only = ctx.attrs.sha1 == None
+    # remotely, unless we can defer them. We'll be able to defer if we provide
+    # a digest that the daemon's digest config natively supports.
+    digest_config = ctx.actions.digest_config()
+    prefer_local = True
+    if ctx.attrs.sha1 != None and digest_config.allows_sha1():
+        prefer_local = False
+    elif ctx.attrs.sha256 != None and digest_config.allows_sha256():
+        prefer_local = False
 
     ext_type = _type(ctx)
 
@@ -154,7 +160,7 @@ def http_archive_impl(ctx: "context") -> ["provider"]:
         for exclusion in ctx.attrs.excludes:
             create_exclusion_list.append(cmd_args(exclusion, format = "--exclude={}"))
 
-        ctx.actions.run(create_exclusion_list, category = "process_exclusions", local_only = local_only)
+        ctx.actions.run(create_exclusion_list, category = "process_exclusions", prefer_local = prefer_local)
         exclude_flags.append(cmd_args(exclusions, format = "--exclude-from={}"))
         exclude_hidden.append(exclusions)
 
@@ -184,7 +190,7 @@ def http_archive_impl(ctx: "context") -> ["provider"]:
     ctx.actions.run(
         cmd_args(interpreter + [script]).hidden(exclude_hidden + [archive, output.as_output()]),
         category = "http_archive",
-        local_only = local_only,
+        prefer_local = prefer_local,
     )
 
     return [DefaultInfo(

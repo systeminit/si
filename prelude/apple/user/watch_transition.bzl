@@ -13,7 +13,7 @@ Only sanity check for source configuration is done.
 
 load("@prelude//utils:utils.bzl", "expect")
 
-def _os_and_sdk_unrelated_constraints(platform: PlatformInfo.type, refs: struct.type) -> {"target_label": ConstraintValueInfo.type}:
+def _os_and_sdk_unrelated_constraints(platform: PlatformInfo.type, refs: struct.type) -> dict["target_label", ConstraintValueInfo.type]:
     return {
         constraint_setting_label: constraint_setting_value
         for (constraint_setting_label, constraint_setting_value) in platform.configuration.constraints.items()
@@ -26,7 +26,7 @@ def _old_os_constraint_value(platform: PlatformInfo.type, refs: struct.type) -> 
 def _old_sdk_constraint_value(platform: PlatformInfo.type, refs: struct.type) -> [None, ConstraintValueInfo.type]:
     return platform.configuration.constraints.get(refs.sdk[ConstraintSettingInfo].label)
 
-def _impl(platform: PlatformInfo.type, refs: struct.type) -> "PlatformInfo":
+def _impl(platform: PlatformInfo.type, refs: struct.type) -> PlatformInfo.type:
     # This functions operates in the following way:
     #  - Start with all the constraints from the platform and filter out the constraints for OS and SDK.
     #  - If the old OS constraint was iOS or watchOS, set the new constraint to be always watchOS.

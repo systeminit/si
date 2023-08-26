@@ -5,9 +5,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:paths.bzl", "paths")
 load("@prelude//apple:apple_library.bzl", "AppleLibraryAdditionalParams", "apple_library_rule_constructor_params_and_swift_providers")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 # @oss-disable: load("@prelude//apple/meta_only:apple_test_re_capabilities.bzl", "apple_test_re_capabilities") 
+# @oss-disable: load("@prelude//apple/meta_only:apple_test_re_use_case.bzl", "apple_test_re_use_case") 
 load("@prelude//apple/swift:swift_compilation.bzl", "get_swift_anonymous_targets", "uses_explicit_modules")
 load(
     "@prelude//cxx:argsfiles.bzl",
@@ -29,19 +31,20 @@ load(
 )
 load(":apple_bundle.bzl", "AppleBundlePartListConstructorParams", "get_apple_bundle_part_list")
 load(":apple_bundle_destination.bzl", "AppleBundleDestination")
-load(":apple_bundle_part.bzl", "AppleBundlePart", "assemble_bundle", "bundle_output", "get_bundle_dir_name")
+load(":apple_bundle_part.bzl", "AppleBundlePart", "SwiftStdlibArguments", "assemble_bundle", "bundle_output", "get_apple_bundle_part_relative_destination_path", "get_bundle_dir_name")
 load(":apple_bundle_types.bzl", "AppleBundleInfo")
 load(":apple_bundle_utility.bzl", "get_product_name")
-load(":apple_dsym.bzl", "DEBUGINFO_SUBTARGET", "DSYM_SUBTARGET", "DWARF_AND_DSYM_SUBTARGET", "get_apple_dsym")
+load(":apple_dsym.bzl", "DSYM_SUBTARGET", "DWARF_AND_DSYM_SUBTARGET", "get_apple_dsym")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(
     ":apple_sdk_metadata.bzl",
     "MacOSXSdkMetadata",
 )
+load(":debug.bzl", "DEBUGINFO_SUBTARGET")
 load(":xcode.bzl", "apple_populate_xcode_attributes")
 
-def apple_test_impl(ctx: "context") -> [["provider"], "promise"]:
-    def get_apple_test_providers(deps_providers) -> ["provider"]:
+def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
+    def get_apple_test_providers(deps_providers) -> list[Provider]:
         xctest_bundle = bundle_output(ctx)
 
         test_host_app_bundle = _get_test_host_app_bundle(ctx)
@@ -101,14 +104,20 @@ def apple_test_impl(ctx: "context") -> [["provider"], "promise"]:
 
         binary_part = AppleBundlePart(source = test_binary, destination = AppleBundleDestination("executables"), new_name = ctx.attrs.name)
         part_list_output = get_apple_bundle_part_list(ctx, AppleBundlePartListConstructorParams(binaries = [binary_part]))
-        assemble_bundle(ctx, xctest_bundle, part_list_output.parts, part_list_output.info_plist_part, None)
 
-        sub_targets = cxx_library_output.sub_targets
+        bundle_parts = part_list_output.parts + _get_xctest_framework(ctx)
+
+        primary_binary_rel_path = get_apple_bundle_part_relative_destination_path(ctx, binary_part)
+        swift_stdlib_args = SwiftStdlibArguments(primary_binary_rel_path = primary_binary_rel_path)
+
+        sub_targets = assemble_bundle(ctx, xctest_bundle, bundle_parts, part_list_output.info_plist_part, swift_stdlib_args)
+
+        sub_targets.update(cxx_library_output.sub_targets)
         (debuginfo,) = sub_targets[DEBUGINFO_SUBTARGET]
         dsym_artifact = get_apple_dsym(
             ctx = ctx,
             executable = test_binary,
-            external_debug_info = debuginfo.other_outputs,
+            debug_info = debuginfo.other_outputs,
             action_identifier = "generate_apple_test_dsym",
             output_path_override = get_bundle_dir_name(ctx) + ".dSYM",
         )
@@ -134,7 +143,7 @@ def apple_test_impl(ctx: "context") -> [["provider"], "promise"]:
     else:
         return get_apple_test_providers([])
 
-def _get_test_info(ctx: "context", xctest_bundle: "artifact", test_host_app_bundle: ["artifact", None], dsym_artifact: ["artifact", None] = None) -> "provider":
+def _get_test_info(ctx: AnalysisContext, xctest_bundle: Artifact, test_host_app_bundle: [Artifact, None], dsym_artifact: [Artifact, None] = None) -> Provider:
     # When interacting with Tpx, we just pass our various inputs via env vars,
     # since Tpx basiclaly wants structured output for this.
 
@@ -156,12 +165,15 @@ def _get_test_info(ctx: "context", xctest_bundle: "artifact", test_host_app_bund
         local_enabled = True
         remote_enabled = False
         remote_execution_properties = None
+        remote_execution_use_case = None
     else:
         local_enabled = False
         remote_enabled = True
         # @oss-disable: requires_ios_booted_simulator = ctx.attrs.test_host_app != None or ctx.attrs.ui_test_target_app != None 
         # @oss-disable: remote_execution_properties = apple_test_re_capabilities(use_unbooted_simulator = not requires_ios_booted_simulator) 
+        # @oss-disable: remote_execution_use_case = apple_test_re_use_case() 
         remote_execution_properties = None # @oss-enable
+        remote_execution_use_case = None # @oss-enable
 
     return ExternalRunnerTestInfo(
         type = "custom",  # We inherit a label via the macro layer that overrides this.
@@ -176,17 +188,18 @@ def _get_test_info(ctx: "context", xctest_bundle: "artifact", test_host_app_bund
                 local_enabled = local_enabled,
                 remote_enabled = remote_enabled,
                 remote_execution_properties = remote_execution_properties,
-                remote_execution_use_case = "buck2-default",
+                remote_execution_use_case = remote_execution_use_case,
             ),
             "static-listing": CommandExecutorConfig(local_enabled = True, remote_enabled = False),
         },
         local_resources = {
-            "ios_booted_simulator": ctx.attrs._ios_booted_simulator[LocalResourceInfo],
-            "macos_idb_companion": ctx.attrs._macos_idb_companion[LocalResourceInfo],
+            "ios_booted_simulator": ctx.attrs._ios_booted_simulator.label,
+            "ios_unbooted_simulator": ctx.attrs._ios_unbooted_simulator.label,
+            "macos_idb_companion": ctx.attrs._macos_idb_companion.label,
         },
     )
 
-def _get_test_host_app_bundle(ctx: "context") -> ["artifact", None]:
+def _get_test_host_app_bundle(ctx: AnalysisContext) -> [Artifact, None]:
     """ Get the bundle for the test host app, if one exists for this test. """
     if ctx.attrs.test_host_app:
         # Copy the test host app bundle into test's output directory
@@ -197,14 +210,14 @@ def _get_test_host_app_bundle(ctx: "context") -> ["artifact", None]:
 
     return None
 
-def _get_test_host_app_binary(ctx: "context", test_host_app_bundle: ["artifact", None]) -> ["cmd_args", None]:
+def _get_test_host_app_binary(ctx: AnalysisContext, test_host_app_bundle: [Artifact, None]) -> [cmd_args, None]:
     """ Reference to the binary with the test host app bundle, if one exists for this test. Captures the bundle as an artifact in the cmd_args. """
     if ctx.attrs.test_host_app:
         return cmd_args([test_host_app_bundle, ctx.attrs.test_host_app[AppleBundleInfo].binary_name], delimiter = "/")
 
     return None
 
-def _get_bundle_loader_flags(binary: ["cmd_args", None]) -> [""]:
+def _get_bundle_loader_flags(binary: [cmd_args, None]) -> list[typing.Any]:
     if binary:
         # During linking we need to link the test shared lib against the test host binary. The
         # test host binary doesn't need to be embedded in an `apple_bundle`.
@@ -213,25 +226,25 @@ def _get_bundle_loader_flags(binary: ["cmd_args", None]) -> [""]:
     return []
 
 def _xcode_populate_attributes(
-        ctx: "context",
-        srcs: [CxxSrcWithFlags.type],
-        argsfiles: {str.type: CompileArgsfile.type},
-        xctest_bundle: "artifact",
-        test_host_app_binary: ["cmd_args", None],
-        **_kwargs) -> {str.type: ""}:
+        ctx: AnalysisContext,
+        srcs: list[CxxSrcWithFlags.type],
+        argsfiles: dict[str, CompileArgsfile.type],
+        xctest_bundle: Artifact,
+        test_host_app_binary: [cmd_args, None],
+        **_kwargs) -> dict[str, typing.Any]:
     data = apple_populate_xcode_attributes(ctx = ctx, srcs = srcs, argsfiles = argsfiles, product_name = ctx.attrs.name)
     data["output"] = xctest_bundle
     if test_host_app_binary:
         data["test_host_app_binary"] = test_host_app_binary
     return data
 
-def _get_xctest_framework_search_paths(ctx: "context") -> ("cmd_args", "cmd_args"):
+def _get_xctest_framework_search_paths(ctx: AnalysisContext) -> (cmd_args, cmd_args):
     toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo]
     xctest_swiftmodule_search_path = cmd_args([toolchain.platform_path, "Developer/usr/lib"], delimiter = "/")
     xctest_framework_search_path = cmd_args([toolchain.platform_path, "Developer/Library/Frameworks"], delimiter = "/")
     return (xctest_swiftmodule_search_path, xctest_framework_search_path)
 
-def _get_xctest_framework_search_paths_flags(ctx: "context") -> [["cmd_args", str.type]]:
+def _get_xctest_framework_search_paths_flags(ctx: AnalysisContext) -> list[[cmd_args, str]]:
     xctest_swiftmodule_search_path, xctest_framework_search_path = _get_xctest_framework_search_paths(ctx)
     return [
         "-I",
@@ -240,7 +253,7 @@ def _get_xctest_framework_search_paths_flags(ctx: "context") -> [["cmd_args", st
         xctest_framework_search_path,
     ]
 
-def _get_xctest_framework_linker_flags(ctx: "context") -> [["cmd_args", str.type]]:
+def _get_xctest_framework_linker_flags(ctx: AnalysisContext) -> list[[cmd_args, str]]:
     xctest_swiftmodule_search_path, xctest_framework_search_path = _get_xctest_framework_search_paths(ctx)
     return [
         "-L",
@@ -248,3 +261,15 @@ def _get_xctest_framework_linker_flags(ctx: "context") -> [["cmd_args", str.type
         "-F",
         xctest_framework_search_path,
     ]
+
+def _get_xctest_framework(ctx: AnalysisContext) -> list[AppleBundlePart.type]:
+    toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo]
+    xctest_framework_platform_relative_path = "Developer/Library/Frameworks/XCTest.framework"
+    copied_xctest_framework = ctx.actions.declare_output(paths.basename(xctest_framework_platform_relative_path))
+
+    # We have to copy because:
+    # 1) Platform path might be a string (e.g. for Xcode toolchains)
+    # 2) It's not possible to project artifact which is not produced by different target (and platform path is a separate target for distributed toolchains).
+    ctx.actions.run(["cp", "-PR", cmd_args(toolchain.platform_path, xctest_framework_platform_relative_path, delimiter = "/"), copied_xctest_framework.as_output()], category = "extract_xctest_framework")
+
+    return [AppleBundlePart(source = copied_xctest_framework, destination = AppleBundleDestination("frameworks"), codesign_on_copy = True)]

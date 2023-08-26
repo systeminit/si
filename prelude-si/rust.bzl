@@ -19,10 +19,10 @@ load(
     "get_re_executor_from_props",
 )
 
-def clippy_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def clippy_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     clippy_txt = ctx.attrs.clippy_txt_dep[DefaultInfo].default_outputs
 
@@ -94,10 +94,10 @@ clippy_check = rule(
     },
 )
 
-def rustfmt_check_impl(ctx: "context") -> [[
-    DefaultInfo.type,
-    RunInfo.type,
-    ExternalRunnerTestInfo.type,
+def rustfmt_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
 ]]:
     si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]
     crate_ctx = crate_context(ctx)
@@ -180,10 +180,10 @@ rustfmt_check = rule(
 )
 
 CrateContext = record(
-    srcs_tree = field("artifact"),
+    srcs_tree = field(Artifact),
 )
 
-def crate_context(ctx: "context") -> CrateContext.type:
+def crate_context(ctx: AnalysisContext) -> CrateContext:
     srcs_tree = ctx.actions.declare_output("__src")
 
     si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]

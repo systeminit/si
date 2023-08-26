@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//python:python.bzl", "PythonLibraryInfo")
 load(
     ":manifest.bzl",
     "ManifestInfo",  # @unused Used as a type
@@ -12,10 +13,18 @@ load(
 load(":python.bzl", "PythonLibraryManifestsTSet")
 load(":toolchain.bzl", "PythonToolchainInfo")
 
+# Information about what modules a Python target contains for type checking purpose
+PythonSourceDBInfo = provider(fields = [
+    "manifests",  # PythonLibraryManifestsTSet
+])
+
+def create_python_source_db_info(manifests: [PythonLibraryManifestsTSet.type, None]) -> PythonSourceDBInfo.type:
+    return PythonSourceDBInfo(manifests = manifests)
+
 def create_source_db(
-        ctx: "context",
+        ctx: AnalysisContext,
         srcs: [ManifestInfo.type, None],
-        python_deps: ["PythonLibraryInfo"]) -> DefaultInfo.type:
+        python_deps: list[PythonLibraryInfo.type]) -> DefaultInfo.type:
     output = ctx.actions.declare_output("db.json")
     artifacts = []
 
@@ -43,9 +52,9 @@ def create_source_db(
     return DefaultInfo(default_output = output, other_outputs = artifacts)
 
 def create_dbg_source_db(
-        ctx: "context",
+        ctx: AnalysisContext,
         srcs: [ManifestInfo.type, None],
-        python_deps: ["PythonLibraryInfo"]) -> DefaultInfo.type:
+        python_deps: list[PythonLibraryInfo.type]) -> DefaultInfo.type:
     output = ctx.actions.declare_output("dbg-db.json")
     artifacts = []
 
@@ -71,14 +80,14 @@ def create_dbg_source_db(
     return DefaultInfo(default_output = output, other_outputs = artifacts)
 
 def create_source_db_no_deps(
-        ctx: "context",
-        srcs: [{str.type: "artifact"}, None]) -> DefaultInfo.type:
+        ctx: AnalysisContext,
+        srcs: [dict[str, Artifact], None]) -> DefaultInfo.type:
     content = {} if srcs == None else srcs
     output = ctx.actions.write_json("db_no_deps.json", content)
     return DefaultInfo(default_output = output, other_outputs = content.values())
 
 def create_source_db_no_deps_from_manifest(
-        ctx: "context",
+        ctx: AnalysisContext,
         srcs: ManifestInfo.type) -> DefaultInfo.type:
     output = ctx.actions.declare_output("db_no_deps.json")
     cmd = cmd_args(ctx.attrs._python_toolchain[PythonToolchainInfo].make_source_db_no_deps)

@@ -8,7 +8,7 @@ DockerToolchainInfo = provider(fields = [
     "docker_image_promote",
 ])
 
-def docker_toolchain_impl(ctx) -> [[DefaultInfo.type, DockerToolchainInfo.type]]:
+def docker_toolchain_impl(ctx) -> list[[DefaultInfo, DockerToolchainInfo]]:
     """
     A Docker toolchain.
     """

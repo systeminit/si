@@ -21,11 +21,11 @@ load(":link_info.bzl", "CrateName")
 #     REALNAME=path/to/libPROVISIONAL.rlib
 #
 def extern_arg(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
-        flags: [str.type],
+        flags: list[str],
         crate: CrateName.type,
-        lib: "artifact") -> "cmd_args":
+        lib: Artifact) -> cmd_args:
     if flags == []:
         flags = ""
     else:
@@ -69,10 +69,10 @@ def extern_arg(
 #     REALNAME=//path/to:target
 #
 def crate_map_arg(
-        ctx: "context",
+        ctx: AnalysisContext,
         compile_ctx: CompileContext.type,
         crate: CrateName.type,
-        label: "label") -> "cmd_args":
+        label: Label) -> cmd_args:
     if crate.dynamic:
         args = CrateMapArg(label = label)
         flagfile = compile_ctx.flagfiles_for_crate_map.get(args, None)

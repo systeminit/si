@@ -34,7 +34,7 @@ PcmDepTSet = transitive_set(args_projections = {
     "clang_deps": _project_as_clang_deps,
 })
 
-def get_compiled_pcm_deps_tset(ctx: "context", pcm_deps_providers: list.type) -> PcmDepTSet.type:
+def get_compiled_pcm_deps_tset(ctx: AnalysisContext, pcm_deps_providers: list) -> PcmDepTSet.type:
     pcm_deps = [
         pcm_deps_provider[WrappedSwiftPCMCompiledInfo].tset
         for pcm_deps_provider in pcm_deps_providers
@@ -43,9 +43,9 @@ def get_compiled_pcm_deps_tset(ctx: "context", pcm_deps_providers: list.type) ->
     return ctx.actions.tset(PcmDepTSet, children = pcm_deps)
 
 def get_swift_pcm_anon_targets(
-        ctx: "context",
-        uncompiled_deps: ["dependency"],
-        swift_cxx_args: [str.type]):
+        ctx: AnalysisContext,
+        uncompiled_deps: list[Dependency],
+        swift_cxx_args: list[str]):
     deps = [
         {
             "dep": uncompiled_dep,
@@ -60,11 +60,11 @@ def get_swift_pcm_anon_targets(
     return [(_swift_pcm_compilation, d) for d in deps]
 
 def _compile_with_argsfile(
-        ctx: "context",
-        category: str.type,
-        module_name: str.type,
-        args: "cmd_args",
-        additional_cmd: "cmd_args"):
+        ctx: AnalysisContext,
+        category: str,
+        module_name: str,
+        args: cmd_args,
+        additional_cmd: cmd_args):
     shell_quoted_cmd = cmd_args(args, quote = "shell")
     argfile, _ = ctx.actions.write(module_name + ".pcm.argsfile", shell_quoted_cmd, allow_args = True)
 
@@ -77,21 +77,17 @@ def _compile_with_argsfile(
 
     cmd.add(additional_cmd)
 
-    # T142915880 There is an issue with hard links,
-    # when we compile pcms remotely on linux machines.
-    local_only = True
-
     ctx.actions.run(
         cmd,
         env = get_explicit_modules_env_var(True),
         category = category,
         identifier = module_name,
-        local_only = local_only,
-        allow_cache_upload = local_only,
+        # Swift compiler requires unique inodes for all input files.
+        unique_input_inodes = True,
     )
 
-def _swift_pcm_compilation_impl(ctx: "context") -> ["promise", ["provider"]]:
-    def k(compiled_pcm_deps_providers) -> ["provider"]:
+def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provider]]:
+    def k(compiled_pcm_deps_providers) -> list[Provider]:
         uncompiled_pcm_info = ctx.attrs.dep[SwiftPCMUncompiledInfo]
 
         # `compiled_pcm_deps_providers` will contain `WrappedSdkCompiledModuleInfo` providers
@@ -209,10 +205,11 @@ _swift_pcm_compilation = rule(
 )
 
 def compile_underlying_pcm(
-        ctx: "context",
-        uncompiled_pcm_info: "SwiftPCMUncompiledInfo",
+        ctx: AnalysisContext,
+        uncompiled_pcm_info: SwiftPCMUncompiledInfo.type,
         compiled_pcm_deps_providers,
-        swift_cxx_args: [str.type]) -> "SwiftPCMCompiledInfo":
+        swift_cxx_args: list[str],
+        framework_search_path_flags: cmd_args) -> SwiftPCMCompiledInfo.type:
     module_name = get_module_name(ctx)
 
     # `compiled_pcm_deps_providers` will contain `WrappedSdkCompiledModuleInfo` providers
@@ -238,6 +235,7 @@ def compile_underlying_pcm(
         "-Xcc",
         cmd_args([cmd_args(modulemap_path).parent(), "exported_symlink_tree"], delimiter = "/"),
     ])
+    cmd.add(framework_search_path_flags)
 
     _compile_with_argsfile(
         ctx,
@@ -254,12 +252,12 @@ def compile_underlying_pcm(
     )
 
 def _get_base_pcm_flags(
-        ctx: "context",
-        module_name: str.type,
+        ctx: AnalysisContext,
+        module_name: str,
         uncompiled_pcm_info: SwiftPCMUncompiledInfo.type,
         sdk_deps_tset: SDKDepTSet.type,
         pcm_deps_tset: PcmDepTSet.type,
-        swift_cxx_args: [str.type]) -> ("cmd_args", "cmd_args", "artifact"):
+        swift_cxx_args: list[str]) -> (cmd_args, cmd_args, Artifact):
     swift_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info
 
     cmd = cmd_args()
@@ -269,8 +267,9 @@ def _get_base_pcm_flags(
 
     # This allows us to avoid usage of absolute paths in generated PCM modules.
     cmd.add([
-        "-working-directory",
-        ".",
+        "-working-directory=",
+        # We set a -debug-prefix-map in the swift execution wrapper, in order to
+        # capture the working directory in which the action is executed.
     ])
 
     if swift_toolchain.resource_dir:

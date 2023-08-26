@@ -8,36 +8,35 @@
 load("@prelude//android:android_binary_native_library_rules.bzl", "get_android_binary_native_library_info")
 load("@prelude//android:android_binary_resources_rules.bzl", "get_android_binary_resources_info")
 load("@prelude//android:android_build_config.bzl", "generate_android_build_config", "get_build_config_fields")
-load("@prelude//android:android_providers.bzl", "BuildConfigField", "merge_android_packageable_info")
+load("@prelude//android:android_providers.bzl", "BuildConfigField", "DexFilesInfo", "merge_android_packageable_info")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:configuration.bzl", "get_deps_by_platform")
-load("@prelude//android:cpu_filters.bzl", "ALL_CPU_FILTERS")
+load("@prelude//android:cpu_filters.bzl", "CPU_FILTER_FOR_DEFAULT_PLATFORM", "CPU_FILTER_FOR_PRIMARY_PLATFORM")
 load("@prelude//android:dex_rules.bzl", "get_multi_dex", "get_single_primary_dex", "get_split_dex_merge_config", "merge_to_single_dex", "merge_to_split_dex")
 load("@prelude//android:exopackage.bzl", "get_exopackage_flags")
 load("@prelude//android:preprocess_java_classes.bzl", "get_preprocessed_java_classes")
 load("@prelude//android:proguard.bzl", "get_proguard_output")
 load("@prelude//android:voltron.bzl", "get_target_to_module_mapping")
-load("@prelude//java:java_providers.bzl", "create_java_packaging_dep", "get_all_java_packaging_deps", "get_all_java_packaging_deps_from_packaging_infos")
+load("@prelude//java:java_providers.bzl", "JavaPackagingInfo", "create_java_packaging_dep", "get_all_java_packaging_deps", "get_all_java_packaging_deps_from_packaging_infos")
 load("@prelude//utils:utils.bzl", "expect")
 
 AndroidBinaryInfo = record(
-    sub_targets = dict.type,
-    java_packaging_deps = ["JavaPackagingDep"],
-    deps_by_platform = dict.type,
-    primary_platform = str.type,
-    dex_files_info = "DexFilesInfo",
+    sub_targets = dict,
+    java_packaging_deps = list["JavaPackagingDep"],
+    deps_by_platform = dict,
+    primary_platform = str,
+    dex_files_info = DexFilesInfo.type,
     native_library_info = "AndroidBinaryNativeLibsInfo",
     resources_info = "AndroidBinaryResourcesInfo",
 )
 
-def get_binary_info(ctx: "context", use_proto_format: bool.type) -> AndroidBinaryInfo.type:
+def get_binary_info(ctx: AnalysisContext, use_proto_format: bool) -> AndroidBinaryInfo.type:
     sub_targets = {}
 
     _verify_params(ctx)
 
-    cpu_filters = ctx.attrs.cpu_filters or ALL_CPU_FILTERS
     deps_by_platform = get_deps_by_platform(ctx)
-    primary_platform = cpu_filters[0]
+    primary_platform = CPU_FILTER_FOR_PRIMARY_PLATFORM if CPU_FILTER_FOR_PRIMARY_PLATFORM in deps_by_platform else CPU_FILTER_FOR_DEFAULT_PLATFORM
     deps = deps_by_platform[primary_platform]
 
     target_to_module_mapping_file = get_target_to_module_mapping(ctx, deps_by_platform)
@@ -48,7 +47,7 @@ def get_binary_info(ctx: "context", use_proto_format: bool.type) -> AndroidBinar
     android_packageable_info = merge_android_packageable_info(ctx.label, ctx.actions, deps)
     build_config_infos = list(android_packageable_info.build_config_infos.traverse()) if android_packageable_info.build_config_infos else []
 
-    build_config_libs = _get_build_config_java_libraries(ctx, build_config_infos)
+    build_config_libs = get_build_config_java_libraries(ctx, build_config_infos, ctx.attrs.package_type, ctx.attrs.exopackage_modes)
     java_packaging_deps += get_all_java_packaging_deps_from_packaging_infos(ctx, build_config_libs)
 
     has_proguard_config = ctx.attrs.proguard_config != None or ctx.attrs.android_sdk_proguard_config == "default" or ctx.attrs.android_sdk_proguard_config == "optimized"
@@ -167,16 +166,20 @@ def get_binary_info(ctx: "context", use_proto_format: bool.type) -> AndroidBinar
         resources_info = resources_info,
     )
 
-def _get_build_config_java_libraries(ctx: "context", build_config_infos: ["AndroidBuildConfigInfo"]) -> ["JavaPackagingInfo"]:
+def get_build_config_java_libraries(
+        ctx: AnalysisContext,
+        build_config_infos: list["AndroidBuildConfigInfo"],
+        package_type: str,
+        exopackage_modes: list[str]) -> list[JavaPackagingInfo.type]:
     # BuildConfig deps should not be added for instrumented APKs because BuildConfig.class has
     # already been added to the APK under test.
-    if ctx.attrs.package_type == "instrumented":
+    if package_type == "instrumented":
         return []
 
     build_config_constants = [
-        BuildConfigField(type = "boolean", name = "DEBUG", value = str(ctx.attrs.package_type != "release").lower()),
-        BuildConfigField(type = "boolean", name = "IS_EXOPACKAGE", value = str(len(ctx.attrs.exopackage_modes) > 0).lower()),
-        BuildConfigField(type = "int", name = "EXOPACKAGE_FLAGS", value = str(get_exopackage_flags(ctx.attrs.exopackage_modes))),
+        BuildConfigField(type = "boolean", name = "DEBUG", value = str(package_type != "release").lower()),
+        BuildConfigField(type = "boolean", name = "IS_EXOPACKAGE", value = str(len(exopackage_modes) > 0).lower()),
+        BuildConfigField(type = "int", name = "EXOPACKAGE_FLAGS", value = str(get_exopackage_flags(exopackage_modes))),
     ]
 
     default_build_config_fields = get_build_config_fields(ctx.attrs.build_config_values)
@@ -198,12 +201,11 @@ def _get_build_config_java_libraries(ctx: "context", build_config_infos: ["Andro
             java_package,
             True,  # use_constant_expressions
             all_build_config_values.values(),
-            ctx.attrs.build_config_values_file[DefaultInfo].default_outputs[0] if type(ctx.attrs.build_config_values_file) == "dependency" else ctx.attrs.build_config_values_file,
+            ctx.attrs.build_config_values_file[DefaultInfo].default_outputs[0] if isinstance(ctx.attrs.build_config_values_file, Dependency) else ctx.attrs.build_config_values_file,
         )[1])
 
     return java_libraries
 
-def _verify_params(ctx: "context"):
+def _verify_params(ctx: AnalysisContext):
     expect(ctx.attrs.aapt_mode == "aapt2", "aapt1 is deprecated!")
     expect(ctx.attrs.dex_tool == "d8", "dx is deprecated!")
-    expect(not ctx.attrs.use_split_dex or ctx.attrs.allow_r_dot_java_in_secondary_dex)
