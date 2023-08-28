@@ -92,6 +92,12 @@ const routes: RouteRecordRaw[] = [
             component: () =>
               import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
           },
+          {
+            path: "s/:secretKind?",
+            name: "workspace-lab-secrets",
+            component: () =>
+              import("@/components/Workspace/WorkspaceCustomizeSecrets.vue"),
+          },
         ],
       },
       {

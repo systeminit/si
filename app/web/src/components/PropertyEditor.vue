@@ -29,7 +29,7 @@
     >
       <VButton label="Add Secret" @click="(e) => popoverRef.open(e)" />
       <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-        <SecretsList definitionName="AWS Credential" />
+        <SecretsList definitionId="Mocks" />
       </Popover>
     </div>
     <!-- temporary code for testing secrets popover -->
