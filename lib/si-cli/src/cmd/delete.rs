@@ -15,6 +15,7 @@ impl AppState {
 
 async fn invoke(app: &AppState, is_preview: bool, keep_images: bool) -> CliResult<()> {
     app.check(true).await?;
+    app.stop().await?;
 
     if is_preview {
         println!("Deleted the following containers and associated images:");
