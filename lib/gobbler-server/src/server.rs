@@ -10,7 +10,7 @@ use dal::{
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
-use nats_subscriber::{Request, SubscriberError, Subscription};
+use nats_subscriber::{Request, SubscriberError};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use stream_cancel::StreamExt as StreamCancelStreamExt;
@@ -264,52 +264,6 @@ pub struct JobItem {
     request: Result<Request<JobInfo>>,
 }
 
-pub struct Subscriber;
-
-impl Subscriber {
-    pub async fn jobs(
-        metadata: Arc<ServerMetadata>,
-        pg_pool: PgPool,
-        nats: NatsClient,
-        veritech: veritech_client::Client,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        encryption_key: Arc<veritech_client::EncryptionKey>,
-    ) -> Result<impl Stream<Item = JobItem>> {
-        let subject = nats_jobs_subject(nats.metadata().subject_prefix());
-        debug!(
-            messaging.destination = &subject.as_str(),
-            "subscribing for job requests"
-        );
-
-        let services_context = ServicesContext::new(
-            pg_pool,
-            nats.clone(),
-            job_processor,
-            veritech.clone(),
-            encryption_key,
-            None,
-            None,
-        );
-
-        // Make non blocking context here, and update it for each job
-        // Since the any blocking job should block on its child jobs
-        let ctx_builder = DalContext::builder(services_context, false);
-
-        let messaging_destination = Arc::new(subject.clone());
-
-        Ok(Subscription::create(subject)
-            .queue_name(NATS_JOBS_DEFAULT_QUEUE)
-            .start(&nats)
-            .await?
-            .map(move |request| JobItem {
-                metadata: metadata.clone(),
-                messaging_destination: messaging_destination.clone(),
-                ctx_builder: ctx_builder.clone(),
-                request: request.map_err(Into::into),
-            }))
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn receive_job_requests_task(
     tx: UnboundedSender<JobItem>,
@@ -348,25 +302,6 @@ async fn receive_job_requests(
     encryption_key: Arc<veritech_client::EncryptionKey>,
     mut shutdown_watch_rx: watch::Receiver<()>,
 ) -> Result<()> {
-    let mut requests = Subscriber::jobs(
-        metadata,
-        pg_pool,
-        nats,
-        veritech,
-        job_processor,
-        encryption_key,
-    )
-    .await?
-    .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
-
-    // Forward each request off the stream to a consuming task via an *unbounded* channel so we
-    // buffer requests until we run out of memory. Have fun!
-    while let Some(job) = requests.next().await {
-        if let Err(_job) = tx.send(job) {
-            error!("process_job_requests rx has already closed");
-        }
-    }
-
     Ok(())
 }
 
