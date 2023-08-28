@@ -224,7 +224,16 @@ const mountEditor = async () => {
   });
 };
 
-watch([props, editorMount], mountEditor);
+watch(
+  [
+    () => props.typescript,
+    () => props.disabled,
+    () => props.json,
+    () => props.noLint,
+    editorMount,
+  ],
+  mountEditor,
+);
 
 function onLocalSave() {
   emitUpdatedValue();
