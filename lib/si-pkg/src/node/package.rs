@@ -1,23 +1,28 @@
-use std::io::{BufRead, Write};
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
 
 use chrono::{DateTime, Utc};
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
+    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
-use crate::PkgSpec;
+use crate::{PkgSpec, SiPkgKind};
 
 use super::{category::PackageCategory, PkgNode};
 
 const KEY_CREATED_AT_STR: &str = "created_at";
 const KEY_CREATED_BY_STR: &str = "created_by";
 const KEY_DESCRIPTION_STR: &str = "description";
+const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
 const KEY_VERSION_STR: &str = "version";
 
 #[derive(Clone, Debug)]
 pub struct PackageNode {
+    pub kind: SiPkgKind,
     pub name: String,
     pub version: String,
 
@@ -34,6 +39,7 @@ impl NameStr for PackageNode {
 
 impl WriteBytes for PackageNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
+        write_key_value_line(writer, KEY_KIND_STR, &self.kind.to_string())?;
         write_key_value_line(writer, KEY_NAME_STR, self.name())?;
         write_key_value_line(writer, KEY_VERSION_STR, &self.version)?;
         write_key_value_line(writer, KEY_DESCRIPTION_STR, &self.description)?;
@@ -48,6 +54,10 @@ impl ReadBytes for PackageNode {
     where
         Self: std::marker::Sized,
     {
+        let kind = match read_key_value_line_opt(reader, KEY_KIND_STR)? {
+            None => SiPkgKind::Module,
+            Some(kind_str) => SiPkgKind::from_str(&kind_str).map_err(GraphError::parse)?,
+        };
         let name = read_key_value_line(reader, KEY_NAME_STR)?;
         let version = read_key_value_line(reader, KEY_VERSION_STR)?;
         let description = read_key_value_line(reader, KEY_DESCRIPTION_STR)?;
@@ -58,6 +68,7 @@ impl ReadBytes for PackageNode {
         let created_by = read_key_value_line(reader, KEY_CREATED_BY_STR)?;
 
         Ok(Self {
+            kind,
             name,
             version,
             description,
@@ -74,6 +85,7 @@ impl NodeChild for PkgSpec {
         NodeWithChildren::new(
             NodeKind::Tree,
             Self::NodeType::Package(PackageNode {
+                kind: self.kind,
                 name: self.name.to_string(),
                 version: self.version.to_string(),
                 description: self.description.to_string(),

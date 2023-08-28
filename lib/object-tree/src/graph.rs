@@ -27,6 +27,9 @@ pub const NL: char = '\n';
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum GraphError {
+    /// When an attempt to get a slice from the BufRead internal buffer fails
+    #[error("could not get an expected range from the BufRead internal buffer")]
+    BufReadRangeError,
     /// When a checked arithmetic operation returns [`None`]
     #[error("checked arithmetic failed: {0}")]
     CheckedArithmeticFailure(&'static str),
@@ -712,6 +715,71 @@ where
     }
 }
 
+fn parse_key_line(line: &str) -> Result<(&str, usize, &str), GraphError> {
+    let (line_key_and_len, line_value) = match line.split_once('=') {
+        Some((key_and_len, value)) => (key_and_len, value),
+        None => return Err(GraphError::ParseLineKeyValueFormat(line.into())),
+    };
+
+    let (line_key, len) = match line_key_and_len.split_once(':') {
+        Some((key, len_str)) => (key, usize::from_str(len_str).map_err(GraphError::parse)?),
+        None => return Err(GraphError::ParseLineKeyValueFormat(line.into())),
+    };
+
+    Ok((line_key, len, line_value))
+}
+
+/// Attempts to read a key/value formatted line for the given key, returning the value as a
+/// `Option<String>`.
+///
+/// If the key does not match (or if the file is at EOF, or if the key is larger than the BufRead
+/// internal buffer of 8Kb), returns None, but does not consume the buffer, allowing us to try and
+/// read a different key value line.
+///
+/// Used for reading key value pairs that may or may not be present in an object.
+///
+/// # Errors
+///
+/// Returns an `Err` if
+///
+/// - An I/O error occurs while reading from the reader
+/// - If the line does not parse as a key/value line
+/// - If the key name in the parsed line does not match the expected key name
+pub fn read_key_value_line_opt<R: BufRead>(
+    reader: &mut R,
+    key: impl AsRef<str>,
+) -> Result<Option<String>, GraphError> {
+    const ASCII_COLON: u8 = 58;
+
+    let key_bytes = key.as_ref().as_bytes();
+    let current_buf = reader.fill_buf().map_err(GraphError::IoRead)?;
+    if current_buf.len() < key_bytes.len().saturating_add(1) {
+        return Ok(None);
+    }
+
+    let current_buf_key = current_buf
+        .get(..key_bytes.len())
+        .ok_or(GraphError::BufReadRangeError)?;
+
+    match std::str::from_utf8(current_buf_key) {
+        // If this fails its because we cut the utf8 off short in the middle of a multibyte run.
+        // If that's the case, our key does not match.
+        Err(_) => Ok(None),
+        Ok(utf8_buf_key) => {
+            if utf8_buf_key == key.as_ref()
+                && current_buf
+                    .get(key_bytes.len())
+                    .ok_or(GraphError::BufReadRangeError)?
+                    == &ASCII_COLON
+            {
+                Ok(Some(read_key_value_line(reader, key)?))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
 /// Reads a key/value formatted line from a reader and returns the value as a `String`.
 ///
 /// # Errors
@@ -727,15 +795,8 @@ pub fn read_key_value_line<R: BufRead>(
 ) -> Result<String, GraphError> {
     let mut line = String::new();
     reader.read_line(&mut line).map_err(GraphError::IoRead)?;
-    let (line_key_and_len, line_value) = match line.split_once('=') {
-        Some((key_and_len, value)) => (key_and_len, value),
-        None => return Err(GraphError::ParseLineKeyValueFormat(line)),
-    };
 
-    let (line_key, len) = match line_key_and_len.split_once(':') {
-        Some((key, len_str)) => (key, usize::from_str(len_str).map_err(GraphError::parse)?),
-        None => return Err(GraphError::ParseLineKeyValueFormat(line)),
-    };
+    let (line_key, len, line_value) = parse_key_line(&line)?;
 
     if line_key != key.as_ref() {
         return Err(GraphError::ParseLineExpectedKey(

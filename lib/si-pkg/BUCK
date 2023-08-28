@@ -17,7 +17,7 @@ rust_library(
         "//third-party/rust:url",
     ],
     srcs = glob(["src/**/*.rs"]),
-    test_unit_srcs = ["pkg-complex.json", "pkg-simple.json"],
+    test_unit_srcs = ["pkg-complex.json", "pkg-workspace.json"],
     test_unit_deps = [
         "//third-party/rust:tempfile",
     ],
