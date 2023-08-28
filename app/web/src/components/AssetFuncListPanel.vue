@@ -12,10 +12,7 @@
             <span class="pt-1">Asset Functions</span>
             <AssetFuncAttachDropdown
               v-if="assetStore.selectedAssetId && !changeSetsStore.headSelected"
-              :disabled="
-                !assetStore.assetsById[assetStore.selectedAssetId]
-                  ?.schemaVariantId
-              "
+              :disabled="!assetStore.selectedAsset?.schemaVariantId"
               label="Attach Function"
               @selected-attach-type="openAttachFuncModal"
             />

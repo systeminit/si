@@ -5,9 +5,15 @@ import storage from "local-storage-fallback"; // drop-in storage polyfill which 
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
+import router from "@/router";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFuncStore, FuncSummary, FuncId } from "./func/funcs.store";
+import {
+  FuncSummary,
+  FuncId,
+  useFuncStore,
+  FuncWithDetails,
+} from "./func/funcs.store";
 import { useRouterStore } from "./router.store";
 
 export type AssetId = string;
@@ -51,8 +57,6 @@ export interface VariantDef extends ListedVariantDef {
   hasAttrFuncs: boolean;
 }
 
-const funcStore = useFuncStore();
-
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
 export type AssetSaveRequest = Visibility &
@@ -84,6 +88,8 @@ export const useAssetStore = () => {
     visibility_change_set_pk: changeSetId || "XXX",
   };
 
+  const funcsStore = useFuncStore();
+
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
   return addStoreHooks(
@@ -91,13 +97,12 @@ export const useAssetStore = () => {
       state: () => ({
         assetList: [] as AssetListEntry[],
         assetsById: {} as Record<AssetId, Asset>,
-        selectedAssetId: null as AssetId | null,
         openAssetFuncIds: {} as { [key: AssetId]: FuncId[] },
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
         selectedAsset(): Asset | undefined {
-          return this.assetsById[this.selectedAssetId || 0];
+          return this.assetsById[this.urlSelectedAssetId ?? ""];
         },
         urlSelectedAssetId(): AssetId | undefined {
           const route = useRouterStore().currentRoute;
@@ -107,9 +112,18 @@ export const useAssetStore = () => {
           }
           return id as AssetId | undefined;
         },
+        selectedAssetId(): AssetId | undefined {
+          return this.selectedAsset?.id;
+        },
+        selectedFunc(): FuncWithDetails | undefined {
+          return funcsStore.funcDetailsById[this.urlSelectedFuncId ?? ""];
+        },
         urlSelectedFuncId(): FuncId | undefined {
           const route = useRouterStore().currentRoute;
           return route?.params?.funcId as FuncId | undefined;
+        },
+        selectedFuncId(): FuncId | undefined {
+          return this.selectedFunc?.id;
         },
         assetListEntryById: (state) => (assetId: AssetId) =>
           state.assetList.find((asset) => asset.id === assetId),
@@ -128,24 +142,6 @@ export const useAssetStore = () => {
           ) as AssetId;
         },
 
-        setSelectedAssetId(selection: AssetId | null) {
-          if (!selection) {
-            this.selectedAssetId = null;
-          } else {
-            if (this.assetsById[selection]) {
-              this.selectedAssetId = selection;
-            }
-          }
-        },
-
-        async SELECT_FUNC(assetId: AssetId, funcId: FuncId) {
-          if (!funcStore.funcDetailsById[funcId]) {
-            await funcStore.FETCH_FUNC_DETAILS(funcId);
-          }
-
-          this.openFunc(assetId, funcId);
-        },
-
         openFunc(assetId: AssetId, funcId: FuncId) {
           const funcs = this.openAssetFuncIds[assetId] ?? [];
           if (!funcs.includes(funcId)) {
@@ -160,19 +156,21 @@ export const useAssetStore = () => {
           this.openAssetFuncIds[assetId] = funcs.filter(
             (fId) => fId !== funcId,
           );
+          this.selectAsset(assetId, (this.openAssetFuncIds[assetId] ?? [])[0]);
         },
 
-        async SELECT_ASSET(selection: AssetId | null) {
-          if (!selection) {
-            this.setSelectedAssetId(selection);
-            return;
-          }
+        async selectAsset(assetId: AssetId | undefined, funcId?: FuncId) {
+          if (assetId === undefined) funcId = undefined;
 
-          if (!this.assetsById[selection]) {
-            await this.LOAD_ASSET(selection);
-          }
-
-          this.setSelectedAssetId(selection);
+          const route = router.currentRoute.value;
+          await router.push({
+            name: route.name ?? undefined,
+            params: {
+              ...route.params,
+              assetId,
+              funcId,
+            },
+          });
         },
 
         // MOCK DATA GENERATION

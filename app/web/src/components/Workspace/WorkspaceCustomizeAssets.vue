@@ -10,20 +10,23 @@
 
         <div class="relative flex-grow">
           <CustomizeTabs tabContentSlug="assets">
-            <AssetListPanel :assetId="assetId" />
+            <AssetListPanel :assetId="assetStore.selectedAssetId" />
           </CustomizeTabs>
         </div>
       </div>
     </template>
     <template #subpanel2>
-      <AssetFuncListPanel :assetId="assetId" />
+      <AssetFuncListPanel :assetId="assetStore.selectedAssetId" />
     </template>
   </ResizablePanel>
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
     <div class="left-2 right-2 top-0 bottom-2 absolute">
-      <AssetEditorTabs :selectedAssetId="assetId" :selectedFuncId="funcId" />
+      <AssetEditorTabs
+        :selectedAssetId="assetStore.selectedAssetId"
+        :selectedFuncId="assetStore.selectedFuncId"
+      />
     </div>
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
@@ -38,19 +41,25 @@
         <ApplyChangeSetButton class="w-full" />
       </div>
       <SidebarSubpanelTitle>
-        {{ funcId ? "Asset Function Details" : "Asset Details" }}
+        {{
+          assetStore.selectedFuncId ? "Asset Function Details" : "Asset Details"
+        }}
       </SidebarSubpanelTitle>
-      <template v-if="assetId">
+      <template v-if="assetStore.selectedAssetId">
         <FuncDetails
-          v-if="funcId"
-          :funcId="funcId"
-          :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
+          v-if="assetStore.selectedFuncId"
+          :funcId="assetStore.selectedFuncId"
+          :schemaVariantId="assetStore.selectedAsset?.schemaVariantId"
           singleModelScreen
           @detached="onDetach"
         />
         <!-- the key here is to force remounting so we get the proper asset
         request statuses -->
-        <AssetDetailsPanel v-else :key="assetId" :assetId="assetId" />
+        <AssetDetailsPanel
+          v-else
+          :key="assetStore.selectedAssetId"
+          :assetId="assetStore.selectedAssetId"
+        />
       </template>
       <div
         v-else
@@ -61,14 +70,14 @@
     </div>
     <template v-else>
       <AssetDetailsPanel
-        v-if="assetId && !funcId"
-        :key="assetId"
-        :assetId="assetId"
+        v-if="assetStore.selectedAssetId && !assetStore.selectedFuncId"
+        :key="assetStore.selectedAssetId"
+        :assetId="assetStore.selectedAssetId"
       />
       <FuncDetails
-        v-else-if="assetId && funcId"
-        :funcId="funcId"
-        :schemaVariantId="assetStore.assetsById[assetId]?.schemaVariantId"
+        v-else-if="assetStore.selectedAssetId && assetStore.selectedFuncId"
+        :funcId="assetStore.selectedFuncId"
+        :schemaVariantId="assetStore.selectedAsset?.schemaVariantId"
         @detached="onDetach"
       />
     </template>
@@ -76,10 +85,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, watch } from "vue";
-import { useRouter } from "vue-router";
+import { computed, watch } from "vue";
 import { ResizablePanel } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
@@ -92,6 +101,7 @@ import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
+const funcStore = useFuncStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const FF_SINGLE_MODEL_SCREEN = computed(
   () => featureFlagsStore.SINGLE_MODEL_SCREEN,
@@ -100,51 +110,38 @@ const FF_SINGLE_MODEL_SCREEN = computed(
 const changeSetsStore = useChangeSetsStore();
 
 const assetStore = useAssetStore();
-const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
-const assetId = computed(() => assetStore.urlSelectedAssetId);
-const funcId = computed(() => assetStore.urlSelectedFuncId);
-
-watch([assetId, funcId], () => {
-  if (funcId.value && assetId.value) {
-    assetStore.SELECT_FUNC(assetId.value, funcId.value);
-  }
-});
-
 watch(
-  [assetId, funcId, loadAssetsReqStatus],
-  () => {
-    if (loadAssetsReqStatus.value.isSuccess && assetId.value && !funcId.value) {
-      assetStore.SELECT_ASSET(assetId.value);
+  [
+    () => assetStore.urlSelectedAssetId,
+    () => assetStore.urlSelectedFuncId,
+    loadAssetsReqStatus,
+  ],
+  async () => {
+    if (loadAssetsReqStatus.value.isSuccess && assetStore.urlSelectedAssetId) {
+      if (assetStore.urlSelectedAssetId && !assetStore.selectedAsset) {
+        await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
+      }
+
+      if (assetStore.urlSelectedFuncId && !assetStore.selectedFunc) {
+        await funcStore.FETCH_FUNC_DETAILS(assetStore.urlSelectedFuncId);
+      }
+
+      if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
+        assetStore.openFunc(
+          assetStore.selectedAssetId,
+          assetStore.selectedFuncId,
+        );
+      }
     }
   },
   { immediate: true },
 );
 
-onMounted(async () => {
-  // if (!assetId.value && assetStore.getLastSelectedAssetId()) {
-  //   router.push({
-  //     name: "workspace-lab-assets",
-  //     params: {
-  //       ...router.currentRoute.value.params,
-  //       assetId: assetStore.getLastSelectedAssetId(),
-  //     },
-  //   });
-  // }
-});
-
 const onDetach = async () => {
-  if (assetStore.urlSelectedAssetId) {
-    await assetStore.LOAD_ASSET(assetStore.urlSelectedAssetId);
-    router.push({
-      name: "workspace-lab-assets",
-      params: {
-        ...router.currentRoute.value.params,
-        funcId: assetStore.urlSelectedFuncId,
-        assetId: assetStore.urlSelectedAssetId,
-      },
-    });
+  if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
+    assetStore.closeFunc(assetStore.selectedAssetId, assetStore.selectedFuncId);
   }
 };
 </script>
