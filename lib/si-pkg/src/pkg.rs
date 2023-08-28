@@ -7,6 +7,8 @@ use object_tree::{
     TarWriterError,
 };
 use petgraph::prelude::*;
+use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 
 mod action_func;
@@ -196,6 +198,7 @@ impl SiPkg {
         let metadata = self.metadata()?;
 
         builder
+            .kind(metadata.kind())
             .name(metadata.name())
             .description(metadata.description())
             .version(metadata.version())
@@ -290,8 +293,30 @@ impl<'a> fmt::Debug for Source<'a> {
     }
 }
 
+#[remain::sorted]
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    Copy,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum SiPkgKind {
+    Module,
+    WorkspaceBackup,
+}
+
 #[derive(Clone, Debug)]
 pub struct SiPkgMetadata {
+    kind: SiPkgKind,
     name: String,
     version: String,
     description: String,
@@ -315,6 +340,7 @@ impl SiPkgMetadata {
         };
 
         Ok(Self {
+            kind: metadata_node.kind,
             name: metadata_node.name,
             version: metadata_node.version,
             description: metadata_node.description,
@@ -322,6 +348,10 @@ impl SiPkgMetadata {
             created_by: metadata_node.created_by,
             hash: metadata_hashed_node.hash(),
         })
+    }
+
+    pub fn kind(&self) -> SiPkgKind {
+        self.kind
     }
 
     pub fn name(&self) -> &str {

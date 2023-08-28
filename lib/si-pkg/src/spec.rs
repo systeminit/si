@@ -21,15 +21,18 @@ pub use {
     map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
 };
 
+use super::SiPkgKind;
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
 pub struct PkgSpec {
+    #[builder(setter(into), default = "SiPkgKind::Module")]
+    pub kind: SiPkgKind,
     #[builder(setter(into))]
     pub name: String,
     #[builder(setter(into))]
     pub version: String,
-
     #[builder(setter(into), default)]
     pub description: String,
     #[builder(try_setter, setter(into), default = "Utc::now()")]

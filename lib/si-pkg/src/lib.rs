@@ -4,7 +4,7 @@ mod spec;
 
 pub use pkg::{
     SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp,
+    SiPkgFuncDescription, SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp,
     SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
 };
 pub use spec::{
@@ -29,6 +29,7 @@ mod tests {
     use super::*;
 
     const PACKAGE_JSON: &str = include_str!("../pkg-complex.json");
+    const WORKSPACE_JSON: &str = include_str!("../pkg-workspace.json");
 
     pub async fn prop_visitor(
         prop: SiPkgProp<'_>,
@@ -58,6 +59,33 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn pkg_workspace_round_trip() {
+        let spec: PkgSpec = serde_json::from_str(WORKSPACE_JSON).unwrap();
+        let description = spec.description.to_owned();
+        let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
+
+        let pkg_data = pkg.write_to_bytes().expect("failed to serialize pkg");
+
+        let read_pkg = SiPkg::load_from_bytes(pkg_data).expect("failed to load pkg from bytes");
+
+        assert_eq!(
+            description,
+            read_pkg
+                .metadata()
+                .expect("get metadata (WorkspaceBackup)")
+                .description()
+        );
+
+        assert_eq!(
+            SiPkgKind::WorkspaceBackup,
+            read_pkg
+                .metadata()
+                .expect("get metadata for kind (WorkspaceBackup)")
+                .kind()
+        );
+    }
+
+    #[tokio::test]
     async fn pkg_bytes_round_trip() {
         let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         let description = spec.description.to_owned();
@@ -70,6 +98,11 @@ mod tests {
         assert_eq!(
             description,
             read_pkg.metadata().expect("get metadata").description()
+        );
+
+        assert_eq!(
+            SiPkgKind::Module,
+            read_pkg.metadata().expect("get metadata for kind").kind()
         );
 
         let funcs = read_pkg.funcs().expect("failed to get funcs");
