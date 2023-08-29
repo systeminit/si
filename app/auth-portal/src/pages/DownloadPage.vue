@@ -44,7 +44,7 @@
         <h2>Requirements</h2>
         <p>
           Before installing System Initiative, you will need to have
-          <code>docker</code> installed. We suggest using
+          <code>docker</code> or <code>podman</code> installed. We suggest using
           <a
             href="https://www.docker.com/products/docker-desktop/"
             target="_blank"
@@ -54,10 +54,22 @@
               ? " (WSL2 users can use either Docker Desktop for WSL2 or Docker Engine inside WSL2)"
               : ""
           }}
-          or <a href="https://podman.io/" target="_blank">Podman</a>
-          (please ensure that the podman machine has a lot of available memory
-          and cpu available for running System Initiative).
+          or <a href="https://podman.io/" target="_blank">Podman</a>.
         </p>
+        <div v-if="selectedPlatform === 'macOS'">
+          <p>
+            If using podman, please ensure that the podman machine has a large
+            amount of memory and cpu available to run all of the System
+            Initiative components. You can do that running the command:
+          </p>
+          <pre
+            @mousedown="tracker.trackEvent('copy_podman_script')"
+          ><code class="language-shell">podman machine init -m 8192 --cpus 4 podman-machine-default</code></pre>
+          <p>
+            Note: You may need to authenticate with docker on the podman machine
+            to avoid docker rate limiting when pulling containers.
+          </p>
+        </div>
       </RichText>
       <RichText class="pb-md">
         <h2 class="!mb-0">Shell script for installation</h2>
