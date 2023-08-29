@@ -2,12 +2,14 @@ import { User, Workspace } from '@prisma/client';
 import { JwtPayload } from 'jsonwebtoken';
 import * as Koa from 'koa';
 import { nanoid } from 'nanoid';
+import _ from 'lodash';
 import { CustomAppContext, CustomAppState } from '../custom-state';
 import { ApiError } from '../lib/api-error';
 import { setCache } from '../lib/cache';
 import { createJWT, verifyJWT } from "../lib/jwt";
 import { tryCatch } from '../lib/try-catch';
 import { getUserById } from './users.service';
+import { getWorkspaceById } from './workspaces.service';
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -18,6 +20,7 @@ export type AuthProviders = 'google' | 'github' | 'password';
 // Auth tokens used for communication between the user's browser and this auth api
 type AuthTokenData = {
   userId: string;
+  workspaceId?: string;
 };
 
 // will figure out what we want to pass in here...
@@ -30,11 +33,12 @@ export function createAuthToken(userId: string) {
 
 export async function decodeAuthToken(token: string) {
   const verified = verifyJWT(token);
+  // if token was an sdf token, it will be scoped to a workspace and use it's terminology (pk)
   if (typeof verified !== "string" && "user_pk" in verified) {
     return {
       userId: verified.user_pk,
-      ...verified,
-      user_pk: undefined,
+      workspaceId: verified.workspace_pk,
+      ..._.omit(verified, ['user_pk', 'workspace_pk']),
     } as AuthTokenData & JwtPayload;
   } else {
     return verified as AuthTokenData & JwtPayload;
@@ -67,7 +71,10 @@ function wipeAuthCookie(ctx: Koa.Context) {
 }
 
 export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext> = async (ctx, next) => {
-  const authToken = ctx.cookies.get(SI_COOKIE_NAME);
+  let authToken = ctx.cookies.get(SI_COOKIE_NAME);
+  if (!authToken && ctx.headers.authorization) {
+    authToken = ctx.headers.authorization.split(' ').pop();
+  }
   if (!authToken) {
     // special auth handling only used in tests
     if (process.env.NODE_ENV === 'test' && ctx.headers['spoof-auth']) {
@@ -80,7 +87,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   }
 
   const decoded = await tryCatch(() => {
-    return decodeAuthToken(authToken);
+    return decodeAuthToken(authToken!);
   }, (_err) => {
     // TODO: check the type of error before handling this way
 
@@ -106,6 +113,15 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   }
 
   ctx.state.authUser = user;
+
+  if (decoded.workspaceId) {
+    const workspace = await getWorkspaceById(decoded.workspaceId);
+    if (!workspace) {
+      wipeAuthCookie(ctx);
+      throw new ApiError('Unauthorized', 'AuthWorkspaceMissing', 'Cannot find workspace data');
+    }
+    ctx.state.authWorkspace = workspace;
+  }
 
   return next();
 };

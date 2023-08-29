@@ -16,7 +16,7 @@ NOTES / TODOS / IDEAS
 */
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
-import { AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import * as _ from "lodash-es";
 import {
@@ -79,23 +79,39 @@ export class ApiRequest<
   // these are used to attach the result which can be used directly by the caller
   // most data and request status info should be used via the store, but it is useful sometimes
   #rawResponseData: Response | undefined;
+  #rawResponseError: Error | AxiosError | undefined;
   #rawSuccess?: boolean;
 
-  setResult(success: boolean, data: Response | undefined) {
-    this.#rawSuccess = success;
+  setSuccessfulResult(data: Response | undefined) {
+    this.#rawSuccess = true;
     this.#rawResponseData = data;
+  }
+  setFailedResult(err: AxiosError | Error) {
+    this.#rawSuccess = false;
+    this.#rawResponseError = err;
   }
 
   // we use a getter to get the result so that we can add further type restrictions
   // ie, checking success guarantees data is present
-  get result(): { success: true; data: Response } | { success: false } {
+  get result():
+    | { success: true; data: Response }
+    | { success: false; err: Error; errBody?: any } {
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
     if (this.#rawSuccess === undefined)
-      throw new Error("You must await the request to get the result");
+      throw new Error("You must await the request to access the result");
+
     if (this.#rawSuccess) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return { success: true, data: this.#rawResponseData! };
     } else {
-      return { success: false };
+      return {
+        success: false,
+        // the raw error object - usually an AxiosError
+        err: this.#rawResponseError!,
+        // the (json) body of the failed request, if applicable
+        ...(this.#rawResponseError instanceof AxiosError && {
+          errBody: this.#rawResponseError.response?.data,
+        }),
+      };
     }
   }
 
@@ -296,7 +312,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         }
 
         completed.resolve({
-          success: true,
           data: request.data,
         });
         return await completed.promise;
@@ -340,7 +355,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
         // return false so caller can easily detect a failure
         completed.resolve({
-          success: false,
+          error: err,
         });
         return await completed.promise;
       }
@@ -365,8 +380,11 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             throw new Error(`No trigger result for ${actionName}`);
           }
 
-          // attach the result back to the api request object so caller can use it if necessary
-          request.setResult(triggerResult.success, triggerResult.data);
+          if (triggerResult.error) {
+            request.setFailedResult(triggerResult.error);
+          } else {
+            request.setSuccessfulResult(triggerResult.data);
+          }
         }
         return actionResult;
       };

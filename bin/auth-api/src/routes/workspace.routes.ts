@@ -96,3 +96,17 @@ router.post("/complete-auth-connect", async (ctx) => {
     token,
   };
 });
+
+router.get("/auth-reconnect", async (ctx) => {
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', 'You must be logged in');
+  }
+  if (!ctx.state.authWorkspace) {
+    throw new ApiError('Unauthorized', 'You must pass a workspace-scoped auth token to use this endpoint');
+  }
+
+  ctx.body = {
+    user: ctx.state.authUser,
+    workspace: ctx.state.authWorkspace,
+  };
+});

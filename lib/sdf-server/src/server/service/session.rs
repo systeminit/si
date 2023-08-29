@@ -50,14 +50,23 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        let (status, error_code, error_message) = match self {
+            SessionError::LoginFailed => (StatusCode::CONFLICT, None, None),
+            SessionError::InvalidWorkspace(_) => (
+                StatusCode::CONFLICT,
+                Some("WORKSPACE_NOT_INITIALIZED"),
+                None,
+            ),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, None, None),
         };
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
+        let body = Json(serde_json::json!({
+            "error": {
+                "message": error_message.unwrap_or(self.to_string()),
+                "code": error_code.unwrap_or("42"),
+                "statusCode": status.as_u16()
+            }
+        }));
 
         (status, body).into_response()
     }
@@ -66,6 +75,7 @@ impl IntoResponse for SessionError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/connect", post(auth_connect::auth_connect))
+        .route("/reconnect", get(auth_connect::auth_reconnect))
         .route(
             "/restore_authentication",
             get(restore_authentication::restore_authentication),

@@ -1,14 +1,26 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <div class="font-sans">
-    <RealtimeConnectionStatus />
-    <router-view :key="selectedWorkspace?.pk" />
-    <Teleport to="body">
-      <canvas
-        id="confetti"
-        class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
-      ></canvas>
-    </Teleport>
+    <template
+      v-if="
+        route.name !== 'auth-connect' &&
+        (!restoreAuthReqStatus.isRequested ||
+          restoreAuthReqStatus.isPending ||
+          reconnectAuthReqStatus.isPending)
+      "
+    >
+      <p>restoring auth...</p>
+    </template>
+    <template v-else>
+      <RealtimeConnectionStatus />
+      <router-view :key="selectedWorkspace?.pk" />
+      <Teleport to="body">
+        <canvas
+          id="confetti"
+          class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
+        ></canvas>
+      </Teleport>
+    </template>
   </div>
 </template>
 
@@ -21,6 +33,7 @@ import { useThemeContainer } from "@si/vue-lib/design-system";
 import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
 import SiLogoUrlDark from "@si/vue-lib/brand-assets/si-logo-symbol-black-bg.svg?url";
 import { useHead } from "@vueuse/head";
+import { useRoute } from "vue-router";
 import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
 import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
@@ -58,6 +71,10 @@ useHead(
 // this token will be automatically injected into API requests
 const authStore = useAuthStore();
 authStore.initFromStorage().then();
+const restoreAuthReqStatus = authStore.getRequestStatus("RESTORE_AUTH");
+const reconnectAuthReqStatus = authStore.getRequestStatus("AUTH_RECONNECT");
+
+const route = useRoute();
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
