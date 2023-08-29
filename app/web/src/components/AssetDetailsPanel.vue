@@ -233,7 +233,7 @@ const cloneAsset = async () => {
   if (assetStore.selectedAsset?.id) {
     const result = await assetStore.CLONE_ASSET(assetStore.selectedAsset.id);
     if (result.result.success) {
-      assetStore.SELECT_ASSET(result.result.data.id);
+      assetStore.selectAsset(result.result.data.id);
     }
   }
 };

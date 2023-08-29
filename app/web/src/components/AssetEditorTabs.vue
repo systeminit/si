@@ -47,7 +47,6 @@
 <script lang="ts" setup>
 import isEqual from "lodash-es/isEqual";
 import { watch, ref, computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import {
   TabGroup,
   TabGroupItem,
@@ -60,13 +59,11 @@ import FuncEditor from "./FuncEditor/FuncEditor.vue";
 
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
-const route = useRoute();
-const router = useRouter();
 
 const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
-const selectedFuncId = computed(() => assetStore.urlSelectedFuncId);
-const selectedAssetId = computed(() => assetStore.urlSelectedAssetId);
+const selectedFuncId = computed(() => assetStore.selectedFuncId);
+const selectedAssetId = computed(() => assetStore.selectedAssetId);
 
 const loadAssetsRequestStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
@@ -78,7 +75,7 @@ const currentTabs = ref<{ type: string; label: string; id: string }[]>([]);
 watch(
   [
     loadAssetsRequestStatus,
-    () => assetStore.urlSelectedAssetId,
+    () => assetStore.selectedAssetId,
     assetStore.openAssetFuncIds,
   ],
   ([requestStatus, assetId, openAssetFuncIds]) => {
@@ -107,31 +104,15 @@ watch(
   },
 );
 
-const onTabChange = (tabSlug: string | undefined) => {
-  if (!tabSlug) {
+const onTabChange = async (tabSlug: string | undefined) => {
+  // tabSlugs are just func ids here, besides the asset tab, which is just "asset"
+  if (tabSlug === "asset") {
+    tabSlug = undefined;
+  } else if (!tabSlug || tabSlug === selectedFuncId.value) {
     return;
   }
-  // tabSlugs are just func ids here, besides the asset tab, which is just
-  // "asset"
-  if (tabSlug === "asset") {
-    router.replace({
-      name: "workspace-lab-assets",
-      params: {
-        ...route.params,
-        assetId: assetStore.urlSelectedAssetId,
-        funcId: undefined,
-      },
-    });
-  } else if (tabSlug !== selectedFuncId.value) {
-    router.replace({
-      name: "workspace-lab-assets",
-      params: {
-        ...route.params,
-        assetId: assetStore.urlSelectedAssetId,
-        funcId: tabSlug,
-      },
-    });
-  }
+
+  assetStore.selectAsset(assetStore.urlSelectedAssetId, tabSlug);
 };
 
 const onTabClose = (funcId: string) => {
@@ -141,12 +122,12 @@ const onTabClose = (funcId: string) => {
 };
 
 watch(
-  [() => assetStore.urlSelectedAssetId, () => assetStore.urlSelectedFuncId],
+  [() => assetStore.selectedAssetId, () => assetStore.selectedFuncId],
   () => {
-    if (assetStore.urlSelectedAssetId && !assetStore.urlSelectedFuncId) {
+    if (assetStore.selectedAssetId && !assetStore.selectedFuncId) {
       tabGroupRef.value?.selectTab("asset");
-    } else if (assetStore.urlSelectedAssetId && assetStore.urlSelectedFuncId) {
-      tabGroupRef.value?.selectTab(assetStore.urlSelectedFuncId);
+    } else if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
+      tabGroupRef.value?.selectTab(assetStore.selectedFuncId);
     }
   },
 );

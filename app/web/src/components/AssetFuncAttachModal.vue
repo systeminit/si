@@ -226,11 +226,7 @@ const attributeOutputLocationOptions = ref<{ label: string; value: string }[]>(
 const attrToValidate = ref<string | undefined>();
 const validationOptions = ref<{ label: string; value: string }[]>([]);
 
-const assetName = computed(() =>
-  assetStore.selectedAssetId
-    ? assetStore.assetsById[assetStore.selectedAssetId]?.name ?? "none"
-    : "none",
-);
+const assetName = computed(() => assetStore.selectedAsset?.name ?? " none");
 
 const existingOrNew = computed(() =>
   attachExisting.value ? "existing" : "new",

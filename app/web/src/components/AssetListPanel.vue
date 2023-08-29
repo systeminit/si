@@ -75,7 +75,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { onMounted, computed, ref } from "vue";
+import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
   Collapsible,
@@ -84,7 +84,6 @@ import {
   Modal,
   RequestStatusMessage,
 } from "@si/vue-lib/design-system";
-import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -96,7 +95,6 @@ const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const { assetList } = storeToRefs(assetStore);
-const router = useRouter();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
 const exportSuccessModalRef = ref<InstanceType<typeof Modal>>();
@@ -126,12 +124,6 @@ const contributeLoadingTexts = [
 
 const props = defineProps({
   assetId: { type: String },
-});
-
-onMounted(() => {
-  if (!props.assetId) {
-    assetStore.SELECT_ASSET(null);
-  }
 });
 
 const searchString = ref("");
@@ -166,14 +158,7 @@ const categorizedAssets = computed(() =>
 const newAsset = async () => {
   const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
   if (result.result.success) {
-    assetStore.SELECT_ASSET(result.result.data.id);
-    router.push({
-      name: "workspace-lab-assets",
-      params: {
-        ...router.currentRoute.value.params,
-        assetId: result.result.data.id,
-      },
-    });
+    assetStore.selectAsset(result.result.data.id);
   }
 };
 
