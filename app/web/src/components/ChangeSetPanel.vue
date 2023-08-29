@@ -147,13 +147,14 @@ import {
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useStatusStore } from "@/store/status.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useFixesStore } from "@/store/fixes.store";
 import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();
 
 const workspacesStore = useWorkspacesStore();
+const fixesStore = useFixesStore();
 const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
 
 const changeSetsStore = useChangeSetsStore();
@@ -172,8 +173,6 @@ const route = useRoute();
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 const selectModalRef = ref<InstanceType<typeof Modal>>();
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 // The name for a new change set
 const createChangeSetName = ref("");
@@ -255,7 +254,7 @@ const applyChangeSet = async () => {
   // Run both the wipe and the change set apply in parallel
   const wipeDone = wipeRef.value.open(mergeButtonRef.value.$el);
 
-  await changeSetsStore.APPLY_CHANGE_SET();
+  await changeSetsStore.APPLY_CHANGE_SET(fixesStore.enabledRecommendations);
   await wipeDone;
 
   // when the change set is done done, check if the change set apply was successful
@@ -300,9 +299,7 @@ watch(
 const navigateToFixMode = async () => {
   if (selectedWorkspacePk.value) {
     await router.push({
-      name: featureFlagsStore.SINGLE_MODEL_SCREEN
-        ? "workspace-compose"
-        : "workspace-fix",
+      name: " workspace-compose",
       params: { workspacePk: selectedWorkspacePk.value },
     });
   } else {

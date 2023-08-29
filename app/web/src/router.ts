@@ -94,17 +94,6 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
-      {
-        path: "v",
-        name: "workspace-view",
-        component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView.vue"),
-      },
-      {
-        path: "r",
-        name: "workspace-fix",
-        component: () => import("@/components/Workspace/WorkspaceApply.vue"),
-      },
       ...(isDevMode
         ? [
             {

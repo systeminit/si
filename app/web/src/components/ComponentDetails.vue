@@ -76,10 +76,7 @@
           trackingSlug="component_details"
         >
           <TabGroupItem label="Attributes" slug="attributes">
-            <AttributeViewer
-              class="dark:text-neutral-50 text-neutral-900"
-              :disabled="isHead && !featureFlagsStore.SINGLE_MODEL_SCREEN"
-            />
+            <AttributeViewer class="dark:text-neutral-50 text-neutral-900" />
           </TabGroupItem>
           <TabGroupItem label="Code" slug="code">
             <template v-if="codeReqStatus.isPending"> Loading code...</template>
@@ -127,7 +124,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { nilId } from "@/utils/nilId";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
@@ -141,7 +137,6 @@ const DEV_MODE = import.meta.env.DEV;
 
 const componentsStore = useComponentsStore();
 const changeSetStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);

@@ -105,11 +105,11 @@ export function useChangeSetsStore() {
             },
           });
         },
-        async APPLY_CHANGE_SET2(recommendations: Array<Recommendation>) {
+        async APPLY_CHANGE_SET(recommendations: Array<Recommendation>) {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
-            url: "change_set/apply_change_set2",
+            url: "change_set/apply_change_set",
             params: {
               changeSetPk: this.selectedChangeSet.pk,
               list: recommendations.map((r) => ({
@@ -117,20 +117,6 @@ export function useChangeSetsStore() {
                 componentId: r.componentId,
                 actionPrototypeId: r.actionPrototypeId,
               })),
-            },
-            onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.pk] = response.changeSet;
-              // could switch to head here, or could let the caller decide...
-            },
-          });
-        },
-        async APPLY_CHANGE_SET() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest<{ changeSet: ChangeSet }>({
-            method: "post",
-            url: "change_set/apply_change_set",
-            params: {
-              changeSetPk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;

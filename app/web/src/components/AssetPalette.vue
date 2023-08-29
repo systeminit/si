@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="inset-0 absolute">
     <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
       <div class="w-full p-lg flex flex-col gap-2 items-center">
         <Icon name="loader" size="2xl" />
@@ -9,53 +9,66 @@
     <template v-else-if="schemasReqStatus.isSuccess">
       <!-- <SiSearch /> -->
 
-      <div
-        ref="instructionsRef"
-        class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-400 dark:text-neutral-300 flex flex-row items-center gap-2"
-      >
-        <!-- <a
-          href="#"
-          class="hover:text-neutral-600 dark:hover:text-neutral-400"
-          @click="hideInstructions"
-        >
-          <Icon name="x-circle" />
-        </a> -->
-        <div>
-          Drag the assets that you wish to include in your application into the
-          canvas to the right.
-        </div>
-      </div>
+      <ScrollArea class="">
+        <template #top>
+          <SidebarSubpanelTitle class="border-t-0">
+            Assets
+          </SidebarSubpanelTitle>
 
-      <ul class="overflow-y-auto">
-        <Collapsible
-          v-for="(category, categoryIndex) in addMenuData"
-          :key="categoryIndex"
-          :label="category.displayName"
-          as="li"
-          contentAs="ul"
-          defaultOpen
-          class="select-none"
-        >
-          <li
-            v-for="(schema, schemaIndex) in category.schemas"
-            :key="schemaIndex"
-            class="select-none border-b-2 dark:border-neutral-600"
+          <div
+            ref="instructionsRef"
+            class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-400 dark:text-neutral-300 flex flex-row items-center gap-2"
           >
-            <SiNodeSprite
-              :class="
-                componentsStore.selectedInsertSchemaId === schema.id
-                  ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                  : ''
-              "
-              :color="schema.color"
-              :name="schema.displayName"
-              class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer"
-              @mousedown.left="onSelect(schema.id)"
-              @click.right.prevent
-            />
-          </li>
-        </Collapsible>
-      </ul>
+            <!-- <a
+              href="#"
+              class="hover:text-neutral-600 dark:hover:text-neutral-400"
+              @click="hideInstructions"
+            >
+              <Icon name="x-circle" />
+            </a> -->
+            <div>
+              Drag the assets that you wish to include in your application into
+              the canvas to the right.
+            </div>
+          </div>
+        </template>
+
+        <ul class="overflow-y-auto">
+          <Collapsible
+            v-for="(category, categoryIndex) in addMenuData"
+            :key="categoryIndex"
+            :label="category.displayName"
+            as="li"
+            contentAs="ul"
+            defaultOpen
+            class="select-none"
+          >
+            <li
+              v-for="(schema, schemaIndex) in category.schemas"
+              :key="schemaIndex"
+              class="select-none border-b-2 dark:border-neutral-600"
+            >
+              <SiNodeSprite
+                :color="schema.color"
+                :name="schema.displayName"
+                :class="
+                  clsx(
+                    'border border-transparent',
+                    fixesAreRunning
+                      ? 'hover:cursor-progress'
+                      : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
+                    componentsStore.selectedInsertSchemaId === schema.id
+                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                      : '',
+                  )
+                "
+                @mousedown.left="onSelect(schema.id, fixesAreRunning)"
+                @click.right.prevent
+              />
+            </li>
+          </Collapsible>
+        </ul>
+      </ScrollArea>
     </template>
 
     <template v-if="selectedSchema">
@@ -74,10 +87,14 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
-import { Collapsible, Icon } from "@si/vue-lib/design-system";
+import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
+import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+
+defineProps<{ fixesAreRunning: boolean }>();
 
 const instructionsRef = ref();
 
@@ -125,7 +142,12 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string) {
+function onSelect(schemaId: string, fixesAreRunning: boolean) {
+  if (fixesAreRunning) {
+    // Prevent selection while fixes are running
+    return;
+  }
+
   componentsStore.selectedInsertSchemaId = schemaId;
   selecting.value = true;
 }

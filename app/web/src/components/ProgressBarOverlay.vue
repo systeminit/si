@@ -26,7 +26,7 @@
 
       <div class="ml-xs flex-none">
         <VButton
-          v-if="featureFlagsStore.SINGLE_MODEL_SCREEN && showRefreshButton"
+          v-if="showRefreshButton"
           icon="refresh"
           variant="ghost"
           loadingIcon="refresh-active"
@@ -72,12 +72,10 @@
 import clsx from "clsx";
 import { ref, computed, onBeforeUnmount } from "vue";
 import { Icon, VButton } from "@si/vue-lib/design-system";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useComponentsStore } from "@/store/components.store";
 import ProgressBar from "./ProgressBar.vue";
 
 const componentsStore = useComponentsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps({
   title: { type: String },
