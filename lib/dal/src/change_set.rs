@@ -48,7 +48,7 @@ pub enum ChangeSetError {
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone)]
 pub enum ChangeSetStatus {
     Abandoned,
     Applied,

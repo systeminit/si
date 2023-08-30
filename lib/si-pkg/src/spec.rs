@@ -5,6 +5,7 @@ use thiserror::Error;
 
 mod action_func;
 mod attr_func_input;
+mod change_set;
 mod func;
 mod func_description;
 mod leaf_function;
@@ -17,8 +18,9 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, func::*, func_description::*, leaf_function::*,
-    map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
+    action_func::*, attr_func_input::*, change_set::*, func::*, func_description::*,
+    leaf_function::*, map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*,
+    validation::*, variant::*,
 };
 
 use super::SiPkgKind;
@@ -39,12 +41,21 @@ pub struct PkgSpec {
     pub created_at: DateTime<Utc>,
     #[builder(setter(into))]
     pub created_by: String,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub default_change_set: Option<String>,
 
     #[builder(setter(each(name = "schema", into)), default)]
+    #[serde(default)]
     pub schemas: Vec<SchemaSpec>,
 
     #[builder(setter(each(name = "func", into)), default)]
+    #[serde(default)]
     pub funcs: Vec<FuncSpec>,
+
+    #[builder(setter(each(name = "change_set", into)), default)]
+    #[serde(default)]
+    pub change_sets: Vec<ChangeSetSpec>,
 }
 
 impl PkgSpec {

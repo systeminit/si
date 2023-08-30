@@ -13,6 +13,7 @@ use thiserror::Error;
 
 mod action_func;
 mod attr_func_input;
+mod change_set;
 mod func;
 mod func_description;
 mod leaf_function;
@@ -25,8 +26,9 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, func::*, func_description::*, leaf_function::*,
-    map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
+    action_func::*, attr_func_input::*, change_set::*, func::*, func_description::*,
+    leaf_function::*, map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*,
+    validation::*, variant::*,
 };
 
 use crate::{
@@ -170,6 +172,20 @@ impl SiPkg {
         }
 
         Ok(schemas)
+    }
+
+    pub fn change_sets(&self) -> PkgResult<Vec<SiPkgChangeSet>> {
+        let (graph, root_idx) = self.as_petgraph();
+
+        let node_idxs = category_node_idxs(CategoryNode::ChangeSets, graph, root_idx)?;
+
+        let mut change_sets = Vec::with_capacity(node_idxs.len());
+
+        for node_idx in node_idxs {
+            change_sets.push(SiPkgChangeSet::from_graph(graph, node_idx)?);
+        }
+
+        Ok(change_sets)
     }
 
     pub fn schema_by_name(&self, name: impl AsRef<str>) -> PkgResult<SiPkgSchema> {
@@ -322,6 +338,7 @@ pub struct SiPkgMetadata {
     description: String,
     created_at: DateTime<Utc>,
     created_by: String,
+    default_change_set: Option<String>,
 
     hash: Hash,
 }
@@ -346,6 +363,7 @@ impl SiPkgMetadata {
             description: metadata_node.description,
             created_at: metadata_node.created_at,
             created_by: metadata_node.created_by,
+            default_change_set: metadata_node.default_change_set,
             hash: metadata_hashed_node.hash(),
         })
     }
@@ -372,6 +390,10 @@ impl SiPkgMetadata {
 
     pub fn created_by(&self) -> &str {
         self.created_by.as_ref()
+    }
+
+    pub fn default_change_set(&self) -> Option<&str> {
+        self.default_change_set.as_deref()
     }
 
     pub fn hash(&self) -> Hash {

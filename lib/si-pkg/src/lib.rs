@@ -9,14 +9,15 @@ pub use pkg::{
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
-    AttrFuncInputSpecKind, FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder,
-    FuncDescriptionSpec, FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
-    LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder,
-    PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
-    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
-    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    AttrFuncInputSpecKind, ChangeSetSpec, ChangeSetSpecBuilder, ChangeSetSpecStatus,
+    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncDescriptionSpec,
+    FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
+    FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation, LeafKind,
+    MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder,
+    PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
+    SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
+    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]
@@ -67,21 +68,20 @@ mod tests {
         let pkg_data = pkg.write_to_bytes().expect("failed to serialize pkg");
 
         let read_pkg = SiPkg::load_from_bytes(pkg_data).expect("failed to load pkg from bytes");
+        let metadata = read_pkg.metadata().expect("Get metadata (WorkspaceBackup)");
+
+        assert_eq!(description, metadata.description());
+
+        assert_eq!(SiPkgKind::WorkspaceBackup, metadata.kind());
+
+        assert_eq!(Some("head"), metadata.default_change_set());
+
+        let change_sets = read_pkg.change_sets().expect("able to get change_sets");
+        assert_eq!(2, change_sets.len());
 
         assert_eq!(
-            description,
-            read_pkg
-                .metadata()
-                .expect("get metadata (WorkspaceBackup)")
-                .description()
-        );
-
-        assert_eq!(
-            SiPkgKind::WorkspaceBackup,
-            read_pkg
-                .metadata()
-                .expect("get metadata for kind (WorkspaceBackup)")
-                .kind()
+            "head",
+            change_sets.get(0).expect("get first change set").name()
         );
     }
 
