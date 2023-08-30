@@ -39,7 +39,7 @@ export function useSecretsStore() {
         ) {
           const id = Math.floor(Math.random() * 899999 + 100000).toString();
 
-          const { id: userId, name: userName } = useAuthStore().user ?? {
+          const { pk: userId, name: userName } = useAuthStore().user ?? {
             id: "-1",
             name: "Anonymous",
           };
