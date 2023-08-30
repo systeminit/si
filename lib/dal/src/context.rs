@@ -539,6 +539,16 @@ impl AccessBuilder {
             history_actor: self.history_actor,
         }
     }
+
+    /// Gets a reference to the dal context's tenancy.
+    pub fn tenancy(&self) -> &Tenancy {
+        &self.tenancy
+    }
+
+    /// Gets a reference to the dal context's history actor.
+    pub fn history_actor(&self) -> &HistoryActor {
+        &self.history_actor
+    }
 }
 
 impl From<DalContext> for AccessBuilder {

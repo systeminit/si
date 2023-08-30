@@ -13,6 +13,7 @@
       type="textarea"
       label="Description"
     />
+    <VormInput v-model="secretFormData.value" type="textarea" label="Value" />
     <VButton
       size="sm"
       tone="action"
@@ -26,6 +27,7 @@
 <script setup lang="ts">
 import { VormInput, VButton } from "@si/vue-lib/design-system";
 import { reactive } from "vue";
+import * as _ from "lodash-es";
 import { SecretDefinitionId, useSecretsStore } from "@/store/secrets.store";
 
 const props = defineProps<{ definitionId: SecretDefinitionId }>();
@@ -35,6 +37,7 @@ const secretsStore = useSecretsStore();
 const secretFormData = reactive({
   name: "",
   description: "",
+  value: "",
 });
 
 const saveSecret = () => {
@@ -44,5 +47,9 @@ const saveSecret = () => {
     {},
     secretFormData.description,
   );
+
+  secretFormData.name = "";
+  secretFormData.description = "";
+  secretFormData.value = "";
 };
 </script>

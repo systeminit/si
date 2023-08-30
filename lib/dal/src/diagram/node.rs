@@ -295,7 +295,7 @@ pub struct HistoryEventMetadata {
 }
 
 impl HistoryEventMetadata {
-    async fn from_history_actor_timestamp(
+    pub async fn from_history_actor_timestamp(
         ctx: &DalContext,
         value: HistoryActorTimestamp,
     ) -> DiagramResult<Self> {

@@ -39,9 +39,14 @@
       />
     </div>
 
-    <AddSecretForm v-if="addingSecret" definitionId="definitionId" />
+    <AddSecretForm v-if="addingSecret" :definitionId="definitionId" />
     <div v-else class="overflow-y-auto flex flex-col h-full">
-      <template v-if="secrets.length > 0">
+      <RequestStatusMessage
+        v-if="loadSecretsReq.isPending"
+        :requestStatus="loadSecretsReq"
+        loadingMessage="Loading Secrets"
+      />
+      <template v-else-if="secrets.length > 0">
         <SecretCard
           v-for="secret in secrets"
           :key="secret.id"
@@ -58,7 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { VButton } from "@si/vue-lib/design-system";
+import { VButton, RequestStatusMessage } from "@si/vue-lib/design-system";
+
 import { ref, computed } from "vue";
 import clsx from "clsx";
 import { useSecretsStore, SecretDefinitionId } from "@/store/secrets.store";
@@ -68,6 +74,8 @@ import AddSecretForm from "./AddSecretForm.vue";
 const props = defineProps<{ definitionId: SecretDefinitionId }>();
 
 const secretsStore = useSecretsStore();
+
+const loadSecretsReq = secretsStore.getRequestStatus("LOAD_SECRETS");
 
 const secrets = computed(
   () => secretsStore.secretsByDefinitionId[props.definitionId] ?? [],
