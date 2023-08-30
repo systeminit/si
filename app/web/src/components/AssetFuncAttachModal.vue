@@ -80,10 +80,7 @@
           Select an existing function to attach it to this asset
         </div>
         <div v-if="loadFuncDetailsReq?.value.isPending">
-          <RequestStatusMessage
-            :requestStatus="loadFuncDetailsReq.value"
-            showLoaderWithoutMessage
-          />
+          <RequestStatusMessage :requestStatus="loadFuncDetailsReq.value" />
         </div>
         <CodeEditor
           v-if="loadFuncDetailsReq && !loadFuncDetailsReq?.value.isPending"

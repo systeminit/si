@@ -10,8 +10,9 @@
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
       !loadFuncDetailsReqStatus.isRequested
     "
-    >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
   >
+    Loading function "{{ selectedFuncSummary?.name }}"
+  </LoadingMessage>
   <div
     v-else-if="selectedFuncId && editingFunc"
     :class="

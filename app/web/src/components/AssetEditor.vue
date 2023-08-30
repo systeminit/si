@@ -2,7 +2,6 @@
   <RequestStatusMessage
     v-if="loadAssetReqStatus.isPending"
     :requestStatus="loadAssetReqStatus"
-    showLoaderWithoutMessage
   />
   <ScrollArea
     v-else-if="assetId && selectedAsset"

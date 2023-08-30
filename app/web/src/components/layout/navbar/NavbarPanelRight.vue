@@ -6,6 +6,8 @@
 
     <SiThemeSwitcher />
 
+    <WorkspaceSettingsMenu v-if="featureFlagsStore.WORKSPACE_BACKUPS" />
+
     <NavbarButton tooltipText="Profile">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
@@ -41,8 +43,12 @@
 import { Icon, DropdownMenuItem } from "@si/vue-lib/design-system";
 import SiArrow from "@/components/SiArrow.vue";
 import { useAuthStore } from "@/store/auth.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
+import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);

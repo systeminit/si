@@ -3,7 +3,6 @@
     <RequestStatusMessage
       v-if="loadAssetReqStatus.isPending"
       :requestStatus="loadAssetReqStatus"
-      showLoaderWithoutMessage
     />
     <ScrollArea>
       <template #top>

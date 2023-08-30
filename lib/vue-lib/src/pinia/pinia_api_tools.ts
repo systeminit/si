@@ -64,6 +64,11 @@ declare module "pinia" {
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
       keyedByArgs: RequestStatusKeyArg[] | ComputedRef<RequestStatusKeyArg[]>,
     ): ComputedRef<Record<string, ApiRequestStatus>>;
+
+    clearRequestStatus(
+      requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
+      ...keyedByArgs: RequestStatusKeyArg[]
+    ): void;
   }
 
   // augments the store's state
@@ -161,6 +166,8 @@ export type ApiRequestDescription<
   options?: Record<string, any>; // TODO: pull in axios options type?
   /** optional optimistic update fn to call before api request is made, should return a rollback fn called on api error */
   optimistic?: () => (() => void) | void;
+  /** add artificial delay (in ms) before fetching */
+  _delay?: number;
 };
 
 /** type describing how we store the request statuses */
@@ -280,6 +287,8 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           await promiseDelay(
             parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
           );
+        } else if (requestSpec._delay) {
+          await promiseDelay(requestSpec._delay);
         }
 
         // actually trigger the API request (uses the axios instance that was passed in)
@@ -465,9 +474,22 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       });
     };
 
+    const clearRequestStatus = (
+      requestKey: string,
+      ...keyedByArgs: RawRequestStatusKeyArg[]
+    ) => {
+      const rawKeyedByArgs = _.map(keyedByArgs, unref);
+      const fullKey = [requestKey, ..._.compact(rawKeyedByArgs)].join(
+        TRACKING_KEY_SEPARATOR,
+      );
+
+      delete store.$state.apiRequestStatuses[fullKey];
+    };
+
     return {
       getRequestStatus,
       getRequestStatuses,
+      clearRequestStatus,
       ...apiRequestActions,
     };
   };
