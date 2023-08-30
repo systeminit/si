@@ -342,6 +342,8 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 .create_sdf(
                     container_name.clone(),
                     container.clone(),
+                    app.sdf_host(),
+                    app.sdf_port(),
                     si_data_dir.clone(),
                 )
                 .await?;
@@ -383,8 +385,8 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 .create_web(
                     container_name.clone(),
                     container.clone(),
-                    app.web_port(),
                     app.web_host(),
+                    app.web_port(),
                 )
                 .await?;
         }

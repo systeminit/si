@@ -12,6 +12,8 @@ pub struct AppState {
     is_preview: bool,
     web_host: String,
     web_port: u32,
+    sdf_host: String,
+    sdf_port: u32,
     with_function_debug_logs: bool,
     container_engine: Arc<Box<dyn ContainerEngine>>,
 }
@@ -25,6 +27,8 @@ impl AppState {
         is_preview: bool,
         web_host: String,
         web_port: u32,
+        sdf_host: String,
+        sdf_port: u32,
         with_function_debug_logs: bool,
         container_engine: Arc<Box<dyn ContainerEngine>>,
     ) -> Self {
@@ -35,6 +39,8 @@ impl AppState {
             is_preview,
             web_host,
             web_port,
+            sdf_host,
+            sdf_port,
             with_function_debug_logs,
             container_engine,
         }
@@ -62,6 +68,14 @@ impl AppState {
 
     pub fn web_port(&self) -> u32 {
         self.web_port
+    }
+
+    pub fn sdf_host(&self) -> String {
+        self.sdf_host.clone()
+    }
+
+    pub fn sdf_port(&self) -> u32 {
+        self.sdf_port
     }
 
     pub fn posthog_client(&self) -> &PosthogClient {
