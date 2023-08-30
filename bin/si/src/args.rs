@@ -59,6 +59,14 @@ pub(crate) struct Args {
     #[arg(long = "web-port", env = "SI_WEB_PORT", default_value = "8080")]
     pub web_port: u32,
 
+    /// Allows starting the sdf service and binding to a specific IP
+    #[arg(long = "sdf-host", env = "SI_SDF_ADDRESS", default_value = "127.0.0.1")]
+    pub sdf_host: String,
+
+    /// Allows starting the sdf service and binding to a specific port
+    #[arg(long = "sdf-port", env = "SI_SDF_PORT", default_value = "5156")]
+    pub sdf_port: u32,
+
     /// The engine in which to launch System Initiate Containers
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
     #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]

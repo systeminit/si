@@ -33,6 +33,9 @@ async fn main() -> Result<()> {
     let web_host = args.web_host.clone();
     let web_port = args.web_port;
 
+    let sdf_host = args.sdf_host.clone();
+    let sdf_port = args.sdf_port;
+
     let current_version = VERSION.trim();
 
     debug!(arguments =?args, "parsed cli arguments");
@@ -49,6 +52,8 @@ async fn main() -> Result<()> {
         is_preview,
         web_host,
         web_port,
+        sdf_host,
+        sdf_port,
         args.with_function_debug_logs,
         Arc::from(engine),
     );

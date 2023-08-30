@@ -21,7 +21,7 @@ jobs:
         run: |
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
           if ! [[ "${SI_STAFF}" =~ "$PR_AUTHOR" ]]; then
-            echo "Authored by one of our amazing cmmunity peeps!"
+            echo "Authored by one of our amazing community peeps!"
             echo "requires-community-tag=true" >> $GITHUB_OUTPUT
           else
             echo "Successfully checked the author against the staff list"
