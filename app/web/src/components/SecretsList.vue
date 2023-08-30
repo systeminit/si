@@ -13,7 +13,7 @@
         <div
           class="uppercase font-bold text-md pb-xs text-shade-100 dark:text-shade-0"
         >
-          Secret: {{ definitionName }}
+          Secret: {{ definitionId }}
         </div>
         <div class="text-xs italic text-neutral-600 dark:text-neutral-500">
           <template v-if="addingSecret">
@@ -39,18 +39,18 @@
       />
     </div>
 
-    <AddSecretForm v-if="addingSecret" />
+    <AddSecretForm v-if="addingSecret" definitionId="definitionId" />
     <div v-else class="overflow-y-auto flex flex-col h-full">
-      <template v-if="mockData.length > 0">
+      <template v-if="secrets.length > 0">
         <SecretCard
-          v-for="secret in mockData"
+          v-for="secret in secrets"
           :key="secret.id"
           :secret="secret"
         />
       </template>
       <div v-else class="flex flex-row items-center grow">
         <div class="text-center w-full">
-          No secrets of this defintion found.
+          No secrets of this definition found.
         </div>
       </div>
     </div>
@@ -59,16 +59,19 @@
 
 <script setup lang="ts">
 import { VButton } from "@si/vue-lib/design-system";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import clsx from "clsx";
-import { Secret } from "@/store/secrets.store";
-import { ActorAndTimestamp } from "@/store/components.store";
+import { useSecretsStore, SecretDefinitionId } from "@/store/secrets.store";
 import SecretCard from "./SecretCard.vue";
 import AddSecretForm from "./AddSecretForm.vue";
 
-const props = defineProps({
-  definitionName: { type: String, required: true },
-});
+const props = defineProps<{ definitionId: SecretDefinitionId }>();
+
+const secretsStore = useSecretsStore();
+
+const secrets = computed(
+  () => secretsStore.secretsByDefinitionId[props.definitionId] ?? [],
+);
 
 const addingSecret = ref(false);
 
@@ -79,72 +82,4 @@ const showAddSecretForm = () => {
 const cancelAddSecretForm = () => {
   addingSecret.value = false;
 };
-
-const mockData = [
-  {
-    id: "mock secret id 1",
-    definition: props.definitionName,
-    name: "Mock Secret Name 1",
-    description:
-      "this is the description of the secret written by the user it can be very long and they can just put as much content as they want Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa  qui officia deserunt mollit anim id est laborum",
-    createdInfo: {
-      actor: { kind: "user", label: "wendywildshape" },
-      timestamp: new Date().toDateString(),
-    } as ActorAndTimestamp,
-  },
-  {
-    id: "mock secret id 2",
-    definition: props.definitionName,
-    name: "Mock Secret Name 2 here this name is very long omg testing long names is important!",
-    description: "this is a shorter description",
-    createdInfo: {
-      actor: { kind: "user", label: "cooldood420" },
-      timestamp: new Date("12/20/2021").toDateString(),
-    } as ActorAndTimestamp,
-  },
-  {
-    id: "mock secret id 3",
-    definition: props.definitionName,
-    name: "Mock Secret Name 3",
-    description: "",
-    createdInfo: {
-      actor: {
-        kind: "user",
-        label: "whateverpersonlongusernamewowthatisreallylongidkwaytoolong",
-      },
-      timestamp: new Date("01/01/2023").toDateString(),
-    } as ActorAndTimestamp,
-  },
-  {
-    id: "mock secret id 4",
-    definition: props.definitionName,
-    name: "Mock Secret Name 4",
-    description: "this one is cool",
-    createdInfo: {
-      actor: { kind: "user", label: "angiecat" },
-      timestamp: new Date().toDateString(),
-    } as ActorAndTimestamp,
-  },
-  {
-    id: "mock secret id 5",
-    definition: props.definitionName,
-    name: "Mock Secret Name 5",
-    description: "",
-    createdInfo: {
-      actor: { kind: "user", label: "gabycat" },
-      timestamp: new Date().toDateString(),
-    } as ActorAndTimestamp,
-  },
-  {
-    id: "mock secret id 6",
-    definition: props.definitionName,
-    name: "THE FINAL MOCK SECRET",
-    description:
-      "with a description that fits on two lines but is not long enough to be truncated at all",
-    createdInfo: {
-      actor: { kind: "system", label: "System Initiative" },
-      timestamp: new Date().toDateString(),
-    } as ActorAndTimestamp,
-  },
-] as Secret[];
 </script>

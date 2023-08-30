@@ -3,7 +3,7 @@
     :class="
       clsx(
         'p-2xs rounded',
-        popoverRef && popoverRef.isOpen
+        popoverRef?.isOpen
           ? 'bg-action-300 dark:bg-action-400'
           : 'hover:bg-action-200 dark:hover:bg-action-300',
       )
@@ -16,9 +16,7 @@
       :type="type"
       :status="status"
       :size="size"
-      :tone="
-        isHovered || (popoverRef && popoverRef.isOpen) ? 'shade' : undefined
-      "
+      :tone="isHovered || popoverRef?.isOpen ? 'shade' : undefined"
     />
     <Popover
       ref="popoverRef"
