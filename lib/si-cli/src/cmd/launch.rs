@@ -8,7 +8,7 @@ use std::{env, thread};
 
 impl AppState {
     pub async fn launch(&self, launch_metrics: bool) -> CliResult<()> {
-        invoke(launch_metrics, self.web_host(), self.web_port()).await?;
+        invoke(launch_metrics, self.web_host(), self.web_port(), self.sdf_host(), self.sdf_port()).await?;
         self.track(
             get_user_email().await?,
             serde_json::json!({"command-name": "launch-ui"}),
@@ -17,7 +17,7 @@ impl AppState {
     }
 }
 
-async fn invoke(launch_metrics: bool, web_host: String, web_port: u32) -> CliResult<()> {
+async fn invoke(launch_metrics: bool, web_host: String, web_port: u32, sdf_host: String, sdf_port: u32) -> CliResult<()> {
     let path = if launch_metrics {
         "http://localhost:16686".to_string()
     } else {
@@ -25,8 +25,8 @@ async fn invoke(launch_metrics: bool, web_host: String, web_port: u32) -> CliRes
     };
 
     if path == format!("http://{0}:{1}", web_host, web_port) {
-        check_web(web_port).await?;
-        check_sdf().await?;
+        check_web(web_host, web_port).await?;
+        check_sdf(sdf_host, sdf_port).await?;
     }
 
     let output = if cfg!(target_os = "macos") {
@@ -48,8 +48,8 @@ async fn invoke(launch_metrics: bool, web_host: String, web_port: u32) -> CliRes
     Ok(())
 }
 
-async fn check_web(web_port: u32) -> CliResult<()> {
-    let path = format!("http://localhost:{0}", web_port);
+async fn check_web(web_host: String, web_port: u32) -> CliResult<()> {
+    let path = format!("http://{0}:{1}", web_host, web_port);
     let resp = reqwest::get(path).await;
     if let Err(_e) = resp {
         return Err(SiCliError::WebPortal());
@@ -58,20 +58,22 @@ async fn check_web(web_port: u32) -> CliResult<()> {
     Ok(())
 }
 
-async fn check_sdf() -> CliResult<()> {
+async fn check_sdf(sdf_host: String, sdf_port: u32) -> CliResult<()> {
     let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
-    let sdf_path = "http://localhost:5156/api/";
+    let sdf_path = format!("http://{0}:{1}/api/", sdf_host, sdf_port);
 
     let mut is_ready = false;
+    let sdf_path_clone = sdf_path.clone(); // Clone sdf_path for use inside the async block
+
     let h = tokio::spawn(async move {
         let count = 200;
         let pb = ProgressBar::new(count);
         pb.set_style(spinner_style.clone());
         while !is_ready {
             loop {
-                match reqwest::get(sdf_path).await {
+                match reqwest::get(&sdf_path_clone).await {
                     Ok(x) => {
                         if x.status().as_u16() == 200 {
                             is_ready = true;
@@ -93,3 +95,4 @@ async fn check_sdf() -> CliResult<()> {
 
     Ok(())
 }
+

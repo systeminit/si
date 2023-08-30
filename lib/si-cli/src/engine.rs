@@ -38,13 +38,20 @@ pub trait ContainerEngine {
         with_debug_logs: bool,
     ) -> CliResult<()>;
     async fn create_pinga(&self, name: String, image: String, data_dir: PathBuf) -> CliResult<()>;
-    async fn create_sdf(&self, name: String, image: String, data_dir: PathBuf) -> CliResult<()>;
+    async fn create_sdf(
+        &self, 
+        name: String, 
+        image: String,
+        host_ip: String,
+        host_port: u32,
+        data_dir: PathBuf,
+    ) -> CliResult<()>;
     async fn create_web(
         &self,
         name: String,
         image: String,
-        host_port: u32,
         host_ip: String,
+        host_port: u32,
     ) -> CliResult<()>;
 }
 

@@ -636,7 +636,14 @@ impl ContainerEngine for PodmanEngine {
         Ok(())
     }
 
-    async fn create_sdf(&self, name: String, image: String, data_dir: PathBuf) -> CliResult<()> {
+    async fn create_sdf(
+        &self, 
+        name: String,
+        image: String,
+        host_ip: String,
+        host_port: u32,
+        data_dir: PathBuf
+    ) -> CliResult<()> {
         let create_opts = ContainerCreateOpts::builder()
             .name(name.clone())
             .image(format!("{0}:stable", image.clone()))
@@ -660,8 +667,8 @@ impl ContainerEngine for PodmanEngine {
             ]))
             .portmappings(vec![PortMapping {
                 container_port: Some(5156),
-                host_port: Some(5156),
-                host_ip: None,
+                host_port: Some(host_port.try_into().unwrap()),
+                host_ip: Some(host_ip),
                 protocol: None,
                 range: None,
             }])
@@ -710,8 +717,8 @@ impl ContainerEngine for PodmanEngine {
         &self,
         name: String,
         image: String,
-        host_port: u32,
         host_ip: String,
+        host_port: u32,
     ) -> CliResult<()> {
         let create_opts = ContainerCreateOpts::builder()
             .name(name.clone())

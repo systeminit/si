@@ -438,7 +438,14 @@ impl ContainerEngine for DockerEngine {
         Ok(())
     }
 
-    async fn create_sdf(&self, name: String, image: String, data_dir: PathBuf) -> CliResult<()> {
+    async fn create_sdf(
+        &self, 
+        name: String, 
+        image: String, 
+        host_ip: String,
+        host_port: u32,
+        data_dir: PathBuf
+    ) -> CliResult<()> {
         let create_opts = ContainerCreateOpts::builder()
             .name(name)
             .image(format!("{0}:stable", image))
@@ -454,7 +461,10 @@ impl ContainerEngine for DockerEngine {
             ])
             .network_mode("bridge")
             .restart_policy("on-failure", 3)
-            .expose(PublishPort::tcp(5156), HostPort::new(5156))
+            .expose(
+                PublishPort::tcp(5156), 
+                HostPort::with_ip(host_port, host_ip),
+            )
             .volumes([
                 format!(
                     "{}:/run/sdf/cyclone_encryption.key:z",
@@ -476,8 +486,8 @@ impl ContainerEngine for DockerEngine {
         &self,
         name: String,
         image: String,
-        host_port: u32,
         host_ip: String,
+        host_port: u32,
     ) -> CliResult<()> {
         let create_opts = ContainerCreateOpts::builder()
             .name(name)
