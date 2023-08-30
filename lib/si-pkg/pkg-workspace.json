@@ -5,6 +5,16 @@
   "description": "complex\nthings\nwith\nmultiple\nlines\n\n\n",
   "createdAt": "2023-08-28T00:19:25Z",
   "createdBy": "zacharyhamm",
-  "funcs": [],
-  "schemas": []
+  "defaultChangeSet": "head",
+  "changeSets": [
+    {
+      "name": "head",
+      "status": "Open"
+    },
+    {
+      "name": "Change set 1",
+      "based_on_change_set": "head",
+      "status": "Applied"
+    }
+  ]
 }

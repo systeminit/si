@@ -15,6 +15,7 @@ use super::{category::PackageCategory, PkgNode};
 
 const KEY_CREATED_AT_STR: &str = "created_at";
 const KEY_CREATED_BY_STR: &str = "created_by";
+const KEY_DEFAULT_CHANGE_SET: &str = "default_change_set";
 const KEY_DESCRIPTION_STR: &str = "description";
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
@@ -29,6 +30,7 @@ pub struct PackageNode {
     pub description: String,
     pub created_at: DateTime<Utc>,
     pub created_by: String,
+    pub default_change_set: Option<String>,
 }
 
 impl NameStr for PackageNode {
@@ -45,6 +47,9 @@ impl WriteBytes for PackageNode {
         write_key_value_line(writer, KEY_DESCRIPTION_STR, &self.description)?;
         write_key_value_line(writer, KEY_CREATED_AT_STR, self.created_at.to_rfc3339())?;
         write_key_value_line(writer, KEY_CREATED_BY_STR, &self.created_by)?;
+        if let Some(default_change_set) = &self.default_change_set {
+            write_key_value_line(writer, KEY_DEFAULT_CHANGE_SET, default_change_set.as_str())?;
+        }
         Ok(())
     }
 }
@@ -66,6 +71,7 @@ impl ReadBytes for PackageNode {
             .parse::<DateTime<Utc>>()
             .map_err(GraphError::parse)?;
         let created_by = read_key_value_line(reader, KEY_CREATED_BY_STR)?;
+        let default_change_set = read_key_value_line_opt(reader, KEY_DEFAULT_CHANGE_SET)?;
 
         Ok(Self {
             kind,
@@ -74,6 +80,7 @@ impl ReadBytes for PackageNode {
             description,
             created_at,
             created_by,
+            default_change_set,
         })
     }
 }
@@ -91,13 +98,22 @@ impl NodeChild for PkgSpec {
                 description: self.description.to_string(),
                 created_at: self.created_at,
                 created_by: self.created_by.clone(),
+                default_change_set: self.default_change_set.clone(),
             }),
-            vec![
-                Box::new(PackageCategory::Schemas(self.schemas.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(PackageCategory::Funcs(self.funcs.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-            ],
+            match self.kind {
+                SiPkgKind::Module => vec![
+                    Box::new(PackageCategory::Schemas(self.schemas.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    Box::new(PackageCategory::Funcs(self.funcs.clone()))
+                        as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                ],
+                SiPkgKind::WorkspaceBackup => {
+                    vec![
+                        Box::new(PackageCategory::ChangeSets(self.change_sets.clone()))
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                    ]
+                }
+            },
         )
     }
 }

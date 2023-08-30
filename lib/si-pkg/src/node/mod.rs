@@ -7,6 +7,8 @@ use object_tree::{
 mod action_func;
 mod attr_func_input;
 mod category;
+mod change_set;
+mod change_set_child;
 mod func;
 mod func_argument;
 mod func_description;
@@ -26,6 +28,8 @@ pub(crate) use self::{
     action_func::ActionFuncNode,
     attr_func_input::AttrFuncInputNode,
     category::CategoryNode,
+    change_set::ChangeSetNode,
+    change_set_child::{ChangeSetChild, ChangeSetChildNode},
     func::FuncNode,
     func_argument::FuncArgumentNode,
     func_description::FuncDescriptionNode,
@@ -45,6 +49,8 @@ pub(crate) use self::{
 const NODE_KIND_ACTION_FUNC: &str = "action_func";
 const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
 const NODE_KIND_CATEGORY: &str = "category";
+const NODE_KIND_CHANGE_SET: &str = "change_set";
+const NODE_KIND_CHANGE_SET_CHILD: &str = "change_set_child";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_FUNC_DESCRIPTION: &str = "func_description";
@@ -68,6 +74,8 @@ pub enum PkgNode {
     ActionFunc(ActionFuncNode),
     AttrFuncInput(AttrFuncInputNode),
     Category(CategoryNode),
+    ChangeSet(ChangeSetNode),
+    ChangeSetChild(ChangeSetChildNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
     FuncDescription(FuncDescriptionNode),
@@ -88,6 +96,8 @@ impl PkgNode {
     pub const ACTION_FUNC_KIND_STR: &str = NODE_KIND_ACTION_FUNC;
     pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
     pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
+    pub const CHANGE_SET_KIND_STR: &str = NODE_KIND_CHANGE_SET;
+    pub const CHANGE_SET_CHILD_KIND_STR: &str = NODE_KIND_CHANGE_SET_CHILD;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const FUNC_DESCRIPTION_KIND_STR: &str = NODE_KIND_FUNC_DESCRIPTION;
@@ -107,6 +117,8 @@ impl PkgNode {
         match self {
             Self::AttrFuncInput(_) => NODE_KIND_ATTR_FUNC_INPUT,
             Self::Category(_) => NODE_KIND_CATEGORY,
+            Self::ChangeSet(_) => NODE_KIND_CHANGE_SET,
+            Self::ChangeSetChild(_) => NODE_KIND_CHANGE_SET_CHILD,
             Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
@@ -131,6 +143,8 @@ impl NameStr for PkgNode {
         match self {
             Self::AttrFuncInput(node) => node.name(),
             Self::Category(node) => node.name(),
+            Self::ChangeSet(node) => node.name(),
+            Self::ChangeSetChild(node) => node.name(),
             Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
@@ -157,6 +171,8 @@ impl WriteBytes for PkgNode {
         match self {
             Self::AttrFuncInput(node) => node.write_bytes(writer)?,
             Self::Category(node) => node.write_bytes(writer)?,
+            Self::ChangeSet(node) => node.write_bytes(writer)?,
+            Self::ChangeSetChild(node) => node.write_bytes(writer)?,
             Self::ActionFunc(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
@@ -191,6 +207,10 @@ impl ReadBytes for PkgNode {
                 Self::AttrFuncInput(AttrFuncInputNode::read_bytes(reader)?)
             }
             NODE_KIND_CATEGORY => Self::Category(CategoryNode::read_bytes(reader)?),
+            NODE_KIND_CHANGE_SET => Self::ChangeSet(ChangeSetNode::read_bytes(reader)?),
+            NODE_KIND_CHANGE_SET_CHILD => {
+                Self::ChangeSetChild(ChangeSetChildNode::read_bytes(reader)?)
+            }
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
             NODE_KIND_FUNC_DESCRIPTION => {

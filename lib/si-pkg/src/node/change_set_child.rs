@@ -1,66 +1,60 @@
+use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
 
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
     NodeWithChildren, ReadBytes, WriteBytes,
 };
-use serde::{Deserialize, Serialize};
-
-use crate::{ChangeSetSpec, FuncSpec, SchemaSpec};
 
 use super::PkgNode;
+use crate::{FuncSpec, SchemaSpec};
 
-const CATEGORY_TYPE_CHANGE_SETS: &str = "change_sets";
-const CATEGORY_TYPE_SCHEMAS: &str = "schemas";
-const CATEGORY_TYPE_FUNCS: &str = "funcs";
+const CHANGE_SET_CHILD_TYPE_FUNCS: &str = "funcs";
+const CHANGE_SET_CHILD_TYPE_SCHEMAS: &str = "schemas";
 
 const KEY_KIND_STR: &str = "kind";
 
 #[remain::sorted]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum PackageCategory {
-    ChangeSets(Vec<ChangeSetSpec>),
+pub enum ChangeSetChild {
     Funcs(Vec<FuncSpec>),
     Schemas(Vec<SchemaSpec>),
 }
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
-pub enum CategoryNode {
-    ChangeSets,
+pub enum ChangeSetChildNode {
     Funcs,
     Schemas,
 }
 
-impl CategoryNode {
+impl ChangeSetChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
-            Self::ChangeSets => CATEGORY_TYPE_CHANGE_SETS,
-            Self::Funcs => CATEGORY_TYPE_FUNCS,
-            Self::Schemas => CATEGORY_TYPE_SCHEMAS,
+            Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
+            Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
     }
 }
 
-impl NameStr for CategoryNode {
+impl NameStr for ChangeSetChildNode {
     fn name(&self) -> &str {
         match self {
-            Self::ChangeSets => CATEGORY_TYPE_CHANGE_SETS,
-            Self::Schemas => CATEGORY_TYPE_SCHEMAS,
-            Self::Funcs => CATEGORY_TYPE_FUNCS,
+            Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
+            Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
     }
 }
 
-impl WriteBytes for CategoryNode {
+impl WriteBytes for ChangeSetChildNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
         write_key_value_line(writer, KEY_KIND_STR, self.kind_str())?;
         Ok(())
     }
 }
 
-impl ReadBytes for CategoryNode {
+impl ReadBytes for ChangeSetChildNode {
     fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
     where
         Self: std::marker::Sized,
@@ -68,12 +62,11 @@ impl ReadBytes for CategoryNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let node = match kind_str.as_str() {
-            CATEGORY_TYPE_CHANGE_SETS => Self::ChangeSets,
-            CATEGORY_TYPE_FUNCS => Self::Funcs,
-            CATEGORY_TYPE_SCHEMAS => Self::Schemas,
+            CHANGE_SET_CHILD_TYPE_FUNCS => Self::Funcs,
+            CHANGE_SET_CHILD_TYPE_SCHEMAS => Self::Schemas,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
-                    "invalid package category node kind: {invalid_kind}"
+                    "invalid change set child node kind: {invalid_kind}"
                 )))
             }
         };
@@ -82,22 +75,14 @@ impl ReadBytes for CategoryNode {
     }
 }
 
-impl NodeChild for PackageCategory {
+impl NodeChild for ChangeSetChild {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
-            Self::ChangeSets(entries) => NodeWithChildren::new(
-                NodeKind::Tree,
-                Self::NodeType::Category(CategoryNode::ChangeSets),
-                entries
-                    .iter()
-                    .map(|cs| Box::new(cs.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>)
-                    .collect(),
-            ),
             Self::Funcs(entries) => NodeWithChildren::new(
                 NodeKind::Tree,
-                Self::NodeType::Category(CategoryNode::Funcs),
+                Self::NodeType::ChangeSetChild(ChangeSetChildNode::Funcs),
                 entries
                     .iter()
                     .map(|func| {
@@ -107,7 +92,7 @@ impl NodeChild for PackageCategory {
             ),
             Self::Schemas(entries) => NodeWithChildren::new(
                 NodeKind::Tree,
-                Self::NodeType::Category(CategoryNode::Schemas),
+                Self::NodeType::ChangeSetChild(ChangeSetChildNode::Schemas),
                 entries
                     .iter()
                     .map(|schema| {
