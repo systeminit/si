@@ -168,8 +168,7 @@ pub async fn auth_reconnect(
 ) -> SessionResult<Json<AuthReconnectResponse>> {
     let auth_api_url = match option_env!("LOCAL_AUTH_STACK") {
         Some(_) => "http://localhost:9001",
-        // None => "https://auth-api.systeminit.com",
-        None => "http://localhost:9001",
+        None => "https://auth-api.systeminit.com",
     };
 
     let client = reqwest::Client::new();
