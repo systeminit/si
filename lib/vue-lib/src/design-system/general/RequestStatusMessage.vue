@@ -1,10 +1,6 @@
 <template>
   <div>
-    <LoadingMessage
-      :requestStatus="requestStatus"
-      :requestMessage="loadingMessage"
-      :noMessage="showLoaderWithoutMessage"
-    />
+    <LoadingMessage :requestStatus="requestStatus" :message="loadingMessage" />
     <ErrorMessage :requestStatus="requestStatus" />
   </div>
 </template>
@@ -16,7 +12,6 @@ import LoadingMessage from "./LoadingMessage.vue";
 import { ApiRequestStatus } from "../../pinia";
 
 defineProps({
-  showLoaderWithoutMessage: { type: Boolean, default: false },
   loadingMessage: { type: String },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
 });

@@ -1,6 +1,16 @@
 <template>
-  <TransitionRoot :show="isOpen" appear as="template">
-    <Dialog as="div" class="relative z-50" @close="exitHandler" @mousedown.stop>
+  <TransitionRoot
+    :show="isOpen"
+    appear
+    as="template"
+    @afterLeave="emit('closeComplete')"
+  >
+    <Dialog
+      as="div"
+      class="relative z-100"
+      @close="exitHandler"
+      @mousedown.stop
+    >
       <TransitionChild
         as="template"
         enter="duration-300 ease-out"
@@ -134,6 +144,7 @@ const props = defineProps({
     default: "Create",
     required: false,
   },
+  noAutoFocus: Boolean,
 });
 
 // make modal a new "theme container" but by passing no value, we reset the theme back to the root theme
@@ -144,7 +155,9 @@ const isOpen = ref(props.beginOpen);
 function open() {
   hideFocusTrap.value = false;
   isOpen.value = true;
-  setTimeout(fixAutoFocusElement);
+  if (!props.noAutoFocus) {
+    setTimeout(fixAutoFocusElement);
+  }
 }
 function close() {
   emit("close");
@@ -185,8 +198,9 @@ function exitHandler() {
 const saveLabel = toRef(props, "saveLabel", "Create");
 
 const emit = defineEmits<{
-  (e: "close"): void;
-  (e: "save"): void;
+  close: [];
+  closeComplete: [];
+  save: [];
 }>();
 
 defineExpose({ open, close, isOpen });

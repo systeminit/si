@@ -8,10 +8,17 @@ import { useRouterStore } from "./router.store";
 
 type WorkspacePk = string;
 
+type WorkspaceExportId = string;
+type WorkspaceExportSummary = {
+  id: WorkspaceExportId;
+  createdAt: IsoDateString;
+};
+
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
       workspacesByPk: {} as Record<WorkspacePk, Workspace>,
+      workspaceExports: [] as WorkspaceExportSummary[],
     }),
     getters: {
       allWorkspaces: (state) => _.values(state.workspacesByPk),
@@ -45,6 +52,40 @@ export const useWorkspacesStore = addStoreHooks(
             // NOTE - we could cache this stuff in localstorage too to avoid showing loading state
             // but this is a small optimization to make later...
           },
+        });
+      },
+
+      async EXPORT_WORKSPACE() {
+        return new ApiRequest({
+          // using placeholder url to just make a request
+          url: "/session/load_workspace",
+          _delay: 3000,
+          onSuccess: (response) => {},
+        });
+      },
+      async FETCH_WORKSPACE_EXPORTS() {
+        return new ApiRequest({
+          // using placeholder url to just make a request
+          url: "/session/load_workspace",
+          _delay: 1500,
+          onSuccess: (response) => {
+            this.workspaceExports = [
+              { id: "a", createdAt: "2023-08-30T11:22:33Z" },
+              { id: "b", createdAt: "2023-08-26T08:04:11Z" },
+              { id: "c", createdAt: "2023-08-25T18:19:20Z" },
+              { id: "d", createdAt: "2023-08-25T14:15:16Z" },
+            ];
+          },
+        });
+      },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      async IMPORT_WORKSPACE(exportId: WorkspaceExportId) {
+        return new ApiRequest({
+          // using placeholder url to just make a request
+          url: "/session/load_workspace",
+          _delay: 5000,
+          // params: { id: exportId },
+          onSuccess: (response) => {},
         });
       },
     },

@@ -9,7 +9,8 @@ import SlashForward from "~icons/mdi/slash-forward";
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
-import CloudUpload from "~icons/heroicons-solid/cloud-upload";
+import CloudUpload from "~icons/mdi/cloud-upload";
+import CloudDownload from "~icons/mdi/cloud-download";
 
 import AlertCircle from "~icons/heroicons/exclamation-circle-20-solid";
 import AlertSquare from "./custom-icons/exclamation-square.svg?raw";
@@ -35,6 +36,7 @@ import Play from "~icons/ion/play-sharp";
 import Arrow from "~icons/heroicons-solid/arrow-up";
 import Chevron from "~icons/heroicons-solid/chevron-up";
 
+import Gear from "~icons/heroicons-solid/cog-8-tooth";
 import Save from "~icons/heroicons-solid/save";
 import Download from "~icons/heroicons-solid/download";
 import Trash from "~icons/heroicons-solid/trash";
@@ -128,6 +130,7 @@ export const ICONS = Object.freeze({
   check2: Check2,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
+  "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   component: Cube,
   create: Create,
@@ -172,6 +175,7 @@ export const ICONS = Object.freeze({
   save: Save,
   search: Search,
   selector: Selector,
+  settings: Gear,
   show: Eye,
   slash: SlashForward,
   sun: Sun,

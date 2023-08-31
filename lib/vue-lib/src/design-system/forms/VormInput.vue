@@ -44,7 +44,6 @@ you can pass in options as props too */
               modelValue === null && !placeholderSelectable
                 ? '--placeholder-selected'
                 : '',
-              { sm: '', md: 'vorm-input__input-medium' }[props.size],
             ]"
             :disabled="disabledBySelfOrParent"
             :value="valueForSelectField"
@@ -360,6 +359,7 @@ const computedClasses = computed(() => ({
   "--focused": isFocus.value,
   "--disabled": disabledBySelfOrParent.value,
   [`--type-${props.type}`]: true,
+  [`--size-${props.size}`]: true,
   [`--theme-${theme.value}`]: true,
 }));
 
@@ -722,15 +722,17 @@ defineExpose({
   border: 1px solid var(--border-color);
   border-radius: 3px;
   transition: border-color 0.15s;
-  padding: 4px 10px;
+  padding: 4px 12px;
   color: var(--text-color);
   font: inherit;
   background-color: var(--bg-color);
-  line-height: 2;
 
-  &.vorm-input__input-medium {
+  .vorm-input.--size-sm & {
+    padding: 4px 10px;
+    height: 32px;
+  }
+  .vorm-input.--size-md & {
     padding: 8px 12px;
-    height: 40px;
   }
 
   &:hover {
@@ -744,9 +746,7 @@ defineExpose({
 
   select& {
     -webkit-appearance: none;
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-right: 28px; // to make space for dropdown arrow
+    padding-right: 28px !important; // to make space for dropdown arrow
 
     // dropdown arrow on right
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='%23666'><polygon points='10,15 30,15 20,25'/></svg>");
@@ -899,9 +899,7 @@ defineExpose({
     display: block;
     width: 24px;
     height: 24px;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    margin-right: 8px;
+    margin-right: 12px;
     flex-shrink: 0;
     cursor: pointer;
 

@@ -2,7 +2,6 @@
   <RequestStatusMessage
     v-if="localDetailsReq.isPending"
     :requestStatus="localDetailsReq"
-    showLoaderWithoutMessage
   />
   <div v-else-if="localDetails" class="flex flex-col">
     <div

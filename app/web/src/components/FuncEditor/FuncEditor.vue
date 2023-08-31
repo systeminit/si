@@ -27,7 +27,7 @@
       v-else-if="loadFuncDetailsReq.isError"
       :requestStatus="loadFuncDetailsReq"
     />
-    <LoadingMessage v-else noMessage />
+    <LoadingMessage v-else />
   </div>
 </template>
 
