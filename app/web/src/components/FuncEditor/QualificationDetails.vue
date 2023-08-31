@@ -1,14 +1,5 @@
 <template>
   <div class="p-3 flex flex-col gap-2">
-    <p class="text-neutral-400 dark:text-neutral-300 text-sm">
-      For more information on authoring a qualification, please read the
-      <a
-        href="http://systeminit.com/docs/qualifications"
-        target="_blank"
-        class="hover:underline"
-        >qualification documentation
-      </a>
-    </p>
     <template v-if="!schemaVariantId">
       <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
         Run this qualification on the selected asset and assets of type below.
