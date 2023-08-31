@@ -3,8 +3,8 @@ use std::{env, path::Path, sync::Arc};
 use tokio::fs;
 
 use dal::{
-    pkg::export_pkg_as_bytes, DalContext, JobQueueProcessor, NatsProcessor, Schema,
-    ServicesContext, Tenancy, Workspace,
+    pkg::PkgExporter, DalContext, JobQueueProcessor, NatsProcessor, Schema, ServicesContext,
+    StandardModel, Tenancy, Workspace,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -31,25 +31,16 @@ async fn main() -> Result<()> {
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
-    let mut variant_ids = Vec::new();
+    let mut schema_ids = Vec::new();
     for schema_name in schema_names {
-        variant_ids.push(Schema::default_schema_variant_id_for_name(&ctx, schema_name).await?);
+        schema_ids.push(*Schema::find_by_name(&ctx, schema_name.trim()).await?.id());
     }
 
     println!("--- Exporting pkg: {tar_file}");
-    fs::write(
-        &tar_file,
-        export_pkg_as_bytes(
-            &ctx,
-            name,
-            version,
-            Some(description),
-            created_by,
-            variant_ids,
-        )
-        .await?,
-    )
-    .await?;
+    let mut exporter =
+        PkgExporter::new_module_exporter(name, version, Some(description), created_by, schema_ids);
+
+    fs::write(&tar_file, exporter.export_as_bytes(&ctx).await?).await?;
 
     println!("--- Committing database transaction");
     ctx.commit().await?;

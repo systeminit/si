@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
-use super::{AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, SpecError, ValidationSpec};
+use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError, ValidationSpec};
 
 #[remain::sorted]
 #[derive(
@@ -46,6 +46,20 @@ impl From<&PropSpec> for PropSpecWidgetKind {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropSpecData {
+    pub name: String,
+    pub default_value: Option<serde_json::Value>,
+    pub validations: Option<Vec<ValidationSpec>>,
+    pub func_unique_id: Option<String>,
+    pub inputs: Option<Vec<AttrFuncInputSpec>>,
+    pub widget_kind: Option<PropSpecWidgetKind>,
+    pub widget_options: Option<serde_json::Value>,
+    pub hidden: Option<bool>,
+    pub doc_link: Option<Url>,
+}
+
 #[remain::sorted]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -53,78 +67,42 @@ pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     Array {
         name: String,
-        default_value: Option<serde_json::Value>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
         type_prop: Box<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     Boolean {
         name: String,
-        default_value: Option<bool>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     Map {
         name: String,
-        default_value: Option<serde_json::Value>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
         type_prop: Box<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
         map_key_funcs: Option<Vec<MapKeyFuncSpec>>,
     },
     #[serde(rename_all = "camelCase")]
     Number {
         name: String,
-        default_value: Option<i64>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
     },
     #[serde(rename_all = "camelCase")]
     Object {
         name: String,
-        default_value: Option<serde_json::Value>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
         entries: Vec<PropSpec>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
     },
     #[serde(rename_all = "camelCase")]
     String {
         name: String,
-        default_value: Option<String>,
-        validations: Option<Vec<ValidationSpec>>,
-        func_unique_id: Option<FuncUniqueId>,
-        inputs: Option<Vec<AttrFuncInputSpec>>,
-        widget_kind: Option<PropSpecWidgetKind>,
-        widget_options: Option<serde_json::Value>,
-        hidden: Option<bool>,
-        doc_link: Option<Url>,
+        data: Option<PropSpecData>,
+        unique_id: Option<String>,
     },
 }
 
@@ -145,12 +123,12 @@ pub enum PropSpecKind {
     String,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct PropSpecBuilder {
     default_value: Option<serde_json::Value>,
     doc_link: Option<Url>,
     entries: Vec<PropSpec>,
-    func_unique_id: Option<FuncUniqueId>,
+    func_unique_id: Option<String>,
     hidden: bool,
     inputs: Vec<AttrFuncInputSpec>,
     kind: Option<PropSpecKind>,
@@ -160,12 +138,37 @@ pub struct PropSpecBuilder {
     validations: Vec<ValidationSpec>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
+    unique_id: Option<String>,
+    has_data: bool,
+}
+
+impl Default for PropSpecBuilder {
+    fn default() -> Self {
+        Self {
+            default_value: None,
+            doc_link: None,
+            entries: vec![],
+            func_unique_id: None,
+            hidden: false,
+            inputs: vec![],
+            kind: None,
+            map_key_funcs: vec![],
+            name: None,
+            type_prop: None,
+            validations: vec![],
+            widget_kind: None,
+            widget_options: None,
+            unique_id: None,
+            has_data: true,
+        }
+    }
 }
 
 impl PropSpecBuilder {
     #[allow(unused_mut)]
     pub fn default_value(&mut self, value: serde_json::Value) -> &mut Self {
         self.default_value = Some(value);
+        self.has_data = true;
         self
     }
 
@@ -199,6 +202,7 @@ impl PropSpecBuilder {
 
     #[allow(unused_mut)]
     pub fn validation(&mut self, value: impl Into<ValidationSpec>) -> &mut Self {
+        self.has_data = true;
         self.validations.push(value.into());
         self
     }
@@ -210,13 +214,15 @@ impl PropSpecBuilder {
     }
 
     #[allow(unused_mut)]
-    pub fn func_unique_id(&mut self, value: FuncUniqueId) -> &mut Self {
-        self.func_unique_id = Some(value);
+    pub fn func_unique_id(&mut self, value: impl Into<String>) -> &mut Self {
+        self.has_data = true;
+        self.func_unique_id = Some(value.into());
         self
     }
 
     #[allow(unused_mut)]
     pub fn input(&mut self, value: impl Into<AttrFuncInputSpec>) -> &mut Self {
+        self.has_data = true;
         self.inputs.push(value.into());
         self
     }
@@ -242,7 +248,18 @@ impl PropSpecBuilder {
     }
 
     pub fn map_key_func(&mut self, value: impl Into<MapKeyFuncSpec>) -> &mut Self {
+        self.has_data = true;
         self.map_key_funcs.push(value.into());
+        self
+    }
+
+    pub fn has_data(&mut self, value: impl Into<bool>) -> &mut Self {
+        self.has_data = value.into();
+        self
+    }
+
+    pub fn unique_id(&mut self, value: impl Into<String>) -> &mut Self {
+        self.unique_id = Some(value.into());
         self
     }
 
@@ -270,7 +287,7 @@ impl PropSpecBuilder {
 
         let validations = self.validations.clone();
         let inputs = self.inputs.clone();
-        let func_unique_id = self.func_unique_id;
+        let func_unique_id = self.func_unique_id.to_owned();
         let widget_kind = self.widget_kind;
         let widget_options = self.widget_options.to_owned();
         let hidden = self.hidden;
@@ -279,115 +296,132 @@ impl PropSpecBuilder {
         Ok(match self.kind {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
-                    name,
-                    default_value: match &self.default_value {
-                        Some(serde_json::Value::String(s)) => Some(s.to_owned()),
-                        Some(_) => {
-                            return Err(SpecError::ValidationError(
-                                "String prop must get a string as a default value".to_string(),
-                            ));
-                        }
-                        None => None,
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
                     },
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                 },
                 PropSpecKind::Number => PropSpec::Number {
-                    name,
-                    default_value: match &self.default_value {
-                        Some(value) => {
-                            if value.is_i64() {
-                                value.as_i64()
-                            } else {
-                                return Err(SpecError::ValidationError(
-                                    "Number props must get an i64 as a default value".to_string(),
-                                ));
-                            }
-                        }
-                        None => None,
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
                     },
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
-                    name,
-                    default_value: match &self.default_value {
-                        Some(value) => {
-                            if value.is_boolean() {
-                                value.as_bool()
-                            } else {
-                                return Err(SpecError::ValidationError(
-                                    "Boolean props must get a bool as a default value".to_string(),
-                                ));
-                            }
-                        }
-                        None => None,
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
                     },
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                 },
                 PropSpecKind::Map => PropSpec::Map {
-                    name,
-                    // TODO: Validate these types
-                    default_value: self.default_value.to_owned(),
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
+                    },
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                     map_key_funcs: Some(self.map_key_funcs.to_owned()),
                 },
                 PropSpecKind::Array => PropSpec::Array {
-                    name,
-                    default_value: self.default_value.to_owned(),
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
+                    },
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
                             return Err(UninitializedFieldError::from("type_prop").into());
                         }
                     },
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                 },
                 PropSpecKind::Object => PropSpec::Object {
-                    name,
-                    default_value: self.default_value.to_owned(),
+                    name: name.to_owned(),
+                    unique_id: self.unique_id.to_owned(),
+                    data: if self.has_data {
+                        Some(PropSpecData {
+                            name,
+                            default_value: self.default_value.to_owned(),
+                            validations: Some(validations),
+                            func_unique_id,
+                            inputs: Some(inputs),
+                            widget_kind,
+                            widget_options,
+                            hidden: Some(hidden),
+                            doc_link,
+                        })
+                    } else {
+                        None
+                    },
                     entries: self.entries.clone(),
-                    validations: Some(validations),
-                    func_unique_id,
-                    inputs: Some(inputs),
-                    widget_kind,
-                    widget_options,
-                    hidden: Some(hidden),
-                    doc_link,
                 },
             },
             None => {

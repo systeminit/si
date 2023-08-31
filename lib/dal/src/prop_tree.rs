@@ -1,3 +1,4 @@
+use crate::ChangeSetPk;
 use crate::{
     property_editor::schema::WidgetKind, DalContext, InternalProviderId, Prop, PropId, PropKind,
     SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel,
@@ -39,6 +40,7 @@ pub struct PropTreeNode {
     pub children: Vec<PropTreeNode>,
     pub parent_id: PropId,
     pub prop_id: PropId,
+    pub visibility_change_set_pk: ChangeSetPk,
     pub kind: PropKind,
     pub schema_variant_id: SchemaVariantId,
     pub internal_provider_id: Option<InternalProviderId>,
@@ -141,6 +143,7 @@ impl PropTree {
             }
             let parent_id: PropId = row.try_get("parent_id")?;
             let schema_variant_id: SchemaVariantId = row.try_get("schema_variant_id")?;
+            let visibility_change_set_pk: ChangeSetPk = row.try_get("visibility_change_set_pk")?;
 
             if let Some(schema_variant_id_filter) = &schema_variant_id_filter {
                 if !schema_variant_id_filter.contains(&schema_variant_id) {
@@ -167,6 +170,7 @@ impl PropTree {
                 widget_kind: *prop.widget_kind(),
                 widget_options: prop.widget_options().cloned(),
                 doc_link: prop.doc_link().map(|l| l.to_owned()),
+                visibility_change_set_pk,
             };
 
             // The ordering of the query ensures parent nodes will always come before their children

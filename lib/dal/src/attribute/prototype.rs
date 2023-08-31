@@ -504,7 +504,7 @@ impl AttributePrototype {
         ctx: &DalContext,
         context: AttributeContext,
         backend_response_type: FuncBackendResponseType,
-    ) -> AttributePrototypeResult<Vec<Func>> {
+    ) -> AttributePrototypeResult<Vec<(Self, Func)>> {
         let rows = ctx
             .txns()
             .await?
@@ -521,7 +521,18 @@ impl AttributePrototype {
             )
             .await?;
 
-        Ok(standard_model::objects_from_rows(rows)?)
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let func_json: serde_json::Value = row.try_get("func_object")?;
+            let func: Func = serde_json::from_value(func_json)?;
+
+            let ap_json: serde_json::Value = row.try_get("prototype_object")?;
+            let ap: Self = serde_json::from_value(ap_json)?;
+
+            result.push((ap, func));
+        }
+
+        Ok(result)
     }
 
     pub async fn list_for_schema_variant(

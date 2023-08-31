@@ -2,10 +2,9 @@ use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, SiPkgSchema, Source};
-use crate::SiPkgFunc;
 use crate::{
     node::{ChangeSetChildNode, PkgNode},
-    ChangeSetSpecStatus,
+    ChangeSetSpec, ChangeSetSpecStatus, FuncSpec, SiPkgFunc,
 };
 
 #[derive(Clone, Debug)]
@@ -95,4 +94,23 @@ impl<'a> SiPkgChangeSet<'a> {
 
     impl_change_set_children_from_graph!(funcs, ChangeSetChildNode::Funcs, SiPkgFunc);
     impl_change_set_children_from_graph!(schemas, ChangeSetChildNode::Schemas, SiPkgSchema);
+
+    pub async fn to_spec(&self) -> PkgResult<ChangeSetSpec> {
+        let mut builder = ChangeSetSpec::builder();
+
+        builder.name(self.name()).status(self.status());
+        if let Some(based_on_change_set) = self.based_on_change_set() {
+            builder.based_on_change_set(based_on_change_set);
+        }
+
+        for func in self.funcs()? {
+            builder.func(FuncSpec::try_from(func)?);
+        }
+
+        for schema in self.schemas()? {
+            builder.schema(schema.to_spec().await?);
+        }
+
+        Ok(builder.build()?)
+    }
 }

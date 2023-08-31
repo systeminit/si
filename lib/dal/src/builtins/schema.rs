@@ -102,11 +102,15 @@ pub async fn migrate_for_tests(
         migrate_pkg(ctx, super::SI_AWS_EC2_PKG, None).await?;
         migrate_pkg(ctx, super::SI_COREOS_PKG, None).await?;
         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, None).await?;
+        migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, None).await?;
         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
             migrate_schema(ctx, test_schema, &driver).await?;
             ctx.blocking_commit().await?;
         }
     } else if migrate_test_exclusive {
+        // We migrate generic frame to get "si:resourceToPayloadValue" cheaply. This function
+        // should be converted to an intrinsic (or removed?)
+        migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, None).await?;
         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
             migrate_schema(ctx, test_schema, &driver).await?;
             ctx.blocking_commit().await?;
@@ -120,6 +124,7 @@ pub async fn migrate_for_tests(
         migrate_pkg(ctx, super::SI_AWS_EC2_PKG, Some(schemas.to_owned())).await?;
         migrate_pkg(ctx, super::SI_COREOS_PKG, Some(schemas.to_owned())).await?;
         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, Some(schemas.to_owned())).await?;
+        migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, Some(schemas.to_owned())).await?;
         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
             if specific_builtin_schemas.contains(test_schema.real_schema_name()) {
                 migrate_schema(ctx, test_schema, &driver).await?;

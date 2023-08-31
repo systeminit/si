@@ -37,8 +37,6 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SiPkgError {
-    #[error("Package missing required category: {0}")]
-    CategoryNotFound(&'static str),
     #[error(transparent)]
     Graph(#[from] GraphError),
     #[error(transparent)]
@@ -137,11 +135,11 @@ impl SiPkg {
         Ok(self.metadata()?.hash())
     }
 
-    pub fn funcs_by_unique_id(&self) -> PkgResult<HashMap<Hash, SiPkgFunc>> {
-        let func_map: HashMap<Hash, SiPkgFunc> = self
+    pub fn funcs_by_unique_id(&self) -> PkgResult<HashMap<String, SiPkgFunc>> {
+        let func_map: HashMap<String, SiPkgFunc> = self
             .funcs()?
             .drain(..)
-            .map(|func| (func.unique_id(), func))
+            .map(|func| (func.unique_id().to_string(), func))
             .collect();
 
         Ok(func_map)
@@ -227,6 +225,16 @@ impl SiPkg {
             builder.schema(schema.to_spec().await?);
         }
 
+        if let SiPkgKind::WorkspaceBackup = metadata.kind() {
+            if let Some(default_change_set) = metadata.default_change_set() {
+                builder.default_change_set(default_change_set);
+            }
+
+            for change_set in self.change_sets()? {
+                builder.change_set(change_set.to_spec().await?);
+            }
+        }
+
         Ok(builder.build()?)
     }
 }
@@ -266,10 +274,11 @@ fn category_node_idxs(
         .find(|node_idx| match &graph[*node_idx].inner() {
             PkgNode::Category(node) => *node == category_node,
             _ => false,
-        })
-        .ok_or(SiPkgError::CategoryNotFound(category_node.kind_str()))?;
+        });
 
-    Ok(graph.neighbors_directed(node_idxs, Outgoing).collect())
+    Ok(node_idxs
+        .map(|node_idx| graph.neighbors_directed(node_idx, Outgoing).collect())
+        .unwrap_or(vec![]))
 }
 
 fn schema_node_idxs(
@@ -337,7 +346,7 @@ pub struct SiPkgMetadata {
     created_at: DateTime<Utc>,
     created_by: String,
     default_change_set: Option<String>,
-
+    workspace_pk: Option<String>,
     hash: Hash,
 }
 
@@ -362,6 +371,7 @@ impl SiPkgMetadata {
             created_at: metadata_node.created_at,
             created_by: metadata_node.created_by,
             default_change_set: metadata_node.default_change_set,
+            workspace_pk: metadata_node.workspace_pk,
             hash: metadata_hashed_node.hash(),
         })
     }
@@ -392,6 +402,10 @@ impl SiPkgMetadata {
 
     pub fn default_change_set(&self) -> Option<&str> {
         self.default_change_set.as_deref()
+    }
+
+    pub fn workspace_pk(&self) -> Option<&str> {
+        self.workspace_pk.as_deref()
     }
 
     pub fn hash(&self) -> Hash {

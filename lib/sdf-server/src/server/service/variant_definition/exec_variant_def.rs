@@ -18,7 +18,9 @@ use dal::{
     Func, FuncBinding, HistoryActor, SchemaVariantId, StandardModel, User, WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_pkg::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SiPkg};
+use si_pkg::{
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
+};
 use std::collections::HashMap;
 
 pub type ExecVariantDefRequest = super::save_variant_def::SaveVariantDefRequest;
@@ -90,28 +92,34 @@ pub async fn exec_variant_def(
     let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
     let mut schema_variant_func_spec = FuncSpec::builder();
-    schema_variant_func_spec.name(String::from(asset_func.name()));
-    schema_variant_func_spec.backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition);
-    schema_variant_func_spec.response_type(FuncSpecBackendResponseType::SchemaVariantDefinition);
-    schema_variant_func_spec.hidden(asset_func.hidden());
+    schema_variant_func_spec.name(asset_func.name());
+    schema_variant_func_spec.unique_id(asset_func.id().to_string());
+    let mut func_spec_data_builder = FuncSpecData::builder();
+    func_spec_data_builder
+        .name(asset_func.name())
+        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .hidden(asset_func.hidden());
     if let Some(code) = asset_func.code_plaintext()? {
-        schema_variant_func_spec.code_plaintext(code);
+        func_spec_data_builder.code_plaintext(code);
     }
     if let Some(handler) = asset_func.handler() {
-        schema_variant_func_spec.handler(handler.to_string());
+        func_spec_data_builder.handler(handler.to_string());
     }
     if let Some(description) = asset_func.description() {
-        schema_variant_func_spec.description(description.to_string());
+        func_spec_data_builder.description(description.to_string());
     }
     if let Some(display_name) = asset_func.display_name() {
-        schema_variant_func_spec.display_name(display_name.to_string());
+        func_spec_data_builder.display_name(display_name.to_string());
     }
-    let asset_func_built = schema_variant_func_spec.build()?;
+    let asset_func_built = schema_variant_func_spec
+        .data(func_spec_data_builder.build()?)
+        .build()?;
 
     let variant_spec = definition.to_spec(
         metadata.clone(),
-        identity_func_spec.unique_id,
-        asset_func_built.unique_id,
+        &identity_func_spec.unique_id,
+        &asset_func_built.unique_id,
     )?;
     let schema_spec = metadata.to_spec(variant_spec)?;
     let pkg_spec = PkgSpec::builder()
@@ -131,7 +139,7 @@ pub async fn exec_variant_def(
         Some(dal::pkg::ImportOptions {
             schemas: None,
             skip_import_funcs: Some(HashMap::from_iter([(
-                asset_func_built.unique_id,
+                asset_func_built.unique_id.to_owned(),
                 asset_func.clone(),
             )])),
             no_record: true,

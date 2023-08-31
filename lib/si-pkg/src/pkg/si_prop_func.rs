@@ -4,14 +4,16 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
-    node::PkgNode, AttrFuncInputSpec, FuncUniqueId, SiPkgAttrFuncInput, SiPropFuncSpec,
-    SiPropFuncSpecKind,
+    node::PkgNode, AttrFuncInputSpec, SiPkgAttrFuncInput, SiPropFuncSpec, SiPropFuncSpecKind,
 };
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSiPropFunc<'a> {
     kind: SiPropFuncSpecKind,
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
+    unique_id: Option<String>,
+    deleted: bool,
+
     hash: Hash,
     source: Source<'a>,
 }
@@ -35,6 +37,9 @@ impl<'a> SiPkgSiPropFunc<'a> {
         Ok(Self {
             kind: node.kind,
             func_unique_id: node.func_unique_id,
+            unique_id: node.unique_id,
+            deleted: node.deleted,
+
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
@@ -44,8 +49,16 @@ impl<'a> SiPkgSiPropFunc<'a> {
         self.kind
     }
 
-    pub fn func_unique_id(&self) -> FuncUniqueId {
-        self.func_unique_id
+    pub fn func_unique_id(&self) -> &str {
+        self.func_unique_id.as_str()
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
     }
 
     pub fn inputs(&self) -> PkgResult<Vec<SiPkgAttrFuncInput>> {
@@ -82,6 +95,8 @@ impl<'a> TryFrom<SiPkgSiPropFunc<'a>> for SiPropFuncSpec {
 
         Ok(builder
             .kind(value.kind)
+            .unique_id(value.unique_id)
+            .deleted(value.deleted)
             .func_unique_id(value.func_unique_id)
             .build()?)
     }

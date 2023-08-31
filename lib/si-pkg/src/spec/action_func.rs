@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use super::{FuncUniqueId, SpecError};
+use super::SpecError;
 
 #[derive(
     Debug,
@@ -30,10 +30,18 @@ pub enum ActionFuncSpecKind {
 #[builder(build_fn(error = "SpecError"))]
 pub struct ActionFuncSpec {
     #[builder(setter(into))]
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
 
     #[builder(setter(into))]
     pub kind: ActionFuncSpecKind,
+
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub unique_id: Option<String>,
+
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub deleted: bool,
 }
 
 impl ActionFuncSpec {

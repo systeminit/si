@@ -39,9 +39,12 @@ pub struct PkgSpec {
     pub created_at: DateTime<Utc>,
     #[builder(setter(into))]
     pub created_by: String,
-    #[builder(setter(into), default)]
+    #[builder(setter(into, strip_option), default)]
     #[serde(default)]
     pub default_change_set: Option<String>,
+    #[builder(setter(into, strip_option), default)]
+    #[serde(default)]
+    pub workspace_pk: Option<String>,
 
     #[builder(setter(each(name = "schema", into)), default)]
     #[serde(default)]
@@ -61,10 +64,10 @@ impl PkgSpec {
         PkgSpecBuilder::default()
     }
 
-    pub fn func_for_unique_id(&self, unique_id: &FuncUniqueId) -> Option<&FuncSpec> {
+    pub fn func_for_unique_id(&self, unique_id: &str) -> Option<&FuncSpec> {
         self.funcs
             .iter()
-            .find(|func_spec| &func_spec.unique_id == unique_id)
+            .find(|func_spec| func_spec.unique_id == unique_id)
     }
 
     pub fn func_for_name(&self, name: impl AsRef<str>) -> Option<&FuncSpec> {

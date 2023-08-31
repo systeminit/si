@@ -3,14 +3,14 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    FuncUniqueId, SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView,
-    SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
-    SiPkgSocket, SiPkgValidation, SocketSpecKind,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgError,
+    SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket,
+    SiPkgValidation, SocketSpecKind,
 };
 
 use crate::{
     component::ComponentKind,
-    func::{binding::FuncBinding, binding_return_value::FuncBindingReturnValue},
+    func::{self, binding::FuncBinding, binding_return_value::FuncBindingReturnValue},
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
@@ -31,7 +31,7 @@ use crate::{
 
 use super::{PkgError, PkgResult};
 
-type FuncMap = std::collections::HashMap<FuncUniqueId, Func>;
+type FuncMap = std::collections::HashMap<String, Func>;
 
 #[derive(Clone, Debug, Default)]
 pub struct ImportOptions {
@@ -76,33 +76,43 @@ pub async fn import_pkg_from_pkg(
         info!(
             "installing function '{}' from {}",
             func_spec.name(),
-            file_name
+            file_name,
         );
-        let unique_id = func_spec.unique_id();
+        let unique_id = func_spec.unique_id().to_string();
 
-        let func = if let Some(Some(func)) = options
-            .skip_import_funcs
-            .as_ref()
-            .map(|skip_funcs| skip_funcs.get(&unique_id))
-        {
-            if let Some(installed_pkg_id) = installed_pkg_id {
-                InstalledPkgAsset::new(
-                    ctx,
-                    InstalledPkgAssetTyped::new_for_func(
-                        *func.id(),
-                        installed_pkg_id,
-                        func_spec.hash().to_string(),
-                    ),
-                )
-                .await?;
-            }
-
-            func.to_owned()
+        // This is a hack because the hash of the intrinsics has changed from the version in the
+        // packages
+        if func::is_intrinsic(func_spec.name()) {
+            let func = if let Some(func) = Func::find_by_name(ctx, func_spec.name()).await? {
+                func
+            } else {
+                create_func(ctx, func_spec, installed_pkg_id).await?
+            };
+            funcs_by_unique_id.insert(unique_id, func);
         } else {
-            create_func(ctx, func_spec, installed_pkg_id).await?
-        };
+            let func = if let Some(Some(func)) = options
+                .skip_import_funcs
+                .as_ref()
+                .map(|skip_funcs| skip_funcs.get(&unique_id))
+            {
+                if let Some(installed_pkg_id) = installed_pkg_id {
+                    InstalledPkgAsset::new(
+                        ctx,
+                        InstalledPkgAssetTyped::new_for_func(
+                            *func.id(),
+                            installed_pkg_id,
+                            func_spec.hash().to_string(),
+                        ),
+                    )
+                    .await?;
+                }
 
-        funcs_by_unique_id.insert(unique_id, func);
+                func.to_owned()
+            } else {
+                create_func(ctx, func_spec, installed_pkg_id).await?
+            };
+            funcs_by_unique_id.insert(unique_id, func);
+        }
     }
 
     let mut installed_schema_variant_ids = vec![];
@@ -164,20 +174,27 @@ async fn create_func(
         None => {
             let name = func_spec.name();
 
+            let func_spec_data = func_spec
+                .data()
+                .ok_or(PkgError::DataNotFound(name.into()))?;
+
             // How to handle name conflicts?
             let mut func = Func::new(
                 ctx,
                 name,
-                func_spec.backend_kind().into(),
-                func_spec.response_type().into(),
+                func_spec_data.backend_kind().into(),
+                func_spec_data.response_type().into(),
             )
             .await?;
 
-            func.set_display_name(ctx, func_spec.display_name()).await?;
-            func.set_code_base64(ctx, Some(func_spec.code_base64()))
+            func.set_display_name(ctx, func_spec_data.display_name())
                 .await?;
-            func.set_description(ctx, func_spec.description()).await?;
-            func.set_handler(ctx, Some(func_spec.handler())).await?;
+            func.set_code_base64(ctx, Some(func_spec_data.code_base64()))
+                .await?;
+            func.set_description(ctx, func_spec_data.description())
+                .await?;
+            func.set_handler(ctx, Some(func_spec_data.handler()))
+                .await?;
             func.set_hidden(ctx, func.hidden()).await?;
             func.set_link(ctx, func_spec.link().map(|l| l.to_string()))
                 .await?;
@@ -225,13 +242,21 @@ async fn create_schema(
     let mut schema = match existing_schema {
         None => {
             let mut schema = Schema::new(ctx, schema_spec.name(), &ComponentKind::Standard).await?;
-            schema.set_ui_hidden(ctx, schema_spec.ui_hidden()).await?;
+
+            let schema_spec_data = schema_spec
+                .data()
+                .ok_or(PkgError::DataNotFound(schema.name().into()))?;
+
+            schema
+                .set_ui_hidden(ctx, schema_spec_data.ui_hidden())
+                .await?;
+
             let ui_menu = SchemaUiMenu::new(
                 ctx,
-                schema_spec
+                schema_spec_data
                     .category_name()
                     .unwrap_or_else(|| schema_spec.name()),
-                schema_spec.category(),
+                schema_spec_data.category(),
             )
             .await?;
             ui_menu.set_schema(ctx, schema.id()).await?;
@@ -259,14 +284,18 @@ async fn create_schema(
 
     let mut installed_schema_variant_ids = vec![];
     for variant_spec in schema_spec.variants()? {
-        let func_unique_id = variant_spec.func_unique_id();
+        let variant_spec_data = variant_spec
+            .data()
+            .ok_or(PkgError::DataNotFound(schema_spec.name().into()))?;
+
+        let func_unique_id = variant_spec_data.func_unique_id().to_owned();
         let schema_variant_id =
             create_schema_variant(ctx, &mut schema, variant_spec, installed_pkg_id, func_map)
                 .await?;
         installed_schema_variant_ids.push(schema_variant_id);
 
         let asset_func = func_map
-            .get(&func_unique_id)
+            .get(&func_unique_id.clone())
             .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?;
 
         create_schema_variant_definition(
@@ -361,7 +390,7 @@ async fn create_schema_variant_definition(
 
 #[derive(Clone, Debug)]
 struct AttrFuncInfo {
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
     prop_id: PropId,
     inputs: Vec<SiPkgAttrFuncInputView>,
 }
@@ -405,7 +434,7 @@ async fn create_leaf_function(
         .map(|input| input.into())
         .collect();
 
-    match func_map.get(&leaf_func.func_unique_id()) {
+    match func_map.get(&leaf_func.func_unique_id().to_owned()) {
         Some(func) => {
             SchemaVariant::upsert_leaf_function(
                 ctx,
@@ -463,9 +492,14 @@ async fn create_socket(
     let (identity_func, identity_func_binding, identity_fbrv, _) = get_identity_func(ctx).await?;
 
     let name = socket_spec.name();
-    let arity = socket_spec.arity();
 
-    let mut socket = match socket_spec.kind() {
+    let data = socket_spec
+        .data()
+        .ok_or(PkgError::DataNotFound(name.into()))?;
+
+    let arity = data.arity();
+
+    let mut socket = match data.kind() {
         SocketSpecKind::Input => {
             let (_, socket) = InternalProvider::new_explicit_with_socket(
                 ctx,
@@ -479,7 +513,7 @@ async fn create_socket(
             )
             .await?;
 
-            if let Some(func_unique_id) = socket_spec.func_unique_id() {
+            if let Some(func_unique_id) = data.func_unique_id() {
                 dbg!(
                     "Input socket that is set by a function?",
                     func_unique_id,
@@ -504,7 +538,7 @@ async fn create_socket(
             )
             .await?;
 
-            if let Some(func_unique_id) = socket_spec.func_unique_id() {
+            if let Some(func_unique_id) = data.func_unique_id() {
                 create_attribute_function_for_output_socket(
                     ctx,
                     schema_variant_id,
@@ -520,7 +554,7 @@ async fn create_socket(
         }
     };
 
-    socket.set_ui_hidden(ctx, socket_spec.ui_hidden()).await?;
+    socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
 
     Ok(())
 }
@@ -531,12 +565,11 @@ async fn create_action_func(
     schema_variant_id: SchemaVariantId,
     func_map: &FuncMap,
 ) -> PkgResult<()> {
-    let func =
-        func_map
-            .get(&action_func_spec.func_unique_id())
-            .ok_or(PkgError::MissingFuncUniqueId(
-                action_func_spec.func_unique_id().to_string(),
-            ))?;
+    let func = func_map
+        .get(&action_func_spec.func_unique_id().to_owned())
+        .ok_or(PkgError::MissingFuncUniqueId(
+            action_func_spec.func_unique_id().to_string(),
+        ))?;
 
     ActionPrototype::new(
         ctx,
@@ -611,7 +644,12 @@ async fn create_schema_variant(
                 .set_default_schema_variant_id(ctx, Some(schema_variant.id()))
                 .await?;
 
-            if let Some(color) = variant_spec.color() {
+            let variant_spec_data = variant_spec.data().ok_or(PkgError::DataNotFound(format!(
+                "variant for {}",
+                schema.name()
+            )))?;
+
+            if let Some(color) = variant_spec_data.color() {
                 schema_variant.set_color(ctx, color.to_owned()).await?;
             }
 
@@ -650,7 +688,7 @@ async fn create_schema_variant(
             };
 
             schema_variant
-                .finalize(ctx, Some(variant_spec.component_type().into()))
+                .finalize(ctx, Some(variant_spec_data.component_type().into()))
                 .await?;
 
             for action_func in variant_spec.action_funcs()? {
@@ -696,7 +734,7 @@ async fn create_schema_variant(
                     ctx,
                     *schema_variant.id(),
                     AttrFuncInfo {
-                        func_unique_id: si_prop_func.func_unique_id(),
+                        func_unique_id: si_prop_func.func_unique_id().to_owned(),
                         prop_id: *prop.id(),
                         inputs: si_prop_func
                             .inputs()?
@@ -739,7 +777,7 @@ async fn create_schema_variant(
             }
 
             schema_variant
-                .finalize(ctx, Some(variant_spec.component_type().into()))
+                .finalize(ctx, Some(variant_spec_data.component_type().into()))
                 .await?;
 
             *schema_variant.id()
@@ -819,12 +857,12 @@ async fn create_attribute_function_for_output_socket(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
     external_provider_id: ExternalProviderId,
-    func_unique_id: FuncUniqueId,
+    func_unique_id: &str,
     inputs: Vec<SiPkgAttrFuncInputView>,
     func_map: &FuncMap,
 ) -> PkgResult<()> {
     let func = func_map
-        .get(&func_unique_id)
+        .get(&func_unique_id.to_string())
         .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?;
 
     create_attribute_function(
@@ -1053,80 +1091,38 @@ async fn create_prop(
     parent_prop_id: Option<PropId>,
     ctx: &PropVisitContext<'_, '_>,
 ) -> PkgResult<Option<PropId>> {
+    let data = match &spec {
+        SiPkgProp::Array { data, .. }
+        | SiPkgProp::Boolean { data, .. }
+        | SiPkgProp::Map { data, .. }
+        | SiPkgProp::Number { data, .. }
+        | SiPkgProp::Object { data, .. }
+        | SiPkgProp::String { data, .. } => data
+            .to_owned()
+            .ok_or(PkgError::DataNotFound(format!("prop {}", spec.name())))?,
+    };
+
     let mut prop = Prop::new(
         ctx.ctx,
         spec.name(),
         match &spec {
-            SiPkgProp::String { .. } => PropKind::String,
-            SiPkgProp::Number { .. } => PropKind::Integer,
+            SiPkgProp::Array { .. } => PropKind::Array,
             SiPkgProp::Boolean { .. } => PropKind::Boolean,
             SiPkgProp::Map { .. } => PropKind::Map,
-            SiPkgProp::Array { .. } => PropKind::Array,
+            SiPkgProp::Number { .. } => PropKind::Integer,
             SiPkgProp::Object { .. } => PropKind::Object,
+            SiPkgProp::String { .. } => PropKind::String,
         },
-        match &spec {
-            SiPkgProp::String {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Number {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Boolean {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Map {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Array {
-                widget_kind,
-                widget_options,
-                ..
-            }
-            | SiPkgProp::Object {
-                widget_kind,
-                widget_options,
-                ..
-            } => Some((widget_kind.into(), widget_options.to_owned())),
-        },
+        Some(((&data.widget_kind).into(), data.widget_options)),
         ctx.schema_variant_id,
         parent_prop_id,
     )
     .await
     .map_err(SiPkgError::visit_prop)?;
 
-    prop.set_hidden(
-        ctx.ctx,
-        match &spec {
-            SiPkgProp::String { hidden, .. }
-            | SiPkgProp::Number { hidden, .. }
-            | SiPkgProp::Boolean { hidden, .. }
-            | SiPkgProp::Map { hidden, .. }
-            | SiPkgProp::Array { hidden, .. }
-            | SiPkgProp::Object { hidden, .. } => *hidden,
-        },
-    )
-    .await?;
-
-    prop.set_doc_link(
-        ctx.ctx,
-        match &spec {
-            SiPkgProp::String { doc_link, .. }
-            | SiPkgProp::Number { doc_link, .. }
-            | SiPkgProp::Boolean { doc_link, .. }
-            | SiPkgProp::Map { doc_link, .. }
-            | SiPkgProp::Array { doc_link, .. }
-            | SiPkgProp::Object { doc_link, .. } => doc_link.as_ref().map(|l| l.to_string()),
-        },
-    )
-    .await?;
+    prop.set_hidden(ctx.ctx, data.hidden).await?;
+    prop.set_doc_link(ctx.ctx, data.doc_link.as_ref().map(|l| l.to_string()))
+        .await?;
 
     let prop_id = *prop.id();
 
@@ -1136,23 +1132,42 @@ async fn create_prop(
     // mutability (maybe there's a better type for that here?)
 
     if let Some(default_value_info) = match &spec {
-        SiPkgProp::String { default_value, .. } => {
-            default_value.as_ref().map(|dv| DefaultValueInfo::String {
-                prop_id,
-                default_value: dv.to_owned(),
-            })
+        SiPkgProp::String { .. } => {
+            if let Some(serde_json::Value::String(default_value)) = data.default_value {
+                Some(DefaultValueInfo::String {
+                    prop_id,
+                    default_value,
+                })
+            } else {
+                // Raise error here for type mismatch
+                None
+            }
         }
-        SiPkgProp::Number { default_value, .. } => {
-            default_value.map(|default_value| DefaultValueInfo::Number {
-                prop_id,
-                default_value,
-            })
+        SiPkgProp::Number { .. } => {
+            if let Some(serde_json::Value::Number(default_value_number)) = data.default_value {
+                if default_value_number.is_i64() {
+                    default_value_number
+                        .as_i64()
+                        .map(|dv_i64| DefaultValueInfo::Number {
+                            prop_id,
+                            default_value: dv_i64,
+                        })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         }
-        SiPkgProp::Boolean { default_value, .. } => {
-            default_value.map(|default_value| DefaultValueInfo::Boolean {
-                prop_id,
-                default_value,
-            })
+        SiPkgProp::Boolean { .. } => {
+            if let Some(serde_json::Value::Bool(default_value)) = data.default_value {
+                Some(DefaultValueInfo::Boolean {
+                    prop_id,
+                    default_value,
+                })
+            } else {
+                None
+            }
         }
         // Default values for complex types are not yet supported in packages
         _ => None,
@@ -1169,7 +1184,7 @@ async fn create_prop(
             ctx.map_key_funcs.lock().await.push((
                 key.to_owned(),
                 AttrFuncInfo {
-                    func_unique_id,
+                    func_unique_id: func_unique_id.to_owned(),
                     prop_id,
                     inputs: inputs.drain(..).map(Into::into).collect(),
                 },
@@ -1177,10 +1192,10 @@ async fn create_prop(
         }
     }
 
-    if let Some(func_unique_id) = spec.func_unique_id() {
+    if let Some(func_unique_id) = data.func_unique_id {
         let mut inputs = spec.inputs()?;
         ctx.attr_funcs.lock().await.push(AttrFuncInfo {
-            func_unique_id,
+            func_unique_id: func_unique_id.to_owned(),
             prop_id,
             inputs: inputs.drain(..).map(Into::into).collect(),
         });

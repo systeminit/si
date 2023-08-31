@@ -10,7 +10,7 @@ use object_tree::{
 
 use crate::{AttrFuncInputSpec, AttrFuncInputSpecKind};
 
-use super::PkgNode;
+use super::{read_common_fields, write_common_fields, PkgNode};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
@@ -20,9 +20,24 @@ const KEY_SOCKET_NAME_STR: &str = "socket_name";
 #[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum AttrFuncInputNode {
-    InputSocket { name: String, socket_name: String },
-    OutputSocket { name: String, socket_name: String },
-    Prop { name: String, prop_path: String },
+    InputSocket {
+        name: String,
+        socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
+    OutputSocket {
+        name: String,
+        socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
+    Prop {
+        name: String,
+        prop_path: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
 }
 
 impl NameStr for AttrFuncInputNode {
@@ -59,6 +74,20 @@ impl WriteBytes for AttrFuncInputNode {
             }
         }
 
+        match self {
+            Self::InputSocket {
+                unique_id, deleted, ..
+            }
+            | Self::OutputSocket {
+                unique_id, deleted, ..
+            }
+            | Self::Prop {
+                unique_id, deleted, ..
+            } => {
+                write_common_fields(writer, unique_id.as_deref(), *deleted)?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -72,18 +101,37 @@ impl ReadBytes for AttrFuncInputNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let kind = AttrFuncInputSpecKind::from_str(&kind_str).map_err(GraphError::parse)?;
+
         Ok(match kind {
             AttrFuncInputSpecKind::Prop => {
                 let prop_path = read_key_value_line(reader, KEY_PROP_PATH_STR)?;
-                Self::Prop { name, prop_path }
+                let (unique_id, deleted) = read_common_fields(reader)?;
+                Self::Prop {
+                    name,
+                    prop_path,
+                    unique_id,
+                    deleted,
+                }
             }
             AttrFuncInputSpecKind::InputSocket => {
                 let socket_name = read_key_value_line(reader, KEY_SOCKET_NAME_STR)?;
-                Self::InputSocket { name, socket_name }
+                let (unique_id, deleted) = read_common_fields(reader)?;
+                Self::InputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                }
             }
             AttrFuncInputSpecKind::OutputSocket => {
                 let socket_name = read_key_value_line(reader, KEY_SOCKET_NAME_STR)?;
-                Self::OutputSocket { name, socket_name }
+                let (unique_id, deleted) = read_common_fields(reader)?;
+                Self::OutputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                }
             }
         })
     }
@@ -95,23 +143,40 @@ impl NodeChild for AttrFuncInputSpec {
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         NodeWithChildren::new(
             NodeKind::Leaf,
-            Self::NodeType::AttrFuncInput(match self {
-                AttrFuncInputSpec::Prop { name, prop_path } => AttrFuncInputNode::Prop {
-                    name: name.clone(),
-                    prop_path: prop_path.clone(),
+            Self::NodeType::AttrFuncInput(match self.to_owned() {
+                AttrFuncInputSpec::Prop {
+                    name,
+                    prop_path,
+                    unique_id,
+                    deleted,
+                } => AttrFuncInputNode::Prop {
+                    name,
+                    prop_path,
+                    unique_id,
+                    deleted,
                 },
-                AttrFuncInputSpec::InputSocket { name, socket_name } => {
-                    AttrFuncInputNode::InputSocket {
-                        name: name.clone(),
-                        socket_name: socket_name.clone(),
-                    }
-                }
-                AttrFuncInputSpec::OutputSocket { name, socket_name } => {
-                    AttrFuncInputNode::OutputSocket {
-                        name: name.clone(),
-                        socket_name: socket_name.clone(),
-                    }
-                }
+                AttrFuncInputSpec::InputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                } => AttrFuncInputNode::InputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                },
+                AttrFuncInputSpec::OutputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                } => AttrFuncInputNode::OutputSocket {
+                    name,
+                    socket_name,
+                    unique_id,
+                    deleted,
+                },
             }),
             vec![],
         )

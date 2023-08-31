@@ -6,17 +6,41 @@ use super::{SchemaVariantSpec, SpecError};
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
-pub struct SchemaSpec {
+pub struct SchemaSpecData {
     #[builder(setter(into))]
     pub name: String,
     #[builder(setter(into))]
     pub category: String,
     #[builder(setter(into, strip_option), default)]
     pub category_name: Option<String>,
-    #[builder(setter(each(name = "variant", into)), default)]
-    pub variants: Vec<SchemaVariantSpec>,
     #[builder(setter(into), default)]
     pub ui_hidden: bool,
+}
+
+impl SchemaSpecData {
+    #[must_use]
+    pub fn builder() -> SchemaSpecDataBuilder {
+        SchemaSpecDataBuilder::default()
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct SchemaSpec {
+    #[builder(setter(into))]
+    pub name: String,
+    #[builder(setter(into, strip_option), default)]
+    pub data: Option<SchemaSpecData>,
+    #[builder(setter(into, strip_option), default)]
+    #[serde(default)]
+    pub unique_id: Option<String>,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub deleted: bool,
+
+    #[builder(setter(each(name = "variant", into)), default)]
+    pub variants: Vec<SchemaVariantSpec>,
 }
 
 impl SchemaSpec {

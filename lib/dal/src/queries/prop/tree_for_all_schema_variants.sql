@@ -10,7 +10,8 @@ WITH RECURSIVE props_tree AS (SELECT row_to_json(p.*)    AS object,
                                      ident_nil_v1()      AS parent_id,
                                      0::bigint           AS depth,
                                      p.hidden            AS hidden,
-                                     p.schema_variant_id AS schema_variant_id
+                                     p.schema_variant_id AS schema_variant_id,
+                                     p.visibility_change_set_pk AS visibility_change_set_pk
                               FROM props_v1($1, $2) AS p
                                        LEFT JOIN prop_belongs_to_prop_v1($1, $2) AS pbtp
                                                  ON p.id = pbtp.object_id
@@ -25,7 +26,8 @@ WITH RECURSIVE props_tree AS (SELECT row_to_json(p.*)    AS object,
                                      parent.prop_id                    AS parent_id,
                                      parent.depth + 1                  AS depth,
                                      child_props.hidden                AS hidden,
-                                     child_props.schema_variant_id     AS schema_variant_id
+                                     child_props.schema_variant_id     AS schema_variant_id,
+                                     child_props.visibility_change_set_pk AS visibility_change_set_pk
                               FROM props_v1($1, $2) AS child_props
                                        JOIN prop_belongs_to_prop_v1($1, $2) AS pbtp2
                                             ON child_props.id = pbtp2.object_id
@@ -38,6 +40,7 @@ SELECT props_tree.object,
        props_tree.name,
        props_tree.path,
        props_tree.schema_variant_id,
+       props_tree.visibility_change_set_pk,
        ip.id AS internal_provider_id
 FROM props_tree
          LEFT JOIN internal_providers_v1($1, $2) ip ON props_tree.prop_id = ip.prop_id

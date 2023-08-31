@@ -7,7 +7,8 @@ use axum::{
 use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
-    StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
+    SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
+    UserError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -67,6 +68,12 @@ pub enum PkgError {
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
+    #[error("schema not found for variant {0}")]
+    SchemaNotFoundForVariant(SchemaVariantId),
+    #[error(transparent)]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not found {0}")]
+    SchemaVariantNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

@@ -311,7 +311,7 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
         for leaf_kind in LeafKind::iter() {
             let leaf_funcs =
                 SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?;
-            for func in leaf_funcs {
+            for (_, func) in leaf_funcs {
                 let input_locations = get_leaf_function_inputs(ctx, *func.id()).await?;
                 leaf_func_migrations.push(LeafFuncMigration {
                     func: func.to_owned(),

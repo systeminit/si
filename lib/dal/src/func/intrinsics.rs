@@ -1,6 +1,6 @@
 use si_pkg::{
     FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    PkgSpec,
+    FuncSpecData, PkgSpec,
 };
 
 use super::{FuncError, FuncResult};
@@ -43,13 +43,21 @@ impl IntrinsicFunc {
     pub fn to_spec(&self) -> FuncResult<FuncSpec> {
         let mut builder = FuncSpec::builder();
         builder.name(self.name());
-        builder.handler("");
-        builder.code_plaintext("");
 
+        let mut data_builder = FuncSpecData::builder();
+        data_builder
+            .name(self.name())
+            .handler("")
+            .code_plaintext("");
+
+        // These magic unique ids are here to keep them consistent with the intrinsic ids in the
+        // existing builtin packages (chicken/egg problem here a bit)
         match self {
             Self::Identity => {
-                builder.backend_kind(FuncSpecBackendKind::Identity);
-                builder.response_type(FuncSpecBackendResponseType::Identity);
+                builder
+                    .unique_id("c6938e12287ab65f8ba8234559178413f2e2c02c44ea08384ed6687a36ec4f50");
+                data_builder.backend_kind(FuncSpecBackendKind::Identity);
+                data_builder.response_type(FuncSpecBackendResponseType::Identity);
                 builder.argument(
                     FuncArgumentSpec::builder()
                         .name("identity")
@@ -59,40 +67,61 @@ impl IntrinsicFunc {
                 );
             }
             Self::SetArray => {
-                builder.backend_kind(FuncSpecBackendKind::Array);
-                builder.response_type(FuncSpecBackendResponseType::Array);
+                builder
+                    .unique_id("51049a590fb64860f159972012ac2657c629479a244d6bcc4b1b73ba4b29f87f");
+                data_builder.backend_kind(FuncSpecBackendKind::Array);
+                data_builder.response_type(FuncSpecBackendResponseType::Array);
             }
             Self::SetBoolean => {
-                builder.backend_kind(FuncSpecBackendKind::Boolean);
-                builder.response_type(FuncSpecBackendResponseType::Boolean);
+                builder
+                    .unique_id("577a7deea25cfad0d4b2dd1e1f3d96b86b8b1578605137b8c4128d644c86964b");
+                data_builder.backend_kind(FuncSpecBackendKind::Boolean);
+                data_builder.response_type(FuncSpecBackendResponseType::Boolean);
             }
             Self::SetInteger => {
-                builder.backend_kind(FuncSpecBackendKind::Integer);
-                builder.response_type(FuncSpecBackendResponseType::Integer);
+                builder
+                    .unique_id("7d384b237852f20b8dec2fbd2e644ffc6bde901d7dc937bd77f50a0d57e642a9");
+                data_builder.backend_kind(FuncSpecBackendKind::Integer);
+                data_builder.response_type(FuncSpecBackendResponseType::Integer);
             }
             Self::SetMap => {
-                builder.backend_kind(FuncSpecBackendKind::Map);
-                builder.response_type(FuncSpecBackendResponseType::Map);
+                builder
+                    .unique_id("dea5084fbf6e7fe8328ac725852b96f4b5869b14d0fe9dd63a285fa876772496");
+                data_builder.backend_kind(FuncSpecBackendKind::Map);
+                data_builder.response_type(FuncSpecBackendResponseType::Map);
             }
             Self::SetObject => {
-                builder.backend_kind(FuncSpecBackendKind::Object);
-                builder.response_type(FuncSpecBackendResponseType::Object);
+                builder
+                    .unique_id("cb9bf94739799f3a8b84bcb88495f93b27b47c31a341f8005a60ca39308909fd");
+                data_builder.backend_kind(FuncSpecBackendKind::Object);
+                data_builder.response_type(FuncSpecBackendResponseType::Object);
             }
             Self::SetString => {
-                builder.backend_kind(FuncSpecBackendKind::String);
-                builder.response_type(FuncSpecBackendResponseType::String);
+                builder
+                    .unique_id("bbe86d1a2b92c3e34b72a407cca424878d3466d29ca60e56a251a52a0840bfbd");
+                data_builder.backend_kind(FuncSpecBackendKind::String);
+                data_builder.response_type(FuncSpecBackendResponseType::String);
             }
             Self::Unset => {
-                builder.backend_kind(FuncSpecBackendKind::Unset);
-                builder.response_type(FuncSpecBackendResponseType::Unset);
+                builder
+                    .unique_id("8143ff98fbe8954bb3ab89ee521335d45ba9a42b7b79289eff53b503c4392c37");
+                data_builder.backend_kind(FuncSpecBackendKind::Unset);
+                data_builder.response_type(FuncSpecBackendResponseType::Unset);
             }
             Self::Validation => {
-                builder.backend_kind(FuncSpecBackendKind::Validation);
-                builder.response_type(FuncSpecBackendResponseType::Validation);
+                builder
+                    .unique_id("039ff70bc7922338978ab52a39156992b7d8e3390f0ef7e99d5b6ffd43141d8a");
+                data_builder.backend_kind(FuncSpecBackendKind::Validation);
+                data_builder.response_type(FuncSpecBackendResponseType::Validation);
             }
         };
 
+        let data = data_builder
+            .build()
+            .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?;
+
         builder
+            .data(data)
             .build()
             .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))
     }

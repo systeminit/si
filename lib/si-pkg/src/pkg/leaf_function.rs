@@ -5,15 +5,18 @@ use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
     node::PkgNode,
-    spec::{FuncUniqueId, LeafInputLocation, LeafKind},
+    spec::{LeafInputLocation, LeafKind},
     LeafFunctionSpec,
 };
 
 #[derive(Clone, Debug)]
 pub struct SiPkgLeafFunction<'a> {
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
     leaf_kind: LeafKind,
+    unique_id: Option<String>,
+    deleted: bool,
     inputs: Vec<LeafInputLocation>,
+
     hash: Hash,
     source: Source<'a>,
 }
@@ -51,18 +54,29 @@ impl<'a> SiPkgLeafFunction<'a> {
         Ok(Self {
             func_unique_id: node.func_unique_id,
             leaf_kind: node.leaf_kind,
+            unique_id: node.unique_id,
+            deleted: node.deleted,
             inputs,
+
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
     }
 
-    pub fn func_unique_id(&self) -> FuncUniqueId {
-        self.func_unique_id
+    pub fn func_unique_id(&self) -> &str {
+        self.func_unique_id.as_str()
     }
 
     pub fn leaf_kind(&self) -> LeafKind {
         self.leaf_kind
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
     }
 
     pub fn inputs(&self) -> &[LeafInputLocation] {
@@ -85,6 +99,8 @@ impl<'a> TryFrom<SiPkgLeafFunction<'a>> for LeafFunctionSpec {
         Ok(LeafFunctionSpec::builder()
             .leaf_kind(value.leaf_kind)
             .func_unique_id(value.func_unique_id)
+            .unique_id(value.unique_id)
+            .deleted(value.deleted)
             .inputs(value.inputs)
             .build()?)
     }

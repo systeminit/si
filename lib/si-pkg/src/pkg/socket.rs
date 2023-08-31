@@ -3,15 +3,44 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, Source};
 
-use crate::{node::PkgNode, FuncUniqueId, SocketSpec, SocketSpecArity, SocketSpecKind};
+use crate::spec::SocketSpecData;
+use crate::{node::PkgNode, SocketSpec, SocketSpecArity, SocketSpecKind};
+
+#[derive(Clone, Debug)]
+pub struct SiPkgSocketData {
+    name: String,
+    func_unique_id: Option<String>,
+    kind: SocketSpecKind,
+    arity: SocketSpecArity,
+    ui_hidden: bool,
+}
+
+impl SiPkgSocketData {
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+    pub fn func_unique_id(&self) -> Option<&str> {
+        self.func_unique_id.as_deref()
+    }
+
+    pub fn kind(&self) -> SocketSpecKind {
+        self.kind
+    }
+
+    pub fn arity(&self) -> SocketSpecArity {
+        self.arity
+    }
+
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSocket<'a> {
-    func_unique_id: Option<FuncUniqueId>,
-    kind: SocketSpecKind,
     name: String,
-    arity: SocketSpecArity,
-    ui_hidden: bool,
+    data: Option<SiPkgSocketData>,
+    unique_id: Option<String>,
 
     hash: Hash,
     source: Source<'a>,
@@ -34,11 +63,16 @@ impl<'a> SiPkgSocket<'a> {
         };
 
         Ok(Self {
-            func_unique_id: node.func_unique_id,
-            arity: node.arity,
-            kind: node.kind,
             name: node.name,
-            ui_hidden: node.ui_hidden,
+            data: node.data.map(|data| SiPkgSocketData {
+                name: data.name,
+                kind: data.kind,
+                func_unique_id: data.func_unique_id,
+                arity: data.arity,
+                ui_hidden: data.ui_hidden,
+            }),
+            unique_id: node.unique_id,
+
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
@@ -58,18 +92,6 @@ impl<'a> SiPkgSocket<'a> {
         Ok(inputs)
     }
 
-    pub fn arity(&self) -> SocketSpecArity {
-        self.arity
-    }
-
-    pub fn func_unique_id(&self) -> Option<FuncUniqueId> {
-        self.func_unique_id
-    }
-
-    pub fn kind(&self) -> SocketSpecKind {
-        self.kind
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -78,8 +100,12 @@ impl<'a> SiPkgSocket<'a> {
         self.hash
     }
 
-    pub fn ui_hidden(&self) -> bool {
-        self.ui_hidden
+    pub fn data(&self) -> Option<&SiPkgSocketData> {
+        self.data.as_ref()
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
     }
 
     pub fn source(&self) -> &Source<'a> {
@@ -94,11 +120,20 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
         let mut builder = SocketSpec::builder();
 
         builder
-            .kind(value.kind)
-            .name(value.name())
-            .func_unique_id(value.func_unique_id)
-            .arity(value.arity)
-            .ui_hidden(value.ui_hidden);
+            .name(&value.name)
+            .unique_id(value.unique_id.to_owned());
+
+        if let Some(data) = &value.data {
+            let mut data_builder = SocketSpecData::builder();
+            if let Some(func_unique_id) = &data.func_unique_id {
+                data_builder.func_unique_id(func_unique_id);
+            }
+            data_builder
+                .name(&data.name)
+                .kind(data.kind)
+                .arity(data.arity)
+                .ui_hidden(data.ui_hidden);
+        }
 
         for input in value.inputs()? {
             builder.input(input.try_into()?);

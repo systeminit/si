@@ -1,17 +1,172 @@
 use base64::{engine::general_purpose, Engine};
-use dal::func::intrinsics::IntrinsicFunc;
 use dal::{
-    func::backend::validation::FuncBackendValidationArgs, installed_pkg::*, pkg::*,
-    schema::variant::leaves::LeafKind, validation::Validation, DalContext, ExternalProvider, Func,
-    InternalProvider, Schema, SchemaVariant, StandardModel, ValidationPrototype,
+    func::backend::validation::FuncBackendValidationArgs, func::intrinsics::IntrinsicFunc,
+    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, validation::Validation, ChangeSet,
+    ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider, Schema, SchemaVariant,
+    StandardModel, ValidationPrototype,
 };
-use dal_test::test;
+use dal_test::{test, DalContextHeadRef};
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind, PkgSpec, PropSpec,
-    PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecArity,
-    SocketSpecKind, ValidationSpec, ValidationSpecKind,
+    PropSpecKind, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
+    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind, ValidationSpec,
+    ValidationSpecKind,
 };
+
+#[test]
+async fn test_workspace_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
+    let new_change_set = ChangeSet::new(ctx, "cs1", None)
+        .await
+        .expect("can create change set");
+
+    let cs_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_change_set.pk));
+
+    let mut func = Func::find_by_name(&cs_ctx, "test:refreshActionStarfield")
+        .await
+        .expect("able to get refreshActionStarfield")
+        .expect("func exists");
+
+    func.delete_by_id(&cs_ctx).await.expect("able to delete");
+
+    cs_ctx.blocking_commit().await.expect("able to commit");
+
+    let change_set_2 = ChangeSet::new(ctx, "cs2", None)
+        .await
+        .expect("can create change set");
+    let cs2_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(change_set_2.pk));
+
+    let mut func = Func::find_by_name(&cs2_ctx, "test:refreshActionStarfield")
+        .await
+        .expect("able to get refreshActionStarfield")
+        .expect("func exists");
+
+    func.set_display_name(&cs2_ctx, Some("foo"))
+        .await
+        .expect("set display name");
+    cs2_ctx.blocking_commit().await.expect("able to commit");
+
+    let mut exporter = PkgExporter::new_workspace_exporter("workspace", "sally@systeminit.com");
+
+    let package_bytes = exporter.export_as_bytes(ctx).await.expect("able to export");
+
+    let pkg = SiPkg::load_from_bytes(package_bytes).expect("able to load from bytes");
+    let spec = pkg.to_spec().await.expect("can convert to spec");
+
+    assert_eq!(Some("head"), spec.default_change_set.as_deref());
+    assert_eq!(3, spec.change_sets.len());
+
+    let cs1 = spec.change_sets.get(2).expect("has second change set");
+
+    assert_eq!("cs1", &cs1.name);
+    assert_eq!(Some("head"), cs1.based_on_change_set.as_deref());
+
+    assert_eq!(1, cs1.funcs.len());
+    let refresh_func_in_changeset = cs1.funcs.get(0).expect("get first func");
+    assert_eq!(
+        "test:refreshActionStarfield",
+        &refresh_func_in_changeset.name
+    );
+    assert!(matches!(refresh_func_in_changeset.data, None));
+    assert!(refresh_func_in_changeset.deleted);
+
+    let cs2 = spec.change_sets.get(1).expect("has second change set");
+
+    assert_eq!("cs2", &cs2.name);
+    assert_eq!(Some("head"), cs2.based_on_change_set.as_deref());
+
+    assert_eq!(1, cs2.funcs.len());
+    let refresh_func_in_changeset = cs2.funcs.get(0).expect("get first func");
+
+    assert_eq!(
+        Some("foo"),
+        refresh_func_in_changeset
+            .data
+            .as_ref()
+            .and_then(|data| data.display_name.as_deref())
+    );
+}
+
+#[test]
+async fn test_module_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
+    let generic_frame_id = Schema::find_by_name(ctx, "Generic Frame")
+        .await
+        .expect("get generic frame")
+        .id()
+        .to_owned();
+
+    let starfield_id = Schema::find_by_name(ctx, "starfield")
+        .await
+        .expect("get starfield")
+        .id()
+        .to_owned();
+
+    let fallout_id = Schema::find_by_name(ctx, "fallout")
+        .await
+        .expect("get fallout")
+        .id()
+        .to_owned();
+
+    let schema_ids = vec![generic_frame_id, starfield_id, fallout_id];
+
+    let mut exporter = PkgExporter::new_module_exporter(
+        "module",
+        "test-version",
+        None::<String>,
+        "sally@systeminit.com",
+        schema_ids,
+    );
+
+    let package_bytes = exporter.export_as_bytes(ctx).await.expect("able to export");
+
+    let pkg = SiPkg::load_from_bytes(package_bytes).expect("able to load from bytes");
+    let _spec = pkg.to_spec().await.expect("can convert to spec");
+
+    let new_change_set = ChangeSet::new(ctx, "cs1", None)
+        .await
+        .expect("can create change set");
+
+    let new_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_change_set.pk));
+    import_pkg_from_pkg(
+        &new_ctx,
+        &pkg,
+        pkg.metadata().expect("get metadata").name(),
+        None,
+    )
+    .await
+    .expect("able to import pkg");
+
+    let sv_change_sets: Vec<ChangeSetPk> = SchemaVariant::list(&new_ctx)
+        .await
+        .expect("get svs again")
+        .iter()
+        .map(|sv| sv.visibility().change_set_pk)
+        .collect();
+
+    let installed_variants = sv_change_sets
+        .into_iter()
+        .filter(|cspk| *cspk == new_change_set.pk)
+        .collect::<Vec<ChangeSetPk>>();
+
+    assert_eq!(3, installed_variants.len());
+
+    let installed_schemas: Vec<Schema> = Schema::list(&new_ctx)
+        .await
+        .expect("get schemas")
+        .into_iter()
+        .filter(|schema| schema.visibility().change_set_pk == new_change_set.pk)
+        .collect();
+
+    let generic_frame = installed_schemas
+        .iter()
+        .find(|schema| schema.name() == "Generic Frame")
+        .expect("able to find generic frame");
+
+    dbg!(generic_frame
+        .ui_menus(&new_ctx)
+        .await
+        .expect("get ui menus for generic frame"));
+}
 
 #[test]
 async fn test_install_pkg(ctx: &DalContext) {
@@ -20,18 +175,25 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let qualification_func_spec = FuncSpec::builder()
         .name("si:qualificationWarning")
-        .display_name("warning")
-        .description("it warns")
-        .handler("qualification")
-        .code_base64(&qualification_b64)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .response_type(FuncSpecBackendResponseType::Qualification)
-        .hidden(false)
+        .unique_id("si:qualificationWarning")
+        .data(
+            FuncSpecData::builder()
+                .name("si:qualificationWarning")
+                .display_name("warning")
+                .description("it warns")
+                .handler("qualification")
+                .code_base64(&qualification_b64)
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Qualification)
+                .hidden(false)
+                .build()
+                .expect("able to build func data for qual"),
+        )
         .build()
         .expect("build qual func spec");
 
     let qualification_spec = LeafFunctionSpec::builder()
-        .func_unique_id(qualification_func_spec.unique_id)
+        .func_unique_id(&qualification_func_spec.unique_id)
         .leaf_kind(PkgLeafKind::Qualification)
         .inputs(vec![
             PkgLeafInputLocation::Domain,
@@ -44,23 +206,42 @@ async fn test_install_pkg(ctx: &DalContext) {
                 return new AssetBuilder().build();
             }";
     let scaffold_func_spec_a = FuncSpec::builder()
-        .name("si:scaffoldFunc")
-        .code_plaintext(scaffold_func_a)
-        .handler("createAsset")
-        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .name("si:scaffoldFuncA")
+        .unique_id("si:scaffoldFuncA")
+        .data(
+            FuncSpecData::builder()
+                .name("si:scaffoldFuncA")
+                .code_plaintext(scaffold_func_a)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()
+                .expect("build func data"),
+        )
         .build()
         .expect("could not build schema variant definition spec");
 
     let schema_a = SchemaSpec::builder()
         .name("Tyrone Slothrop")
-        .category("Banana Puddings")
-        .ui_hidden(false)
+        .data(
+            SchemaSpecData::builder()
+                .name("Tyrone Slothrop")
+                .category("Banana Puddings")
+                .ui_hidden(false)
+                .build()
+                .expect("you never did the kenosha kid?"),
+        )
         .variant(
             SchemaVariantSpec::builder()
                 .name("Pig Bodine")
-                .color("baddad")
-                .func_unique_id(scaffold_func_spec_a.unique_id)
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .name("Pig Bodine")
+                        .color("baddad")
+                        .func_unique_id(&scaffold_func_spec_a.unique_id)
+                        .build()
+                        .expect("pig bodine"),
+                )
                 .domain_prop(
                     PropSpec::builder()
                         .name("ImpolexG")
@@ -86,13 +267,20 @@ async fn test_install_pkg(ctx: &DalContext) {
     let validation_b64 = general_purpose::STANDARD_NO_PAD.encode(custom_validation_code.as_bytes());
     let validation_func_spec = FuncSpec::builder()
         .name("groucho")
-        .display_name("Horse Feathers")
-        .description("it rejects values")
-        .handler("validate")
-        .code_base64(&validation_b64)
-        .backend_kind(FuncSpecBackendKind::JsValidation)
-        .response_type(FuncSpecBackendResponseType::Validation)
-        .hidden(false)
+        .unique_id("groucho")
+        .data(
+            FuncSpecData::builder()
+                .name("groucho")
+                .display_name("Horse Feathers")
+                .description("it rejects values")
+                .handler("validate")
+                .code_base64(&validation_b64)
+                .backend_kind(FuncSpecBackendKind::JsValidation)
+                .response_type(FuncSpecBackendResponseType::Validation)
+                .hidden(false)
+                .build()
+                .expect("whatever it is, i'm against it"),
+        )
         .build()
         .expect("able to build validation func spec");
 
@@ -100,38 +288,69 @@ async fn test_install_pkg(ctx: &DalContext) {
                 return new AssetBuilder().build();
             }";
     let scaffold_func_spec_b = FuncSpec::builder()
-        .name("si:scaffoldFunc")
-        .code_plaintext(scaffold_func_b)
-        .handler("createAsset")
-        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .name("si:scaffoldFuncB")
+        .unique_id("si:scaffoldFuncB")
+        .data(
+            FuncSpecData::builder()
+                .name("si:scaffoldFuncB")
+                .code_plaintext(scaffold_func_b)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()
+                .expect("scaffold b func data"),
+        )
         .build()
         .expect("could not build schema variant definition spec");
 
     let schema_b = SchemaSpec::builder()
         .name("Roger Mexico")
-        .ui_hidden(false)
-        .category("Banana Puddings")
+        .data(
+            SchemaSpecData::builder()
+                .name("Roger Mexico")
+                .ui_hidden(false)
+                .category("Banana Puddings")
+                .build()
+                .expect("roger mexico data"),
+        )
         .variant(
             SchemaVariantSpec::builder()
                 .name("The Light Bulb Conspiracy")
-                .color("baddad")
-                .func_unique_id(scaffold_func_spec_b.unique_id)
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .name("The Light Bulb Conspiracy")
+                        .color("baddad")
+                        .func_unique_id(&scaffold_func_spec_b.unique_id)
+                        .build()
+                        .expect("light bulb spec data"),
+                )
                 .socket(
                     SocketSpec::builder()
                         .name("AC Power")
-                        .ui_hidden(false)
-                        .kind(SocketSpecKind::Input)
-                        .arity(SocketSpecArity::One)
+                        .data(
+                            SocketSpecData::builder()
+                                .name("AC Power")
+                                .ui_hidden(false)
+                                .kind(SocketSpecKind::Input)
+                                .arity(SocketSpecArity::One)
+                                .build()
+                                .expect("build socket data"),
+                        )
                         .build()
                         .expect("able to make input socket"),
                 )
                 .socket(
                     SocketSpec::builder()
                         .name("Light")
-                        .kind(SocketSpecKind::Output)
-                        .arity(SocketSpecArity::Many)
-                        .ui_hidden(false)
+                        .data(
+                            SocketSpecData::builder()
+                                .name("Light")
+                                .kind(SocketSpecKind::Output)
+                                .arity(SocketSpecArity::Many)
+                                .ui_hidden(false)
+                                .build()
+                                .expect("build light socket data"),
+                        )
                         .build()
                         .expect("able to make output socket"),
                 )
@@ -157,7 +376,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .validation(
                             ValidationSpec::builder()
                                 .kind(ValidationSpecKind::CustomValidation)
-                                .func_unique_id(validation_func_spec.unique_id)
+                                .func_unique_id(&validation_func_spec.unique_id)
                                 .build()
                                 .expect("able to add custom validation"),
                         )
@@ -178,43 +397,22 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let func_spec = FuncSpec::builder()
         .name("si:truthy")
-        .display_name("truth")
-        .description("it returns true")
-        .handler("truth")
-        .code_base64(&code_base64)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .response_type(FuncSpecBackendResponseType::Boolean)
-        .hidden(false)
+        .unique_id("si:truthy")
+        .data(
+            FuncSpecData::builder()
+                .name("si:truthy")
+                .display_name("truth")
+                .description("it returns true")
+                .handler("truth")
+                .code_base64(&code_base64)
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Boolean)
+                .hidden(false)
+                .build()
+                .expect("truth func data"),
+        )
         .build()
         .expect("build func spec");
-
-    let func_spec_2 = FuncSpec::builder()
-        .name("si:truthy")
-        .display_name("truth")
-        .description("it returns true")
-        .handler("truth")
-        .code_base64(&code_base64)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .response_type(FuncSpecBackendResponseType::Boolean)
-        .hidden(false)
-        .build()
-        .expect("build func spec");
-
-    let func_spec_3 = FuncSpec::builder()
-        .name("si:truthy")
-        .display_name("truth")
-        .description("it returns true, but this time with a different description")
-        .handler("truth")
-        .code_base64(&code_base64)
-        .backend_kind(FuncSpecBackendKind::JsAttribute)
-        .response_type(FuncSpecBackendResponseType::Boolean)
-        .hidden(false)
-        .build()
-        .expect("build func spec");
-
-    // Ensure unique ids are stable and change with properties changing
-    assert_eq!(func_spec.unique_id, func_spec_2.unique_id);
-    assert_ne!(func_spec.unique_id, func_spec_3.unique_id);
 
     let spec_a = PkgSpec::builder()
         .name("The White Visitation")
@@ -224,7 +422,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .func(func_spec)
         .func(identity_func_spec.clone())
         .func(qualification_func_spec)
-        .func(scaffold_func_spec_a)
+        .func(scaffold_func_spec_a.clone())
         .build()
         .expect("able to build package spec");
 
@@ -238,6 +436,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .func(identity_func_spec.clone())
         .schema(schema_a)
         .schema(schema_b)
+        .func(scaffold_func_spec_a)
         .func(scaffold_func_spec_b)
         .build()
         .expect("able to build package spec");

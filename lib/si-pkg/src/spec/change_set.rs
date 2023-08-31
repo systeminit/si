@@ -20,10 +20,10 @@ pub struct ChangeSetSpec {
     #[builder(setter(into))]
     pub name: String,
 
-    #[builder(setter(into))]
+    #[builder(setter(into, strip_option), default)]
     pub based_on_change_set: Option<String>,
 
-    #[builder(setter(into))]
+    #[builder(setter(into), default = "ChangeSetSpecStatus::Open")]
     pub status: ChangeSetSpecStatus,
 
     #[builder(setter(each(name = "schema", into)), default)]

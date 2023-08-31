@@ -7,24 +7,54 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgSiPropFunc,
-    SiPkgSocket, Source,
+    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgPropData,
+    SiPkgSiPropFunc, SiPkgSocket, Source,
 };
 
 use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
-    AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
     SchemaVariantSpecPropRoot,
 };
 
 #[derive(Clone, Debug)]
-pub struct SiPkgSchemaVariant<'a> {
+pub struct SiPkgSchemaVariantData {
     name: String,
     link: Option<Url>,
     color: Option<String>,
     component_type: SchemaVariantSpecComponentType,
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
+}
+
+impl SiPkgSchemaVariantData {
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn link(&self) -> Option<&Url> {
+        self.link.as_ref()
+    }
+
+    pub fn color(&self) -> Option<&str> {
+        self.color.as_deref()
+    }
+
+    pub fn component_type(&self) -> SchemaVariantSpecComponentType {
+        self.component_type
+    }
+
+    pub fn func_unique_id(&self) -> &str {
+        self.func_unique_id.as_str()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SiPkgSchemaVariant<'a> {
+    name: String,
+    data: Option<SiPkgSchemaVariantData>,
+    unique_id: Option<String>,
+    deleted: bool,
 
     hash: Hash,
 
@@ -79,36 +109,37 @@ impl<'a> SiPkgSchemaVariant<'a> {
         };
 
         let schema_variant = Self {
-            name: schema_variant_node.name,
-            link: schema_variant_node.link,
-            color: schema_variant_node.color,
-            component_type: schema_variant_node.component_type,
+            name: schema_variant_node.name.to_owned(),
+            data: schema_variant_node.data.map(|data| SiPkgSchemaVariantData {
+                name: schema_variant_node.name,
+                link: data.link,
+                color: data.color,
+                component_type: data.component_type,
+                func_unique_id: data.func_unique_id,
+            }),
+            unique_id: schema_variant_node.unique_id,
+            deleted: schema_variant_node.deleted,
             hash: schema_variant_hashed_node.hash(),
             source: Source::new(graph, node_idx),
-            func_unique_id: schema_variant_node.func_unique_id,
         };
 
         Ok(schema_variant)
+    }
+
+    pub fn data(&self) -> Option<&SiPkgSchemaVariantData> {
+        self.data.as_ref()
     }
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
     }
 
-    pub fn link(&self) -> Option<&Url> {
-        self.link.as_ref()
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
     }
 
-    pub fn color(&self) -> Option<&str> {
-        self.color.as_deref()
-    }
-
-    pub fn component_type(&self) -> SchemaVariantSpecComponentType {
-        self.component_type
-    }
-
-    pub fn func_unique_id(&self) -> FuncUniqueId {
-        self.func_unique_id
+    pub fn deleted(&self) -> bool {
+        self.deleted
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);
@@ -320,16 +351,27 @@ impl<'a> SiPkgSchemaVariant<'a> {
     pub async fn to_spec(&self) -> PkgResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
 
-        builder
-            .name(self.name())
-            .component_type(self.component_type);
+        builder.name(self.name()).deleted(self.deleted);
 
-        if let Some(link) = self.link() {
-            builder.link(link.to_owned());
+        if let Some(unique_id) = self.unique_id() {
+            builder.unique_id(unique_id);
         }
 
-        if let Some(color) = self.color() {
-            builder.color(color);
+        if let Some(data) = self.data() {
+            let mut data_builder = SchemaVariantSpecData::builder();
+
+            data_builder.name(self.name());
+            data_builder.component_type(data.component_type());
+
+            if let Some(link) = data.link() {
+                data_builder.link(link.to_owned());
+            }
+
+            if let Some(color) = data.color() {
+                data_builder.color(color);
+            }
+            data_builder.func_unique_id(data.func_unique_id());
+            builder.data(data_builder.build()?);
         }
 
         for action_func in self.action_funcs()? {
@@ -343,8 +385,6 @@ impl<'a> SiPkgSchemaVariant<'a> {
         for si_prop_func in self.si_prop_funcs()? {
             builder.si_prop_func(si_prop_func.try_into()?);
         }
-
-        builder.func_unique_id(self.func_unique_id);
 
         self.build_prop_specs(SchemaVariantSpecPropRoot::Domain, &mut builder)
             .await?;
@@ -378,24 +418,34 @@ async fn create_prop_stack(
     };
 
     let mut builder = PropSpec::builder();
+    builder.has_data(false);
+
+    let default_value = match &spec {
+        SiPkgProp::Array { data, .. }
+        | SiPkgProp::Boolean { data, .. }
+        | SiPkgProp::Number { data, .. } => {
+            data.as_ref().and_then(|data| data.default_value.to_owned())
+        }
+        _ => None,
+    };
 
     match &spec {
-        SiPkgProp::String { default_value, .. } => {
+        SiPkgProp::String { .. } => {
             builder.kind(PropSpecKind::String);
             if let Some(dv) = default_value {
-                builder.default_value(serde_json::to_value(dv)?);
+                builder.default_value(dv);
             }
         }
-        SiPkgProp::Boolean { default_value, .. } => {
+        SiPkgProp::Boolean { .. } => {
             builder.kind(PropSpecKind::Boolean);
             if let Some(dv) = default_value {
                 builder.default_value(serde_json::to_value(dv)?);
             }
         }
-        SiPkgProp::Number { default_value, .. } => {
+        SiPkgProp::Number { .. } => {
             builder.kind(PropSpecKind::Number);
             if let Some(dv) = default_value {
-                builder.default_value(serde_json::to_value(dv)?);
+                builder.default_value(dv);
             }
         }
         SiPkgProp::Object { .. } => {
@@ -413,66 +463,36 @@ async fn create_prop_stack(
     }
 
     match &spec {
-        SiPkgProp::String {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Map {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Array {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Number {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Object {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        }
-        | SiPkgProp::Boolean {
-            name,
-            func_unique_id,
-            widget_kind,
-            widget_options,
-            hidden,
-            ..
-        } => {
+        SiPkgProp::String { name, data, .. }
+        | SiPkgProp::Map { name, data, .. }
+        | SiPkgProp::Array { name, data, .. }
+        | SiPkgProp::Number { name, data, .. }
+        | SiPkgProp::Object { name, data, .. }
+        | SiPkgProp::Boolean { name, data, .. } => {
             builder.name(name);
-            builder.hidden(*hidden);
-            builder.widget_kind(*widget_kind);
 
-            if let Some(widget_options) = widget_options {
-                builder.widget_options(widget_options.to_owned());
-            }
+            if let Some(SiPkgPropData {
+                widget_kind,
+                widget_options,
+                func_unique_id,
+                hidden,
+                ..
+            }) = data
+            {
+                builder
+                    .has_data(true)
+                    .hidden(*hidden)
+                    .widget_kind(*widget_kind);
 
-            if let Some(func_unique_id) = func_unique_id {
-                builder.func_unique_id(*func_unique_id);
-                for input in spec.inputs()? {
-                    builder.input(AttrFuncInputSpec::try_from(input)?);
+                if let Some(widget_options) = widget_options {
+                    builder.widget_options(widget_options.to_owned());
+                }
+
+                if let Some(func_unique_id) = func_unique_id {
+                    builder.func_unique_id(func_unique_id.as_str());
+                    for input in spec.inputs()? {
+                        builder.input(AttrFuncInputSpec::try_from(input)?);
+                    }
                 }
             }
         }

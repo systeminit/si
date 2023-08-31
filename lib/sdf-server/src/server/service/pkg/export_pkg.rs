@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAc
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{HistoryActor, SchemaVariantId, User, Visibility, WsEvent};
+use dal::{HistoryActor, SchemaVariant, SchemaVariantId, StandardModel, User, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -65,15 +65,28 @@ pub async fn export_pkg(
         ));
 
     info!("Packaging module");
-    let module_payload = dal::pkg::export_pkg_as_bytes(
-        &ctx,
+
+    // XXX:rework frontend to send schema ids
+    let mut schema_ids = vec![];
+    for variant_id in &request.schema_variants {
+        let schema = SchemaVariant::get_by_id(&ctx, variant_id)
+            .await?
+            .ok_or(PkgError::SchemaVariantNotFound(*variant_id))?
+            .schema(&ctx)
+            .await?
+            .ok_or(PkgError::SchemaNotFoundForVariant(*variant_id))?;
+        schema_ids.push(*schema.id());
+    }
+
+    let mut exporter = dal::pkg::PkgExporter::new_module_exporter(
         &request.name,
         &request.version,
         request.description.as_ref(),
         &created_by_email,
-        request.schema_variants.clone(),
-    )
-    .await?;
+        schema_ids,
+    );
+
+    let module_payload = exporter.export_as_bytes(&ctx).await?;
 
     let index_client =
         module_index_client::IndexClient::new(module_index_url.try_into()?, &raw_access_token);

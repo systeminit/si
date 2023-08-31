@@ -3,12 +3,12 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, AttrFuncInputSpec, FuncUniqueId, MapKeyFuncSpec, SiPkgAttrFuncInput};
+use crate::{node::PkgNode, AttrFuncInputSpec, MapKeyFuncSpec, SiPkgAttrFuncInput};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgMapKeyFunc<'a> {
     key: String,
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
     hash: Hash,
     source: Source<'a>,
 }
@@ -31,14 +31,14 @@ impl<'a> SiPkgMapKeyFunc<'a> {
 
         Ok(Self {
             key: node.key.to_owned(),
-            func_unique_id: node.func_unique_id,
+            func_unique_id: node.func_unique_id.to_owned(),
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
     }
 
-    pub fn func_unique_id(&self) -> FuncUniqueId {
-        self.func_unique_id
+    pub fn func_unique_id(&self) -> &str {
+        self.func_unique_id.as_str()
     }
 
     pub fn inputs(&self) -> PkgResult<Vec<SiPkgAttrFuncInput>> {

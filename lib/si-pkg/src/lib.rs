@@ -11,12 +11,14 @@ pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
     AttrFuncInputSpecKind, ChangeSetSpec, ChangeSetSpecBuilder, ChangeSetSpecStatus,
     FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
-    LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder,
-    PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    FuncSpecBackendResponseType, FuncSpecData, FuncSpecDataBuilder, LeafFunctionSpec,
+    LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder,
+    PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind,
+    SchemaSpec, SchemaSpecBuilder, SchemaSpecData, SchemaSpecDataBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
     SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
-    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecDataBuilder, SocketSpecKind, SpecError,
+    ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]
@@ -137,7 +139,7 @@ mod tests {
         assert_eq!(2, leaf_funcs.len());
 
         for func in leaf_funcs {
-            assert!(funcs_by_unique_id.contains_key(&func.func_unique_id()));
+            assert!(funcs_by_unique_id.contains_key(&func.func_unique_id().to_string()));
             match func.leaf_kind() {
                 LeafKind::Qualification => {
                     assert_eq!(

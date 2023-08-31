@@ -2,8 +2,6 @@ use derive_builder::UninitializedFieldError;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
 
-use object_tree::Hash;
-
 use super::SpecError;
 
 #[remain::sorted]
@@ -11,29 +9,77 @@ use super::SpecError;
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ValidationSpec {
     CustomValidation {
-        func_unique_id: Hash,
+        #[serde(alias = "funcUniqueId")]
+        func_unique_id: String,
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
     },
     IntegerIsBetweenTwoIntegers {
         #[serde(alias = "lowerBound")]
         lower_bound: i64,
         #[serde(alias = "upperBound")]
         upper_bound: i64,
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
     },
-    IntegerIsNotEmpty,
+    IntegerIsNotEmpty {
+        #[serde(alias = "uniqueId")]
+        unique_id: Option<String>,
+        deleted: bool,
+    },
     StringEquals {
         expected: String,
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
     },
     StringHasPrefix {
         expected: String,
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
     },
     StringInStringArray {
         expected: Vec<String>,
         #[serde(alias = "displayExpected")]
         display_expected: bool,
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
     },
-    StringIsHexColor,
-    StringIsNotEmpty,
-    StringIsValidIpAddr,
+    StringIsHexColor {
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
+    StringIsNotEmpty {
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
+    StringIsValidIpAddr {
+        #[serde(alias = "uniqueId")]
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
 }
 
 impl ValidationSpec {
@@ -66,7 +112,9 @@ pub struct ValidationSpecBuilder {
     expected_string: Option<String>,
     expected_string_array: Option<Vec<String>>,
     display_expected: Option<bool>,
-    func_unique_id: Option<Hash>,
+    func_unique_id: Option<String>,
+    unique_id: Option<String>,
+    deleted: bool,
 }
 
 impl ValidationSpecBuilder {
@@ -100,8 +148,18 @@ impl ValidationSpecBuilder {
         self
     }
 
-    pub fn func_unique_id(&mut self, func_unique_id: Hash) -> &mut Self {
-        self.func_unique_id = Some(func_unique_id);
+    pub fn func_unique_id(&mut self, func_unique_id: impl Into<String>) -> &mut Self {
+        self.func_unique_id = Some(func_unique_id.into());
+        self
+    }
+
+    pub fn unique_id(&mut self, unique_id: impl Into<String>) -> &mut Self {
+        self.unique_id = Some(unique_id.into());
+        self
+    }
+
+    pub fn deleted(&mut self, deleted: bool) -> &mut Self {
+        self.deleted = deleted;
         self
     }
 
@@ -116,15 +174,22 @@ impl ValidationSpecBuilder {
                         upper_bound: self
                             .upper_bound
                             .ok_or(UninitializedFieldError::from("lower_bound"))?,
+                        unique_id: self.unique_id.to_owned(),
+                        deleted: self.deleted,
                     }
                 }
-                ValidationSpecKind::IntegerIsNotEmpty => ValidationSpec::IntegerIsNotEmpty,
+                ValidationSpecKind::IntegerIsNotEmpty => ValidationSpec::IntegerIsNotEmpty {
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
+                },
                 ValidationSpecKind::StringEquals => ValidationSpec::StringEquals {
                     expected: self
                         .expected_string
                         .as_ref()
                         .ok_or(UninitializedFieldError::from("expected_string"))?
                         .to_string(),
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
                 },
                 ValidationSpecKind::StringHasPrefix => ValidationSpec::StringHasPrefix {
                     expected: self
@@ -132,6 +197,8 @@ impl ValidationSpecBuilder {
                         .as_ref()
                         .ok_or(UninitializedFieldError::from("expected_string"))?
                         .to_string(),
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
                 },
                 ValidationSpecKind::StringInStringArray => ValidationSpec::StringInStringArray {
                     display_expected: self
@@ -139,16 +206,30 @@ impl ValidationSpecBuilder {
                         .ok_or(UninitializedFieldError::from("display_expected"))?,
                     expected: self
                         .expected_string_array
-                        .clone()
+                        .to_owned()
                         .ok_or(UninitializedFieldError::from("expected_string"))?,
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
                 },
-                ValidationSpecKind::StringIsValidIpAddr => ValidationSpec::StringIsValidIpAddr,
-                ValidationSpecKind::StringIsHexColor => ValidationSpec::StringIsHexColor,
-                ValidationSpecKind::StringIsNotEmpty => ValidationSpec::StringIsNotEmpty,
+                ValidationSpecKind::StringIsValidIpAddr => ValidationSpec::StringIsValidIpAddr {
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
+                },
+                ValidationSpecKind::StringIsHexColor => ValidationSpec::StringIsHexColor {
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
+                },
+                ValidationSpecKind::StringIsNotEmpty => ValidationSpec::StringIsNotEmpty {
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
+                },
                 ValidationSpecKind::CustomValidation => ValidationSpec::CustomValidation {
                     func_unique_id: self
                         .func_unique_id
+                        .to_owned()
                         .ok_or(UninitializedFieldError::from("func_unique_id"))?,
+                    unique_id: self.unique_id.to_owned(),
+                    deleted: self.deleted,
                 },
             },
             None => {

@@ -3,15 +3,15 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{
-    ActionFuncSpec, ActionFuncSpecKind,
-    {node::PkgNode, spec::FuncUniqueId},
-};
+use crate::{node::PkgNode, ActionFuncSpec, ActionFuncSpecKind};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgActionFunc<'a> {
-    func_unique_id: FuncUniqueId,
+    func_unique_id: String,
     kind: ActionFuncSpecKind,
+    unique_id: Option<String>,
+    deleted: bool,
+
     hash: Hash,
     source: Source<'a>,
 }
@@ -35,17 +35,28 @@ impl<'a> SiPkgActionFunc<'a> {
         Ok(Self {
             func_unique_id: node.func_unique_id,
             kind: node.kind,
+            unique_id: node.unique_id,
+            deleted: node.deleted,
+
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
     }
 
-    pub fn func_unique_id(&self) -> FuncUniqueId {
-        self.func_unique_id
+    pub fn func_unique_id(&self) -> &str {
+        self.func_unique_id.as_str()
     }
 
     pub fn kind(&self) -> ActionFuncSpecKind {
         self.kind
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
     }
 
     pub fn hash(&self) -> Hash {
@@ -63,7 +74,9 @@ impl<'a> TryFrom<SiPkgActionFunc<'a>> for ActionFuncSpec {
     fn try_from(value: SiPkgActionFunc<'a>) -> Result<Self, Self::Error> {
         Ok(ActionFuncSpec::builder()
             .kind(value.kind())
+            .deleted(value.deleted())
             .func_unique_id(value.func_unique_id)
+            .unique_id(value.unique_id)
             .build()?)
     }
 }
