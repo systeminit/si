@@ -2,12 +2,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointer;
-use crate::workspace_snapshot::{
-    node_weight::{NodeWeightError, NodeWeightResult},
-    vector_clock::VectorClock,
+use crate::{
+    change_set_pointer::ChangeSetPointer,
+    workspace_snapshot::{
+        node_weight::{NodeWeightError, NodeWeightResult},
+        vector_clock::VectorClock,
+    },
+    ContentHash,
 };
-use crate::ContentHash;
 
 pub type LineageId = Ulid;
 
