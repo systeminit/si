@@ -137,7 +137,7 @@ impl ContentNodeWeight {
     }
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_kind = match &self.content_address {
+        let new_address = match &self.content_address {
             ContentAddress::Component(_) => ContentAddress::Component(content_hash),
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
             ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
@@ -147,7 +147,7 @@ impl ContentNodeWeight {
             ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
         };
 
-        self.content_address = new_kind;
+        self.content_address = new_address;
 
         Ok(())
     }
@@ -189,7 +189,7 @@ impl ContentNodeWeight {
 
 impl std::fmt::Debug for ContentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("NodeWeight")
+        f.debug_struct("ContentNodeWeight")
             .field("id", &self.id.to_string())
             .field("lineage_id", &self.lineage_id.to_string())
             .field("content_address", &self.content_address)
