@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
-use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError};
-use crate::ContentHash;
+use crate::{
+    change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
+    workspace_snapshot::vector_clock::{VectorClock, VectorClockError},
+    ContentHash,
+};
 
 pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentAddress;
 pub use content_node_weight::ContentNodeWeight;
