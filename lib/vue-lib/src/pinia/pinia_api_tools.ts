@@ -8,7 +8,7 @@ NOTES / TODOS / IDEAS
   - set up optimistic update/rollback tooling
   - set up helpers to clear request statuses
     - attach multiple tags to a request, can then clear all request statuses that have a tag (and maybe wildcards)
-  - better tooling for making multiple requests together / tracking multiple statuses 
+  - better tooling for making multiple requests together / tracking multiple statuses
   - review tooling/types around keyed request statuses (ie FETCH_THING/1, FETCH_THING/2)
   - return request status directly from action
   - better caching control on requests (ie mark requests with options to only request once, or some timeout, etc)

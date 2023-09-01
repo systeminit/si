@@ -1,6 +1,4 @@
-SELECT
-    change_sets.name AS name,
-    change_sets.pk AS value
+SELECT row_to_json(change_sets.*) AS object
 FROM change_sets
 WHERE
     status = 'Open'

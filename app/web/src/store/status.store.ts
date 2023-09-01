@@ -56,7 +56,6 @@ export type AttributeValueKind =
   | "attribute"
   | "codeGen"
   | "qualification"
-  | "confirmation"
   | "inputSocket"
   | "outputSocket";
 
@@ -240,7 +239,6 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                   qualification: "Running qualifications",
                   inputSocket: "Updating input socket values",
                   outputSocket: "Updating output socket values",
-                  confirmation: "Running confirmations",
                   internal: "Updating internal wiring",
                 }[valueKind];
               }

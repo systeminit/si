@@ -122,6 +122,9 @@ impl JobConsumer for FixesJob {
         let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
             .await?
             .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
+        if component.is_destroyed() {
+            return Err(JobConsumerError::ComponentIsDestroyed(*component.id()));
+        }
 
         let action = ActionPrototype::get_by_id(ctx, &fix_item.action_prototype_id)
             .await?

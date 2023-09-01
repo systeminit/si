@@ -6,25 +6,15 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    ActionPrototypeId, AttributeValueId, ChangeSet, ChangeSetPk, ComponentId, Fix, FixBatch,
-    HistoryActor, StandardModel, User,
+    AttributeValueId, ChangeSet, ChangeSetPk, Fix, FixBatch, HistoryActor, StandardModel, User,
 };
 use serde::{Deserialize, Serialize};
 //use telemetry::tracing::{info_span, Instrument, log::warn};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FixRunRequest {
-    pub attribute_value_id: AttributeValueId,
-    pub component_id: ComponentId,
-    pub action_prototype_id: ActionPrototypeId,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct ApplyChangeSetRequest {
     pub change_set_pk: ChangeSetPk,
-    pub list: Vec<FixRunRequest>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -45,6 +35,7 @@ pub async fn apply_change_set(
     let mut change_set = ChangeSet::get_by_pk(&ctx, &request.change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    let actions = change_set.actions(&ctx).await?;
     change_set.apply_raw(&mut ctx, false).await?;
 
     track(
@@ -66,25 +57,27 @@ pub async fn apply_change_set(
 
         HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
     };
-    if !request.list.is_empty() {
-        let batch = FixBatch::new(&ctx, user.email()).await?;
-        let mut fixes = Vec::with_capacity(request.list.len());
 
-        for fix_run_request in request.list {
+    if !actions.is_empty() {
+        let batch = FixBatch::new(&ctx, user.email()).await?;
+        let mut fixes = Vec::with_capacity(actions.len());
+
+        for action in actions {
             let fix = Fix::new(
                 &ctx,
                 *batch.id(),
-                fix_run_request.attribute_value_id,
-                fix_run_request.component_id,
-                fix_run_request.action_prototype_id,
+                // TODO: remove this
+                AttributeValueId::NONE,
+                *action.component_id(),
+                *action.action_prototype_id(),
             )
             .await?;
 
             fixes.push(FixItem {
                 id: *fix.id(),
-                attribute_value_id: fix_run_request.attribute_value_id,
-                component_id: fix_run_request.component_id,
-                action_prototype_id: fix_run_request.action_prototype_id,
+                attribute_value_id: AttributeValueId::NONE,
+                component_id: *action.component_id(),
+                action_prototype_id: *action.action_prototype_id(),
             });
         }
 

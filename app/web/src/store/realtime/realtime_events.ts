@@ -46,9 +46,6 @@ export type WsEventPayloadMap = {
   //   runnerState: WorkflowRunnerState;
   // };
 
-  ConfirmationsUpdated: {
-    success: boolean;
-  };
   FixReturn: {
     id: string;
     batchId: string;

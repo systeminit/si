@@ -6,10 +6,11 @@ use axum::Router;
 use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ChangeSetError,
-    ComponentError, ComponentType, DiagramError as DalDiagramError, EdgeError,
-    InternalProviderError, NodeError, NodeKind, NodeMenuError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    node::NodeId, schema::variant::SchemaVariantError, ActionError, ActionPrototypeError,
+    AttributeValueError, ChangeSetError, ComponentError, ComponentType,
+    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
+    NodeMenuError, SchemaError as DalSchemaError, SchemaVariantId, StandardModelError,
+    TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -32,12 +33,18 @@ pub mod set_node_position;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
+    #[error("action error: {0}")]
+    ActionError(#[from] ActionError),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("change set not found")]
+    ChangeSetNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
