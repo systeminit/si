@@ -311,17 +311,53 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
+                let mut needs_recreated = false;
+                if let Some(ports) = existing.ports {
+                    if !ports.is_empty() {
+                        let port = ports.first().unwrap().clone();
+                        let public_port = port.public_port.unwrap_or(0);
+                        let ip = port.ip.clone().unwrap_or("".to_string());
+
+                        if public_port as u32 != app.sdf_port() || ip != app.sdf_host() {
+                            needs_recreated = true;
+                        }
+                    }
+                } else {
+                    // No ports suggest that the container isn't in a started state
+                    needs_recreated = true
+                }
+
                 // it means we have an existing container
                 // If it's running, we have nothing to do here
-                if existing.state.as_ref().unwrap() == "running" {
+                if existing.state.as_ref().unwrap() == "running" && !needs_recreated {
                     continue;
                 }
 
-                println!("Starting existing {0}", container_name.clone());
-                app.container_engine()
-                    .start_container(existing.id.as_ref().unwrap().to_string())
-                    .await?;
-                continue;
+                if needs_recreated {
+                    println!(
+                        "Container Port Mappings have changed for {0} so recreating",
+                        container_name.clone()
+                    );
+
+                    if existing.state.as_ref().unwrap() == "running" {
+                        app.container_engine()
+                            .stop_container(existing.id.as_ref().unwrap().to_string())
+                            .await?;
+                    }
+
+                    app.container_engine()
+                        .delete_container(
+                            existing.id.as_ref().unwrap().to_string(),
+                            container_name.clone(),
+                        )
+                        .await?;
+                } else {
+                    println!("Starting existing {0}", container_name.clone());
+                    app.container_engine()
+                        .start_container(existing.id.as_ref().unwrap().to_string())
+                        .await?;
+                    continue;
+                }
             }
 
             if is_preview {
@@ -354,17 +390,53 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 .get_existing_container(container_name.clone())
                 .await?;
             if let Some(existing) = container_summary {
+                let mut needs_recreated = false;
+                if let Some(ports) = existing.ports {
+                    if !ports.is_empty() {
+                        let port = ports.first().unwrap().clone();
+                        let public_port = port.public_port.unwrap_or(0);
+                        let ip = port.ip.clone().unwrap_or("".to_string());
+
+                        if public_port as u32 != app.web_port() || ip != app.web_host() {
+                            needs_recreated = true;
+                        }
+                    }
+                } else {
+                    // No ports suggest that the container isn't in a started state
+                    needs_recreated = true
+                }
+
                 // it means we have an existing container
                 // If it's running, we have nothing to do here
-                if existing.state.as_ref().unwrap() == "running" {
+                if existing.state.as_ref().unwrap() == "running" && !needs_recreated {
                     continue;
                 }
 
-                println!("Starting existing {0}", container_name.clone());
-                app.container_engine()
-                    .start_container(existing.id.as_ref().unwrap().to_string())
-                    .await?;
-                continue;
+                if needs_recreated {
+                    println!(
+                        "Container Port Mappings have changed for {0} so recreating",
+                        container_name.clone()
+                    );
+
+                    if existing.state.as_ref().unwrap() == "running" {
+                        app.container_engine()
+                            .stop_container(existing.id.as_ref().unwrap().to_string())
+                            .await?;
+                    }
+
+                    app.container_engine()
+                        .delete_container(
+                            existing.id.as_ref().unwrap().to_string(),
+                            container_name.clone(),
+                        )
+                        .await?;
+                } else {
+                    println!("Starting existing {0}", container_name.clone());
+                    app.container_engine()
+                        .start_container(existing.id.as_ref().unwrap().to_string())
+                        .await?;
+                    continue;
+                }
             }
 
             if is_preview {
