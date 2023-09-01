@@ -24,10 +24,27 @@ async fn main() -> Result<()> {
     let args = args::parse();
     let mode = args.mode();
     let is_preview = args.is_preview;
+    let mut engine = args.engine();
 
-    let engine = match args.engine() {
+    if let Some(podman_sock) = args.podman_sock.clone() {
+        if podman_sock.contains("podman.sock") && engine != Engine::Podman {
+            println!("WARNING: A `podman_sock` location parameter was passed but no Podman engine was \
+            chosen. Continuing with the assumption you meant to choose Podman as the container engine...\n");
+            engine = Engine::Podman
+        }
+    }
+
+    if let Some(docker_sock) = args.docker_sock.clone() {
+        if docker_sock.contains("docker.sock") && engine != Engine::Docker {
+            println!("WARNING: A `docker_sock` location parameter was passed but no Docker engine was \
+            chosen. Continuing with the assumption you meant to choose Docker as the container engine...\n");
+            engine = Engine::Docker
+        }
+    }
+
+    let engine = match engine {
         Engine::Docker => DockerEngine::new(args.docker_sock.clone()).await?,
-        Engine::Podman => PodmanEngine::new(args.docker_sock.clone()).await?,
+        Engine::Podman => PodmanEngine::new(args.podman_sock.clone()).await?,
     };
 
     let web_host = args.web_host.clone();
