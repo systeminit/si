@@ -46,15 +46,15 @@ async fn list_open(DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>) {
         .expect("cannot get list of open change sets");
     assert_eq!(full_list.len(), 3);
     assert!(
-        full_list.iter().any(|f| f.label == a_change_set.name),
+        full_list.iter().any(|f| f.name == a_change_set.name),
         "change set has first entry"
     );
     assert!(
-        full_list.iter().any(|f| f.label == b_change_set.name),
+        full_list.iter().any(|f| f.name == b_change_set.name),
         "change set has second entry"
     );
     assert!(
-        full_list.iter().any(|f| f.label == c_change_set.name),
+        full_list.iter().any(|f| f.name == c_change_set.name),
         "change set has third entry"
     );
     c_change_set
@@ -66,11 +66,11 @@ async fn list_open(DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>) {
         .expect("cannot get list of open change sets");
     assert_eq!(partial_list.len(), 2);
     assert!(
-        partial_list.iter().any(|f| f.label == a_change_set.name),
+        partial_list.iter().any(|f| f.name == a_change_set.name),
         "change set has first entry"
     );
     assert!(
-        partial_list.iter().any(|f| f.label == b_change_set.name),
+        partial_list.iter().any(|f| f.name == b_change_set.name),
         "change set has second entry"
     );
 }

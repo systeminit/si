@@ -64,14 +64,12 @@
             v-for="fix in selectedFixBatchInfo.fixes"
             :key="fix.attributeValueId"
             :class="
-              fix.attributeValueId ===
-                selectedFix?.confirmationAttributeValueId &&
               fix.actionKind === selectedFix?.actionKind
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
             class="p-xs h-12 cursor-pointer flex flex-row items-center"
-            @click="selectFix(fix.attributeValueId, fix.actionKind)"
+            @click="selectFix(fix.actionKind)"
           >
             <StatusIndicatorIcon
               type="resource"
@@ -172,7 +170,6 @@ export interface SortOption {
   title: string;
 }
 interface SelectedFix {
-  confirmationAttributeValueId: string;
   actionKind: string;
 }
 
@@ -187,12 +184,8 @@ const selectFixBatch = (id: string) => {
   selectedFixBatchId.value = id;
   selectedFix.value = null;
 };
-const selectFix = (
-  confirmationAttributeValueId: string,
-  actionKind: string,
-) => {
+const selectFix = (actionKind: string) => {
   selectedFix.value = {
-    confirmationAttributeValueId,
     actionKind,
   };
 };
@@ -216,10 +209,7 @@ const selectedFixBatchInfo = computed(() => {
 const selectedFixInfo = computed(() => {
   if (selectedFixBatchInfo.value) {
     return selectedFixBatchInfo.value.fixes.find(
-      (fix) =>
-        fix.attributeValueId ===
-          selectedFix.value?.confirmationAttributeValueId &&
-        fix.actionKind === selectedFix.value?.actionKind,
+      (fix) => fix.actionKind === selectedFix.value?.actionKind,
     );
   }
   return null;

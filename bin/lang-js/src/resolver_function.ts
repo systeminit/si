@@ -130,7 +130,7 @@ const isQualification = (value: unknown): TypeCheckResult => {
   if (!("result" in value) || !_.isString(value.result)) {
     return {
       valid: false,
-      message: "Qualification result field type must be a string", 
+      message: "Qualification result field type must be a string",
     };
   }
 
@@ -153,7 +153,7 @@ const isQualification = (value: unknown): TypeCheckResult => {
 
 const typeChecks: {
   [key in FuncBackendResponseType]?: (
-    value: unknown 
+    value: unknown
   ) => TypeCheckSuccess | TypeCheckFailure;
 } = {
   [FuncBackendResponseType.Array]: isArray,

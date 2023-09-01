@@ -1,6 +1,10 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
-use dal::{ChangeSet, Component, ComponentId, DalContext, StandardModel, Visibility, WsEvent};
+use dal::{
+    action_prototype::ActionPrototypeContextField, Action, ActionKind, ActionPrototype,
+    ActionPrototypeContext, ChangeSet, Component, ComponentId, DalContext, StandardModel,
+    Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{DiagramError, DiagramResult};
@@ -29,6 +33,21 @@ async fn delete_single_component(
         .schema(ctx)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
+    let comp_schema_variant = comp
+        .schema_variant(ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    let resource = comp.resource(ctx).await?;
+
+    // TODO: this is tricky, we don't want to delete all actions, but we don't need to be perfect
+    // right now, let's see how the usage plays with users
+    let actions = Action::find_for_change_set(ctx).await?;
+    for mut action in actions {
+        if action.component_id() == comp.id() {
+            action.delete_by_id(ctx).await?;
+        }
+    }
 
     comp.delete_and_propagate(ctx).await?;
 
@@ -42,6 +61,26 @@ async fn delete_single_component(
             "component_schema_name": comp_schema.name(),
         }),
     );
+
+    if resource.payload.is_some() {
+        if let Some(prototype) = ActionPrototype::find_for_context_and_kind(
+            ctx,
+            ActionKind::Delete,
+            ActionPrototypeContext::new_for_context_field(
+                ActionPrototypeContextField::SchemaVariant(*comp_schema_variant.id()),
+            ),
+        )
+        .await?
+        .first()
+        {
+            Action::new(ctx, *prototype.id(), *comp.id()).await?;
+
+            let change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+                .await?
+                .ok_or(DiagramError::ChangeSetNotFound)?;
+            change_set.sort_actions(ctx).await?;
+        }
+    }
 
     WsEvent::change_set_written(ctx)
         .await?
@@ -124,7 +163,6 @@ pub async fn delete_components(
 
     for component_id in request.component_ids {
         delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;
-        ctx.commit().await?;
     }
 
     ctx.commit().await?;

@@ -6,8 +6,9 @@ use dal::edge::EdgeKind;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    generate_name, ChangeSet, Component, ComponentId, Connection, Node, Schema, SchemaId, Socket,
-    StandardModel, Visibility, WsEvent,
+    action_prototype::ActionPrototypeContextField, generate_name, Action, ActionKind,
+    ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId, Connection, Node,
+    Schema, SchemaId, Socket, StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -68,6 +69,19 @@ pub async fn create_node(
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
     let (component, mut node) = Component::new(&ctx, &name, *schema_variant_id).await?;
+
+    if let Some(prototype) = ActionPrototype::find_for_context_and_kind(
+        &ctx,
+        ActionKind::Create,
+        ActionPrototypeContext::new_for_context_field(ActionPrototypeContextField::SchemaVariant(
+            *schema_variant_id,
+        )),
+    )
+    .await?
+    .first()
+    {
+        Action::new(&ctx, *prototype.id(), *component.id()).await?;
+    }
 
     node.set_geometry(
         &ctx,

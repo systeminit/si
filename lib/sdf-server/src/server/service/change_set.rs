@@ -5,9 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    change_status::ChangeStatusError, ChangeSetError as DalChangeSetError,
+    change_status::ChangeStatusError, ActionError, ActionId, ChangeSetError as DalChangeSetError,
     ComponentError as DalComponentError, FixError, StandardModelError, TransactionsError,
-    UserError, UserPk,
+    UserError, UserPk, WsEventError,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
@@ -15,16 +15,22 @@ use thiserror::Error;
 
 use crate::{server::state::AppState, service::pkg::PkgError};
 
+pub mod add_action;
 pub mod apply_change_set;
 pub mod create_change_set;
 pub mod get_change_set;
 pub mod get_stats;
 pub mod list_open_change_sets;
+pub mod remove_action;
 pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
+    #[error(transparent)]
+    Action(#[from] ActionError),
+    #[error("action {0} not found")]
+    ActionNotFound(ActionId),
     #[error(transparent)]
     ChangeSet(#[from] DalChangeSetError),
     #[error("change set not found")]
@@ -57,6 +63,8 @@ pub enum ChangeSetError {
     UrlParse(#[from] url::ParseError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;
@@ -82,6 +90,8 @@ pub fn routes() -> Router<AppState> {
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
         )
+        .route("/remove_action", post(remove_action::remove_action))
+        .route("/add_action", post(add_action::add_action))
         .route(
             "/create_change_set",
             post(create_change_set::create_change_set),

@@ -1,4 +1,4 @@
-import { StandardModelNoVisibility } from "@/api/sdf/dal/standard_model";
+import { ComponentId } from "@/store/components.store";
 
 export enum ChangeSetStatus {
   Open = "Open",
@@ -8,10 +8,32 @@ export enum ChangeSetStatus {
   Failed = "Failed",
 }
 
-export interface ChangeSet extends StandardModelNoVisibility {
-  id: never;
+export type ActionPrototypeId = string;
+export interface ActionPrototype {
+  id: ActionPrototypeId;
   name: string;
-  note?: string;
+}
+
+export interface NewAction {
+  id: never;
+  prototypeId: ActionPrototypeId;
+  name: string;
+  componentId: ComponentId;
+}
+
+export type ActionId = string;
+export interface Action {
+  id: ActionId;
+  name: string;
+  componentId: ComponentId;
+}
+
+export type ChangeSetId = string;
+export interface ChangeSet {
+  id: ChangeSetId;
+  pk: ChangeSetId;
+  name: string;
+  actions: Action[];
   status: ChangeSetStatus;
 }
 

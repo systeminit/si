@@ -120,9 +120,6 @@
           <span class="text-3xl">
             {{ celebrate }} Change Set Merged! {{ celebrate }}
           </span>
-          <span class="text-md italic pt-sm">
-            Preparing your recommendations...
-          </span>
         </div>
       </template>
     </Wipe>
@@ -147,14 +144,12 @@ import {
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useStatusStore } from "@/store/status.store";
-import { useFixesStore } from "@/store/fixes.store";
 import Wipe from "./Wipe.vue";
 
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();
 
 const workspacesStore = useWorkspacesStore();
-const fixesStore = useFixesStore();
 const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
 
 const changeSetsStore = useChangeSetsStore();
@@ -254,7 +249,7 @@ const applyChangeSet = async () => {
   // Run both the wipe and the change set apply in parallel
   const wipeDone = wipeRef.value.open(mergeButtonRef.value.$el);
 
-  await changeSetsStore.APPLY_CHANGE_SET(fixesStore.enabledRecommendations);
+  await changeSetsStore.APPLY_CHANGE_SET();
   await wipeDone;
 
   // when the change set is done done, check if the change set apply was successful

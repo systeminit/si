@@ -90,17 +90,12 @@
 
           <!-- other status icons -->
           <div
-            :class="
-              clsx(
-                'flex items-center',
-                component.changeStatus === 'deleted' ? 'mr-1' : 'mr-xs',
-              )
-            "
+            :class="clsx('flex items-center', isDestroyed ? 'mr-1' : 'mr-xs')"
           >
-            <template v-if="component.changeStatus !== 'deleted'">
+            <template v-if="!isDestroyed">
               <StatusIconWithPopover
                 type="confirmation"
-                :status="confirmationStatus"
+                :status="actionsStatus"
                 size="md"
                 :popoverPosition="popoverPosition"
               >
@@ -119,11 +114,11 @@
                       <Tab
                         class="ui-selected:border-action-300 ui-selected:text-action-300"
                       >
-                        Proposed
+                        Actions
                         <span
                           class="rounded-2xl ml-xs mr-xs px-2.5 border border-destructive-500 ui-selected:bg-destructive-500 ui-selected:text-neutral-900 text-destructive-500"
                         >
-                          {{ recommendationsSelection.length }}
+                          {{ actions.length }}
                         </span>
                       </Tab>
                       <Tab
@@ -140,7 +135,7 @@
                     <TabPanels as="template">
                       <TabPanel class="overflow-auto grow">
                         <div
-                          v-if="recommendationsSelection.length === 0"
+                          v-if="actions.length === 0"
                           class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
                         >
                           <div class="w-64">
@@ -154,20 +149,13 @@
                             <b>APPLY CHANGES</b> button in the right rail.
                           </li>
                           <li
-                            v-for="(
-                              { recommendation, selected }, key
-                            ) in recommendationsSelection"
-                            :key="key"
+                            v-for="action in actions"
+                            :key="action.id"
                             class="bg-black"
                           >
-                            <RecommendationSprite
-                              :key="key"
-                              :recommendation="recommendation"
-                              :selected="selected"
-                              @click.stop
-                              @toggle="
-                                toggleRecommendation($event, recommendation)
-                              "
+                            <ActionSprite
+                              :action="action"
+                              @add="addAction(action)"
                             />
                           </li>
                         </ul>
@@ -266,7 +254,7 @@
 
             <!-- change status -->
             <StatusIndicatorIcon
-              v-if="component.changeStatus === 'deleted'"
+              v-else
               type="change"
               :status="component.changeStatus"
               size="md"
@@ -295,11 +283,12 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@headlessui/vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useFixesStore, Recommendation } from "@/store/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 import QualificationViewerSingle from "@/components/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import RecommendationSprite from "@/components/RecommendationSprite.vue";
+import { NewAction, ActionPrototype } from "@/api/sdf/dal/change_set";
+import ActionSprite from "@/components/ActionSprite.vue";
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
@@ -326,6 +315,43 @@ const changeSetsStore = useChangeSetsStore();
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
 );
+
+const isDestroyed = computed(
+  () =>
+    component.value?.changeStatus === "deleted" &&
+    !component.value.resource.data,
+);
+
+const actions = computed((): NewAction[] => {
+  if (!component.value) return [];
+  const componentId = component.value.id;
+  return _.map(component.value.actions, (a: ActionPrototype) => {
+    return {
+      prototypeId: a.id,
+      name: a.name,
+      componentId,
+    } as NewAction;
+  });
+});
+
+// Note(paulo): temporary hack, until we implement a better UI for reconciliation
+const requiredActions = computed(() => {
+  if (component.value && !component.value.resource.data) {
+    return component.value.actions.filter(
+      (a: ActionPrototype) => a.name === "create",
+    );
+  } else if (component.value && component.value.deletedInfo) {
+    return component.value.actions.filter(
+      (a: ActionPrototype) => a.name === "delete",
+    );
+  } else {
+    return [];
+  }
+});
+const actionsStatus = computed(() =>
+  requiredActions.value.length ? "failure" : "success",
+);
+
 const childComponents = computed(
   () => componentsStore.componentsByParentId[props.componentId] || [],
 );
@@ -388,10 +414,6 @@ const componentQualifications = computed(() =>
   }),
 );
 
-const confirmationStatus = computed(
-  () => fixesStore.confirmationStatusByComponentId[props.componentId],
-);
-
 function onClick(e: MouseEvent) {
   rootCtx.itemClickHandler(e, props.componentId);
 }
@@ -448,22 +470,11 @@ onBeforeUnmount(() => {
   resizeObserver.disconnect();
 });
 
-const recommendationsSelection = computed(() =>
-  _.filter(
-    fixesStore.recommendationsSelection,
-    (r) => r.recommendation.componentId === props.componentId,
-  ),
-);
-
-const toggleRecommendation = (
-  selected: boolean,
-  recommendation: Recommendation,
-) => {
-  const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-  fixesStore.recommendationsSelection[key] = { recommendation, selected };
-};
-
 const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
+
+const addAction = (action: NewAction) => {
+  changeSetsStore.ADD_ACTION(action);
+};
 
 const filteredBatches = computed(() =>
   fixBatches.value

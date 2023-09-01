@@ -7,8 +7,9 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext,
-    DiagramError, HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
+    history_event, ActionPrototype, ActionPrototypeContext, ActionPrototypeView, ActorView,
+    Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
+    HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
 };
 
 #[remain::sorted]
@@ -150,6 +151,8 @@ pub struct DiagramComponentView {
     schema_variant_name: String,
     schema_category: Option<String>,
 
+    actions: Vec<ActionPrototypeView>,
+
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
@@ -237,6 +240,18 @@ impl DiagramComponentView {
         // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
         let resource = ResourceView::new(component.resource(ctx).await?);
 
+        let action_prototypes = ActionPrototype::find_for_context(
+            ctx,
+            ActionPrototypeContext {
+                schema_variant_id: *schema_variant.id(),
+            },
+        )
+        .await?;
+        let actions = action_prototypes
+            .into_iter()
+            .map(ActionPrototypeView::new)
+            .collect();
+
         Ok(Self {
             id: *component.id(),
             node_id: *node.id(),
@@ -258,6 +273,7 @@ impl DiagramComponentView {
             node_type: component.get_type(ctx).await?,
             change_status,
             resource,
+            actions,
             created_info,
             updated_info,
             deleted_info,

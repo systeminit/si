@@ -17,6 +17,7 @@ use veritech_client::{Client, EncryptionKey};
 
 use crate::builtins::SelectedTestBuiltinSchemas;
 
+pub mod action;
 pub mod action_prototype;
 pub mod actor_view;
 pub mod attribute;
@@ -66,8 +67,10 @@ pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
 
+pub use action::{Action, ActionError, ActionId};
 pub use action_prototype::{
     ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
+    ActionPrototypeView,
 };
 pub use actor_view::ActorView;
 pub use attribute::value::view::AttributeView;

@@ -24,6 +24,30 @@ const FIND_FOR_FUNC: &str = include_str!("./queries/action_prototype/find_for_fu
 const FIND_FOR_CONTEXT_AND_FUNC: &str =
     include_str!("./queries/action_prototype/find_for_context_and_func.sql");
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionPrototypeView {
+    id: ActionPrototypeId,
+    name: String,
+}
+
+impl ActionPrototypeView {
+    pub fn new(prototype: ActionPrototype) -> Self {
+        Self {
+            id: prototype.id,
+            name: prototype.name().map_or_else(
+                || match prototype.kind() {
+                    ActionKind::Create => "create".to_owned(),
+                    ActionKind::Delete => "delete".to_owned(),
+                    ActionKind::Other => "other".to_owned(),
+                    ActionKind::Refresh => " refresh".to_owned(),
+                },
+                ToOwned::to_owned,
+            ),
+        }
+    }
+}
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ActionPrototypeError {
@@ -148,6 +172,7 @@ pub struct ActionPrototype {
     id: ActionPrototypeId,
     func_id: FuncId,
     kind: ActionKind,
+    name: Option<String>,
     schema_variant_id: SchemaVariantId,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -292,6 +317,7 @@ impl ActionPrototype {
         Pk(SchemaVariantId),
         ActionPrototypeResult
     );
+    standard_model_accessor!(name, Option<String>, ActionPrototypeResult);
     standard_model_accessor!(func_id, Pk(FuncId), ActionPrototypeResult);
     standard_model_accessor!(kind, Enum(ActionKind), ActionPrototypeResult);
 

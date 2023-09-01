@@ -18,7 +18,11 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
+import {
+  ComponentStats,
+  ChangeStatus,
+  ActionPrototype,
+} from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -31,7 +35,6 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { ConfirmationStatus, useFixesStore } from "./fixes.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
@@ -56,6 +59,7 @@ type RawComponent = {
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
   position: GridPoint;
   changeStatus: ChangeStatus;
+  actions: ActionPrototype[];
   resource: Resource; // TODO: probably want to move this to a different store and not load it all the time
   sockets: DiagramSocketDef[];
   createdInfo: ActorAndTimestamp;
@@ -126,16 +130,11 @@ const qualificationStatusToIconMap: Record<
 };
 
 const confirmationStatusToIconMap: Record<
-  ConfirmationStatus,
+  "success" | "failure",
   DiagramStatusIcon
 > = {
   success: { icon: "check-circle", tone: "success" },
   failure: { icon: "tools", tone: "error" },
-  running: { icon: "loader", tone: "info" },
-  neverStarted: {
-    icon: "minus",
-    tone: "neutral",
-  },
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -300,7 +299,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         diagramNodes(): DiagramNodeDef[] {
           const qualificationsStore = useQualificationsStore();
-          const fixesStore = useFixesStore();
           const statusStore = useStatusStore();
 
           // adding logo and qualification info into the nodes
@@ -311,7 +309,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
             const confirmationStatus =
-              fixesStore.statusByComponentId[componentId];
+              changeSetsStore.statusByComponentId[componentId];
 
             const statusIcons: DiagramStatusIcon[] = _.compact([
               confirmationStatus

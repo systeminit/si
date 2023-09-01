@@ -31,7 +31,7 @@ async fn list_open_change_sets(
         auth_token,
     )
     .await;
-    assert_eq!(response.list.len(), 2);
+    assert_eq!(response.len(), 2);
 }
 
 #[sdf_test]
@@ -76,7 +76,6 @@ async fn apply_change_set(
     ctx.commit().await.expect("cannot commit txn");
     let request = ApplyChangeSetRequest {
         change_set_pk: change_set.pk,
-        list: Vec::new(),
     };
 
     let _response: ApplyChangeSetResponse = api_request_auth_json_body(

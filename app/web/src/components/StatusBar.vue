@@ -86,13 +86,6 @@
         >
           <FixHistoryTab :selected="selected" />
         </Tab>
-        <Tab
-          v-slot="{ selected }"
-          :aria-hidden="!isViewMode"
-          :class="[isViewMode ? '' : 'hidden']"
-        >
-          <ConfirmationsTab :selected="selected" />
-        </Tab>
 
         <!-- Tab minimization button -->
         <div
@@ -154,13 +147,6 @@
           >
             <FixHistoryPanel />
           </TabPanel>
-          <TabPanel
-            :aria-hidden="!isViewMode"
-            :class="[isViewMode ? '' : 'hidden']"
-            class="h-full"
-          >
-            <ConfirmationsPanel />
-          </TabPanel>
         </TabPanels>
       </Transition>
     </TabGroup>
@@ -186,8 +172,6 @@ import DiffTabPanel from "@/components/StatusBarTabs/Diff/DiffTabPanel.vue";
 import DiffTab from "@/components/StatusBarTabs/Diff/DiffTab.vue";
 import FixHistoryTab from "@/components/StatusBarTabs/Fixes/FixHistoryTab.vue";
 import FixHistoryPanel from "@/components/StatusBarTabs/Fixes/FixHistoryPanel.vue";
-import ConfirmationsPanel from "@/components/StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
-import ConfirmationsTab from "@/components/StatusBarTabs/Confirmations/ConfirmationsTab.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");
