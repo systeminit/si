@@ -27,7 +27,7 @@
       v-if="featureFlagsStore.SECRETS"
       class="flex flex-col w-full pt-sm px-lg"
     >
-      <VButton label="Add Secret" @click="(e) => popoverRef.open(e)" />
+      <VButton label="Select Secret" @click="(e) => popoverRef.open(e)" />
       <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
         <SecretsList definitionId="Mocks" />
       </Popover>

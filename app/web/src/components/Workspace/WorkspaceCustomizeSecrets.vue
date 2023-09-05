@@ -21,6 +21,7 @@
                     by {{ secret.createdInfo.actor.label }}
                   </i>
                   <VButton
+                    :disabled="secretsStore.secretIsTransitioning[secret.id]"
                     class="ml-2"
                     size="xs"
                     tone="neutral"
@@ -50,7 +51,6 @@
 </template>
 
 <script lang="ts" setup>
-import * as _ from "lodash-es";
 import { computed } from "vue";
 import { ResizablePanel, VButton } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";

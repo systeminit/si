@@ -4250,6 +4250,7 @@ dependencies = [
  "module-index-client",
  "names",
  "nix",
+ "once_cell",
  "pathdiff",
  "pretty_assertions_sorted",
  "rand",
