@@ -71,6 +71,11 @@ pub(crate) struct Args {
     #[arg(value_parser = PossibleValuesParser::new(Engine::variants()))]
     #[arg(long, short, env = "SI_CONTAINER_ENGINE", default_value = "docker")]
     engine: String,
+    /// A path to a podman.sock file. The default paths checked are `$XDG_RUNTIME_DIR/podman/podman.sock`
+    /// and `/var/run/podman.sock"`. Passing a value here will be an explicit
+    /// usage of that location.
+    #[arg(long, env = "SI_PODMAN_SOCK")]
+    pub podman_sock: Option<String>,
     /// A path to a docker.sock file. The default paths checked are `/var/run/docker.sock`
     /// and `$HOME/.docker/run/docker.sock"`. Passing a value here will be an explicit
     /// usage of that location.
@@ -191,7 +196,7 @@ pub enum Mode {
     Local,
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames)]
+#[derive(Clone, Copy, Debug, Display, EnumString, EnumVariantNames, PartialEq)]
 pub enum Engine {
     #[strum(serialize = "docker")]
     Docker,
