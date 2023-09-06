@@ -63,6 +63,7 @@ pub struct ContainerReleaseInfo {
     pub version: String,
 }
 
+#[derive(Debug)]
 pub struct SiContainerSummary {
     pub created: Option<i64>,
     pub id: Option<String>,
@@ -70,8 +71,17 @@ pub struct SiContainerSummary {
     pub labels: Option<HashMap<String, String>>,
     pub status: Option<String>,
     pub state: Option<String>,
+    pub ports: Option<Vec<SiPort>>,
 }
 
+#[derive(Debug)]
+pub struct SiPort {
+    pub ip: Option<String>,
+    pub private_port: u16,
+    pub public_port: Option<u16>,
+}
+
+#[derive(Debug)]
 pub struct SiImageSummary {
     pub containers: isize,
     pub created: isize,
@@ -94,6 +104,12 @@ impl From<docker_api::models::ImageSummary> for SiImageSummary {
 
 impl From<docker_api::models::ContainerSummary> for SiContainerSummary {
     fn from(container: docker_api::models::ContainerSummary) -> SiContainerSummary {
+        let mut mapped_ports = Vec::new();
+        if let Some(ports) = container.ports {
+            for port in ports {
+                mapped_ports.push(SiPort::from(port))
+            }
+        }
         SiContainerSummary {
             created: container.created,
             id: container.id,
@@ -101,6 +117,27 @@ impl From<docker_api::models::ContainerSummary> for SiContainerSummary {
             labels: container.labels,
             status: container.status,
             state: container.state,
+            ports: Some(mapped_ports),
+        }
+    }
+}
+
+impl From<docker_api::models::Port> for SiPort {
+    fn from(port: docker_api::models::Port) -> SiPort {
+        SiPort {
+            ip: port.ip,
+            private_port: port.private_port,
+            public_port: port.public_port,
+        }
+    }
+}
+
+impl From<podman_api::models::PortMapping> for SiPort {
+    fn from(port: podman_api::models::PortMapping) -> SiPort {
+        SiPort {
+            ip: port.host_ip,
+            private_port: port.container_port.unwrap_or(0),
+            public_port: port.host_port,
         }
     }
 }
@@ -144,6 +181,12 @@ impl From<podman_api::models::LibpodImageSummary> for SiImageSummary {
 
 impl From<podman_api::models::ListContainer> for SiContainerSummary {
     fn from(container: podman_api::models::ListContainer) -> SiContainerSummary {
+        let mut mapped_ports = Vec::new();
+        if let Some(ports) = container.ports {
+            for port in ports {
+                mapped_ports.push(SiPort::from(port))
+            }
+        }
         SiContainerSummary {
             created: container.created.map(|created| created.timestamp()),
             id: container.id,
@@ -151,6 +194,7 @@ impl From<podman_api::models::ListContainer> for SiContainerSummary {
             labels: container.labels,
             status: container.status,
             state: container.state,
+            ports: Some(mapped_ports),
         }
     }
 }
