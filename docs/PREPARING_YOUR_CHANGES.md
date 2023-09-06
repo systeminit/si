@@ -2,14 +2,61 @@
 
 This document contains information related to preparing changes for a pull request.
 
-## Committing
+## Commit Message Format
 
-We highly recommend following the [Convential Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) format when committing changes.
-Our prefixes are derived from the official specification as well as the those found in [commitlint](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional), based on [Angular's commit conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md).
-When in doubt, use `feat`, `fix`, or `chore`!
+We do not require a particular commit message format of any kind, but we do require that individual commits be descriptive, relative to size and impact.
+For example, if a descriptive title covers what the commit does in practice, then an additional description below the title is not required.
+However, if the commit has an out-sized impact relative to other commits, its description will need to reflect that.
 
-Moreover, please sign your commits using `git commit -s`.
-You can amend an existing commit with `git commit -s --amend`, if needed.
+Reviewers may ask you to amend your commits if they are not descriptive enough.
+Since the descriptiveness of a commit is subjective, please feel free to talk to us [on Discord](https://discord.com/invite/system-init) if you have any questions.
+
+### Optional Commit Template
+
+If you would like an optional commit template, see the following:
+
+```text
+<present-tense-verb-with-capitalized-first-letter> <everything-else-without-puncutation-at-the-end>
+
+<sentences-in-paragraph-format-or-bullet-points>
+```
+
+Here is an example with a paragraph in the description:
+
+```text
+Reduce idle memory utilization in starfield-server
+
+With this change, starfield-server no longer waits for acknowledgement
+from the BGS API. As soon as the request is successful, the green
+thread is dropped, which frees up memory since the task is usually idle
+for ~10 seconds or more.
+```
+
+Here is another example, but with bullet points in the description:
+
+```text
+Replace fallout queue with TES queue
+
+- Replace fallout queue with TES queue for its durability benefits
+- Refactor the core test harness to use TES queue
+- Build and publish new TES queue Docker images on commits to "main"
+```
+
+Finally, here is an example with a more complex description:
+
+```text
+Use multi-threaded work queue operations in starfield-server
+
+Iterating through work queue items has historically been sequential in
+starfield-server. With this change, rayon is leveraged to boost overall
+performance within green threads.
+
+starfield-server changes:
+- Replace sequential work queue with rayon parallel iterator
+
+Test harness changes:
+- Refactor the core test harness to create an in-line work queue
+```
 
 ## Guide: Rebasing Your Changes
 
