@@ -20,7 +20,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_auth,si_module_index,si_test,si_test_dal,si_test_sdf_server,si_test_gobbler"
+      - "POSTGRES_MULTIPLE_DBS=si_auth,si_module_index,si_test,si_test_dal,si_test_sdf_server,si_test_rebaser"
 
   nats:
     image: systeminit/nats:stable
