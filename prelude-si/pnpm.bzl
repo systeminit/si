@@ -247,7 +247,7 @@ typescript_check = rule(
             value = attrs.arg(),
             sorted = False,
             default = {},
-            doc = """Set environment variables for this rule's invocation of eslint. The environment
+            doc = """Set environment variables for this rule's invocation of tsc. The environment
             variable values may include macros which are expanded.""",
         ),
         "labels": attrs.list(
