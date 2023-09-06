@@ -2007,60 +2007,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gobbler"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "gobbler-server",
- "telemetry-application",
- "tokio",
-]
-
-[[package]]
-name = "gobbler-client"
-version = "0.1.0"
-dependencies = [
- "gobbler-server",
- "remain",
- "serde",
- "serde_json",
- "si-rabbitmq",
- "telemetry",
- "thiserror",
- "tokio",
- "ulid",
-]
-
-[[package]]
-name = "gobbler-server"
-version = "0.1.0"
-dependencies = [
- "buck2-resources",
- "dal",
- "dal-test",
- "derive_builder",
- "futures",
- "nats-subscriber",
- "pretty_assertions_sorted",
- "remain",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-data-pg",
- "si-rabbitmq",
- "si-settings",
- "si-test-macros",
- "stream-cancel",
- "telemetry",
- "thiserror",
- "tokio",
- "tokio-stream",
- "ulid",
- "veritech-client",
-]
-
-[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3890,6 +3836,60 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "rebaser"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "rebaser-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "rebaser-client"
+version = "0.1.0"
+dependencies = [
+ "rebaser-server",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-rabbitmq",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "ulid",
+]
+
+[[package]]
+name = "rebaser-server"
+version = "0.1.0"
+dependencies = [
+ "buck2-resources",
+ "dal",
+ "dal-test",
+ "derive_builder",
+ "futures",
+ "nats-subscriber",
+ "pretty_assertions_sorted",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "si-data-pg",
+ "si-rabbitmq",
+ "si-settings",
+ "si-test-macros",
+ "stream-cancel",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "ulid",
+ "veritech-client",
 ]
 
 [[package]]

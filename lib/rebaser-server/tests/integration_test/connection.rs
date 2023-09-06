@@ -1,7 +1,7 @@
 use dal::workspace_snapshot::change_set::ChangeSet;
 use dal::{DalContext, WorkspaceSnapshot};
 use si_rabbitmq::Environment;
-use si_test_macros::gobbler_test as test;
+use si_test_macros::rebaser_test as test;
 
 #[test]
 async fn connect_to_database(ctx: &DalContext) {
