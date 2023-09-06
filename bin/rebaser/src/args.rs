@@ -1,7 +1,7 @@
 use clap::{ArgAction, Parser};
-use gobbler_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use rebaser_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
-const NAME: &str = "gobbler";
+const NAME: &str = "rebaser";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -45,7 +45,7 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
 
-    /// Cyclone encryption key file location [default: /run/gobbler/cyclone_encryption.key]
+    /// Cyclone encryption key file location [default: /run/rebaser/cyclone_encryption.key]
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
 

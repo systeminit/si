@@ -1,4 +1,4 @@
-//! This crate provides the gobbler [`Server`].
+//! This crate provides the rebaser [`Server`].
 
 #![warn(
     missing_debug_implementations,
@@ -36,23 +36,23 @@ pub use si_settings::StandardConfigFile;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-/// Stream to manage gobbler consumer loops.
-pub const GOBBLER_MANAGEMENT_STREAM: &str = "gobbler-management";
+/// Stream to manage rebaser consumer loops.
+pub const REBASER_MANAGEMENT_STREAM: &str = "rebaser-management";
 
-/// Stream prefix for gobbler consumer loops.
-pub const GOBBLER_STREAM_PREFIX: &str = "gobbler";
+/// Stream prefix for rebaser consumer loops.
+pub const REBASER_STREAM_PREFIX: &str = "rebaser";
 
-/// The action for the gobbler management loop.
+/// The action for the rebaser management loop.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ManagementMessageAction {
-    /// Close the inner gobbler loop for a change set. If it has already been closed, this is a
+    /// Close the inner rebaser loop for a change set. If it has already been closed, this is a
     /// no-op.
     Close,
-    /// Open the inner gobbler loop for a change set. If one already exists, it is a no-op.
+    /// Open the inner rebaser loop for a change set. If one already exists, it is a no-op.
     Open,
 }
 
-/// The message that the gobbler management consumer expects in the server.
+/// The message that the rebaser management consumer expects in the server.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ManagementMessage {
     /// The ID of the change set wishing to be operated on.
