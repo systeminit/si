@@ -5,9 +5,9 @@ load(
 )
 
 rust_binary(
-    name = "gobbler",
+    name = "rebaser",
     deps = [
-        "//lib/gobbler-server:gobbler-server",
+        "//lib/rebaser-server:rebaser-server",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
@@ -21,6 +21,6 @@ rust_binary(
 
 docker_image(
     name = "image",
-    image_name = "gobbler",
-    build_deps = ["//bin/gobbler:gobbler"]
+    image_name = "rebaser",
+    build_deps = ["//bin/rebaser:rebaser"]
 )

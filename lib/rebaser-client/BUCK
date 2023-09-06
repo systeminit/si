@@ -1,9 +1,9 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "gobbler-client",
+    name = "rebaser-client",
     deps = [
-        "//lib/gobbler-server:gobbler-server",
+        "//lib/rebaser-server:rebaser-server",
         "//lib/si-rabbitmq:si-rabbitmq",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:remain",

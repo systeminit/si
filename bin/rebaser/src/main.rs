@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use gobbler_server::{Config, Server};
+use rebaser_server::{Config, Server};
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
     TelemetryClient, TelemetryConfig,
@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let thread_handler = thread_builder.spawn(|| {
         tokio::runtime::Builder::new_multi_thread()
             .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-            .thread_name("bin/gobbler-tokio::runtime")
+            .thread_name("bin/rebaser-tokio::runtime")
             .enable_all()
             .build()?
             .block_on(async_main())
@@ -25,10 +25,10 @@ fn main() -> Result<()> {
 async fn async_main() -> Result<()> {
     color_eyre::install()?;
     let config = TelemetryConfig::builder()
-        .service_name("gobbler")
+        .service_name("rebaser")
         .service_namespace("si")
         .log_env_var_prefix("SI")
-        .app_modules(vec!["gobbler", "gobbler_server"])
+        .app_modules(vec!["rebaser", "rebaser_server"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
