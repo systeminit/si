@@ -28,7 +28,7 @@ docker_image(
         "--env",
         "POSTGRES_DB=si",
         "--env",
-        "POSTGRES_MULTIPLE_DBS=si_auth,si_test,si_test_dal,si_test_sdf_server,si_test_gobbler",
+        "POSTGRES_MULTIPLE_DBS=si_auth,si_test,si_test_dal,si_test_sdf_server,si_test_rebaser",
         "--publish",
         "5432:5432",
     ],

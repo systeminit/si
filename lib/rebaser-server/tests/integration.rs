@@ -4,6 +4,6 @@
 //! SI_TEST_BUILTIN_SCHEMAS=none
 //! ```
 
-const TEST_PG_DBNAME: &str = "si_test_gobbler";
+const TEST_PG_DBNAME: &str = "si_test_rebaser";
 
 mod integration_test;

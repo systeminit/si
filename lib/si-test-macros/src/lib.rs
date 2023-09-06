@@ -391,11 +391,11 @@ pub fn sdf_test(attr: TokenStream, input: TokenStream) -> TokenStream {
     sdf_test::expand(item, args).into()
 }
 
-/// A procedural macro which helps to streamline, setup, and manage gobbler-related tests.
+/// A procedural macro which helps to streamline, setup, and manage rebaser-related tests.
 ///
 /// Currently, this macro is equivalent to [`dal_test`](dal_test()).
 #[proc_macro_attribute]
-pub fn gobbler_test(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn rebaser_test(attr: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as Args);
     let item = parse_macro_input!(input as ItemFn);
     dal_test::expand(item, args).into()
