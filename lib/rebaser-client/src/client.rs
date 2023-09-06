@@ -1,7 +1,7 @@
 //! This module provides [`Client`], which is used for communicating with a running
-//! gobbler [`Server`](gobbler_server::Server).
+//! rebaser [`Server`](rebaser_server::Server).
 
-use gobbler_server::{ManagementMessage, ManagementMessageAction, GOBBLER_MANAGEMENT_STREAM};
+use rebaser_server::{ManagementMessage, ManagementMessageAction, REBASER_MANAGEMENT_STREAM};
 use serde::Serialize;
 use si_rabbitmq::{Consumer, ConsumerOffsetSpecification, Environment, Producer};
 use std::collections::HashMap;
@@ -10,9 +10,9 @@ use ulid::Ulid;
 
 use crate::{ClientError, ClientResult};
 
-const GOBBLER_REPLY_STREAM_PREFIX: &str = "gobbler-reply";
+const REBASER_REPLY_STREAM_PREFIX: &str = "rebaser-reply";
 
-/// A client for communicating with a running gobbler [`Server`](gobbler_server::Server).
+/// A client for communicating with a running rebaser [`Server`](rebaser_server::Server).
 #[allow(missing_debug_implementations)]
 pub struct Client {
     management_stream: Stream,
@@ -27,15 +27,15 @@ struct Stream {
 }
 
 impl Client {
-    /// Creates a new [`Client`] to communicate with a running gobbler
-    /// [`Server`](gobbler_server::Server).
+    /// Creates a new [`Client`] to communicate with a running rebaser
+    /// [`Server`](rebaser_server::Server).
     pub async fn new() -> ClientResult<Self> {
         let environment = Environment::new().await?;
 
         // First, create the reply stream. We do not check if it already exists since the reply
         // stream name is ULID-based. It's unlikely that there will be a collision.
         let unique_identifier = Ulid::new().to_string();
-        let management_reply_stream = format!("gobbler-management-reply-{unique_identifier}");
+        let management_reply_stream = format!("rebaser-management-reply-{unique_identifier}");
         environment.create_stream(&management_reply_stream).await?;
         let management_reply_consumer = Consumer::new(
             &environment,
@@ -44,10 +44,10 @@ impl Client {
         )
         .await?;
 
-        // Name the producer using the reply stream, but produce to the primary gobbler stream. This
+        // Name the producer using the reply stream, but produce to the primary rebaser stream. This
         // may... will... uh... potentially?... be useful for tracing.
         let management_producer =
-            Producer::new(&environment, unique_identifier, GOBBLER_MANAGEMENT_STREAM).await?;
+            Producer::new(&environment, unique_identifier, REBASER_MANAGEMENT_STREAM).await?;
 
         Ok(Self {
             management_stream: Stream {
@@ -59,7 +59,7 @@ impl Client {
         })
     }
 
-    /// Send a message to a gobbler stream for a change set and block for a reply.
+    /// Send a message to a rebaser stream for a change set and block for a reply.
     pub async fn send_with_reply<T: Serialize>(
         &mut self,
         message: T,
@@ -68,7 +68,7 @@ impl Client {
         let stream = self
             .streams
             .get_mut(&change_set_id)
-            .ok_or(ClientError::GobblerStreamForChangeSetNotFound)?;
+            .ok_or(ClientError::RebaserStreamForChangeSetNotFound)?;
         stream
             .producer
             .send_single(message, Some(stream.reply_stream.clone()))
@@ -81,7 +81,7 @@ impl Client {
         Ok(None)
     }
 
-    /// Send a message to the management stream to open a gobbler loop and block for a reply.
+    /// Send a message to the management stream to open a rebaser loop and block for a reply.
     pub async fn send_management_open(
         &mut self,
         change_set_id: Ulid,
@@ -101,7 +101,7 @@ impl Client {
                 let change_set_stream: String = serde_json::from_value(contents)?;
 
                 let environment = Environment::new().await?;
-                let reply_stream = format!("{GOBBLER_REPLY_STREAM_PREFIX}-{change_set_id}");
+                let reply_stream = format!("{REBASER_REPLY_STREAM_PREFIX}-{change_set_id}");
                 environment.create_stream(&reply_stream).await?;
 
                 // FIXME(nick): name the producer properly.
@@ -127,7 +127,7 @@ impl Client {
         Ok(None)
     }
 
-    /// Send a message to the management stream to close a gobbler loop and do not wait for a reply.
+    /// Send a message to the management stream to close a rebaser loop and do not wait for a reply.
     pub async fn send_management_close(&mut self, change_set_id: Ulid) -> ClientResult<()> {
         self.management_stream
             .producer

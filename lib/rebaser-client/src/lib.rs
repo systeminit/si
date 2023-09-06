@@ -1,5 +1,5 @@
-//! This crate provides the gobbler [`Client`], which is used for communicating with a running
-//! gobbler [`Server`](gobbler_server::Server).
+//! This crate provides the rebaser [`Client`], which is used for communicating with a running
+//! rebaser [`Server`](rebaser_server::Server).
 
 #![warn(
     missing_debug_implementations,
@@ -35,10 +35,10 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
-    #[error("gobbler stream for change set not found")]
-    GobblerStreamForChangeSetNotFound,
     #[error("si rabbitmq error: {0}")]
     Rabbit(#[from] RabbitError),
+    #[error("rebaser stream for change set not found")]
+    RebaserStreamForChangeSetNotFound,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
@@ -49,7 +49,7 @@ pub type ClientResult<T> = Result<T, ClientError>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gobbler_server::{ConfigBuilder, Server};
+    use rebaser_server::{ConfigBuilder, Server};
     use tokio::test;
     use ulid::Ulid;
 
@@ -85,13 +85,13 @@ mod tests {
         let _new_stream_to_produce_to = client
             .send_management_open(change_set_id)
             .await
-            .expect("could not create new gobbler loop for change set")
+            .expect("could not create new rebaser loop for change set")
             .expect("no message returned");
 
         client
             .send_management_close(change_set_id)
             .await
-            .expect("could not close the gobbler loop for change set");
+            .expect("could not close the rebaser loop for change set");
 
         client.close().await;
     }
@@ -104,7 +104,7 @@ mod tests {
         let _new_stream_to_produce_to = client
             .send_management_open(change_set_id)
             .await
-            .expect("could not create new gobbler loop for change set")
+            .expect("could not create new rebaser loop for change set")
             .expect("no message returned");
 
         let contents = "MUSTANG GTD";
@@ -118,7 +118,7 @@ mod tests {
         client
             .send_management_close(change_set_id)
             .await
-            .expect("could not close the gobbler loop for change set");
+            .expect("could not close the rebaser loop for change set");
 
         client.close().await;
     }
