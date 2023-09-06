@@ -128,7 +128,7 @@ impl TryFrom<ConfigFile> for Config {
 }
 
 fn default_cyclone_encryption_key_path() -> String {
-    "/run/gobbler/cyclone_encryption.key".to_string()
+    "/run/rebaser/cyclone_encryption.key".to_string()
 }
 
 fn default_recreate_management_stream() -> bool {

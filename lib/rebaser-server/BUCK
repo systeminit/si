@@ -1,7 +1,7 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "gobbler-server",
+    name = "rebaser-server",
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",

@@ -1,12 +1,12 @@
 [package]
-name = "gobbler-client"
+name = "rebaser-client"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.64"
 publish = false
 
 [dependencies]
-gobbler-server = { path = "../../lib/gobbler-server" }
+rebaser-server = { path = "../../lib/rebaser-server" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

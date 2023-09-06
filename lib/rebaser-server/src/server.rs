@@ -25,8 +25,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
-use crate::GOBBLER_STREAM_PREFIX;
-use crate::{Config, GOBBLER_MANAGEMENT_STREAM};
+use crate::REBASER_STREAM_PREFIX;
+use crate::{Config, REBASER_MANAGEMENT_STREAM};
 use crate::{ManagementMessage, ManagementMessageAction};
 
 #[allow(missing_docs)]
@@ -81,7 +81,7 @@ impl From<TransactionsError> for ServerError {
 
 type ServerResult<T> = Result<T, ServerError>;
 
-/// The [`Server`] for managing gobbler tasks.
+/// The [`Server`] for managing rebaser tasks.
 #[allow(missing_debug_implementations)]
 pub struct Server {
     encryption_key: Arc<CycloneEncryptionKey>,
@@ -105,7 +105,7 @@ pub struct Server {
 
 impl Server {
     /// Build a [`Server`] from a given [`Config`].
-    #[instrument(name = "gobbler.init.from_config", skip_all)]
+    #[instrument(name = "rebaser.init.from_config", skip_all)]
     pub async fn from_config(config: Config) -> ServerResult<Self> {
         dal::init()?;
 
@@ -127,7 +127,7 @@ impl Server {
     }
 
     /// Build a [`Server`] from information provided via companion services.
-    #[instrument(name = "gobbler.init.from_services", skip_all)]
+    #[instrument(name = "rebaser.init.from_services", skip_all)]
     pub fn from_services(
         encryption_key: Arc<CycloneEncryptionKey>,
         nats: NatsClient,
@@ -196,26 +196,26 @@ impl Server {
         Ok(Arc::new(CycloneEncryptionKey::load(path).await?))
     }
 
-    #[instrument(name = "gobbler.init.connect_to_nats", skip_all)]
+    #[instrument(name = "rebaser.init.connect_to_nats", skip_all)]
     async fn connect_to_nats(nats_config: &NatsConfig) -> ServerResult<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
     }
 
-    #[instrument(name = "gobbler.init.create_pg_pool", skip_all)]
+    #[instrument(name = "rebaser.init.create_pg_pool", skip_all)]
     async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
-    #[instrument(name = "gobbler.init.create_veritech_client", skip_all)]
+    #[instrument(name = "rebaser.init.create_veritech_client", skip_all)]
     fn create_veritech_client(nats: NatsClient) -> VeritechClient {
         VeritechClient::new(nats)
     }
 
-    #[instrument(name = "gobbler.init.create_job_processor", skip_all)]
+    #[instrument(name = "rebaser.init.create_job_processor", skip_all)]
     fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
         Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
     }
@@ -294,15 +294,15 @@ async fn consume_stream(
     );
     let _ctx_builder = DalContext::builder(services_context, false);
 
-    // Meta: we can only have one gobbler instance right now due to https://github.com/rabbitmq/rabbitmq-stream-rust-client/issues/130
+    // Meta: we can only have one rebaser instance right now due to https://github.com/rabbitmq/rabbitmq-stream-rust-client/issues/130
     //
     // 1) subscribe to "next" for changeset close/create events --> stream for ChangeSetClose or ChangeSetOpen
-    //    --> "gobbler-management"
+    //    --> "rebaser-management"
     // 2) query db for all named, open changesets
     // 3) start a subscription for each result for step 2
-    //    --> "gobbler-<change-set-id>"
-    //    1:N --> "gobbler-<change-set-id>-reply-<requester>-<ulid>"
-    //      (e.g. "gobbler-<change-set-id>-reply-sdf-<ulid>")
+    //    --> "rebaser-<change-set-id>"
+    //    1:N --> "rebaser-<change-set-id>-reply-<requester>-<ulid>"
+    //      (e.g. "rebaser-<change-set-id>-reply-sdf-<ulid>")
     //             note: requester deletes stream upon reply
     //
     // NOTE: QUERY DB FOR OFFSET NUMBER OR GO TO FIRST SPECIFICATION
@@ -310,18 +310,18 @@ async fn consume_stream(
     // Prepare the environment and management stream.
     let environment = Environment::new().await?;
     if recreate_management_stream {
-        environment.delete_stream(GOBBLER_MANAGEMENT_STREAM).await?;
+        environment.delete_stream(REBASER_MANAGEMENT_STREAM).await?;
     }
-    environment.create_stream(GOBBLER_MANAGEMENT_STREAM).await?;
+    environment.create_stream(REBASER_MANAGEMENT_STREAM).await?;
 
     let mut management_consumer = Consumer::new(
         &environment,
-        GOBBLER_MANAGEMENT_STREAM,
+        REBASER_MANAGEMENT_STREAM,
         ConsumerOffsetSpecification::Next,
     )
     .await?;
     let management_handle = management_consumer.handle();
-    let mut gobbler_handles: HashMap<Ulid, (String, ConsumerHandle)> = HashMap::new();
+    let mut rebaser_handles: HashMap<Ulid, (String, ConsumerHandle)> = HashMap::new();
 
     while let Some(management_delivery) = management_consumer.next().await? {
         let contents = management_delivery
@@ -333,7 +333,7 @@ async fn consume_stream(
         let mm: ManagementMessage = serde_json::from_value(contents)?;
 
         match mm.action {
-            ManagementMessageAction::Close => match gobbler_handles.remove(&mm.change_set_id) {
+            ManagementMessageAction::Close => match rebaser_handles.remove(&mm.change_set_id) {
                 Some((stream, handle)) => {
                     if let Err(e) = handle.close().await {
                         error!("{e}");
@@ -348,7 +348,7 @@ async fn consume_stream(
                 ),
             },
             ManagementMessageAction::Open => {
-                let new_stream = format!("{GOBBLER_STREAM_PREFIX}-{}", mm.change_set_id);
+                let new_stream = format!("{REBASER_STREAM_PREFIX}-{}", mm.change_set_id);
                 let stream_already_exists = environment.create_stream(&new_stream).await?;
 
                 // Only create the new stream if it does not already exist.
@@ -357,9 +357,9 @@ async fn consume_stream(
                         Consumer::new(&environment, &new_stream, ConsumerOffsetSpecification::Next)
                             .await?;
                     let handle = consumer.handle();
-                    gobbler_handles.insert(mm.change_set_id, (new_stream.clone(), handle));
+                    rebaser_handles.insert(mm.change_set_id, (new_stream.clone(), handle));
 
-                    tokio::spawn(gobbler_loop_infallible_wrapper(consumer));
+                    tokio::spawn(rebaser_loop_infallible_wrapper(consumer));
                 }
 
                 // Return the requested stream and then close the producer.
@@ -370,7 +370,7 @@ async fn consume_stream(
         }
     }
 
-    for (_, (stream, handle)) in gobbler_handles.drain() {
+    for (_, (stream, handle)) in rebaser_handles.drain() {
         if let Err(e) = handle.close().await {
             error!("{e}");
         }
@@ -384,13 +384,13 @@ async fn consume_stream(
     Ok(())
 }
 
-async fn gobbler_loop_infallible_wrapper(consumer: Consumer) {
-    if let Err(e) = gobbler_loop(consumer).await {
+async fn rebaser_loop_infallible_wrapper(consumer: Consumer) {
+    if let Err(e) = rebaser_loop(consumer).await {
         dbg!(e);
     }
 }
 
-async fn gobbler_loop(mut consumer: Consumer) -> ServerResult<()> {
+async fn rebaser_loop(mut consumer: Consumer) -> ServerResult<()> {
     // Create an environment for reply streams.
     let environment = Environment::new().await?;
     while let Some(delivery) = consumer.next().await? {
