@@ -1,0 +1,22 @@
+name: Deploy Module Index
+"on":
+  workflow_dispatch: { }
+
+env:
+  MODULE_INDEX_CLUSTER: module-index-server-51059bf
+  MODULE_INDEX_SERVICE: module-index
+
+jobs:
+  deploy:
+    name: Build and push container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ECS_DEPLOYMENT_USER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_ECS_REGION }}
+      - name: Trigger ECS Deploy
+        run: |
+          aws ecs update-service --region ${{ secrets.AWS_ECS_REGION }} --cluster ${{ env.MODULE_INDEX_CLUSTER }} --service ${{ env.MODULE_INDEX_SERVICE }} --force-new-deployment
