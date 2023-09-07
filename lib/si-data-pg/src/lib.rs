@@ -52,6 +52,8 @@ pub enum PgError {
         "transaction not exclusively referenced when rollback attempted; arc_strong_count={0}"
     )]
     TxnRollbackNotExclusive(usize),
+    #[error("unexpected row returned: {0:?}")]
+    UnexpectedRow(PgRow),
 }
 
 #[remain::sorted]
@@ -2324,6 +2326,38 @@ impl PgSharedTransaction {
     ) -> Result<Option<PgRow>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.query_opt(statement, params).await,
+            None => {
+                unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
+            }
+        }
+    }
+
+    /// Executes a statement that returns zero rows.
+    ///
+    /// Returns an error if the query returns more than zero rows.
+    ///
+    /// A statement may contain parameters, specified by `$n`, where `n` is the index of the
+    /// parameter of the list provided, 1-indexed.
+    ///
+    /// The `statement` argument can either be a `Statement`, or a raw query string. If the same
+    /// statement will be repeatedly executed (perhaps with different query parameters), consider
+    /// preparing the statement up front with the `prepare` method.
+    ///
+    /// # Panics
+    ///
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
+    pub async fn query_none(
+        &self,
+        statement: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<(), PgError> {
+        match self.inner.lock().await.borrow_txn().as_ref() {
+            Some(txn) => match txn.query_opt(statement, params).await? {
+                None => Ok(()),
+                Some(row) => Err(PgError::UnexpectedRow(row)),
+            },
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }

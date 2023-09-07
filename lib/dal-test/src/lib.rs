@@ -440,6 +440,31 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
     Ok(server)
 }
 
+/// Configures and builds a [`rebaser_server::Server`] suitable for running alongside DAL
+/// object-related tests.
+pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_server::Server> {
+    let _config: rebaser_server::Config = {
+        let mut config_file = rebaser_server::ConfigFile::default();
+        rebaser_server::detect_and_configure_development(&mut config_file)
+            .wrap_err("failed to detect and configure Rebaser ConfigFile")?;
+        config_file
+            .try_into()
+            .wrap_err("failed to build Rebaser server config")?
+    };
+
+    let server = rebaser_server::Server::from_services(
+        services_context.encryption_key(),
+        services_context.nats_conn().clone(),
+        services_context.pg_pool().clone(),
+        services_context.veritech().clone(),
+        services_context.job_processor(),
+        false,
+    )
+    .wrap_err("failed to create Rebaser server")?;
+
+    Ok(server)
+}
+
 /// Configures and builds a [`veritech_server::Server`] suitable for running alongside DAL
 /// object-related tests.
 pub async fn veritech_server_for_uds_cyclone(
@@ -491,6 +516,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let pinga_server = pinga_server(&services_ctx)?;
     let pinga_server_handle = pinga_server.shutdown_handle();
     tokio::spawn(pinga_server.run());
+
+    // Do not start up the Rebaser server since we do not need it for initial migrations.
+    info!("skipping Rebaser server startup and shutdown for initial migrations");
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");

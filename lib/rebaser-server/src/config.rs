@@ -1,7 +1,6 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
-use dal::CycloneKeyPair;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
@@ -35,7 +34,7 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-/// The set of configuration options for building a [`Server`].
+#[allow(missing_docs)]
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
@@ -135,8 +134,10 @@ fn default_recreate_management_stream() -> bool {
     false
 }
 
-#[allow(clippy::disallowed_methods)] // Used to determine if running in development
-fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
+/// This function is used to determine the development environment and update the [`ConfigFile`]
+/// accordingly.
+#[allow(clippy::disallowed_methods)]
+pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         buck2_development(config)
     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
