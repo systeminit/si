@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::{
-    change_set::ChangeSet,
     node_weight::{NodeWeightError, NodeWeightResult},
     vector_clock::VectorClock,
 };
@@ -58,7 +58,7 @@ pub struct ContentNodeWeight {
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
     merkle_tree_hash: ContentHash,
-    /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
+    /// The first time a [`ChangeSetPointer`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
     vector_clock_first_seen: VectorClock,
@@ -68,7 +68,7 @@ pub struct ContentNodeWeight {
 
 impl ContentNodeWeight {
     pub fn new(
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         id: Ulid,
         content_address: ContentAddress,
     ) -> NodeWeightResult<Self> {
@@ -95,7 +95,10 @@ impl ContentNodeWeight {
         self.id
     }
 
-    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(
+        &mut self,
+        change_set: &ChangeSetPointer,
+    ) -> NodeWeightResult<()> {
         self.vector_clock_write.inc(change_set)?;
         self.vector_clock_recently_seen.inc(change_set)?;
 
@@ -106,7 +109,7 @@ impl ContentNodeWeight {
         self.lineage_id
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
         self.vector_clock_recently_seen
             .inc_to(change_set, seen_at.clone());
         if self.vector_clock_first_seen.entry_for(change_set).is_none() {
@@ -116,7 +119,7 @@ impl ContentNodeWeight {
 
     pub fn merge_clocks(
         &mut self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         other: &ContentNodeWeight,
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
@@ -151,7 +154,7 @@ impl ContentNodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
     ) -> NodeWeightResult<Self> {
         let mut new_node_weight = self.clone();
         new_node_weight.increment_vector_clock(change_set)?;
@@ -165,7 +168,7 @@ impl ContentNodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         new_val: DateTime<Utc>,
     ) {
         self.vector_clock_recently_seen.inc_to(change_set, new_val);
