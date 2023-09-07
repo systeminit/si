@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-use std::{io, path::Path, sync::Arc};
-
+use dal::change_set_pointer::ChangeSetPointerError;
+use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
-    job::consumer::JobConsumerError, DalContext, InitializationError, JobFailureError,
-    JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
+    job::consumer::JobConsumerError, InitializationError, JobFailureError, JobQueueProcessor,
+    NatsProcessor, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::SubscriberError;
+
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_rabbitmq::{
-    Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment, Producer, RabbitError,
-};
+use si_rabbitmq::RabbitError;
+
+use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -21,18 +21,26 @@ use tokio::{
         oneshot, watch,
     },
 };
+<<<<<<< HEAD
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
+=======
 
-use crate::REBASER_STREAM_PREFIX;
-use crate::{Config, REBASER_MANAGEMENT_STREAM};
-use crate::{ManagementMessage, ManagementMessageAction};
+use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
+>>>>>>> cdb8726f3 (Initial round trip loop of rebaser using graph logic)
+
+use crate::Config;
+
+mod change_set_loop;
+mod management_loop;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("error when loading encryption key: {0}")]
     CycloneEncryptionKey(#[from] CycloneEncryptionKeyError),
     #[error(transparent)]
@@ -59,6 +67,8 @@ pub enum ServerError {
     Subscriber(#[from] SubscriberError),
     #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 impl From<PgPoolError> for ServerError {
@@ -164,7 +174,7 @@ impl Server {
     /// The primary function for running the server. This should be called when deciding to run
     /// the server as a task, in a standalone binary, etc.
     pub async fn run(self) -> ServerResult<()> {
-        consume_stream_task(
+        management_loop::management_loop_infallible_wrapper(
             self.recreate_management_stream,
             self.pg_pool,
             self.nats,
@@ -247,6 +257,7 @@ impl Default for ShutdownSource {
     }
 }
 
+<<<<<<< HEAD
 #[allow(clippy::too_many_arguments)]
 async fn consume_stream_task(
     recreate_management_stream: bool,
@@ -416,6 +427,8 @@ async fn rebaser_loop(mut consumer: Consumer) -> ServerResult<()> {
     Ok(())
 }
 
+=======
+>>>>>>> cdb8726f3 (Initial round trip loop of rebaser using graph logic)
 fn prepare_graceful_shutdown(
     mut external_shutdown_rx: mpsc::Receiver<ShutdownSource>,
     shutdown_watch_tx: watch::Sender<()>,

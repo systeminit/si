@@ -131,6 +131,7 @@ pub mod attribute;
 pub mod authentication_prototype;
 pub mod builtins;
 pub mod change_set;
+pub mod change_set_pointer;
 pub mod change_status;
 pub mod code_view;
 pub mod component;

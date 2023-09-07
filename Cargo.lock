@@ -1290,6 +1290,8 @@ dependencies = [
  "postgres-types",
  "pretty_assertions_sorted",
  "rand 0.8.5",
+ "rebaser-client",
+ "rebaser-server",
  "refinery",
  "regex",
  "remain",
@@ -1328,6 +1330,7 @@ dependencies = [
  "module-index-client",
  "names",
  "pinga-server",
+ "rebaser-server",
  "remain",
  "serde",
  "serde_json",
@@ -4087,13 +4090,26 @@ dependencies = [
 name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
- "rebaser-server",
+ "log",
+ "rebaser-core",
  "remain",
  "serde",
  "serde_json",
  "si-rabbitmq",
  "telemetry",
  "thiserror",
+ "tokio",
+ "ulid",
+]
+
+[[package]]
+name = "rebaser-core"
+version = "0.1.0"
+dependencies = [
+ "pretty_assertions_sorted",
+ "rebaser-client",
+ "rebaser-server",
+ "serde",
  "tokio",
  "ulid",
 ]
@@ -4109,6 +4125,7 @@ dependencies = [
  "futures",
  "nats-subscriber",
  "pretty_assertions_sorted",
+ "rebaser-core",
  "remain",
  "serde",
  "serde_json",

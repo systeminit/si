@@ -24,6 +24,7 @@ members = [
     "lib/dal-test",
     "lib/deadpool-cyclone",
     "lib/rebaser-client",
+    "lib/rebaser-core",
     "lib/rebaser-server",
     "lib/module-index-client",
     "lib/module-index-server",
