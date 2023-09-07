@@ -10,6 +10,7 @@ rust_library(
         "//lib/council-server:council-server",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
+        "//lib/rebaser-client:rebaser-client",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-pkg:si-pkg",

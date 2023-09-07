@@ -55,4 +55,6 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 dal-test = { path = "../../lib/dal-test" }
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
+rebaser-client = { path = "../../lib/rebaser-client" }
+rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }

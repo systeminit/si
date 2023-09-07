@@ -16,6 +16,7 @@ mod prop;
 mod prop_tree;
 mod property_editor;
 mod provider;
+mod rebaser;
 mod schema;
 mod secret;
 mod socket;
