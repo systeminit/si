@@ -23,6 +23,7 @@ pub mod actor_view;
 pub mod attribute;
 pub mod builtins;
 pub mod change_set;
+pub mod change_set_pointer;
 pub mod change_status;
 pub mod code_view;
 pub mod component;

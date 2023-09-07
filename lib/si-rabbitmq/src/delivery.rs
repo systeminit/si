@@ -5,7 +5,7 @@ use crate::RabbitError;
 
 /// This type is a deconstruction of the upstream
 /// [`Delivery`](rabbitmq_stream_client::types::Delivery) type.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Delivery {
     /// The contents of the message.
     pub message_contents: Option<Value>,

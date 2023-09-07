@@ -8,6 +8,7 @@ rust_library(
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
         "//lib/pinga-server:pinga-server",
+        "//lib/rebaser-server:rebaser-server",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-std:si-std",
