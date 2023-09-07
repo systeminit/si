@@ -79,6 +79,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "RebaserShutdownHandle" => {
+                                let var = expander.setup_rebaser_shutdown_handle();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -173,6 +178,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
         expander.setup_start_veritech_server();
         expander.setup_start_pinga_server();
         expander.setup_start_council_server();
+        expander.setup_start_rebaser_server();
     }
 
     expander.finish()
@@ -200,6 +206,9 @@ struct DalTestFnSetupExpander {
     pinga_server: Option<Rc<Ident>>,
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
+    rebaser_server: Option<Rc<Ident>>,
+    rebaser_shutdown_handle: Option<Rc<Ident>>,
+    start_rebaser_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
     veritech_shutdown_handle: Option<Rc<Ident>>,
     start_veritech_server: Option<()>,
@@ -226,6 +235,9 @@ impl DalTestFnSetupExpander {
             pinga_server: None,
             pinga_shutdown_handle: None,
             start_pinga_server: None,
+            rebaser_server: None,
+            rebaser_shutdown_handle: None,
+            start_rebaser_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
             start_veritech_server: None,
@@ -316,6 +328,30 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_start_pinga_server(&mut self, value: Option<()>) {
         self.start_pinga_server = value;
+    }
+
+    fn rebaser_server(&self) -> Option<&Rc<Ident>> {
+        self.rebaser_server.as_ref()
+    }
+
+    fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>) {
+        self.rebaser_server = value;
+    }
+
+    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>> {
+        self.rebaser_shutdown_handle.as_ref()
+    }
+
+    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
+        self.rebaser_shutdown_handle = value;
+    }
+
+    fn start_rebaser_server(&self) -> Option<()> {
+        self.start_rebaser_server
+    }
+
+    fn set_start_rebaser_server(&mut self, value: Option<()>) {
+        self.start_rebaser_server = value;
     }
 
     fn veritech_server(&self) -> Option<&Rc<Ident>> {

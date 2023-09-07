@@ -9,7 +9,7 @@ use ulid::Ulid;
 
 use crate::workspace_snapshot::{
     lamport_clock::{LamportClock, LamportClockError},
-    {ChangeSet, ChangeSetId},
+    {ChangeSetPointer, ChangeSetPointerId},
 };
 
 #[derive(Debug, Error)]
@@ -22,12 +22,12 @@ pub type VectorClockResult<T> = Result<T, VectorClockError>;
 
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct VectorClock {
-    entries: HashMap<ChangeSetId, LamportClock>,
+    entries: HashMap<ChangeSetPointerId, LamportClock>,
 }
 
 impl VectorClock {
-    /// Create a new [`VectorClock`] with an entry for [`ChangeSet`].
-    pub fn new(change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
+    /// Create a new [`VectorClock`] with an entry for [`ChangeSetPointer`].
+    pub fn new(change_set: &ChangeSetPointer) -> VectorClockResult<VectorClock> {
         let lamport_clock = LamportClock::new()?;
         let mut entries = HashMap::new();
         entries.insert(change_set.id, lamport_clock);
@@ -35,7 +35,7 @@ impl VectorClock {
         Ok(VectorClock { entries })
     }
 
-    pub fn entry_for(&self, change_set: &ChangeSet) -> Option<LamportClock> {
+    pub fn entry_for(&self, change_set: &ChangeSetPointer) -> Option<LamportClock> {
         self.entries.get(&change_set.id).copied()
     }
 
@@ -43,7 +43,7 @@ impl VectorClock {
         self.entries.values().any(|v| *v > clock_stamp)
     }
 
-    pub fn inc_to(&mut self, change_set: &ChangeSet, new_clock_value: DateTime<Utc>) {
+    pub fn inc_to(&mut self, change_set: &ChangeSetPointer, new_clock_value: DateTime<Utc>) {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
             lamport_clock.inc_to(new_clock_value);
         } else {
@@ -52,8 +52,8 @@ impl VectorClock {
         }
     }
 
-    /// Increment the entry for [`ChangeSet`], adding one if there wasn't one already.
-    pub fn inc(&mut self, change_set: &ChangeSet) -> VectorClockResult<()> {
+    /// Increment the entry for [`ChangeSetPointer`], adding one if there wasn't one already.
+    pub fn inc(&mut self, change_set: &ChangeSetPointer) -> VectorClockResult<()> {
         if let Some(lamport_clock) = self.entries.get_mut(&change_set.id) {
             lamport_clock.inc()?;
         } else {
@@ -64,9 +64,13 @@ impl VectorClock {
     }
 
     /// Add all entries in `other` to `self`, taking the most recent value if the entry already
-    /// exists in `self`, then increment the entry for [`ChangeSet`] (adding one if it is not
+    /// exists in `self`, then increment the entry for [`ChangeSetPointer`] (adding one if it is not
     /// already there).
-    pub fn merge(&mut self, change_set: &ChangeSet, other: &VectorClock) -> VectorClockResult<()> {
+    pub fn merge(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        other: &VectorClock,
+    ) -> VectorClockResult<()> {
         for (other_change_set_id, other_lamport_clock) in other.entries.iter() {
             if let Some(lamport_clock) = self.entries.get_mut(other_change_set_id) {
                 lamport_clock.merge(other_lamport_clock);
@@ -80,8 +84,8 @@ impl VectorClock {
         Ok(())
     }
 
-    /// Return a new [`VectorClock`] with the entry for [`ChangeSet`] incremented.
-    pub fn fork(&self, change_set: &ChangeSet) -> VectorClockResult<VectorClock> {
+    /// Return a new [`VectorClock`] with the entry for [`ChangeSetPointer`] incremented.
+    pub fn fork(&self, change_set: &ChangeSetPointer) -> VectorClockResult<VectorClock> {
         let mut forked = self.clone();
         forked.inc(change_set)?;
 

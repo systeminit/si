@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::workspace_snapshot::{
-    change_set::{ChangeSet, ChangeSetError},
-    vector_clock::{VectorClock, VectorClockError},
-};
+use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
+use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError};
 use crate::ContentHash;
 
 pub use crate::workspace_snapshot::node_weight::content_node_weight::ContentAddress;
@@ -25,7 +23,7 @@ pub enum NodeWeightError {
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] ChangeSetPointerError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
     #[error("Vector Clock error: {0}")]
@@ -55,7 +53,10 @@ impl NodeWeight {
         }
     }
 
-    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(
+        &mut self,
+        change_set: &ChangeSetPointer,
+    ) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Content(content_weight) => {
                 content_weight.increment_vector_clock(change_set)
@@ -73,7 +74,7 @@ impl NodeWeight {
         }
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
         match self {
             NodeWeight::Content(content_weight) => content_weight.mark_seen_at(change_set, seen_at),
             NodeWeight::Ordering(ordering_weight) => {
@@ -84,7 +85,7 @@ impl NodeWeight {
 
     pub fn merge_clocks(
         &mut self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         other: &NodeWeight,
     ) -> NodeWeightResult<()> {
         match (self, other) {
@@ -108,7 +109,7 @@ impl NodeWeight {
     }
 
     pub fn new_content(
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         content_id: Ulid,
         kind: ContentAddress,
     ) -> NodeWeightResult<Self> {
@@ -126,7 +127,7 @@ impl NodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
     ) -> NodeWeightResult<Self> {
         let new_weight = match self {
             NodeWeight::Content(content_weight) => {
@@ -147,7 +148,11 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
+    pub fn set_order(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        order: Vec<Ulid>,
+    ) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Content(_) => Err(NodeWeightError::CannotSetOrderOnKind),
             NodeWeight::Ordering(ordering_weight) => ordering_weight.set_order(change_set, order),
@@ -156,7 +161,7 @@ impl NodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
         new_val: DateTime<Utc>,
     ) {
         match self {

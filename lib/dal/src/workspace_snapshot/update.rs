@@ -1,9 +1,10 @@
 use petgraph::prelude::*;
 
 use super::edge_weight::EdgeWeight;
+use serde::{Deserialize, Serialize};
 
 #[remain::sorted]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Update {
     NewEdge {
         source: NodeIndex,
