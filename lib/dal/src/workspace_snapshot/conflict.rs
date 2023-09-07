@@ -1,9 +1,11 @@
 use petgraph::stable_graph::NodeIndex;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Describe the type of conflict between the given locations in a
 /// workspace graph.
 #[remain::sorted]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Conflict {
     // TODO(nick,jacob): this variant will not be possible until ordering is in place.
     ChildOrder {

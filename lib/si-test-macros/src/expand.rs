@@ -224,6 +224,15 @@ pub(crate) trait FnSetupExpander {
     fn start_pinga_server(&self) -> Option<()>;
     fn set_start_pinga_server(&mut self, value: Option<()>);
 
+    fn rebaser_server(&self) -> Option<&Rc<Ident>>;
+    fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>);
+
+    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>>;
+    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>);
+
+    fn start_rebaser_server(&self) -> Option<()>;
+    fn set_start_rebaser_server(&mut self, value: Option<()>);
+
     fn veritech_server(&self) -> Option<&Rc<Ident>>;
     fn set_veritech_server(&mut self, value: Option<Rc<Ident>>);
 
@@ -375,6 +384,54 @@ pub(crate) trait FnSetupExpander {
             ::tokio::spawn(#pinga_server.run());
         });
         self.set_start_pinga_server(Some(()));
+    }
+
+    fn setup_rebaser_server(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.rebaser_server() {
+            return ident.clone();
+        }
+
+        let services_context = self.setup_services_context();
+        let services_context = services_context.as_ref();
+
+        let var = Ident::new("rebaser_server", Span::call_site());
+        self.code_extend(quote! {
+            let #var = ::dal_test::rebaser_server(&#services_context)?;
+        });
+        self.set_rebaser_server(Some(Rc::new(var)));
+
+        self.rebaser_server().unwrap().clone()
+    }
+
+    fn setup_rebaser_shutdown_handle(&mut self) -> Rc<Ident> {
+        if let Some(ident) = self.rebaser_shutdown_handle() {
+            return ident.clone();
+        }
+
+        let rebaser_server = self.setup_rebaser_server();
+        let rebaser_server = rebaser_server.as_ref();
+
+        let var = Ident::new("rebaser_shutdown_handle", Span::call_site());
+        self.code_extend(quote! {
+            let #var = #rebaser_server.shutdown_handle();
+        });
+        self.set_rebaser_shutdown_handle(Some(Rc::new(var)));
+
+        self.rebaser_shutdown_handle().unwrap().clone()
+    }
+
+    fn setup_start_rebaser_server(&mut self) {
+        if self.start_rebaser_server().is_some() {
+            return;
+        }
+
+        let rebaser_server = self.setup_rebaser_server();
+        let rebaser_server = rebaser_server.as_ref();
+
+        self.code_extend(quote! {
+            ::tokio::spawn(#rebaser_server.run());
+        });
+        self.set_start_rebaser_server(Some(()));
     }
 
     fn setup_veritech_server(&mut self) -> Rc<Ident> {
