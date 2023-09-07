@@ -149,6 +149,8 @@ fn path_as_string(path: &Path) -> String {
 ///    for a workspace for a visibility which is not in a change set
 /// * `pinga_handle: PingaShutdownHandle`: the shutdown handle for the Pinga server running
 ///    alongside each test
+/// * `rebaser_handle: RebaserShutdownHandle`: the shutdown handle for the rebaser server running
+///    alongside each test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
 /// * `veritech_handle: VeritechShutdownHandle`: the shutdown handle for the Veritech server
 ///    running alongside each test
@@ -324,6 +326,8 @@ pub fn dal_test(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>`: a mutable reference to a DAL context
 ///    for a workspace for a visibility which is not in a change set
 /// * `pinga_handle: PingaShutdownHandle`: the shutdown handle for the Pinga server running
+///    alongside each test
+/// * `rebaser_handle: RebaserShutdownHandle`: the shutdown handle for the rebaser server running
 ///    alongside each test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
 /// * `veritech_handle: VeritechShutdownHandle`: the shutdown handle for the Veritech server

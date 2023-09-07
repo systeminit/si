@@ -1,14 +1,12 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "rebaser-client",
+    name = "rebaser-core",
     deps = [
-        "//lib/si-rabbitmq:si-rabbitmq",
-        "//lib/telemetry-rs:telemetry",
-        "//third-party/rust:remain",
+        "//lib/rebaser-client:rebaser-client",
+        "//lib/rebaser-server:rebaser-server",
         "//third-party/rust:serde",
-        "//third-party/rust:serde_json",
-        "//third-party/rust:thiserror",
+        "//third-party/rust:pretty_assertions_sorted",
         "//third-party/rust:tokio",
         "//third-party/rust:ulid",
     ],

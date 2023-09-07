@@ -25,6 +25,7 @@
 mod config;
 mod server;
 
+pub use config::detect_and_configure_development;
 pub use config::Config;
 pub use config::ConfigBuilder;
 pub use config::ConfigError;
@@ -32,31 +33,3 @@ pub use config::ConfigFile;
 pub use server::Server;
 pub use si_settings::StandardConfig;
 pub use si_settings::StandardConfigFile;
-
-use serde::{Deserialize, Serialize};
-use ulid::Ulid;
-
-/// Stream to manage rebaser consumer loops.
-pub const REBASER_MANAGEMENT_STREAM: &str = "rebaser-management";
-
-/// Stream prefix for rebaser consumer loops.
-pub const REBASER_STREAM_PREFIX: &str = "rebaser";
-
-/// The action for the rebaser management loop.
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ManagementMessageAction {
-    /// Close the inner rebaser loop for a change set. If it has already been closed, this is a
-    /// no-op.
-    Close,
-    /// Open the inner rebaser loop for a change set. If one already exists, it is a no-op.
-    Open,
-}
-
-/// The message that the rebaser management consumer expects in the server.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ManagementMessage {
-    /// The ID of the change set wishing to be operated on.
-    pub change_set_id: Ulid,
-    /// The action to instruct the management loop to perform.
-    pub action: ManagementMessageAction,
-}

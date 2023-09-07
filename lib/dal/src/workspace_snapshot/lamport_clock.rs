@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::workspace_snapshot::{ChangeSet, ChangeSetError};
+use crate::workspace_snapshot::{ChangeSetPointer, ChangeSetPointerError};
 
 #[derive(Debug, Error)]
 pub enum LamportClockError {
     #[error("Change Set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] ChangeSetPointerError),
 }
 
 pub type LamportClockResult<T> = Result<T, LamportClockError>;

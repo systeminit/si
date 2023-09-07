@@ -16,6 +16,7 @@ lazy_static = { workspace = true }
 module-index-client = { path = "../../lib/module-index-client" }
 names = { workspace = true }
 pinga-server = { path = "../../lib/pinga-server" }
+rebaser-server = { path = "../../lib/rebaser-server" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
