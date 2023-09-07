@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::{io, path::Path, sync::Arc};
-
+use dal::change_set_pointer::ChangeSetPointerError;
+use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
-    job::consumer::JobConsumerError, DalContext, InitializationError, JobFailureError,
-    JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
+    job::consumer::JobConsumerError, InitializationError, JobFailureError, JobQueueProcessor,
+    NatsProcessor, TransactionsError,
 };
 use nats_subscriber::SubscriberError;
+
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_rabbitmq::{
-    Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment, Producer, RabbitError,
-};
+use si_rabbitmq::RabbitError;
+
+use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -20,17 +20,20 @@ use tokio::{
         oneshot, watch,
     },
 };
-use ulid::Ulid;
+
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
-use crate::REBASER_STREAM_PREFIX;
-use crate::{Config, REBASER_MANAGEMENT_STREAM};
-use crate::{ManagementMessage, ManagementMessageAction};
+use crate::Config;
+
+mod change_set_loop;
+mod management_loop;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("error when loading encryption key: {0}")]
     EncryptionKey(#[from] EncryptionKeyError),
     #[error(transparent)]
@@ -57,6 +60,8 @@ pub enum ServerError {
     Subscriber(#[from] SubscriberError),
     #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 impl From<PgPoolError> for ServerError {
@@ -162,7 +167,7 @@ impl Server {
     /// The primary function for running the server. This should be called when deciding to run
     /// the server as a task, in a standalone binary, etc.
     pub async fn run(self) -> ServerResult<()> {
-        consume_stream_task(
+        management_loop::management_loop_infallible_wrapper(
             self.recreate_management_stream,
             self.pg_pool,
             self.nats,
@@ -241,174 +246,6 @@ impl Default for ShutdownSource {
     fn default() -> Self {
         Self::Handle
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn consume_stream_task(
-    recreate_management_stream: bool,
-    pg_pool: PgPool,
-    nats: NatsClient,
-    veritech: veritech_client::Client,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
-    shutdown_watch_rx: watch::Receiver<()>,
-) {
-    if let Err(err) = consume_stream(
-        recreate_management_stream,
-        pg_pool,
-        nats,
-        veritech,
-        job_processor,
-        encryption_key,
-        shutdown_watch_rx,
-    )
-    .await
-    {
-        info!(error = ?err, "consuming stream failed");
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn consume_stream(
-    recreate_management_stream: bool,
-    pg_pool: PgPool,
-    nats: NatsClient,
-    veritech: veritech_client::Client,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
-    mut shutdown_watch_rx: watch::Receiver<()>,
-) -> ServerResult<()> {
-    let services_context = ServicesContext::new(
-        pg_pool,
-        nats.clone(),
-        job_processor,
-        veritech.clone(),
-        encryption_key,
-        None,
-        None,
-    );
-    let _ctx_builder = DalContext::builder(services_context, false);
-
-    // Meta: we can only have one rebaser instance right now due to https://github.com/rabbitmq/rabbitmq-stream-rust-client/issues/130
-    //
-    // 1) subscribe to "next" for changeset close/create events --> stream for ChangeSetClose or ChangeSetOpen
-    //    --> "rebaser-management"
-    // 2) query db for all named, open changesets
-    // 3) start a subscription for each result for step 2
-    //    --> "rebaser-<change-set-id>"
-    //    1:N --> "rebaser-<change-set-id>-reply-<requester>-<ulid>"
-    //      (e.g. "rebaser-<change-set-id>-reply-sdf-<ulid>")
-    //             note: requester deletes stream upon reply
-    //
-    // NOTE: QUERY DB FOR OFFSET NUMBER OR GO TO FIRST SPECIFICATION
-
-    // Prepare the environment and management stream.
-    let environment = Environment::new().await?;
-    if recreate_management_stream {
-        environment.delete_stream(REBASER_MANAGEMENT_STREAM).await?;
-    }
-    environment.create_stream(REBASER_MANAGEMENT_STREAM).await?;
-
-    let mut management_consumer = Consumer::new(
-        &environment,
-        REBASER_MANAGEMENT_STREAM,
-        ConsumerOffsetSpecification::Next,
-    )
-    .await?;
-    let management_handle = management_consumer.handle();
-    let mut rebaser_handles: HashMap<Ulid, (String, ConsumerHandle)> = HashMap::new();
-
-    while let Some(management_delivery) = management_consumer.next().await? {
-        let contents = management_delivery
-            .message_contents
-            .ok_or(ServerError::MissingManagementMessageContents)?;
-        let reply_to = management_delivery
-            .reply_to
-            .ok_or(ServerError::MissingManagementMessageReplyTo)?;
-        let mm: ManagementMessage = serde_json::from_value(contents)?;
-
-        match mm.action {
-            ManagementMessageAction::Close => match rebaser_handles.remove(&mm.change_set_id) {
-                Some((stream, handle)) => {
-                    if let Err(e) = handle.close().await {
-                        error!("{e}");
-                    }
-                    if let Err(e) = environment.delete_stream(stream).await {
-                        error!("{e}");
-                    }
-                }
-                None => debug!(
-                    "did not find handle for change set id: {}",
-                    mm.change_set_id
-                ),
-            },
-            ManagementMessageAction::Open => {
-                let new_stream = format!("{REBASER_STREAM_PREFIX}-{}", mm.change_set_id);
-                let stream_already_exists = environment.create_stream(&new_stream).await?;
-
-                // Only create the new stream if it does not already exist.
-                if !stream_already_exists {
-                    let consumer =
-                        Consumer::new(&environment, &new_stream, ConsumerOffsetSpecification::Next)
-                            .await?;
-                    let handle = consumer.handle();
-                    rebaser_handles.insert(mm.change_set_id, (new_stream.clone(), handle));
-
-                    tokio::spawn(rebaser_loop_infallible_wrapper(consumer));
-                }
-
-                // Return the requested stream and then close the producer.
-                let mut producer = Producer::for_reply(&environment, &new_stream, reply_to).await?;
-                producer.send_single(new_stream, None).await?;
-                producer.close().await?;
-            }
-        }
-    }
-
-    for (_, (stream, handle)) in rebaser_handles.drain() {
-        if let Err(e) = handle.close().await {
-            error!("{e}");
-        }
-        if let Err(e) = environment.delete_stream(stream).await {
-            error!("{e}")
-        }
-    }
-    if let Err(e) = management_handle.close().await {
-        error!("{e}");
-    }
-    Ok(())
-}
-
-async fn rebaser_loop_infallible_wrapper(consumer: Consumer) {
-    if let Err(e) = rebaser_loop(consumer).await {
-        dbg!(e);
-    }
-}
-
-async fn rebaser_loop(mut consumer: Consumer) -> ServerResult<()> {
-    // Create an environment for reply streams.
-    let environment = Environment::new().await?;
-    while let Some(delivery) = consumer.next().await? {
-        if let Some(reply_to) = delivery.reply_to {
-            let mut producer =
-                Producer::for_reply(&environment, consumer.stream(), reply_to).await?;
-
-            // -----------------------------------------
-            // TODO(nick): this is where the fun begins.
-            //   1) succeed everywhere
-            //   2) store offset with changeset
-            //   3) update requester stream w/out waiting for reply
-            // -----------------------------------------
-
-            // TODO(nick): for now, just send back the message. Unwrapping is fine because we know
-            // that it must have content.
-            producer
-                .send_single(delivery.message_contents.unwrap(), None)
-                .await?;
-            producer.close().await?;
-        }
-    }
-    Ok(())
 }
 
 fn prepare_graceful_shutdown(

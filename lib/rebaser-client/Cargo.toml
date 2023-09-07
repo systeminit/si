@@ -6,7 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-rebaser-server = { path = "../../lib/rebaser-server" }
+rebaser-core = { path = "../../lib/rebaser-core" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -15,3 +15,4 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }
+log = "0.4.20"
