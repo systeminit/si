@@ -4,10 +4,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::workspace_snapshot::{
-    change_set::ChangeSet,
-    vector_clock::{VectorClock, VectorClockError},
-};
+use crate::change_set_pointer::ChangeSetPointer;
+use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError};
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -36,7 +34,10 @@ pub struct EdgeWeight {
 }
 
 impl EdgeWeight {
-    pub fn increment_vector_clocks(&mut self, change_set: &ChangeSet) -> EdgeWeightResult<()> {
+    pub fn increment_vector_clocks(
+        &mut self,
+        change_set: &ChangeSetPointer,
+    ) -> EdgeWeightResult<()> {
         self.vector_clock_write.inc(change_set)?;
 
         Ok(())
@@ -46,13 +47,13 @@ impl EdgeWeight {
         self.kind
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSet, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
         if self.vector_clock_first_seen.entry_for(change_set).is_none() {
             self.vector_clock_first_seen.inc_to(change_set, seen_at);
         }
     }
 
-    pub fn new(change_set: &ChangeSet, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
+    pub fn new(change_set: &ChangeSetPointer, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
         Ok(Self {
             kind,
             vector_clock_first_seen: VectorClock::new(change_set)?,
@@ -62,7 +63,7 @@ impl EdgeWeight {
 
     pub fn new_with_incremented_vector_clocks(
         &self,
-        change_set: &ChangeSet,
+        change_set: &ChangeSetPointer,
     ) -> EdgeWeightResult<Self> {
         let mut new_weight = self.clone();
         new_weight.increment_vector_clocks(change_set)?;

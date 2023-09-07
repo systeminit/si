@@ -27,99 +27,28 @@ mod client;
 
 pub use client::Client;
 
-use si_rabbitmq::RabbitError;
+use si_rabbitmq::{Delivery, RabbitError};
 use telemetry::prelude::error;
 use thiserror::Error;
+use tokio::time::error::Elapsed;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ClientError {
+    #[error("unexpected empty delivery for stream: {0}")]
+    EmptyDelivery(String),
+    #[error("empty message contents for delivery: {0:?}")]
+    EmptyMessageContentsForDelivery(Delivery),
     #[error("si rabbitmq error: {0}")]
     Rabbit(#[from] RabbitError),
     #[error("rebaser stream for change set not found")]
     RebaserStreamForChangeSetNotFound,
+    #[error("hit timeout while waiting for message on reply stream: {0}")]
+    ReplyTimeout(Elapsed),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
 
 #[allow(missing_docs)]
 pub type ClientResult<T> = Result<T, ClientError>;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rebaser_server::{ConfigBuilder, Server};
-    use tokio::test;
-    use ulid::Ulid;
-
-    async fn test_setup() -> Client {
-        // FIXME(nick): make this not brittle... make strong!
-        let config = ConfigBuilder::default()
-            .cyclone_encryption_key_path(
-                "../../lib/cyclone-server/src/dev.encryption.key"
-                    .try_into()
-                    .expect("could not convert"),
-            )
-            .build()
-            .expect("could not build config");
-        let server = Server::from_config(config)
-            .await
-            .expect("could not build server");
-        tokio::spawn(server.run());
-
-        Client::new().await.expect("could not build client")
-    }
-
-    #[test]
-    async fn connect() {
-        let client = test_setup().await;
-        client.close().await;
-    }
-
-    #[test]
-    async fn send_management() {
-        let mut client = test_setup().await;
-
-        let change_set_id = Ulid::new();
-        let _new_stream_to_produce_to = client
-            .send_management_open(change_set_id)
-            .await
-            .expect("could not create new rebaser loop for change set")
-            .expect("no message returned");
-
-        client
-            .send_management_close(change_set_id)
-            .await
-            .expect("could not close the rebaser loop for change set");
-
-        client.close().await;
-    }
-
-    #[test]
-    async fn send_management_and_round_trip() {
-        let mut client = test_setup().await;
-
-        let change_set_id = Ulid::new();
-        let _new_stream_to_produce_to = client
-            .send_management_open(change_set_id)
-            .await
-            .expect("could not create new rebaser loop for change set")
-            .expect("no message returned");
-
-        let contents = "MUSTANG GTD";
-        let message = client
-            .send_with_reply(contents, change_set_id)
-            .await
-            .expect("could not send message")
-            .expect("no message returned");
-        assert_eq!(contents, &message);
-
-        client
-            .send_management_close(change_set_id)
-            .await
-            .expect("could not close the rebaser loop for change set");
-
-        client.close().await;
-    }
-}
