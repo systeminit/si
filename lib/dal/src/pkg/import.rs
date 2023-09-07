@@ -4,8 +4,8 @@ use tokio::sync::Mutex;
 
 use si_pkg::{
     FuncUniqueId, SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView,
-    SiPkgError, SiPkgFunc, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation, SocketSpecKind,
+    SiPkgError, SiPkgFunc, SiPkgLeafFunction, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
+    SiPkgSocket, SiPkgValidation, SocketSpecKind,
 };
 
 use crate::{
@@ -25,9 +25,8 @@ use crate::{
     validation::{create_validation, Validation, ValidationKind},
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncArgument, FuncDescription, FuncDescriptionContents, FuncError,
-    FuncId, InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, StandardModel,
+    ExternalProviderId, Func, FuncArgument, FuncError, FuncId, InternalProvider, Prop, PropId,
+    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -394,27 +393,6 @@ struct PropVisitContext<'a, 'b> {
     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
 }
 
-async fn create_func_description(
-    ctx: &DalContext,
-    func_description: SiPkgFuncDescription<'_>,
-    schema_variant_id: SchemaVariantId,
-    func_map: &FuncMap,
-) -> PkgResult<()> {
-    let contents: FuncDescriptionContents =
-        serde_json::from_value(func_description.contents().to_owned())?;
-
-    let func =
-        func_map
-            .get(&func_description.func_unique_id())
-            .ok_or(PkgError::MissingFuncUniqueId(
-                func_description.func_unique_id().to_string(),
-            ))?;
-
-    FuncDescription::new(ctx, *func.id(), schema_variant_id, contents).await?;
-
-    Ok(())
-}
-
 async fn create_leaf_function(
     ctx: &DalContext,
     leaf_func: SiPkgLeafFunction<'_>,
@@ -681,11 +659,6 @@ async fn create_schema_variant(
 
             for leaf_func in variant_spec.leaf_functions()? {
                 create_leaf_function(ctx, leaf_func, *schema_variant.id(), func_map).await?;
-            }
-
-            for func_description in variant_spec.func_descriptions()? {
-                create_func_description(ctx, func_description, *schema_variant.id(), func_map)
-                    .await?;
             }
 
             for socket in variant_spec.sockets()? {

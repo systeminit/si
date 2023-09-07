@@ -306,11 +306,6 @@ const newFuncOptions = (
         type: "codeGenerationOptions",
         ...baseOptions,
       };
-    case FuncVariant.Confirmation:
-      return {
-        type: "confirmationOptions",
-        ...baseOptions,
-      };
     case FuncVariant.Qualification:
       return {
         type: "qualificationOptions",
@@ -335,7 +330,6 @@ const attachToLeafFunctionOrAction = (
   associations: FuncAssociations,
 ): FuncAssociations =>
   associations.type === "codeGeneration" ||
-  associations.type === "confirmation" ||
   associations.type === "qualification" ||
   associations.type === "action"
     ? {
@@ -403,7 +397,6 @@ const attachExistingFunc = async () => {
       switch (associations.type) {
         case "action":
         case "codeGeneration":
-        case "confirmation":
         case "qualification":
           updatedAssocations = attachToLeafFunctionOrAction(
             props.schemaVariantId,

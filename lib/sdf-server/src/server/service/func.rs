@@ -19,11 +19,10 @@ use dal::{
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
     AttributePrototypeError, AttributePrototypeId, AttributeValueError, ComponentError,
     ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBindingError, FuncDescription, FuncDescriptionContents, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafInputLocation, Prop,
-    PropError, PropId, PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, WsEventError,
+    FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider, InternalProviderError,
+    InternalProviderId, LeafInputLocation, Prop, PropError, PropId, PrototypeListForFuncError,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -269,13 +268,6 @@ pub struct ValidationPrototypeView {
     prop_id: PropId,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FuncDescriptionView {
-    schema_variant_id: SchemaVariantId,
-    contents: FuncDescriptionContents,
-}
-
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -300,7 +292,6 @@ pub enum FuncAssociations {
     Confirmation {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
-        descriptions: Vec<FuncDescriptionView>,
         inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
@@ -442,22 +433,6 @@ async fn attribute_prototypes_into_schema_variants_and_components(
     Ok((schema_variant_ids, component_ids))
 }
 
-pub async fn func_description_views(
-    ctx: &DalContext,
-    func_id: FuncId,
-) -> FuncResult<Vec<FuncDescriptionView>> {
-    let mut views = vec![];
-
-    for desc in FuncDescription::list_for_func(ctx, func_id).await? {
-        views.push(FuncDescriptionView {
-            schema_variant_id: *desc.schema_variant_id(),
-            contents: desc.deserialized_contents()?,
-        });
-    }
-
-    Ok(views)
-}
-
 pub async fn get_leaf_function_inputs(
     ctx: &DalContext,
     func_id: FuncId,
@@ -500,7 +475,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                                 FuncAssociations::Confirmation {
                                     schema_variant_ids,
                                     component_ids,
-                                    descriptions: func_description_views(ctx, *func.id()).await?,
                                     inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
                                 }
                             }
@@ -734,7 +708,7 @@ async fn compile_leaf_function_input_types(
             get_per_variant_types_for_prop_path(
                 ctx,
                 schema_variant_ids,
-                &input_location.prop_path()
+                &input_location.prop_path(),
             )
             .await?
         );

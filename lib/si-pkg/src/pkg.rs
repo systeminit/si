@@ -15,7 +15,6 @@ mod action_func;
 mod attr_func_input;
 mod change_set;
 mod func;
-mod func_description;
 mod leaf_function;
 mod map_key_func;
 mod prop;
@@ -26,9 +25,8 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, change_set::*, func::*, func_description::*,
-    leaf_function::*, map_key_func::*, prop::*, schema::*, si_prop_func::*, socket::*,
-    validation::*, variant::*,
+    action_func::*, attr_func_input::*, change_set::*, func::*, leaf_function::*, map_key_func::*,
+    prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
 };
 
 use crate::{
@@ -352,7 +350,7 @@ impl SiPkgMetadata {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::PACKAGE_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

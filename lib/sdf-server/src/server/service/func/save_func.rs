@@ -3,11 +3,11 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+use super::ValidationPrototypeView;
 use super::{
     AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
     FuncError, FuncResult,
 };
-use super::{FuncDescriptionView, ValidationPrototypeView};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use dal::{
@@ -20,7 +20,7 @@ use dal::{
     DalContext, Func, FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop,
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
-use dal::{FuncBackendResponseType, FuncDescription, PropKind, SchemaVariant, ValidationPrototype};
+use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -357,45 +357,6 @@ async fn attribute_view_for_leaf_func(
     Ok(prototype_view)
 }
 
-async fn save_func_descriptions(
-    ctx: &DalContext,
-    func: &Func,
-    descriptions: Vec<FuncDescriptionView>,
-) -> FuncResult<()> {
-    let mut id_set = HashSet::new();
-
-    for desc in descriptions {
-        match FuncDescription::find_for_func_and_schema_variant(
-            ctx,
-            *func.id(),
-            desc.schema_variant_id,
-        )
-        .await?
-        {
-            Some(mut func_desc) => {
-                func_desc
-                    .set_deserialized_contents(ctx, desc.contents)
-                    .await?;
-                id_set.insert(*func_desc.id());
-            }
-            None => {
-                let new_func_desc =
-                    FuncDescription::new(ctx, *func.id(), desc.schema_variant_id, desc.contents)
-                        .await?;
-                id_set.insert(*new_func_desc.id());
-            }
-        }
-    }
-
-    for mut desc in FuncDescription::list_for_func(ctx, *func.id()).await? {
-        if !id_set.contains(desc.id()) {
-            desc.delete_by_id(ctx).await?;
-        }
-    }
-
-    Ok(())
-}
-
 async fn save_leaf_prototypes(
     ctx: &DalContext,
     func: &Func,
@@ -662,7 +623,6 @@ pub async fn do_save_func(
                 if let Some(FuncAssociations::Confirmation {
                     schema_variant_ids,
                     component_ids,
-                    descriptions,
                     inputs,
                 }) = request.associations
                 {
@@ -675,8 +635,6 @@ pub async fn do_save_func(
                         LeafKind::Confirmation,
                     )
                     .await?;
-
-                    save_func_descriptions(ctx, &func, descriptions).await?;
                 }
             }
             FuncBackendResponseType::Qualification => {

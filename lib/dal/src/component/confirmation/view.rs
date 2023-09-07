@@ -15,8 +15,8 @@ use crate::fix::FixHistoryView;
 use crate::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
     AttributeValueId, ComponentError, DalContext, Fix, FixResolver, FixResolverError, Func,
-    FuncBindingReturnValue, FuncBindingReturnValueError, FuncDescription, FuncDescriptionContents,
-    FuncError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    FuncBindingReturnValue, FuncBindingReturnValueError, FuncError, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError,
 };
 use crate::{Component, ComponentId};
 
@@ -53,8 +53,6 @@ pub struct ConfirmationView {
     pub attribute_value_id: AttributeValueId,
     /// The displayed title of the "confirmation".
     pub title: String,
-    /// The displayed description of the "confirmation".
-    description: Option<String>,
 
     /// Indicates the [`Schema`](crate::Schema) that the "confirmation" belongs to.
     pub schema_id: SchemaId,
@@ -67,8 +65,6 @@ pub struct ConfirmationView {
     schema_name: String,
     /// The name of the [`Component`](crate::Component).
     component_name: String,
-    /// Indicates what "group" the [`Schema`](crate::Schema) belongs to. This is purely cosmetic.
-    pub provider: Option<String>,
 
     /// The resulting output of the last execution of the "confirmation" [`Func`](crate::Func).
     output: Option<Vec<String>>,
@@ -174,30 +170,6 @@ impl ConfirmationView {
             }
         };
 
-        // Dynamically determine the description based on the status.
-        let (description, maybe_title, maybe_provider) =
-            match FuncDescription::find_for_func_and_schema_variant(
-                ctx,
-                *found_func_id,
-                schema_variant_id,
-            )
-            .await?
-            {
-                Some(description) => match description.deserialized_contents()? {
-                    FuncDescriptionContents::Confirmation {
-                        success_description,
-                        failure_description,
-                        name,
-                        provider,
-                    } => match confirmation_status {
-                        ConfirmationStatus::Success => (success_description, Some(name), provider),
-                        ConfirmationStatus::Failure => (failure_description, Some(name), provider),
-                        _ => (None, Some(name), provider),
-                    },
-                },
-                None => (None, None, None),
-            };
-
         let maybe_fix_resolver =
             FixResolver::find_for_confirmation_attribute_value(ctx, *found_attribute_value_id)
                 .await?;
@@ -259,7 +231,6 @@ impl ConfirmationView {
                 confirmation_attribute_value_id: *found_attribute_value_id,
                 component_id,
                 component_name: Component::find_name(ctx, component_id).await?,
-                provider: maybe_provider.clone(),
                 name: recommendation_name.to_owned(),
                 action_kind: recommendation_action_kind,
                 action_prototype_id: *action_prototype.id(),
@@ -274,19 +245,14 @@ impl ConfirmationView {
         // Assemble the view.
         let view = ConfirmationView {
             attribute_value_id: *found_attribute_value_id,
-            title: match maybe_title {
-                Some(title) => title,
-                None => confirmation_name,
-            },
+            title: confirmation_name,
             component_id,
             schema_variant_id,
             schema_id,
             schema_name: schema_name.clone(),
             component_name: Component::find_name(ctx, component_id).await?,
-            description,
             output: Some(output.clone()).filter(|o| !o.is_empty()),
             status: confirmation_status,
-            provider: maybe_provider,
         };
 
         Ok((Some(view), recommendations))
@@ -320,7 +286,6 @@ pub struct RecommendationView {
     /// Indicates the [`Component`](crate::Component) that the "confirmation" belongs to.
     pub component_id: ComponentId,
     component_name: String,
-    provider: Option<String>,
 
     /// The title of a [recommendation](Self). An example: "Create EC2 Instance".
     pub name: String,

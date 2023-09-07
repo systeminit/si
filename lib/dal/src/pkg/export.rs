@@ -3,12 +3,11 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec,
-    FuncDescriptionSpec, FuncSpec, FuncUniqueId, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
-    PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg,
-    SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec,
-    ValidationSpecKind,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
+    FuncUniqueId, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder,
+    PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot, SiPkg, SiPropFuncSpec,
+    SiPropFuncSpecKind, SocketSpec, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 use crate::schema::variant::definition::SchemaVariantDefinition;
@@ -19,10 +18,9 @@ use crate::{
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ComponentType, DalContext,
-    ExternalProvider, ExternalProviderId, Func, FuncDescription, FuncId, InternalProvider,
-    InternalProviderId, LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Socket, StandardModel, StandardModelError,
-    ValidationPrototype,
+    ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId,
+    LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Socket, StandardModel, StandardModelError, ValidationPrototype,
 };
 
 use super::{PkgError, PkgResult};
@@ -152,29 +150,6 @@ async fn build_schema_spec(
     let schema_spec = schema_spec_builder.build()?;
 
     Ok(schema_spec)
-}
-
-async fn build_func_description_specs(
-    ctx: &DalContext,
-    variant_id: SchemaVariantId,
-    func_specs: &FuncSpecMap,
-) -> PkgResult<Vec<FuncDescriptionSpec>> {
-    let mut specs = vec![];
-
-    for func_description in FuncDescription::list_for_schema_variant(ctx, variant_id).await? {
-        let func_spec = func_specs
-            .get(func_description.func_id())
-            .ok_or(PkgError::MissingExportedFunc(*func_description.func_id()))?;
-
-        specs.push(
-            FuncDescriptionSpec::builder()
-                .func_unique_id(func_spec.unique_id)
-                .contents(func_description.serialized_contents().to_owned())
-                .build()?,
-        )
-    }
-
-    Ok(specs)
 }
 
 async fn build_leaf_function_specs(
@@ -522,13 +497,6 @@ async fn build_variant_spec(
         .drain(..)
         .for_each(|leaf_func_spec| {
             variant_spec_builder.leaf_function(leaf_func_spec);
-        });
-
-    build_func_description_specs(ctx, *variant.id(), func_specs)
-        .await?
-        .drain(..)
-        .for_each(|func_desc_spec| {
-            variant_spec_builder.func_description(func_desc_spec);
         });
 
     build_socket_specs(ctx, *variant.id(), func_specs)

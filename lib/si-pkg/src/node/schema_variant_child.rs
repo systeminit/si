@@ -6,9 +6,7 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ActionFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, SiPropFuncSpec, SocketSpec,
-};
+use crate::{ActionFuncSpec, LeafFunctionSpec, PropSpec, SiPropFuncSpec, SocketSpec};
 
 use super::PkgNode;
 
@@ -28,7 +26,6 @@ const KEY_KIND_STR: &str = "kind";
 pub enum SchemaVariantChild {
     ActionFuncs(Vec<ActionFuncSpec>),
     Domain(PropSpec),
-    FuncDescriptions(Vec<FuncDescriptionSpec>),
     LeafFunctions(Vec<LeafFunctionSpec>),
     ResourceValue(PropSpec),
     SiPropFuncs(Vec<SiPropFuncSpec>),
@@ -100,7 +97,7 @@ impl ReadBytes for SchemaVariantChildNode {
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid schema variant child kind: {invalid_kind}"
-                )))
+                )));
             }
         };
 
@@ -144,17 +141,6 @@ impl NodeChild for SchemaVariantChild {
                     vec![resource_value],
                 )
             }
-            Self::FuncDescriptions(descriptions) => NodeWithChildren::new(
-                NodeKind::Tree,
-                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::FuncDescriptions),
-                descriptions
-                    .iter()
-                    .map(|description| {
-                        Box::new(description.clone())
-                            as Box<dyn NodeChild<NodeType = Self::NodeType>>
-                    })
-                    .collect(),
-            ),
             Self::LeafFunctions(entries) => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::LeafFunctions),
