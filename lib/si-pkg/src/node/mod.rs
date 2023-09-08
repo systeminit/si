@@ -11,7 +11,6 @@ mod change_set;
 mod change_set_child;
 mod func;
 mod func_argument;
-mod func_description;
 mod leaf_function;
 mod map_key_func;
 mod package;
@@ -32,7 +31,6 @@ pub(crate) use self::{
     change_set_child::{ChangeSetChild, ChangeSetChildNode},
     func::FuncNode,
     func_argument::FuncArgumentNode,
-    func_description::FuncDescriptionNode,
     leaf_function::LeafFunctionNode,
     map_key_func::MapKeyFuncNode,
     package::PackageNode,
@@ -53,7 +51,6 @@ const NODE_KIND_CHANGE_SET: &str = "change_set";
 const NODE_KIND_CHANGE_SET_CHILD: &str = "change_set_child";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
-const NODE_KIND_FUNC_DESCRIPTION: &str = "func_description";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
 const NODE_KIND_MAP_KEY_FUNC: &str = "map_key_func";
 const NODE_KIND_PACKAGE: &str = "package";
@@ -78,7 +75,6 @@ pub enum PkgNode {
     ChangeSetChild(ChangeSetChildNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
-    FuncDescription(FuncDescriptionNode),
     LeafFunction(LeafFunctionNode),
     MapKeyFunc(MapKeyFuncNode),
     Package(PackageNode),
@@ -100,7 +96,6 @@ impl PkgNode {
     pub const CHANGE_SET_CHILD_KIND_STR: &str = NODE_KIND_CHANGE_SET_CHILD;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
-    pub const FUNC_DESCRIPTION_KIND_STR: &str = NODE_KIND_FUNC_DESCRIPTION;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
     pub const MAP_KEY_FUNC_KIND_STR: &str = NODE_KIND_MAP_KEY_FUNC;
     pub const PACKAGE_KIND_STR: &str = NODE_KIND_PACKAGE;
@@ -122,7 +117,6 @@ impl PkgNode {
             Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
-            Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(_) => NODE_KIND_PACKAGE,
@@ -148,7 +142,6 @@ impl NameStr for PkgNode {
             Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
-            Self::FuncDescription(_) => NODE_KIND_FUNC_DESCRIPTION,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(node) => node.name(),
@@ -176,7 +169,6 @@ impl WriteBytes for PkgNode {
             Self::ActionFunc(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
-            Self::FuncDescription(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
             Self::MapKeyFunc(node) => node.write_bytes(writer)?,
             Self::Package(node) => node.write_bytes(writer)?,
@@ -213,9 +205,6 @@ impl ReadBytes for PkgNode {
             }
             NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
-            NODE_KIND_FUNC_DESCRIPTION => {
-                Self::FuncDescription(FuncDescriptionNode::read_bytes(reader)?)
-            }
             NODE_KIND_LEAF_FUNCTION => Self::LeafFunction(LeafFunctionNode::read_bytes(reader)?),
             NODE_KIND_MAP_KEY_FUNC => Self::MapKeyFunc(MapKeyFuncNode::read_bytes(reader)?),
             NODE_KIND_PACKAGE => Self::Package(PackageNode::read_bytes(reader)?),

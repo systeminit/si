@@ -4,20 +4,19 @@ mod spec;
 
 pub use pkg::{
     SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp,
-    SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
+    SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
     AttrFuncInputSpecKind, ChangeSetSpec, ChangeSetSpecBuilder, ChangeSetSpecStatus,
-    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncDescriptionSpec,
-    FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation, LeafKind,
-    MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder,
-    PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
-    SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
-    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
+    LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder,
+    PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]
@@ -143,12 +142,6 @@ mod tests {
                 LeafKind::Qualification => {
                     assert_eq!(
                         vec![LeafInputLocation::Domain, LeafInputLocation::Code],
-                        func.inputs()
-                    )
-                }
-                LeafKind::Confirmation => {
-                    assert_eq!(
-                        vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
                         func.inputs()
                     )
                 }

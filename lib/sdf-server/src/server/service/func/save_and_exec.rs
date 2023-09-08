@@ -45,7 +45,6 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                 && matches!(
                     func.backend_response_type(),
                     FuncBackendResponseType::Qualification
-                        | FuncBackendResponseType::Confirmation
                         | FuncBackendResponseType::CodeGeneration
                 )
             {
@@ -75,7 +74,6 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                             *component.id(),
                             match func.backend_response_type() {
                                 FuncBackendResponseType::CodeGeneration => RootPropChild::Code,
-                                FuncBackendResponseType::Confirmation => RootPropChild::Confirmation,
                                 FuncBackendResponseType::Qualification => RootPropChild::Qualification,
                                 _ => unreachable!("we guard this with a match above to ensure we only have leaf functions with root prop children")
                             }
@@ -153,7 +151,7 @@ async fn run_actions(ctx: &DalContext, func: &Func) -> FuncResult<()> {
         }
         let components = Component::list_for_schema_variant(ctx, schema_variant_id).await?;
         for component in components {
-            proto.run(ctx, *component.id(), true).await?;
+            proto.run(ctx, *component.id()).await?;
         }
     }
 

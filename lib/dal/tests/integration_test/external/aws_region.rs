@@ -199,18 +199,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -294,18 +282,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -363,18 +339,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "si:generateAwsEc2JSON": {
                     "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
-                },
-            },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
                 },
             },
         }], // expected
@@ -473,18 +437,6 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -568,18 +520,6 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
-                },
-            },
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -637,18 +577,6 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                 "si:generateAwsEc2JSON": {
                     "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
-                },
-            },
-            "confirmation": {
-                "si:confirmationResourceExists": {
-                    "success": false,
-                    "recommendedActions": [
-                        "create",
-                    ],
-                },
-                "si:confirmationResourceNeedsDeletion": {
-                    "success": true,
-                    "recommendedActions": [],
                 },
             },
         }], // expected

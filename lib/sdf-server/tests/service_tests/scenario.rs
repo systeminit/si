@@ -15,13 +15,12 @@ mod model_flow_fedora_coreos_ignition;
 
 use axum::http::Method;
 use axum::Router;
-use dal::component::confirmation::view::{ConfirmationView, RecommendationView};
 use dal::schema::variant::definition::SchemaVariantDefinitionId;
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
     AttributeValueId, ComponentId, ComponentType, ComponentView, ComponentViewProperties,
-    DalContext, Diagram, FixBatchId, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId,
-    Socket, StandardModel, Visibility,
+    DalContext, Diagram, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket,
+    StandardModel, Visibility,
 };
 use names::{Generator, Name};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
@@ -54,11 +53,7 @@ use sdf_server::service::{
         create_connection::{CreateConnectionRequest, CreateConnectionResponse},
         create_node::{CreateNodeRequest, CreateNodeResponse},
     },
-    fix::{
-        confirmations::{ConfirmationsRequest, ConfirmationsResponse},
-        list::{BatchHistoryView, ListFixesRequest, ListFixesResponse},
-        run::{FixRunRequest, FixesRunRequest, FixesRunResponse},
-    },
+    fix::list::{BatchHistoryView, ListFixesRequest, ListFixesResponse},
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
@@ -591,31 +586,6 @@ impl ScenarioHarness {
     pub async fn list_open_change_sets(&self) -> ListOpenChangeSetsResponse {
         self.query_get_empty("/api/change_set/list_open_change_sets")
             .await
-    }
-
-    pub async fn list_confirmations(
-        &self,
-        visibility: &Visibility,
-    ) -> (Vec<ConfirmationView>, Vec<RecommendationView>) {
-        let request = ConfirmationsRequest {
-            visibility: *visibility,
-        };
-        let response: ConfirmationsResponse =
-            self.query_get("/api/fix/confirmations", &request).await;
-        (response.confirmations, response.recommendations)
-    }
-
-    pub async fn run_fixes(
-        &self,
-        visibility: &Visibility,
-        fixes: Vec<FixRunRequest>,
-    ) -> FixBatchId {
-        let request = dbg!(FixesRunRequest {
-            list: fixes,
-            visibility: *visibility,
-        });
-        let response: FixesRunResponse = dbg!(self.query_post("/api/fix/run", &request).await);
-        response.id
     }
 
     pub async fn list_fixes(&self, visibility: &Visibility) -> Vec<BatchHistoryView> {

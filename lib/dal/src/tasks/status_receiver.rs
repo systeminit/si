@@ -165,9 +165,6 @@ impl StatusReceiver {
 
         let code_generation_attribute_values: HashSet<AttributeValueId> =
             Component::all_code_generation_attribute_values(&ctx).await?;
-        let (confirmation_views, _) = Component::list_confirmations(&ctx).await?;
-        let confirmation_attribute_values: HashSet<AttributeValueId> =
-            HashSet::from_iter(confirmation_views.iter().map(|cv| cv.attribute_value_id));
 
         // Flatten the dependency graph into a single vec.
         let mut flattened_dependent_graph: Vec<&AttributeValueId> =
@@ -176,7 +173,6 @@ impl StatusReceiver {
 
         // Send events according to every value in the dependency graph.
         let mut seen_code_generation_components: HashSet<ComponentId> = HashSet::new();
-        let mut need_to_check_confirmations = true;
         for dependent_value in flattened_dependent_graph {
             if code_generation_attribute_values.contains(dependent_value) {
                 let attribute_value = AttributeValue::get_by_id(&ctx, dependent_value)
@@ -197,20 +193,6 @@ impl StatusReceiver {
                     .await?;
                     seen_code_generation_components.insert(component_id);
                 }
-            }
-
-            // Only publish the confirmations event once.
-            if need_to_check_confirmations
-                && confirmation_attribute_values.contains(dependent_value)
-            {
-                trace!(
-                    "publishing confirmations updated for tenancy ({:?}) and visibility ({:?})",
-                    *ctx.tenancy(),
-                    *ctx.visibility()
-                );
-                Self::publish_immediately(&ctx, WsEvent::confirmations_updated(&ctx).await?)
-                    .await?;
-                need_to_check_confirmations = false;
             }
         }
 

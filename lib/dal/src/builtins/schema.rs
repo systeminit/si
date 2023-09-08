@@ -136,6 +136,7 @@ pub async fn migrate_pkg(
     pkg_filename: &str,
     schemas: Option<Vec<String>>,
 ) -> BuiltinsResult<()> {
+    info!("Migrate: {pkg_filename}");
     let pkgs_path = ctx.pkgs_path().ok_or(BuiltinsError::MissingPkgsPath)?;
 
     let pkg_path = pkgs_path.join(pkg_filename);

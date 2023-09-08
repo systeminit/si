@@ -1,14 +1,12 @@
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec, PkgSpec, PropSpec,
-    SchemaSpec, SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecKind,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, SchemaSpec,
+    SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecKind,
 };
 
 use crate::func::argument::FuncArgumentKind;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::pkg::import_pkg_from_pkg;
-use crate::schema::variant::leaves::LeafInputLocation;
-use crate::schema::variant::leaves::LeafKind;
 use crate::{builtins::schema::MigrationDriver, prop::PropPath, ActionKind};
 use crate::{BuiltinsResult, DalContext, PropKind};
 
@@ -24,32 +22,6 @@ impl MigrationDriver {
         let identity_func_spec = IntrinsicFunc::Identity
             .to_spec()
             .expect("create identity func spec");
-        let starfield_confirmation_code = "async function exists(input) {
-            if (!input.resource?.payload) {
-                return {
-                    success: false,
-                    recommendedActions: [\"create\"]
-                }
-            }
-            return {
-                success: true,
-                recommendedActions: [],
-            }
-        }";
-
-        let starfield_confirmation_func = FuncSpec::builder()
-            .name("test:confirmationStarfield")
-            .code_plaintext(starfield_confirmation_code)
-            .backend_kind(FuncSpecBackendKind::JsAttribute)
-            .response_type(FuncSpecBackendResponseType::Confirmation)
-            .handler("exists")
-            .argument(
-                FuncArgumentSpec::builder()
-                    .name("resource")
-                    .kind(FuncArgumentKind::String)
-                    .build()?,
-            )
-            .build()?;
 
         let starfield_create_action_code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
@@ -245,13 +217,6 @@ impl MigrationDriver {
                             .kind(SocketSpecKind::Input)
                             .build()?,
                     )
-                    .leaf_function(
-                        LeafFunctionSpec::builder()
-                            .leaf_kind(LeafKind::Confirmation)
-                            .func_unique_id(starfield_confirmation_func.unique_id)
-                            .inputs(vec![LeafInputLocation::Resource.into()])
-                            .build()?,
-                    )
                     .action_func(
                         ActionFuncSpec::builder()
                             .kind(&ActionKind::Create)
@@ -272,7 +237,6 @@ impl MigrationDriver {
             .func(identity_func_spec)
             .func(starfield_refresh_action_func)
             .func(starfield_create_action_func)
-            .func(starfield_confirmation_func)
             .func(fallout_entries_to_galaxies_transform_func)
             .func(starfield_authoring_schema_func)
             .func(starfield_resource_payload_to_value_func)

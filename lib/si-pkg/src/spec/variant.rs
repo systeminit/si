@@ -5,8 +5,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    ActionFuncSpec, FuncDescriptionSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind,
-    SiPropFuncSpec, SocketSpec, SpecError,
+    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind, SiPropFuncSpec, SocketSpec,
+    SpecError,
 };
 
 #[remain::sorted]
@@ -85,9 +85,6 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "leaf_function"), into), default)]
     pub leaf_functions: Vec<LeafFunctionSpec>,
-
-    #[builder(setter(each(name = "func_description"), into), default)]
-    pub func_descriptions: Vec<FuncDescriptionSpec>,
 
     #[builder(setter(each(name = "socket"), into), default)]
     pub sockets: Vec<SocketSpec>,

@@ -1,26 +1,17 @@
 use axum::Json;
 use dal::action_prototype::ActionKind;
 use dal::component::ComponentKind;
-use dal::func::argument::FuncArgumentKind;
 
 use dal::Visibility;
 use dal::{
-    ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncArgument,
-    FuncBackendKind, FuncBackendResponseType, FuncBinding, InternalProvider, LeafInput,
-    LeafInputLocation, LeafKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
-    StandardModel,
+    ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBinding, InternalProvider, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, SocketArity, StandardModel,
 };
 use serde::{Deserialize, Serialize};
 
 use super::DevResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-
-/// The name of the ["confirmation"](dal::FuncBackendResponseType::Confirmation) that could return
-/// a "recommendation" with [`ActionKind::Create`](ActionKind::Create).
-pub const CREATE_CONFIRMATION_NAME: &str = "dev:createConfirmation";
-/// The name of the ["confirmation"](dal::FuncBackendResponseType::Confirmation) that could return
-/// a "recommendation" with [`ActionKind::Delete`](ActionKind::Delete).
-pub const DELETE_CONFIRMATION_NAME: &str = "dev:deleteConfirmation";
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -125,9 +116,6 @@ impl AuthoringHelper {
             .await
             .expect("cannot set default schema variant");
 
-        // Add the create and delete actions and confirmations.
-        Self::add_create_action_and_confirmation(ctx, *schema_variant.id()).await;
-        Self::add_delete_action_and_confirmation(ctx, *schema_variant.id()).await;
         Self::add_refresh_action(ctx, *schema_variant.id()).await;
 
         // Finalize the schema variant and create the component.
@@ -137,207 +125,6 @@ impl AuthoringHelper {
             .expect("unable to finalize schema variant");
 
         (schema, schema_variant)
-    }
-
-    /// Create a [`Create`](dal::ActionKind::Create) [`action`](dal::ActionPrototype) and
-    /// corresponding "confirmation" [`leaf`](dal::schema::variant::leaves).
-    async fn add_create_action_and_confirmation(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) {
-        let mut action_func = Func::new(
-            ctx,
-            "dev:createAction",
-            FuncBackendKind::JsAction,
-            FuncBackendResponseType::Action,
-        )
-        .await
-        .expect("could not create func");
-        let code = "async function create() {
-          return { value: \"poop\", status: \"ok\" };
-        }";
-        action_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        action_func
-            .set_handler(ctx, Some("create"))
-            .await
-            .expect("set handler");
-
-        // Create action prototypes.
-        ActionPrototype::new(
-            ctx,
-            *action_func.id(),
-            ActionKind::Create,
-            ActionPrototypeContext { schema_variant_id },
-        )
-        .await
-        .expect("unable to create action prototype");
-
-        // Setup the confirmation function.
-        let mut confirmation_func = Func::new(
-            ctx,
-            CREATE_CONFIRMATION_NAME,
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Confirmation,
-        )
-        .await
-        .expect("could not create func");
-        let confirmation_func_id = *confirmation_func.id();
-        let code = "async function exists(input) {
-            if (!input.resource?.value) {
-                return {
-                    success: false,
-                    recommendedActions: [\"create\"]
-                }
-            }
-            return {
-                success: true,
-                recommendedActions: [],
-            }
-        }";
-        confirmation_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        confirmation_func
-            .set_handler(ctx, Some("exists"))
-            .await
-            .expect("set handler");
-        let confirmation_func_argument = FuncArgument::new(
-            ctx,
-            "resource",
-            FuncArgumentKind::String,
-            None,
-            confirmation_func_id,
-        )
-        .await
-        .expect("could not create func argument");
-
-        // Add the leaf for the confirmation.
-        SchemaVariant::add_leaf(
-            ctx,
-            confirmation_func_id,
-            schema_variant_id,
-            None,
-            LeafKind::Confirmation,
-            vec![LeafInput {
-                location: LeafInputLocation::Resource,
-                func_argument_id: *confirmation_func_argument.id(),
-            }],
-        )
-        .await
-        .expect("could not add leaf");
-    }
-
-    /// Create a [`Delete`](dal::ActionKind::Delete) [`action`](dal::ActionPrototype) and
-    /// corresponding "confirmation" [`leaf`](dal::schema::variant::leaves).
-    async fn add_delete_action_and_confirmation(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) {
-        let mut action_func = Func::new(
-            ctx,
-            "dev:deleteAction",
-            FuncBackendKind::JsAction,
-            FuncBackendResponseType::Action,
-        )
-        .await
-        .expect("could not create func");
-        let code = "async function delete() {
-          return { value: null, status: \"ok\" };
-        }";
-        action_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        action_func
-            .set_handler(ctx, Some("delete"))
-            .await
-            .expect("set handler");
-
-        // Create action prototypes.
-        ActionPrototype::new(
-            ctx,
-            *action_func.id(),
-            ActionKind::Delete,
-            ActionPrototypeContext { schema_variant_id },
-        )
-        .await
-        .expect("unable to create action prototype");
-
-        // Setup the confirmation function.
-        let mut confirmation_func = Func::new(
-            ctx,
-            DELETE_CONFIRMATION_NAME,
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::Confirmation,
-        )
-        .await
-        .expect("could not create func");
-        let confirmation_func_id = *confirmation_func.id();
-        let code = "async function exists(input) {
-            if (input.resource?.value && input.deleted_at) {
-                return {
-                    success: false,
-                    recommendedActions: [\"delete\"]
-                }
-            }
-            return {
-                success: true,
-                recommendedActions: [],
-            }
-        }";
-        confirmation_func
-            .set_code_plaintext(ctx, Some(code))
-            .await
-            .expect("set code");
-        confirmation_func
-            .set_handler(ctx, Some("exists"))
-            .await
-            .expect("set handler");
-
-        // Create the func arguments.
-        let deleted_at_confirmation_func_argument = FuncArgument::new(
-            ctx,
-            "deleted_at",
-            FuncArgumentKind::String,
-            None,
-            confirmation_func_id,
-        )
-        .await
-        .expect("could not create func argument");
-        let resource_confirmation_func_argument = FuncArgument::new(
-            ctx,
-            "resource",
-            FuncArgumentKind::String,
-            None,
-            confirmation_func_id,
-        )
-        .await
-        .expect("could not create func argument");
-
-        // Add the leaf for the confirmation.
-        SchemaVariant::add_leaf(
-            ctx,
-            confirmation_func_id,
-            schema_variant_id,
-            None,
-            LeafKind::Confirmation,
-            vec![
-                LeafInput {
-                    location: LeafInputLocation::DeletedAt,
-                    func_argument_id: *deleted_at_confirmation_func_argument.id(),
-                },
-                LeafInput {
-                    location: LeafInputLocation::Resource,
-                    func_argument_id: *resource_confirmation_func_argument.id(),
-                },
-            ],
-        )
-        .await
-        .expect("could not add leaf");
     }
 
     /// Create a "refresh" [`action`](dal::ActionPrototype).

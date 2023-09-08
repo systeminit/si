@@ -129,7 +129,6 @@ async fn model_flow_fedora_coreos_ignition(
         }], // expected
         ec2.view(&ctx)
             .await
-            .drop_confirmation()
             .drop_code()
             .drop_qualification()
             .to_value()

@@ -19,11 +19,10 @@ use dal::{
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
     AttributePrototypeError, AttributePrototypeId, AttributeValueError, ComponentError,
     ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBindingError, FuncDescription, FuncDescriptionContents, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafInputLocation, Prop,
-    PropError, PropId, PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, WsEventError,
+    FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider, InternalProviderError,
+    InternalProviderId, LeafInputLocation, Prop, PropError, PropId, PrototypeListForFuncError,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -187,7 +186,6 @@ pub enum FuncVariant {
     Action,
     Attribute,
     CodeGeneration,
-    Confirmation,
     Qualification,
     Reconciliation,
     Validation,
@@ -199,10 +197,9 @@ impl From<FuncVariant> for FuncBackendKind {
             FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
             FuncVariant::Action => FuncBackendKind::JsAction,
             FuncVariant::Validation => FuncBackendKind::JsValidation,
-            FuncVariant::Attribute
-            | FuncVariant::CodeGeneration
-            | FuncVariant::Confirmation
-            | FuncVariant::Qualification => FuncBackendKind::JsAttribute,
+            FuncVariant::Attribute | FuncVariant::CodeGeneration | FuncVariant::Qualification => {
+                FuncBackendKind::JsAttribute
+            }
         }
     }
 }
@@ -215,7 +212,6 @@ impl TryFrom<&Func> for FuncVariant {
             (FuncBackendKind::JsAttribute, response_type) => match response_type {
                 FuncBackendResponseType::CodeGeneration => Ok(FuncVariant::CodeGeneration),
                 FuncBackendResponseType::Qualification => Ok(FuncVariant::Qualification),
-                FuncBackendResponseType::Confirmation => Ok(FuncVariant::Confirmation),
                 _ => Ok(FuncVariant::Attribute),
             },
             (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
@@ -269,13 +265,6 @@ pub struct ValidationPrototypeView {
     prop_id: PropId,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FuncDescriptionView {
-    schema_variant_id: SchemaVariantId,
-    contents: FuncDescriptionContents,
-}
-
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -294,13 +283,6 @@ pub enum FuncAssociations {
     CodeGeneration {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
-        inputs: Vec<LeafInputLocation>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Confirmation {
-        schema_variant_ids: Vec<SchemaVariantId>,
-        component_ids: Vec<ComponentId>,
-        descriptions: Vec<FuncDescriptionView>,
         inputs: Vec<LeafInputLocation>,
     },
     #[serde(rename_all = "camelCase")]
@@ -442,22 +424,6 @@ async fn attribute_prototypes_into_schema_variants_and_components(
     Ok((schema_variant_ids, component_ids))
 }
 
-pub async fn func_description_views(
-    ctx: &DalContext,
-    func_id: FuncId,
-) -> FuncResult<Vec<FuncDescriptionView>> {
-    let mut views = vec![];
-
-    for desc in FuncDescription::list_for_func(ctx, func_id).await? {
-        views.push(FuncDescriptionView {
-            schema_variant_id: *desc.schema_variant_id(),
-            contents: desc.deserialized_contents()?,
-        });
-    }
-
-    Ok(views)
-}
-
 pub async fn get_leaf_function_inputs(
     ctx: &DalContext,
     func_id: FuncId,
@@ -476,7 +442,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         FuncBackendKind::JsAttribute => {
             let (associations, input_type) = match func.backend_response_type() {
                 FuncBackendResponseType::CodeGeneration
-                | FuncBackendResponseType::Confirmation
                 | FuncBackendResponseType::Qualification => {
                     let (schema_variant_ids, component_ids) =
                         attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
@@ -494,14 +459,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                                     schema_variant_ids,
                                     component_ids,
                                     inputs,
-                                }
-                            }
-                            FuncBackendResponseType::Confirmation => {
-                                FuncAssociations::Confirmation {
-                                    schema_variant_ids,
-                                    component_ids,
-                                    descriptions: func_description_views(ctx, *func.id()).await?,
-                                    inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
                                 }
                             }
 
@@ -605,15 +562,11 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
     })
 }
 
-// TODO FIXME(paulo): cleanup code repetition
-
 pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
     if matches!(kind, FuncBackendKind::JsAttribute)
         && !matches!(
             ty,
-            FuncBackendResponseType::CodeGeneration
-                | FuncBackendResponseType::Confirmation
-                | FuncBackendResponseType::Qualification
+            FuncBackendResponseType::CodeGeneration | FuncBackendResponseType::Qualification
         )
     {
         return ""; // attribute functions have their output compiled dynamically
@@ -627,13 +580,6 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
             "interface Output {
   result: 'success' | 'warning' | 'failure';
   message?: string | null;
-}"
-        }
-        FuncBackendResponseType::Confirmation => {
-            "type ActionKind = 'create' | 'delete' | 'other' | 'refresh';
-interface Output {
-  success: boolean;
-  recommendedActions: ActionKind[];
 }"
         }
         FuncBackendResponseType::CodeGeneration => {

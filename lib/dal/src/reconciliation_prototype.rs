@@ -74,8 +74,7 @@ impl ReconciliationPrototypeContext {
 pk!(ReconciliationPrototypePk);
 pk!(ReconciliationPrototypeId);
 
-// An ReconciliationPrototype joins a `WorkflowPrototype` to the context in which
-// the component that is created with it can use to generate a ConfirmationResolver.
+// An ReconciliationPrototype joins a `FuncId` to a context (`ComponentId` and `SchemaVariantId`)
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReconciliationPrototype {
     pk: ReconciliationPrototypePk,

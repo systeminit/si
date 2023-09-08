@@ -1,7 +1,7 @@
 //! Contains the ability to resolve _current_ fixes, provided by
 //! [`FixResolver`](crate::FixResolver).
 
-use crate::{AttributeValueId, DalContext, FixId, TransactionsError};
+use crate::{DalContext, FixId, TransactionsError};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use telemetry::prelude::*;
@@ -27,14 +27,10 @@ pub enum FixResolverError {
 
 pub type FixResolverResult<T> = Result<T, FixResolverError>;
 
-const FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE: &str =
-    include_str!("../queries/fix_resolver_find_for_confirmation_attribute_value.sql");
-
 pk!(FixResolverPk);
 pk!(FixResolverId);
 
-/// Determines what "fix" to run for a given [`"confirmation"`](crate::schema::variant::leaves)
-/// [`AttributeValueId`](crate::AttributeValue).
+/// Determines what "fix" to run for a given `Action`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FixResolver {
     pk: FixResolverPk,
@@ -47,8 +43,6 @@ pub struct FixResolver {
     visibility: Visibility,
     /// The "fix" to run.
     action_prototype_id: ActionPrototypeId,
-    /// Corresponds to the [`AttributeValue`](crate::AttributeValue) corresponding to the
-    attribute_value_id: AttributeValueId,
     /// The ternary state of a "fix" execution.
     success: Option<bool>,
     /// Indicates the last [`Fix`](crate::Fix) that was ran corresponding to this
@@ -71,7 +65,6 @@ impl FixResolver {
     async fn new(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
-        attribute_value_id: AttributeValueId,
         success: Option<bool>,
         last_fix_id: FixId,
     ) -> FixResolverResult<Self> {
@@ -80,12 +73,11 @@ impl FixResolver {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &action_prototype_id,
-                    &attribute_value_id,
                     &success,
                     &last_fix_id,
                 ],
@@ -96,51 +88,25 @@ impl FixResolver {
         Ok(object)
     }
 
-    /// Find [`self`](Self) for a given [`AttributeValueId`](crate::AttributeValue).
-    pub async fn find_for_confirmation_attribute_value(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> FixResolverResult<Option<Self>> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE,
-                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
-            )
-            .await?;
-        let object = standard_model::option_object_from_row(row)?;
-        Ok(object)
-    }
-
     /// Find or create a new [`resolver`](Self) based on the information provided.
     pub async fn upsert(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,
-        attribute_value_id: AttributeValueId,
         success: Option<bool>,
         last_fix_id: FixId,
     ) -> FixResolverResult<Self> {
-        if let Some(mut resolver) =
-            Self::find_for_confirmation_attribute_value(ctx, attribute_value_id).await?
-        {
+        // TODO: fix this, we should have the action id instead of attribute value id
+        /*
+        if let Some(mut resolver) = todo!() {
             resolver
                 .set_action_prototype_id(ctx, action_prototype_id)
                 .await?;
             resolver.set_success(ctx, success).await?;
             resolver.set_last_fix_id(ctx, last_fix_id).await?;
-            Ok(resolver)
-        } else {
-            Ok(Self::new(
-                ctx,
-                action_prototype_id,
-                attribute_value_id,
-                success,
-                last_fix_id,
-            )
-            .await?)
+            return Ok(resolver)
         }
+        */
+        Self::new(ctx, action_prototype_id, success, last_fix_id).await
     }
 
     standard_model_accessor!(
@@ -148,7 +114,6 @@ impl FixResolver {
         Pk(ActionPrototypeId),
         FixResolverResult
     );
-    standard_model_accessor!(attribute_value_id, Pk(AttributeValueId), FixResolverResult);
     standard_model_accessor!(success, Option<bool>, FixResolverResult);
     standard_model_accessor!(last_fix_id, Pk(FixId), FixResolverResult);
 }

@@ -14,10 +14,10 @@ use crate::schema::SchemaUiMenu;
 use crate::{
     func::backend::js_action::ActionRunResult, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionKind,
-    ActionPrototype, ActionPrototypeError, ActionPrototypeId, AttributeValueId, Component,
-    ComponentError, ComponentId, DalContext, FixBatch, FixResolverError, FuncError,
-    HistoryEventError, ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
+    ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component, ComponentError,
+    ComponentId, DalContext, FixBatch, FixResolverError, FuncError, HistoryEventError,
+    ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use veritech_client::ResourceStatus;
 
@@ -130,9 +130,6 @@ pub struct Fix {
     #[serde(flatten)]
     visibility: Visibility,
 
-    /// Corresponds to the [`AttributeValue`](crate::AttributeValue) of the
-    /// [`"confirmation"`](crate::schema::variant::leaves).
-    attribute_value_id: AttributeValueId,
     /// The [`Component`](crate::Component) being fixed.
     component_id: ComponentId,
     /// The [`ActionPrototype`](crate::action_prototype::ActionPrototype) that runs the action for
@@ -175,7 +172,6 @@ impl Fix {
     pub async fn new(
         ctx: &DalContext,
         fix_batch_id: FixBatchId,
-        attribute_value_id: AttributeValueId,
         component_id: ComponentId,
         action_prototype_id: ActionPrototypeId,
     ) -> FixResult<Self> {
@@ -184,11 +180,10 @@ impl Fix {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM fix_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM fix_create_v1($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &attribute_value_id,
                     &component_id,
                     &action_prototype_id,
                 ],
@@ -200,7 +195,6 @@ impl Fix {
     }
 
     standard_model_accessor_ro!(component_id, ComponentId);
-    standard_model_accessor_ro!(attribute_value_id, AttributeValueId);
     standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
     standard_model_accessor_ro!(action_kind, ActionKind);
     standard_model_accessor!(started_at, Option<String>, FixResult);
@@ -249,52 +243,48 @@ impl Fix {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
 
-        Ok(
-            match action_prototype.run(ctx, self.component_id, false).await {
-                Ok(Some(run_result)) => {
-                    let completion_status = match run_result.status {
-                        ResourceStatus::Ok | ResourceStatus::Warning => {
-                            FixCompletionStatus::Success
-                        }
-                        ResourceStatus::Error => FixCompletionStatus::Failure,
-                    };
+        Ok(match action_prototype.run(ctx, self.component_id).await {
+            Ok(Some(run_result)) => {
+                let completion_status = match run_result.status {
+                    ResourceStatus::Ok | ResourceStatus::Warning => FixCompletionStatus::Success,
+                    ResourceStatus::Error => FixCompletionStatus::Failure,
+                };
 
-                    self.stamp_finished(
-                        ctx,
-                        completion_status,
-                        run_result.message.clone(),
-                        Some(run_result.clone()),
-                    )
-                    .await?;
+                self.stamp_finished(
+                    ctx,
+                    completion_status,
+                    run_result.message.clone(),
+                    Some(run_result.clone()),
+                )
+                .await?;
 
-                    Some(run_result)
-                }
-                Ok(None) => {
-                    error!("Fix did not return a value!");
-                    self.stamp_finished(
-                        ctx,
-                        FixCompletionStatus::Error,
-                        Some("Fix did not return a value".into()),
-                        None,
-                    )
-                    .await?;
+                Some(run_result)
+            }
+            Ok(None) => {
+                error!("Fix did not return a value!");
+                self.stamp_finished(
+                    ctx,
+                    FixCompletionStatus::Error,
+                    Some("Fix did not return a value".into()),
+                    None,
+                )
+                .await?;
 
-                    None
-                }
-                Err(e) => {
-                    error!("Unable to run fix: {e}");
-                    self.stamp_finished(
-                        ctx,
-                        FixCompletionStatus::Error,
-                        Some(format!("{e:?}")),
-                        None,
-                    )
-                    .await?;
+                None
+            }
+            Err(e) => {
+                error!("Unable to run fix: {e}");
+                self.stamp_finished(
+                    ctx,
+                    FixCompletionStatus::Error,
+                    Some(format!("{e:?}")),
+                    None,
+                )
+                .await?;
 
-                    None
-                }
-            },
-        )
+                None
+            }
+        })
     }
 
     /// A safe wrapper around setting completion-related columns.
@@ -376,7 +366,6 @@ impl Fix {
             },
             action_kind: *self.action_kind(),
             schema_name,
-            attribute_value_id: *self.attribute_value_id(),
             component_name,
             component_id: self.component_id,
             provider: category,
@@ -427,7 +416,6 @@ pub struct FixHistoryView {
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
-    attribute_value_id: AttributeValueId,
     provider: Option<String>,
     started_at: Option<String>,
     finished_at: Option<String>,
@@ -445,7 +433,6 @@ impl FixHistoryView {
 pub struct FixReturn {
     id: FixId,
     batch_id: FixBatchId,
-    attribute_value_id: AttributeValueId,
     action: ActionKind,
     status: FixCompletionStatus,
     output: Vec<String>,
@@ -456,7 +443,6 @@ impl WsEvent {
         ctx: &DalContext,
         id: FixId,
         batch_id: FixBatchId,
-        attribute_value_id: AttributeValueId,
         action: ActionKind,
         status: FixCompletionStatus,
         output: Vec<String>,
@@ -466,7 +452,6 @@ impl WsEvent {
             WsPayload::FixReturn(FixReturn {
                 id,
                 batch_id,
-                attribute_value_id,
                 action,
                 status,
                 output,

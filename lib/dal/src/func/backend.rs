@@ -110,7 +110,6 @@ pub enum FuncBackendResponseType {
     Array,
     Boolean,
     CodeGeneration,
-    Confirmation,
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
     Integer,
@@ -137,7 +136,6 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Object => FuncBackendResponseType::Object,
             ResolverFunctionResponseType::Qualification => FuncBackendResponseType::Qualification,
             ResolverFunctionResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
-            ResolverFunctionResponseType::Confirmation => FuncBackendResponseType::Confirmation,
             ResolverFunctionResponseType::String => FuncBackendResponseType::String,
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
@@ -162,7 +160,6 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Object => ResolverFunctionResponseType::Object,
             FuncBackendResponseType::Qualification => ResolverFunctionResponseType::Qualification,
             FuncBackendResponseType::CodeGeneration => ResolverFunctionResponseType::CodeGeneration,
-            FuncBackendResponseType::Confirmation => ResolverFunctionResponseType::Confirmation,
             FuncBackendResponseType::String => ResolverFunctionResponseType::String,
             FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,

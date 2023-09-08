@@ -352,8 +352,8 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("create js validation func");
 
-    let js_validation_code = "function validate(value) { 
-        return { 
+    let js_validation_code = "function validate(value) {
+        return {
             valid: value === 'Temba, his arms open', message: 'Darmok and Jalad at Tanagra'
         };
     }";
@@ -467,8 +467,8 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
 
     // Change the function code, re-execute the function and ensure we get back just the
     // latest validation
-    let js_validation_code = "function validate(value) { 
-        return { 
+    let js_validation_code = "function validate(value) {
+        return {
             valid: value === 'Temba, his arms open', message: 'Darmok and Jalad on the ocean'
         };
     }";
@@ -583,7 +583,6 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
         component_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // expected
     );
@@ -633,7 +632,6 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
         component_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // expected
     );

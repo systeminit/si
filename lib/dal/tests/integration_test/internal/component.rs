@@ -20,7 +20,6 @@ use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
 mod code;
-mod confirmation;
 mod qualification;
 mod resource;
 mod validation;
@@ -423,7 +422,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 message: Default::default(),
                 last_synced: Default::default(),
             },
-            true,
         )
         .await
         .expect("could not set resource field");
@@ -606,7 +604,6 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         fallout_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -633,7 +630,6 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -685,7 +681,6 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -715,7 +710,6 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         fallout_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -742,7 +736,6 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );

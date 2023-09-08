@@ -25,8 +25,6 @@ pub struct ComponentViewProperties {
     code: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     qualification: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    confirmation: Option<serde_json::Value>,
 }
 
 /// This _private_ struct provides the ability to drop fields for the "/root/resource" tree at a
@@ -69,12 +67,6 @@ impl ComponentViewProperties {
     /// Drops the value corresponding to "/root/qualification".
     pub fn drop_qualification(&mut self) -> &mut Self {
         self.qualification = None;
-        self
-    }
-
-    /// Drops the value corresponding to "/root/confirmation".
-    pub fn drop_confirmation(&mut self) -> &mut Self {
-        self.confirmation = None;
         self
     }
 

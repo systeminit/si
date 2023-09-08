@@ -71,7 +71,6 @@ async fn list_resources(mut octx: DalContext) {
                 logs: vec![],
                 last_synced: Default::default(),
             },
-            true,
         )
         .await
         .expect("could not set resource");
@@ -103,7 +102,6 @@ async fn list_resources(mut octx: DalContext) {
                 logs: vec![],
                 last_synced: Default::default(),
             },
-            true,
         )
         .await
         .expect("could not set resource");

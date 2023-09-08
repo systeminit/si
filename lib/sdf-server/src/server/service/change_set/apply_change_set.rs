@@ -5,9 +5,7 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::job::definition::{FixItem, FixesJob};
-use dal::{
-    AttributeValueId, ChangeSet, ChangeSetPk, Fix, FixBatch, HistoryActor, StandardModel, User,
-};
+use dal::{ChangeSet, ChangeSetPk, Fix, FixBatch, HistoryActor, StandardModel, User};
 use serde::{Deserialize, Serialize};
 //use telemetry::tracing::{info_span, Instrument, log::warn};
 
@@ -36,7 +34,7 @@ pub async fn apply_change_set(
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     let actions = change_set.actions(&ctx).await?;
-    change_set.apply_raw(&mut ctx, false).await?;
+    change_set.apply(&mut ctx).await?;
 
     track(
         &posthog_client,
@@ -66,8 +64,6 @@ pub async fn apply_change_set(
             let fix = Fix::new(
                 &ctx,
                 *batch.id(),
-                // TODO: remove this
-                AttributeValueId::NONE,
                 *action.component_id(),
                 *action.action_prototype_id(),
             )
@@ -75,7 +71,6 @@ pub async fn apply_change_set(
 
             fixes.push(FixItem {
                 id: *fix.id(),
-                attribute_value_id: AttributeValueId::NONE,
                 component_id: *action.component_id(),
                 action_prototype_id: *action.action_prototype_id(),
             });

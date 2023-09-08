@@ -1,7 +1,7 @@
-use super::ChangeSetResult;
+use super::{ChangeSetError, ChangeSetResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{Action, ActionPrototypeId, ComponentId, Visibility, WsEvent};
+use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -21,6 +21,11 @@ pub async fn add_action(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     Action::new(&ctx, request.prototype_id, request.component_id).await?;
+
+    let change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
+        .await?
+        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    change_set.sort_actions(&ctx).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

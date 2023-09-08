@@ -179,7 +179,6 @@ pub async fn is_variant_def_locked(
                     || (func.backend_kind() == &FuncBackendKind::JsAttribute
                         && func.name() != "si:resourcePayloadToValue"
                         && func.backend_response_type() != &FuncBackendResponseType::CodeGeneration
-                        && func.backend_response_type() != &FuncBackendResponseType::Confirmation
                         && func.backend_response_type() != &FuncBackendResponseType::Qualification)
             })
     } else {

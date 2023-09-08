@@ -17,30 +17,6 @@ export interface CodeGenerationAssociations {
   inputs: LeafInputLocation[];
 }
 
-export interface ConfirmationFuncDescriptionContents {
-  name: string;
-  success_description?: string;
-  failure_description?: string;
-  provider?: string;
-}
-
-export interface FuncDescriptionContents {
-  Confirmation: ConfirmationFuncDescriptionContents;
-}
-
-export interface FuncDescriptionView {
-  schemaVariantId: string;
-  contents: FuncDescriptionContents;
-}
-
-export interface ConfirmationAssociations {
-  type: "confirmation";
-  schemaVariantIds: string[];
-  componentIds: string[];
-  descriptions: FuncDescriptionView[];
-  inputs: LeafInputLocation[];
-}
-
 export interface QualificationAssociations {
   type: "qualification";
   schemaVariantIds: string[];
@@ -82,7 +58,6 @@ export type FuncAssociations =
   | ActionAssociations
   | AttributeAssociations
   | CodeGenerationAssociations
-  | ConfirmationAssociations
   | QualificationAssociations
   | ValidationAssociations;
 
@@ -161,15 +136,9 @@ export interface CreateFuncCodeGenerationOptions {
   schemaVariantId: string;
 }
 
-export interface CreateFuncConfirmationOptions {
-  type: "confirmationOptions";
-  schemaVariantId: string;
-}
-
 export type CreateFuncOptions =
   | CreateFuncActionOptions
   | CreateFuncAttributeOptions
   | CreateFuncCodeGenerationOptions
-  | CreateFuncConfirmationOptions
   | CreateFuncQualificationOptions
   | CreateFuncValidationOptions;
