@@ -51,8 +51,13 @@ pub async fn download_module_route(
         _ => return Err(DownloadModuleError::NotFound(module_id)),
     };
 
-    let download_url =
-        s3_bucket.presign_get(format!("{}.sipkg", module.latest_hash), 60 * 5, None)?;
+    let s3_path = module.metadata.get("s3_path");
+    let s3_path = match s3_path {
+        Some(s) => s.as_str().unwrap().to_owned(),
+        None => format!("{}.sipkg", module.latest_hash),
+    };
+
+    let download_url = s3_bucket.presign_get(s3_path, 60 * 5, None)?;
 
     Ok(Redirect::temporary(&download_url))
 }

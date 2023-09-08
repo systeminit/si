@@ -7,7 +7,8 @@ use axum::{
 use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
-    StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
+    StandardModelError, TenancyError, TransactionsError, UserError, WorkspaceError, WorkspacePk,
+    WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -20,10 +21,12 @@ const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod export_pkg;
+pub mod export_workspace_backup;
 pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
 pub mod remote_module_spec;
+pub mod restore_workspace_backup;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -39,6 +42,10 @@ pub enum PkgError {
     InstalledPkg(#[from] InstalledPkgError),
     #[error("Invalid pacakge file name: {0}")]
     InvalidPackageFileName(String),
+    #[error("Invalid workspace: {0}")]
+    InvalidWorkspace(WorkspacePk),
+    #[error("Missing WorkspacePk selection header")]
+    InvalidWorkspaceSelection,
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     #[error("Module hash not be found: {0}")]
@@ -47,6 +54,8 @@ pub enum PkgError {
     ModuleIndex(#[from] module_index_client::IndexClientError),
     #[error("Module index not configured")]
     ModuleIndexNotConfigured,
+    #[error("Must be logged in")]
+    MustByLoggedIn,
     #[error("No packages path provided")]
     NoPackagesPath,
     #[error("Package with that name already installed: {0}")]
@@ -79,6 +88,8 @@ pub enum PkgError {
     Url(#[from] url::ParseError),
     #[error("transparent")]
     User(#[from] UserError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -178,6 +189,14 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> PkgResult
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/export_pkg", post(export_pkg::export_pkg))
+        .route(
+            "/export_workspace_backup",
+            post(export_workspace_backup::export_workspace_backup),
+        )
+        .route(
+            "/restore_workspace_backup",
+            post(restore_workspace_backup::restore_workspace_backup),
+        )
         .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
         .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))

@@ -5,20 +5,25 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useAuthStore } from "./auth.store";
 import { useRouterStore } from "./router.store";
+import { ModuleIndexApiRequest } from ".";
 
 type WorkspacePk = string;
 
-type WorkspaceExportId = string;
-type WorkspaceExportSummary = {
-  id: WorkspaceExportId;
+type WorkspaceBackupId = string;
+type WorkspaceBackupSummary = {
+  id: WorkspaceBackupId;
   createdAt: IsoDateString;
+  metadata: {
+    workspacePk: WorkspacePk;
+    workspaceName: string;
+  };
 };
 
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
       workspacesByPk: {} as Record<WorkspacePk, Workspace>,
-      workspaceExports: [] as WorkspaceExportSummary[],
+      workspaceBackups: [] as WorkspaceBackupSummary[],
     }),
     getters: {
       allWorkspaces: (state) => _.values(state.workspacesByPk),
@@ -55,36 +60,29 @@ export const useWorkspacesStore = addStoreHooks(
         });
       },
 
-      async EXPORT_WORKSPACE() {
+      async EXPORT_WORKSPACE_BACKUP() {
         return new ApiRequest({
-          // using placeholder url to just make a request
-          url: "/session/load_workspace",
-          _delay: 3000,
+          method: "post",
+          url: "/pkg/export_workspace_backup",
+          params: {},
           onSuccess: (response) => {},
         });
       },
-      async FETCH_WORKSPACE_EXPORTS() {
-        return new ApiRequest({
-          // using placeholder url to just make a request
-          url: "/session/load_workspace",
-          _delay: 1500,
-          onSuccess: (response) => {
-            this.workspaceExports = [
-              { id: "a", createdAt: "2023-08-30T11:22:33Z" },
-              { id: "b", createdAt: "2023-08-26T08:04:11Z" },
-              { id: "c", createdAt: "2023-08-25T18:19:20Z" },
-              { id: "d", createdAt: "2023-08-25T14:15:16Z" },
-            ];
+      async FETCH_WORKSPACE_BACKUPS() {
+        return new ModuleIndexApiRequest<{ modules: WorkspaceBackupSummary[] }>(
+          {
+            url: "/backups",
+            onSuccess: (response) => {
+              this.workspaceBackups = response.modules;
+            },
           },
-        });
+        );
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      async IMPORT_WORKSPACE(exportId: WorkspaceExportId) {
+      async RESTORE_WORKSPACE_BACKUP(backupId: WorkspaceBackupId) {
         return new ApiRequest({
-          // using placeholder url to just make a request
-          url: "/session/load_workspace",
-          _delay: 5000,
-          // params: { id: exportId },
+          method: "post",
+          url: "/pkg/restore_workspace_backup",
+          params: { id: backupId },
           onSuccess: (response) => {},
         });
       },

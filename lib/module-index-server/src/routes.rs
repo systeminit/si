@@ -10,8 +10,10 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use tower_http::cors::CorsLayer;
 
+mod create_backup_route;
 mod download_module_route;
 mod get_module_details_route;
+mod list_backups_route;
 mod list_modules_route;
 pub(crate) mod upsert_module_route;
 
@@ -32,6 +34,8 @@ pub fn routes(state: AppState) -> Router {
             "/modules/:module_id/download",
             get(download_module_route::download_module_route),
         )
+        .route("/backups", get(list_backups_route::list_backups_route))
+        .route("/backups", post(create_backup_route::create_backup_route))
         .layer(CorsLayer::permissive());
 
     router.with_state(state)

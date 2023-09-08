@@ -37,7 +37,7 @@
 
         <template v-if="loadExportsReqStatus.isSuccess">
           <VormInput
-            v-model="selectedExportId"
+            v-model="selectedBackupId"
             type="dropdown"
             label="Select an export to restore from"
             placeholder="- Select an export -"
@@ -45,7 +45,7 @@
             requiredMessage="Select an export to continue"
           >
             <VormInputOption
-              v-for="item in exportsList"
+              v-for="item in backupsList"
               :key="item.id"
               :value="item.id"
             >
@@ -71,6 +71,8 @@
         >
           I understand my local workspace data will be overwritten
         </VormInput>
+
+        <ErrorMessage :requestStatus="importReqStatus" />
 
         <VButton
           icon="cloud-download"
@@ -109,26 +111,28 @@ const { validationState, validationMethods } = useValidatedInputGroup();
 
 const workspacesStore = useWorkspacesStore();
 const loadExportsReqStatus = workspacesStore.getRequestStatus(
-  "FETCH_WORKSPACE_EXPORTS",
+  "FETCH_WORKSPACE_BACKUPS",
 );
-const importReqStatus = workspacesStore.getRequestStatus("IMPORT_WORKSPACE");
+const importReqStatus = workspacesStore.getRequestStatus(
+  "RESTORE_WORKSPACE_BACKUP",
+);
 
-const exportsList = computed(() => workspacesStore.workspaceExports);
+const backupsList = computed(() => workspacesStore.workspaceBackups);
 
-const selectedExportId = ref<string>();
+const selectedBackupId = ref<string>();
 const confirmedDataLoss = ref(false);
 
 function open() {
-  selectedExportId.value = undefined;
+  selectedBackupId.value = undefined;
   confirmedDataLoss.value = false;
-  workspacesStore.FETCH_WORKSPACE_EXPORTS();
+  workspacesStore.FETCH_WORKSPACE_BACKUPS();
   openModal();
 }
 
 async function continueHandler() {
   if (validationMethods.hasError()) return;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  await workspacesStore.IMPORT_WORKSPACE(selectedExportId.value!);
+  await workspacesStore.RESTORE_WORKSPACE_BACKUP(selectedBackupId.value!);
 }
 
 function refreshHandler() {

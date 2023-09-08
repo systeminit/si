@@ -43,7 +43,9 @@ import { ref } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 
 const workspacesStore = useWorkspacesStore();
-const exportReqStatus = workspacesStore.getRequestStatus("EXPORT_WORKSPACE");
+const exportReqStatus = workspacesStore.getRequestStatus(
+  "EXPORT_WORKSPACE_BACKUP",
+);
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
@@ -53,10 +55,10 @@ function open() {
 }
 
 function continueHandler() {
-  workspacesStore.EXPORT_WORKSPACE();
+  workspacesStore.EXPORT_WORKSPACE_BACKUP();
 }
 function closeHandler() {
-  workspacesStore.clearRequestStatus("EXPORT_WORKSPACE");
+  workspacesStore.clearRequestStatus("EXPORT_WORKSPACE_BACKUP");
 }
 
 defineExpose({ open, close });

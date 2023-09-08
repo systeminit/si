@@ -10,7 +10,8 @@
     "
   >
     <Icon name="alert-triangle" class="mr-xs flex-none" />
-    <div class="flex-grow">
+    <!-- fix overflow on things like super long URLs see https://github.com/tailwindlabs/tailwindcss/discussions/2213 -->
+    <div class="flex-grow" :style="{ overflowWrap: 'anywhere' }">
       <slot>{{ computedMessage }}</slot>
     </div>
   </div>

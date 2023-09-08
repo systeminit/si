@@ -56,4 +56,25 @@ impl IndexClient {
 
         Ok(bytes.to_vec())
     }
+
+    pub async fn upload_workspace_backup(
+        &self,
+        file_name: &str,
+        module_bytes: Vec<u8>,
+    ) -> IndexClientResult<ModuleDetailsResponse> {
+        let module_upload_part =
+            reqwest::multipart::Part::bytes(module_bytes).file_name(format!("{file_name}.tar"));
+
+        let upload_url = self.base_url.join("backups")?;
+        let upload_response = reqwest::Client::new()
+            .post(upload_url)
+            .multipart(reqwest::multipart::Form::new().part("module bundle", module_upload_part))
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        // TODO: might want a slightly different format on what gets returned?
+        Ok(upload_response.json::<ModuleDetailsResponse>().await?)
+    }
 }

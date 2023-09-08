@@ -4,6 +4,7 @@ use sea_orm::{
     TryGetError,
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use ulid::Ulid;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -15,6 +16,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub name: String,
     #[sea_orm(column_type = "Text")]
+    pub is_backup: bool,
     pub description: Option<String>,
     pub owner_user_id: String,
     pub owner_display_name: Option<String>,
@@ -112,8 +114,15 @@ impl sea_query::ValueType for ModuleId {
     }
 }
 
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ModuleResponseError {
+    #[error("JSON serialization/deserialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+}
+
 impl TryInto<module_index_client::ModuleDetailsResponse> for Model {
-    type Error = crate::routes::upsert_module_route::UpsertModuleError;
+    type Error = ModuleResponseError;
 
     fn try_into(self) -> Result<module_index_client::ModuleDetailsResponse, Self::Error> {
         Ok(serde_json::from_value(serde_json::to_value(self)?)?)
