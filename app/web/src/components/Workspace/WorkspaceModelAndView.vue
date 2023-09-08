@@ -33,7 +33,7 @@
     >
       <ReadOnlyBanner show-refresh-all-button />
     </div-->
-    <RecommendationProgressOverlay />
+    <FixProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
@@ -81,7 +81,11 @@
               <strong
                 class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
               >
-                {{ 1 + diffs.length + fixesStore.recommendations.length }}
+                {{
+                  1 +
+                  diffs.length +
+                  (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
+                }}
               </strong>
             </template>
           </span>
@@ -91,9 +95,9 @@
         <TabGroup
           v-else
           rememberSelectedTabKey="proposed_right"
-          trackingSlug="recommendations_applied"
+          trackingSlug="actions_applied"
         >
-          <TabGroupItem label="Proposed" slug="recommendations_proposed">
+          <TabGroupItem label="Proposed" slug="actions_proposed">
             <Collapsible
               as="div"
               contentAs="ul"
@@ -167,8 +171,8 @@
             </Collapsible>
 
             <div
-              v-for="(obj, key) in fixesStore.recommendationsSelection"
-              :key="key"
+              v-for="action in changeSetStore.selectedChangeSet?.actions ?? []"
+              :key="action.id"
               :class="
                 clsx(
                   'border-b',
@@ -176,25 +180,17 @@
                 )
               "
             >
-              <RecommendationSprite
-                :key="key"
-                :recommendation="obj.recommendation"
-                :selected="obj.selected"
-                @click.stop
-                @toggle="toggleRecommendation($event, obj.recommendation)"
-              />
+              <ActionSprite :action="action" @remove="removeAction(action)" />
             </div>
             <div
-              v-if="fixesStore.recommendations.length === 0"
+              v-if="changeSetStore.selectedChangeSet?.actions?.length"
               class="p-4 italic !delay-0 !duration-0 hidden first:block"
             >
-              <div class="pb-sm">
-                No recommendations are available at this time.
-              </div>
+              <div class="pb-sm">No actions were chosen at this time.</div>
             </div>
           </TabGroupItem>
 
-          <TabGroupItem label="Applied" slug="recommendations_applied">
+          <TabGroupItem label="Applied" slug="actions_applied">
             <ApplyHistory />
           </TabGroupItem>
         </TabGroup>
@@ -320,12 +316,13 @@ import {
   EdgeId,
   useComponentsStore,
 } from "@/store/components.store";
-import { Recommendation, useFixesStore } from "@/store/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import RecommendationSprite from "@/components/RecommendationSprite.vue";
+import { Action } from "@/api/sdf/dal/change_set";
+import ActionSprite from "@/components/ActionSprite.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { nilId } from "@/utils/nilId";
-import RecommendationProgressOverlay from "@/components/RecommendationProgressOverlay.vue";
+import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -398,12 +395,8 @@ onMounted(() => {
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-const toggleRecommendation = (
-  selected: boolean,
-  recommendation: Recommendation,
-) => {
-  const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-  fixesStore.recommendationsSelection[key] = { recommendation, selected };
+const removeAction = (action: Action) => {
+  changeSetStore.REMOVE_ACTION(action.id);
 };
 
 const componentsStore = useComponentsStore();

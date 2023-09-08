@@ -32,6 +32,8 @@ pub enum JobConsumerError {
     BlockingJob(#[from] BlockingJobError),
     #[error(transparent)]
     Component(#[from] ComponentError),
+    #[error("component {0} is destroyed")]
+    ComponentIsDestroyed(ComponentId),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error(transparent)]

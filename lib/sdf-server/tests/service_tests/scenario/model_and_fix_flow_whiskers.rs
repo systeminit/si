@@ -1,13 +1,7 @@
-use std::collections::HashSet;
-
 use axum::Router;
-use dal::{
-    component::confirmation::view::ConfirmationStatus, qualification::QualificationSubCheckStatus,
-    ActionKind, Component, FixCompletionStatus,
-};
+use dal::{qualification::QualificationSubCheckStatus, Component, FixCompletionStatus};
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
-use sdf_server::service::fix::run::FixRunRequest;
 
 use crate::service_tests::scenario::ScenarioHarness;
 
@@ -510,89 +504,24 @@ async fn model_and_fix_flow_whiskers(
             .expect("could not convert to value"), // actual
     );
 
+    let actions = harness.find_change_set(&ctx).await.actions;
+    assert_eq!(actions.len(), 4);
+
+    let fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
+    assert!(fix_batch_history_views.is_empty());
+
     // Apply the change set and get rolling!
     harness
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
-    // Prepare the fixes
-    let (confirmations, recommendations) = harness.list_confirmations(ctx.visibility()).await;
-
-    assert_eq!(
-        8, // expected - there are matching exists/ needs deleted confirmations for each components
-        confirmations.len(), // actual
-    );
-    let mut failing_targets = HashSet::new();
-    let mut passing_targets = HashSet::new();
-    for confirmation in confirmations {
-        match confirmation.status {
-            ConfirmationStatus::Failure => {
-                failing_targets.insert(confirmation.attribute_value_id);
-            }
-            ConfirmationStatus::Success => {
-                passing_targets.insert(confirmation.attribute_value_id);
-            }
-            _ => {}
-        }
-    }
-    assert_eq!(
-        4, // there should be 4 passing confirmations - these are the "needs deletion"
-        passing_targets.len()
-    );
-    assert_eq!(
-        4, // there should be 4 failing confirmations - these are the "needs creation"
-        failing_targets.len()
-    );
-    assert_eq!(
-        4, // there should be 4 recommendations to apply
-        recommendations.len(),
-    );
-
-    let mut fix_requests = Vec::new();
-
-    // Select the recommendations we want.
-    for recommendation in recommendations {
-        if failing_targets.contains(&recommendation.confirmation_attribute_value_id) {
-            fix_requests.push(FixRunRequest {
-                attribute_value_id: recommendation.confirmation_attribute_value_id,
-                component_id: recommendation.component_id,
-                action_prototype_id: recommendation.action_prototype_id,
-            })
-        }
-    }
-    assert_eq!(
-        4,                  // expected
-        fix_requests.len(), // actual
-    );
-
-    // Run fixes from the requests.
-    let fix_batch_id = harness.run_fixes(ctx.visibility(), fix_requests).await;
-
     // Check that they succeeded.
     let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
-        fix_batch_id,              // expected
-        fix_batch_history_view.id, // actual
-    );
-    assert_eq!(
         Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
-
-    // Check that all confirmations are passing.
-    let (confirmations, recommendations) = harness.list_confirmations(ctx.visibility()).await;
-    assert_eq!(
-        8,                   // expected
-        confirmations.len(), // actual
-    );
-    for confirmation in confirmations {
-        assert_eq!(
-            ConfirmationStatus::Success, // expected
-            confirmation.status,         // actual
-        );
-    }
-    assert!(recommendations.is_empty());
 
     // // let's refresh the resources and check what they are
     // harness.refresh_resources(&mut ctx).await;
@@ -625,84 +554,25 @@ async fn model_and_fix_flow_whiskers(
         .delete_component(ctx.visibility(), ingress.component_id)
         .await;
 
-    // Let's apply the changeset to ensure we delete the components
+    let actions = harness.find_change_set(&ctx).await.actions;
+    assert_eq!(actions.len(), 4);
+
+    let num_of_fix_batch_history_views = harness.list_fixes(ctx.visibility()).await.len();
+
     harness
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
         .await;
 
-    // Prepare the fixes
-    let (delete_confirmations, delete_recommendations) =
-        harness.list_confirmations(ctx.visibility()).await;
-
-    assert_eq!(
-        8, // no resources exist at this point so there should be no confirmations
-        delete_confirmations.len(),
-    );
-
-    let mut delete_requests = Vec::new();
-    let mut delete_sg_requests = Vec::new();
-
-    // Select the recommendations we want.
-    for delete_recommendation in delete_recommendations {
-        if delete_recommendation.action_kind == ActionKind::Delete {
-            if delete_recommendation.name == "Delete Security Group" {
-                delete_sg_requests.push(FixRunRequest {
-                    attribute_value_id: delete_recommendation.confirmation_attribute_value_id,
-                    component_id: delete_recommendation.component_id,
-                    action_prototype_id: delete_recommendation.action_prototype_id,
-                })
-            } else {
-                delete_requests.push(FixRunRequest {
-                    attribute_value_id: delete_recommendation.confirmation_attribute_value_id,
-                    component_id: delete_recommendation.component_id,
-                    action_prototype_id: delete_recommendation.action_prototype_id,
-                })
-            }
-        }
-    }
-
-    assert_eq!(
-        3, // we should have the recommendation to delete the 3 non-SG resources in AWS
-        delete_requests.len(),
-    );
-
-    assert_eq!(
-        1, // we should have the recommendation to delete the SG resource in AWS
-        delete_sg_requests.len(),
-    );
-
-    let fix_batch_id = harness.run_fixes(ctx.visibility(), delete_requests).await;
-
     // Check that they succeeded.
     let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
-    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
-    assert_eq!(
-        fix_batch_id,              // expected
-        fix_batch_history_view.id, // actual
+    assert_ne!(
+        fix_batch_history_views.len(),
+        num_of_fix_batch_history_views
     );
+
+    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
-
-    // Delete the SG
-    let fix_batch_id = dbg!(
-        harness
-            .run_fixes(dbg!(ctx.visibility()), dbg!(delete_sg_requests))
-            .await
-    );
-
-    // Check that they succeeded.
-    let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
-    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
-    assert_eq!(
-        fix_batch_id,              // expected
-        fix_batch_history_view.id, // actual
-    );
-    assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
-        fix_batch_history_view.status
-    );
-
-    assert!(recommendations.is_empty());
 }

@@ -16,9 +16,10 @@ use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
-    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
-    ChangeSetPk, ComponentError, ComponentId, DalContext, Edge, EdgeError, Node, NodeError, NodeId,
-    NodeKind, PropError, SchemaError, SocketId, StandardModel, StandardModelError,
+    ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
+    AttributeValueError, ChangeSetPk, ComponentError, ComponentId, DalContext, Edge, EdgeError,
+    Node, NodeError, NodeId, NodeKind, PropError, SchemaError, SocketId, StandardModel,
+    StandardModelError,
 };
 
 pub mod connection;
@@ -27,6 +28,8 @@ pub mod node;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {
+    #[error("action prototype: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype argument error: {0}")]

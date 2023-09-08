@@ -20,14 +20,11 @@
       <span class="text-center text-sm"
         >Pick which actions will be applied to the real world:</span
       >
-      <li v-for="(obj, key) in fixesStore.recommendationsSelection" :key="key">
-        <RecommendationSprite
-          :key="key"
-          :recommendation="obj.recommendation"
-          :selected="obj.selected"
-          @click.stop
-          @toggle="toggleRecommendation($event, obj.recommendation)"
-        />
+      <li
+        v-for="action in changeSetsStore.selectedChangeSet?.actions ?? []"
+        :key="action.id"
+      >
+        <ActionSprite :action="action" @remove="removeAction(action)" />
       </li>
       <VButton
         v-if="!changeSetsStore.headSelected"
@@ -51,35 +48,28 @@ import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
 import { VButton, Modal } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
-import RecommendationSprite from "@/components/RecommendationSprite.vue";
+import { Action } from "@/api/sdf/dal/change_set";
+import ActionSprite from "@/components/ActionSprite.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
-import { useFixesStore } from "@/store/fixes.store";
-import type { Recommendation } from "@/store/fixes.store";
 
 const createModalRef = ref<InstanceType<typeof Modal> | null>(null);
 
-const fixesStore = useFixesStore();
-
 const maybeOpenModal = () => {
-  if (_.keys(fixesStore.recommendationsSelection).length === 0) {
+  if (!changeSetsStore.selectedChangeSet?.actions?.length) {
     applyChangeSet();
   } else {
     createModalRef.value?.open();
   }
 };
 
-const toggleRecommendation = (
-  selected: boolean,
-  recommendation: Recommendation,
-) => {
-  const key = `${recommendation.confirmationAttributeValueId}-${recommendation.actionKind}`;
-  fixesStore.recommendationsSelection[key] = { selected, recommendation };
-};
-
 const changeSetsStore = useChangeSetsStore();
 const router = useRouter();
 const route = useRoute();
+
+const removeAction = (action: Action) => {
+  changeSetsStore.REMOVE_ACTION(action.id);
+};
 
 const applyButtonRef = ref();
 
@@ -105,7 +95,7 @@ onMounted(() => {
 // Applies the current change set
 const applyChangeSet = async () => {
   if (!route.name) return;
-  await changeSetsStore.APPLY_CHANGE_SET(fixesStore.enabledRecommendations);
+  await changeSetsStore.APPLY_CHANGE_SET();
   window.localStorage.setItem("applied-changes", "true");
   router.replace({
     name: route.name,

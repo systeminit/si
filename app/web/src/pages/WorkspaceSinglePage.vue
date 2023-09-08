@@ -110,10 +110,7 @@ function handleUrlChange() {
     changeSetsStore.selectedChangeSetId = changeSetId;
   }
 
-  window.localStorage.setItem(
-    "tab_group_proposed_right",
-    "recommendations_proposed",
-  );
+  window.localStorage.setItem("tab_group_proposed_right", "actions_proposed");
 
   if (
     !changeSetId ||

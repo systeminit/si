@@ -1,11 +1,10 @@
-use crate::{DalContext, TransactionsError};
+use crate::{ChangeSetPk, DalContext, TransactionsError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::ChangeSetPk;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[remain::sorted]

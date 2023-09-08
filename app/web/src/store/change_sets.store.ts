@@ -5,10 +5,15 @@ import { watch } from "vue";
 import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
-import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import { LabelList } from "@/api/sdf/dal/label_list";
+import {
+  ActionId,
+  ChangeSet,
+  ChangeSetStatus,
+  ActionPrototype,
+  NewAction,
+} from "@/api/sdf/dal/change_set";
+import { ComponentId, useComponentsStore } from "@/store/components.store";
 import router from "@/router";
-import type { Recommendation } from "@/store/fixes.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -51,6 +56,29 @@ export function useChangeSetsStore() {
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
         selectedWorkspacePk: () => workspacePk,
+        statusByComponentId() {
+          const componentsStore = useComponentsStore();
+
+          const all: Record<ComponentId, "success" | "failure"> = {};
+          for (const component of componentsStore.allComponents) {
+            if (component && !component.resource.data) {
+              all[component.id] = component.actions.filter(
+                (a: ActionPrototype) => a.name === "create",
+              ).length
+                ? "failure"
+                : "success";
+            } else if (component && component.deletedInfo) {
+              all[component.id] = component.actions.filter(
+                (a: ActionPrototype) => a.name === "delete",
+              ).length
+                ? "failure"
+                : "success";
+            } else {
+              all[component.id] = "success";
+            }
+          }
+          return all;
+        },
       },
       actions: {
         async setActiveChangeset(changeSetPk: string) {
@@ -71,26 +99,46 @@ export function useChangeSetsStore() {
         },
 
         async FETCH_CHANGE_SETS() {
-          return new ApiRequest<{ list: LabelList<string> }>({
+          return new ApiRequest<ChangeSet[]>({
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
             onSuccess: (response) => {
-              // endpoint returns a dropdown list so we'll temporarily re-format into ChangeSet data
-              const changeSetData = _.map(
-                response.list,
-                (ci) =>
-                  ({
-                    id: ci.value,
-                    pk: ci.value,
-                    name: ci.label,
-                    // note: null,
-                    status: ChangeSetStatus.Open,
-                  } as ChangeSet),
-              );
+              this.changeSetsById = {};
 
-              this.changeSetsById = _.keyBy(changeSetData, "id");
+              for (const changeSet of response) {
+                this.changeSetsById[changeSet.pk] = {
+                  id: changeSet.pk,
+                  pk: changeSet.pk,
+                  name: changeSet.name,
+                  actions: changeSet.actions,
+                  status: changeSet.status,
+                };
+              }
             },
+          });
+        },
+        async REMOVE_ACTION(id: ActionId) {
+          return new ApiRequest<null>({
+            method: "post",
+            url: "change_set/remove_action",
+            params: {
+              id,
+              visibility_change_set_pk: this.selectedChangeSet?.id,
+            },
+            onSuccess: () => {},
+          });
+        },
+        async ADD_ACTION(action: NewAction) {
+          return new ApiRequest<null>({
+            method: "post",
+            url: "change_set/add_action",
+            params: {
+              prototypeId: action.prototypeId,
+              componentId: action.componentId,
+              visibility_change_set_pk: this.selectedChangeSet?.id,
+            },
+            onSuccess: () => {},
           });
         },
         async CREATE_CHANGE_SET(name: string) {
@@ -105,18 +153,13 @@ export function useChangeSetsStore() {
             },
           });
         },
-        async APPLY_CHANGE_SET(recommendations: Array<Recommendation>) {
+        async APPLY_CHANGE_SET() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           return new ApiRequest<{ changeSet: ChangeSet }>({
             method: "post",
             url: "change_set/apply_change_set",
             params: {
               changeSetPk: this.selectedChangeSet.pk,
-              list: recommendations.map((r) => ({
-                attributeValueId: r.confirmationAttributeValueId,
-                componentId: r.componentId,
-                actionPrototypeId: r.actionPrototypeId,
-              })),
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;
@@ -208,6 +251,7 @@ export function useChangeSetsStore() {
               // we'll update a timestamp here so individual components can watch this to trigger something if necessary
               // hopefully with more targeted realtime updates we won't need this, but could be useful for now
               this.changeSetsWrittenAtById[cs] = new Date();
+              this.FETCH_CHANGE_SETS();
 
               // could refetch the change sets here, but not useful right now since no interesting metadata exists on the changeset itself
             },
