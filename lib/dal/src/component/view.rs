@@ -132,6 +132,7 @@ impl ComponentView {
             .as_object_mut()
             .and_then(|obj| obj.get_mut("root").and_then(|obj| obj.as_object_mut()))
         {
+            // TODO(Wendy) - This code needs to change A LOT!
             // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
             // So for now we will try to decrypt every integer root field, which kinda suck
             //

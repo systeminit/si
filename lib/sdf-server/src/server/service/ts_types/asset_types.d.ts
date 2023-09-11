@@ -70,7 +70,7 @@ class ValidationBuilder implements IValidationBuilder {
     setKind(type: ValidationKind): this;
     setUpperBound(value: number): this;
 }
-type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secretSelect" | "select" | "text" | "textArea";
+type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea";
 interface Option {
     label: string;
     value: string;

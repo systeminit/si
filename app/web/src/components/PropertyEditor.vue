@@ -23,15 +23,13 @@
       />
     </div>
     <!-- temporary code for testing secrets popover -->
-    <div
-      v-if="featureFlagsStore.SECRETS"
-      class="flex flex-col w-full pt-sm px-lg"
-    >
-      <VButton label="Select Secret" @click="(e) => popoverRef.open(e)" />
-      <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-        <SecretsList definitionId="Mocks" />
-      </Popover>
-    </div>
+    <WidgetSecret
+      name="TEST SECRET EXAMPLE YAY"
+      :collapsedPaths="[]"
+      :value="undefined"
+      propId="test"
+      valueId="test"
+    />
     <!-- temporary code for testing secrets popover -->
   </div>
 </template>
@@ -39,7 +37,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import * as _ from "lodash-es";
-import { VButton } from "@si/vue-lib/design-system";
 import {
   PropertyEditorSchema,
   PropertyEditorValues,
@@ -51,20 +48,14 @@ import {
   PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
 import { useComponentsStore } from "@/store/components.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
-import Popover from "./Popover.vue";
-import SecretsList from "./SecretsList.vue";
+import WidgetSecret from "./PropertyEditor/WidgetSecret.vue";
 
 export interface PropertyEditorContext {
   schema: PropertyEditorSchema;
   values: PropertyEditorValues;
   validations: PropertyEditorValidation[];
 }
-
-const featureFlagsStore = useFeatureFlagsStore();
-
-const popoverRef = ref();
 
 const props = defineProps<{
   editorContext: PropertyEditorContext;
