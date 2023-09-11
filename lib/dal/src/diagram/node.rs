@@ -247,10 +247,11 @@ impl DiagramComponentView {
             },
         )
         .await?;
-        let actions = action_prototypes
-            .into_iter()
-            .map(ActionPrototypeView::new)
-            .collect();
+        let mut action_views: Vec<ActionPrototypeView> = Vec::new();
+        for action_prototype in action_prototypes {
+            let view = ActionPrototypeView::new(ctx, action_prototype).await?;
+            action_views.push(view);
+        }
 
         Ok(Self {
             id: *component.id(),
@@ -273,7 +274,7 @@ impl DiagramComponentView {
             node_type: component.get_type(ctx).await?,
             change_status,
             resource,
-            actions,
+            actions: action_views,
             created_info,
             updated_info,
             deleted_info,

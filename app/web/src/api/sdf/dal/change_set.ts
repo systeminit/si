@@ -12,6 +12,7 @@ export type ActionPrototypeId = string;
 export interface ActionPrototype {
   id: ActionPrototypeId;
   name: string;
+  displayName: string;
 }
 
 export interface NewAction {
@@ -19,6 +20,7 @@ export interface NewAction {
   prototypeId: ActionPrototypeId;
   name: string;
   componentId: ComponentId;
+  displayName: string;
 }
 
 export type ActionId = string;
