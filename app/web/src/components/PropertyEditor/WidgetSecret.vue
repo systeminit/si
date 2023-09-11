@@ -46,6 +46,7 @@ const props = defineProps<{
   description?: string;
 }>();
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { name, path, collapsedPaths, valueId, propId, value } = toRefs(props);
 
 const disableUnset = computed(() => {
