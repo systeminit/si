@@ -86,10 +86,7 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSelectBox
-      v-else-if="
-        schemaProp.widgetKind.kind === 'secretSelect' ||
-        schemaProp.widgetKind.kind === 'select'
-      "
+      v-else-if="schemaProp.widgetKind.kind === 'select'"
       :name="schemaProp.name"
       :options="schemaProp.widgetKind.options || []"
       :path="path"
@@ -131,6 +128,15 @@
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
+    />
+    <WidgetSecret
+      v-else-if="schemaProp.widgetKind.kind === 'secret'"
+      :name="schemaProp.name"
+      :path="path"
+      :collapsedPaths="collapsedPaths"
+      :value="propValue.value"
+      :propId="propValue.propId"
+      :valueId="propValue.id"
     />
 
     <!-- restricting to text props for now -->
@@ -179,6 +185,7 @@ import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
 import WidgetComboBox from "./WidgetComboBox.vue";
 import WidgetColorBox from "./WidgetColorBox.vue";
+import WidgetSecret from "./WidgetSecret.vue";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 

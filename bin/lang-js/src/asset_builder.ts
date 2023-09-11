@@ -220,7 +220,7 @@ export type PropWidgetDefinitionKind =
     | "comboBox"
     | "header"
     | "map"
-    | "secretSelect"
+    | "secret"
     | "select"
     | "text"
     | "textArea";
