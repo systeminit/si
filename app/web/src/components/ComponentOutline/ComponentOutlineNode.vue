@@ -105,7 +105,7 @@
                   <div
                     class="bg-black uppercase font-bold text-md pt-sm pb-xs px-xs shrink-0"
                   >
-                    <span>Changes</span>
+                    <span>Actions</span>
                   </div>
                   <TabGroup as="template">
                     <TabList
@@ -114,17 +114,12 @@
                       <Tab
                         class="ui-selected:border-action-300 ui-selected:text-action-300"
                       >
-                        Actions
-                        <span
-                          class="rounded-2xl ml-xs mr-xs px-2.5 border border-destructive-500 ui-selected:bg-destructive-500 ui-selected:text-neutral-900 text-destructive-500"
-                        >
-                          {{ actions.length }}
-                        </span>
+                        Add new
                       </Tab>
                       <Tab
                         class="ui-selected:border-action-300 ui-selected:text-action-300"
                       >
-                        Applied
+                        History
                         <span
                           class="rounded-2xl ml-xs mr-xs px-2.5 border border-success-500 ui-selected:bg-success-500 ui-selected:text-neutral-900 text-success-500"
                         >
@@ -141,11 +136,11 @@
                           <div class="w-64">
                             <EmptyStateIcon name="no-changes" />
                           </div>
-                          <span class="text-xl">No Changes Proposed</span>
+                          <span class="text-xl">No actions available</span>
                         </div>
                         <ul v-else class="flex flex-col p-xs gap-2xs">
                           <li class="py-xs px-sm text-sm">
-                            Proposed Changes will be enacted upon click of the
+                            Actions will be enacted upon click of the
                             <b>APPLY CHANGES</b> button in the right rail.
                           </li>
                           <li
