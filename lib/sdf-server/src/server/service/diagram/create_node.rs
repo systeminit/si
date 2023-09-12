@@ -79,7 +79,24 @@ pub async fn create_node(
     )
     .await?
     {
-        Action::new(&ctx, *prototype.id(), *component.id()).await?;
+        let action = Action::new(&ctx, *prototype.id(), *component.id()).await?;
+        let prototype = action.prototype(&ctx).await?;
+        let component = action.component(&ctx).await?;
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "create_action",
+            serde_json::json!({
+                "how": "/diagram/create_node",
+                "prototype_id": prototype.id(),
+                "prototype_kind": prototype.kind(),
+                "component_id": component.id(),
+                "component_name": component.name(&ctx).await?,
+                "change_set_pk": ctx.visibility().change_set_pk,
+            }),
+        );
     }
 
     node.set_geometry(
