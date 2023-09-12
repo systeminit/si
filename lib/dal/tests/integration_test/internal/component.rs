@@ -388,7 +388,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
-            "domain": {}
         }], // expected
         noctua_component_view.properties // actual
     );

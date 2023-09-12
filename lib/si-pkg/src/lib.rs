@@ -134,7 +134,7 @@ mod tests {
             .expect("cannot get funcs by unique id");
 
         let leaf_funcs = variant.leaf_functions().expect("get leaf funcs");
-        assert_eq!(3, leaf_funcs.len());
+        assert_eq!(2, leaf_funcs.len());
 
         for func in leaf_funcs {
             assert!(funcs_by_unique_id.contains_key(&func.func_unique_id()));
