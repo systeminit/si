@@ -1,7 +1,7 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
-use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
+use super::{AttrFuncInputSpec, SpecError};
 
 /// MapKeyFuncSpecs track custom functions set on keys to a map
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
@@ -11,7 +11,7 @@ pub struct MapKeyFuncSpec {
     #[builder(setter(into))]
     pub key: String,
     #[builder(setter(into))]
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
 }

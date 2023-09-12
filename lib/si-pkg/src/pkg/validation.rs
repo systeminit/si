@@ -9,7 +9,7 @@ use crate::{node::PkgNode, ValidationSpec, ValidationSpecKind};
 #[derive(Clone, Debug)]
 pub enum SiPkgValidation<'a> {
     CustomValidation {
-        func_unique_id: Hash,
+        func_unique_id: String,
         hash: Hash,
         source: Source<'a>,
     },
@@ -170,7 +170,7 @@ impl<'a> TryFrom<SiPkgValidation<'a>> for ValidationSpec {
             }
             SiPkgValidation::CustomValidation { func_unique_id, .. } => {
                 builder.kind(ValidationSpecKind::CustomValidation);
-                builder.func_unique_id(func_unique_id);
+                builder.func_unique_id(&func_unique_id);
             }
             SiPkgValidation::StringInStringArray {
                 expected,

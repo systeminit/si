@@ -1,8 +1,10 @@
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, SchemaSpec,
-    SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecKind, ValidationSpec, ValidationSpecKind,
+    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
+    ValidationSpec, ValidationSpecKind,
 };
+use si_pkg::{FuncSpecData, SchemaSpecData};
 
 use crate::func::argument::FuncArgumentKind;
 use crate::func::intrinsics::IntrinsicFunc;
@@ -24,35 +26,56 @@ impl MigrationDriver {
         let fallout_create_action_code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
             }";
+        let fn_name = "test:createActionFallout";
         let fallout_create_action_func = FuncSpec::builder()
-            .name("test:createActionFallout")
-            .code_plaintext(fallout_create_action_code)
-            .handler("create")
-            .backend_kind(FuncSpecBackendKind::JsAction)
-            .response_type(FuncSpecBackendResponseType::Action)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(fallout_create_action_code)
+                    .handler("create")
+                    .backend_kind(FuncSpecBackendKind::JsAction)
+                    .response_type(FuncSpecBackendResponseType::Action)
+                    .build()?,
+            )
             .build()?;
 
         let fallout_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
             }";
+        let fn_name = "test:scaffoldFalloutAsset";
         let fallout_authoring_schema_func = FuncSpec::builder()
-            .name("test:scaffoldFalloutAsset")
-            .code_plaintext(fallout_scaffold_func)
-            .handler("createAsset")
-            .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-            .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(fallout_scaffold_func)
+                    .handler("createAsset")
+                    .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                    .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                    .build()?,
+            )
             .build()?;
 
         let fallout_resource_payload_to_value_func_code =
             "async function translate(arg: Input): Promise<Output> {\
             return arg.payload ?? {};
         }";
+        let fn_name = "test:resourcePayloadToValue";
         let fallout_resource_payload_to_value_func = FuncSpec::builder()
-            .name("test:resourcePayloadToValue")
-            .code_plaintext(fallout_resource_payload_to_value_func_code)
-            .handler("translate")
-            .backend_kind(FuncSpecBackendKind::JsAttribute)
-            .response_type(FuncSpecBackendResponseType::Json)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(fallout_resource_payload_to_value_func_code)
+                    .handler("translate")
+                    .backend_kind(FuncSpecBackendKind::JsAttribute)
+                    .response_type(FuncSpecBackendResponseType::Json)
+                    .build()?,
+            )
             .argument(
                 FuncArgumentSpec::builder()
                     .name("payload")
@@ -63,18 +86,31 @@ impl MigrationDriver {
 
         let fallout_schema = SchemaSpec::builder()
             .name("fallout")
-            .category("test exclusive")
-            .category_name("fallout")
+            .data(
+                SchemaSpecData::builder()
+                    .name("fallout")
+                    .category("test exclusive")
+                    .category_name("fallout")
+                    .build()
+                    .expect("build schema spec data"),
+            )
             .variant(
                 SchemaVariantSpec::builder()
-                    .color("#ffffff")
                     .name("v0")
-                    .func_unique_id(fallout_authoring_schema_func.unique_id)
+                    .unique_id("fallout_sv")
+                    .data(
+                        SchemaVariantSpecData::builder()
+                            .name("v0")
+                            .color("#ffffff")
+                            .func_unique_id(&fallout_authoring_schema_func.unique_id)
+                            .build()
+                            .expect("fallout variant data"),
+                    )
                     .domain_prop(
                         PropSpec::builder()
                             .name("name")
                             .kind(PropKind::String)
-                            .func_unique_id(identity_func_spec.unique_id)
+                            .func_unique_id(&identity_func_spec.unique_id)
                             .input(
                                 AttrFuncInputSpec::builder()
                                     .kind(AttrFuncInputSpecKind::Prop)
@@ -118,8 +154,13 @@ impl MigrationDriver {
                     .socket(
                         SocketSpec::builder()
                             .name("bethesda")
-                            .kind(SocketSpecKind::Output)
-                            .func_unique_id(identity_func_spec.unique_id)
+                            .data(
+                                SocketSpecData::builder()
+                                    .name("bethesda")
+                                    .kind(SocketSpecKind::Output)
+                                    .func_unique_id(&identity_func_spec.unique_id)
+                                    .build()?,
+                            )
                             .input(
                                 AttrFuncInputSpec::builder()
                                     .name("identity")
@@ -132,8 +173,13 @@ impl MigrationDriver {
                     .socket(
                         SocketSpec::builder()
                             .name("fallout")
-                            .kind(SocketSpecKind::Output)
-                            .func_unique_id(identity_func_spec.unique_id)
+                            .data(
+                                SocketSpecData::builder()
+                                    .name("fallout")
+                                    .kind(SocketSpecKind::Output)
+                                    .func_unique_id(&identity_func_spec.unique_id)
+                                    .build()?,
+                            )
                             .input(
                                 AttrFuncInputSpec::builder()
                                     .name("identity")
@@ -146,7 +192,7 @@ impl MigrationDriver {
                     .action_func(
                         ActionFuncSpec::builder()
                             .kind(&ActionKind::Create)
-                            .func_unique_id(fallout_create_action_func.unique_id)
+                            .func_unique_id(&fallout_create_action_func.unique_id)
                             .build()?,
                     )
                     .build()?,

@@ -20,6 +20,7 @@ const KEY_DESCRIPTION_STR: &str = "description";
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
 const KEY_VERSION_STR: &str = "version";
+const KEY_WORKSPACE_PK_STR: &str = "workspace_pk";
 
 #[derive(Clone, Debug)]
 pub struct PackageNode {
@@ -31,6 +32,7 @@ pub struct PackageNode {
     pub created_at: DateTime<Utc>,
     pub created_by: String,
     pub default_change_set: Option<String>,
+    pub workspace_pk: Option<String>,
 }
 
 impl NameStr for PackageNode {
@@ -49,6 +51,9 @@ impl WriteBytes for PackageNode {
         write_key_value_line(writer, KEY_CREATED_BY_STR, &self.created_by)?;
         if let Some(default_change_set) = &self.default_change_set {
             write_key_value_line(writer, KEY_DEFAULT_CHANGE_SET, default_change_set.as_str())?;
+        }
+        if let Some(workspace_pk) = &self.workspace_pk {
+            write_key_value_line(writer, KEY_WORKSPACE_PK_STR, workspace_pk.as_str())?;
         }
         Ok(())
     }
@@ -72,6 +77,7 @@ impl ReadBytes for PackageNode {
             .map_err(GraphError::parse)?;
         let created_by = read_key_value_line(reader, KEY_CREATED_BY_STR)?;
         let default_change_set = read_key_value_line_opt(reader, KEY_DEFAULT_CHANGE_SET)?;
+        let workspace_pk = read_key_value_line_opt(reader, KEY_WORKSPACE_PK_STR)?;
 
         Ok(Self {
             kind,
@@ -81,6 +87,7 @@ impl ReadBytes for PackageNode {
             created_at,
             created_by,
             default_change_set,
+            workspace_pk,
         })
     }
 }
@@ -97,8 +104,9 @@ impl NodeChild for PkgSpec {
                 version: self.version.to_string(),
                 description: self.description.to_string(),
                 created_at: self.created_at,
-                created_by: self.created_by.clone(),
-                default_change_set: self.default_change_set.clone(),
+                created_by: self.created_by.to_owned(),
+                default_change_set: self.default_change_set.to_owned(),
+                workspace_pk: self.workspace_pk.to_owned(),
             }),
             match self.kind {
                 SiPkgKind::Module => vec![

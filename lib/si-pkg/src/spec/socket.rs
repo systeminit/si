@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
+use super::{AttrFuncInputSpec, SpecError};
 
 #[remain::sorted]
 #[derive(
@@ -49,9 +49,9 @@ pub enum SocketSpecArity {
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
-pub struct SocketSpec {
-    #[builder(setter(into), default)]
-    pub func_unique_id: Option<FuncUniqueId>,
+pub struct SocketSpecData {
+    #[builder(setter(into, strip_option), default)]
+    pub func_unique_id: Option<String>,
 
     #[builder(setter(into))]
     pub kind: SocketSpecKind,
@@ -62,11 +62,33 @@ pub struct SocketSpec {
     #[builder(setter(into), default)]
     pub arity: SocketSpecArity,
 
+    #[builder(setter(into), default)]
+    pub ui_hidden: bool,
+}
+
+impl SocketSpecData {
+    pub fn builder() -> SocketSpecDataBuilder {
+        SocketSpecDataBuilder::default()
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct SocketSpec {
+    #[builder(setter(into))]
+    pub name: String,
+
+    #[builder(setter(into, strip_option), default)]
+    #[serde(default)]
+    pub data: Option<SocketSpecData>,
+
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
 
     #[builder(setter(into), default)]
-    pub ui_hidden: bool,
+    #[serde(default)]
+    pub unique_id: Option<String>,
 }
 
 impl SocketSpec {

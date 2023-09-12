@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use super::{AttrFuncInputSpec, FuncUniqueId, SpecError};
+use super::{AttrFuncInputSpec, SpecError};
 
 /// SiPropFuncs track custom functions for for props created for all schema variants and not part
 /// of the domain tree (which varies for each variant). Currently these are the props under the
@@ -46,7 +46,14 @@ pub struct SiPropFuncSpec {
     #[builder(setter(into))]
     pub kind: SiPropFuncSpecKind,
     #[builder(setter(into))]
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub unique_id: Option<String>,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub deleted: bool,
+
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
 }

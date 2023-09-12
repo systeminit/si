@@ -668,7 +668,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         leaf_kind: LeafKind,
-    ) -> SchemaVariantResult<Vec<Func>> {
+    ) -> SchemaVariantResult<Vec<(AttributePrototype, Func)>> {
         let leaf_item_prop = Self::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
         let backend_response_type: FuncBackendResponseType = leaf_kind.into();
 

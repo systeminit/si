@@ -7,7 +7,7 @@ use crate::{
     node::PkgNode,
     spec::{
         FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
-        FuncSpecBackendResponseType,
+        FuncSpecBackendResponseType, FuncSpecData,
     },
 };
 
@@ -18,6 +18,8 @@ pub struct SiPkgFuncArgument<'a> {
     name: String,
     kind: FuncArgumentKind,
     element_kind: Option<FuncArgumentKind>,
+    unique_id: Option<String>,
+    deleted: bool,
 
     hash: Hash,
     source: Source<'a>,
@@ -43,6 +45,8 @@ impl<'a> SiPkgFuncArgument<'a> {
             name: node.name,
             kind: node.kind,
             element_kind: node.element_kind,
+            unique_id: node.unique_id,
+            deleted: node.deleted,
 
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
@@ -59,6 +63,14 @@ impl<'a> SiPkgFuncArgument<'a> {
 
     pub fn element_kind(&self) -> Option<&FuncArgumentKind> {
         self.element_kind.as_ref()
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
     }
 
     pub fn hash(&self) -> Hash {
@@ -83,7 +95,7 @@ impl<'a> TryFrom<SiPkgFuncArgument<'a>> for FuncArgumentSpec {
 }
 
 #[derive(Clone, Debug)]
-pub struct SiPkgFunc<'a> {
+pub struct SiPkgFuncData {
     name: String,
     display_name: Option<String>,
     description: Option<String>,
@@ -93,7 +105,52 @@ pub struct SiPkgFunc<'a> {
     response_type: FuncSpecBackendResponseType,
     hidden: bool,
     link: Option<Url>,
-    unique_id: Hash,
+}
+
+impl SiPkgFuncData {
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn display_name(&self) -> Option<&str> {
+        self.display_name.as_deref()
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    pub fn handler(&self) -> &str {
+        self.handler.as_str()
+    }
+
+    pub fn code_base64(&self) -> &str {
+        self.code_base64.as_str()
+    }
+
+    pub fn backend_kind(&self) -> FuncSpecBackendKind {
+        self.backend_kind
+    }
+
+    pub fn response_type(&self) -> FuncSpecBackendResponseType {
+        self.response_type
+    }
+
+    pub fn hidden(&self) -> bool {
+        self.hidden
+    }
+
+    pub fn link(&self) -> Option<&Url> {
+        self.link.as_ref()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SiPkgFunc<'a> {
+    name: String,
+    data: Option<SiPkgFuncData>,
+    unique_id: String,
+    deleted: bool,
 
     hash: Hash,
     source: Source<'a>,
@@ -117,16 +174,20 @@ impl<'a> SiPkgFunc<'a> {
 
         Ok(Self {
             name: func_node.name,
-            display_name: func_node.display_name,
-            description: func_node.description,
-            handler: func_node.handler,
-            code_base64: func_node.code_base64,
-            backend_kind: func_node.backend_kind,
-            response_type: func_node.response_type,
-            hidden: func_node.hidden,
-            link: func_node.link,
+            data: func_node.data.map(|data| SiPkgFuncData {
+                name: data.name,
+                display_name: data.display_name,
+                description: data.description,
+                handler: data.handler,
+                code_base64: data.code_base64,
+                backend_kind: data.backend_kind,
+                response_type: data.response_type,
+                hidden: data.hidden,
+                link: data.link,
+            }),
             hash: func_hashed_node.hash(),
             unique_id: func_node.unique_id,
+            deleted: func_node.deleted,
             source: Source::new(graph, node_idx),
         })
     }
@@ -148,44 +209,61 @@ impl<'a> SiPkgFunc<'a> {
         self.name.as_ref()
     }
 
+    pub fn data(&self) -> Option<&SiPkgFuncData> {
+        self.data.as_ref()
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
+    }
+
     pub fn display_name(&self) -> Option<&str> {
-        self.display_name.as_deref()
+        match self.data() {
+            None => None,
+            Some(data) => data.display_name.as_deref(),
+        }
     }
 
     pub fn description(&self) -> Option<&str> {
-        self.description.as_deref()
+        match self.data() {
+            None => None,
+            Some(data) => data.description.as_deref(),
+        }
     }
 
-    pub fn handler(&self) -> &str {
-        self.handler.as_ref()
+    pub fn handler(&self) -> Option<&str> {
+        self.data().map(|data| data.handler.as_str())
     }
 
-    pub fn code_base64(&self) -> &str {
-        self.code_base64.as_ref()
+    pub fn code_base64(&self) -> Option<&str> {
+        self.data().map(|data| data.code_base64.as_str())
     }
 
-    pub fn backend_kind(&self) -> FuncSpecBackendKind {
-        self.backend_kind
+    pub fn backend_kind(&self) -> Option<FuncSpecBackendKind> {
+        self.data().map(|data| data.backend_kind)
     }
 
-    pub fn response_type(&self) -> FuncSpecBackendResponseType {
-        self.response_type
+    pub fn response_type(&self) -> Option<FuncSpecBackendResponseType> {
+        self.data().map(|data| data.response_type)
     }
 
-    pub fn hidden(&self) -> bool {
-        self.hidden
+    pub fn hidden(&self) -> Option<bool> {
+        self.data().map(|data| data.hidden)
     }
 
     pub fn link(&self) -> Option<&Url> {
-        self.link.as_ref()
+        match self.data() {
+            None => None,
+            Some(data) => data.link.as_ref(),
+        }
     }
 
     pub fn hash(&self) -> Hash {
         self.hash
     }
 
-    pub fn unique_id(&self) -> Hash {
-        self.unique_id
+    pub fn unique_id(&self) -> &str {
+        self.unique_id.as_str()
     }
 
     pub fn source(&self) -> &Source<'a> {
@@ -198,29 +276,39 @@ impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
 
     fn try_from(value: SiPkgFunc<'a>) -> Result<Self, Self::Error> {
         let mut builder = FuncSpec::builder();
+        let mut data_builder = FuncSpecData::builder();
 
         builder
             .name(&value.name)
-            .handler(&value.handler)
-            .code_base64(&value.code_base64)
-            .backend_kind(value.backend_kind)
-            .response_type(value.response_type)
-            .hidden(value.hidden);
+            .unique_id(&value.unique_id)
+            .deleted(value.deleted);
 
-        if let Some(display_name) = &value.display_name {
-            builder.display_name(display_name);
-        }
+        if let Some(data) = value.data() {
+            data_builder
+                .name(&data.name)
+                .handler(&data.handler)
+                .code_base64(&data.code_base64)
+                .backend_kind(data.backend_kind)
+                .response_type(data.response_type)
+                .hidden(data.hidden);
 
-        if let Some(description) = &value.description {
-            builder.description(description);
+            if let Some(display_name) = &data.display_name {
+                data_builder.display_name(display_name);
+            }
+
+            if let Some(description) = &data.description {
+                data_builder.description(description);
+            }
+
+            if let Some(link) = &data.link {
+                data_builder.link(link.to_owned());
+            }
+
+            builder.data(data_builder.build()?);
         }
 
         for argument in value.arguments()? {
             builder.argument(argument.try_into()?);
-        }
-
-        if let Some(link) = value.link {
-            builder.link(link);
         }
 
         Ok(builder.build()?)

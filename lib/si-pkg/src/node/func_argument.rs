@@ -1,4 +1,4 @@
-use super::PkgNode;
+use super::{read_common_fields, write_common_fields, PkgNode};
 use crate::spec::{FuncArgumentKind, FuncArgumentSpec};
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
@@ -16,6 +16,8 @@ pub struct FuncArgumentNode {
     pub name: String,
     pub kind: FuncArgumentKind,
     pub element_kind: Option<FuncArgumentKind>,
+    pub unique_id: Option<String>,
+    pub deleted: bool,
 }
 
 impl NameStr for FuncArgumentNode {
@@ -37,6 +39,8 @@ impl WriteBytes for FuncArgumentNode {
                 .unwrap_or("".to_string()),
         )?;
 
+        write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
+
         Ok(())
     }
 }
@@ -57,10 +61,14 @@ impl ReadBytes for FuncArgumentNode {
             Some(FuncArgumentKind::from_str(&element_kind_str).map_err(GraphError::parse)?)
         };
 
+        let (unique_id, deleted) = read_common_fields(reader)?;
+
         Ok(Self {
             name,
             kind,
             element_kind,
+            unique_id,
+            deleted,
         })
     }
 }
@@ -74,7 +82,9 @@ impl NodeChild for FuncArgumentSpec {
             Self::NodeType::FuncArgument(FuncArgumentNode {
                 name: self.name.to_string(),
                 kind: self.kind,
-                element_kind: self.element_kind.as_ref().cloned(),
+                element_kind: self.element_kind.to_owned(),
+                unique_id: self.unique_id.to_owned(),
+                deleted: self.deleted,
             }),
             vec![],
         )

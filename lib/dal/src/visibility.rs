@@ -81,14 +81,23 @@ impl Visibility {
     }
 
     /// Converts this `Visibility` to a new change set `Visibility`.
-    pub fn to_change_set(&self) -> Self {
-        Self::new_change_set(self.change_set_pk, self.deleted_at.is_some())
+    pub fn to_change_set(&self, change_set_pk: ChangeSetPk) -> Self {
+        Self::new_change_set(change_set_pk, self.deleted_at.is_some())
+    }
+
+    /// Converts this `Visibility` to a new change set `Visibility`.
+    pub fn to_change_set_deleted(&self, change_set_pk: ChangeSetPk) -> Self {
+        Self::new_change_set(change_set_pk, true)
     }
 
     /// Returns true if this [`Visibility`] is in a working changeset (and not in head)
     #[instrument]
     pub fn in_change_set(&self) -> bool {
         self.change_set_pk != ChangeSetPk::NONE
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at.is_some()
     }
 
     #[instrument(skip(ctx))]

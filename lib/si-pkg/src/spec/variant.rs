@@ -1,12 +1,11 @@
-use crate::FuncUniqueId;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecWidgetKind, SiPropFuncSpec, SocketSpec,
-    SpecError,
+    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, SiPropFuncSpec,
+    SocketSpec, SpecError,
 };
 
 #[remain::sorted]
@@ -60,7 +59,7 @@ pub enum SchemaVariantSpecPropRoot {
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]
-pub struct SchemaVariantSpec {
+pub struct SchemaVariantSpecData {
     #[builder(setter(into))]
     pub name: String,
     #[builder(setter(into, strip_option), default)]
@@ -70,15 +69,44 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(into), default)]
     pub component_type: SchemaVariantSpecComponentType,
-
-    #[builder(private, default = "Self::default_domain()")]
-    pub domain: PropSpec,
-
-    #[builder(private, default = "Self::default_resource_value()")]
-    pub resource_value: PropSpec,
-
     #[builder(setter(into))]
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
+}
+
+impl SchemaVariantSpecData {
+    pub fn builder() -> SchemaVariantSpecDataBuilder {
+        SchemaVariantSpecDataBuilder::default()
+    }
+}
+
+impl SchemaVariantSpecDataBuilder {
+    #[allow(unused_mut)]
+    pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted: Url = value.try_into()?;
+        Ok(self.link(converted))
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct SchemaVariantSpec {
+    #[builder(setter(into))]
+    pub name: String,
+
+    #[builder(setter(into, strip_option), default)]
+    pub data: Option<SchemaVariantSpecData>,
+
+    #[builder(setter(into, strip_option), default)]
+    #[serde(default)]
+    pub unique_id: Option<String>,
+
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub deleted: bool,
 
     #[builder(setter(each(name = "action_func"), into), default)]
     pub action_funcs: Vec<ActionFuncSpec>,
@@ -91,6 +119,12 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "si_prop_func"), into), default)]
     pub si_prop_funcs: Vec<SiPropFuncSpec>,
+
+    #[builder(private, default = "Self::default_domain()")]
+    pub domain: PropSpec,
+
+    #[builder(private, default = "Self::default_resource_value()")]
+    pub resource_value: PropSpec,
 }
 
 impl SchemaVariantSpec {
@@ -100,43 +134,43 @@ impl SchemaVariantSpec {
 }
 
 impl SchemaVariantSpecBuilder {
+    // XXX: these need to take in a unique_id
     fn default_domain() -> PropSpec {
         PropSpec::Object {
-            validations: None,
-            default_value: None,
             name: "domain".to_string(),
+            unique_id: None,
+            data: Some(PropSpecData {
+                name: "domain".to_string(),
+                default_value: None,
+                func_unique_id: None,
+                inputs: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: Some(false),
+                validations: None,
+                doc_link: None,
+            }),
             entries: vec![],
-            func_unique_id: None,
-            inputs: None,
-            widget_kind: Some(PropSpecWidgetKind::Header),
-            widget_options: None,
-            hidden: Some(false),
-            doc_link: None,
         }
     }
 
     fn default_resource_value() -> PropSpec {
         PropSpec::Object {
-            validations: None,
-            default_value: None,
             name: "value".to_string(),
+            unique_id: None,
+            data: Some(PropSpecData {
+                name: "value".to_string(),
+                default_value: None,
+                func_unique_id: None,
+                inputs: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: Some(false),
+                validations: None,
+                doc_link: None,
+            }),
             entries: vec![],
-            func_unique_id: None,
-            inputs: None,
-            widget_kind: Some(PropSpecWidgetKind::Header),
-            widget_options: None,
-            hidden: Some(true),
-            doc_link: None,
         }
-    }
-
-    #[allow(unused_mut)]
-    pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
-    where
-        V: TryInto<Url>,
-    {
-        let converted: Url = value.try_into()?;
-        Ok(self.link(converted))
     }
 
     pub fn domain_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {

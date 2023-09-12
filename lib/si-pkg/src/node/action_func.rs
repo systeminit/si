@@ -8,17 +8,19 @@ use object_tree::{
     ReadBytes, WriteBytes,
 };
 
-use crate::{ActionFuncSpec, ActionFuncSpecKind, FuncUniqueId};
+use crate::{ActionFuncSpec, ActionFuncSpecKind};
 
-use super::PkgNode;
+use super::{read_common_fields, write_common_fields, PkgNode};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 
 #[derive(Clone, Debug)]
 pub struct ActionFuncNode {
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
     pub kind: ActionFuncSpecKind,
+    pub unique_id: Option<String>,
+    pub deleted: bool,
 }
 
 impl WriteBytes for ActionFuncNode {
@@ -30,6 +32,8 @@ impl WriteBytes for ActionFuncNode {
             KEY_FUNC_UNIQUE_ID_STR,
             self.func_unique_id.to_string(),
         )?;
+
+        write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
 
         Ok(())
     }
@@ -43,13 +47,15 @@ impl ReadBytes for ActionFuncNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
         let kind = ActionFuncSpecKind::from_str(&kind_str).map_err(GraphError::parse)?;
 
-        let func_unique_id_str = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
-        let func_unique_id =
-            FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?;
+        let func_unique_id = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
+
+        let (unique_id, deleted) = read_common_fields(reader)?;
 
         Ok(Self {
             kind,
             func_unique_id,
+            unique_id,
+            deleted,
         })
     }
 }
@@ -61,8 +67,10 @@ impl NodeChild for ActionFuncSpec {
         NodeWithChildren::new(
             NodeKind::Leaf,
             Self::NodeType::ActionFunc(ActionFuncNode {
-                func_unique_id: self.func_unique_id,
+                func_unique_id: self.func_unique_id.to_owned(),
                 kind: self.kind,
+                unique_id: self.unique_id.to_owned(),
+                deleted: self.deleted,
             }),
             vec![],
         )

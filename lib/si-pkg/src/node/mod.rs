@@ -1,7 +1,11 @@
-use std::io::{BufRead, Write};
+use std::{
+    io::{BufRead, Write},
+    str::FromStr,
+};
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NameStr, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
+    ReadBytes, WriteBytes,
 };
 
 mod action_func;
@@ -34,7 +38,7 @@ pub(crate) use self::{
     leaf_function::LeafFunctionNode,
     map_key_func::MapKeyFuncNode,
     package::PackageNode,
-    prop::PropNode,
+    prop::{PropNode, PropNodeData},
     prop_child::PropChildNode,
     schema::SchemaNode,
     schema_variant::SchemaVariantNode,
@@ -64,6 +68,47 @@ const NODE_KIND_SI_PROP_FUNC: &str = "si_prop_func";
 const NODE_KIND_VALIDATION: &str = "validation";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
+
+const KEY_UNIQUE_ID_STR: &str = "unique_id";
+const KEY_DELETED_STR: &str = "deleted";
+
+pub(crate) fn read_unique_id<R: BufRead>(reader: &mut R) -> Result<Option<String>, GraphError> {
+    let unique_id_opt_str = read_key_value_line_opt(reader, KEY_UNIQUE_ID_STR)?;
+    Ok(unique_id_opt_str.and_then(|unique_id| {
+        if unique_id.is_empty() {
+            None
+        } else {
+            Some(unique_id)
+        }
+    }))
+}
+
+fn read_common_fields<R: BufRead>(reader: &mut R) -> Result<(Option<String>, bool), GraphError> {
+    let unique_id = read_unique_id(reader)?;
+
+    let deleted = match read_key_value_line_opt(reader, KEY_DELETED_STR)? {
+        None => false,
+        Some(deleted_str) => bool::from_str(&deleted_str).map_err(GraphError::parse)?,
+    };
+
+    Ok((unique_id, deleted))
+}
+
+fn write_unique_id<W: Write>(writer: &mut W, unique_id: Option<&str>) -> Result<(), GraphError> {
+    write_key_value_line(writer, KEY_UNIQUE_ID_STR, unique_id.unwrap_or(""))?;
+    Ok(())
+}
+
+fn write_common_fields<W: Write>(
+    writer: &mut W,
+    unique_id: Option<&str>,
+    deleted: bool,
+) -> Result<(), GraphError> {
+    write_unique_id(writer, unique_id)?;
+    write_key_value_line(writer, KEY_DELETED_STR, deleted)?;
+
+    Ok(())
+}
 
 #[remain::sorted]
 #[derive(Clone, Debug)]

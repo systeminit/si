@@ -4,13 +4,11 @@ use url::ParseError;
 mod export;
 mod import;
 
-pub use export::export_pkg_as_bytes;
-pub use export::get_component_type;
+pub use export::{get_component_type, PkgExporter};
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
-use crate::schema::variant::definition::SchemaVariantDefinitionId;
 use crate::{
     func::{
         argument::{FuncArgumentError, FuncArgumentId},
@@ -18,14 +16,14 @@ use crate::{
     },
     installed_pkg::InstalledPkgError,
     prop_tree::PropTreeError,
-    schema::variant::definition::SchemaVariantDefinitionError,
+    schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId},
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeReadContext, AttributeValueError, ExternalProviderError, ExternalProviderId,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, InternalProviderError,
-    InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId, SchemaVariantError,
-    SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ExternalProviderError,
+    ExternalProviderId, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
+    InternalProviderError, InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId,
+    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
 };
 
 #[remain::sorted]
@@ -57,8 +55,14 @@ pub enum PkgError {
     ),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
+    ChangeSet(#[from] ChangeSetError),
+    #[error("change set {0} not found")]
+    ChangeSetNotFound(ChangeSetPk),
     #[error("map item prop {0} has both custom key prototypes and custom prop only prototype")]
     ConflictingMapKeyPrototypes(PropId),
+    #[error("expected data on an SiPkg node, but none found: {0}")]
+    DataNotFound(String),
     #[error("Cannot find Socket for explicit InternalProvider {0}")]
     ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error(transparent)]
@@ -93,6 +97,8 @@ pub enum PkgError {
     MissingAttributePrototypeForOutputSocket(AttributePrototypeId, ExternalProviderId),
     #[error("Missing Func {1} for AttributePrototype {0}")]
     MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
+    #[error("Missing a func map for changeset {0}")]
+    MissingChangeSetFuncMap(ChangeSetPk),
     #[error("Func {0} missing from exported funcs")]
     MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]

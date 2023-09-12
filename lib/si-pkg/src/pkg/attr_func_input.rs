@@ -14,18 +14,27 @@ pub enum SiPkgAttrFuncInput<'a> {
     InputSocket {
         name: String,
         socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     OutputSocket {
         name: String,
         socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     Prop {
         name: String,
         prop_path: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
@@ -35,23 +44,65 @@ pub enum SiPkgAttrFuncInput<'a> {
 #[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum SiPkgAttrFuncInputView {
-    InputSocket { name: String, socket_name: String },
-    OutputSocket { name: String, socket_name: String },
-    Prop { name: String, prop_path: String },
+    InputSocket {
+        name: String,
+        socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
+    OutputSocket {
+        name: String,
+        socket_name: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
+    Prop {
+        name: String,
+        prop_path: String,
+        unique_id: Option<String>,
+        deleted: bool,
+    },
 }
 
 impl<'a> From<SiPkgAttrFuncInput<'a>> for SiPkgAttrFuncInputView {
     fn from(value: SiPkgAttrFuncInput<'a>) -> Self {
         match value {
             SiPkgAttrFuncInput::Prop {
-                name, prop_path, ..
-            } => Self::Prop { name, prop_path },
+                name,
+                prop_path,
+                unique_id,
+                deleted,
+                ..
+            } => Self::Prop {
+                name,
+                prop_path,
+                unique_id,
+                deleted,
+            },
             SiPkgAttrFuncInput::InputSocket {
-                name, socket_name, ..
-            } => Self::InputSocket { name, socket_name },
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+                ..
+            } => Self::InputSocket {
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+            },
             SiPkgAttrFuncInput::OutputSocket {
-                name, socket_name, ..
-            } => Self::OutputSocket { name, socket_name },
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+                ..
+            } => Self::OutputSocket {
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+            },
         }
     }
 }
@@ -75,21 +126,45 @@ impl<'a> SiPkgAttrFuncInput<'a> {
         let source = Source::new(graph, node_idx);
 
         Ok(match node {
-            AttrFuncInputNode::Prop { name, prop_path } => Self::Prop {
+            AttrFuncInputNode::Prop {
                 name,
                 prop_path,
+                unique_id,
+                deleted,
+            } => Self::Prop {
+                name,
+                prop_path,
+                unique_id,
+                deleted,
+
                 hash,
                 source,
             },
-            AttrFuncInputNode::InputSocket { name, socket_name } => Self::InputSocket {
+            AttrFuncInputNode::InputSocket {
                 name,
                 socket_name,
+                unique_id,
+                deleted,
+            } => Self::InputSocket {
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+
                 hash,
                 source,
             },
-            AttrFuncInputNode::OutputSocket { name, socket_name } => Self::OutputSocket {
+            AttrFuncInputNode::OutputSocket {
                 name,
                 socket_name,
+                unique_id,
+                deleted,
+            } => Self::OutputSocket {
+                name,
+                socket_name,
+                unique_id,
+                deleted,
+
                 hash,
                 source,
             },
@@ -102,6 +177,23 @@ impl<'a> TryFrom<SiPkgAttrFuncInput<'a>> for AttrFuncInputSpec {
 
     fn try_from(value: SiPkgAttrFuncInput<'a>) -> Result<Self, Self::Error> {
         let mut builder = AttrFuncInputSpec::builder();
+        let (unique_id, deleted) = match &value {
+            SiPkgAttrFuncInput::InputSocket {
+                unique_id, deleted, ..
+            }
+            | SiPkgAttrFuncInput::OutputSocket {
+                unique_id, deleted, ..
+            }
+            | SiPkgAttrFuncInput::Prop {
+                unique_id, deleted, ..
+            } => (unique_id.as_deref(), *deleted),
+        };
+
+        if let Some(unique_id) = unique_id {
+            builder.unique_id(unique_id);
+        }
+        builder.deleted(deleted);
+
         match value {
             SiPkgAttrFuncInput::Prop {
                 name, prop_path, ..

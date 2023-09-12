@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use super::{FuncUniqueId, SpecError};
+use super::SpecError;
 
 #[remain::sorted]
 #[derive(
@@ -51,10 +51,18 @@ pub enum LeafInputLocation {
 #[builder(build_fn(error = "SpecError"))]
 pub struct LeafFunctionSpec {
     #[builder(setter(into))]
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
 
     #[builder(setter(into))]
     pub leaf_kind: LeafKind,
+
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub unique_id: Option<String>,
+
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub deleted: bool,
 
     #[builder(setter(into), default)]
     pub inputs: Vec<LeafInputLocation>,

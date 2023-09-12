@@ -8,9 +8,9 @@ use object_tree::{
     ReadBytes, WriteBytes,
 };
 
-use crate::{FuncUniqueId, LeafFunctionSpec, LeafInputLocation, LeafKind};
+use crate::{LeafFunctionSpec, LeafInputLocation, LeafKind};
 
-use super::PkgNode;
+use super::{read_common_fields, write_common_fields, PkgNode};
 
 const FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const LEAF_KIND_STR: &str = "leaf_kind";
@@ -21,12 +21,14 @@ const INPUT_RESOURCE_STR: &str = "input_resource";
 
 #[derive(Clone, Debug)]
 pub struct LeafFunctionNode {
-    pub func_unique_id: FuncUniqueId,
+    pub func_unique_id: String,
     pub leaf_kind: LeafKind,
     pub input_code: bool,
     pub input_deleted_at: bool,
     pub input_domain: bool,
     pub input_resource: bool,
+    pub unique_id: Option<String>,
+    pub deleted: bool,
 }
 
 impl WriteBytes for LeafFunctionNode {
@@ -37,6 +39,8 @@ impl WriteBytes for LeafFunctionNode {
         write_key_value_line(writer, INPUT_DOMAIN_STR, self.input_domain)?;
         write_key_value_line(writer, INPUT_DELETED_AT_STR, self.input_deleted_at)?;
         write_key_value_line(writer, INPUT_RESOURCE_STR, self.input_resource)?;
+
+        write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
 
         Ok(())
     }
@@ -49,9 +53,7 @@ impl ReadBytes for LeafFunctionNode {
     {
         let leaf_kind_str = read_key_value_line(reader, LEAF_KIND_STR)?;
         let leaf_kind = LeafKind::from_str(&leaf_kind_str).map_err(GraphError::parse)?;
-        let func_unique_id_str = read_key_value_line(reader, FUNC_UNIQUE_ID_STR)?;
-        let func_unique_id =
-            FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?;
+        let func_unique_id = read_key_value_line(reader, FUNC_UNIQUE_ID_STR)?;
         let input_code = bool::from_str(&read_key_value_line(reader, INPUT_CODE_STR)?)
             .map_err(GraphError::parse)?;
         let input_domain = bool::from_str(&read_key_value_line(reader, INPUT_DOMAIN_STR)?)
@@ -61,6 +63,8 @@ impl ReadBytes for LeafFunctionNode {
         let input_resource = bool::from_str(&read_key_value_line(reader, INPUT_RESOURCE_STR)?)
             .map_err(GraphError::parse)?;
 
+        let (unique_id, deleted) = read_common_fields(reader)?;
+
         Ok(Self {
             func_unique_id,
             leaf_kind,
@@ -68,6 +72,8 @@ impl ReadBytes for LeafFunctionNode {
             input_domain,
             input_deleted_at,
             input_resource,
+            unique_id,
+            deleted,
         })
     }
 }
@@ -79,12 +85,14 @@ impl NodeChild for LeafFunctionSpec {
         NodeWithChildren::new(
             NodeKind::Leaf,
             Self::NodeType::LeafFunction(LeafFunctionNode {
-                func_unique_id: self.func_unique_id,
+                func_unique_id: self.func_unique_id.to_owned(),
                 leaf_kind: self.leaf_kind,
                 input_code: self.inputs.contains(&LeafInputLocation::Code),
                 input_deleted_at: self.inputs.contains(&LeafInputLocation::DeletedAt),
                 input_domain: self.inputs.contains(&LeafInputLocation::Domain),
                 input_resource: self.inputs.contains(&LeafInputLocation::Resource),
+                unique_id: self.unique_id.to_owned(),
+                deleted: self.deleted,
             }),
             vec![],
         )

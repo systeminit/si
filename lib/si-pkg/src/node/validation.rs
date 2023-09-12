@@ -8,9 +8,9 @@ use object_tree::{
     ReadBytes, WriteBytes,
 };
 
-use crate::{FuncUniqueId, ValidationSpec, ValidationSpecKind};
+use crate::{ValidationSpec, ValidationSpecKind};
 
-use super::PkgNode;
+use super::{read_common_fields, write_common_fields, PkgNode};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_UPPER_BOUND_STR: &str = "upper_bound";
@@ -28,7 +28,9 @@ pub struct ValidationNode {
     pub expected_string: Option<String>,
     pub expected_string_array: Option<Vec<String>>,
     pub display_expected: Option<bool>,
-    pub func_unique_id: Option<FuncUniqueId>,
+    pub func_unique_id: Option<String>,
+    pub unique_id: Option<String>,
+    pub deleted: bool,
 }
 
 impl Default for ValidationNode {
@@ -41,6 +43,8 @@ impl Default for ValidationNode {
             expected_string_array: None,
             display_expected: None,
             func_unique_id: None,
+            unique_id: None,
+            deleted: false,
         }
     }
 }
@@ -92,7 +96,8 @@ impl WriteBytes for ValidationNode {
                 writer,
                 KEY_FUNC_UNIQUE_ID_STR,
                 self.func_unique_id
-                    .map(|id| id.to_string())
+                    .as_ref()
+                    .map(|id| id.to_owned())
                     .unwrap_or("".to_string()),
             )?,
             ValidationSpecKind::IntegerIsNotEmpty
@@ -100,6 +105,8 @@ impl WriteBytes for ValidationNode {
             | ValidationSpecKind::StringIsHexColor
             | ValidationSpecKind::StringIsNotEmpty => {}
         }
+
+        write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
 
         Ok(())
     }
@@ -149,15 +156,15 @@ impl ReadBytes for ValidationNode {
                 }
             }
             ValidationSpecKind::CustomValidation => {
-                let func_unique_id_str = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
-                func_unique_id =
-                    Some(FuncUniqueId::from_str(&func_unique_id_str).map_err(GraphError::parse)?);
+                func_unique_id = Some(read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?);
             }
             ValidationSpecKind::IntegerIsNotEmpty
             | ValidationSpecKind::StringIsValidIpAddr
             | ValidationSpecKind::StringIsHexColor
             | ValidationSpecKind::StringIsNotEmpty => {}
         }
+
+        let (unique_id, deleted) = read_common_fields(reader)?;
 
         Ok(Self {
             kind,
@@ -167,6 +174,8 @@ impl ReadBytes for ValidationNode {
             expected_string_array,
             display_expected,
             func_unique_id,
+            unique_id,
+            deleted,
         })
     }
 }
@@ -181,50 +190,84 @@ impl NodeChild for ValidationSpec {
                 ValidationSpec::IntegerIsBetweenTwoIntegers {
                     lower_bound,
                     upper_bound,
+                    unique_id,
+                    deleted,
                 } => ValidationNode {
                     kind: ValidationSpecKind::IntegerIsBetweenTwoIntegers,
                     upper_bound: Some(*upper_bound),
                     lower_bound: Some(*lower_bound),
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::IntegerIsNotEmpty => ValidationNode {
+                ValidationSpec::IntegerIsNotEmpty { unique_id, deleted } => ValidationNode {
                     kind: ValidationSpecKind::IntegerIsNotEmpty,
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::StringEquals { expected } => ValidationNode {
+                ValidationSpec::StringEquals {
+                    expected,
+                    unique_id,
+                    deleted,
+                } => ValidationNode {
                     kind: ValidationSpecKind::StringEquals,
                     expected_string: Some(expected.clone()),
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::StringHasPrefix { expected } => ValidationNode {
+                ValidationSpec::StringHasPrefix {
+                    expected,
+                    unique_id,
+                    deleted,
+                } => ValidationNode {
                     kind: ValidationSpecKind::StringHasPrefix,
                     expected_string: Some(expected.clone()),
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
                 ValidationSpec::StringInStringArray {
                     expected,
                     display_expected,
+                    unique_id,
+                    deleted,
                 } => ValidationNode {
                     kind: ValidationSpecKind::StringInStringArray,
                     expected_string_array: Some(expected.clone()),
                     display_expected: Some(*display_expected),
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::StringIsValidIpAddr => ValidationNode {
+                ValidationSpec::StringIsValidIpAddr { unique_id, deleted } => ValidationNode {
                     kind: ValidationSpecKind::StringIsValidIpAddr,
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::StringIsHexColor => ValidationNode {
+                ValidationSpec::StringIsHexColor { unique_id, deleted } => ValidationNode {
                     kind: ValidationSpecKind::StringIsHexColor,
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::StringIsNotEmpty => ValidationNode {
+                ValidationSpec::StringIsNotEmpty { unique_id, deleted } => ValidationNode {
                     kind: ValidationSpecKind::StringIsNotEmpty,
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
-                ValidationSpec::CustomValidation { func_unique_id } => ValidationNode {
+                ValidationSpec::CustomValidation {
+                    func_unique_id,
+                    unique_id,
+                    deleted,
+                } => ValidationNode {
                     kind: ValidationSpecKind::CustomValidation,
-                    func_unique_id: Some(*func_unique_id),
+                    func_unique_id: Some(func_unique_id.to_owned()),
+                    unique_id: unique_id.clone(),
+                    deleted: *deleted,
                     ..ValidationNode::default()
                 },
             }),

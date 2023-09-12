@@ -1,7 +1,8 @@
+use si_pkg::SchemaSpecData;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, SchemaSpec,
-    SchemaVariantSpec, SiPkg, SocketSpec, SocketSpecKind,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
+    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
 
 use crate::func::argument::FuncArgumentKind;
@@ -26,12 +27,20 @@ impl MigrationDriver {
         let starfield_create_action_code = "async function create() {
                 return { payload: { \"poop\": true }, status: \"ok\" };
             }";
+
+        let fn_name = "test:createActionStarfield";
         let starfield_create_action_func = FuncSpec::builder()
-            .name("test:createActionStarfield")
-            .code_plaintext(starfield_create_action_code)
-            .handler("create")
-            .backend_kind(FuncSpecBackendKind::JsAction)
-            .response_type(FuncSpecBackendResponseType::Action)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(starfield_create_action_code)
+                    .handler("create")
+                    .backend_kind(FuncSpecBackendKind::JsAction)
+                    .response_type(FuncSpecBackendResponseType::Action)
+                    .build()?,
+            )
             .build()?;
 
         let starfield_refresh_action_code =
@@ -39,12 +48,19 @@ impl MigrationDriver {
               return { payload: { \"poop\": true }, status: \"ok\" };
             }";
 
+        let fn_name = "test:refreshActionStarfield";
         let starfield_refresh_action_func = FuncSpec::builder()
-            .name("test:refreshActionStarfield")
-            .handler("refresh")
-            .code_plaintext(starfield_refresh_action_code)
-            .backend_kind(FuncSpecBackendKind::JsAction)
-            .response_type(FuncSpecBackendResponseType::Action)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .handler("refresh")
+                    .code_plaintext(starfield_refresh_action_code)
+                    .backend_kind(FuncSpecBackendKind::JsAction)
+                    .response_type(FuncSpecBackendResponseType::Action)
+                    .build()?,
+            )
             .build()?;
 
         let fallout_entries_to_galaxies_transform_code =
@@ -71,12 +87,19 @@ impl MigrationDriver {
 
           return galaxies;
         }";
+        let fn_name = "test:falloutEntriesToGalaxies";
         let fallout_entries_to_galaxies_transform_func = FuncSpec::builder()
-            .name("test:falloutEntriesToGalaxies")
-            .code_plaintext(fallout_entries_to_galaxies_transform_code)
-            .handler("falloutEntriesToGalaxies")
-            .backend_kind(FuncSpecBackendKind::JsAttribute)
-            .response_type(FuncSpecBackendResponseType::Array)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(fallout_entries_to_galaxies_transform_code)
+                    .handler("falloutEntriesToGalaxies")
+                    .backend_kind(FuncSpecBackendKind::JsAttribute)
+                    .response_type(FuncSpecBackendResponseType::Array)
+                    .build()?,
+            )
             .argument(
                 FuncArgumentSpec::builder()
                     .name("entries")
@@ -89,24 +112,38 @@ impl MigrationDriver {
         let starfield_scaffold_func = "function createAsset() {\
                 return new AssetBuilder().build();
             }";
+        let fn_name = "test:scaffoldStarfieldAsset";
         let starfield_authoring_schema_func = FuncSpec::builder()
-            .name("test:scaffoldStarfieldAsset")
-            .code_plaintext(starfield_scaffold_func)
-            .handler("createAsset")
-            .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-            .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(starfield_scaffold_func)
+                    .handler("createAsset")
+                    .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                    .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                    .build()?,
+            )
             .build()?;
 
         let starfield_resource_payload_to_value_func_code =
             "async function translate(arg: Input): Promise<Output> {\
             return arg.payload ?? {};
         }";
+        let fn_name = "test:resourcePayloadToValue";
         let starfield_resource_payload_to_value_func = FuncSpec::builder()
-            .name("test:resourcePayloadToValue")
-            .code_plaintext(starfield_resource_payload_to_value_func_code)
-            .handler("translate")
-            .backend_kind(FuncSpecBackendKind::JsAttribute)
-            .response_type(FuncSpecBackendResponseType::Json)
+            .name(fn_name)
+            .unique_id(fn_name)
+            .data(
+                FuncSpecData::builder()
+                    .name(fn_name)
+                    .code_plaintext(starfield_resource_payload_to_value_func_code)
+                    .handler("translate")
+                    .backend_kind(FuncSpecBackendKind::JsAttribute)
+                    .response_type(FuncSpecBackendResponseType::Json)
+                    .build()?,
+            )
             .argument(
                 FuncArgumentSpec::builder()
                     .name("payload")
@@ -117,18 +154,31 @@ impl MigrationDriver {
 
         let starfield_schema = SchemaSpec::builder()
             .name("starfield")
-            .category("test exclusive")
-            .category_name("starfield")
+            .data(
+                SchemaSpecData::builder()
+                    .name("starfield")
+                    .category("test exclusive")
+                    .category_name("starfield")
+                    .build()
+                    .expect("schema spec data build"),
+            )
             .variant(
                 SchemaVariantSpec::builder()
-                    .color("#ffffff")
                     .name("v0")
-                    .func_unique_id(starfield_authoring_schema_func.unique_id)
+                    .unique_id("starfield_sv")
+                    .data(
+                        SchemaVariantSpecData::builder()
+                            .name("v0")
+                            .color("#ffffff")
+                            .func_unique_id(&starfield_authoring_schema_func.unique_id)
+                            .build()
+                            .expect("build variant spec data"),
+                    )
                     .domain_prop(
                         PropSpec::builder()
                             .name("name")
                             .kind(PropKind::String)
-                            .func_unique_id(identity_func_spec.unique_id)
+                            .func_unique_id(&identity_func_spec.unique_id)
                             .input(
                                 AttrFuncInputSpec::builder()
                                     .kind(AttrFuncInputSpecKind::Prop)
@@ -155,7 +205,7 @@ impl MigrationDriver {
                         PropSpec::builder()
                             .name("attributes")
                             .kind(PropKind::String)
-                            .func_unique_id(identity_func_spec.unique_id)
+                            .func_unique_id(&identity_func_spec.unique_id)
                             .input(
                                 AttrFuncInputSpec::builder()
                                     .kind(AttrFuncInputSpecKind::InputSocket)
@@ -174,7 +224,7 @@ impl MigrationDriver {
                                     .name("galaxies")
                                     .kind(PropKind::Array)
                                     .func_unique_id(
-                                        fallout_entries_to_galaxies_transform_func.unique_id,
+                                        &fallout_entries_to_galaxies_transform_func.unique_id,
                                     )
                                     .input(
                                         AttrFuncInputSpec::builder()
@@ -208,25 +258,35 @@ impl MigrationDriver {
                     .socket(
                         SocketSpec::builder()
                             .name("bethesda")
-                            .kind(SocketSpecKind::Input)
+                            .data(
+                                SocketSpecData::builder()
+                                    .name("bethesda")
+                                    .kind(SocketSpecKind::Input)
+                                    .build()?,
+                            )
                             .build()?,
                     )
                     .socket(
                         SocketSpec::builder()
                             .name("fallout")
-                            .kind(SocketSpecKind::Input)
+                            .data(
+                                SocketSpecData::builder()
+                                    .name("fallout")
+                                    .kind(SocketSpecKind::Input)
+                                    .build()?,
+                            )
                             .build()?,
                     )
                     .action_func(
                         ActionFuncSpec::builder()
                             .kind(&ActionKind::Create)
-                            .func_unique_id(starfield_create_action_func.unique_id)
+                            .func_unique_id(&starfield_create_action_func.unique_id)
                             .build()?,
                     )
                     .action_func(
                         ActionFuncSpec::builder()
                             .kind(&ActionKind::Refresh)
-                            .func_unique_id(starfield_refresh_action_func.unique_id)
+                            .func_unique_id(&starfield_refresh_action_func.unique_id)
                             .build()?,
                     )
                     .build()?,

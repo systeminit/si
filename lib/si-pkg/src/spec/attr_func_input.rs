@@ -29,9 +29,30 @@ pub enum AttrFuncInputSpecKind {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum AttrFuncInputSpec {
-    InputSocket { name: String, socket_name: String },
-    OutputSocket { name: String, socket_name: String },
-    Prop { name: String, prop_path: String },
+    InputSocket {
+        name: String,
+        socket_name: String,
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
+    OutputSocket {
+        name: String,
+        socket_name: String,
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
+    Prop {
+        name: String,
+        prop_path: String,
+        #[serde(default)]
+        unique_id: Option<String>,
+        #[serde(default)]
+        deleted: bool,
+    },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -40,6 +61,8 @@ pub struct AttrFuncInputSpecBuilder {
     name: Option<String>,
     prop_path: Option<String>,
     socket_name: Option<String>,
+    unique_id: Option<String>,
+    deleted: bool,
 }
 
 impl AttrFuncInputSpec {
@@ -69,38 +92,49 @@ impl AttrFuncInputSpecBuilder {
         self
     }
 
+    pub fn unique_id(&mut self, unique_id: impl Into<String>) -> &mut Self {
+        self.unique_id = Some(unique_id.into());
+        self
+    }
+
+    pub fn deleted(&mut self, deleted: impl Into<bool>) -> &mut Self {
+        self.deleted = deleted.into();
+        self
+    }
+
     pub fn build(&self) -> Result<AttrFuncInputSpec, SpecError> {
-        Ok(match self.kind {
+        let self_clone = self.to_owned();
+        Ok(match self_clone.kind {
             Some(kind) => match kind {
                 AttrFuncInputSpecKind::Prop => AttrFuncInputSpec::Prop {
-                    name: self
+                    name: self_clone
                         .name
-                        .clone()
                         .ok_or(UninitializedFieldError::from("name"))?,
-                    prop_path: self
-                        .clone()
+                    prop_path: self_clone
                         .prop_path
                         .ok_or(UninitializedFieldError::from("prop_path"))?,
+                    deleted: self_clone.deleted,
+                    unique_id: self_clone.unique_id,
                 },
                 AttrFuncInputSpecKind::InputSocket => AttrFuncInputSpec::InputSocket {
-                    name: self
+                    name: self_clone
                         .name
-                        .clone()
                         .ok_or(UninitializedFieldError::from("name"))?,
-                    socket_name: self
+                    socket_name: self_clone
                         .socket_name
-                        .clone()
                         .ok_or(UninitializedFieldError::from("socket_name"))?,
+                    deleted: self_clone.deleted,
+                    unique_id: self_clone.unique_id,
                 },
                 AttrFuncInputSpecKind::OutputSocket => AttrFuncInputSpec::OutputSocket {
-                    name: self
+                    name: self_clone
                         .name
-                        .clone()
                         .ok_or(UninitializedFieldError::from("name"))?,
-                    socket_name: self
+                    socket_name: self_clone
                         .socket_name
-                        .clone()
                         .ok_or(UninitializedFieldError::from("socket_name"))?,
+                    deleted: self_clone.deleted,
+                    unique_id: self_clone.unique_id,
                 },
             },
             None => {

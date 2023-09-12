@@ -3,14 +3,41 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, SiPkgSchemaVariant, Source};
 
+use crate::SchemaSpecData;
 use crate::{node::PkgNode, SchemaSpec};
+
+#[derive(Clone, Debug)]
+pub struct SiPkgSchemaData {
+    pub name: String,
+    pub category: String,
+    pub category_name: Option<String>,
+    pub ui_hidden: bool,
+}
+
+impl SiPkgSchemaData {
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn category(&self) -> &str {
+        self.category.as_str()
+    }
+
+    pub fn category_name(&self) -> Option<&str> {
+        self.category_name.as_deref()
+    }
+
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchema<'a> {
     name: String,
-    category: String,
-    category_name: Option<String>,
-    ui_hidden: bool,
+    data: Option<SiPkgSchemaData>,
+    unique_id: Option<String>,
+    deleted: bool,
 
     hash: Hash,
 
@@ -35,9 +62,14 @@ impl<'a> SiPkgSchema<'a> {
 
         let schema = Self {
             name: schema_node.name,
-            category: schema_node.category,
-            category_name: schema_node.category_name,
-            ui_hidden: schema_node.ui_hidden,
+            data: schema_node.data.map(|data| SiPkgSchemaData {
+                name: data.name,
+                category: data.category,
+                category_name: data.category_name,
+                ui_hidden: data.ui_hidden,
+            }),
+            unique_id: schema_node.unique_id,
+            deleted: schema_node.deleted,
             hash: schema_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -49,12 +81,16 @@ impl<'a> SiPkgSchema<'a> {
         self.name.as_ref()
     }
 
-    pub fn category(&self) -> &str {
-        self.category.as_ref()
+    pub fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
     }
 
-    pub fn category_name(&self) -> Option<&str> {
-        self.category_name.as_deref()
+    pub fn deleted(&self) -> bool {
+        self.deleted
+    }
+
+    pub fn data(&self) -> Option<&SiPkgSchemaData> {
+        self.data.as_ref()
     }
 
     pub fn variants(&self) -> PkgResult<Vec<SiPkgSchemaVariant<'a>>> {
@@ -73,10 +109,6 @@ impl<'a> SiPkgSchema<'a> {
         Ok(variants)
     }
 
-    pub fn ui_hidden(&self) -> bool {
-        self.ui_hidden
-    }
-
     pub fn hash(&self) -> Hash {
         self.hash
     }
@@ -84,16 +116,25 @@ impl<'a> SiPkgSchema<'a> {
     pub async fn to_spec(&self) -> PkgResult<SchemaSpec> {
         let mut builder = SchemaSpec::builder();
 
-        builder.name(self.name()).category(self.category());
-        if let Some(category_name) = self.category_name() {
-            builder.category_name(category_name);
+        builder.name(self.name());
+        if let Some(unique_id) = self.unique_id() {
+            builder.unique_id(unique_id);
+        }
+
+        if let Some(data) = self.data() {
+            let mut data_builder = SchemaSpecData::builder();
+            data_builder.name(self.name());
+            if let Some(category_name) = data.category_name() {
+                data_builder.category_name(category_name);
+            }
+            data_builder.ui_hidden(data.ui_hidden());
+            data_builder.category(data.category());
+            builder.data(data_builder.build()?);
         }
 
         for variant in self.variants()? {
             builder.variant(variant.to_spec().await?);
         }
-
-        builder.ui_hidden(self.ui_hidden());
 
         Ok(builder.build()?)
     }
