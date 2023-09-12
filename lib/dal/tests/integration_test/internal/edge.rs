@@ -123,7 +123,6 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -153,7 +152,6 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -184,7 +182,6 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         to_starfield
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -291,7 +288,6 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -328,7 +324,6 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -358,7 +353,6 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         starfield_bag
             .component_view_properties(ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );

@@ -15,7 +15,6 @@ use dal_test::{
 };
 use strum::IntoEnumIterator;
 
-mod description;
 mod reconciliation;
 mod schema_variant_definition;
 

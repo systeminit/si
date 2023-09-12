@@ -30,7 +30,6 @@ export enum FuncBackendResponseType {
   Object = "Object",
   Qualification = "Qualification",
   CodeGeneration = "CodeGeneration",
-  Confirmation = "Confirmation",
   String = "String",
   Unset = "Unset",
   Json = "Json",

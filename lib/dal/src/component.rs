@@ -41,7 +41,6 @@ use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
 
 pub mod code;
-pub mod confirmation;
 pub mod diff;
 pub mod qualification;
 pub mod resource;
@@ -87,8 +86,6 @@ pub enum ComponentError {
     ComponentTypeIsNone(ComponentId, AttributeValueId),
     #[error(transparent)]
     ComponentView(#[from] ComponentViewError),
-    #[error("confirmation view error: {0}")]
-    ConfirmationView(String),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("edge error: {0}")]
@@ -196,9 +193,6 @@ const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
     include_str!("queries/component/root_child_attribute_value_for_component.sql");
 const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
     include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
-const LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES: &str = include_str!(
-    "queries/component/list_all_resource_implicit_internal_provider_attribute_values.sql"
-);
 const COMPONENT_STATUS_UPDATE_BY_PK: &str =
     include_str!("queries/component/status_update_by_pk.sql");
 
@@ -320,48 +314,6 @@ impl Component {
         let node = Node::new(ctx, &NodeKind::Configuration).await?;
         node.set_component(ctx, component.id()).await?;
         component.set_name(ctx, Some(name.as_ref())).await?;
-
-        // Ensure we have an attribute value and prototype for the resource tree in our exact
-        // context. We need this in order to run confirmations upon applying a change set.
-        let resource_implicit_internal_provider =
-            SchemaVariant::find_root_child_implicit_internal_provider(
-                ctx,
-                schema_variant_id,
-                RootPropChild::Resource,
-            )
-            .await?;
-        let resource_attribute_read_context = AttributeReadContext {
-            internal_provider_id: Some(*resource_implicit_internal_provider.id()),
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        };
-        let resource_attribute_value =
-            AttributeValue::find_for_context(ctx, resource_attribute_read_context)
-                .await?
-                .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                    resource_attribute_read_context,
-                ))?;
-        let resource_attribute_prototype = resource_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or_else(|| {
-                ComponentError::MissingAttributePrototype(*resource_attribute_value.id())
-            })?;
-        AttributePrototype::update_for_context(
-            ctx,
-            *resource_attribute_prototype.id(),
-            AttributeContextBuilder::from(resource_attribute_read_context).to_context()?,
-            resource_attribute_prototype.func_id(),
-            resource_attribute_value.func_binding_id(),
-            resource_attribute_value.func_binding_return_value_id(),
-            None,
-            None,
-        )
-        .await?;
-
-        // NOTE: temporary hack to run create confirmations in the change-set as needed as
-        // they don't depend on the domain
-        component.run_confirmations(ctx).await?;
 
         Ok((component, node))
     }

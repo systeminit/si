@@ -11,9 +11,8 @@ use thiserror::Error;
 use crate::func::argument::FuncArgumentError;
 use crate::{
     generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
-    standard_model_accessor_ro, DalContext, FuncBinding, FuncDescriptionContents,
-    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    Visibility,
+    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEventError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -22,7 +21,6 @@ pub mod argument;
 pub mod backend;
 pub mod binding;
 pub mod binding_return_value;
-pub mod description;
 pub mod execution;
 pub mod identity;
 pub mod intrinsics;
@@ -60,8 +58,6 @@ pub enum FuncError {
     NotFoundByName(String),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("contents ({0}) response type does not match func response type: {1}")]
-    ResponseTypeMismatch(FuncDescriptionContents, FuncBackendResponseType),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]

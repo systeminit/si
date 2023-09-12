@@ -25,8 +25,6 @@ pub mod component_type;
 pub enum RootPropChild {
     /// Corresponds to the "/root/code" subtree.
     Code,
-    /// Corresponds to the "/root/confirmation" subtree.
-    Confirmation,
     /// Corresponds to the "/root/deleted_at" subtree.
     DeletedAt,
     /// Corresponds to the "/root/domain" subtree.
@@ -47,7 +45,6 @@ impl RootPropChild {
             Self::Resource => "resource",
             Self::Code => "code",
             Self::Qualification => "qualification",
-            Self::Confirmation => "confirmation",
             Self::DeletedAt => "deleted_at",
         }
     }
@@ -103,9 +100,6 @@ pub struct RootProp {
     /// Contains the tree of [`Props`](crate::Prop) corresponding to qualification
     /// [`Funcs`](crate::Func).
     pub qualification_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to confirmation
-    /// [`Funcs`](crate::Func).
-    pub confirmation_prop_id: PropId,
     /// The deleted_at prop on [`self`](Self).
     pub deleted_at_prop_id: PropId,
 }
@@ -141,7 +135,6 @@ impl SchemaVariant {
         let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self).await?;
         let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id, self.id).await?;
-        let confirmation_prop_id = Self::setup_confirmation(ctx, root_prop_id, self.id).await?;
         let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id, self.id).await?;
 
         // Now that the structure is set up, we can populate default
@@ -156,7 +149,6 @@ impl SchemaVariant {
             resource_prop_id,
             code_prop_id,
             qualification_prop_id,
-            confirmation_prop_id,
             deleted_at_prop_id,
         })
     }
@@ -581,52 +573,5 @@ impl SchemaVariant {
         deleted_at.set_hidden(ctx, true).await?;
 
         Ok(*deleted_at.id())
-    }
-
-    async fn setup_confirmation(
-        ctx: &DalContext,
-        root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<PropId> {
-        let (confirmation_map_prop_id, confirmation_map_item_prop_id) =
-            Self::insert_leaf_props(ctx, LeafKind::Confirmation, root_prop_id, schema_variant_id)
-                .await?;
-
-        let mut child_success_prop = Prop::new(
-            ctx,
-            "success",
-            PropKind::Boolean,
-            None,
-            schema_variant_id,
-            Some(confirmation_map_item_prop_id),
-        )
-        .await?;
-        child_success_prop.set_hidden(ctx, true).await?;
-
-        let mut child_recommended_actions_prop = Prop::new(
-            ctx,
-            "recommendedActions",
-            PropKind::Array,
-            None,
-            schema_variant_id,
-            Some(confirmation_map_item_prop_id),
-        )
-        .await?;
-        child_recommended_actions_prop.set_hidden(ctx, true).await?;
-
-        let mut child_recommended_actions_item_prop = Prop::new(
-            ctx,
-            "recommendedActionsItem",
-            PropKind::String,
-            None,
-            schema_variant_id,
-            Some(*child_recommended_actions_prop.id()),
-        )
-        .await?;
-        child_recommended_actions_item_prop
-            .set_hidden(ctx, true)
-            .await?;
-
-        Ok(confirmation_map_prop_id)
     }
 }

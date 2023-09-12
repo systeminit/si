@@ -2,7 +2,6 @@ use axum::Router;
 use dal::FixCompletionStatus;
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
-use sdf_server::service::fix::run::FixRunRequest;
 
 use crate::service_tests::scenario::ScenarioHarness;
 
@@ -92,7 +91,6 @@ async fn model_and_fix_flow_aws_key_pair(
         key_pair
             .view(&ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value"), // actual
     );
@@ -114,40 +112,21 @@ async fn model_and_fix_flow_aws_key_pair(
             .expect("could not convert to value"), // actual
     );
 
+    let actions = harness.find_change_set(&ctx).await.actions;
+    assert!(actions.is_empty());
+
+    let fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
+    assert!(fix_batch_history_views.is_empty());
+
     // Apply the change set and get rolling!
     harness
         .apply_change_set_and_update_ctx_visibility_to_head(&mut ctx)
-        .await;
-
-    // Check the confirmations and ensure they look as we expect.
-    let (confirmations, mut recommendations) = harness.list_confirmations(ctx.visibility()).await;
-    assert_eq!(
-        1,                   // expected
-        confirmations.len()  // actual
-    );
-    let recommendation = recommendations.pop().expect("no recommendations found");
-    assert!(recommendations.is_empty());
-
-    // Run the fix for the confirmation.
-    let fix_batch_id = harness
-        .run_fixes(
-            ctx.visibility(),
-            vec![FixRunRequest {
-                attribute_value_id: recommendation.confirmation_attribute_value_id,
-                component_id: recommendation.component_id,
-                action_prototype_id: recommendation.action_prototype_id,
-            }],
-        )
         .await;
 
     // Check that the fix succeeded.
     let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
-    assert_eq!(
-        fix_batch_id,              // expected
-        fix_batch_history_view.id, // actual
-    );
     assert_eq!(
         Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status

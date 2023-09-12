@@ -9,8 +9,6 @@ use axum::Router;
 use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
-pub use author_single_schema_with_default_variant::CREATE_CONFIRMATION_NAME;
-pub use author_single_schema_with_default_variant::DELETE_CONFIRMATION_NAME;
 pub use author_single_schema_with_default_variant::{
     AuthorSingleSchemaRequest, AuthorSingleSchemaResponse,
 };

@@ -11,9 +11,9 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, AttributeValueId, Component,
-    ComponentId, DalContext, DependentValuesUpdate, Fix, FixBatch, FixBatchId, FixCompletionStatus,
-    FixId, FixResolver, RootPropChild, StandardModel, Visibility, WsEvent,
+    AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
+    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel,
+    Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,7 +21,6 @@ pub struct FixItem {
     pub id: FixId,
     pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
-    pub attribute_value_id: AttributeValueId,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -145,7 +144,6 @@ impl JobConsumer for FixesJob {
         FixResolver::upsert(
             ctx,
             *action.id(),
-            fix_item.attribute_value_id,
             Some(matches!(completion_status, FixCompletionStatus::Success)),
             *fix.id(),
         )
@@ -161,21 +159,6 @@ impl JobConsumer for FixesJob {
             None => vec![],
         };
 
-        let attribute_value = Component::root_prop_child_attribute_value_for_component(
-            ctx,
-            *component.id(),
-            RootPropChild::Resource,
-        )
-        .await?;
-
-        // Always retriggers confirmations, and propagates resource if it changed.
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![*attribute_value.id()],
-        ))
-        .await?;
-
         // Commit progress so far, and wait for dependent values propagation so we can run
         // consecutive fixes that depend on the /root/resource from the previous fix.
         // `blocking_commit()` will wait for any jobs that have ben created through
@@ -190,7 +173,6 @@ impl JobConsumer for FixesJob {
             ctx,
             *fix.id(),
             self.batch_id,
-            fix_item.attribute_value_id,
             *action.kind(),
             completion_status,
             logs,

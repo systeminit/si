@@ -7,14 +7,13 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    ActionPrototypeId, AttributeValueId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor,
-    StandardModel, User, Visibility,
+    ActionPrototypeId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel, User,
+    Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FixRunRequest {
-    pub attribute_value_id: AttributeValueId,
     pub component_id: ComponentId,
     pub action_prototype_id: ActionPrototypeId,
 }
@@ -56,7 +55,6 @@ pub async fn run(
         let fix = Fix::new(
             &ctx,
             *batch.id(),
-            fix_run_request.attribute_value_id,
             fix_run_request.component_id,
             fix_run_request.action_prototype_id,
         )
@@ -64,7 +62,6 @@ pub async fn run(
 
         fixes.push(FixItem {
             id: *fix.id(),
-            attribute_value_id: fix_run_request.attribute_value_id,
             component_id: fix_run_request.component_id,
             action_prototype_id: fix_run_request.action_prototype_id,
         });

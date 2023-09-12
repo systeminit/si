@@ -27,9 +27,6 @@ pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).
     CodeGeneration,
-    /// This variant corresponds to the "/root/confirmation" subtree whose leaves leverage
-    /// confirmation [`Funcs`](crate::Func).
-    Confirmation,
     /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
     /// qualification [`Funcs`](crate::Func).
     Qualification,
@@ -39,7 +36,6 @@ impl From<PkgLeafKind> for LeafKind {
     fn from(value: PkgLeafKind) -> Self {
         match value {
             PkgLeafKind::CodeGeneration => LeafKind::CodeGeneration,
-            PkgLeafKind::Confirmation => LeafKind::Confirmation,
             PkgLeafKind::Qualification => LeafKind::Qualification,
         }
     }
@@ -49,7 +45,6 @@ impl From<LeafKind> for PkgLeafKind {
     fn from(value: LeafKind) -> Self {
         match value {
             LeafKind::CodeGeneration => PkgLeafKind::CodeGeneration,
-            LeafKind::Confirmation => PkgLeafKind::Confirmation,
             LeafKind::Qualification => PkgLeafKind::Qualification,
         }
     }
@@ -168,7 +163,6 @@ impl LeafKind {
         match self {
             LeafKind::CodeGeneration => ("code", "codeItem"),
             LeafKind::Qualification => ("qualification", "qualificationItem"),
-            LeafKind::Confirmation => ("confirmation", "confirmationItem"),
         }
     }
 }
@@ -178,7 +172,6 @@ impl From<LeafKind> for FuncBackendResponseType {
         match leaf_kind {
             LeafKind::CodeGeneration => FuncBackendResponseType::CodeGeneration,
             LeafKind::Qualification => FuncBackendResponseType::Qualification,
-            LeafKind::Confirmation => FuncBackendResponseType::Confirmation,
         }
     }
 }

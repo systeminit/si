@@ -174,8 +174,7 @@ impl ActionPrototypeContext {
 pk!(ActionPrototypePk);
 pk!(ActionPrototypeId);
 
-// An ActionPrototype joins a `WorkflowPrototype` to the context in which
-// the component that is created with it can use to generate a ConfirmationResolver.
+// An ActionPrototype joins a `FuncId` to a `SchemaVariantId` with a `ActionKind` and `name`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ActionPrototype {
     pk: ActionPrototypePk,
@@ -342,7 +341,6 @@ impl ActionPrototype {
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
-        trigger_dependent_values_update: bool,
     ) -> ActionPrototypeResult<Option<ActionRunResult>> {
         let component_view = ComponentView::new(ctx, component_id).await?;
         let (_, return_value) = FuncBinding::create_and_execute(
@@ -381,7 +379,7 @@ impl ActionPrototype {
                 }
 
                 if component
-                    .set_resource(ctx, run_result.clone(), trigger_dependent_values_update)
+                    .set_resource(ctx, run_result.clone())
                     .await
                     .map_err(|e| ActionPrototypeError::Component(e.to_string()))?
                 {

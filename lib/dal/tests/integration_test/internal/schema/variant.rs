@@ -227,7 +227,6 @@ async fn list_implicit_internal_providers_for_root_children(ctx: &DalContext) {
             RootPropChild::Qualification,
             root_prop.qualification_prop_id,
         ),
-        (RootPropChild::Confirmation, root_prop.confirmation_prop_id),
     ];
 
     for (child, prop_id) in children {

@@ -3,7 +3,6 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::component::confirmation::ConfirmationsUpdatedPayload;
 use crate::component::ComponentCreatedPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
@@ -45,7 +44,6 @@ pub enum WsPayload {
     CheckedQualifications(QualificationCheckPayload),
     CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
-    ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     ResourceRefreshed(ResourceRefreshedPayload),

@@ -79,7 +79,6 @@ pub enum FuncSpecBackendResponseType {
     Array,
     Boolean,
     CodeGeneration,
-    Confirmation,
     Identity,
     Integer,
     Json,

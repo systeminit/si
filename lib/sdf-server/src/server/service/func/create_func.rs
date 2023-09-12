@@ -42,8 +42,6 @@ pub enum CreateFuncOptions {
     #[serde(rename_all = "camelCase")]
     CodeGenerationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
-    ConfirmationOptions { schema_variant_id: SchemaVariantId },
-    #[serde(rename_all = "camelCase")]
     QualificationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     ValidationOptions {
@@ -78,8 +76,6 @@ pub static DEFAULT_CODE_GENERATION_HANDLER: &str = "generateCode";
 pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_generation.ts");
 pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
-pub static DEFAULT_CONFIRMATION_HANDLER: &str = "confirm";
-pub static DEFAULT_CONFIRMATION_CODE: &str = include_str!("./defaults/confirmation.ts");
 pub static DEFAULT_ACTION_HANDLER: &str = "action";
 pub static DEFAULT_ACTION_CODE: &str = include_str!("./defaults/action.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
@@ -198,14 +194,12 @@ async fn create_leaf_prototype(
 ) -> FuncResult<()> {
     let leaf_kind = match variant {
         FuncVariant::CodeGeneration => LeafKind::CodeGeneration,
-        FuncVariant::Confirmation => LeafKind::Confirmation,
         FuncVariant::Qualification => LeafKind::Qualification,
         _ => return Err(FuncError::FuncOptionsAndVariantMismatch),
     };
 
     let input_locations = match leaf_kind {
         LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
-        LeafKind::Confirmation => vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
         LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
     };
 
@@ -238,11 +232,6 @@ async fn create_attribute_func(
             DEFAULT_CODE_GENERATION_CODE,
             DEFAULT_CODE_GENERATION_HANDLER,
             FuncBackendResponseType::CodeGeneration,
-        ),
-        FuncVariant::Confirmation => (
-            DEFAULT_CONFIRMATION_CODE,
-            DEFAULT_CONFIRMATION_HANDLER,
-            FuncBackendResponseType::Confirmation,
         ),
         FuncVariant::Qualification => (
             DEFAULT_QUALIFICATION_CODE,
@@ -306,12 +295,6 @@ async fn create_attribute_func(
                 create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
             }
             (
-                FuncVariant::Confirmation,
-                CreateFuncOptions::ConfirmationOptions { schema_variant_id },
-            ) => {
-                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
-            }
-            (
                 FuncVariant::Qualification,
                 CreateFuncOptions::QualificationOptions { schema_variant_id },
             ) => {
@@ -343,15 +326,6 @@ pub async fn create_func(
                 &ctx,
                 request.name,
                 FuncVariant::CodeGeneration,
-                request.options,
-            )
-            .await?
-        }
-        FuncVariant::Confirmation => {
-            create_attribute_func(
-                &ctx,
-                request.name,
-                FuncVariant::Confirmation,
                 request.options,
             )
             .await?

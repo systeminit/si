@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 use url::Url;
 
 use super::{
-    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgFuncDescription, SiPkgLeafFunction, SiPkgProp,
-    SiPkgSiPropFunc, SiPkgSocket, Source,
+    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgProp, SiPkgSiPropFunc,
+    SiPkgSocket, Source,
 };
 
 use crate::{
@@ -112,11 +112,6 @@ impl<'a> SiPkgSchemaVariant<'a> {
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);
-    impl_variant_children_from_graph!(
-        func_descriptions,
-        SchemaVariantChildNode::FuncDescriptions,
-        SiPkgFuncDescription
-    );
     impl_variant_children_from_graph!(
         leaf_functions,
         SchemaVariantChildNode::LeafFunctions,
@@ -339,10 +334,6 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
         for action_func in self.action_funcs()? {
             builder.action_func(action_func.try_into()?);
-        }
-
-        for func_description in self.func_descriptions()? {
-            builder.func_description(func_description.try_into()?);
         }
 
         for socket in self.sockets()? {

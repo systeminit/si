@@ -33,7 +33,6 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );
@@ -59,7 +58,6 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value") // actual
     );

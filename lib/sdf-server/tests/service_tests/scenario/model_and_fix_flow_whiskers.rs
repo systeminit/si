@@ -283,7 +283,6 @@ async fn model_and_fix_flow_whiskers(
         key_pair
             .view(&ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value"), // actual
     );
@@ -320,7 +319,6 @@ async fn model_and_fix_flow_whiskers(
         security_group
             .view(&ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value"), // actual
     );
@@ -365,7 +363,6 @@ async fn model_and_fix_flow_whiskers(
         ingress
             .view(&ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value"), // actual
     );
@@ -403,7 +400,6 @@ async fn model_and_fix_flow_whiskers(
         }], // expected
         ec2.view(&ctx)
             .await
-            .drop_confirmation()
             .to_value()
             .expect("could not convert to value"), // actual
     );
@@ -530,7 +526,6 @@ async fn model_and_fix_flow_whiskers(
     // let _x = dbg!(docker
     //     .view(&ctx)
     //     .await
-    //     .drop_confirmation()
     //     .drop_qualification()
     //     .drop_code()
     //     .to_value());
@@ -575,4 +570,7 @@ async fn model_and_fix_flow_whiskers(
         Some(FixCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
+
+    // TODO(nick): mix in creation and deletion actions as well as scenarios where not
+    // all fixes are ran all at once.
 }

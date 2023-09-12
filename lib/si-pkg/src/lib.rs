@@ -4,20 +4,19 @@ mod spec;
 
 pub use pkg::{
     SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgFuncDescription, SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp,
-    SiPkgSchema, SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
+    SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
     AttrFuncInputSpecKind, ChangeSetSpec, ChangeSetSpecBuilder, ChangeSetSpecStatus,
-    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncDescriptionSpec,
-    FuncDescriptionSpecBuilder, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder, LeafInputLocation, LeafKind,
-    MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder,
-    PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecPropRoot,
-    SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
-    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, FuncUniqueId, LeafFunctionSpec, LeafFunctionSpecBuilder,
+    LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder, PkgSpec, PkgSpecBuilder,
+    PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]
@@ -135,7 +134,7 @@ mod tests {
             .expect("cannot get funcs by unique id");
 
         let leaf_funcs = variant.leaf_functions().expect("get leaf funcs");
-        assert_eq!(3, leaf_funcs.len());
+        assert_eq!(2, leaf_funcs.len());
 
         for func in leaf_funcs {
             assert!(funcs_by_unique_id.contains_key(&func.func_unique_id()));
@@ -143,12 +142,6 @@ mod tests {
                 LeafKind::Qualification => {
                     assert_eq!(
                         vec![LeafInputLocation::Domain, LeafInputLocation::Code],
-                        func.inputs()
-                    )
-                }
-                LeafKind::Confirmation => {
-                    assert_eq!(
-                        vec![LeafInputLocation::Resource, LeafInputLocation::DeletedAt],
                         func.inputs()
                     )
                 }

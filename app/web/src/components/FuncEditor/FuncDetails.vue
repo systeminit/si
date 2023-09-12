@@ -153,17 +153,6 @@
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
-          <ConfirmationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'confirmation'
-            "
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :disabled="changeSetsStore.headSelected"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
           <QualificationDetails
             v-if="
               editingFunc.associations &&
@@ -273,7 +262,6 @@ import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
-import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 
@@ -291,7 +279,6 @@ type DetachType =
   | InstanceType<typeof ActionDetails>
   | InstanceType<typeof AttributeBindings>
   | InstanceType<typeof CodeGenerationDetails>
-  | InstanceType<typeof ConfirmationDetails>
   | InstanceType<typeof ValidationDetails>
   | InstanceType<typeof QualificationDetails>;
 
@@ -351,7 +338,6 @@ const isConnectedToOtherAssetTypes = computed(() => {
     const associations = editingFunc.value.associations;
     switch (associations.type) {
       case "codeGeneration":
-      case "confirmation":
       case "qualification":
         return (
           associations.schemaVariantIds.length > 1 ||

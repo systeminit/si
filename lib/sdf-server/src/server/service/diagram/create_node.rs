@@ -79,7 +79,7 @@ pub async fn create_node(
     )
     .await?
     {
-        Action::new(&ctx, *dbg!(prototype).id(), *component.id()).await?;
+        Action::new(&ctx, *prototype.id(), *component.id()).await?;
     }
 
     node.set_geometry(

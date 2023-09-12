@@ -21,7 +21,6 @@ use super::{FuncUniqueId, SpecError};
 #[serde(rename_all = "camelCase")]
 pub enum LeafKind {
     CodeGeneration,
-    Confirmation,
     Qualification,
 }
 

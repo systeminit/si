@@ -29,7 +29,6 @@ pub enum ResolverFunctionResponseType {
     Array,
     Boolean,
     CodeGeneration,
-    Confirmation,
     Identity,
     Integer,
     Json,
