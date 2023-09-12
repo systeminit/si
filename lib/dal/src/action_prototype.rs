@@ -12,9 +12,9 @@ use telemetry::prelude::*;
 use crate::{
     component::view::ComponentViewError, func::backend::js_action::ActionRunResult,
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentId,
-    ComponentView, DalContext, FuncBinding, FuncBindingError, FuncBindingReturnValueError, FuncId,
-    HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, Visibility, WsEvent, WsEventError,
+    ComponentView, DalContext, Func, FuncBinding, FuncBindingError, FuncBindingReturnValueError,
+    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
@@ -29,11 +29,20 @@ const FIND_FOR_CONTEXT_AND_FUNC: &str =
 pub struct ActionPrototypeView {
     id: ActionPrototypeId,
     name: String,
+    display_name: Option<String>,
 }
 
 impl ActionPrototypeView {
-    pub fn new(prototype: ActionPrototype) -> Self {
-        Self {
+    pub async fn new(
+        ctx: &DalContext,
+        prototype: ActionPrototype,
+    ) -> ActionPrototypeResult<ActionPrototypeView> {
+        let mut display_name = None;
+        let func_details = Func::get_by_id(ctx, &prototype.func_id).await?;
+        if let Some(func) = func_details {
+            display_name = func.display_name().map(|dname| dname.to_string())
+        };
+        Ok(Self {
             id: prototype.id,
             name: prototype.name().map_or_else(
                 || match prototype.kind() {
@@ -44,7 +53,8 @@ impl ActionPrototypeView {
                 },
                 ToOwned::to_owned,
             ),
-        }
+            display_name,
+        })
     }
 }
 

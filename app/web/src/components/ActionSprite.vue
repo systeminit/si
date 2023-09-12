@@ -7,9 +7,7 @@
       >
         <div class="flex flex-col min-w-0 grow">
           <span class="font-bold truncate flex flex-row">
-            <span class="grow"
-              >{{ actionName }} {{ component?.schemaName ?? "" }}</span
-            >
+            <span class="grow">{{ actionName }}</span>
             <VButton
               v-if="props.action.id"
               class="ml-2"

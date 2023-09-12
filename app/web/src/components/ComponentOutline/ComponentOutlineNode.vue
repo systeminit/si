@@ -328,7 +328,7 @@ const actions = computed((): NewAction[] => {
   return _.map(component.value.actions, (a: ActionPrototype) => {
     return {
       prototypeId: a.id,
-      name: a.name,
+      name: a.displayName !== "" ? a.displayName : a.name,
       componentId,
     } as NewAction;
   });

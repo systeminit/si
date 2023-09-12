@@ -2,8 +2,8 @@ use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    ActionId, ActionKind, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId, StandardModel,
-    Visibility,
+    ActionId, ActionKind, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId, Func,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -39,18 +39,22 @@ pub async fn list_open_change_sets(
         let a = cs.actions(&ctx).await?;
         let mut actions = Vec::with_capacity(a.len());
         for action in a {
+            let mut display_name = None;
             let prototype = action.prototype(&ctx).await?;
+            let func_details = Func::get_by_id(&ctx, &prototype.func_id()).await?;
+            if let Some(func) = func_details {
+                if func.display_name().is_some() {
+                    display_name = func.display_name().map(|dname| dname.to_string());
+                }
+            }
             actions.push(ActionView {
                 id: *action.id(),
-                name: prototype.name().map_or_else(
-                    || match prototype.kind() {
-                        ActionKind::Create => "create".to_owned(),
-                        ActionKind::Delete => "delete".to_owned(),
-                        ActionKind::Other => "other".to_owned(),
-                        ActionKind::Refresh => " refresh".to_owned(),
-                    },
-                    ToOwned::to_owned,
-                ),
+                name: display_name.unwrap_or_else(|| match prototype.kind() {
+                    ActionKind::Create => "create".to_owned(),
+                    ActionKind::Delete => "delete".to_owned(),
+                    ActionKind::Other => "other".to_owned(),
+                    ActionKind::Refresh => " refresh".to_owned(),
+                }),
                 component_id: *action.component_id(),
             });
         }
