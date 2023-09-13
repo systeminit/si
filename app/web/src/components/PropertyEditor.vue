@@ -29,6 +29,7 @@
       :value="undefined"
       propId="test"
       valueId="test"
+      docLink="https://www.wendywildsha.pe/"
     />
     <!-- temporary code for testing secrets popover -->
   </div>

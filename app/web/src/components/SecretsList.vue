@@ -2,20 +2,35 @@
   <div
     :class="
       clsx(
-        'bg-neutral-100 dark:bg-neutral-700 w-96 h-96 rounded flex flex-col overflow-hidden text-white shadow-3xl',
+        themeContainerClasses,
+        // 'bg-neutral-100 dark:bg-neutral-700 text-shade-100 dark:text-shade-0', // dark/light mode classes
+        'bg-neutral-700 text-shade-0', // force dark mode classes
+        'w-96 h-96 rounded flex flex-col overflow-hidden shadow-3xl',
       )
     "
   >
     <div
-      class="bg-shade-0 dark:bg-shade-100 p-xs shrink-0 flex flex-row justify-between"
+      :class="
+        clsx(
+          'p-xs shrink-0 flex flex-row justify-between',
+          // 'bg-shade-0 dark:bg-shade-100 text-shade-100 dark:text-shade-0', // dark/light mode classes
+          'bg-shade-100 text-shade-0', // force dark mode classes
+        )
+      "
     >
       <div class="flex flex-col">
-        <div
-          class="uppercase font-bold text-md pb-xs text-shade-100 dark:text-shade-0"
-        >
+        <div class="uppercase font-bold text-md pb-xs">
           Secret: {{ definitionId }}
         </div>
-        <div class="text-xs italic text-neutral-600 dark:text-neutral-500">
+        <div
+          :class="
+            clsx(
+              'text-xs italic',
+              // 'text-neutral-600 dark:text-neutral-500', // dark/light mode classes
+              'text-neutral-500', // force dark mode class
+            )
+          "
+        >
           <template v-if="addingSecret">
             Fill out the form below to add the secret.
           </template>
@@ -25,21 +40,25 @@
         </div>
       </div>
       <VButton
-        v-if="addingSecret"
-        icon="x"
-        tone="destructive"
-        @click="cancelAddSecretForm"
-      />
-      <VButton
-        v-else
+        v-if="!addingSecret"
         label="Add"
         icon="plus"
         tone="action"
         @click="showAddSecretForm"
       />
+      <!-- <VButton
+        v-else
+        icon="x"
+        tone="destructive"
+        @click="cancelAddSecretForm"
+      /> -->
     </div>
 
-    <AddSecretForm v-if="addingSecret" :definitionId="definitionId" />
+    <AddSecretForm
+      v-if="addingSecret"
+      :definitionId="definitionId"
+      @cancel="cancelAddSecretForm"
+    />
     <div v-else class="overflow-y-auto flex flex-col h-full">
       <RequestStatusMessage
         v-if="loadSecretsReq.isPending"
@@ -54,7 +73,15 @@
         />
       </template>
       <div v-else class="flex flex-row items-center grow">
-        <div class="text-center w-full">
+        <div
+          :class="
+            clsx(
+              'text-center w-full',
+              // 'text-shade-100 dark:text-shade-0', // dark/light mode classes
+              'text-shade-0', // force dark mode class
+            )
+          "
+        >
           No secrets of this definition found.
         </div>
       </div>
@@ -63,13 +90,19 @@
 </template>
 
 <script setup lang="ts">
-import { VButton, RequestStatusMessage } from "@si/vue-lib/design-system";
+import {
+  VButton,
+  RequestStatusMessage,
+  useThemeContainer,
+} from "@si/vue-lib/design-system";
 
 import { ref, computed } from "vue";
 import clsx from "clsx";
 import { useSecretsStore, SecretDefinitionId } from "@/store/secrets.store";
 import SecretCard from "./SecretCard.vue";
 import AddSecretForm from "./AddSecretForm.vue";
+
+const { themeContainerClasses } = useThemeContainer("dark");
 
 const props = defineProps<{ definitionId: SecretDefinitionId }>();
 

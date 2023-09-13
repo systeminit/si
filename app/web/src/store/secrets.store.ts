@@ -17,6 +17,7 @@ export type Secret = {
   description?: string;
   createdInfo: ActorAndTimestamp;
   updatedInfo?: ActorAndTimestamp;
+  expiration?: string;
 };
 
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
@@ -139,6 +140,7 @@ export function useSecretsStore() {
           name: string,
           value: Record<string, string>,
           description?: string,
+          expiration?: string,
         ) {
           if (_.isEmpty(name)) return;
 
@@ -160,6 +162,7 @@ export function useSecretsStore() {
               name,
               description,
               definition,
+              expiration,
             },
             optimistic: () => {
               const { pk: userId, name: userName } = user;
@@ -173,6 +176,7 @@ export function useSecretsStore() {
                   actor: { kind: "user", label: userName, id: userId },
                   timestamp: Date(),
                 },
+                expiration,
               });
               this.secretIsTransitioning[tempId] = true;
 

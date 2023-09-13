@@ -1,17 +1,31 @@
 <template>
   <div
     v-if="featureFlagsStore.SECRETS"
-    class="flex flex-col w-full pt-sm px-lg"
+    class="flex flex-col items-center pt-sm pl-lg pr-md"
   >
-    <VButton label="Select Secret" @click="(e) => popoverRef.open(e)" />
-    <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-      <SecretsList definitionId="Mocks" />
-    </Popover>
-    <UnsetButton
-      v-if="!disabled"
-      :disabled="disableUnset"
-      @click="unsetField"
-    />
+    <div class="text-sm font-medium w-full pb-xs">Secret: {{ name }}</div>
+    <div class="flex flex-row items-center w-full">
+      <div class="flex flex-col grow">
+        <VButton label="Select Secret" @click="(e) => popoverRef.open(e)" />
+        <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
+          <SecretsList definitionId="Mocks" />
+        </Popover>
+      </div>
+      <div class="pl-sm">
+        <SiButtonIcon
+          v-if="!disabled"
+          tooltipText="Unset field"
+          icon="x-circle"
+          :disabled="disableUnset"
+          @click="unsetField"
+        />
+      </div>
+    </div>
+    <div v-if="docLink" class="w-full mt-2 text-xs text-action-500">
+      <a :href="docLink" target="_blank" class="hover:underline">
+        Documentation
+      </a>
+    </div>
   </div>
 </template>
 
@@ -26,7 +40,7 @@ import {
   PropertyPath,
   UpdatedProperty,
 } from "@/api/sdf/dal/property_editor";
-import UnsetButton from "./UnsetButton.vue";
+import SiButtonIcon from "../SiButtonIcon.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
