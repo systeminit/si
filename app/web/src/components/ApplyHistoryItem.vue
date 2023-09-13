@@ -41,11 +41,6 @@
     </template>
     <template #default>
       <div class="text-sm pl-8">
-        <!-- Note(victor): Not 100% sure this should be removed, but it looks redundant. Confirm with mark.-->
-        <!--div class="text-success-500 tracking-tight font-bold">
-            {{ fixBatch.fixes.length }}
-            resource{{ fixBatch.fixes.length > 1 ? "s" : "" }} fixed
-          </div-->
         <div
           :class="
             clsx(
@@ -80,7 +75,7 @@
             <StatusIndicatorIcon type="fix" :status="fix.status" />
             <div class="flex flex-col">
               <div class="font-bold pl-xs">
-                {{ `${formatTitle(fix.actionKind)} ${fix.schemaName}` }}
+                {{ `${fix.displayName}` }}
               </div>
             </div>
           </template>

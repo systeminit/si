@@ -39,6 +39,7 @@ export type Fix = {
   resource?: Resource | null;
   startedAt?: string;
   finishedAt?: string;
+  displayName?: string;
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.

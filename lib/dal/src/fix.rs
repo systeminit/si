@@ -15,7 +15,7 @@ use crate::{
     func::backend::js_action::ActionRunResult, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionKind,
     ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component, ComponentError,
-    ComponentId, DalContext, FixBatch, FixResolverError, FuncError, HistoryEventError,
+    ComponentId, DalContext, FixBatch, FixResolverError, Func, FuncError, HistoryEventError,
     ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp,
     TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
@@ -355,6 +355,17 @@ impl Fix {
         let (component_name, schema_name, category) =
             Self::component_details_for_history_view(ctx, self.component_id).await?;
 
+        let mut display_name = self.action_kind().clone().to_string();
+        let action_prototype = ActionPrototype::get_by_id(ctx, self.action_prototype_id()).await?;
+        if let Some(ap) = action_prototype {
+            let func_details = Func::get_by_id(ctx, &ap.func_id()).await?;
+            if let Some(func) = func_details {
+                if let Some(name) = func.display_name() {
+                    display_name = name.to_string();
+                }
+            }
+        }
+
         Ok(Some(FixHistoryView {
             id: self.id,
             status: if resource.is_none() {
@@ -365,6 +376,7 @@ impl Fix {
                     .unwrap_or(FixCompletionStatus::Failure)
             },
             action_kind: *self.action_kind(),
+            display_name,
             schema_name,
             component_name,
             component_id: self.component_id,
@@ -413,6 +425,7 @@ pub struct FixHistoryView {
     id: FixId,
     status: FixCompletionStatus,
     action_kind: ActionKind,
+    display_name: String,
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
