@@ -28,7 +28,12 @@ async fn main() -> Result<()> {
     let description = format!("{name} package, created by {created_by}.");
 
     let mut ctx = ctx().await?;
-    let workspace = Workspace::builtin(&ctx).await?;
+
+    let workspace = match Workspace::find_first_user_workspace(&ctx).await? {
+        Some(workspace) => workspace,
+        None => Workspace::builtin(&ctx).await?,
+    };
+
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     let mut schema_ids = Vec::new();
@@ -36,7 +41,10 @@ async fn main() -> Result<()> {
         schema_ids.push(*Schema::find_by_name(&ctx, schema_name.trim()).await?.id());
     }
 
-    println!("--- Exporting pkg: {tar_file}");
+    println!(
+        "--- Exporting pkg: {tar_file} from head change set in workspace \"{}\"",
+        workspace.name()
+    );
     let mut exporter =
         PkgExporter::new_module_exporter(name, version, Some(description), created_by, schema_ids);
 

@@ -74,6 +74,14 @@ impl Workspace {
         Ok(object)
     }
 
+    pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
+        let row = ctx.txns().await?.pg().query_opt(
+            "SELECT row_to_json(w.*) AS object FROM workspaces AS w WHERE pk != $1 ORDER BY created_at ASC LIMIT 1", &[&WorkspacePk::NONE],
+        ).await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
+    }
+
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &mut DalContext,
