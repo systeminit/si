@@ -1,10 +1,10 @@
 use buck2_resources::Buck2Resources;
-use std::{env, path::Path, sync::Arc};
+use std::{env, path::Path, str::FromStr, sync::Arc};
 use tokio::fs;
 
 use dal::{
-    pkg::PkgExporter, DalContext, JobQueueProcessor, NatsProcessor, Schema, ServicesContext,
-    StandardModel, Tenancy, Workspace,
+    pkg::PkgExporter, ChangeSet, ChangeSetPk, DalContext, JobQueueProcessor, NatsProcessor, Schema,
+    ServicesContext, StandardModel, Tenancy, Workspace,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -13,12 +13,13 @@ use veritech_client::{Client as VeritechClient, EncryptionKey};
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
 const USAGE: &str =
-    "usage: program <PKG_FILE> <NAME> <VERSION> <CREATED_BY> <SCHEMA_NAME,SCHEMA_NAME[,...]>";
+    "usage: program <CHANGE_SET_PK> <PKG_FILE> <NAME> <VERSION> <CREATED_BY> <SCHEMA_NAME,SCHEMA_NAME[,...]>";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut args = env::args();
-    let tar_file = args.nth(1).expect(USAGE);
+    let change_set_pk = ChangeSetPk::from_str(args.nth(1).expect(USAGE).as_str())?;
+    let tar_file = args.next().expect(USAGE);
     let name = args.next().expect(USAGE);
     let version = args.next().expect(USAGE);
     let created_by = args.next().expect(USAGE);
@@ -35,6 +36,10 @@ async fn main() -> Result<()> {
     };
 
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+    let change_set = ChangeSet::get_by_pk(&ctx, &change_set_pk)
+        .await?
+        .expect("That change set could not be found");
+    ctx.update_visibility(ctx.visibility().to_change_set(change_set.pk));
 
     let mut schema_ids = Vec::new();
     for schema_name in schema_names {

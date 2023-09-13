@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose, Engine};
 use derive_builder::Builder;
+use object_tree::Hash;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
@@ -160,6 +161,20 @@ pub struct FuncSpec {
 
     #[builder(setter(each(name = "argument"), into), default)]
     pub arguments: Vec<FuncArgumentSpec>,
+}
+
+impl FuncSpecBuilder {
+    pub fn gen_unique_id(&self) -> Result<String, SpecError> {
+        let mut bytes = vec![];
+
+        bytes.extend_from_slice(self.name.as_deref().unwrap_or("").as_bytes());
+        bytes.extend_from_slice(self.deleted.unwrap_or(false).to_string().as_bytes());
+        if let Some(data) = &self.data {
+            bytes.extend_from_slice(serde_json::to_string(data)?.as_bytes());
+        }
+
+        Ok(Hash::new(&bytes).to_string())
+    }
 }
 
 impl FuncSpec {
