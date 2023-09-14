@@ -3,6 +3,7 @@
   <div class="font-sans">
     <template
       v-if="
+        !authStore.userIsLoggedInAndInitialized &&
         route.name !== 'auth-connect' &&
         (!restoreAuthReqStatus.isRequested ||
           restoreAuthReqStatus.isPending ||
