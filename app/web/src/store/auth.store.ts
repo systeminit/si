@@ -134,7 +134,7 @@ export const useAuthStore = defineStore("auth", {
         }
       }
     },
-    localLogout() {
+    localLogout(logoutAuthPortal = true) {
       storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN);
       this.$patch({
         token: null,
@@ -143,7 +143,9 @@ export const useAuthStore = defineStore("auth", {
       });
       posthog.reset();
 
-      if (window) window.location.href = `${AUTH_PORTAL_URL}/logout`;
+      if (window && logoutAuthPortal) {
+        window.location.href = `${AUTH_PORTAL_URL}/logout`;
+      }
     },
 
     // split out so we can reuse for different login methods (password, oauth, magic link, signup, etc)

@@ -1,10 +1,12 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <div class="font-sans">
+    <template v-if="route.name === 'auth-connect'">
+      <RouterView />
+    </template>
     <template
-      v-if="
+      v-else-if="
         !authStore.userIsLoggedInAndInitialized &&
-        route.name !== 'auth-connect' &&
         (!restoreAuthReqStatus.isRequested ||
           restoreAuthReqStatus.isPending ||
           reconnectAuthReqStatus.isPending)
@@ -14,7 +16,7 @@
     </template>
     <template v-else>
       <RealtimeConnectionStatus />
-      <router-view :key="selectedWorkspace?.pk" />
+      <RouterView :key="selectedWorkspace?.pk" />
       <Teleport to="body">
         <canvas
           id="confetti"
@@ -71,11 +73,15 @@ useHead(
 // check for auth token in local storage and initialize auth in store if found
 // this token will be automatically injected into API requests
 const authStore = useAuthStore();
-authStore.initFromStorage().then();
+const route = useRoute();
+if (route.name === "auth-connect") {
+  authStore.localLogout(false);
+} else {
+  authStore.initFromStorage().then();
+}
+
 const restoreAuthReqStatus = authStore.getRequestStatus("RESTORE_AUTH");
 const reconnectAuthReqStatus = authStore.getRequestStatus("AUTH_RECONNECT");
-
-const route = useRoute();
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
