@@ -8,7 +8,7 @@
       <div class="">{{ actionName }}</div>
       <div class="text-neutral-400 truncate">
         <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
-        {{ component?.displayName ?? "unknown" }} {{ action.name }}
+        {{ component?.displayName ?? "unknown" }}
       </div>
     </div>
     <VButton
@@ -41,7 +41,7 @@ const props = defineProps<{
 }>();
 
 const actionName = computed(() => {
-  const name = props.action.name.trim();
+  const name = (props.action.displayName || props.action.name).trim();
   return name.length ? name.slice(0, 1).toUpperCase() + name.slice(1) : "";
 });
 
