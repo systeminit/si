@@ -9,7 +9,7 @@
     <Stack>
       <template v-if="importReqStatus.isPending">
         <LoadingMessage>
-          Restoring your workspace from a backup!
+          Importing your workspace!
           <template #moreContent>
             <p class="italic font-sm">
               Please do not refresh while this in progress.
@@ -18,19 +18,19 @@
         </LoadingMessage>
       </template>
       <template v-else-if="importReqStatus.isSuccess">
-        <p>Your workspace has been restored!</p>
+        <p>Your workspace has been imported!</p>
         <p>To see your changes, please reload your browser</p>
         <VButton icon="refresh" @click="refreshHandler">Reload</VButton>
       </template>
       <template v-else>
         <p>
-          You are about to restore from a workspace backup. Please note that all
-          data currently in the local workspace will be overwritten and replaced
-          with the contents of the backup.
+          You are about to import a workspace. Please note that all data
+          currently in the local workspace will be overwritten and replaced with
+          the contents of this workspace.
         </p>
         <p>
-          To continue, please select the backup / export you would like to
-          restore from, and confirm the loss of local data:
+          To continue, please select the workspace you would like to import, and
+          confirm the loss of local data:
         </p>
 
         <ErrorMessage :requestStatus="loadExportsReqStatus" />
@@ -39,10 +39,10 @@
           <VormInput
             v-model="selectedExportId"
             type="dropdown"
-            label="Select an export to restore from"
-            placeholder="- Select an export -"
+            label="Select workspace"
+            placeholder="- Select a workspace -"
             required
-            requiredMessage="Select an export to continue"
+            requiredMessage="Select a workspace to continue"
           >
             <VormInputOption
               v-for="item in exportsList"
@@ -54,10 +54,10 @@
           </VormInput>
         </template>
         <template v-else-if="loadExportsReqStatus.isPending">
-          <VormInput type="container" label="Select an export to restore from">
+          <VormInput type="container" label="Select workspace">
             <Inline alignY="center">
               <Icon name="loader" />
-              <div>Loading your exports</div>
+              <div>Loading your workspace exports</div>
             </Inline>
           </VormInput>
         </template>
@@ -77,7 +77,7 @@
           :disabled="!loadExportsReqStatus.isSuccess || validationState.isError"
           :requestStatus="importReqStatus"
           @click="continueHandler"
-          >Restore from backup</VButton
+          >Import workspace</VButton
         >
       </template>
     </Stack>
