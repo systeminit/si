@@ -12,6 +12,8 @@ import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
 
+import EmptySquare from "./custom-icons/empty-square.svg?raw";
+
 import AlertCircle from "~icons/heroicons/exclamation-circle-20-solid";
 import AlertSquare from "./custom-icons/exclamation-square.svg?raw";
 import AlertTriangle from "~icons/heroicons/exclamation-triangle-20-solid";
@@ -111,6 +113,11 @@ import Create from "~icons/carbon/intent-request-create";
 import Laptop from "~icons/material-symbols/laptop-mac-outline";
 import Celebrate from "~icons/game-icons/party-popper";
 
+import HexPlus from "./custom-icons/hex-plus.svg?raw";
+import HexMinus from "./custom-icons/hex-minus.svg?raw";
+import HexRefresh from "./custom-icons/hex-refresh.svg?raw";
+import HexQuestion from "./custom-icons/hex-question.svg?raw";
+
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
@@ -140,6 +147,7 @@ export const ICONS = Object.freeze({
   "dots-vertical": DotsVertical,
   download: Download,
   edit: Pencil,
+  "empty-square": EmptySquare,
   "exclamation-circle": ExclamationCircle,
   "external-link": ExternalLink,
   eye: Eye,
@@ -172,6 +180,10 @@ export const ICONS = Object.freeze({
   refresh: Refresh,
   "refresh-active": Refresh,
   resize: Resize,
+  "resource-create": HexPlus,
+  "resource-delete": HexMinus,
+  "resource-question": HexQuestion,
+  "resource-refresh": HexRefresh,
   save: Save,
   search: Search,
   selector: Selector,

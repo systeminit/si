@@ -21,10 +21,13 @@
         >Pick which actions will be applied to the real world:</span
       >
       <li
-        v-for="action in changeSetsStore.selectedChangeSet?.actions ?? []"
-        :key="action.id"
+        v-for="action in actionsStore.proposedActions"
+        :key="action.actionInstanceId"
       >
-        <ActionSprite :action="action" @remove="removeAction(action)" />
+        <ActionSprite
+          :action="action"
+          @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
+        />
       </li>
       <VButton
         v-if="!changeSetsStore.headSelected"
@@ -48,10 +51,10 @@ import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
 import { VButton, Modal } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
-import { Action } from "@/api/sdf/dal/change_set";
 import ActionSprite from "@/components/ActionSprite.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
+import { useActionsStore } from "@/store/actions.store";
 
 const createModalRef = ref<InstanceType<typeof Modal> | null>(null);
 
@@ -64,12 +67,9 @@ const maybeOpenModal = () => {
 };
 
 const changeSetsStore = useChangeSetsStore();
+const actionsStore = useActionsStore();
 const router = useRouter();
 const route = useRoute();
-
-const removeAction = (action: Action) => {
-  changeSetsStore.REMOVE_ACTION(action.id);
-};
 
 const applyButtonRef = ref();
 

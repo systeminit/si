@@ -149,7 +149,18 @@ export const useQualificationsStore = () => {
               visibility_change_set_pk: changeSetId,
             },
             onSuccess: (response) => {
-              this.qualificationsByComponentId[componentId] = response;
+              // TODO: maybe we want to sort these in the backend?
+              const sorted = _.orderBy(
+                response,
+                (response) =>
+                  ({
+                    failure: 1,
+                    warning: 2,
+                    unknown: 3,
+                    success: 4,
+                  }[response.result?.status || "unknown"]),
+              );
+              this.qualificationsByComponentId[componentId] = sorted;
             },
           });
         },
