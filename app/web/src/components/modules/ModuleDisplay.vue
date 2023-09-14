@@ -138,6 +138,14 @@
               View functions from this module
             </VButton>
 
+            <ErrorMessage :requestStatus="rejectReqStatus" />
+            <VButton
+              :requestStatus="rejectReqStatus"
+              @click="rejectModuleSpecHandler"
+            >
+              Reject this module
+            </VButton>
+
             <div v-if="remoteSpec && remoteSpec.funcs.length > 0">
               <ul>
                 <li
@@ -210,6 +218,8 @@ const remoteModuleSpecStatus = moduleStore.getRequestStatus(
   "GET_REMOTE_MODULE_SPEC",
 );
 
+const rejectReqStatus = moduleStore.getRequestStatus("REJECT_REMOTE_MODULE");
+
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
 const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
@@ -251,6 +261,11 @@ onBeforeMount(() => {
 async function installButtonHandler() {
   if (!remoteSummary.value) return;
   await moduleStore.INSTALL_REMOTE_MODULE(remoteSummary.value?.id);
+}
+
+async function rejectModuleSpecHandler() {
+  if (!remoteSummary.value) return;
+  await moduleStore.REJECT_REMOTE_MODULE(remoteSummary.value?.id);
 }
 
 async function viewModuleSpecHandler() {

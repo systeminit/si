@@ -1,6 +1,7 @@
 use ulid::Ulid;
 use url::Url;
 
+use crate::types::ModuleRejectionResponse;
 use crate::{IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
@@ -15,6 +16,30 @@ impl IndexClient {
             base_url,
             auth_token: auth_token.to_owned(),
         }
+    }
+
+    pub async fn reject_module(
+        &self,
+        module_id: Ulid,
+        rejected_by_display_name: String,
+    ) -> IndexClientResult<ModuleRejectionResponse> {
+        let reject_url = dbg!(self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("reject"))?;
+
+        let upload_response = reqwest::Client::new()
+            .post(reject_url)
+            .multipart(
+                reqwest::multipart::Form::new().text("rejected by user", rejected_by_display_name),
+            )
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(upload_response.json::<ModuleRejectionResponse>().await?)
     }
 
     pub async fn upload_module(

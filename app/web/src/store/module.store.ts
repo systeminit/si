@@ -248,6 +248,18 @@ export const useModuleStore = () => {
           });
         },
 
+        async REJECT_REMOTE_MODULE(moduleId: ModuleId) {
+          return new ApiRequest<{ success: true }>({
+            method: "post",
+            url: "/pkg/reject_pkg",
+            params: { id: moduleId, ...visibility },
+            onSuccess: (_response) => {
+              // response is just success, so we have to reload local modules
+              this.LOAD_LOCAL_MODULES();
+            },
+          });
+        },
+
         async EXPORT_MODULE(exportRequest: PkgExportRequest) {
           return new ApiRequest({
             method: "post",

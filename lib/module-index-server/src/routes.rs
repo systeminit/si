@@ -13,6 +13,7 @@ use tower_http::cors::CorsLayer;
 mod download_module_route;
 mod get_module_details_route;
 mod list_modules_route;
+pub(crate) mod reject_module_route;
 pub(crate) mod upsert_module_route;
 
 use super::{app_state::AppState, server::ServerError};
@@ -31,6 +32,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/modules/:module_id/download",
             get(download_module_route::download_module_route),
+        )
+        .route(
+            "/modules/:module_id/reject",
+            post(reject_module_route::reject_module),
         )
         .layer(CorsLayer::permissive());
 

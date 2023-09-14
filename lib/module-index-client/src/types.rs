@@ -19,6 +19,10 @@ pub type IndexClientResult<T> = Result<T, IndexClientError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ModuleRejectionResponse {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModuleDetailsResponse {
     pub id: String,
     pub name: String,
