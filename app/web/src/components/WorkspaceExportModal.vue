@@ -9,7 +9,7 @@
       <template v-if="exportReqStatus.isSuccess">
         <p>Success!</p>
         <p>
-          You can now restore your workspace to this backup by going to
+          You can now import this workspace by going to
           <br />
           workspace settings (gear in top right) > "Import Workspace"
         </p>
@@ -18,9 +18,8 @@
       </template>
       <template v-else>
         <p>
-          You are about to export a backup of this workspace to the cloud. You
-          will then be able to import / restore this backup on this or another
-          running instance of SI.
+          You are about to export this workspace to the cloud. You will then be
+          able to import it on this or another running instance of SI.
         </p>
 
         <p>Click the button below to continue:</p>
@@ -30,7 +29,7 @@
           :requestStatus="exportReqStatus"
           loadingText="Exporting your workspace..."
           @click="continueHandler"
-          >Export a backup of this workspace</VButton
+          >Export this workspace</VButton
         >
       </template>
     </Stack>
