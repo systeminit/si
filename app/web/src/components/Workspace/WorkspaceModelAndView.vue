@@ -91,88 +91,65 @@
           </span>
         </template>
 
-        <ApplyHistory v-if="isHead" />
+        <!-- <ApplyHistory  /> -->
         <TabGroup
-          v-else
           rememberSelectedTabKey="proposed_right"
           trackingSlug="actions_applied"
         >
-          <TabGroupItem label="Proposed" slug="actions_proposed">
-            <Collapsible
-              as="div"
-              contentAs="ul"
-              :defaultOpen="false"
-              hideBottomBorderWhenOpen
+          <TabGroupItem v-if="!isHead" label="Proposed" slug="actions_proposed">
+            <div
+              :class="
+                clsx(
+                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
+                  themeClasses('border-neutral-200', 'border-neutral-600'),
+                )
+              "
             >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span>Change Set Created</span>
-                  </span>
-
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{
-                      isHead ? "head" : changeSetStore.selectedChangeSet?.name
-                    }}
-                  </span>
-                </div>
-              </template>
-
-              <template #default>
-                <div class="px-5 text-neutral-400">
+              <Icon name="git-branch" />
+              <div class="flex flex-col">
+                <div class="">Created Change Set</div>
+                <div class="text-neutral-400 truncate">
                   {{ isHead ? "head" : changeSetStore.selectedChangeSet?.name }}
                 </div>
-              </template>
-            </Collapsible>
+              </div>
+            </div>
 
-            <Collapsible
+            <div
               v-for="diff in diffs"
               :key="diff.componentId"
-              as="div"
-              :defaultOpen="false"
-              hideBottomBorderWhenOpen
+              :class="
+                clsx(
+                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
+                  themeClasses('border-neutral-200', 'border-neutral-600'),
+                )
+              "
             >
-              <template #label>
-                <div class="flex flex-col min-w-0 grow">
-                  <span class="font-bold truncate flex flex-row">
-                    <span v-if="diff.status === 'added'">Added</span>
-                    <span v-if="diff.status === 'deleted'">Removed</span>
-                    <span v-if="diff.status === 'modified'">Modified</span>
-                    <span
-                      >&nbsp;{{
-                        componentsStore.componentsById[diff.componentId]
-                          ?.schemaName
-                      }}
-                      Asset
-                      {{
-                        componentsStore.componentsById[diff.componentId]
-                          ?.displayName
-                      }}</span
-                    >
-                  </span>
-
-                  <span class="truncate flex flex-row text-neutral-400">
-                    {{
-                      componentsStore.componentsById[diff.componentId]
-                        ?.displayName
-                    }}
-                  </span>
+              <StatusIndicatorIcon
+                type="change"
+                :status="diff.status"
+                tone="shade"
+              />
+              <div class="flex flex-col">
+                <div class="">
+                  <span v-if="diff.status === 'added'">Added</span>
+                  <span v-if="diff.status === 'deleted'">Removed</span>
+                  <span v-if="diff.status === 'modified'">Modified</span>
+                  {{
+                    componentsStore.componentsById[diff.componentId]?.schemaName
+                  }}
                 </div>
-              </template>
-
-              <template #default>
-                <div class="px-5 text-neutral-400">
+                <div class="text-neutral-400 truncate">
                   {{
                     componentsStore.componentsById[diff.componentId]
                       ?.displayName
                   }}
                 </div>
-              </template>
-            </Collapsible>
+              </div>
+            </div>
 
             <div
-              v-for="action in changeSetStore.selectedChangeSet?.actions ?? []"
-              :key="action.id"
+              v-for="action in actionsStore.proposedActions"
+              :key="action.actionInstanceId"
               :class="
                 clsx(
                   'border-b',
@@ -180,10 +157,13 @@
                 )
               "
             >
-              <ActionSprite :action="action" @remove="removeAction(action)" />
+              <ActionSprite
+                :action="action"
+                @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
+              />
             </div>
             <div
-              v-if="changeSetStore.selectedChangeSet?.actions?.length"
+              v-if="!actionsStore.proposedActions?.length"
               class="p-4 italic !delay-0 !duration-0 hidden first:block"
             >
               <div class="pb-sm">No actions were chosen at this time.</div>
@@ -307,6 +287,7 @@ import {
   DropdownMenuItemObjectDef,
   ResizablePanel,
   themeClasses,
+  Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
@@ -318,11 +299,11 @@ import {
 } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { Action } from "@/api/sdf/dal/change_set";
 import ActionSprite from "@/components/ActionSprite.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { nilId } from "@/utils/nilId";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
+import { useActionsStore } from "@/store/actions.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -346,9 +327,11 @@ import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
+const actionsStore = useActionsStore();
 
 const fixesAreRunning = computed(
   () =>
@@ -394,10 +377,6 @@ onMounted(() => {
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-const removeAction = (action: Action) => {
-  changeSetStore.REMOVE_ACTION(action.id);
-};
 
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes

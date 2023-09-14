@@ -283,13 +283,14 @@ const computedClasses = computed(() => ({
     padding: 2px 2px;
     // border-radius: 8px;
     .vbutton__icon {
-      padding: 4px;
+      padding: 0px;
     }
     .vbutton__inner {
       gap: 2px;
+      padding: 0 0px;
     }
     .vbutton__text {
-      padding: 0 8px;
+      padding: 0 2px;
     }
   }
   &.--size-sm {

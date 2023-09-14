@@ -1,4 +1,5 @@
-import { ComponentId } from "@/store/components.store";
+// TODO: remove
+import { ActionInstance } from "@/store/actions.store";
 
 export enum ChangeSetStatus {
   Open = "Open",
@@ -8,34 +9,12 @@ export enum ChangeSetStatus {
   Failed = "Failed",
 }
 
-export type ActionPrototypeId = string;
-export interface ActionPrototype {
-  id: ActionPrototypeId;
-  name: string;
-  displayName: string;
-}
-
-export interface NewAction {
-  id: never;
-  prototypeId: ActionPrototypeId;
-  name: string;
-  componentId: ComponentId;
-  displayName: string;
-}
-
-export type ActionId = string;
-export interface Action {
-  id: ActionId;
-  name: string;
-  componentId: ComponentId;
-}
-
 export type ChangeSetId = string;
 export interface ChangeSet {
   id: ChangeSetId;
   pk: ChangeSetId;
   name: string;
-  actions: Action[];
+  actions: ActionInstance[];
   status: ChangeSetStatus;
 }
 

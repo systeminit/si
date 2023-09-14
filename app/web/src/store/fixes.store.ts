@@ -10,8 +10,6 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { AttributeValueId } from "./status.store";
 import { trackEvent } from "../utils/tracking";
 
-export type ActionPrototypeId = string;
-
 export type FixStatus =
   | "success"
   | "failure"

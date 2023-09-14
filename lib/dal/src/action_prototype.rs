@@ -49,7 +49,7 @@ impl ActionPrototypeView {
                     ActionKind::Create => "create".to_owned(),
                     ActionKind::Delete => "delete".to_owned(),
                     ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => " refresh".to_owned(),
+                    ActionKind::Refresh => "refresh".to_owned(),
                 },
                 ToOwned::to_owned,
             ),

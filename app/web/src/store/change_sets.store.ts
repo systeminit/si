@@ -5,14 +5,7 @@ import { watch } from "vue";
 import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
-import {
-  ActionId,
-  ChangeSet,
-  ChangeSetStatus,
-  ActionPrototype,
-  NewAction,
-} from "@/api/sdf/dal/change_set";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -56,29 +49,6 @@ export function useChangeSetsStore() {
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
         selectedWorkspacePk: () => workspacePk,
-        statusByComponentId() {
-          const componentsStore = useComponentsStore();
-
-          const all: Record<ComponentId, "success" | "failure"> = {};
-          for (const component of componentsStore.allComponents) {
-            if (component && !component.resource.data) {
-              all[component.id] = component.actions.filter(
-                (a: ActionPrototype) => a.name === "create",
-              ).length
-                ? "failure"
-                : "success";
-            } else if (component && component.deletedInfo) {
-              all[component.id] = component.actions.filter(
-                (a: ActionPrototype) => a.name === "delete",
-              ).length
-                ? "failure"
-                : "success";
-            } else {
-              all[component.id] = "success";
-            }
-          }
-          return all;
-        },
       },
       actions: {
         async setActiveChangeset(changeSetPk: string) {
@@ -116,29 +86,6 @@ export function useChangeSetsStore() {
                 };
               }
             },
-          });
-        },
-        async REMOVE_ACTION(id: ActionId) {
-          return new ApiRequest<null>({
-            method: "post",
-            url: "change_set/remove_action",
-            params: {
-              id,
-              visibility_change_set_pk: this.selectedChangeSet?.id,
-            },
-            onSuccess: () => {},
-          });
-        },
-        async ADD_ACTION(action: NewAction) {
-          return new ApiRequest<null>({
-            method: "post",
-            url: "change_set/add_action",
-            params: {
-              prototypeId: action.prototypeId,
-              componentId: action.componentId,
-              visibility_change_set_pk: this.selectedChangeSet?.id,
-            },
-            onSuccess: () => {},
           });
         },
         async CREATE_CHANGE_SET(name: string) {

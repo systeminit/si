@@ -99,85 +99,7 @@
                 size="md"
                 :popoverPosition="popoverPosition"
               >
-                <div
-                  class="bg-neutral-700 w-96 h-96 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
-                >
-                  <div
-                    class="bg-black uppercase font-bold text-md pt-sm pb-xs px-xs shrink-0"
-                  >
-                    <span>Actions</span>
-                  </div>
-                  <TabGroup as="template">
-                    <TabList
-                      class="bg-black flex px-2xs font-bold text-sm children:uppercase children:border-b children:border-transparent children:px-xs children:py-xs"
-                    >
-                      <Tab
-                        class="ui-selected:border-action-300 ui-selected:text-action-300"
-                      >
-                        Add new
-                      </Tab>
-                      <Tab
-                        class="ui-selected:border-action-300 ui-selected:text-action-300"
-                      >
-                        History
-                        <span
-                          class="rounded-2xl ml-xs mr-xs px-2.5 border border-success-500 ui-selected:bg-success-500 ui-selected:text-neutral-900 text-success-500"
-                        >
-                          {{ filteredBatches.length }}
-                        </span>
-                      </Tab>
-                    </TabList>
-                    <TabPanels as="template">
-                      <TabPanel class="overflow-auto grow">
-                        <div
-                          v-if="actions.length === 0"
-                          class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
-                        >
-                          <div class="w-64">
-                            <EmptyStateIcon name="no-changes" />
-                          </div>
-                          <span class="text-xl">No actions available</span>
-                        </div>
-                        <ul v-else class="flex flex-col p-xs gap-2xs">
-                          <li class="py-xs px-sm text-sm">
-                            Actions will be enacted upon click of the
-                            <b>APPLY CHANGES</b> button in the right rail.
-                          </li>
-                          <li
-                            v-for="action in actions"
-                            :key="action.id"
-                            class="bg-black"
-                          >
-                            <ActionSprite
-                              :action="action"
-                              @add="addAction(action)"
-                            />
-                          </li>
-                        </ul>
-                      </TabPanel>
-                      <TabPanel class="overflow-auto grow">
-                        <div
-                          v-if="filteredBatches.length === 0"
-                          class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
-                        >
-                          <div class="w-64">
-                            <EmptyStateIcon name="no-changes" />
-                          </div>
-                          <span class="text-xl">No Changes Applied</span>
-                        </div>
-                        <ul v-else class="flex flex-col gap-2xs p-xs">
-                          <li
-                            v-for="(fixBatch, index) in filteredBatches"
-                            :key="index"
-                            class="bg-black p-xs"
-                          >
-                            <ApplyHistoryItem :fixBatch="fixBatch" />
-                          </li>
-                        </ul>
-                      </TabPanel>
-                    </TabPanels>
-                  </TabGroup>
-                </div>
+                <ComponentActionsFlyover :componentId="componentId" />
               </StatusIconWithPopover>
 
               <div class="bg-neutral-500 w-[1px] h-4 mx-xs" />
@@ -188,62 +110,7 @@
                 size="md"
                 :popoverPosition="popoverPosition"
               >
-                <div
-                  class="bg-neutral-700 w-96 h-80 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
-                >
-                  <div
-                    class="bg-black uppercase font-bold text-md p-xs flex place-content-between items-center"
-                  >
-                    <span>Qualifications</span>
-                    <div class="flex gap-xs p-2xs">
-                      <span
-                        v-if="qualificationsFailed"
-                        class="flex items-center gap-0.5"
-                      >
-                        <StatusIndicatorIcon
-                          class="inline-block"
-                          type="qualification"
-                          status="failure"
-                          size="md"
-                        />
-                        {{ qualificationsFailed }}
-                      </span>
-                      <span
-                        v-if="qualificationsWarned"
-                        class="flex items-center gap-0.5"
-                      >
-                        <StatusIndicatorIcon
-                          class="inline-block"
-                          type="qualification"
-                          status="warning"
-                          size="md"
-                        />
-                        {{ qualificationsWarned }}
-                      </span>
-                      <span class="flex items-center gap-0.5">
-                        <StatusIndicatorIcon
-                          class="inline-block"
-                          type="qualification"
-                          status="success"
-                          size="md"
-                        />
-                        {{ qualificationsSucceeded }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="p-xs pb-0 overflow-auto">
-                    <div
-                      v-for="(qualification, index) in componentQualifications"
-                      :key="index"
-                      class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-xs"
-                    >
-                      <QualificationViewerSingle
-                        :qualification="qualification"
-                        :componentId="props.componentId"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <ComponentQualificationsFlyover :componentId="componentId" />
               </StatusIconWithPopover>
             </template>
 
@@ -275,21 +142,18 @@ import * as _ from "lodash-es";
 
 import clsx from "clsx";
 import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
-import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@headlessui/vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useFixesStore } from "@/store/fixes.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
-import QualificationViewerSingle from "@/components/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
+
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { NewAction, ActionPrototype } from "@/api/sdf/dal/change_set";
-import ActionSprite from "@/components/ActionSprite.vue";
-import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
+import { useActionsStore } from "@/store/actions.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 import { useComponentOutlineContext } from "./ComponentOutline.vue";
-import EmptyStateIcon from "../EmptyStateIcon.vue";
+import ComponentActionsFlyover from "./ComponentActionsFlyover.vue";
+import ComponentQualificationsFlyover from "./ComponentQualificationsFlyover.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -304,8 +168,8 @@ const isOpen = ref(true);
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
-const fixesStore = useFixesStore();
 const changeSetsStore = useChangeSetsStore();
+const actionsStore = useActionsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
@@ -315,36 +179,6 @@ const isDestroyed = computed(
   () =>
     component.value?.changeStatus === "deleted" &&
     !component.value.resource.data,
-);
-
-const actions = computed((): NewAction[] => {
-  if (!component.value) return [];
-  const componentId = component.value.id;
-  return _.map(component.value.actions, (a: ActionPrototype) => {
-    return {
-      prototypeId: a.id,
-      name: a.displayName !== "" ? a.displayName : a.name,
-      componentId,
-    } as NewAction;
-  });
-});
-
-// Note(paulo): temporary hack, until we implement a better UI for reconciliation
-const requiredActions = computed(() => {
-  if (component.value && !component.value.resource.data) {
-    return component.value.actions.filter(
-      (a: ActionPrototype) => a.name === "create",
-    );
-  } else if (component.value && component.value.deletedInfo) {
-    return component.value.actions.filter(
-      (a: ActionPrototype) => a.name === "delete",
-    );
-  } else {
-    return [];
-  }
-});
-const actionsStatus = computed(() =>
-  requiredActions.value.length ? "failure" : "success",
 );
 
 const childComponents = computed(
@@ -367,17 +201,9 @@ const qualificationStatus = computed(
     // qualificationStore.qualificationStatusWithRollupsByComponentId[
     qualificationsStore.qualificationStatusByComponentId[props.componentId],
 );
-const qualificationStats = computed(
-  () => qualificationsStore.qualificationStatsByComponentId[props.componentId],
-);
-const qualificationsFailed = computed(() =>
-  qualificationStats.value ? qualificationStats.value.failed : 0,
-);
-const qualificationsWarned = computed(() =>
-  qualificationStats.value ? qualificationStats.value.warned : 0,
-);
-const qualificationsSucceeded = computed(() =>
-  qualificationStats.value ? qualificationStats.value.succeeded : 0,
+
+const actionsStatus = computed(
+  () => actionsStore.actionStatusByComponentId[props.componentId],
 );
 
 watch(
@@ -389,24 +215,6 @@ watch(
     qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
   },
   { immediate: true },
-);
-
-const componentQualifications = computed(() =>
-  // TODO remove clone and use toSorted when it gets widely supported
-  _.clone(
-    qualificationsStore.qualificationsByComponentId[props.componentId],
-  )?.sort(({ result: a }, { result: b }) => {
-    // non successful qualifications come first
-    if (a?.status !== b?.status) {
-      if (a?.status !== "success") {
-        return -1;
-      }
-      if (b?.status !== "success") {
-        return 1;
-      }
-    }
-    return 0;
-  }),
 );
 
 function onClick(e: MouseEvent) {
@@ -464,19 +272,4 @@ watch(nodeRef, () => {
 onBeforeUnmount(() => {
   resizeObserver.disconnect();
 });
-
-const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
-
-const addAction = (action: NewAction) => {
-  changeSetsStore.ADD_ACTION(action);
-};
-
-const filteredBatches = computed(() =>
-  fixBatches.value
-    .map((batch) => ({
-      ...batch,
-      fixes: batch.fixes.filter((fix) => fix.componentId === props.componentId),
-    }))
-    .filter((batch) => batch.fixes.length),
-);
 </script>

@@ -2,8 +2,8 @@ use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    ActionId, ActionKind, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId, Func,
-    StandardModel, Visibility,
+    ActionId, ActionKind, ActionPrototypeId, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId,
+    Func, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct ActionView {
     pub id: ActionId,
+    pub action_prototype_id: ActionPrototypeId,
     pub name: String,
     pub component_id: ComponentId,
 }
@@ -49,11 +50,12 @@ pub async fn list_open_change_sets(
             }
             actions.push(ActionView {
                 id: *action.id(),
+                action_prototype_id: *prototype.id(),
                 name: display_name.unwrap_or_else(|| match prototype.kind() {
                     ActionKind::Create => "create".to_owned(),
                     ActionKind::Delete => "delete".to_owned(),
                     ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => " refresh".to_owned(),
+                    ActionKind::Refresh => "refresh".to_owned(),
                 }),
                 component_id: *action.component_id(),
             });

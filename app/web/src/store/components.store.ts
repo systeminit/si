@@ -18,11 +18,7 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import {
-  ComponentStats,
-  ChangeStatus,
-  ActionPrototype,
-} from "@/api/sdf/dal/change_set";
+import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -36,6 +32,7 @@ import {
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
+import { ActionPrototype, useActionsStore } from "./actions.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -301,6 +298,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const qualificationsStore = useQualificationsStore();
           const statusStore = useStatusStore();
 
+          const actionsStore = useActionsStore();
+
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.allComponents, (component) => {
@@ -309,7 +308,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
             const confirmationStatus =
-              changeSetsStore.statusByComponentId[componentId];
+              actionsStore.actionStatusByComponentId[componentId];
 
             const statusIcons: DiagramStatusIcon[] = _.compact([
               confirmationStatus

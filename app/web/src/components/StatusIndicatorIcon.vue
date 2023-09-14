@@ -34,6 +34,12 @@ const CONFIG = {
     error: { iconName: "alert-triangle", tone: "destructive" },
     unknown: { iconName: "help-circle", tone: "neutral" },
   },
+  action: {
+    create: { iconName: "resource-create", tone: "success" },
+    delete: { iconName: "resource-delete", tone: "destructive" },
+    refresh: { iconName: "resource-refresh", tone: "action" },
+    other: { iconName: "resource-question", tone: "action" },
+  },
 };
 
 export type IconType = keyof typeof CONFIG;
