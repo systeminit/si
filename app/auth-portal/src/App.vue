@@ -285,7 +285,7 @@ watch([checkAuthReq, route], () => {
     }
   }
 
-  if (["print-legal"].includes(currentRouteName)) {
+  if (["print-legal", "logout", "logout-success"].includes(currentRouteName)) {
     return;
   }
 
@@ -294,8 +294,6 @@ watch([checkAuthReq, route], () => {
     if (
       ![
         "login",
-        "logout",
-        "logout-success",
         "signup",
         "404",
         "legal",
