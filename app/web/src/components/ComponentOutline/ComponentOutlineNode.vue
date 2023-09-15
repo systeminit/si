@@ -92,35 +92,37 @@
           <div
             :class="clsx('flex items-center', isDestroyed ? 'mr-1' : 'mr-xs')"
           >
+            <!-- change status -->
+            <StatusIndicatorIcon type="change" :status="hasChanges" size="md" />
+
             <template v-if="!isDestroyed">
+              <!-- Component Status -->
               <StatusIconWithPopover
-                type="confirmation"
-                :status="actionsStatus"
+                type="qualification"
+                :status="qualificationStatus"
+                size="lg"
+                :popoverPosition="popoverPosition"
+              >
+                <ComponentQualificationsFlyover :componentId="componentId" />
+              </StatusIconWithPopover>
+
+              <!-- Resource Status -->
+              <StatusIndicatorIcon
+                type="resource"
+                :status="hasResource ? 'exists' : 'notexists'"
+                size="lg"
+              />
+
+              <!-- Actions Menu -->
+              <StatusIconWithPopover
+                type="actions"
+                :status="'show'"
                 size="md"
                 :popoverPosition="popoverPosition"
               >
                 <ComponentActionsFlyover :componentId="componentId" />
               </StatusIconWithPopover>
-
-              <div class="bg-neutral-500 w-[1px] h-4 mx-xs" />
-
-              <StatusIconWithPopover
-                type="qualification"
-                :status="qualificationStatus"
-                size="md"
-                :popoverPosition="popoverPosition"
-              >
-                <ComponentQualificationsFlyover :componentId="componentId" />
-              </StatusIconWithPopover>
             </template>
-
-            <!-- change status -->
-            <StatusIndicatorIcon
-              v-else
-              type="change"
-              :status="component.changeStatus"
-              size="md"
-            />
           </div>
         </div>
       </div>
@@ -147,7 +149,6 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useActionsStore } from "@/store/actions.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
@@ -169,11 +170,14 @@ const isOpen = ref(true);
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
-const actionsStore = useActionsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
 );
+
+const hasResource = computed(() => component.value?.resource.data !== null);
+
+const hasChanges = computed(() => component.value?.changeStatus);
 
 const isDestroyed = computed(
   () =>
@@ -197,13 +201,7 @@ const enableGroupToggle = computed(
 );
 
 const qualificationStatus = computed(
-  () =>
-    // qualificationStore.qualificationStatusWithRollupsByComponentId[
-    qualificationsStore.qualificationStatusByComponentId[props.componentId],
-);
-
-const actionsStatus = computed(
-  () => actionsStore.actionStatusByComponentId[props.componentId],
+  () => qualificationsStore.qualificationStatusByComponentId[props.componentId],
 );
 
 watch(

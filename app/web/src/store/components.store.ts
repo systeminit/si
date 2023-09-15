@@ -42,26 +42,27 @@ type SchemaId = string;
 type SchemaVariantId = string;
 
 type RawComponent = {
+  actions: ActionPrototype[];
+  changeStatus: ChangeStatus;
+  childNodeIds: ComponentNodeId[];
+  color: string;
+  createdInfo: ActorAndTimestamp;
+  deletedInfo?: ActorAndTimestamp;
+  displayName: string;
+  failingQualifications: number;
   id: ComponentId;
   nodeId: ComponentNodeId;
-  displayName: string;
+  nodeType: "component" | "configurationFrame" | "aggregationFrame";
   parentNodeId?: ComponentNodeId;
-  childNodeIds: ComponentNodeId[];
+  position: GridPoint;
+  resource: Resource;
+  schemaCategory: string;
+  schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
   schemaName: string;
-  schemaId: string;
   schemaVariantId: string;
   schemaVariantName: string;
-  schemaCategory: string;
-  color: string;
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
-  position: GridPoint;
-  changeStatus: ChangeStatus;
-  actions: ActionPrototype[];
-  resource: Resource; // TODO: probably want to move this to a different store and not load it all the time
   sockets: DiagramSocketDef[];
-  createdInfo: ActorAndTimestamp;
   updatedInfo: ActorAndTimestamp;
-  deletedInfo?: ActorAndTimestamp;
 };
 
 export type FullComponent = RawComponent & {
@@ -210,6 +211,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 Kubernetes: "logo-k8s",
               }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
+            const qualificationsStore = useQualificationsStore();
+            const qualifications =
+              qualificationsStore.qualificationStatsByComponentId[rc.id];
+
             return {
               ...rc,
               // convert "node" ids back to component ids, so we can use that in a few places
@@ -222,6 +227,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ),
               icon: typeIcon,
               isGroup: rc.nodeType !== "component",
+              failingQualifications: qualifications?.failed || 0,
             } as FullComponent;
           });
         },
@@ -309,7 +315,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               qualificationsStore.qualificationStatusByComponentId[componentId];
             const confirmationStatus =
               actionsStore.actionStatusByComponentId[componentId];
-
+            const qualifications =
+              qualificationsStore.qualificationStatsByComponentId[componentId];
             const statusIcons: DiagramStatusIcon[] = _.compact([
               confirmationStatus
                 ? confirmationStatusToIconMap[confirmationStatus]
@@ -332,6 +339,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
               statusIcons,
+              failingQualifications: qualifications?.failed || 0,
             };
           });
         },
