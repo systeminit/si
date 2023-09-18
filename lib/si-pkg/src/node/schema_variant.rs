@@ -117,6 +117,32 @@ impl NodeChild for SchemaVariantSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
+        let mut children = vec![
+            Box::new(SchemaVariantChild::ActionFuncs(self.action_funcs.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::Domain(self.domain.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::ResourceValue(
+                self.resource_value.clone(),
+            )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::LeafFunctions(
+                self.leaf_functions.clone(),
+            )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::Sockets(self.sockets.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::SiPropFuncs(self.si_prop_funcs.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::Secrets(self.secrets.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+        ];
+
+        if let Some(secret_definition) = self.secret_definition.clone() {
+            children.push(
+                Box::new(SchemaVariantChild::SecretDefinition(secret_definition))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            )
+        }
+
         NodeWithChildren::new(
             NodeKind::Tree,
             Self::NodeType::SchemaVariant(SchemaVariantNode {
@@ -131,22 +157,7 @@ impl NodeChild for SchemaVariantSpec {
                 unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,
             }),
-            vec![
-                Box::new(SchemaVariantChild::ActionFuncs(self.action_funcs.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::Domain(self.domain.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::ResourceValue(
-                    self.resource_value.clone(),
-                )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::LeafFunctions(
-                    self.leaf_functions.clone(),
-                )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::Sockets(self.sockets.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(SchemaVariantChild::SiPropFuncs(self.si_prop_funcs.clone()))
-                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-            ],
+            children,
         )
     }
 }

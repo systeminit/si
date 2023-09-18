@@ -1221,6 +1221,27 @@ struct CreatePropsSideEffects {
     validations: Vec<(PropId, ValidationSpec)>,
 }
 
+impl IntoIterator for CreatePropsSideEffects {
+    type Item = CreatePropsSideEffects;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![self].into_iter()
+    }
+}
+
+impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
+    fn extend<T: IntoIterator<Item = CreatePropsSideEffects>>(&mut self, iter: T) {
+        for element in iter {
+            self.attr_funcs.extend(element.attr_funcs);
+            self.default_values.extend(element.default_values);
+            self.map_key_funcs.extend(element.map_key_funcs);
+            self.validations.extend(element.validations);
+        }
+    }
+}
+
 async fn create_props(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
@@ -1305,8 +1326,8 @@ async fn import_schema_variant(
                             false,
                         ),
                         _ => unreachable!(
-                        "the as_installed_schema_variant method ensures we cannot hit this branch"
-                    ),
+                            "the as_installed_schema_variant method ensures we cannot hit this branch"
+                        ),
                     }
                 }
                 None => (
@@ -1394,40 +1415,88 @@ async fn import_schema_variant(
             }
         }
 
+        let mut side_effects = CreatePropsSideEffects::default();
+
         let domain_prop_id = schema_variant
             .find_prop(ctx, &["root", "domain"])
             .await?
             .id()
             .to_owned();
 
-        let domain_side_effects = create_props(
-            ctx,
-            change_set_pk,
-            variant_spec,
-            SchemaVariantSpecPropRoot::Domain,
-            domain_prop_id,
-            *schema_variant.id(),
-        )
-        .await?;
+        side_effects.extend(
+            create_props(
+                ctx,
+                change_set_pk,
+                variant_spec,
+                SchemaVariantSpecPropRoot::Domain,
+                domain_prop_id,
+                *schema_variant.id(),
+            )
+            .await?,
+        );
 
-        let rv_side_effects = match schema_variant
-            .find_prop(ctx, &["root", "resource_value"])
-            .await
-        {
-            Ok(resource_value_prop) => {
+        let secrets_prop_id = schema_variant
+            .find_prop(ctx, &["root", "secrets"])
+            .await?
+            .id()
+            .to_owned();
+
+        side_effects.extend(
+            create_props(
+                ctx,
+                change_set_pk,
+                variant_spec,
+                SchemaVariantSpecPropRoot::Secrets,
+                secrets_prop_id,
+                *schema_variant.id(),
+            )
+            .await?,
+        );
+
+        if !variant_spec.secret_definitions()?.is_empty() {
+            let secret_definition_prop_id = *Prop::new(
+                ctx,
+                "secret_definition",
+                PropKind::Object,
+                None,
+                *schema_variant.id(),
+                Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
+            )
+            .await?
+            .id();
+
+            side_effects.extend(
                 create_props(
                     ctx,
                     change_set_pk,
                     variant_spec,
-                    SchemaVariantSpecPropRoot::ResourceValue,
-                    *resource_value_prop.id(),
+                    SchemaVariantSpecPropRoot::SecretDefinition,
+                    secret_definition_prop_id,
                     *schema_variant.id(),
                 )
-                .await?
+                .await?,
+            );
+        }
+
+        match schema_variant
+            .find_prop(ctx, &["root", "resource_value"])
+            .await
+        {
+            Ok(resource_value_prop) => {
+                side_effects.extend(
+                    create_props(
+                        ctx,
+                        change_set_pk,
+                        variant_spec,
+                        SchemaVariantSpecPropRoot::ResourceValue,
+                        *resource_value_prop.id(),
+                        *schema_variant.id(),
+                    )
+                    .await?,
+                );
             }
             Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
                 warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
-                CreatePropsSideEffects::default()
             }
             Err(err) => Err(err)?,
         };
@@ -1478,11 +1547,7 @@ async fn import_schema_variant(
 
         // Default values must be set before attribute functions are configured so they don't
         // override the prototypes set there
-        for default_value_info in domain_side_effects
-            .default_values
-            .into_iter()
-            .chain(rv_side_effects.default_values.into_iter())
-        {
+        for default_value_info in side_effects.default_values {
             set_default_value(ctx, default_value_info).await?;
         }
 
@@ -1523,11 +1588,7 @@ async fn import_schema_variant(
             .await?;
         }
 
-        for attr_func in domain_side_effects
-            .attr_funcs
-            .into_iter()
-            .chain(rv_side_effects.attr_funcs.into_iter())
-        {
+        for attr_func in side_effects.attr_funcs {
             import_attr_func_for_prop(
                 ctx,
                 change_set_pk,
@@ -1539,11 +1600,7 @@ async fn import_schema_variant(
             .await?;
         }
 
-        for (key, map_key_func) in domain_side_effects
-            .map_key_funcs
-            .into_iter()
-            .chain(rv_side_effects.map_key_funcs.into_iter())
-        {
+        for (key, map_key_func) in side_effects.map_key_funcs {
             import_attr_func_for_prop(
                 ctx,
                 change_set_pk,
@@ -1555,11 +1612,7 @@ async fn import_schema_variant(
             .await?;
         }
 
-        for (prop_id, validation_spec) in domain_side_effects
-            .validations
-            .into_iter()
-            .chain(rv_side_effects.validations.into_iter())
-        {
+        for (prop_id, validation_spec) in side_effects.validations {
             import_prop_validation(
                 ctx,
                 change_set_pk,

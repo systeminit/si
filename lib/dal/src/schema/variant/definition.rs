@@ -396,6 +396,12 @@ pub struct SchemaVariantDefinitionJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]
     pub props: Vec<PropDefinition>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/secrets".
+    #[serde(default)]
+    pub secret_props: Vec<PropDefinition>,
+    /// The immediate child [`Props`](crate::Prop) underneath "/root/secretsDefinition".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secret_definition: Option<Vec<PropDefinition>>,
     /// The immediate child [`Props`](crate::Prop) underneath "/root/resource_value".
     #[serde(default)]
     pub resource_props: Vec<PropDefinition>,
@@ -447,6 +453,14 @@ impl SchemaVariantDefinitionJson {
         }
         for prop in &self.props {
             builder.domain_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        for prop in &self.secret_props {
+            builder.secret_prop(prop.to_spec(identity_func_unique_id)?);
+        }
+        if let Some(props) = &self.secret_definition {
+            for prop in props {
+                builder.secret_definition_prop(prop.to_spec(identity_func_unique_id)?);
+            }
         }
         for resource_prop in &self.resource_props {
             builder.resource_value_prop(resource_prop.to_spec(identity_func_unique_id)?);

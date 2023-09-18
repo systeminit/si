@@ -54,6 +54,8 @@ pub enum SchemaVariantSpecComponentType {
 pub enum SchemaVariantSpecPropRoot {
     Domain,
     ResourceValue,
+    SecretDefinition,
+    Secrets,
 }
 
 impl SchemaVariantSpecPropRoot {
@@ -61,6 +63,8 @@ impl SchemaVariantSpecPropRoot {
         match self {
             Self::Domain => &["root", "domain"],
             Self::ResourceValue => &["root", "resource_value"],
+            Self::SecretDefinition => &["root", "secret_definition"],
+            Self::Secrets => &["root", "secrets"],
         }
     }
 }
@@ -132,6 +136,12 @@ pub struct SchemaVariantSpec {
     #[builder(private, default = "Self::default_domain()")]
     pub domain: PropSpec,
 
+    #[builder(private, default = "Self::default_secrets()")]
+    pub secrets: PropSpec,
+
+    #[builder(private, default)]
+    pub secret_definition: Option<PropSpec>,
+
     #[builder(private, default = "Self::default_resource_value()")]
     pub resource_value: PropSpec,
 }
@@ -163,6 +173,44 @@ impl SchemaVariantSpecBuilder {
         }
     }
 
+    fn default_secrets() -> PropSpec {
+        PropSpec::Object {
+            name: "secrets".to_string(),
+            unique_id: None,
+            data: Some(PropSpecData {
+                name: "secrets".to_string(),
+                default_value: None,
+                func_unique_id: None,
+                inputs: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: Some(false),
+                validations: None,
+                doc_link: None,
+            }),
+            entries: vec![],
+        }
+    }
+
+    fn default_secret_definition() -> Option<PropSpec> {
+        Some(PropSpec::Object {
+            name: "secret_definition".to_string(),
+            unique_id: None,
+            data: Some(PropSpecData {
+                name: "secret_definition".to_string(),
+                default_value: None,
+                func_unique_id: None,
+                inputs: None,
+                widget_kind: Some(PropSpecWidgetKind::Header),
+                widget_options: None,
+                hidden: Some(false),
+                validations: None,
+                doc_link: None,
+            }),
+            entries: vec![],
+        })
+    }
+
     fn default_resource_value() -> PropSpec {
         PropSpec::Object {
             name: "value".to_string(),
@@ -186,6 +234,14 @@ impl SchemaVariantSpecBuilder {
         self.prop(SchemaVariantSpecPropRoot::Domain, item)
     }
 
+    pub fn secret_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+        self.prop(SchemaVariantSpecPropRoot::Secrets, item)
+    }
+
+    pub fn secret_definition_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+        self.prop(SchemaVariantSpecPropRoot::SecretDefinition, item)
+    }
+
     pub fn resource_value_prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
         self.prop(SchemaVariantSpecPropRoot::ResourceValue, item)
     }
@@ -204,11 +260,19 @@ impl SchemaVariantSpecBuilder {
             SchemaVariantSpecPropRoot::ResourceValue => self
                 .resource_value
                 .get_or_insert_with(Self::default_resource_value),
+            SchemaVariantSpecPropRoot::SecretDefinition => self
+                .secret_definition
+                .get_or_insert_with(Self::default_secret_definition)
+                .as_mut()
+                .expect("secret_definition was created with Some(...)"),
+            SchemaVariantSpecPropRoot::Secrets => {
+                self.secrets.get_or_insert_with(Self::default_secrets)
+            }
         } {
             PropSpec::Object { entries, .. } => entries.push(converted),
             invalid => unreachable!(
-                "domain prop is an object but was found to be: {:?}",
-                invalid
+                "{:?} prop under root should be Object but was found to be: {:?}",
+                root, invalid
             ),
         };
         self
