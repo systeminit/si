@@ -49,8 +49,11 @@ import {
   PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
 import { useComponentsStore } from "@/store/components.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
 import WidgetSecret from "./PropertyEditor/WidgetSecret.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 export interface PropertyEditorContext {
   schema: PropertyEditorSchema;
@@ -225,6 +228,13 @@ const determineOrder = (
   for (const childValueId of childValueIds) {
     const child = values.value.values[childValueId];
     if (child) {
+      if (!featureFlagsStore.SECRETS) {
+        const propName = schemasByPropId.value[child.propId]?.name;
+        if (propName === "secrets") {
+          continue;
+        }
+      }
+
       order.push(child);
     }
     const childValuesList = values.value.childValues[childValueId];

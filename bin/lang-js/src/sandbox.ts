@@ -60,6 +60,8 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     return {
         AssetBuilder: assetBuilder.AssetBuilder,
         PropBuilder: assetBuilder.PropBuilder,
+        SecretDefinitionBuilder: assetBuilder.SecretDefinitionBuilder,
+        SecretPropBuilder: assetBuilder.SecretPropBuilder,
         ValidationBuilder: assetBuilder.ValidationBuilder,
         ValueFromBuilder: assetBuilder.ValueFromBuilder,
         SocketDefinitionBuilder: assetBuilder.SocketDefinitionBuilder,

@@ -91,7 +91,8 @@ pub struct RootProp {
     pub domain_prop_id: PropId,
     /// The parent of the resource [`Props`](crate::Prop) corresponding to the real world _resource_.
     pub resource_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _resource_.
+    /// Contains the tree of [`Props`](crate::Prop) that are of secret value.
+    pub secrets_prop_id: PropId,
     /// All information needed to populate the _model_ should be derived from this tree.
     pub resource_value_prop_id: PropId,
     /// Contains the tree of [`Props`](crate::Prop) corresponding to code generation
@@ -131,6 +132,17 @@ impl SchemaVariant {
         )
         .await?;
 
+        let secrets_prop_id = *Prop::new(
+            ctx,
+            "secrets",
+            PropKind::Object,
+            None,
+            self.id,
+            Some(root_prop_id),
+        )
+        .await?
+        .id();
+
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id, self.id).await?;
         let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self).await?;
         let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
@@ -147,6 +159,7 @@ impl SchemaVariant {
             domain_prop_id: *domain_prop.id(),
             resource_value_prop_id,
             resource_prop_id,
+            secrets_prop_id,
             code_prop_id,
             qualification_prop_id,
             deleted_at_prop_id,

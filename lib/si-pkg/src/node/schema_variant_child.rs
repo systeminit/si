@@ -16,6 +16,8 @@ const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
 const VARIANT_CHILD_TYPE_RESOURCE_VALUE: &str = "resource_value";
 const VARIANT_CHILD_TYPE_SI_PROP_FUNCS: &str = "si_prop_funcs";
 const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
+const VARIANT_CHILD_TYPE_SECRET_DEFINITION: &str = "secret_definition";
+const VARIANT_CHILD_TYPE_SECRETS: &str = "secrets";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -27,6 +29,8 @@ pub enum SchemaVariantChild {
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
     ResourceValue(PropSpec),
+    SecretDefinition(PropSpec),
+    Secrets(PropSpec),
     SiPropFuncs(Vec<SiPropFuncSpec>),
     Sockets(Vec<SocketSpec>),
 }
@@ -38,6 +42,8 @@ pub enum SchemaVariantChildNode {
     Domain,
     LeafFunctions,
     ResourceValue,
+    SecretDefinition,
+    Secrets,
     SiPropFuncs,
     Sockets,
 }
@@ -49,6 +55,8 @@ impl SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
+            Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
+            Self::Secrets => VARIANT_CHILD_TYPE_SECRETS,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
             Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
         }
@@ -62,6 +70,8 @@ impl NameStr for SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
+            Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
+            Self::Secrets => VARIANT_CHILD_TYPE_SECRETS,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
             Self::Sockets => VARIANT_CHILD_TYPE_SOCKETS,
         }
@@ -89,6 +99,8 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_RESOURCE_VALUE => Self::ResourceValue,
             VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
             VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
+            VARIANT_CHILD_TYPE_SECRETS => Self::Secrets,
+            VARIANT_CHILD_TYPE_SECRET_DEFINITION => Self::SecretDefinition,
             invalid_kind => {
                 dbg!(format!("invalid schema variant child kind: {invalid_kind}"));
                 return Ok(None);
@@ -123,6 +135,26 @@ impl NodeChild for SchemaVariantChild {
                     NodeKind::Tree,
                     Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Domain),
                     vec![domain],
+                )
+            }
+            Self::Secrets(secrets) => {
+                let secrets =
+                    Box::new(secrets.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>;
+
+                NodeWithChildren::new(
+                    NodeKind::Tree,
+                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::Secrets),
+                    vec![secrets],
+                )
+            }
+            SchemaVariantChild::SecretDefinition(secret_definition) => {
+                let secret_definition = Box::new(secret_definition.clone())
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>;
+
+                NodeWithChildren::new(
+                    NodeKind::Tree,
+                    Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::SecretDefinition),
+                    vec![secret_definition],
                 )
             }
             Self::ResourceValue(resource_value) => {
