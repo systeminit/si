@@ -7,8 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActionPrototype, ActionPrototypeContext, ActionPrototypeView, ActorView,
-    Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
+    history_event, ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeView,
+    ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
     HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
 };
 
@@ -249,6 +249,10 @@ impl DiagramComponentView {
         .await?;
         let mut action_views: Vec<ActionPrototypeView> = Vec::new();
         for action_prototype in action_prototypes {
+            if *action_prototype.kind() == ActionKind::Refresh {
+                continue;
+            }
+
             let view = ActionPrototypeView::new(ctx, action_prototype).await?;
             action_views.push(view);
         }

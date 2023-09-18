@@ -494,7 +494,7 @@ async fn save_action_func_prototypes(
         {
             Some(mut existing_proto) => {
                 existing_proto.set_func_id(ctx, *func.id()).await?;
-                existing_proto.set_kind(ctx, kind).await?;
+                existing_proto.set_kind_checked(ctx, kind).await?;
                 existing_proto
             }
             None => ActionPrototype::new(ctx, *func.id(), kind, context).await?,

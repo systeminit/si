@@ -140,6 +140,7 @@
             ref="detachRef"
             v-model="editingFunc.associations"
             :disabled="changeSetsStore.headSelected"
+            :requestStatus="updateFuncReqStatus"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -289,6 +290,7 @@ const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
   "FETCH_FUNC_DETAILS",
   funcId,
 );
+const updateFuncReqStatus = funcStore.getRequestStatus("UPDATE_FUNC", funcId);
 const { selectedFuncId, selectedFuncSummary } = storeToRefs(funcStore);
 
 const funcArgumentsIdMap = computed(() =>
@@ -303,17 +305,15 @@ const funcArgumentsIdMap = computed(() =>
 provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
 const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
-const editingFunc = ref(storeFuncDetails.value);
+const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
 
 function resetEditingFunc() {
   editingFunc.value = _.cloneDeep(storeFuncDetails.value);
 }
 
 // when the func details finish loading, we copy into our local draft
-watch(loadFuncDetailsReqStatus, () => {
-  if (loadFuncDetailsReqStatus.value.isSuccess) {
-    resetEditingFunc();
-  }
+watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
+  resetEditingFunc();
 });
 
 const isRevertible = computed(() =>
@@ -321,8 +321,8 @@ const isRevertible = computed(() =>
 );
 
 const updateFunc = () => {
-  if (!funcId.value || !editingFunc.value) return;
-  funcStore.updateFuncMetadata(editingFunc.value);
+  if (!editingFunc.value) return;
+  funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
 const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
@@ -371,7 +371,7 @@ const detachFunc = async () => {
     const associations = detachRef.value.detachFunc();
     if (associations && editingFunc.value) {
       isDetaching.value = true;
-      await funcStore.updateFuncMetadata({
+      await funcStore.UPDATE_FUNC({
         ...editingFunc.value,
         associations,
       });

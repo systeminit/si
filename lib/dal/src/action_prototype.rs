@@ -75,6 +75,8 @@ pub enum ActionPrototypeError {
     FuncNotFound(FuncId, ActionPrototypeId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("this asset already has an action of this kind")]
+    MultipleOfSameKind,
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("not found with kind {0} for context {1:?}")]
@@ -221,6 +223,13 @@ impl ActionPrototype {
         kind: ActionKind,
         context: ActionPrototypeContext,
     ) -> ActionPrototypeResult<Self> {
+        let action_prototypes = Self::find_for_context(ctx, context).await?;
+        for prototype in action_prototypes {
+            if *prototype.kind() == kind && kind != ActionKind::Other {
+                return Err(ActionPrototypeError::MultipleOfSameKind);
+            }
+        }
+
         let row = ctx
             .txns()
             .await?
@@ -329,6 +338,27 @@ impl ActionPrototype {
     standard_model_accessor!(name, Option<String>, ActionPrototypeResult);
     standard_model_accessor!(func_id, Pk(FuncId), ActionPrototypeResult);
     standard_model_accessor!(kind, Enum(ActionKind), ActionPrototypeResult);
+
+    pub async fn set_kind_checked(
+        &mut self,
+        ctx: &DalContext,
+        kind: ActionKind,
+    ) -> ActionPrototypeResult<()> {
+        let action_prototypes = Self::find_for_context(
+            ctx,
+            ActionPrototypeContext {
+                schema_variant_id: self.schema_variant_id(),
+            },
+        )
+        .await?;
+        for prototype in action_prototypes {
+            if *prototype.kind() == kind && kind != ActionKind::Other && prototype.id() != self.id()
+            {
+                return Err(ActionPrototypeError::MultipleOfSameKind);
+            }
+        }
+        self.set_kind(ctx, kind).await
+    }
 
     pub fn context(&self) -> ActionPrototypeContext {
         let mut context = ActionPrototypeContext::new();
