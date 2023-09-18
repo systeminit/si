@@ -425,8 +425,8 @@ const attachExistingFunc = async () => {
       }
       if (updatedAssocations) {
         func.associations = updatedAssocations;
-        const result = await funcStore.updateFuncMetadata(func);
-        if (result.result.success && props.assetId) {
+        const response = await funcStore.UPDATE_FUNC(func);
+        if (response.result.success && props.assetId) {
           await reloadAssetAndRoute(props.assetId, func.id);
         }
       }

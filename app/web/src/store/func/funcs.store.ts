@@ -346,6 +346,20 @@ export const useFuncStore = () => {
               ...func,
               ...visibility,
             },
+            optimistic: () => {
+              const current = this.funcById(func.id);
+              this.funcDetailsById[func.id] = {
+                ...func,
+                code: current?.code ?? func.code,
+              };
+              return () => {
+                if (current) {
+                  this.funcDetailsById[func.id] = current;
+                } else {
+                  delete this.funcDetailsById[func.id];
+                }
+              };
+            },
             keyRequestStatusBy: func.id,
             onSuccess: (response) => {
               func.associations = response.associations;
@@ -494,19 +508,6 @@ export const useFuncStore = () => {
             LOCAL_STORAGE_FUNC_IDS_KEY,
             this.openFuncIds.join(","),
           );
-        },
-
-        async updateFuncMetadata(func: FuncWithDetails) {
-          const currentCode = this.funcById(func.id)?.code ?? "";
-          this.funcDetailsById[func.id] = {
-            ...func,
-            code: currentCode,
-          };
-
-          return this.UPDATE_FUNC({
-            ...func,
-            code: currentCode,
-          });
         },
 
         updateFuncCode(funcId: FuncId, code: string) {

@@ -1,15 +1,33 @@
 <template>
   <div class="p-3 flex flex-col gap-2">
+    <ErrorMessage :requestStatus="props.requestStatus" />
     <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Kind of Action:
+      <SiCheckBox
+        id="create"
+        v-model="isCreate"
+        title="This action creates a resource"
+        :disabled="disabled"
+        @update:model-value="setCreate"
+      />
     </h2>
-    <SelectMenu
-      v-model="selectedKind"
-      class="flex-auto"
-      :options="kindOptions"
-      :disabled="disabled"
-      @change="updateKind"
-    />
+    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <SiCheckBox
+        id="refresh"
+        v-model="isRefresh"
+        title="This action refreshes a resource"
+        :disabled="disabled"
+        @update:model-value="setRefresh"
+      />
+    </h2>
+    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      <SiCheckBox
+        id="delete"
+        v-model="isDelete"
+        title="This action deletes a resource"
+        :disabled="disabled"
+        @update:model-value="setDelete"
+      />
+    </h2>
     <template v-if="!schemaVariantId">
       <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
         Run on Assets of Type:
@@ -28,8 +46,11 @@
 <script lang="ts" setup>
 import { ref, watch, toRef } from "vue";
 import { storeToRefs } from "pinia";
-import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
+import { ErrorMessage } from "@si/vue-lib/design-system";
+import { Option } from "@/components/SelectMenu.vue";
 import { ActionAssociations, FuncAssociations } from "@/store/func/types";
+import SiCheckBox from "@/components/SiCheckBox.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { ActionKind } from "@/store/fixes.store";
@@ -42,28 +63,44 @@ const props = defineProps<{
   modelValue: ActionAssociations;
   schemaVariantId?: string;
   disabled?: boolean;
+  requestStatus: ApiRequestStatus;
 }>();
 
-const kindToOption = (kind: string): Option => ({
-  label: kind,
-  value: kind,
-});
+const isCreate = ref(false);
+const isDelete = ref(false);
+const isRefresh = ref(false);
+watch(
+  () => props.modelValue.kind,
+  () => {
+    isCreate.value = props.modelValue.kind === ActionKind.Create;
+    isDelete.value = props.modelValue.kind === ActionKind.Delete;
+    isRefresh.value = props.modelValue.kind === ActionKind.Refresh;
+  },
+  { immediate: true },
+);
 
-const generateKindOptions = () => {
-  const options: Option[] = [];
-  for (const kind of Object.values(ActionKind)) {
-    options.push(kindToOption(kind as ActionKind));
-  }
-  return options;
+const setCreate = () => {
+  if (!isCreate.value) return updateKind();
+  isDelete.value = false;
+  isRefresh.value = false;
+  updateKind();
+};
+
+const setRefresh = () => {
+  if (!isRefresh.value) return updateKind();
+  isCreate.value = false;
+  isDelete.value = false;
+  updateKind();
+};
+
+const setDelete = () => {
+  if (!isDelete.value) return updateKind();
+  isCreate.value = false;
+  isRefresh.value = false;
+  updateKind();
 };
 
 const modelValue = toRef(props, "modelValue");
-
-const kindOptions = generateKindOptions();
-
-const selectedKind = ref<Option>(
-  kindToOption(modelValue.value?.kind ?? "other"),
-);
 
 const selectedVariants = ref<Option[]>(
   toOptionValues(schemaVariantOptions.value, modelValue.value.schemaVariantIds),
@@ -91,11 +128,17 @@ const updateKind = () => {
 
 const getUpdatedAssocations = (
   schemaVariantIds: string[],
-): ActionAssociations => ({
-  kind: selectedKind.value.value as ActionKind,
-  schemaVariantIds,
-  type: "action",
-});
+): ActionAssociations => {
+  let kind = ActionKind.Other;
+  if (isCreate.value) kind = ActionKind.Create;
+  if (isDelete.value) kind = ActionKind.Delete;
+  if (isRefresh.value) kind = ActionKind.Refresh;
+  return {
+    kind,
+    schemaVariantIds,
+    type: "action",
+  };
+};
 
 const updateAssociations = () => {
   const associations = getUpdatedAssocations(
