@@ -49,19 +49,6 @@ async fn delete_single_component(
         }
     }
 
-    comp.delete_and_propagate(ctx).await?;
-
-    track(
-        posthog_client,
-        ctx,
-        original_uri,
-        "delete_component",
-        serde_json::json!({
-            "component_id": comp.id(),
-            "component_schema_name": comp_schema.name(),
-        }),
-    );
-
     if resource.payload.is_some() {
         for prototype in ActionPrototype::find_for_context_and_kind(
             ctx,
@@ -74,7 +61,6 @@ async fn delete_single_component(
         {
             let action = Action::new(ctx, *prototype.id(), *comp.id()).await?;
             let prototype = action.prototype(ctx).await?;
-            let component = action.component(ctx).await?;
 
             track(
                 posthog_client,
@@ -85,8 +71,8 @@ async fn delete_single_component(
                     "how": "/diagram/delete_component",
                     "prototype_id": prototype.id(),
                     "prototype_kind": prototype.kind(),
-                    "component_id": component.id(),
-                    "component_name": component.name(ctx).await?,
+                    "component_id": comp.id(),
+                    "component_name": comp.name(ctx).await?,
                     "change_set_pk": ctx.visibility().change_set_pk,
                 }),
             );
@@ -97,6 +83,19 @@ async fn delete_single_component(
             .ok_or(DiagramError::ChangeSetNotFound)?;
         change_set.sort_actions(ctx).await?;
     }
+
+    comp.delete_and_propagate(ctx).await?;
+
+    track(
+        posthog_client,
+        ctx,
+        original_uri,
+        "delete_component",
+        serde_json::json!({
+            "component_id": comp.id(),
+            "component_schema_name": comp_schema.name(),
+        }),
+    );
 
     WsEvent::change_set_written(ctx)
         .await?
