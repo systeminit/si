@@ -126,7 +126,7 @@ local_resource(
     "veritech",
     labels = ["backend"],
     cmd = "buck2 build {}".format(veritech_target),
-    serve_cmd = "buck2 run {}".format(veritech_target),
+    serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
     allow_parallel = True,
     resource_deps = [
         "nats",
