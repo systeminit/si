@@ -7,19 +7,19 @@ const CONFIG = {
   change: {
     added: { iconName: "plus-circle", tone: "success" },
     deleted: { iconName: "x", tone: "destructive" },
-    modified: { iconName: "tilde-circle", tone: "warning" },
-    unmodified: { iconName: "minus", tone: "neutral" },
+    modified: { iconName: "component-changes-large", tone: "warning" },
+    unmodified: { iconName: "empty-square", tone: "empty" },
   },
   confirmation: {
-    success: { iconName: "check-circle", tone: "success" },
-    failure: { iconName: "tools", tone: "destructive" },
+    success: { iconName: "component-qualified-large", tone: "success" },
+    failure: { iconName: "component-not-qualified-large", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
     _default: { iconName: "check-circle", tone: "success" },
   },
   qualification: {
-    success: { iconName: "check-circle", tone: "success" },
-    warning: { iconName: "exclamation-circle", tone: "warning" },
-    failure: { iconName: "x-circle", tone: "destructive" },
+    success: { iconName: "component-qualified-large", tone: "success" },
+    warning: { iconName: "component-not-qualified-large", tone: "warning" },
+    failure: { iconName: "component-not-qualified-large", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
   },
   fix: {
@@ -29,16 +29,17 @@ const CONFIG = {
     running: { iconName: "loader", tone: "action" },
   },
   resource: {
-    ok: { iconName: "check2", tone: "success" },
-    warning: { iconName: "exclamation-circle", tone: "warning" },
-    error: { iconName: "alert-triangle", tone: "destructive" },
-    unknown: { iconName: "help-circle", tone: "neutral" },
+    exists: { iconName: "resource-passed-large", tone: "success" },
+    notexists: { iconName: "empty-square", tone: "empty" },
   },
   action: {
     create: { iconName: "resource-create", tone: "success" },
     delete: { iconName: "resource-delete", tone: "destructive" },
     refresh: { iconName: "resource-refresh", tone: "action" },
     other: { iconName: "resource-question", tone: "action" },
+  },
+  actions: {
+    show: { iconName: "chevron--right", tone: "neutral" },
   },
 };
 
@@ -62,7 +63,8 @@ export type Status =
   | "modified"
   | "neverStarted"
   | "unmodified"
-  | "deleted";
+  | "deleted"
+  | "show";
 
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent

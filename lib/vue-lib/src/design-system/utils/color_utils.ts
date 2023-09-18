@@ -33,6 +33,10 @@ const TONES = {
     bgColorClass: tw`bg-neutral-500`,
     textColorClass: tw`text-neutral-500`,
   },
+  empty: {
+    bgColorClass: tw`border-transparent`,
+    textColorClass: tw`text-transparent border-transparent bg-transparent border-0 border-hidden opacity-0`,
+  },
   // maybe swap dark/light?
   shade: { bgColorClass: tw`bg-shade-0`, textColorClass: tw`text-shade-0` },
 };

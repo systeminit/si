@@ -118,6 +118,20 @@ import HexMinus from "./custom-icons/hex-minus.svg?raw";
 import HexRefresh from "./custom-icons/hex-refresh.svg?raw";
 import HexQuestion from "./custom-icons/hex-question.svg?raw";
 
+// Hex overlords!
+import HexResourcePassedSmall from "./custom-icons/hex-resource-passed-small.svg?raw";
+import HexResourcePassedLarge from "./custom-icons/hex-resource-passed-large.svg?raw";
+import HexResourceFailedSmall from "./custom-icons/hex-resource-failed-small.svg?raw";
+import HexResourceFailedLarge from "./custom-icons/hex-resource-failed-large.svg?raw";
+
+import HexCompPassedSmall from "./custom-icons/hex-comp-passed-small.svg?raw";
+import HexCompPassedLarge from "./custom-icons/hex-comp-passed-large.svg?raw";
+import HexCompFailedSmall from "./custom-icons/hex-comp-failed-small.svg?raw";
+import HexCompFailedLarge from "./custom-icons/hex-comp-failed-large.svg?raw";
+
+import CompChangesLarge from "./custom-icons/comp-changes-large.svg?raw";
+import CompChangesSmall from "./custom-icons/comp-changes-small.svg?raw";
+
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
@@ -140,6 +154,12 @@ export const ICONS = Object.freeze({
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   component: Cube,
+  "component-changes-large": CompChangesLarge,
+  "component-changes-small": CompChangesSmall,
+  "component-not-qualified-large": HexCompFailedLarge,
+  "component-not-qualified-small": HexCompFailedSmall,
+  "component-qualified-large": HexCompPassedLarge,
+  "component-qualified-small": HexCompPassedSmall,
   create: Create,
   "credit-card": CreditCard,
   diagram: Diagram,
@@ -182,6 +202,10 @@ export const ICONS = Object.freeze({
   resize: Resize,
   "resource-create": HexPlus,
   "resource-delete": HexMinus,
+  "resource-failed-large": HexResourceFailedLarge,
+  "resource-failed-small": HexResourceFailedSmall,
+  "resource-passed-large": HexResourcePassedLarge,
+  "resource-passed-small": HexResourcePassedSmall,
   "resource-question": HexQuestion,
   "resource-refresh": HexRefresh,
   save: Save,

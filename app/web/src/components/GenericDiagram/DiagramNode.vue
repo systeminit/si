@@ -149,9 +149,8 @@
 
       <!-- status icons -->
       <v-group
-        v-if="node.def.statusIcons?.length"
         :config="{
-          x: halfWidth - node.def.statusIcons.length * 36 + 18,
+          x: halfWidth - 2 * 36 + 18,
           y:
             nodeHeaderHeight +
             subtitleTextHeight +
@@ -159,30 +158,39 @@
             SOCKET_GAP * (leftSockets.length + rightSockets.length),
         }"
       >
-        <template
-          v-for="(statusIcon, i) in node.def.statusIcons"
-          :key="`status-icon-${i}`"
-        >
-          <DiagramIcon
-            :icon="statusIcon.icon"
-            :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
-            :size="20"
-            :x="i * 30"
-            :y="0"
-            origin="top-left"
-          />
+        <DiagramIcon
+          v-if="isModified"
+          :icon="'component-changes-small'"
+          :color="theme === 'dark' ? '#000' : '#FFF'"
+          :size="20"
+          :x="-25"
+          :y="10"
+          origin="center"
+        />
 
-          <v-line
-            v-if="i !== node.def.statusIcons.length - 1"
-            :config="{
-              points: [i * 36 + 24, 0, i * 36 + 24, 18],
-              stroke: '#777',
-              strokeWidth: 1,
-              listening: false,
-              opacity: 0.7,
-            }"
-          />
-        </template>
+        <DiagramIcon
+          :icon="
+            isQualified
+              ? 'component-qualified-large'
+              : 'component-not-qualified-small'
+          "
+          :color="theme === 'dark' ? '#000' : '#FFF'"
+          :size="25"
+          :bgcolor="'transparent'"
+          :x="5"
+          :y="10"
+          origin="center"
+        />
+
+        <DiagramIcon
+          :icon="hasResource ? 'resource-passed-small' : ''"
+          :color="theme === 'dark' ? '#000' : '#FFF'"
+          :size="25"
+          :bgcolor="'transparent'"
+          :x="35"
+          :y="10"
+          origin="center"
+        />
       </v-group>
 
       <!--  spinner overlay  -->
@@ -214,6 +222,17 @@
           :y="nodeBodyHeight / 2"
         />
       </v-group>
+      <DiagramIcon
+        v-if="isAdded"
+        :icon="'plus'"
+        :bgColor="diagramConfig?.toneColors?.success"
+        circleBg
+        :color="theme === 'dark' ? '#000' : '#FFF'"
+        :size="20"
+        :x="halfWidth - 5 - 10"
+        :y="nodeHeaderHeight / 2"
+        origin="center"
+      />
     </v-group>
 
     <!-- change status indicators -->
@@ -225,23 +244,6 @@
       :size="DELETED_X_SIZE"
       :x="0"
       :y="nodeHeight / 2"
-    />
-
-    <!-- added/modified indicator (smaller, bottom left) -->
-    <DiagramIcon
-      v-if="isAdded || isModified"
-      :icon="isAdded ? 'plus' : 'tilde'"
-      :bgColor="
-        isAdded
-          ? diagramConfig?.toneColors?.success
-          : diagramConfig?.toneColors?.warning
-      "
-      circleBg
-      :color="theme === 'dark' ? '#000' : '#FFF'"
-      :size="20"
-      :x="halfWidth - 5 - 10"
-      :y="nodeHeaderHeight / 2"
-      origin="center"
     />
   </v-group>
 </template>
@@ -255,6 +257,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { IconNames, useTheme } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -266,15 +269,15 @@ import {
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
 import {
-  SOCKET_GAP,
   CORNER_RADIUS,
-  NODE_PADDING_BOTTOM,
-  SOCKET_MARGIN_TOP,
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
-  SELECTION_COLOR,
-  SOCKET_SIZE,
+  NODE_PADDING_BOTTOM,
   NODE_WIDTH,
+  SELECTION_COLOR,
+  SOCKET_GAP,
+  SOCKET_MARGIN_TOP,
+  SOCKET_SIZE,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
@@ -312,6 +315,24 @@ const diagramConfig = useDiagramConfig();
 const isDeleted = computed(() => props.node.def.changeStatus === "deleted");
 const isModified = computed(() => props.node.def.changeStatus === "modified");
 const isAdded = computed(() => props.node.def.changeStatus === "added");
+
+const hasResource = computed(() => {
+  if (!props.node) return false;
+  const component =
+    useComponentsStore().componentsById[props.node.def.componentId];
+  if (!component?.resource) return false;
+  return component?.resource.data !== null;
+});
+
+const isQualified = computed(() => {
+  if (!props.node) return false;
+  const component =
+    useComponentsStore().componentsById[props.node.def.componentId];
+  if (!component?.failingQualifications) {
+    return true;
+  }
+  return component?.failingQualifications === 0;
+});
 
 const DELETED_X_SIZE = 100;
 
