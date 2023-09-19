@@ -95,6 +95,10 @@ impl OrderingNodeWeight {
         Ok(new_ordering_weight)
     }
 
+    pub fn node_hash(&self) -> ContentHash {
+        self.content_hash()
+    }
+
     pub fn order(&self) -> &Vec<Ulid> {
         &self.order
     }
@@ -152,10 +156,17 @@ impl OrderingNodeWeight {
 
 impl std::fmt::Debug for OrderingNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("NodeWeight")
+        f.debug_struct("OrderingNodeWeight")
             .field("id", &self.id.to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("order", &self.order)
+            .field(
+                "order",
+                &self
+                    .order
+                    .iter()
+                    .map(|id| id.to_string())
+                    .collect::<Vec<String>>(),
+            )
             .field("content_hash", &self.content_hash)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
