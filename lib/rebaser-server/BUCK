@@ -6,6 +6,7 @@ rust_library(
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/nats-subscriber:nats-subscriber",
+        "//lib/rebaser-core:rebaser-core",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-rabbitmq:si-rabbitmq",
@@ -34,6 +35,8 @@ rust_test(
     deps = [
         "//lib/dal:dal",
         "//lib/dal-test:dal-test",
+        "//lib/rebaser-client:rebaser-client",
+        "//lib/rebaser-server:rebaser-server",
         "//lib/si-pkg:si-pkg",
         "//lib/si-rabbitmq:si-rabbitmq",
         "//lib/si-test-macros:si-test-macros",

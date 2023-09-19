@@ -3897,7 +3897,6 @@ dependencies = [
 name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
- "log",
  "rebaser-core",
  "remain",
  "serde",
@@ -3913,11 +3912,7 @@ dependencies = [
 name = "rebaser-core"
 version = "0.1.0"
 dependencies = [
- "pretty_assertions_sorted",
- "rebaser-client",
- "rebaser-server",
  "serde",
- "tokio",
  "ulid",
 ]
 
@@ -3932,6 +3927,7 @@ dependencies = [
  "futures",
  "nats-subscriber",
  "pretty_assertions_sorted",
+ "rebaser-client",
  "rebaser-core",
  "remain",
  "serde",
