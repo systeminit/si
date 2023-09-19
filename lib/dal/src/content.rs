@@ -4,3 +4,5 @@
 pub mod hash;
 pub mod pair;
 pub mod store;
+
+pub use store::Store;

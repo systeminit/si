@@ -4,52 +4,44 @@ use ulid::Ulid;
 
 use crate::{
     change_set_pointer::ChangeSetPointer,
+    content::hash::ContentHash,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
         node_weight::{NodeWeightError, NodeWeightResult},
         vector_clock::VectorClock,
     },
-    ContentHash,
+    PropKind,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ContentNodeWeight {
-    /// The stable local ID of the object in question. Mainly used by external things like
-    /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
-    /// internal implementation detail, and the content ID wrapped by the
-    /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
-    /// example, the name, or type of a [`Prop`].)
+pub struct PropNodeWeight {
     id: Ulid,
-    /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
-    /// should be trying to receive updates.
     lineage_id: LineageId,
-    /// What type of thing is this node representing, and what is the content hash used to
-    /// retrieve the data for this specific node.
     content_address: ContentAddress,
-    /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
-    /// starting with this node as the root. Mainly useful in quickly determining "has
-    /// something changed anywhere in this (sub)graph".
     merkle_tree_hash: ContentHash,
-    /// The first time a [`ChangeSetPointer`] has "seen" this content. This is useful for determining
-    /// whether the absence of this content on one side or the other of a rebase/merge is because
-    /// the content is new, or because one side deleted it.
+    kind: PropKind,
+    name: String,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
 }
 
-impl ContentNodeWeight {
+impl PropNodeWeight {
     pub fn new(
         change_set: &ChangeSetPointer,
         id: Ulid,
         content_address: ContentAddress,
+        kind: PropKind,
+        name: String,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
             lineage_id: change_set.generate_ulid()?,
             content_address,
             merkle_tree_hash: ContentHash::default(),
+            kind,
+            name,
             vector_clock_first_seen: VectorClock::new(change_set)?,
             vector_clock_recently_seen: VectorClock::new(change_set)?,
             vector_clock_write: VectorClock::new(change_set)?,
@@ -109,26 +101,73 @@ impl ContentNodeWeight {
         self.merkle_tree_hash
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
             ContentAddress::AttributePrototype(_) => {
-                ContentAddress::AttributePrototype(content_hash)
-            }
-            ContentAddress::AttributeValue(_) => ContentAddress::AttributeValue(content_hash),
-            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
-            ContentAddress::ExternalProvider(_) => ContentAddress::ExternalProvider(content_hash),
-            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
-            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::InternalProvider(_) => ContentAddress::InternalProvider(content_hash),
-            ContentAddress::Prop(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "AttributePrototype".to_string(),
                     "Prop".to_string(),
-                    "Content".to_string(),
                 ))
             }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
-            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
+            ContentAddress::AttributeValue(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "AttributeValue".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::Component(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Component".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::ExternalProvider(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "ExternalProvider".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::Func(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Func".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::FuncArg(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "FuncArc".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::InternalProvider(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "InternalProvider".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),
+            ContentAddress::Root => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Root".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::Schema(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Schema".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
+            ContentAddress::SchemaVariant(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "SchemaVariant".to_string(),
+                    "Prop".to_string(),
+                ))
+            }
         };
 
         self.content_address = new_address;
@@ -147,7 +186,11 @@ impl ContentNodeWeight {
     }
 
     pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
+        ContentHash::from(&serde_json::json![{
+            "content_address": self.content_address,
+            "kind": self.kind,
+            "name": self.name,
+        }])
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
@@ -175,12 +218,14 @@ impl ContentNodeWeight {
     }
 }
 
-impl std::fmt::Debug for ContentNodeWeight {
+impl std::fmt::Debug for PropNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("ContentNodeWeight")
-            .field("id", &self.id.to_string())
+        f.debug_struct("PropNodeWeight")
+            .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_address", &self.content_address)
+            .field("kind", &self.kind)
+            .field("name", &self.name)
+            .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(
