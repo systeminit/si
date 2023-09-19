@@ -5803,5 +5803,90 @@ mod test {
                 )
                 .expect("Unable to generate attribute value view"),
         );
+
+        let new_order = vec![port3_av_id, port1_av_id, port4_av_id, port2_av_id];
+        graph
+            .update_order(change_set, ports_av_id, new_order)
+            .expect("Unable to update order of ports attribute value's children");
+        assert_eq!(
+            serde_json::json![{
+                "domain": {
+                    "ports": [
+                        "Port 3",
+                        "Port 1",
+                        "Port 4",
+                        "Port 2",
+                    ]
+                }
+            }],
+            graph
+                .attribute_value_view(
+                    &content_store,
+                    graph
+                        .get_node_index_by_id(root_av_id)
+                        .expect("Unable to get NodeIndex")
+                )
+                .expect("Unable to generate attribute value view"),
+        );
+
+        let port5_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (port5_av_content_hash, _) = content_store
+            .add(serde_json::json!("Port 5"))
+            .expect("Unable to add to content store");
+        let port5_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    port5_av_id,
+                    ContentAddress::AttributeValue(port5_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add port 5 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(ports_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))
+                    .expect("Unable to create EdgeWeight"),
+                port5_av_node_index,
+            )
+            .expect("Unable to add ports av -> port 5 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(port5_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(port_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add port 5 av -> port prop edge");
+
+        assert_eq!(
+            serde_json::json![{
+                "domain": {
+                    "ports": [
+                        "Port 3",
+                        "Port 1",
+                        "Port 4",
+                        "Port 2",
+                        "Port 5",
+                    ]
+                }
+            }],
+            graph
+                .attribute_value_view(
+                    &content_store,
+                    graph
+                        .get_node_index_by_id(root_av_id)
+                        .expect("Unable to get NodeIndex")
+                )
+                .expect("Unable to generate attribute value view"),
+        );
     }
 }
