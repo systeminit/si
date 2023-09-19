@@ -22,6 +22,8 @@ pub struct Model {
     pub latest_hash: String,
     pub latest_hash_created_at: DateTimeWithTimeZone,
     pub created_at: DateTimeWithTimeZone,
+    pub rejected_at: Option<DateTimeWithTimeZone>,
+    pub rejected_by_display_name: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -55,6 +57,7 @@ impl TryFrom<String> for ModuleId {
         ))
     }
 }
+
 impl sea_orm::TryFromU64 for ModuleId {
     fn try_from_u64(_: u64) -> Result<Self, sea_orm::DbErr> {
         Err(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::Internal(

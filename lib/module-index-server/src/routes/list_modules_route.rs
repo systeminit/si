@@ -66,6 +66,8 @@ pub async fn list_module_route(
         return Ok(Json(ListModulesResponse { modules: vec![] }));
     }
 
+    let query = query.filter(si_module::Column::RejectedAt.is_null());
+
     // filters
     let query = if let Some(name_filter) = request.name {
         query.filter(si_module::Column::Name.contains(&name_filter))

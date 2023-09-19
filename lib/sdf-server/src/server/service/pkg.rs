@@ -24,6 +24,7 @@ pub mod export_pkg;
 pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
+mod reject_pkg;
 pub mod remote_module_spec;
 
 #[remain::sorted]
@@ -192,4 +193,5 @@ pub fn routes() -> Router<AppState> {
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
         )
+        .route("/reject_pkg", post(reject_pkg::reject_pkg))
 }
