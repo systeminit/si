@@ -15,4 +15,3 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }
-log = "0.4.20"
