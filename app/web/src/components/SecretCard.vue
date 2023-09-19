@@ -3,7 +3,7 @@
     :class="
       clsx(
         themeContainerClasses,
-        'flex flex-col border-b px-sm py-xs gap-1 cursor-pointer h-[84px] flex-none',
+        'flex flex-col border-b px-sm py-xs gap-1 cursor-pointer h-[90px] flex-none',
         'hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded',
         // 'border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0 hover:bg-action-100 hover:dark:bg-action-800', // dark/light mode classes
         'border-neutral-500 text-shade-0 hover:bg-action-800', // force dark mode classes
@@ -33,16 +33,13 @@
         {{ secret.createdInfo.actor.label }}
       </template>
     </div>
-    <div
-      
-      class="grow flex flex-row items-center"
-    >
-    <div class="italic text-xs line-clamp-2 text-neutral-400">
-    <template v-if="secret.description">
-      <span class="font-bold">Description:</span> {{ secret.description }}
-    </template>
-    <template v-else>No Description Available</template>
-  </div>
+    <div class="grow flex flex-row items-center">
+      <div class="italic text-xs line-clamp-2 text-neutral-400">
+        <template v-if="secret.description">
+          <span class="font-bold">Description:</span> {{ secret.description }}
+        </template>
+        <template v-else>No Description Available</template>
+      </div>
     </div>
   </div>
 </template>

@@ -1,17 +1,35 @@
 <template>
   <div
     v-if="featureFlagsStore.SECRETS"
-    class="flex flex-col items-center pt-sm pl-lg pr-md"
+    class="flex flex-col items-center pt-sm pl-lg pr-sm"
   >
     <div class="text-sm font-medium w-full pb-xs">Secret: {{ name }}</div>
     <div class="flex flex-row items-center w-full">
       <div class="flex flex-col grow">
-        <VButton label="Select Secret" @click="(e) => popoverRef.open(e)" />
+        <div
+          v-if="value"
+          :class="
+            clsx(
+              'sm:text-sm font-bold grow p-xs block',
+              'border rounded-sm shadow-sm focus:outline-none',
+              'bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 border-neutral-600 cursor-pointer',
+              'hover:border-action-500 hover:outline-action-500 hover:outline -outline-offset-1',
+            )
+          "
+          @click="(e) => popoverRef.open(e)"
+        >
+          {{ value }}
+        </div>
+        <VButton
+          v-else
+          label="Select Secret"
+          @click="(e) => popoverRef.open(e)"
+        />
         <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-          <SecretsList definitionId="Mocks" />
+          <SecretsList definitionId="Mocks" @select="setField" />
         </Popover>
       </div>
-      <div class="pl-sm">
+      <div v-if="value" class="pl-xs">
         <SiButtonIcon
           v-if="!disabled"
           tooltipText="Unset field"
@@ -32,6 +50,7 @@
 <script lang="ts" setup>
 import { computed, ref, toRefs } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
 import SecretsList from "@/components/SecretsList.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
@@ -40,6 +59,7 @@ import {
   PropertyPath,
   UpdatedProperty,
 } from "@/api/sdf/dal/property_editor";
+import { Secret } from "@/store/secrets.store";
 import SiButtonIcon from "../SiButtonIcon.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
@@ -78,6 +98,15 @@ const emit = defineEmits<{
 const unsetField = () => {
   emit("updatedProperty", {
     value: null,
+    propId: propId.value,
+    valueId: valueId.value,
+  });
+};
+
+const setField = (secret: Secret) => {
+  popoverRef.value.close();
+  emit("updatedProperty", {
+    value: secret,
     propId: propId.value,
     valueId: valueId.value,
   });

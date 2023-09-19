@@ -57,6 +57,7 @@
     <AddSecretForm
       v-if="addingSecret"
       :definitionId="definitionId"
+      @save="selectSecret"
       @cancel="cancelAddSecretForm"
     />
     <div v-else class="overflow-y-auto flex flex-col h-full">
@@ -70,6 +71,7 @@
           v-for="secret in secrets"
           :key="secret.id"
           :secret="secret"
+          @click="emit('select', secret)"
         />
       </template>
       <div v-else class="flex flex-row items-center grow">
@@ -98,7 +100,11 @@ import {
 
 import { ref, computed } from "vue";
 import clsx from "clsx";
-import { useSecretsStore, SecretDefinitionId } from "@/store/secrets.store";
+import {
+  useSecretsStore,
+  SecretDefinitionId,
+  Secret,
+} from "@/store/secrets.store";
 import SecretCard from "./SecretCard.vue";
 import AddSecretForm from "./AddSecretForm.vue";
 
@@ -123,4 +129,12 @@ const showAddSecretForm = () => {
 const cancelAddSecretForm = () => {
   addingSecret.value = false;
 };
+
+const selectSecret = (secret: Secret) => {
+  emit("select", secret);
+};
+
+const emit = defineEmits<{
+  (e: "select", v: Secret): void;
+}>();
 </script>
