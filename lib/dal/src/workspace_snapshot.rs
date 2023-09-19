@@ -23,6 +23,7 @@
 // )]
 
 pub mod conflict;
+pub mod content_address;
 pub mod edge_weight;
 pub mod graph;
 pub mod lamport_clock;
@@ -160,12 +161,9 @@ impl WorkspaceSnapshot {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        Ok(self.working_copy()?.add_edge(
-            change_set,
-            from_node_index,
-            edge_weight,
-            to_node_index,
-        )?)
+        Ok(self
+            .working_copy()?
+            .add_edge(from_node_index, edge_weight, to_node_index)?)
     }
 
     pub async fn detect_conflicts_and_updates(
