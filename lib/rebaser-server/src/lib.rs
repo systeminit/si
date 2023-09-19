@@ -22,9 +22,6 @@
     clippy::missing_panics_doc
 )]
 
-mod config;
-mod server;
-
 pub use config::detect_and_configure_development;
 pub use config::Config;
 pub use config::ConfigBuilder;
@@ -33,3 +30,6 @@ pub use config::ConfigFile;
 pub use server::Server;
 pub use si_settings::StandardConfig;
 pub use si_settings::StandardConfigFile;
+
+mod config;
+mod server;
