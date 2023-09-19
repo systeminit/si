@@ -46,7 +46,7 @@ impl WriteBytes for ChangeSetNode {
 }
 
 impl ReadBytes for ChangeSetNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -61,11 +61,11 @@ impl ReadBytes for ChangeSetNode {
         let status_str = read_key_value_line(reader, KEY_STATUS)?;
         let status = ChangeSetSpecStatus::from_str(&status_str).map_err(GraphError::parse)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             name,
             based_on_change_set,
             status,
-        })
+        }))
     }
 }
 

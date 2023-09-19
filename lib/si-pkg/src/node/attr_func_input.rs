@@ -93,7 +93,7 @@ impl WriteBytes for AttrFuncInputNode {
 }
 
 impl ReadBytes for AttrFuncInputNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -102,7 +102,7 @@ impl ReadBytes for AttrFuncInputNode {
 
         let kind = AttrFuncInputSpecKind::from_str(&kind_str).map_err(GraphError::parse)?;
 
-        Ok(match kind {
+        Ok(Some(match kind {
             AttrFuncInputSpecKind::Prop => {
                 let prop_path = read_key_value_line(reader, KEY_PROP_PATH_STR)?;
                 let (unique_id, deleted) = read_common_fields(reader)?;
@@ -133,7 +133,7 @@ impl ReadBytes for AttrFuncInputNode {
                     deleted,
                 }
             }
-        })
+        }))
     }
 }
 

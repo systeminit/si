@@ -47,7 +47,7 @@ impl WriteBytes for LeafFunctionNode {
 }
 
 impl ReadBytes for LeafFunctionNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -65,7 +65,7 @@ impl ReadBytes for LeafFunctionNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             func_unique_id,
             leaf_kind,
             input_code,
@@ -74,7 +74,7 @@ impl ReadBytes for LeafFunctionNode {
             input_resource,
             unique_id,
             deleted,
-        })
+        }))
     }
 }
 

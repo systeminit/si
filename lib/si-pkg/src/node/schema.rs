@@ -60,7 +60,7 @@ impl WriteBytes for SchemaNode {
 }
 
 impl ReadBytes for SchemaNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -88,12 +88,12 @@ impl ReadBytes for SchemaNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             name,
             data,
             unique_id,
             deleted,
-        })
+        }))
     }
 }
 

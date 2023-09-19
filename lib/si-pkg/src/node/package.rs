@@ -60,7 +60,7 @@ impl WriteBytes for PackageNode {
 }
 
 impl ReadBytes for PackageNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -79,7 +79,7 @@ impl ReadBytes for PackageNode {
         let default_change_set = read_key_value_line_opt(reader, KEY_DEFAULT_CHANGE_SET)?;
         let workspace_pk = read_key_value_line_opt(reader, KEY_WORKSPACE_PK_STR)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             kind,
             name,
             version,
@@ -88,7 +88,7 @@ impl ReadBytes for PackageNode {
             created_by,
             default_change_set,
             workspace_pk,
-        })
+        }))
     }
 }
 

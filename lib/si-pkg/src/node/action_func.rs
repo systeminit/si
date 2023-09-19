@@ -40,7 +40,7 @@ impl WriteBytes for ActionFuncNode {
 }
 
 impl ReadBytes for ActionFuncNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -51,12 +51,12 @@ impl ReadBytes for ActionFuncNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             kind,
             func_unique_id,
             unique_id,
             deleted,
-        })
+        }))
     }
 }
 

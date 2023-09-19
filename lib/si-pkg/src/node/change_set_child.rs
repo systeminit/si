@@ -55,7 +55,7 @@ impl WriteBytes for ChangeSetChildNode {
 }
 
 impl ReadBytes for ChangeSetChildNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -65,13 +65,14 @@ impl ReadBytes for ChangeSetChildNode {
             CHANGE_SET_CHILD_TYPE_FUNCS => Self::Funcs,
             CHANGE_SET_CHILD_TYPE_SCHEMAS => Self::Schemas,
             invalid_kind => {
-                return Err(GraphError::parse_custom(format!(
+                dbg!(format!(
                     "invalid change set child node kind: {invalid_kind}"
-                )))
+                ));
+                return Ok(None);
             }
         };
 
-        Ok(node)
+        Ok(Some(node))
     }
 }
 

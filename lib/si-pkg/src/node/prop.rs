@@ -170,7 +170,7 @@ impl WriteBytes for PropNode {
 }
 
 impl ReadBytes for PropNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -265,7 +265,7 @@ impl ReadBytes for PropNode {
             }
         };
 
-        Ok(node)
+        Ok(Some(node))
     }
 }
 

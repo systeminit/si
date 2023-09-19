@@ -61,7 +61,7 @@ impl WriteBytes for CategoryNode {
 }
 
 impl ReadBytes for CategoryNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -72,13 +72,14 @@ impl ReadBytes for CategoryNode {
             CATEGORY_TYPE_FUNCS => Self::Funcs,
             CATEGORY_TYPE_SCHEMAS => Self::Schemas,
             invalid_kind => {
-                return Err(GraphError::parse_custom(format!(
+                dbg!(format!(
                     "invalid package category node kind: {invalid_kind}"
-                )))
+                ));
+                return Ok(None);
             }
         };
 
-        Ok(node)
+        Ok(Some(node))
     }
 }
 

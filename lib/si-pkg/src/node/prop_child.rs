@@ -66,7 +66,7 @@ impl WriteBytes for PropChildNode {
 }
 
 impl ReadBytes for PropChildNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -78,13 +78,12 @@ impl ReadBytes for PropChildNode {
             PROP_CHILD_TYPE_PROPS => Self::Props,
             PROP_CHILD_TYPE_VALIDATIONS => Self::Validations,
             invalid_kind => {
-                return Err(GraphError::parse_custom(format!(
-                    "invalid schema variant child kind: {invalid_kind}"
-                )))
+                dbg!(format!("invalid schema variant child kind: {invalid_kind}"));
+                return Ok(None);
             }
         };
 
-        Ok(node)
+        Ok(Some(node))
     }
 }
 
