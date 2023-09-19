@@ -121,14 +121,20 @@ const onTabClose = (funcId: string) => {
   }
 };
 
-watch(
-  [() => assetStore.selectedAssetId, () => assetStore.selectedFuncId],
-  () => {
-    if (assetStore.selectedAssetId && !assetStore.selectedFuncId) {
-      tabGroupRef.value?.selectTab("asset");
-    } else if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
-      tabGroupRef.value?.selectTab(assetStore.selectedFuncId);
-    }
-  },
+const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
+  "FETCH_FUNC_DETAILS",
+  assetStore.urlSelectedFuncId,
 );
+
+watch([() => assetStore.selectedFuncId, loadFuncDetailsReqStatus], () => {
+  if (
+    assetStore.selectedAssetId &&
+    !assetStore.selectedFuncId &&
+    loadFuncDetailsReqStatus.value.isSuccess
+  ) {
+    tabGroupRef.value?.selectTab("asset");
+  } else if (assetStore.selectedAssetId && assetStore.selectedFuncId) {
+    tabGroupRef.value?.selectTab(assetStore.selectedFuncId);
+  }
+});
 </script>
