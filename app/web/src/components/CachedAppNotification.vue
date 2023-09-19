@@ -3,8 +3,8 @@
     <Stack>
       <RichText>
         <p>
-          A new version of this web app has been released! To get the latest
-          features and ensure compatibility, please refresh your browser.
+          Looks like you might be running a cached version of this web app. For
+          new features and to ensure compatibility, please refresh your browser.
         </p>
       </RichText>
       <VButton icon="refresh" @click="reloadBrowser">Refresh</VButton>
@@ -18,7 +18,7 @@ import { Modal, RichText, Stack, VButton } from "@si/vue-lib/design-system";
 import axios from "axios";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
-const APP_FILENAME_REGEX = /\/?assets\/app-([0-9a-z]+).js/;
+const APP_FILENAME_REGEX = /\/?assets\/index-([0-9a-z]+).js/;
 
 const runningHash = getRunningHash();
 
@@ -52,7 +52,7 @@ function reloadBrowser() {
 function getRunningHash() {
   if (import.meta.env.SSR) return "";
   // look for script tag of our main entrypoint that includes a hash
-  const scriptEls = document.querySelectorAll("script[src^='/assets/app-']");
+  const scriptEls = document.querySelectorAll("script[src^='/assets/index-']");
   for (const scriptEl of scriptEls) {
     const matches = scriptEl.getAttribute("src")?.match(APP_FILENAME_REGEX);
     if (matches) return matches[1];
@@ -67,7 +67,7 @@ onMounted(() => {
   if (import.meta.env.SSR) return;
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   check();
-  intervalId = window.setInterval(check, 2 * 60 * 1000);
+  intervalId = window.setInterval(check, 30 * 1000);
 });
 onBeforeUnmount(stopInterval);
 </script>
