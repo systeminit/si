@@ -16,10 +16,23 @@ pub enum EdgeWeightError {
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[remain::sorted]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum EdgeWeightKind {
+    /// An argument to a function defined by an [`AttributePrototype`][crate::AttributePrototype],
+    /// including the name of the argument to the function.
+    Argument(String),
+    /// An [`AttributeValue`] "contained" by another [`AttributeValue`], such as an entry in an
+    /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
+    /// in a map.
+    Contain(Option<String>),
+    /// Used when the target/destination of an edge is an [`InternalProvider`], or an
+    /// [`ExternalProvider`].
+    DataProvider,
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
+    Prop,
+    Prototype,
+    Proxy,
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules
     /// "use" functions, schemas, and eventually(?) components.
@@ -44,8 +57,8 @@ impl EdgeWeight {
         Ok(())
     }
 
-    pub fn kind(&self) -> EdgeWeightKind {
-        self.kind
+    pub fn kind(&self) -> &EdgeWeightKind {
+        &self.kind
     }
 
     pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
