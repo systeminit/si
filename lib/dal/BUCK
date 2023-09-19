@@ -73,6 +73,7 @@ rust_test(
     name = "test-integration",
     deps = [
         "//lib/dal-test:dal-test",
+        "//lib/rebaser-client:rebaser-client",
         "//lib/si-pkg:si-pkg",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:base64",

@@ -7,9 +7,3 @@ publish = false
 [dependencies]
 serde = { workspace = true }
 ulid = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true }
-rebaser-client = { path = "../../lib/rebaser-client" }
-rebaser-server = { path = "../../lib/rebaser-server" }
-pretty_assertions_sorted = { workspace = true }
