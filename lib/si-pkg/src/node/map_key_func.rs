@@ -32,17 +32,17 @@ impl WriteBytes for MapKeyFuncNode {
 }
 
 impl ReadBytes for MapKeyFuncNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
         let key = read_key_value_line(reader, KEY_KEY_STR)?;
         let func_unique_id = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             key,
             func_unique_id,
-        })
+        }))
     }
 }
 

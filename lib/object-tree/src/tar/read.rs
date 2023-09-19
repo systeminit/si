@@ -23,11 +23,14 @@ pub enum TarReadError {
     #[error("Node entry not found: {0:?}")]
     NodeNotFound(PathBuf),
     /// When failing to parse a node with entries from bytes
-    #[error("failed parse node with entries from bytes: {0}")]
+    #[error("failed to parse node with entries from bytes: {0}")]
     NodeWithEntriesParse(#[source] GraphError),
     /// When failing while reading a tree
     #[error("error when reading tree: {0}")]
     ReadTree(#[source] GraphError),
+    /// When the root node is not recognized as a valid node kind
+    #[error("could not read root node")]
+    RootNodeError,
     /// When the given byte sequence is not parsable as a UTF8 [`String`]
     #[error("Invalid string: {0}")]
     StringParse(#[from] FromUtf8Error),
@@ -63,7 +66,7 @@ impl<T> ObjectTree<T> {
         }
 
         let root_hash = get_root_ref(&mut tar_data)?;
-        let root_node = get_node(&mut tar_data, root_hash)?;
+        let root_node = get_node(&mut tar_data, root_hash)?.ok_or(TarReadError::RootNodeError)?;
 
         let mut stack: Vec<(HashedNodeWithEntries<N>, Option<NodeIndex>)> = vec![(root_node, None)];
 
@@ -85,8 +88,9 @@ impl<T> ObjectTree<T> {
             };
 
             for child_entry in child_entries.into_iter().rev() {
-                let child_node = get_node(&mut tar_data, child_entry.hash())?;
-                stack.push((child_node, Some(node_idx)));
+                if let Some(child_node) = get_node(&mut tar_data, child_entry.hash())? {
+                    stack.push((child_node, Some(node_idx)));
+                }
             }
         }
 
@@ -100,7 +104,7 @@ impl<T> ObjectTree<T> {
 fn get_node<N>(
     tar_data: &mut HashMap<PathBuf, Vec<u8>>,
     hash: Hash,
-) -> Result<HashedNodeWithEntries<N>, TarReadError>
+) -> Result<Option<HashedNodeWithEntries<N>>, TarReadError>
 where
     N: ReadBytes,
 {
@@ -109,13 +113,11 @@ where
         .get(&dst_path)
         .ok_or_else(|| TarReadError::NodeNotFound(dst_path))?;
 
-    let node_with_entries: NodeWithEntries<N> =
+    let node_with_entries: Option<NodeWithEntries<N>> =
         NodeWithEntries::from_bytes(buf.clone()).map_err(TarReadError::NodeWithEntriesParse)?;
 
-    Ok(HashedNodeWithEntries::from_node_with_entries_and_hash(
-        node_with_entries,
-        hash,
-    ))
+    Ok(node_with_entries
+        .map(|nwe| HashedNodeWithEntries::from_node_with_entries_and_hash(nwe, hash)))
 }
 
 fn get_root_ref(tar_data: &mut HashMap<PathBuf, Vec<u8>>) -> Result<Hash, TarReadError> {

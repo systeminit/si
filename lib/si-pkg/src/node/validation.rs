@@ -113,7 +113,7 @@ impl WriteBytes for ValidationNode {
 }
 
 impl ReadBytes for ValidationNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -166,7 +166,7 @@ impl ReadBytes for ValidationNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             kind,
             lower_bound,
             upper_bound,
@@ -176,7 +176,7 @@ impl ReadBytes for ValidationNode {
             func_unique_id,
             unique_id,
             deleted,
-        })
+        }))
     }
 }
 

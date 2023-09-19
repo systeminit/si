@@ -63,7 +63,7 @@ impl WriteBytes for SocketNode {
 }
 
 impl ReadBytes for SocketNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -98,11 +98,11 @@ impl ReadBytes for SocketNode {
 
         let unique_id = read_unique_id(reader)?;
 
-        Ok(Self {
+        Ok(Some(Self {
             name,
             data,
             unique_id,
-        })
+        }))
     }
 }
 

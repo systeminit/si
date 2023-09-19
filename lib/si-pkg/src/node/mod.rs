@@ -232,41 +232,46 @@ impl WriteBytes for PkgNode {
 }
 
 impl ReadBytes for PkgNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
         let node_kind_str = read_key_value_line(reader, KEY_NODE_KIND_STR)?;
 
         let node = match node_kind_str.as_str() {
-            NODE_KIND_ACTION_FUNC => Self::ActionFunc(ActionFuncNode::read_bytes(reader)?),
+            NODE_KIND_ACTION_FUNC => ActionFuncNode::read_bytes(reader)?.map(Self::ActionFunc),
             NODE_KIND_ATTR_FUNC_INPUT => {
-                Self::AttrFuncInput(AttrFuncInputNode::read_bytes(reader)?)
+                AttrFuncInputNode::read_bytes(reader)?.map(Self::AttrFuncInput)
             }
-            NODE_KIND_CATEGORY => Self::Category(CategoryNode::read_bytes(reader)?),
-            NODE_KIND_CHANGE_SET => Self::ChangeSet(ChangeSetNode::read_bytes(reader)?),
+            NODE_KIND_CATEGORY => CategoryNode::read_bytes(reader)?.map(Self::Category),
+            NODE_KIND_CHANGE_SET => ChangeSetNode::read_bytes(reader)?.map(Self::ChangeSet),
             NODE_KIND_CHANGE_SET_CHILD => {
-                Self::ChangeSetChild(ChangeSetChildNode::read_bytes(reader)?)
+                ChangeSetChildNode::read_bytes(reader)?.map(Self::ChangeSetChild)
             }
-            NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
-            NODE_KIND_FUNC_ARGUMENT => Self::FuncArgument(FuncArgumentNode::read_bytes(reader)?),
-            NODE_KIND_LEAF_FUNCTION => Self::LeafFunction(LeafFunctionNode::read_bytes(reader)?),
-            NODE_KIND_MAP_KEY_FUNC => Self::MapKeyFunc(MapKeyFuncNode::read_bytes(reader)?),
-            NODE_KIND_PACKAGE => Self::Package(PackageNode::read_bytes(reader)?),
-            NODE_KIND_PROP => Self::Prop(PropNode::read_bytes(reader)?),
-            NODE_KIND_PROP_CHILD => Self::PropChild(PropChildNode::read_bytes(reader)?),
-            NODE_KIND_SCHEMA => Self::Schema(SchemaNode::read_bytes(reader)?),
-            NODE_KIND_SCHEMA_VARIANT => Self::SchemaVariant(SchemaVariantNode::read_bytes(reader)?),
+            NODE_KIND_FUNC => FuncNode::read_bytes(reader)?.map(Self::Func),
+            NODE_KIND_FUNC_ARGUMENT => {
+                FuncArgumentNode::read_bytes(reader)?.map(Self::FuncArgument)
+            }
+            NODE_KIND_LEAF_FUNCTION => {
+                LeafFunctionNode::read_bytes(reader)?.map(Self::LeafFunction)
+            }
+            NODE_KIND_MAP_KEY_FUNC => MapKeyFuncNode::read_bytes(reader)?.map(Self::MapKeyFunc),
+            NODE_KIND_PACKAGE => PackageNode::read_bytes(reader)?.map(Self::Package),
+            NODE_KIND_PROP => PropNode::read_bytes(reader)?.map(Self::Prop),
+            NODE_KIND_PROP_CHILD => PropChildNode::read_bytes(reader)?.map(Self::PropChild),
+            NODE_KIND_SCHEMA => SchemaNode::read_bytes(reader)?.map(Self::Schema),
+            NODE_KIND_SCHEMA_VARIANT => {
+                SchemaVariantNode::read_bytes(reader)?.map(Self::SchemaVariant)
+            }
             NODE_KIND_SCHEMA_VARIANT_CHILD => {
-                Self::SchemaVariantChild(SchemaVariantChildNode::read_bytes(reader)?)
+                SchemaVariantChildNode::read_bytes(reader)?.map(Self::SchemaVariantChild)
             }
-            NODE_KIND_SOCKET => Self::Socket(SocketNode::read_bytes(reader)?),
-            NODE_KIND_SI_PROP_FUNC => Self::SiPropFunc(SiPropFuncNode::read_bytes(reader)?),
-            NODE_KIND_VALIDATION => Self::Validation(ValidationNode::read_bytes(reader)?),
+            NODE_KIND_SOCKET => SocketNode::read_bytes(reader)?.map(Self::Socket),
+            NODE_KIND_SI_PROP_FUNC => SiPropFuncNode::read_bytes(reader)?.map(Self::SiPropFunc),
+            NODE_KIND_VALIDATION => ValidationNode::read_bytes(reader)?.map(Self::Validation),
             invalid_kind => {
-                return Err(GraphError::parse_custom(format!(
-                    "invalid package node kind: {invalid_kind}"
-                )))
+                dbg!(format!("invalid package node kind: {invalid_kind}"));
+                None
             }
         };
 

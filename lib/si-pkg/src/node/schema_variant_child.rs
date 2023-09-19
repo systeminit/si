@@ -76,7 +76,7 @@ impl WriteBytes for SchemaVariantChildNode {
 }
 
 impl ReadBytes for SchemaVariantChildNode {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -90,13 +90,12 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
             VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
             invalid_kind => {
-                return Err(GraphError::parse_custom(format!(
-                    "invalid schema variant child kind: {invalid_kind}"
-                )))
+                dbg!(format!("invalid schema variant child kind: {invalid_kind}"));
+                return Ok(None);
             }
         };
 
-        Ok(node)
+        Ok(Some(node))
     }
 }
 

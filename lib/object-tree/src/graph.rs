@@ -127,12 +127,12 @@ pub trait VerifyHash: WriteBytes {
 /// Trait for types that can deserialize its representation from bytes.
 pub trait ReadBytes {
     /// Reads a serialized version of `self` from a reader over bytes.
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized;
 
     /// Builds and returns a new instance which was deserialized from a `Vec` of bytes.
-    fn from_bytes(buf: Vec<u8>) -> Result<Self, GraphError>
+    fn from_bytes(buf: Vec<u8>) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -304,7 +304,7 @@ impl<T> ReadBytes for NodeWithEntries<T>
 where
     T: ReadBytes,
 {
-    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Self, GraphError>
+    fn read_bytes<R: BufRead>(reader: &mut R) -> Result<Option<Self>, GraphError>
     where
         Self: std::marker::Sized,
     {
@@ -318,21 +318,24 @@ where
 
         read_empty_line(reader)?;
 
-        let node = T::read_bytes(reader)?;
+        Ok(match T::read_bytes(reader)? {
+            Some(node) => {
+                let entries = match kind {
+                    NodeKind::Leaf => vec![],
+                    NodeKind::Tree => {
+                        read_empty_line(reader)?;
 
-        let entries = match kind {
-            NodeKind::Leaf => vec![],
-            NodeKind::Tree => {
-                read_empty_line(reader)?;
+                        read_node_entry_lines(reader)?
+                    }
+                };
 
-                read_node_entry_lines(reader)?
+                Some(Self {
+                    kind,
+                    inner: node,
+                    entries,
+                })
             }
-        };
-
-        Ok(Self {
-            kind,
-            inner: node,
-            entries,
+            None => None,
         })
     }
 }
