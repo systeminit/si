@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-client",
     deps = [
+        "//lib/rebaser-core:rebaser-core",
         "//lib/si-rabbitmq:si-rabbitmq",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:remain",
