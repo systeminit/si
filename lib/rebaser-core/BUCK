@@ -3,11 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-core",
     deps = [
-        "//lib/rebaser-client:rebaser-client",
-        "//lib/rebaser-server:rebaser-server",
         "//third-party/rust:serde",
-        "//third-party/rust:pretty_assertions_sorted",
-        "//third-party/rust:tokio",
         "//third-party/rust:ulid",
     ],
     srcs = glob([
