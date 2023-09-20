@@ -31,13 +31,32 @@
           required
           :options="existingFuncOptions"
         />
-        <VormInput
-          v-if="funcVariant === FuncVariant.Action && !attachExisting"
-          v-model="actionKind"
-          label="Action Kind"
-          type="dropdown"
-          :options="actionKindOptions"
-        />
+        <template v-if="funcVariant === FuncVariant.Action && !attachExisting">
+          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            <SiCheckBox
+              id="create"
+              v-model="isCreate"
+              title="This action creates a resource"
+              @update:model-value="setCreate"
+            />
+          </h2>
+          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            <SiCheckBox
+              id="refresh"
+              v-model="isRefresh"
+              title="This action refreshes a resource"
+              @update:model-value="setRefresh"
+            />
+          </h2>
+          <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            <SiCheckBox
+              id="delete"
+              v-model="isDelete"
+              title="This action deletes a resource"
+              @update:model-value="setDelete"
+            />
+          </h2>
+        </template>
         <VormInput
           v-if="funcVariant === FuncVariant.Attribute"
           v-model="attributeOutputLocation"
@@ -108,6 +127,8 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import uniqBy from "lodash-es/uniqBy";
+import { ActionKind } from "@/store/fixes.store";
+import SiCheckBox from "@/components/SiCheckBox.vue";
 import { FuncVariant, CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -118,7 +139,6 @@ import {
   ValidationAssociations,
   AttributeAssociations,
 } from "@/store/func/types";
-import { ActionKind } from "@/store/fixes.store";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
@@ -153,9 +173,6 @@ const attachExisting = ref(false);
 
 const name = ref("");
 const funcVariant = ref(FuncVariant.Action);
-
-const actionKind = ref(ActionKind.Other);
-const actionKindOptions = Object.values(ActionKind);
 
 const selectedExistingFuncId = ref<FuncId | undefined>();
 const selectedFuncCode = ref<string>("");
@@ -257,7 +274,9 @@ const open = (existing?: boolean) => {
 
   name.value = "";
   funcVariant.value = FuncVariant.Action;
-  actionKind.value = ActionKind.Other;
+  isCreate.value = false;
+  isDelete.value = false;
+  isRefresh.value = false;
   selectedExistingFuncId.value = undefined;
   selectedFuncCode.value = "";
   attrToValidate.value = undefined;
@@ -285,11 +304,17 @@ const newFuncOptions = (
   const baseOptions = {
     schemaVariantId,
   };
+
+  let kind = ActionKind.Other;
   switch (funcVariant) {
     case FuncVariant.Action:
+      if (isCreate.value) kind = ActionKind.Create;
+      if (isDelete.value) kind = ActionKind.Delete;
+      if (isRefresh.value) kind = ActionKind.Refresh;
+
       return {
         type: "actionOptions",
-        actionKind: actionKind.value,
+        actionKind: kind,
         ...baseOptions,
       };
     case FuncVariant.Attribute:
@@ -459,4 +484,26 @@ const onAttach = async () => {
 };
 
 defineExpose({ open, close });
+
+const isCreate = ref(false);
+const isDelete = ref(false);
+const isRefresh = ref(false);
+
+const setCreate = () => {
+  if (!isCreate.value) return;
+  isDelete.value = false;
+  isRefresh.value = false;
+};
+
+const setRefresh = () => {
+  if (!isRefresh.value) return;
+  isCreate.value = false;
+  isDelete.value = false;
+};
+
+const setDelete = () => {
+  if (!isDelete.value) return;
+  isCreate.value = false;
+  isRefresh.value = false;
+};
 </script>
