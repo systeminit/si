@@ -1,6 +1,11 @@
 <template>
   <div
-    class="bg-neutral-700 w-96 h-80 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
+    :class="
+      clsx(
+        'bg-neutral-700 w-96 h-80 rounded flex flex-col overflow-clip text-white shadow-3xl dark',
+        themeContainerClasses,
+      )
+    "
   >
     <div
       class="bg-black uppercase font-bold text-md p-xs flex place-content-between items-center"
@@ -55,10 +60,14 @@
 import { computed, PropType } from "vue";
 import * as _ from "lodash-es";
 
+import { useThemeContainer } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import QualificationViewerSingle from "../StatusBarTabs/Qualification/QualificationViewerSingle.vue";
+
+const { themeContainerClasses } = useThemeContainer("dark");
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
