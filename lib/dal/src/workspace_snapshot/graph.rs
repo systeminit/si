@@ -49,7 +49,7 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
-    #[error("Node with ID {0} not found")]
+    #[error("Node with ID {} not found", .0.to_string())]
     NodeWithIdNotFound(Ulid),
     #[error("No Prop found for NodeIndex {0:?}")]
     NoPropFound(NodeIndex),
@@ -1177,9 +1177,11 @@ impl WorkspaceSnapshotGraph {
                     node_index_by_id.insert(neighbor_weight.id(), neighbor_index);
                 }
                 for ordered_id in ordering_weight.order() {
-                    ordered_child_indexes.push(*node_index_by_id.get(ordered_id).ok_or_else(
-                        || WorkspaceSnapshotGraphError::NodeWithIdNotFound(*ordered_id),
-                    )?);
+                    ordered_child_indexes.push(
+                        *node_index_by_id
+                            .get(ordered_id)
+                            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(*ordered_id))?,
+                    );
                 }
             }
         } else {
@@ -1245,7 +1247,6 @@ impl WorkspaceSnapshotGraph {
         for edge_to_remove in edges_to_remove {
             self.graph.remove_edge(edge_to_remove);
         }
-        self.update_merkle_tree_hash(new_source_node_index)?;
 
         if let Some(previous_container_ordering_node_index) =
             self.ordering_node_index_for_container(new_source_node_index)?
@@ -1280,6 +1281,13 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
+        self.update_merkle_tree_hash(
+            // If we updated the ordering node, that means we've invalidated the container's
+            // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
+            // to update the container's merkle tree hash.
+            self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?,
+        )?;
+
         Ok(())
     }
 
@@ -1308,18 +1316,11 @@ impl WorkspaceSnapshotGraph {
                     }
                 };
 
-                // Find all outgoing edges. From those outgoing edges and find their destinations.
-                // If they do not have destinations, then there is no work to do (i.e. stale edge
-                // reference, which should only happen if an edge was removed after we got the
-                // edge ref, but before we asked about the edge's endpoints).
+                // Find all outgoing edges weights and find the edge targets.
                 let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
                 for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
-                    let edge_weight = edge_reference.weight();
-                    if let Some((_, destination_node_index)) =
-                        self.graph.edge_endpoints(edge_reference.id())
-                    {
-                        edges_to_create.push((edge_weight.clone(), destination_node_index));
-                    }
+                    edges_to_create
+                        .push((edge_reference.weight().clone(), edge_reference.target()));
                 }
 
                 // Make copies of these edges where the source is the new node index and the
@@ -1344,12 +1345,12 @@ impl WorkspaceSnapshotGraph {
                 }
 
                 self.update_merkle_tree_hash(new_node_index)?;
-
-                // Use the new version of the old root node as our root node.
-                if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
-                    self.root_index = *new_root_node_index;
-                }
             }
+        }
+
+        // Use the new version of the old root node as our root node.
+        if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
+            self.root_index = *new_root_node_index;
         }
 
         Ok(())
@@ -1398,22 +1399,42 @@ impl WorkspaceSnapshotGraph {
                 .as_bytes(),
         );
 
-        // Need to make sure the neighbors are added to the hash in a stable order to ensure the
-        // merkle tree hash is identical for identical trees.
-        let mut ordered_neighbors = Vec::new();
+        // Need to make sure that ordered containers have their ordered children in the
+        // order specified by the ordering graph node.
+        let explicitly_ordered_children = self
+            .ordered_children_for_node(node_index_to_update)?
+            .unwrap_or_else(Vec::new);
+
+        // Need to make sure the unordered neighbors are added to the hash in a stable order to
+        // ensure the merkle tree hash is identical for identical trees.
+        let mut unordered_neighbors = Vec::new();
         for neighbor_node in self
             .graph
             .neighbors_directed(node_index_to_update, Outgoing)
         {
-            ordered_neighbors.push(neighbor_node);
+            // Only add the neighbor if it's not one of the ones with an explicit ordering.
+            if !explicitly_ordered_children.contains(&neighbor_node) {
+                let neighbor_id = self.get_node_weight(neighbor_node)?.id();
+                unordered_neighbors.push((neighbor_id, neighbor_node));
+            }
         }
-        ordered_neighbors.sort();
+        // We'll sort the neighbors by the ID in the NodeWeight, as that will result in more stable
+        // results than if we sorted by the NodeIndex itself.
+        unordered_neighbors.sort_by_cached_key(|(id, _index)| *id);
+        // It's not important whether the explicitly ordered children are first or last, as long as
+        // they are always in that position, and are always in the sequence specified by the
+        // container's Ordering node.
+        let mut ordered_neighbors =
+            Vec::with_capacity(explicitly_ordered_children.len() + unordered_neighbors.len());
+        ordered_neighbors.extend(explicitly_ordered_children);
+        ordered_neighbors.extend::<Vec<NodeIndex>>(
+            unordered_neighbors
+                .iter()
+                .map(|(_id, index)| *index)
+                .collect(),
+        );
 
         for neighbor_node in ordered_neighbors {
-            // TODO: This needs to take into account the edge weight(s) between the node being
-            //       updated, and the neighboring node, as important information may be encoded in
-            //       the edge weight itself such as the name of the function argument, or the key
-            //       of an entry in a map.
             hasher.update(
                 self.graph
                     .node_weight(neighbor_node)
@@ -1422,6 +1443,30 @@ impl WorkspaceSnapshotGraph {
                     .to_string()
                     .as_bytes(),
             );
+
+            // The edge(s) between `node_index_to_update`, and `neighbor_node` potentially encode
+            // important information related to the "identity" of `node_index_to_update`.
+            for connecting_edgeref in self
+                .graph
+                .edges_connecting(node_index_to_update, neighbor_node)
+            {
+                match connecting_edgeref.weight().kind() {
+                    // This is the name of the argument to the function.
+                    EdgeWeightKind::Argument(arg_name) => hasher.update(arg_name.as_bytes()),
+                    // This is the key for an entry in a map.
+                    EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
+
+                    // Nothing to do, as these EdgeWeightKind do not encode extra information
+                    // in the edge itself.
+                    EdgeWeightKind::Contain(None)
+                    | EdgeWeightKind::DataProvider
+                    | EdgeWeightKind::Ordering
+                    | EdgeWeightKind::Prop
+                    | EdgeWeightKind::Prototype
+                    | EdgeWeightKind::Proxy
+                    | EdgeWeightKind::Use => {}
+                }
+            }
         }
 
         let new_node_weight = self
@@ -3578,7 +3623,7 @@ mod test {
                 ordered_prop_2_index,
                 EdgeWeightKind::Use,
             )
-            .expect("Unable to update order of prop's children");
+            .expect("Unable to remove prop -> ordered_prop_2 edge");
 
         assert_eq!(
             vec![
