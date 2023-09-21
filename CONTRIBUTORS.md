@@ -24,3 +24,5 @@ We contributors to System Initiative:
 * Neil Hanlon (@NeilHanlon)
 * Matthew Sanabria (@sudomateo)
 * John Watson (@johnrwatson)
+* Scott Prutton (@sprutton1)
+* Nick Stinemates (@keeb)
