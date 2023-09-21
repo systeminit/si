@@ -5934,4 +5934,597 @@ mod test {
                 .expect("Unable to generate attribute value view"),
         );
     }
+
+    #[test]
+    fn attribute_value_build_view_ordered_map() {
+        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+        let mut content_store = crate::content::Store::new();
+
+        let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (schema_content_hash, _) = content_store
+            .add(serde_json::json!("Schema A"))
+            .expect("Unable to add to content store");
+        let schema_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_id,
+                    ContentAddress::Schema(schema_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        graph
+            .add_edge(
+                graph.root_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_node_index,
+            )
+            .expect("Unable to add root -> schema edge");
+
+        let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (schema_variant_content_hash, _) = content_store
+            .add(serde_json::json!("Schema Variant A"))
+            .expect("Unable to add to content store");
+        let schema_variant_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_variant_id,
+                    ContentAddress::SchemaVariant(schema_variant_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_node_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (root_prop_content_hash, _) = content_store
+            .add(serde_json::json!("Root prop"))
+            .expect("Unable to add to content store");
+        let root_prop_node_index = graph
+            .add_node(
+                NodeWeight::new_prop(
+                    change_set,
+                    root_prop_id,
+                    PropKind::Object,
+                    "root",
+                    root_prop_content_hash,
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add root prop");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_variant_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                root_prop_node_index,
+            )
+            .expect("Unable to add schema variant -> root prop edge");
+
+        let domain_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (domain_prop_content_hash, _) = content_store
+            .add(serde_json::json!("domain Prop Content"))
+            .expect("Unable to add to content store");
+        let domain_prop_node_index = graph
+            .add_node(
+                NodeWeight::new_prop(
+                    change_set,
+                    domain_prop_id,
+                    PropKind::Object,
+                    "domain",
+                    domain_prop_content_hash,
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add domain prop");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(root_prop_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                domain_prop_node_index,
+            )
+            .expect("Unable to add root prop -> domain prop edge");
+
+        let environment_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (environment_prop_content_hash, _) = content_store
+            .add(serde_json::json!("environment Prop Content"))
+            .expect("Unable to add to content store");
+        let environment_prop_node_index = graph
+            .add_node(
+                NodeWeight::new_prop(
+                    change_set,
+                    environment_prop_id,
+                    PropKind::Array,
+                    "environment",
+                    environment_prop_content_hash,
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add environment prop");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(domain_prop_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                environment_prop_node_index,
+            )
+            .expect("Unable to add domain prop -> environment prop edge");
+
+        let env_var_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var_prop_content_hash, _) = content_store
+            .add(serde_json::json!("port Prop Content"))
+            .expect("Unable to add to content store");
+        let env_var_prop_node_index = graph
+            .add_node(
+                NodeWeight::new_prop(
+                    change_set,
+                    env_var_prop_id,
+                    PropKind::String,
+                    "port",
+                    env_var_prop_content_hash,
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env var prop");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(environment_prop_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                env_var_prop_node_index,
+            )
+            .expect("Unable to add environment prop -> env var prop edge");
+
+        let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (component_content_hash, _) = content_store
+            .add(serde_json::json!("Component Content"))
+            .expect("Unable to add to content store");
+        let component_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    component_id,
+                    ContentAddress::Component(component_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add component");
+        graph
+            .add_edge(
+                graph.root_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                component_node_index,
+            )
+            .expect("Unable to add root -> component edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(component_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(schema_variant_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add component -> schema variant edge");
+
+        let root_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (root_av_content_hash, _) = content_store
+            .add(serde_json::json!({}))
+            .expect("Unable to add to content store");
+        let root_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    root_av_id,
+                    ContentAddress::AttributeValue(root_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add root av");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(component_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                root_av_node_index,
+            )
+            .expect("Unable to add component -> root av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(root_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(root_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add root av -> root prop edge");
+
+        let domain_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (domain_av_content_hash, _) = content_store
+            .add(serde_json::json!({}))
+            .expect("Unable to add to content store");
+        let domain_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    domain_av_id,
+                    ContentAddress::AttributeValue(domain_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add domain av");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(root_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))
+                    .expect("Unable to create EdgeWeight"),
+                domain_av_node_index,
+            )
+            .expect("Unable to add root av -> domain av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(domain_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(domain_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add domain av -> domain prop edge");
+
+        let envrionment_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (ports_av_content_hash, _) = content_store
+            .add(serde_json::json!({}))
+            .expect("Unable to add to content store");
+        let environment_av_node_index = graph
+            .add_ordered_node(
+                change_set,
+                NodeWeight::new_content(
+                    change_set,
+                    envrionment_av_id,
+                    ContentAddress::AttributeValue(ports_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add environment av");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(domain_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))
+                    .expect("Unable to create EdgeWeight"),
+                environment_av_node_index,
+            )
+            .expect("Unable to add domain av -> environment av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(environment_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to create environment av -> environment prop edge");
+
+        let env_var1_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var1_av_content_hash, _) = content_store
+            .add(serde_json::json!("1111"))
+            .expect("Unable to add to content store");
+        let port1_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    env_var1_av_id,
+                    ContentAddress::AttributeValue(env_var1_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env_var 1 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::Contain(Some("PORT_1".to_string())),
+                )
+                .expect("Unable to create EdgeWeight"),
+                port1_av_node_index,
+            )
+            .expect("Unable to add environment av -> env var 1 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(env_var1_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(env_var_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add env var 1 av -> env var prop edge");
+
+        let env_var2_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var2_av_content_hash, _) = content_store
+            .add(serde_json::json!("2222"))
+            .expect("Unable to add to content store");
+        let env_var2_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    env_var2_av_id,
+                    ContentAddress::AttributeValue(env_var2_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env var 2 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::Contain(Some("PORT_2".to_string())),
+                )
+                .expect("Unable to create EdgeWeight"),
+                env_var2_av_node_index,
+            )
+            .expect("Unable to add environment av -> env var 2 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(env_var2_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(env_var_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add env var 2 av -> env var prop edge");
+
+        let env_var3_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var3_av_content_hash, _) = content_store
+            .add(serde_json::json!("3333"))
+            .expect("Unable to add to content store");
+        let port3_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    env_var3_av_id,
+                    ContentAddress::AttributeValue(env_var3_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env var 3 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::Contain(Some("PORT_3".to_string())),
+                )
+                .expect("Unable to create EdgeWeight"),
+                port3_av_node_index,
+            )
+            .expect("Unable to add environment av -> env var 3 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(env_var3_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(env_var_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add env var 3 av -> env var prop edge");
+
+        let env_var4_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var4_av_content_hash, _) = content_store
+            .add(serde_json::json!("4444"))
+            .expect("Unable to add to content store");
+        let env_var4_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    env_var4_av_id,
+                    ContentAddress::AttributeValue(env_var4_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env var 4 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::Contain(Some("PORT_4".to_string())),
+                )
+                .expect("Unable to create EdgeWeight"),
+                env_var4_av_node_index,
+            )
+            .expect("Unable to add environment av -> env var 4 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(env_var4_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(env_var_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add env var 4 av -> env var prop edge");
+
+        graph.cleanup();
+        graph.dot();
+
+        assert_eq!(
+            serde_json::json![{
+                "domain": {
+                    "environment": {
+                        "PORT_1": "1111",
+                        "PORT_2": "2222",
+                        "PORT_3": "3333",
+                        "PORT_4": "4444",
+                    },
+                }
+            }],
+            graph
+                .attribute_value_view(
+                    &content_store,
+                    graph
+                        .get_node_index_by_id(root_av_id)
+                        .expect("Unable to get NodeIndex")
+                )
+                .expect("Unable to generate attribute value view"),
+        );
+
+        let new_order = vec![
+            env_var3_av_id,
+            env_var1_av_id,
+            env_var4_av_id,
+            env_var2_av_id,
+        ];
+        graph
+            .update_order(change_set, envrionment_av_id, new_order)
+            .expect("Unable to update order of environment attribute value's children");
+        assert_eq!(
+            serde_json::json![{
+                "domain": {
+                    "environment": {
+                        "PORT_3": "3333",
+                        "PORT_1": "1111",
+                        "PORT_4": "4444",
+                        "PORT_2": "2222",
+                    },
+                }
+            }],
+            graph
+                .attribute_value_view(
+                    &content_store,
+                    graph
+                        .get_node_index_by_id(root_av_id)
+                        .expect("Unable to get NodeIndex")
+                )
+                .expect("Unable to generate attribute value view"),
+        );
+
+        let env_var5_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let (env_var5_av_content_hash, _) = content_store
+            .add(serde_json::json!("5555"))
+            .expect("Unable to add to content store");
+        let env_var5_av_node_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    env_var5_av_id,
+                    ContentAddress::AttributeValue(env_var5_av_content_hash),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add env var 5 av");
+        graph
+            .add_ordered_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(envrionment_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::Contain(Some("PORT_5".to_string())),
+                )
+                .expect("Unable to create EdgeWeight"),
+                env_var5_av_node_index,
+            )
+            .expect("Unable to add environment av -> env var 5 av edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(env_var5_av_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)
+                    .expect("Unable to create EdgeWeight"),
+                graph
+                    .get_node_index_by_id(env_var_prop_id)
+                    .expect("Unable to get NodeIndex"),
+            )
+            .expect("Unable to add env var 5 av -> env var prop edge");
+
+        assert_eq!(
+            serde_json::json![{
+                "domain": {
+                    "environment": {
+                        "PORT_3": "3333",
+                        "PORT_1": "1111",
+                        "PORT_4": "4444",
+                        "PORT_2": "2222",
+                        "PORT_5": "5555",
+                    },
+                }
+            }],
+            graph
+                .attribute_value_view(
+                    &content_store,
+                    graph
+                        .get_node_index_by_id(root_av_id)
+                        .expect("Unable to get NodeIndex")
+                )
+                .expect("Unable to generate attribute value view"),
+        );
+    }
 }
