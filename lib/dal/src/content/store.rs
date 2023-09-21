@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::content::hash::ContentHash;
+use crate::DalContext;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -15,34 +17,62 @@ pub enum StoreError {
 
 pub type StoreResult<T> = Result<T, StoreError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct StoreItem {
-    value: Value,
-    processed: bool,
+pub trait Store {
+    fn new() -> Self;
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
+    fn add<T>(&mut self, value: T) -> StoreResult<(ContentHash, bool)>;
+    fn get<T>(&self, key: &ContentHash) -> StoreResult<Option<T>>
+    where
+        T: DeserializeOwned;
+    fn write(&mut self) -> StoreResult<()>;
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct Store(HashMap<ContentHash, StoreItem>);
+#[derive(Debug, Clone)]
+struct StoreItem {
+    value: Value,
+    written: bool,
+}
 
-impl Store {
-    pub fn new() -> Self {
-        Self::default()
+#[derive(Default, Debug)]
+pub struct LocalStore(HashMap<ContentHash, StoreItem>);
+
+impl Store for LocalStore {
+    fn new() -> Self {
+        todo!()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    fn is_empty(&self) -> bool {
+        todo!()
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
+    fn len(&self) -> usize {
+        todo!()
     }
 
+    fn add<T>(&mut self, value: T) -> StoreResult<(ContentHash, bool)> {
+        todo!()
+    }
+
+    fn get<T>(&self, key: &ContentHash) -> StoreResult<Option<T>>
+    where
+        T: DeserializeOwned,
+    {
+        todo!()
+    }
+
+    fn write(&mut self) -> StoreResult<()> {
+        todo!()
+    }
+}
+
+impl LocalStore {
     // NOTE(nick): use local, pull through or return None.
     pub fn get<T>(&self, key: &ContentHash) -> StoreResult<Option<T>>
     where
         T: DeserializeOwned,
     {
-        let maybe_item: Option<StoreItem> = self.0.get(key).cloned();
+        let maybe_item: Option<StoreItem> = self.inner.get(key).cloned();
         let value = match maybe_item {
             Some(found_item) => Some(serde_json::from_value(found_item.value)?),
             None => {
@@ -53,40 +83,90 @@ impl Store {
         Ok(value)
     }
 
-    // NOTE(nick): existing entries must remain immutable.
-    pub fn add<T>(&mut self, value: T) -> StoreResult<(ContentHash, bool)>
-    where
-        T: Serialize + ToOwned,
-    {
-        let value = serde_json::to_value(value)?;
-        let hash = ContentHash::from(&value);
-        let already_in_store = self.0.contains_key(&hash);
-        if !already_in_store {
-            // NOTE(nick): we DO NOT check that it is in the database because it does not matter.
-            // We wait until write time to talk to the database.
-            self.0.insert(
-                hash,
-                StoreItem {
-                    value,
-                    processed: false,
-                },
-            );
-        }
-        Ok((hash, already_in_store))
-    }
-
     // TODO(nick): actually do stuff with the database.
     pub fn write(&mut self) -> StoreResult<()> {
-        for item in self.0.values_mut() {
-            if !item.processed {
+        for item in self.inner.values_mut() {
+            if !item.written {
                 // TODO(nick): perform find or create in the database. Either way, we need to
                 // set "processed" to true for the next time we perform a batch write.
-                item.processed = true;
+
+                item.written = true;
             }
         }
         Ok(())
     }
 }
+
+#[derive(Default, Debug)]
+pub struct FullStore<'ctx> {
+    inner: HashMap<ContentHash, StoreItem>,
+    ctx: &'ctx DalContext,
+}
+
+// impl Store {
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
+//
+//     pub fn is_empty(&self) -> bool {
+//         self.inner.is_empty()
+//     }
+//
+//     pub fn len(&self) -> usize {
+//         self.inner.len()
+//     }
+//
+//     // NOTE(nick): existing entries must remain immutable.
+//     pub fn add<T>(&mut self, value: T) -> StoreResult<(ContentHash, bool)>
+//     where
+//         T: Serialize + ToOwned,
+//     {
+//         let value = serde_json::to_value(value)?;
+//         let hash = ContentHash::from(&value);
+//         let already_in_store = self.inner.contains_key(&hash);
+//         if !already_in_store {
+//             // NOTE(nick): we DO NOT check that it is in the database because it does not matter.
+//             // We wait until write time to talk to the database.
+//             self.inner.insert(
+//                 hash,
+//                 StoreItem {
+//                     value,
+//                     written: false,
+//                 },
+//             );
+//         }
+//         Ok((hash, already_in_store))
+//     }
+//
+//     // NOTE(nick): use local, pull through or return None.
+//     pub fn get<T>(&self, key: &ContentHash) -> StoreResult<Option<T>>
+//     where
+//         T: DeserializeOwned,
+//     {
+//         let maybe_item: Option<StoreItem> = self.inner.get(key).cloned();
+//         let value = match maybe_item {
+//             Some(found_item) => Some(serde_json::from_value(found_item.value)?),
+//             None => {
+//                 // TODO(nick): either populate from database ("pull-through caching") or return None.
+//                 None
+//             }
+//         };
+//         Ok(value)
+//     }
+//
+//     // TODO(nick): actually do stuff with the database.
+//     pub fn write(&mut self, ctx: Option<&DalContext>) -> StoreResult<()> {
+//         for item in self.inner.values_mut() {
+//             if !item.written {
+//                 // TODO(nick): perform find or create in the database. Either way, we need to
+//                 // set "processed" to true for the next time we perform a batch write.
+//
+//                 item.written = true;
+//             }
+//         }
+//         Ok(())
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -164,15 +244,15 @@ mod tests {
 
         // Since purely "adding" does not involve the database, none of our entries known if they
         // were processed.
-        for item in store.0.values() {
-            assert!(!item.processed);
+        for item in store.inner.values() {
+            assert!(!item.written);
         }
 
         // FIXME(nick): once write actually talks to the database, this will need to move to an
         // integration test. Check that all items have been processed.
-        store.write().expect("could not write");
-        for item in store.0.values() {
-            assert!(item.processed);
+        store.write(None).expect("could not write");
+        for item in store.inner.values() {
+            assert!(item.written);
         }
 
         // Add another item.
@@ -181,14 +261,14 @@ mod tests {
 
         // Check that only the new item has not been processed and that all other items have been
         // processed.
-        for (hash, item) in &store.0 {
-            assert_eq!(hash != &utopia_hash, item.processed);
+        for (hash, item) in &store.inner {
+            assert_eq!(hash != &utopia_hash, item.written);
         }
 
         // Write again and assert all items have been processed.
-        store.write().expect("could not write");
-        for item in store.0.values() {
-            assert!(item.processed);
+        store.write(None).expect("could not write");
+        for item in store.inner.values() {
+            assert!(item.written);
         }
     }
 }

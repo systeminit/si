@@ -1,8 +1,6 @@
 //! For all tests in this module, provide "SI_TEST_BUILTIN_SCHEMAS=none" as an environment variable.
 
 use dal::change_set_pointer::ChangeSetPointer;
-use dal::content::hash::ContentHash;
-use dal::workspace_snapshot::node_weight::{ContentAddress, NodeWeight};
 use dal::{DalContext, Tenancy, Visibility, WorkspacePk, WorkspaceSnapshot};
 use dal_test::test;
 use rebaser_client::Client;
@@ -25,41 +23,24 @@ async fn simple_rebase(ctx: &mut DalContext) {
 
     // Add a new node.
     snapshot
-        .add_node(
-            NodeWeight::new_content(
-                base_change_set,
-                base_change_set
-                    .generate_ulid()
-                    .expect("cannot generate ulid"),
-                ContentAddress::Schema(ContentHash::from("lacy - olivia rodrigo")),
-            )
-            .expect("could not create node weight"),
-        )
-        .expect("could not add node");
-
+        .create_schema(base_change_set, "lacy - olivia rodrigo")
+        .expect("could not create schema");
     snapshot.write(ctx).await.expect("could not write snapshot");
     base_change_set
         .update_pointer(ctx, snapshot.id)
         .await
         .expect("could not update pointer");
 
-    // Create another change set and update.
+    // Fork!
     let mut forked_change_set = ChangeSetPointer::new(ctx, "fork")
         .await
         .expect("could not create change set");
+
+    // Add another node.
     let forked_change_set = &mut forked_change_set;
     snapshot
-        .add_node(
-            NodeWeight::new_content(
-                forked_change_set,
-                forked_change_set
-                    .generate_ulid()
-                    .expect("cannot generate ulid"),
-                ContentAddress::Schema(ContentHash::from("i'm the one - victoria monét")),
-            )
-            .expect("could not create node weight"),
-        )
-        .expect("could not add node");
+        .create_schema(forked_change_set, "i'm the one - victoria monét")
+        .expect("could not create schema");
     snapshot.write(ctx).await.expect("could not write snapshot");
     forked_change_set
         .update_pointer(ctx, snapshot.id)

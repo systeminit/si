@@ -34,6 +34,7 @@ members = [
     "lib/sdf-server",
     "lib/si-data-nats",
     "lib/si-data-pg",
+    "lib/si-dynamodb",
     "lib/si-pkg",
     "lib/si-rabbitmq",
     "lib/si-settings",
@@ -51,6 +52,9 @@ members = [
 async-nats = "0.31.0"
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
+aws-config = "0.56.1"
+aws-sdk-dynamodb = "0.31.1"
+aws-smithy-http = "0.56.1"
 axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
 base64 = "0.21.0"
 blake3 = "1.3.3"

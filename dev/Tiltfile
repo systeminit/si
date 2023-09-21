@@ -4,6 +4,7 @@ cfg = config.parse()
 # Define groups of services
 groups = {
     "platform": [
+        "dynamodb-local",
         "jaeger",
         "nats",
         "otelcol",
@@ -12,10 +13,10 @@ groups = {
     ],
     "backend": [
         "council",
-        "pinga",
-        "veritech",
-        "sdf",
         "module-index",
+        "pinga",
+        "sdf",
+        "veritech",
     ],
     "frontend": [
         "web",
@@ -66,7 +67,14 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "rabbitmq"]
+compose_services = [
+    "dynamodb-local",
+    "jaeger",
+    "nats",
+    "otelcol",
+    "postgres",
+    "rabbitmq"
+]
 for service in compose_services:
     dc_resource(service, labels = ["platform"])
 

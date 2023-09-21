@@ -13,6 +13,19 @@ can cause the [aforementioned issue](https://github.com/intellij-rust/intellij-r
 affects all [JetBrains](https://www.jetbrains.com/) IDEs, such as [CLion](https://www.jetbrains.com/clion/)).
 Thus, you will have to use the experimental proc macros feature or wait for stable proc macros support.
 
+## RustRover and IntelliJ-based IDEs
+
+[RustRover](https://www.jetbrains.com/rust/) and other IntelliJ-based IDEs from JetBrains typically exclude commonly
+used directories by default (e.g. `node_modules`).
+However, the uncommon ones may have to be included by the user.
+They should be excluded in order to speed up indexing and remove line noise when searching thep roject.
+Here are some that are recommended for exclusion:
+
+```html
+<excludeFolder url="file://$MODULE_DIR$/target" />
+<excludeFolder url="file://$MODULE_DIR$/buck-out" />
+```
+
 ## Direnv
 
 For notes on using plugins with `direnv`, see [`DEVELOPMENT_ENVIRONMENT`](./DEVELOPMENT_ENVIRONMENT.md).

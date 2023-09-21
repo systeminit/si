@@ -22,25 +22,19 @@
 //     clippy::missing_panics_doc
 // )]
 
-pub mod conflict;
-pub mod content_address;
-pub mod edge_weight;
-pub mod graph;
-pub mod lamport_clock;
-pub mod node_weight;
-pub mod update;
-pub mod vector_clock;
-
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::{PgError, PgRow};
-use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
+
+use si_data_pg::PgError;
+use telemetry::prelude::*;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use crate::content::hash::ContentHash;
+use crate::content::Store;
 use crate::workspace_snapshot::conflict::Conflict;
+use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
@@ -50,6 +44,15 @@ use crate::{
     DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
 };
 
+pub mod conflict;
+pub mod content_address;
+pub mod edge_weight;
+pub mod graph;
+pub mod lamport_clock;
+pub mod node_weight;
+pub mod update;
+pub mod vector_clock;
+
 const FIND: &str = include_str!("queries/workspace_snapshot/find.sql");
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -57,6 +60,8 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
@@ -82,20 +87,26 @@ pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 pk!(WorkspaceSnapshotId);
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct WorkspaceSnapshot {
+pub struct WorkspaceSnapshot<T> {
     pub id: WorkspaceSnapshotId,
     #[serde(flatten)]
     timestamp: Timestamp,
     snapshot: Value,
-    #[serde(skip_serializing)]
-    working_copy: Option<WorkspaceSnapshotGraph>,
+
+    #[serde(skip)]
+    working_copy: WorkspaceSnapshotGraph,
+    #[serde(skip)]
+    store: T,
 }
 
-impl WorkspaceSnapshot {
+impl WorkspaceSnapshot<T>
+where
+    T: Store,
+{
     pub async fn initial(
         ctx: &DalContext,
         change_set: &ChangeSetPointer,
-    ) -> WorkspaceSnapshotResult<Self> {
+    ) -> WorkspaceSnapshotResult<Self<T>> {
         let snapshot = WorkspaceSnapshotGraph::new(change_set)?;
         let serialized_snapshot = serde_json::to_value(&snapshot)?;
 
@@ -109,15 +120,19 @@ impl WorkspaceSnapshot {
             )
             .await?;
         let json: Value = row.try_get("object")?;
-        let object: WorkspaceSnapshot = serde_json::from_value(json)?;
+        let mut object: WorkspaceSnapshot = serde_json::from_value(json)?;
+        object.working_copy = snapshot;
+        object.store.set_full_mode();
         Ok(object)
     }
 
     pub async fn write(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
-        let working_copy = self.working_copy()?;
-        working_copy.cleanup();
+        // ------------------------------------
+        // TODO(nick): write out content store.
+        // ------------------------------------
+        self.working_copy.cleanup();
 
-        let serialized_snapshot = serde_json::to_value(working_copy.clone())?;
+        let serialized_snapshot = serde_json::to_value(self.working_copy.clone())?;
         let row = ctx
             .txns()
             .await?
@@ -137,33 +152,46 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
-        if self.working_copy.is_none() {
-            self.working_copy = Some(serde_json::from_value(self.snapshot.clone())?);
-        }
-        self.working_copy
-            .as_mut()
-            .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
-    }
+    // fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
+    //     if self.working_copy.is_none() {
+    //         self.working_copy = Some(serde_json::from_value(self.snapshot.clone())?);
+    //     }
+    //     self.working_copy
+    //         .as_mut()
+    //         .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
+    // }
 
     fn snapshot(&self) -> WorkspaceSnapshotResult<WorkspaceSnapshotGraph> {
         Ok(serde_json::from_value(self.snapshot.clone())?)
     }
 
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy()?.add_node(node)?)
+        Ok(self.working_copy.add_node(node)?)
     }
 
     pub fn add_edge(
         &mut self,
-        change_set: &ChangeSetPointer,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
         Ok(self
-            .working_copy()?
+            .working_copy
             .add_edge(from_node_index, edge_weight, to_node_index)?)
+    }
+
+    // FIXME(nick): this is a temporary function used for testing and authoring the content store
+    // integration.
+    pub fn create_schema(
+        &mut self,
+        change_set_pointer: &mut ChangeSetPointer,
+        content: impl AsRef<str>,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.add_node(NodeWeight::new_content(
+            change_set_pointer,
+            change_set_pointer.generate_ulid()?,
+            ContentAddress::Schema(ContentHash::from(content.as_ref())),
+        )?)?)
     }
 
     pub async fn detect_conflicts_and_updates(

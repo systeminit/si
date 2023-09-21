@@ -1,0 +1,15 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "dynamodb-local",
+    build_args = {
+        "BASE_VERSION": "2.0.0",
+    },
+    run_docker_args = [
+        "--publish",
+        "8000:8000",
+    ],
+)

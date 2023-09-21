@@ -1,10 +1,12 @@
+use std::collections::{HashMap, HashSet, VecDeque};
+
 use chrono::Utc;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
-use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
+
+use telemetry::prelude::*;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
 use crate::{
@@ -213,7 +215,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn attribute_value_view(
         &self,
-        content_store: &content::Store,
+        content_store: impl content::Store,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<serde_json::Value> {
         let mut view = serde_json::json![{}];
@@ -1479,9 +1481,11 @@ fn prop_node_indexes_for_node_index(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::{ComponentId, ContentHash, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
     use pretty_assertions_sorted::assert_eq;
+
+    use crate::{ComponentId, ContentHash, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+
+    use super::*;
 
     #[derive(Debug, PartialEq)]
     struct ConflictsAndUpdates {
@@ -4943,7 +4947,7 @@ mod test {
                     &content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .expect("Unable to generate attribute value view"),
         );
@@ -5311,7 +5315,7 @@ mod test {
                     &content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .expect("Unable to generate attribute value view"),
         );
@@ -5799,7 +5803,7 @@ mod test {
                     &content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .expect("Unable to generate attribute value view"),
         );

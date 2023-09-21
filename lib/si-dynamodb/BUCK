@@ -1,0 +1,13 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-dynamodb",
+    deps = [
+        "//third-party/rust:aws-config",
+        "//third-party/rust:aws-sdk-dynamodb",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

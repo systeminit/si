@@ -44,3 +44,11 @@ services:
     ports:
       - "5552:5552"
       - "15672:15672"
+
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -inMemory"
+    image: systeminit/dynamodb-local:stable
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    working_dir: /home/dynamodblocal
