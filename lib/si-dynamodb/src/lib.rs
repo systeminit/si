@@ -25,8 +25,8 @@
 )]
 
 use aws_sdk_dynamodb::types::{
-    AttributeDefinition, KeySchemaElement, KeyType, ProvisionedThroughput, ScalarAttributeType,
-    TableClass,
+    AttributeDefinition, AttributeValue, KeySchemaElement, KeyType, ProvisionedThroughput,
+    ScalarAttributeType, TableClass,
 };
 use aws_sdk_dynamodb::Client as UpstreamClient;
 
@@ -101,6 +101,38 @@ impl Client {
         dbg!(output);
         Ok(())
     }
+
+    pub async fn add(
+        &self,
+        table_name: impl Into<String>,
+        key: impl Into<String>,
+    ) -> DynamoResult<()> {
+        let output = self
+            .inner
+            .put_item()
+            .table_name(table_name.into())
+            .item("Key", AttributeValue::S("foo".into()))
+            .item("Value", AttributeValue::S("foo".into()))
+            .send()
+            .await?;
+        dbg!(output);
+        Ok(())
+    }
+
+    pub async fn get(&self, table_name: impl Into<String>) -> DynamoResult<()> {
+        let output = self
+            .inner
+            .get_item()
+            .table_name(table_name)
+            .key("Key", AttributeValue::S("foo".into()))
+            .expression_attribute_names("Key", "foo".into())
+            // .attributes_to_get("{\"Key\": \"foo\", \"Value\": \"foo\"}")
+            // .attributes_to_get("{\"Key\": \"foo\"}")
+            .send()
+            .await?;
+        dbg!(output);
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -109,17 +141,25 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    async fn new_client() {
-        let _client = Client::new().await.expect("could not create client");
-    }
-
-    #[test]
-    async fn recreate_table() {
+    async fn setup() -> Client {
         let client = Client::new().await.expect("could not create client");
         if let Err(e) = client.delete_table().await {
             dbg!(e);
         }
         client.create_table().await.expect("could not create table");
+        client
+    }
+
+    #[test]
+    async fn add_and_get() {
+        let client = setup().await;
+        client
+            .add("ContentStore", "foo")
+            .await
+            .expect("could not add item");
+        client
+            .get("ContentStore")
+            .await
+            .expect("could not get item");
     }
 }
