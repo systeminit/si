@@ -18,7 +18,6 @@
           @click="contributeAsset"
         />
         <VButton
-          v-if="!changeSetsStore.headSelected"
           label="New Asset"
           tone="action"
           icon="plus"
@@ -30,8 +29,7 @@
       <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
       >
-        Select an asset to view
-        {{ !changeSetsStore.headSelected ? "or edit" : "" }} it.
+        Select an asset to view or edit it.
       </div>
     </template>
     <template v-if="assetStore.assetList.length > 0">
@@ -86,12 +84,10 @@ import {
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
 
-const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const { assetList } = storeToRefs(assetStore);

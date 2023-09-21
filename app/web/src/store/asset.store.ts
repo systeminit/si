@@ -214,6 +214,10 @@ export const useAssetStore = () => {
         },
 
         async CREATE_ASSET(asset: Asset) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest<
             { id: AssetId; success: boolean },
             AssetCreateRequest
@@ -235,6 +239,11 @@ export const useAssetStore = () => {
         },
 
         async CLONE_ASSET(assetId: AssetId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
           return new ApiRequest<
             { id: AssetId; success: boolean },
             AssetCloneRequest
@@ -250,10 +259,12 @@ export const useAssetStore = () => {
         },
 
         enqueueAssetSave(asset: Asset) {
+          if (changeSetsStore.headSelected) return this.SAVE_ASSET(asset);
+
           this.assetsById[asset.id] = asset;
           if (!assetSaveDebouncer) {
-            assetSaveDebouncer = keyedDebouncer((assetId: AssetId) => {
-              this.SAVE_ASSET(assetId);
+            assetSaveDebouncer = keyedDebouncer(() => {
+              this.SAVE_ASSET(asset);
             }, 2000);
           }
           const assetSaveFunc = assetSaveDebouncer(asset.id);
@@ -262,25 +273,41 @@ export const useAssetStore = () => {
           }
         },
 
-        async SAVE_ASSET(assetId: AssetId) {
-          const asset = this.assetsById[assetId];
-          if (asset) {
-            return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
-              method: "post",
-              keyRequestStatusBy: asset.id,
-              url: "/variant_def/save_variant_def",
-              params: {
-                ...visibility,
-                ..._.omit(asset, [
-                  "schemaVariantId",
-                  "hasComponents",
-                  "hasAttrFuncs",
-                  "createdAt",
-                  "updatedAt",
-                ]),
-              },
-            });
-          }
+        async SAVE_ASSET(asset: Asset) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+          const isHead = changeSetsStore.headSelected;
+
+          return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
+            method: "post",
+            keyRequestStatusBy: asset.id,
+            url: "/variant_def/save_variant_def",
+            optimistic: () => {
+              if (isHead) return () => {};
+
+              const current = this.assetsById[asset.id];
+              this.assetsById[asset.id] = asset;
+              return () => {
+                if (current) {
+                  this.assetsById[asset.id] = current;
+                } else {
+                  delete this.assetsById[asset.id];
+                }
+              };
+            },
+            params: {
+              ...visibility,
+              ..._.omit(asset, [
+                "schemaVariantId",
+                "hasComponents",
+                "hasAttrFuncs",
+                "createdAt",
+                "updatedAt",
+              ]),
+            },
+          });
         },
 
         async LOAD_ASSET(assetId: AssetId) {
@@ -305,6 +332,11 @@ export const useAssetStore = () => {
         },
 
         async EXEC_ASSET(assetId: AssetId) {
+          if (changeSetsStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected)
+            changeSetsStore.creatingChangeSet = true;
+
           const asset = this.assetsById[assetId];
           return new ApiRequest<
             { success: true; schemaVariantId: string },

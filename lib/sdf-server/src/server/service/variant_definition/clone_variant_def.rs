@@ -2,14 +2,14 @@ use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use dal::{
     generate_unique_id,
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionError as DalSchemaVariantDefinitionError,
         SchemaVariantDefinitionId,
     },
-    Func, Schema, SchemaError, StandardModel, Visibility, WsEvent,
+    ChangeSet, Func, Schema, SchemaError, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,24 @@ pub async fn clone_variant_def(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CloneVariantDefRequest>,
-) -> SchemaVariantDefinitionResult<Json<CloneVariantDefResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> SchemaVariantDefinitionResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    }
 
     let variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
         .await?
@@ -100,8 +116,16 @@ pub async fn clone_variant_def(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(CloneVariantDefResponse {
-        id: *variant_def.id(),
-        success: true,
-    }))
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+
+    Ok(
+        response.body(serde_json::to_string(&CloneVariantDefResponse {
+            id: *variant_def.id(),
+            success: true,
+        })?)?,
+    )
 }

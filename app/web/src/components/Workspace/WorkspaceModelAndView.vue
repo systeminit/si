@@ -73,10 +73,12 @@
             class="flex flex-row items-center justify-center w-full text-neutral-400 gap-2"
           >
             <strong class="grow uppercase text-lg my-2">
-              <template v-if="isHead">Applied Changes</template>
+              <template v-if="changeSetStore.headSelected"
+                >Applied Changes</template
+              >
               <template v-else>Changes</template>
             </strong>
-            <template v-if="!isHead">
+            <template v-if="!changeSetStore.headSelected">
               <ApplyChangeSetButton />
               <strong
                 class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
@@ -96,7 +98,11 @@
           rememberSelectedTabKey="proposed_right"
           trackingSlug="actions_applied"
         >
-          <TabGroupItem v-if="!isHead" label="Proposed" slug="actions_proposed">
+          <TabGroupItem
+            v-if="!changeSetStore.headSelected"
+            label="Proposed"
+            slug="actions_proposed"
+          >
             <div
               :class="
                 clsx(
@@ -109,7 +115,11 @@
               <div class="flex flex-col">
                 <div class="">Created Change Set</div>
                 <div class="text-neutral-400 truncate">
-                  {{ isHead ? "head" : changeSetStore.selectedChangeSet?.name }}
+                  {{
+                    changeSetStore.headSelected
+                      ? "head"
+                      : changeSetStore.selectedChangeSet?.name
+                  }}
                 </div>
               </div>
             </div>
@@ -301,7 +311,6 @@ import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import ActionSprite from "@/components/ActionSprite.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { nilId } from "@/utils/nilId";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
 import { useActionsStore } from "@/store/actions.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -362,12 +371,10 @@ const diffs = computed(() => {
   return arr;
 });
 
-const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
-
 const openCollapsible = ref(true);
 
 onMounted(() => {
-  if (isHead.value) {
+  if (changeSetStore.headSelected) {
     openCollapsible.value = !!window.localStorage.getItem("applied-changes");
     window.localStorage.removeItem("applied-changes");
   } else {
