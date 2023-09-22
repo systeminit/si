@@ -46,7 +46,7 @@
           type="text"
           :disabled="disabled"
           label="Name"
-          placeholder="Give this asset a name here..."
+          placeholder="(mandatory) Provide the asset a name"
           @blur="updateAsset"
         />
         <VormInput
@@ -55,7 +55,7 @@
           type="text"
           :disabled="disabled"
           label="Display name"
-          placeholder="Optionally, give the asset a shorter name for display here..."
+          placeholder="(optional) Provide the asset a shorter display name"
           @blur="updateAsset"
         />
         <VormInput
@@ -64,7 +64,7 @@
           type="text"
           :disabled="disabled"
           label="Entrypoint"
-          placeholder="Optionally, give the asset a shorter name for display here..."
+          placeholder="(mandatory) Provide the function entrypoint to the asset"
           @blur="updateAsset"
         />
         <VormInput
@@ -73,7 +73,7 @@
           type="text"
           :disabled="disabled"
           label="Category"
-          placeholder="Pick a category for this asset"
+          placeholder="(mandatory) Provide a category for the asset"
           @blur="updateAsset"
         />
         <VormInput
@@ -91,7 +91,7 @@
           type="textarea"
           :disabled="disabled"
           label="Description"
-          placeholder="Provide a brief description of this asset here..."
+          placeholder="(optional) Provide a brief description of the asset"
           @blur="updateAsset"
         />
         <VormInput type="container" label="color" :disabled="disabled">
@@ -109,7 +109,7 @@
           type="url"
           :disabled="disabled"
           label="Documentation Link"
-          placeholder="Enter a link to the documentation for this asset here..."
+          placeholder="(optional) Provide a documentation link for the asset"
           @blur="updateAsset"
         />
       </Stack>
