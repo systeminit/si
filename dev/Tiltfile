@@ -1,4 +1,5 @@
 config.define_string_list("to-run", args = True)
+config.define_bool("bind-all")
 cfg = config.parse()
 
 # Define groups of services
@@ -167,11 +168,15 @@ local_resource(
 
 # Locally build and run `web` in dev mode
 web_target = "//app/web:dev"
+serve_cmd = "buck2 run {}".format(web_target)
+if cfg.get("bind-all", False):
+    serve_cmd = serve_cmd + " -- --host 0.0.0.0"
+
 local_resource(
     "web",
     labels = ["frontend"],
     cmd = "buck2 build {}".format(web_target),
-    serve_cmd = "buck2 run {}".format(web_target),
+    serve_cmd = serve_cmd,
     allow_parallel = True,
     resource_deps = [
         "sdf",
