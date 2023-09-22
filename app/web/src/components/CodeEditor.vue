@@ -38,6 +38,7 @@ import { linter, lintGutter } from "@codemirror/lint";
 import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
+import beautify from "js-beautify";
 import { createTypescriptSource } from "@/utils/typescriptLinter";
 
 const props = defineProps({
@@ -61,6 +62,15 @@ let view: EditorView; // instance of the CodeMirror editor
 
 // our local copy of code
 const draftValue = ref(props.modelValue || "");
+
+const autoformat = (code: string): string => {
+  if (props.disabled) return code;
+
+  if (props.json || props.typescript) {
+    return beautify(draftValue.value);
+  }
+  return code;
+};
 
 // if v-model value changes, update our local draft
 watch(
@@ -222,6 +232,10 @@ const mountEditor = async () => {
     state: editorState,
     parent: editorMount.value,
   });
+
+  view.contentDOM.onblur = () => {
+    draftValue.value = autoformat(draftValue.value);
+  };
 };
 
 watch(
@@ -236,6 +250,7 @@ watch(
 );
 
 function onLocalSave() {
+  draftValue.value = autoformat(draftValue.value);
   emitUpdatedValue();
   emit("explicitSave");
   return true; // codemirror needs this when used as a "command"
