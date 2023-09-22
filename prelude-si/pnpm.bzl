@@ -928,7 +928,7 @@ npm_package_path="$1"
 npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
-pnpm run --report-summary "$npm_run_command"
+pnpm run --report-summary "$npm_run_command" "$@"
 """, is_executable = True);
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
     args.hidden([ctx.attrs.deps])
