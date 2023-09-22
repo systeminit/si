@@ -2,11 +2,11 @@ use super::SchemaVariantDefinitionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use dal::{
     component::ComponentKind,
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    Func, FuncBackendKind, FuncBackendResponseType, StandardModel, Visibility, WsEvent,
+    ChangeSet, Func, FuncBackendKind, FuncBackendResponseType, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,8 +41,24 @@ pub async fn create_variant_def(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateVariantDefRequest>,
-) -> SchemaVariantDefinitionResult<Json<CreateVariantDefResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> SchemaVariantDefinitionResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
 
     let mut asset_func = Func::new(
         &ctx,
@@ -89,8 +105,15 @@ pub async fn create_variant_def(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(CreateVariantDefResponse {
-        id: *variant_def.id(),
-        success: true,
-    }))
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+    Ok(
+        response.body(serde_json::to_string(&CreateVariantDefResponse {
+            id: *variant_def.id(),
+            success: true,
+        })?)?,
+    )
 }

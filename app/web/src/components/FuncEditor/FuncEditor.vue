@@ -18,7 +18,6 @@
       <CodeEditor
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
-        :disabled="changeSetsStore.headSelected"
         @change="updateFuncCode"
         @explicitSave="execFunc"
       />
@@ -37,13 +36,11 @@ import { storeToRefs } from "pinia";
 import { LoadingMessage, ErrorMessage } from "@si/vue-lib/design-system";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import CodeEditor from "@/components/CodeEditor.vue";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },
 });
 
-const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
 const { selectedFuncSummary, selectedFuncDetails } = storeToRefs(funcStore);
 

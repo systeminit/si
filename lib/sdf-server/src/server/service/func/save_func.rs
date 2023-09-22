@@ -1,5 +1,5 @@
 use axum::extract::OriginalUri;
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -16,8 +16,8 @@ use dal::{
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     validation::prototype::context::ValidationPrototypeContext,
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributePrototype,
-    AttributePrototypeArgument, AttributePrototypeId, AttributeValue, Component, ComponentId,
-    DalContext, Func, FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop,
+    AttributePrototypeArgument, AttributePrototypeId, AttributeValue, ChangeSet, Component,
+    ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop,
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
@@ -683,8 +683,24 @@ pub async fn save_func<'a>(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SaveFuncRequest>,
-) -> FuncResult<Json<SaveFuncResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> FuncResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
 
     let request_id = request.id;
     let request_associations = request.associations.clone();
@@ -731,5 +747,10 @@ pub async fn save_func<'a>(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(save_response))
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+    Ok(response.body(serde_json::to_string(&save_response)?)?)
 }

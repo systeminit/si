@@ -339,6 +339,12 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_FUNC(func: FuncWithDetails) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+          const isHead = changeSetStore.headSelected;
+
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_func",
@@ -347,6 +353,8 @@ export const useFuncStore = () => {
               ...visibility,
             },
             optimistic: () => {
+              if (isHead) return () => {};
+
               const current = this.funcById(func.id);
               this.funcDetailsById[func.id] = {
                 ...func,
@@ -362,6 +370,8 @@ export const useFuncStore = () => {
             },
             keyRequestStatusBy: func.id,
             onSuccess: (response) => {
+              if (isHead) return;
+
               func.associations = response.associations;
               func.isRevertible = response.isRevertible;
               this.funcDetailsById[func.id] = func;
@@ -375,6 +385,11 @@ export const useFuncStore = () => {
         },
 
         async REVERT_FUNC(funcId: FuncId) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
           return new ApiRequest<{ success: true }>({
             method: "post",
             url: "func/revert_func",
@@ -388,12 +403,19 @@ export const useFuncStore = () => {
             trackEvent("func_save_and_exec", { id: func.id, name: func.name });
           }
 
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+          const isHead = changeSetStore.headSelected;
+
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_and_exec",
             keyRequestStatusBy: funcId,
             params: { ...func, ...visibility },
             onSuccess: (response) => {
+              if (isHead) return;
               const func = this.funcDetailsById[funcId];
               if (func) {
                 func.associations = response.associations;
@@ -419,6 +441,11 @@ export const useFuncStore = () => {
           name?: string;
           options?: CreateFuncOptions;
         }) {
+          if (changeSetStore.creatingChangeSet)
+            throw new Error("race, wait until the change set is created");
+          if (changeSetStore.headSelected)
+            changeSetStore.creatingChangeSet = true;
+
           return new ApiRequest<FuncSummary>({
             method: "post",
             url: "func/create_func",
@@ -511,30 +538,32 @@ export const useFuncStore = () => {
         },
 
         updateFuncCode(funcId: FuncId, code: string) {
-          const func = this.funcDetailsById[funcId];
-          if (func) {
-            func.code = code;
-            this.funcDetailsById[funcId] = func;
-            this.enqueueFuncSave(funcId);
-          }
+          const func = _.cloneDeep(this.funcDetailsById[funcId]);
+          if (!func) return;
+          func.code = code;
+
+          this.enqueueFuncSave(func);
         },
 
-        enqueueFuncSave(funcId: FuncId) {
+        enqueueFuncSave(func: FuncWithDetails) {
+          if (changeSetStore.headSelected) return this.UPDATE_FUNC(func);
+
+          this.funcDetailsById[func.id] = func;
+
           // Lots of ways to handle this... we may want to handle this debouncing in the component itself
           // so the component has its own "draft" state that it passes back to the store when it's ready to save
           // however this should work for now, and lets the store handle this logic
           if (!funcSaveDebouncer) {
-            funcSaveDebouncer = keyedDebouncer((funcId: FuncId) => {
-              const func = this.funcById(funcId);
-              if (func) {
-                this.UPDATE_FUNC(func);
-              }
+            funcSaveDebouncer = keyedDebouncer((id: FuncId) => {
+              const f = this.funcDetailsById[id];
+              if (!f) return;
+              this.UPDATE_FUNC(f);
             }, 2000);
           }
           // call debounced function which will trigger sending the save to the backend
-          const saveFunc = funcSaveDebouncer(funcId);
+          const saveFunc = funcSaveDebouncer(func.id);
           if (saveFunc) {
-            saveFunc(funcId);
+            saveFunc(func.id);
           }
         },
       },

@@ -4,19 +4,16 @@
       v-if="loadAssetReqStatus.isPending"
       :requestStatus="loadAssetReqStatus"
     />
-    <ScrollArea v-else-if="assetStore.selectedAsset && assetId">
+    <ScrollArea v-else-if="editingAsset && assetId">
       <template #top>
         <div
-          v-if="!changeSetsStore.headSelected"
           class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
         >
           <VButton
             :requestStatus="executeAssetReqStatus"
             loadingText="Creating Asset..."
             :label="
-              assetStore.selectedAsset.schemaVariantId
-                ? 'Update Asset'
-                : 'Create Asset'
+              editingAsset.schemaVariantId ? 'Update Asset' : 'Create Asset'
             "
             :disabled="disabled"
             tone="action"
@@ -45,7 +42,7 @@
         />
         <VormInput
           id="name"
-          v-model="assetStore.selectedAsset.name"
+          v-model="editingAsset.name"
           type="text"
           :disabled="disabled"
           label="Name"
@@ -54,7 +51,7 @@
         />
         <VormInput
           id="menuName"
-          v-model="assetStore.selectedAsset.menuName"
+          v-model="editingAsset.menuName"
           type="text"
           :disabled="disabled"
           label="Display name"
@@ -63,7 +60,7 @@
         />
         <VormInput
           id="handler"
-          v-model="assetStore.selectedAsset.handler"
+          v-model="editingAsset.handler"
           type="text"
           :disabled="disabled"
           label="Entrypoint"
@@ -72,7 +69,7 @@
         />
         <VormInput
           id="category"
-          v-model="assetStore.selectedAsset.category"
+          v-model="editingAsset.category"
           type="text"
           :disabled="disabled"
           label="Category"
@@ -81,7 +78,7 @@
         />
         <VormInput
           id="componentType"
-          v-model="assetStore.selectedAsset.componentType"
+          v-model="editingAsset.componentType"
           type="dropdown"
           :disabled="disabled"
           :options="componentTypeOptions"
@@ -90,7 +87,7 @@
         />
         <VormInput
           id="description"
-          v-model="assetStore.selectedAsset.description"
+          v-model="editingAsset.description"
           type="textarea"
           :disabled="disabled"
           label="Description"
@@ -100,7 +97,7 @@
         <VormInput type="container" label="color" :disabled="disabled">
           <ColorPicker
             id="color"
-            v-model="assetStore.selectedAsset.color"
+            v-model="editingAsset.color"
             :disabled="disabled"
             @change="updateAsset"
           />
@@ -108,7 +105,7 @@
 
         <VormInput
           id="link"
-          v-model="assetStore.selectedAsset.link"
+          v-model="editingAsset.link"
           type="url"
           :disabled="disabled"
           label="Documentation Link"
@@ -131,7 +128,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   VButton,
   VormInput,
@@ -141,9 +138,9 @@ import {
   Stack,
   ScrollArea,
 } from "@si/vue-lib/design-system";
+import * as _ from "lodash-es";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { nilId } from "@/utils/nilId";
 import { useComponentsStore } from "@/store/components.store";
 import ColorPicker from "./ColorPicker.vue";
@@ -152,7 +149,6 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
-const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
@@ -173,35 +169,42 @@ const componentTypeOptions = [
   { label: "Configuration Frame", value: "configurationFrame" },
 ];
 
-const updateAsset = () => {
-  if (assetStore.selectedAsset) {
-    assetStore.assetsById[assetStore.selectedAsset.id] =
-      assetStore.selectedAsset;
-    assetStore.SAVE_ASSET(assetStore.selectedAsset.id);
+const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
+watch(
+  () => assetStore.selectedAsset,
+  () => {
+    editingAsset.value = _.cloneDeep(assetStore.selectedAsset);
+  },
+);
+
+const updateAsset = async () => {
+  if (
+    editingAsset.value &&
+    !_.isEqual(editingAsset.value, assetStore.selectedAsset)
+  ) {
+    await assetStore.SAVE_ASSET(editingAsset.value);
   }
 };
 
 const disabled = computed(
   () =>
     !!(
-      (assetStore.selectedAsset?.hasComponents ||
-        assetStore.selectedAsset?.hasAttrFuncs) ??
+      (editingAsset.value?.hasComponents || editingAsset.value?.hasAttrFuncs) ??
       false
     ),
 );
 
 const disabledWarning = computed(() => {
   let byComponents = "";
-  if (assetStore.selectedAsset?.hasComponents) {
+  if (editingAsset.value?.hasComponents) {
     byComponents = "by components";
   }
   let byFuncs = "";
-  if (assetStore.selectedAsset?.hasAttrFuncs) {
+  if (editingAsset.value?.hasAttrFuncs) {
     byFuncs = "by attribute functions or custom validations";
   }
   const and =
-    assetStore.selectedAsset?.hasComponents &&
-    assetStore.selectedAsset?.hasAttrFuncs
+    editingAsset.value?.hasComponents && editingAsset.value?.hasAttrFuncs
       ? " and "
       : "";
 
@@ -229,8 +232,8 @@ const executeAsset = async () => {
 };
 
 const cloneAsset = async () => {
-  if (assetStore.selectedAsset?.id) {
-    const result = await assetStore.CLONE_ASSET(assetStore.selectedAsset.id);
+  if (editingAsset.value?.id) {
+    const result = await assetStore.CLONE_ASSET(editingAsset.value.id);
     if (result.result.success) {
       assetStore.selectAsset(result.result.data.id);
     }
