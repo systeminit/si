@@ -262,9 +262,12 @@ export const useAssetStore = () => {
           if (changeSetsStore.headSelected) return this.SAVE_ASSET(asset);
 
           this.assetsById[asset.id] = asset;
+
           if (!assetSaveDebouncer) {
-            assetSaveDebouncer = keyedDebouncer(() => {
-              this.SAVE_ASSET(asset);
+            assetSaveDebouncer = keyedDebouncer((id: AssetId) => {
+              const a = this.assetsById[id];
+              if (!a) return;
+              this.SAVE_ASSET(a);
             }, 2000);
           }
           const assetSaveFunc = assetSaveDebouncer(asset.id);

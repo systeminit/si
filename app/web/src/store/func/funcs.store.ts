@@ -554,8 +554,10 @@ export const useFuncStore = () => {
           // so the component has its own "draft" state that it passes back to the store when it's ready to save
           // however this should work for now, and lets the store handle this logic
           if (!funcSaveDebouncer) {
-            funcSaveDebouncer = keyedDebouncer(() => {
-              this.UPDATE_FUNC(func);
+            funcSaveDebouncer = keyedDebouncer((id: FuncId) => {
+              const f = this.funcDetailsById[id];
+              if (!f) return;
+              this.UPDATE_FUNC(f);
             }, 2000);
           }
           // call debounced function which will trigger sending the save to the backend
