@@ -1,6 +1,9 @@
-use axum::Json;
+use axum::{response::IntoResponse, Json};
 use dal::func::argument::FuncArgument;
-use dal::{AttributePrototype, Func, FuncBackendKind, FuncId, StandardModel, Visibility, WsEvent};
+use dal::{
+    AttributePrototype, ChangeSet, Func, FuncBackendKind, FuncId, StandardModel, Visibility,
+    WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{FuncError, FuncResult};
@@ -24,8 +27,24 @@ pub async fn revert_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RevertFuncRequest>,
-) -> FuncResult<Json<RevertFuncResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> FuncResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -59,6 +78,13 @@ pub async fn revert_func(
 
         ctx.commit().await?;
 
-        Ok(Json(RevertFuncResponse { success: true }))
+        let mut response = axum::response::Response::builder();
+        response = response.header("Content-Type", "application/json");
+        if let Some(force_changeset_pk) = force_changeset_pk {
+            response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+        }
+        Ok(response.body(serde_json::to_string(&RevertFuncResponse {
+            success: true,
+        })?)?)
     }
 }

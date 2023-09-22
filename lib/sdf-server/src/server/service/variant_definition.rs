@@ -15,8 +15,8 @@ use dal::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributePrototype,
-    AttributePrototypeError, DalContext, ExternalProvider, ExternalProviderError, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncError, FuncId,
+    AttributePrototypeError, ChangeSetError, DalContext, ExternalProvider, ExternalProviderError,
+    Func, FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncError, FuncId,
     InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, SchemaError,
     SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, StandardModelError,
     TenancyError, TransactionsError, UserError, ValidationPrototype, ValidationPrototypeError,
@@ -46,6 +46,8 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error(transparent)]
+    ChangeSet(#[from] ChangeSetError),
+    #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("error creating schema variant from definition: {0}")]
     CouldNotCreateSchemaVariantFromDefinition(String),
@@ -63,6 +65,8 @@ pub enum SchemaVariantDefinitionError {
     FuncIsEmpty(FuncId),
     #[error("Func {0} not found")]
     FuncNotFound(FuncId),
+    #[error(transparent)]
+    Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
     #[error(transparent)]
