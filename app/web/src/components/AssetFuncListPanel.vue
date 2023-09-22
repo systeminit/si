@@ -10,7 +10,7 @@
           <div class="flex flex-row items-center justify-between">
             <span class="pt-1">Asset Functions</span>
             <AssetFuncAttachDropdown
-              v-if="assetStore.selectedAssetId"
+              v-if="assetStore.selectedAssetId && !changeSetsStore.headSelected"
               :disabled="!assetStore.selectedAsset?.schemaVariantId"
               label="Attach Function"
               @selected-attach-type="openAttachFuncModal"
@@ -76,12 +76,14 @@ import { CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import FuncSkeleton from "./FuncSkeleton.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 import AssetFuncAttachDropdown from "./AssetFuncAttachDropdown.vue";
 
 const props = defineProps<{ assetId?: string }>();
 
+const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 
 const funcsByVariant = computed(() =>

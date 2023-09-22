@@ -32,7 +32,7 @@
     <CodeEditor
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
-      :disabled="isReadOnly"
+      :disabled="isReadOnly || changeSetsStore.headSelected"
       @change="onChange"
     />
   </ScrollArea>
@@ -51,6 +51,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import SiChip from "@/components/SiChip.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
@@ -58,6 +59,7 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,

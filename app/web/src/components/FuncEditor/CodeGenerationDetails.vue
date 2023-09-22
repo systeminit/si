@@ -12,6 +12,7 @@
         v-model="selectedComponents"
         thingLabel="components"
         :options="componentOptions"
+        :disabled="disabled"
         @change="updateAssociations"
       />
       <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
@@ -21,6 +22,7 @@
         v-model="selectedVariants"
         thingLabel="schema variants"
         :options="schemaVariantOptions"
+        :disabled="disabled"
         @change="updateAssociations"
       />
     </template>
@@ -47,6 +49,7 @@ const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
 const props = defineProps<{
   modelValue: CodeGenerationAssociations;
   schemaVariantId?: string;
+  disabled?: boolean;
 }>();
 
 const modelValue = toRef(props, "modelValue");

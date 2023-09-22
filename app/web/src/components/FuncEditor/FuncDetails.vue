@@ -25,70 +25,72 @@
     <TabGroup rememberSelectedTabKey="func_details">
       <TabGroupItem label="Properties" slug="properties">
         <ScrollArea>
-          <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
-            <div class="flex gap-1">
-              <VButton
-                class="--tone-success"
-                icon="save"
-                size="md"
-                loadingText="Executing..."
-                label="Execute"
+          <template v-if="!changeSetsStore.headSelected" #top>
+            <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
+              <div class="flex gap-1">
+                <VButton
+                  class="--tone-success"
+                  icon="save"
+                  size="md"
+                  loadingText="Executing..."
+                  label="Execute"
+                  :requestStatus="execFuncReqStatus"
+                  successText="Finished"
+                  @click="execFunc"
+                />
+
+                <VButton
+                  class="--tone-neutral"
+                  :disabled="!isRevertible"
+                  icon="x"
+                  size="md"
+                  loadingText="Reverting..."
+                  label="Revert"
+                  :requestStatus="revertFuncReqStatus"
+                  successText="Finished"
+                  @click="revertFunc"
+                />
+
+                <VButton
+                  v-if="schemaVariantId"
+                  :loading="isDetaching"
+                  tone="destructive"
+                  icon="x"
+                  label="Detach"
+                  size="md"
+                  loadingText="Detaching..."
+                  @click="detachFunc"
+                />
+              </div>
+
+              <ErrorMessage
+                v-if="execFuncReqStatus.isError"
                 :requestStatus="execFuncReqStatus"
-                successText="Finished"
-                @click="execFunc"
               />
-
-              <VButton
-                class="--tone-neutral"
-                :disabled="!isRevertible"
-                icon="x"
-                size="md"
-                loadingText="Reverting..."
-                label="Revert"
-                :requestStatus="revertFuncReqStatus"
-                successText="Finished"
-                @click="revertFunc"
-              />
-
-              <VButton
-                v-if="schemaVariantId"
-                :loading="isDetaching"
-                tone="destructive"
-                icon="x"
-                label="Detach"
-                size="md"
-                loadingText="Detaching..."
-                @click="detachFunc"
-              />
-            </div>
-
-            <ErrorMessage
-              v-if="execFuncReqStatus.isError"
-              :requestStatus="execFuncReqStatus"
-            />
-            <ErrorMessage
-              v-if="editingFunc?.associations?.type === 'action'"
-              icon="alert-triangle"
-              tone="warning"
-              >Executing will run on all attached components, so may have
-              effects on your real world resources!</ErrorMessage
-            >
-            <ErrorMessage
-              v-if="isConnectedToOtherAssetTypes"
-              icon="alert-triangle"
-              tone="warning"
-            >
-              This function is connected to other
-              {{
-                (editingFunc?.associations &&
-                  editingFunc.associations?.type === "validation") ||
-                (editingFunc?.associations &&
-                  editingFunc?.associations?.type === "attribute")
-                  ? "attributes"
-                  : "assets"
-              }}.
-            </ErrorMessage>
-          </Stack>
+              <ErrorMessage
+                v-if="editingFunc?.associations?.type === 'action'"
+                icon="alert-triangle"
+                tone="warning"
+                >Executing will run on all attached components, so may have
+                effects on your real world resources!</ErrorMessage
+              >
+              <ErrorMessage
+                v-if="isConnectedToOtherAssetTypes"
+                icon="alert-triangle"
+                tone="warning"
+              >
+                This function is connected to other
+                {{
+                  (editingFunc?.associations &&
+                    editingFunc.associations?.type === "validation") ||
+                  (editingFunc?.associations &&
+                    editingFunc?.associations?.type === "attribute")
+                    ? "attributes"
+                    : "assets"
+                }}.
+              </ErrorMessage>
+            </Stack>
+          </template>
 
           <!-- <Collapsible label="Logs">
             {{ lastExecutionLog }}
@@ -137,6 +139,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :requestStatus="updateFuncReqStatus"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
@@ -147,6 +150,7 @@
               editingFunc.associations.type === 'codeGeneration'
             "
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -157,6 +161,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -167,6 +172,7 @@
             "
             ref="detachRef"
             v-model="editingFunc.associations"
+            :disabled="changeSetsStore.headSelected"
             :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
@@ -247,10 +253,12 @@ import {
   Stack,
   ErrorMessage,
   ScrollArea,
+  useDisabledBySelfOrParent,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -313,11 +321,7 @@ const isRevertible = computed(() =>
 );
 
 const updateFunc = () => {
-  if (
-    !editingFunc.value ||
-    _.isEqual(editingFunc.value, storeFuncDetails.value)
-  )
-    return;
+  if (!editingFunc.value) return;
   funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
@@ -388,4 +392,11 @@ const detachFunc = async () => {
 // const lastExecutionLog = computed(
 //   () => funcStore.lastFuncExecutionLogByFuncId[funcId?.value || ""],
 // );
+
+const changeSetsStore = useChangeSetsStore();
+
+useDisabledBySelfOrParent(
+  computed(() => changeSetsStore.headSelected),
+  true,
+);
 </script>
