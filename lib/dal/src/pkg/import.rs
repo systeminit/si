@@ -81,9 +81,10 @@ pub async fn import_pkg_from_pkg(
         let unique_id = func_spec.unique_id().to_string();
 
         // This is a hack because the hash of the intrinsics has changed from the version in the
-        // packages. We also apply this to si:resourcePayloadToValue since it should be an
-        // intrinsic but is only in our packages
-        if func::is_intrinsic(func_spec.name()) || func_spec.name() == "si:resourcePayloadToValue" {
+        // packages. We also apply this to si:resourcePayloadToValue and si:normalizeToArray since
+        // it should be an intrinsic but is only in our packages
+        let special_case_funcs = vec!["si:resourcePayloadToValue", "si:normalizeToArray"];
+        if func::is_intrinsic(func_spec.name()) || special_case_funcs.contains(&func_spec.name()) {
             let func = if let Some(func) = Func::find_by_name(ctx, func_spec.name()).await? {
                 func
             } else {
