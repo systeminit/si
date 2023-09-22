@@ -22,6 +22,8 @@ pub type LineageId = Ulid;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
+    #[error("Problem building attribute view: {0}")]
+    AttributeView(String),
     #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
     #[error("ChangeSet error: {0}")]
@@ -231,9 +233,9 @@ impl WorkspaceSnapshotGraph {
                     pointer
                 }
                 None => {
-                    // This is an error, and really shouldn't ever happen.
-                    dbg!(view, write_location, current_node_content);
-                    todo!();
+                    return Err(WorkspaceSnapshotGraphError::AttributeView(format!(
+                        "Invalid write location {write_location}"
+                    )));
                 }
             };
 
