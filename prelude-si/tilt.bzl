@@ -90,8 +90,6 @@ def _invoke_tilt(ctx: AnalysisContext, subcmd: str) -> list[[DefaultInfo, RunInf
     run_cmd_args = cmd_args([
         "tilt",
         subcmd,
-        "--host",
-        "0.0.0.0",
         "--file",
         tiltfile,
     ])
