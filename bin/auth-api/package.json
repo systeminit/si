@@ -29,7 +29,7 @@
     "@prisma/client": "^4.12.0",
     "@si/ts-lib": "workspace:*",
     "auth0": "^3.2.0",
-    "axios": "^0.27.2",
+    "axios": "^1.5.0",
     "chalk": "^5.2.0",
     "debug": "^4.3.4",
     "dotenv": "^16.0.3",
