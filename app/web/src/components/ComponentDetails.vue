@@ -48,7 +48,7 @@
     </div>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
-      <Stack v-if="!changeSetStore.headSelected" class="p-sm">
+      <Stack v-if="!isHead" class="p-sm">
         <ErrorMessage icon="alert-triangle" tone="warning">
           This component will be removed from your model when this change set is
           merged
@@ -69,11 +69,9 @@
     <template v-else>
       <div class="flex-grow relative">
         <TabGroup
-          :startSelectedTabSlug="
-            changeSetStore.headSelected ? 'resource' : 'attributes'
-          "
+          :startSelectedTabSlug="isHead ? 'resource' : 'attributes'"
           :rememberSelectedTabKey="`component_details_${
-            changeSetStore.headSelected ? 'view' : 'model'
+            isHead ? 'view' : 'model'
           }`"
           trackingSlug="component_details"
         >
@@ -126,6 +124,7 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { nilId } from "@/utils/nilId";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import ComponentCard from "./ComponentCard.vue";
@@ -145,6 +144,8 @@ const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 const selectedComponentCode = computed(
   () => componentsStore.selectedComponentCode,
 );
+
+const isHead = computed(() => changeSetStore.selectedChangeSetId === nilId());
 
 // this component has a :key so a new instance will be re-mounted when the selected component changes
 // so we can use mounted hooks to trigger fetching data

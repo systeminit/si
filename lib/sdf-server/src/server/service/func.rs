@@ -17,12 +17,12 @@ use dal::{
     schema::variant::SchemaVariantError,
     ActionKind, ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextError,
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError,
-    ComponentError, ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider,
-    InternalProviderError, InternalProviderId, LeafInputLocation, Prop, PropError, PropId,
-    PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
+    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ComponentError,
+    ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider, InternalProviderError,
+    InternalProviderId, LeafInputLocation, Prop, PropError, PropId, PrototypeListForFuncError,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -73,8 +73,6 @@ pub enum FuncError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value missing")]
     AttributeValueMissing,
-    #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component missing schema variant")]
@@ -124,8 +122,6 @@ pub enum FuncError {
     FuncNotSupported,
     #[error("Function options are incompatible with variant")]
     FuncOptionsAndVariantMismatch,
-    #[error("Hyper error: {0}")]
-    Hyper(#[from] hyper::http::Error),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("Missing required options for creating a function")]

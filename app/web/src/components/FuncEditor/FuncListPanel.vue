@@ -8,6 +8,7 @@
     <ScrollArea v-if="funcList.length">
       <template #top>
         <div
+          v-if="!changeSetsStore.headSelected"
           class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
         >
           <NewFuncDropdown
@@ -28,7 +29,8 @@
         <div
           class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
         >
-          Select a function to view or edit it.
+          Select a function to view
+          {{ !changeSetsStore.headSelected ? "or edit" : "" }} it.
         </div>
       </template>
 
@@ -79,7 +81,9 @@ import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
+const changeSetsStore = useChangeSetsStore();
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
