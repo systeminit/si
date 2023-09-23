@@ -6,16 +6,16 @@ title: Asset Authoring
 
 Today, we are going to build a System Initiative Asset that allows us to create and manage
 [AWS EBS Volumes](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volumes.html). We are going to create a 100GB EBS Volume in AWS Ohio (us-east-2a)
-that has 3000 iops, running on an SSD and is unencrypted.
+that has 3000 iops, running on an SSD, and is unencrypted.
 
-**Please take care to follow the guide precisely; there's a lot of rough edges. Specifically,
-ensure you stick with the function naming scheme and setting the appropriate properties of
+**Please take care to follow the guide precisely; there are a lot of rough edges. Specifically,
+ensure you stick with the function naming scheme and set the appropriate properties of
 attached functions.**
 
 ### Anatomy of an Asset
 
 An Asset is a collection of functions that come together to provide the capability to talk
-to an infrastructure provider, e.g. an AWS EBS Volume. An Asset is made of the following
+to an infrastructure provider, e.g., an AWS EBS Volume. An Asset is made of the following
 types of functions:
 
 * Schema Variant Definition
@@ -25,30 +25,29 @@ types of functions:
 * Attribute
 * Validation
 
-The type of functions that an Asset needs will depend on what the Asset does. For example,
-if we want our Asset to have a real world representation of our 'digital twin', then we
+The type of functions an Asset needs will depend on what the Asset does. For example,
+if we want our Asset to have a real-world representation of our 'digital twin,' then we
 need `action functions` to be able to _take action_ with the infrastructure provider. Or, you
 will need `attribute functions` if you want to manipulate data going
 to the Asset or from the Asset.
 
 ### Building the Schema Variant Definition of AWS EBS Volume
 
-A Schema Variant Definition, is a function that allows us to create the structure of the
-Asset schema. This definition is, usually, made up of:
+A Schema Variant Definition is a function that allows us to create the structure of the
+Asset schema. This definition is usually made up of the following:
 
 * Props
 * Input Sockets
 * Output Sockets
 
 There are other parts to the schema definition, but these are the most common. You can find the
-full schema definition in our [source code](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts).
-In System Initiative, we try and model out schema similar to how the AWS ecosystem would model
-the resource. I usually use the [AWS CLI Documentation](https://docs.aws.amazon.com/cli/latest/reference/#cli-aws)
-to understand what the schema needs to include. It's important to note that as we build out Assets, it's easy to
-extend the Asset, so you don't need to cover all scenarios in the first creation of the Asset.
+full schema definition in the [source code](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts).
+In System Initiative, we try to model schema similar to how the AWS ecosystem would model
+the resource. We usually use the [AWS CLI Documentation](https://docs.aws.amazon.com/cli/latest/reference/#cli-aws)
+to understand what the schema needs to include. It's important to note that as we build out Assets, extending the Asset is easy, so you don't need to cover all scenarios in the first creation of the Asset.
 
 Looking at the AWS CLI documentation for [creating an EBS Volume](https://docs.aws.amazon.com/cli/latest/reference/ec2/create-volume.html)
-I can see that we will want to have the following properties:
+we can see that we will want to have the following properties:
 
 * availability-zone
 * region
@@ -58,7 +57,7 @@ I can see that we will want to have the following properties:
 
 #### Authoring in System Initiative
 
-Let's launch System Initiative and go to the `Customize Screen` and create a new changeset to work in.
+Let's launch System Initiative, go to the `Customize Screen`, and create a new changeset to work in.
 
 ![customize-screen.png](/tutorial-img/08-asset-authoring/customize-screen.png)
 
@@ -147,11 +146,11 @@ function createAsset() {
 
 From this code, we can see that a prop uses a `PropBuilder` class and needs a `kind` and a
 `name`. It also needs a `widget`. A widget is a way for us to be able to interact with the property via the System
-Initiative modelling screen.
+Initiative modeling screen.
 
-You can notice that within the widgets we have combo boxes to help our colleagues.
+You can notice that within the widgets, we have combo boxes to help our colleagues.
 We have also added a default value for `volumeType`. A volume type is a requirement when choosing
-an EBS Volume. AWS defaults to `gp2` in the UI so we can follow suit here in our schema using `setDefaultValue` in the prop.
+an EBS Volume. AWS defaults to `gp2` in the UI, so we can follow suit here in our schema using `setDefaultValue` in the prop.
 
 A prop can get its value from another `prop` or `inputSocket`. We can use the `setValueFrom` class as part of a prop to be
 able to do this. We can see an example of this in the `regionProp` in our schema definition.
@@ -175,33 +174,32 @@ can model our infrastructure using edges to other assets, including
 * a connection between a configuration frame (where all the assets inside the frame are configured by it) 
 and an input socket. 
 
-You can see in the schema definition we have added a region input socket, so that it can be configured by a Region frame.
+You can see in the schema definition we have added a region input socket so that a Region frame can configure it.
 
-When creating a socket, we need to give that socket an `arity`. The arity is the number of
-connections it can make. An EBS Volume can only be in a single region so the region input socket
-has an arity of `one`. For my use case, I am going to attach the Volume to a single instance at a
-time, so I have made the output socket of volume ID have an arity of `one`.
+When creating a socket, we need to give that socket an `arity.` The arity is the number of
+connections it can make. An EBS Volume can only be in a single region, so the region input socket
+has an arity of `one.` For our use case, we will attach the Volume to a single instance at a
+time, so we have made the output socket of volume ID have an arity of `one`.
 
-In System Initiative, we have a loose type system in connecting the Assets. We *currently* use the
+System Initiative has a loose type system for connecting the Assets. We *currently* use the
 name of the sockets to do that, so `Region` as an input socket name matches the `Region` output socket
 name of the region Asset.
 
-Now that we have built out the structure of the code, let's update the metadata of the Asset and create it:
+Now that we have built out the structure of the code let's update the metadata of the Asset and create it:
 
 ![create-asset.png](/tutorial-img/08-asset-authoring/create-asset.png)
 
-When we whack the `Create Asset` button we will get a popup to let us know that we have a new Asset
+When we whack the `Create Asset` button, we will get a popup to let us know that we have a new Asset
 
 ![create-success.png](/tutorial-img/08-asset-authoring/create-success.png)
 
-We have just built our schema definition. We can now go and attach the behaviour to our Asset to make
-it do what we need it to.
+We have just built our schema definition. We can now attach the behavior to our Asset so it does what we need.
 
 ### Authoring a Code Generation Function
 
-In order to create an EBS volume, we are going to model the data that we want to send to AWS.
+To create an EBS volume, we are going to model the data that we want to send to AWS.
 As we will be re-using this data structure, we are going to create a codegen func. Select the Asset we just created
-and use the `Attach Function` button and select `New function`. The UI gives us a pop-up and allows us
+and use the `Attach Function` button, and select `New function`. The UI gives us a pop-up and allows us
 to select the kind of function.
 
 I've chosen `Code Generation` and set the name to be `awsEc2EbsVolumeJSON` - the name of this function is important as
@@ -241,9 +239,9 @@ We are now able to use this code generation function to be able to qualify and c
 ### Authoring a Qualification Function
 
 A qualification function is used to understand if the resource we are attempting to create is going to work as 
-expected - like a real time test to give us fast feedback on whether the system we propose is configured correctly.
+expected - like a real-time test to give us fast feedback on whether the system we propose is configured correctly.
 We can do this using something like a `dry-run` functionality of a CLI. Select the Asset we just created
-and use the `Attach Function` button and select `New function`.
+and use the `Attach Function` button, and select `New function`.
 
 I will choose `Qualification` and set the name to `qualifyAwsEbsVolume` and then create it. When we click the button,
 we get a pre-generated code snippet in the function editor. Remove the pre-generated
@@ -302,7 +300,7 @@ Action functions are a way of being able to attach behavior to our components. T
 * Delete
 * Refresh
 
-Let's start with authoring create, delete and refresh functions. It's important to set the `entrypoint` of the function attributes
+Let's start with authoring create, delete, and refresh functions. It's important to set the `entrypoint` of the function attributes
 to match the name of the action. When we create the function, we get a pre-generated code snippet in the function editor. Remove the 
 pre-generated code and replace it with the following for each of the functions:
 
@@ -410,7 +408,7 @@ async function refresh(component: Input): Promise<Output> {
 
 This code checks if there is an existing resource in the real world, if there isn't then there's no resource to refresh. It
 then uses the AWS CLI to refresh the EBS Volume data from AWS. This refresh function ensures that we are always aware of the
-state of the real world resource.
+state of the real-world resource.
 
 ### Let's test it
 
@@ -447,9 +445,9 @@ Asset collection for the community. Let's go ahead and do that:
 
 ![contribute-button.png](/tutorial-img/08-asset-authoring/contribute-button.png)
 
-If we are happy, we can whack the button:
+If we are happy, we can click the button:
 
 ![contribution-sent.png](/tutorial-img/08-asset-authoring/contribution-sent.png)
 
-We love our community and are always happy to accept contributions for our Assets!! We are excited to see what Assets that 
-you get to make and even more excited to test all the Assets that you want to share with the community.
+We love our community and are always happy to accept contributions for our Assets!! We are excited to see what Assets  
+you get to make and are even more excited to test all the Assets that you want to share with the community. Visit us on Discord if you need help or want to talk more. 
