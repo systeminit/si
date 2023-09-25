@@ -50,6 +50,7 @@ export interface LocalModuleDetails {
   schemas: string[];
   funcs: PkgFuncView[];
   hash: ModuleHash;
+  kind: "module" | "workspaceExport";
 }
 
 export interface ModuleSpec {
@@ -188,7 +189,7 @@ export const useModuleStore = () => {
           });
         },
 
-        async SEARCH_REMOTE_MODULES(nameQuery?: string) {
+        async LIST_WORKSPACE_EXPORTS() {
           return new ModuleIndexApiRequest<{
             modules: (RemoteModuleSummary & {
               latestHash: ModuleHash;
@@ -197,7 +198,20 @@ export const useModuleStore = () => {
           }>({
             method: "get",
             url: "/modules",
-            params: { name: nameQuery },
+            params: { kind: "workspaceBackup" },
+          });
+        },
+
+        async SEARCH_REMOTE_MODULES(params?: { name?: string; kind?: string }) {
+          return new ModuleIndexApiRequest<{
+            modules: (RemoteModuleSummary & {
+              latestHash: ModuleHash;
+              latestHashCreatedAt: IsoDateString;
+            })[];
+          }>({
+            method: "get",
+            url: "/modules",
+            params,
             onSuccess: (response) => {
               this.remoteModuleSearchResults = _.map(response.modules, (m) => ({
                 ...m,
@@ -207,6 +221,7 @@ export const useModuleStore = () => {
             },
           });
         },
+
         async GET_REMOTE_MODULE_DETAILS(id: ModuleId) {
           return new ModuleIndexApiRequest<RemoteModuleDetails>({
             method: "get",
@@ -257,6 +272,14 @@ export const useModuleStore = () => {
               // response is just success, so we have to reload local modules
               this.LOAD_LOCAL_MODULES();
             },
+          });
+        },
+
+        async EXPORT_WORKSPACE() {
+          return new ApiRequest({
+            method: "post",
+            url: "/pkg/export_workspace",
+            params: { ...visibility },
           });
         },
 

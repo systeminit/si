@@ -49,7 +49,7 @@
               :key="item.id"
               :value="item.id"
             >
-              {{ item.createdAt }}
+              {{ item.name }} ({{ item.createdAt }})
             </VormInputOption>
           </VormInput>
         </template>
@@ -100,35 +100,43 @@ import {
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useModuleStore, RemoteModuleSummary } from "@/store/module.store";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-const workspacesStore = useWorkspacesStore();
-const loadExportsReqStatus = workspacesStore.getRequestStatus(
-  "FETCH_WORKSPACE_EXPORTS",
+const moduleStore = useModuleStore();
+const loadExportsReqStatus = moduleStore.getRequestStatus(
+  "LIST_WORKSPACE_EXPORTS",
 );
-const importReqStatus = workspacesStore.getRequestStatus("IMPORT_WORKSPACE");
+const importReqStatus = moduleStore.getRequestStatus("INSTALL_REMOTE_MODULE");
 
-const exportsList = computed(() => workspacesStore.workspaceExports);
+const exportsList = ref<RemoteModuleSummary[]>([]);
 
 const selectedExportId = ref<string>();
 const confirmedDataLoss = ref(false);
 
-function open() {
+async function open() {
   selectedExportId.value = undefined;
   confirmedDataLoss.value = false;
-  workspacesStore.FETCH_WORKSPACE_EXPORTS();
+  const exportResponse = await moduleStore.LIST_WORKSPACE_EXPORTS();
+  if (exportResponse.result.success) {
+    exportsList.value = exportResponse.result.data.modules.map((workspace) => ({
+      ...workspace,
+      hash: workspace.latestHash,
+      hashCreatedAt: workspace.latestHashCreatedAt,
+    }));
+  }
   openModal();
 }
 
 async function continueHandler() {
   if (validationMethods.hasError()) return;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  await workspacesStore.IMPORT_WORKSPACE(selectedExportId.value!);
+  if (selectedExportId.value) {
+    await moduleStore.INSTALL_REMOTE_MODULE(selectedExportId.value);
+  }
 }
 
 function refreshHandler() {

@@ -9,7 +9,7 @@ use module_index_client::{FuncMetadata, ModuleDetailsResponse};
 use s3::error::S3Error;
 use sea_orm::{ActiveModelTrait, DbErr, Set};
 use serde::{Deserialize, Serialize};
-use si_pkg::{SiPkg, SiPkgError};
+use si_pkg::{SiPkg, SiPkgError, SiPkgKind};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -76,6 +76,11 @@ pub async fn upsert_module_route(
     let module_metadata = dbg!(loaded_module.metadata())?;
 
     let version = module_metadata.version().to_owned();
+    let module_kind = match module_metadata.kind() {
+        SiPkgKind::WorkspaceBackup => si_module::ModuleKind::WorkspaceBackup,
+        SiPkgKind::Module => si_module::ModuleKind::Module,
+    };
+
     let schemas: Vec<String> = loaded_module
         .schemas()?
         .iter()
@@ -108,6 +113,7 @@ pub async fn upsert_module_route(
             schemas,
             funcs,
         })?),
+        kind: Set(module_kind),
         ..Default::default() // all other attributes are `NotSet`
     };
 
@@ -117,7 +123,7 @@ pub async fn upsert_module_route(
         .put_object(format!("{}.sipkg", module_metadata.hash()), &data)
         .await?;
 
-    let new_module: si_module::Model = new_module.insert(&txn).await?;
+    let new_module: si_module::Model = dbg!(new_module.insert(&txn).await)?;
 
     txn.commit().await?;
 

@@ -90,6 +90,7 @@ pub async fn reject_module(
             Utc.fix(),
         ))),
         rejected_by_display_name: Set(Some(data)),
+        kind: Set(module.kind),
     };
 
     let updated_module: si_module::Model = dbg!(active_module.update(&txn).await)?;
