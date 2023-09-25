@@ -1,18 +1,332 @@
 use base64::{engine::general_purpose, Engine};
+use dal::BuiltinsResult;
 use dal::{
-    func::backend::validation::FuncBackendValidationArgs, func::intrinsics::IntrinsicFunc,
-    installed_pkg::*, pkg::*, schema::variant::leaves::LeafKind, validation::Validation, ChangeSet,
-    ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider, Schema, SchemaVariant,
-    StandardModel, ValidationPrototype,
+    func::{
+        argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
+        intrinsics::IntrinsicFunc,
+    },
+    installed_pkg::*,
+    pkg::*,
+    prop::PropPath,
+    schema::variant::leaves::LeafKind,
+    validation::Validation,
+    ActionKind, ChangeSet, ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider,
+    PropKind, Schema, SchemaVariant, StandardModel, ValidationPrototype,
 };
 use dal_test::{test, DalContextHeadRef};
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind, PkgSpec, PropSpec,
     PropSpecKind, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
     SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind, ValidationSpec,
     ValidationSpecKind,
 };
+
+async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
+    let mut stellarfield_builder = PkgSpec::builder();
+
+    stellarfield_builder
+        .name("stellarfield")
+        .version("2023-05-23")
+        .created_by("System Initiative");
+
+    let identity_func_spec = IntrinsicFunc::Identity
+        .to_spec()
+        .expect("create identity func spec");
+
+    let stellarfield_create_action_code = "async function create() {
+                return { payload: { \"poop\": true }, status: \"ok\" };
+            }";
+
+    let fn_name = "test:createActionStellarfield";
+    let stellarfield_create_action_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(stellarfield_create_action_code)
+                .handler("create")
+                .backend_kind(FuncSpecBackendKind::JsAction)
+                .response_type(FuncSpecBackendResponseType::Action)
+                .build()?,
+        )
+        .build()?;
+
+    let stellarfield_refresh_action_code =
+        "async function refresh(component: Input): Promise<Output> {
+              return { payload: { \"poop\": true }, status: \"ok\" };
+            }";
+
+    let fn_name = "test:refreshActionStellarfield";
+    let stellarfield_refresh_action_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .handler("refresh")
+                .code_plaintext(stellarfield_refresh_action_code)
+                .backend_kind(FuncSpecBackendKind::JsAction)
+                .response_type(FuncSpecBackendResponseType::Action)
+                .build()?,
+        )
+        .build()?;
+
+    let fallout_entries_to_galaxies_transform_code =
+            "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+          let galaxies = [];
+          let entries = input.entries;
+
+          // Force the entries arg to be an Array (and return an empty array if the arg is absent/undefined/null).
+          if (entries === undefined) return galaxies;
+          if (entries === null) return galaxies;
+          if (!Array.isArray(entries)) entries = [entries];
+
+          entries.filter(i => i ?? false).forEach(function (entry) {
+
+            let name = entry.si.name;
+            let rads = entry.domain.rads;
+            let galaxy = {
+              sun: name + \"-sun\",
+              planets: rads
+            };
+
+            galaxies.push(galaxy);
+          });
+
+          return galaxies;
+        }";
+    let fn_name = "test:falloutEntriesToGalaxiesStellarfield";
+    let fallout_entries_to_galaxies_transform_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(fallout_entries_to_galaxies_transform_code)
+                .handler("falloutEntriesToGalaxies")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Array)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("entries")
+                .kind(FuncArgumentKind::Array)
+                .element_kind(Some(FuncArgumentKind::Object.into()))
+                .build()?,
+        )
+        .build()?;
+
+    let stellarfield_scaffold_func = "function createAsset() {\
+                return new AssetBuilder().build();
+            }";
+    let fn_name = "test:scaffoldStellarfieldAsset";
+    let stellarfield_authoring_schema_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(stellarfield_scaffold_func)
+                .handler("createAsset")
+                .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+                .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+                .build()?,
+        )
+        .build()?;
+
+    let stellarfield_resource_payload_to_value_func_code =
+        "async function translate(arg: Input): Promise<Output> {\
+            return arg.payload ?? {};
+        }";
+    let fn_name = "test:resourcePayloadToValue";
+    let stellarfield_resource_payload_to_value_func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(stellarfield_resource_payload_to_value_func_code)
+                .handler("translate")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::Json)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("payload")
+                .kind(FuncArgumentKind::Object)
+                .build()?,
+        )
+        .build()?;
+
+    let stellarfield_schema = SchemaSpec::builder()
+        .name("stellarfield")
+        .data(
+            SchemaSpecData::builder()
+                .name("stellarfield")
+                .category("test exclusive")
+                .category_name("stellarfield")
+                .build()
+                .expect("schema spec data build"),
+        )
+        .variant(
+            SchemaVariantSpec::builder()
+                .name("v0")
+                .unique_id("stellarfield_sv")
+                .data(
+                    SchemaVariantSpecData::builder()
+                        .name("v0")
+                        .color("#ffffff")
+                        .func_unique_id(&stellarfield_authoring_schema_func.unique_id)
+                        .build()
+                        .expect("build variant spec data"),
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("name")
+                        .kind(PropKind::String)
+                        .func_unique_id(&identity_func_spec.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::Prop)
+                                .name("identity")
+                                .prop_path(PropPath::new(["root", "si", "name"]))
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("hidden_prop")
+                        .kind(PropKind::String)
+                        .hidden(true)
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("freestar")
+                        .kind(PropKind::String)
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("attributes")
+                        .kind(PropKind::String)
+                        .func_unique_id(&identity_func_spec.unique_id)
+                        .input(
+                            AttrFuncInputSpec::builder()
+                                .kind(AttrFuncInputSpecKind::InputSocket)
+                                .name("identity")
+                                .socket_name("bethesda")
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("universe")
+                        .kind(PropKind::Object)
+                        .entry(
+                            PropSpec::builder()
+                                .name("galaxies")
+                                .kind(PropKind::Array)
+                                .func_unique_id(
+                                    &fallout_entries_to_galaxies_transform_func.unique_id,
+                                )
+                                .input(
+                                    AttrFuncInputSpec::builder()
+                                        .kind(AttrFuncInputSpecKind::InputSocket)
+                                        .name("entries")
+                                        .socket_name("fallout")
+                                        .build()?,
+                                )
+                                .type_prop(
+                                    PropSpec::builder()
+                                        .name("galaxy")
+                                        .kind(PropKind::Object)
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("sun")
+                                                .kind(PropKind::String)
+                                                .build()?,
+                                        )
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("planets")
+                                                .kind(PropKind::Integer)
+                                                .build()?,
+                                        )
+                                        .build()?,
+                                )
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("bethesda")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("bethesda")
+                                .kind(SocketSpecKind::Input)
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .socket(
+                    SocketSpec::builder()
+                        .name("fallout")
+                        .data(
+                            SocketSpecData::builder()
+                                .name("fallout")
+                                .kind(SocketSpecKind::Input)
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(&ActionKind::Create)
+                        .func_unique_id(&stellarfield_create_action_func.unique_id)
+                        .build()?,
+                )
+                .action_func(
+                    ActionFuncSpec::builder()
+                        .kind(&ActionKind::Refresh)
+                        .func_unique_id(&stellarfield_refresh_action_func.unique_id)
+                        .build()?,
+                )
+                .build()?,
+        )
+        .build()?;
+
+    let stellarfield_spec = stellarfield_builder
+        .func(identity_func_spec)
+        .func(stellarfield_refresh_action_func)
+        .func(stellarfield_create_action_func)
+        .func(fallout_entries_to_galaxies_transform_func)
+        .func(stellarfield_authoring_schema_func)
+        .func(stellarfield_resource_payload_to_value_func)
+        .schema(stellarfield_schema)
+        .build()?;
+
+    let stellarfield_pkg = SiPkg::load_from_spec(stellarfield_spec)?;
+    import_pkg_from_pkg(
+        ctx,
+        &stellarfield_pkg,
+        Some(dal::pkg::ImportOptions {
+            schemas: Some(vec!["stellarfield".into()]),
+            ..Default::default()
+        }),
+    )
+    .await?;
+
+    Ok(())
+}
 
 #[test]
 async fn test_workspace_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
@@ -22,69 +336,21 @@ async fn test_workspace_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>
 
     let cs_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_change_set.pk));
 
-    let mut func = Func::find_by_name(&cs_ctx, "test:refreshActionStarfield")
+    make_stellarfield(&cs_ctx)
         .await
-        .expect("able to get refreshActionStarfield")
-        .expect("func exists");
+        .expect("able to make stellarfield");
 
-    func.delete_by_id(&cs_ctx).await.expect("able to delete");
-
-    cs_ctx.blocking_commit().await.expect("able to commit");
-
-    let change_set_2 = ChangeSet::new(ctx, "cs2", None)
-        .await
-        .expect("can create change set");
-    let cs2_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(change_set_2.pk));
-
-    let mut func = Func::find_by_name(&cs2_ctx, "test:refreshActionStarfield")
-        .await
-        .expect("able to get refreshActionStarfield")
-        .expect("func exists");
-
-    func.set_display_name(&cs2_ctx, Some("foo"))
-        .await
-        .expect("set display name");
-    cs2_ctx.blocking_commit().await.expect("able to commit");
-
-    let mut exporter = PkgExporter::new_workspace_exporter("workspace", "sally@systeminit.com");
+    let mut exporter =
+        PkgExporter::new_workspace_exporter("workspace", "sally@systeminit.com", "foo", "bar");
 
     let package_bytes = exporter.export_as_bytes(ctx).await.expect("able to export");
 
     let pkg = SiPkg::load_from_bytes(package_bytes).expect("able to load from bytes");
-    let spec = pkg.to_spec().await.expect("can convert to spec");
+    let _spec = pkg.to_spec().await.expect("can convert to spec");
 
-    assert_eq!(Some("head"), spec.default_change_set.as_deref());
-    assert_eq!(3, spec.change_sets.len());
-
-    let cs1 = spec.change_sets.get(2).expect("has second change set");
-
-    assert_eq!("cs1", &cs1.name);
-    assert_eq!(Some("head"), cs1.based_on_change_set.as_deref());
-
-    assert_eq!(1, cs1.funcs.len());
-    let refresh_func_in_changeset = cs1.funcs.get(0).expect("get first func");
-    assert_eq!(
-        "test:refreshActionStarfield",
-        &refresh_func_in_changeset.name
-    );
-    assert!(matches!(refresh_func_in_changeset.data, None));
-    assert!(refresh_func_in_changeset.deleted);
-
-    let cs2 = spec.change_sets.get(1).expect("has second change set");
-
-    assert_eq!("cs2", &cs2.name);
-    assert_eq!(Some("head"), cs2.based_on_change_set.as_deref());
-
-    assert_eq!(1, cs2.funcs.len());
-    let refresh_func_in_changeset = cs2.funcs.get(0).expect("get first func");
-
-    assert_eq!(
-        Some("foo"),
-        refresh_func_in_changeset
-            .data
-            .as_ref()
-            .and_then(|data| data.display_name.as_deref())
-    );
+    import_pkg_from_pkg(ctx, &pkg, None)
+        .await
+        .expect("able to import workspace");
 }
 
 #[test]
@@ -127,14 +393,9 @@ async fn test_module_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
         .expect("can create change set");
 
     let new_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_change_set.pk));
-    import_pkg_from_pkg(
-        &new_ctx,
-        &pkg,
-        pkg.metadata().expect("get metadata").name(),
-        None,
-    )
-    .await
-    .expect("able to import pkg");
+    import_pkg_from_pkg(&new_ctx, &pkg, None)
+        .await
+        .expect("able to import pkg");
 
     let sv_change_sets: Vec<ChangeSetPk> = SchemaVariant::list(&new_ctx)
         .await
@@ -443,12 +704,12 @@ async fn test_install_pkg(ctx: &DalContext) {
 
     let pkg_b = SiPkg::load_from_spec(spec_b).expect("able to load pkg from spec");
 
-    import_pkg_from_pkg(ctx, &pkg_a, "pkg_a", None)
+    import_pkg_from_pkg(ctx, &pkg_a, None)
         .await
         .expect("able to install pkg");
 
     // We should refuse to install the same package twice
-    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, "pkg_a", None).await;
+    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, None).await;
     assert!(matches!(
         second_import_result,
         Err(PkgError::PackageAlreadyInstalled(_))
@@ -463,7 +724,7 @@ async fn test_install_pkg(ctx: &DalContext) {
     assert_eq!(1, installed_pkgs.len());
     let installed_pkg_a = installed_pkgs.get(0).expect("pkg should be there");
 
-    assert_eq!("pkg_a", installed_pkg_a.name());
+    assert_eq!("The White Visitation", installed_pkg_a.name());
 
     let pkg_a_ipas = InstalledPkgAsset::list_for_installed_pkg_id(ctx, *installed_pkg_a.id())
         .await
@@ -529,7 +790,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         }
     }
 
-    import_pkg_from_pkg(ctx, &pkg_b, "pkg_b", None)
+    import_pkg_from_pkg(ctx, &pkg_b, None)
         .await
         .expect("install pkg b");
 
@@ -543,7 +804,7 @@ async fn test_install_pkg(ctx: &DalContext) {
     assert_eq!(1, installed_pkgs.len());
     let installed_pkg_b = installed_pkgs.get(0).expect("pkg should be there");
 
-    assert_eq!("pkg_b", installed_pkg_b.name());
+    assert_eq!("The Kenosha Kid", installed_pkg_b.name());
 
     let _pkg_b_ipas = InstalledPkgAsset::list_for_installed_pkg_id(ctx, *installed_pkg_b.id())
         .await

@@ -217,6 +217,14 @@ impl SiPkg {
             .created_at(metadata.created_at())
             .created_by(metadata.created_by());
 
+        if let Some(workspace_pk) = metadata.workspace_pk() {
+            builder.workspace_pk(workspace_pk);
+        }
+
+        if let Some(workspace_name) = metadata.workspace_name() {
+            builder.workspace_name(workspace_name);
+        }
+
         for func in self.funcs()? {
             builder.func(FuncSpec::try_from(func)?);
         }
@@ -347,6 +355,7 @@ pub struct SiPkgMetadata {
     created_by: String,
     default_change_set: Option<String>,
     workspace_pk: Option<String>,
+    workspace_name: Option<String>,
     hash: Hash,
 }
 
@@ -372,6 +381,7 @@ impl SiPkgMetadata {
             created_by: metadata_node.created_by,
             default_change_set: metadata_node.default_change_set,
             workspace_pk: metadata_node.workspace_pk,
+            workspace_name: metadata_node.workspace_name,
             hash: metadata_hashed_node.hash(),
         })
     }
@@ -406,6 +416,10 @@ impl SiPkgMetadata {
 
     pub fn workspace_pk(&self) -> Option<&str> {
         self.workspace_pk.as_deref()
+    }
+
+    pub fn workspace_name(&self) -> Option<&str> {
+        self.workspace_name.as_deref()
     }
 
     pub fn hash(&self) -> Hash {

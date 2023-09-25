@@ -47,7 +47,7 @@ pub async fn install_pkg(
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let pkg_name = pkg.metadata()?.name().to_owned();
-    import_pkg_from_pkg(&ctx, &pkg, &pkg_name, None).await?;
+    import_pkg_from_pkg(&ctx, &pkg, None).await?;
 
     track(
         &posthog_client,

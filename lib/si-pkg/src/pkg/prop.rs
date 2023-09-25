@@ -235,6 +235,28 @@ impl<'a> SiPkgProp<'a> {
         })
     }
 
+    pub fn data(&self) -> Option<&SiPkgPropData> {
+        match self {
+            SiPkgProp::Array { data, .. }
+            | SiPkgProp::Boolean { data, .. }
+            | SiPkgProp::Map { data, .. }
+            | SiPkgProp::Number { data, .. }
+            | SiPkgProp::Object { data, .. }
+            | SiPkgProp::String { data, .. } => data.as_ref(),
+        }
+    }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        match self {
+            SiPkgProp::Array { unique_id, .. }
+            | SiPkgProp::Boolean { unique_id, .. }
+            | SiPkgProp::Map { unique_id, .. }
+            | SiPkgProp::Number { unique_id, .. }
+            | SiPkgProp::Object { unique_id, .. }
+            | SiPkgProp::String { unique_id, .. } => unique_id.as_deref(),
+        }
+    }
+
     pub fn name(&self) -> &str {
         match self {
             Self::String { name, .. }

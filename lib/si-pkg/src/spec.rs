@@ -45,6 +45,8 @@ pub struct PkgSpec {
     #[builder(setter(into, strip_option), default)]
     #[serde(default)]
     pub workspace_pk: Option<String>,
+    #[builder(setter(into, strip_option), default)]
+    pub workspace_name: Option<String>,
 
     #[builder(setter(each(name = "schema", into)), default)]
     #[serde(default)]

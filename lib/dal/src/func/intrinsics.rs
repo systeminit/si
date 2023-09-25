@@ -139,4 +139,21 @@ impl IntrinsicFunc {
             Self::Validation => "si:validation",
         }
     }
+
+    pub fn maybe_from_str(s: &str) -> Option<Self> {
+        Some(match s {
+            "si:identity" => Self::Identity,
+            "si:setArray" => Self::SetArray,
+            "si:setBoolean" => Self::SetBoolean,
+            "si:setInteger" => Self::SetInteger,
+            "si:setMap" => Self::SetMap,
+            "si:setObject" => Self::SetObject,
+            "si:setString" => Self::SetString,
+            "si:unset" => Self::Unset,
+            "si:validation" => Self::Validation,
+            _ => {
+                return None;
+            }
+        })
+    }
 }

@@ -153,7 +153,6 @@ pub async fn migrate_pkg(
         import_pkg_from_pkg(
             ctx,
             &pkg,
-            pkg_filename,
             schemas.map(|schemas| ImportOptions {
                 schemas: Some(schemas),
                 ..Default::default()

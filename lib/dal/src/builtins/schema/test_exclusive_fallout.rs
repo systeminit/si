@@ -211,7 +211,6 @@ impl MigrationDriver {
         import_pkg_from_pkg(
             ctx,
             &fallout_pkg,
-            "test:fallout",
             Some(crate::pkg::ImportOptions {
                 schemas: Some(vec!["fallout".into()]),
                 ..Default::default()

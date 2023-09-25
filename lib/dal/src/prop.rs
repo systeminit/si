@@ -454,6 +454,21 @@ impl Prop {
         schema_variant_id: SchemaVariantId,
         path: &PropPath,
     ) -> PropResult<Self> {
+        Self::find_prop_by_path_opt(ctx, schema_variant_id, path)
+            .await?
+            .ok_or(PropError::NotFoundAtPath(
+                path.to_string(),
+                *ctx.visibility(),
+            ))
+    }
+
+    /// Finds a prop by a path made up of prop names separated by
+    /// [`PROP_PATH_SEPARATOR`](crate::prop::PROP_PATH_SEPARATOR) for each depth level
+    pub async fn find_prop_by_path_opt(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &PropPath,
+    ) -> PropResult<Option<Self>> {
         let row = ctx
             .txns()
             .await?
@@ -469,10 +484,7 @@ impl Prop {
             )
             .await?;
 
-        object_option_from_row_option(row)?.ok_or(PropError::NotFoundAtPath(
-            path.to_string(),
-            *ctx.visibility(),
-        ))
+        Ok(object_option_from_row_option(row)?)
     }
 
     pub async fn create_default_prototypes_and_values(

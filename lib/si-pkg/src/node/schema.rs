@@ -4,8 +4,8 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
 use crate::SchemaSpec;
@@ -16,6 +16,7 @@ const KEY_CATEGORY_STR: &str = "category";
 const KEY_CATEGORY_NAME_STR: &str = "category_name";
 const KEY_NAME_STR: &str = "name";
 const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
+const KEY_DEFAULT_SCHEMA_VARIANT_STR: &str = "default_schema_variant";
 
 #[derive(Clone, Debug)]
 pub struct SchemaData {
@@ -23,6 +24,7 @@ pub struct SchemaData {
     pub category: String,
     pub category_name: Option<String>,
     pub ui_hidden: bool,
+    pub default_schema_variant: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -51,6 +53,11 @@ impl WriteBytes for SchemaNode {
                 data.category_name.as_deref().unwrap_or(""),
             )?;
             write_key_value_line(writer, KEY_UI_HIDDEN_STR, data.ui_hidden)?;
+            write_key_value_line_opt(
+                writer,
+                KEY_DEFAULT_SCHEMA_VARIANT_STR,
+                data.default_schema_variant.as_deref(),
+            )?;
         }
 
         write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
@@ -77,11 +84,15 @@ impl ReadBytes for SchemaNode {
                 let ui_hidden = bool::from_str(&read_key_value_line(reader, KEY_UI_HIDDEN_STR)?)
                     .map_err(GraphError::parse)?;
 
+                let default_schema_variant =
+                    read_key_value_line_opt(reader, KEY_DEFAULT_SCHEMA_VARIANT_STR)?;
+
                 Some(SchemaData {
                     name: name.to_owned(),
                     category,
                     category_name,
                     ui_hidden,
+                    default_schema_variant,
                 })
             }
         };
@@ -117,6 +128,7 @@ impl NodeChild for SchemaSpec {
                     category: data.category.to_owned(),
                     category_name: data.category_name.as_ref().cloned(),
                     ui_hidden: data.ui_hidden,
+                    default_schema_variant: data.default_schema_variant.to_owned(),
                 }),
             }),
             children,

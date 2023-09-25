@@ -21,6 +21,7 @@ const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
 const KEY_VERSION_STR: &str = "version";
 const KEY_WORKSPACE_PK_STR: &str = "workspace_pk";
+const KEY_WORKSPACE_NAME_STR: &str = "workspace_name";
 
 #[derive(Clone, Debug)]
 pub struct PackageNode {
@@ -33,6 +34,7 @@ pub struct PackageNode {
     pub created_by: String,
     pub default_change_set: Option<String>,
     pub workspace_pk: Option<String>,
+    pub workspace_name: Option<String>,
 }
 
 impl NameStr for PackageNode {
@@ -54,6 +56,9 @@ impl WriteBytes for PackageNode {
         }
         if let Some(workspace_pk) = &self.workspace_pk {
             write_key_value_line(writer, KEY_WORKSPACE_PK_STR, workspace_pk.as_str())?;
+        }
+        if let Some(workspace_name) = &self.workspace_name {
+            write_key_value_line(writer, KEY_WORKSPACE_NAME_STR, workspace_name.as_str())?;
         }
         Ok(())
     }
@@ -78,6 +83,7 @@ impl ReadBytes for PackageNode {
         let created_by = read_key_value_line(reader, KEY_CREATED_BY_STR)?;
         let default_change_set = read_key_value_line_opt(reader, KEY_DEFAULT_CHANGE_SET)?;
         let workspace_pk = read_key_value_line_opt(reader, KEY_WORKSPACE_PK_STR)?;
+        let workspace_name = read_key_value_line_opt(reader, KEY_WORKSPACE_NAME_STR)?;
 
         Ok(Some(Self {
             kind,
@@ -88,6 +94,7 @@ impl ReadBytes for PackageNode {
             created_by,
             default_change_set,
             workspace_pk,
+            workspace_name,
         }))
     }
 }
@@ -107,6 +114,7 @@ impl NodeChild for PkgSpec {
                 created_by: self.created_by.to_owned(),
                 default_change_set: self.default_change_set.to_owned(),
                 workspace_pk: self.workspace_pk.to_owned(),
+                workspace_name: self.workspace_name.to_owned(),
             }),
             match self.kind {
                 SiPkgKind::Module => vec![

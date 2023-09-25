@@ -12,6 +12,7 @@ pub struct SiPkgSchemaData {
     pub category: String,
     pub category_name: Option<String>,
     pub ui_hidden: bool,
+    pub default_schema_variant: Option<String>,
 }
 
 impl SiPkgSchemaData {
@@ -29,6 +30,10 @@ impl SiPkgSchemaData {
 
     pub fn ui_hidden(&self) -> bool {
         self.ui_hidden
+    }
+
+    pub fn default_schema_variant(&self) -> Option<&str> {
+        self.default_schema_variant.as_deref()
     }
 }
 
@@ -67,6 +72,7 @@ impl<'a> SiPkgSchema<'a> {
                 category: data.category,
                 category_name: data.category_name,
                 ui_hidden: data.ui_hidden,
+                default_schema_variant: data.default_schema_variant,
             }),
             unique_id: schema_node.unique_id,
             deleted: schema_node.deleted,
@@ -126,6 +132,9 @@ impl<'a> SiPkgSchema<'a> {
             data_builder.name(self.name());
             if let Some(category_name) = data.category_name() {
                 data_builder.category_name(category_name);
+            }
+            if let Some(default_schema_variant) = data.default_schema_variant() {
+                data_builder.default_schema_variant(default_schema_variant);
             }
             data_builder.ui_hidden(data.ui_hidden());
             data_builder.category(data.category());

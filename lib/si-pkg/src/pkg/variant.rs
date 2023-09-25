@@ -162,7 +162,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
     fn prop_stack_from_source<I>(
         source: Source<'a>,
         node_idx: NodeIndex,
-        parent_id: Option<I>,
+        parent_info: Option<I>,
     ) -> PkgResult<Vec<(SiPkgProp, Option<I>)>>
     where
         I: ToOwned + Clone,
@@ -187,7 +187,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                     for child_idx in child_node_idxs {
                         entries.push((
                             SiPkgProp::from_graph(source.graph, child_idx)?,
-                            parent_id.to_owned(),
+                            parent_info.to_owned(),
                         ));
                     }
 
@@ -233,7 +233,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         &'a self,
         prop_root: SchemaVariantSpecPropRoot,
         process_prop_fn: F,
-        parent_id: Option<I>,
+        parent_info: Option<I>,
         context: &'a C,
     ) -> Result<(), E>
     where
@@ -257,23 +257,23 @@ impl<'a> SiPkgSchemaVariant<'a> {
             Err(SiPkgError::PropRootMultipleFound(prop_root, self.hash()))?;
         }
 
-        // Skip processing the domain prop as a `dal::SchemaVariant` already guarantees such a prop
-        // has already been created. Rather, we will push all immediate children of the domain prop
-        // to be ready for processing.
+        // Skip processing the "root" prop for this tree as a `dal::SchemaVariant::new` already
+        // guarantees such a prop has already been created. Rather, we will push all immediate
+        // children of the domain prop to be ready for processing.
         let mut stack = Self::prop_stack_from_source(
             self.source.clone(),
             prop_root_node_idx,
-            parent_id.to_owned(),
+            parent_info.to_owned(),
         )?;
 
-        while let Some((prop, parent_id)) = stack.pop() {
+        while let Some((prop, parent_info)) = stack.pop() {
             let node_idx = prop.source().node_idx;
-            let new_id = process_prop_fn(prop, parent_id.to_owned(), context).await?;
+            let new_parent_info = process_prop_fn(prop, parent_info.to_owned(), context).await?;
 
             stack.extend(Self::prop_stack_from_source(
                 self.source.clone(),
                 node_idx,
-                new_id.to_owned(),
+                new_parent_info.to_owned(),
             )?);
         }
 

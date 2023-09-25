@@ -13,7 +13,7 @@ use crate::{
     standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use crate::{PropKind, TransactionsError, ValidationPrototypeContext};
+use crate::{PropKind, SchemaId, TransactionsError, ValidationPrototypeContext};
 
 pub mod context;
 
@@ -60,8 +60,9 @@ pub struct ValidationPrototype {
     func_id: FuncId,
     args: serde_json::Value,
     link: Option<String>,
-    #[serde(flatten)]
-    context: ValidationPrototypeContext,
+    prop_id: PropId,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -111,9 +112,20 @@ impl ValidationPrototype {
     standard_model_accessor!(func_id, Pk(FuncId), ValidationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, ValidationPrototypeResult);
     standard_model_accessor!(link, Option<String>, ValidationPrototypeResult);
+    standard_model_accessor!(prop_id, Pk(PropId), ValidationPrototypeResult);
+    standard_model_accessor!(schema_id, Pk(SchemaId), ValidationPrototypeResult);
+    standard_model_accessor!(
+        schema_variant_id,
+        Pk(SchemaVariantId),
+        ValidationPrototypeResult
+    );
 
-    pub fn context(&self) -> &ValidationPrototypeContext {
-        &self.context
+    pub fn context(&self) -> ValidationPrototypeContext {
+        ValidationPrototypeContext::new_unchecked(
+            self.prop_id,
+            self.schema_variant_id,
+            self.schema_id,
+        )
     }
 
     /// List all [`ValidationPrototypes`](Self) for a given [`Prop`](crate::Prop).

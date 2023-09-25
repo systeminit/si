@@ -10,44 +10,71 @@ use crate::{node::PkgNode, ValidationSpec, ValidationSpecKind};
 pub enum SiPkgValidation<'a> {
     CustomValidation {
         func_unique_id: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     IntegerIsBetweenTwoIntegers {
         lower_bound: i64,
         upper_bound: i64,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     IntegerIsNotEmpty {
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringEquals {
         expected: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringHasPrefix {
         expected: String,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringInStringArray {
         expected: Vec<String>,
         display_expected: bool,
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringIsHexColor {
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringIsNotEmpty {
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
     StringIsValidIpAddr {
+        unique_id: Option<String>,
+        deleted: bool,
+
         hash: Hash,
         source: Source<'a>,
     },
@@ -69,6 +96,8 @@ impl<'a> SiPkgValidation<'a> {
             }
         };
 
+        let unique_id = node.unique_id;
+        let deleted = node.deleted;
         let hash = hashed_node.hash();
         let source = Source::new(graph, node_idx);
 
@@ -81,19 +110,26 @@ impl<'a> SiPkgValidation<'a> {
                     lower_bound: node.lower_bound.ok_or(SiPkgError::ValidationMissingField(
                         "upper_bound".to_string(),
                     ))?,
+                    unique_id,
+                    deleted,
                     hash,
                     source,
                 }
             }
-            ValidationSpecKind::IntegerIsNotEmpty => {
-                SiPkgValidation::IntegerIsNotEmpty { hash, source }
-            }
+            ValidationSpecKind::IntegerIsNotEmpty => SiPkgValidation::IntegerIsNotEmpty {
+                unique_id,
+                deleted,
+                hash,
+                source,
+            },
             ValidationSpecKind::StringEquals => SiPkgValidation::StringEquals {
                 expected: node
                     .expected_string
                     .ok_or(SiPkgError::ValidationMissingField(
                         "expected_string".to_string(),
                     ))?,
+                unique_id,
+                deleted,
                 hash,
                 source,
             },
@@ -103,6 +139,8 @@ impl<'a> SiPkgValidation<'a> {
                     .ok_or(SiPkgError::ValidationMissingField(
                         "expected_string".to_string(),
                     ))?,
+                unique_id,
+                deleted,
                 hash,
                 source,
             },
@@ -114,25 +152,38 @@ impl<'a> SiPkgValidation<'a> {
                     display_expected: node.display_expected.ok_or(
                         SiPkgError::ValidationMissingField("display_expected".to_string()),
                     )?,
+                    unique_id,
+                    deleted,
                     hash,
                     source,
                 }
             }
 
-            ValidationSpecKind::StringIsValidIpAddr => {
-                SiPkgValidation::StringIsValidIpAddr { hash, source }
-            }
-            ValidationSpecKind::StringIsHexColor => {
-                SiPkgValidation::StringIsHexColor { hash, source }
-            }
-            ValidationSpecKind::StringIsNotEmpty => {
-                SiPkgValidation::StringIsNotEmpty { hash, source }
-            }
+            ValidationSpecKind::StringIsValidIpAddr => SiPkgValidation::StringIsValidIpAddr {
+                unique_id,
+                deleted,
+                hash,
+                source,
+            },
+            ValidationSpecKind::StringIsHexColor => SiPkgValidation::StringIsHexColor {
+                unique_id,
+                deleted,
+                hash,
+                source,
+            },
+            ValidationSpecKind::StringIsNotEmpty => SiPkgValidation::StringIsNotEmpty {
+                unique_id,
+                deleted,
+                hash,
+                source,
+            },
             ValidationSpecKind::CustomValidation => {
                 SiPkgValidation::CustomValidation {
                     func_unique_id: node.func_unique_id.ok_or(
                         SiPkgError::ValidationMissingField("func_unique_id".to_string()),
                     )?,
+                    unique_id,
+                    deleted,
                     hash,
                     source,
                 }
@@ -146,6 +197,41 @@ impl<'a> TryFrom<SiPkgValidation<'a>> for ValidationSpec {
 
     fn try_from(value: SiPkgValidation<'a>) -> Result<Self, Self::Error> {
         let mut builder = ValidationSpec::builder();
+
+        let (unique_id, deleted) = match &value {
+            SiPkgValidation::CustomValidation {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::IntegerIsBetweenTwoIntegers {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::IntegerIsNotEmpty {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringEquals {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringHasPrefix {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringInStringArray {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringIsHexColor {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringIsNotEmpty {
+                unique_id, deleted, ..
+            }
+            | SiPkgValidation::StringIsValidIpAddr {
+                unique_id, deleted, ..
+            } => (unique_id.to_owned(), *deleted),
+        };
+
+        if let Some(unique_id) = unique_id {
+            builder.unique_id(unique_id);
+        }
+        builder.deleted(deleted);
 
         match value {
             SiPkgValidation::IntegerIsBetweenTwoIntegers {

@@ -8,6 +8,7 @@ use crate::{node::PkgNode, ActionFuncSpec, ActionFuncSpecKind};
 #[derive(Clone, Debug)]
 pub struct SiPkgActionFunc<'a> {
     func_unique_id: String,
+    name: Option<String>,
     kind: ActionFuncSpecKind,
     unique_id: Option<String>,
     deleted: bool,
@@ -33,6 +34,7 @@ impl<'a> SiPkgActionFunc<'a> {
         };
 
         Ok(Self {
+            name: node.name,
             func_unique_id: node.func_unique_id,
             kind: node.kind,
             unique_id: node.unique_id,
@@ -41,6 +43,10 @@ impl<'a> SiPkgActionFunc<'a> {
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
         })
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 
     pub fn func_unique_id(&self) -> &str {
