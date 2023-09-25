@@ -19,7 +19,7 @@
     "@si/ts-lib": "workspace:*",
     "@si/vue-lib": "workspace:*",
     "@vueuse/head": "^1.0.26",
-    "axios": "^1.5.0",
+    "axios": "^0.27.2",
     "clsx": "^1.2.1",
     "highlight.js": "^11.7.0",
     "less": "^4.1.3",

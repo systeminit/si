@@ -1,4 +1,4 @@
-import Axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import Axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -22,7 +22,7 @@ export const sdfApiInstance = Axios.create({
   baseURL: API_HTTP_URL,
 });
 
-function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
+function injectBearerTokenAuth(config: AxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   const workspacesStore = useWorkspacesStore();

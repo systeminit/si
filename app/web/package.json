@@ -46,7 +46,7 @@
     "@typescript/vfs": "^1.4.0",
     "@vueuse/head": "^1.1.15",
     "async": "^3.2.4",
-    "axios": "^1.5.0",
+    "axios": "^0.27.2",
     "clsx": "^1.2.1",
     "cm6-theme-basic-light": "^0.2.0",
     "cm6-theme-gruvbox-dark": "^0.2.0",
