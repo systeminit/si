@@ -39,10 +39,11 @@
 <script setup lang="ts">
 import { Modal, Stack, VButton, useModal } from "@si/vue-lib/design-system";
 import { ref } from "vue";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useModuleStore } from "@/store/module.store";
 
-const workspacesStore = useWorkspacesStore();
-const exportReqStatus = workspacesStore.getRequestStatus("EXPORT_WORKSPACE");
+const moduleStore = useModuleStore();
+
+const exportReqStatus = moduleStore.getRequestStatus("EXPORT_WORKSPACE");
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
@@ -52,10 +53,10 @@ function open() {
 }
 
 function continueHandler() {
-  workspacesStore.EXPORT_WORKSPACE();
+  moduleStore.EXPORT_WORKSPACE();
 }
 function closeHandler() {
-  workspacesStore.clearRequestStatus("EXPORT_WORKSPACE");
+  moduleStore.clearRequestStatus("EXPORT_WORKSPACE");
 }
 
 defineExpose({ open, close });

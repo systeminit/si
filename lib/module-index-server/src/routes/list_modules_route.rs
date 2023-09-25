@@ -41,6 +41,7 @@ impl IntoResponse for ListModulesError {
 #[serde(rename_all = "camelCase")]
 pub struct ListModulesRequest {
     pub name: Option<String>,
+    pub kind: Option<si_module::ModuleKind>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -66,7 +67,11 @@ pub async fn list_module_route(
         return Ok(Json(ListModulesResponse { modules: vec![] }));
     }
 
-    let query = query.filter(si_module::Column::RejectedAt.is_null());
+    let kind = request.kind.unwrap_or(si_module::ModuleKind::Module);
+
+    let query = query
+        .filter(si_module::Column::RejectedAt.is_null())
+        .filter(si_module::Column::Kind.eq(kind.to_db_kind()));
 
     // filters
     let query = if let Some(name_filter) = request.name {
