@@ -1,4 +1,4 @@
-(SELECT row_to_json(funcs.*) AS object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) AS object
  FROM props_v1($1, $2) as props
           JOIN attribute_prototypes_v1($1, $2) ap
                ON ap.attribute_context_prop_id = props.id
@@ -23,7 +23,7 @@
 
 UNION ALL
 
-(SELECT row_to_json(funcs.*) AS object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) AS object
  FROM internal_providers_v1($1, $2) ip
           JOIN attribute_prototypes_v1($1, $2) ap
                ON ap.attribute_context_internal_provider_id = ip.id
@@ -35,7 +35,7 @@ UNION ALL
 
 UNION ALL
 
-(SELECT row_to_json(funcs.*) AS object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) AS object
  FROM external_providers_v1($1, $2) ep
           JOIN attribute_prototypes_v1($1, $2) ap
                ON ap.attribute_context_external_provider_id = ep.id
@@ -47,7 +47,7 @@ UNION ALL
 
 UNION ALL
 
-(SELECT row_to_json(funcs.*) AS object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) AS object
  FROM validation_prototypes_v1($1, $2) vp
           JOIN funcs_v1($1, $2) funcs
                ON vp.func_id = funcs.id
@@ -56,7 +56,7 @@ UNION ALL
 
 UNION ALL
 
-(SELECT row_to_json(funcs.*) AS object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) AS object
   FROM action_prototypes_v1($1, $2) action_prototypes
           JOIN funcs_v1($1, $2) funcs
               ON funcs.id = action_prototypes.func_id
@@ -65,7 +65,7 @@ UNION ALL
 
 UNION ALL
 
-(SELECT row_to_json(funcs.*) as object
+(SELECT DISTINCT ON (id) funcs.id as id, row_to_json(funcs.*) as object
   FROM schema_variant_definitions_v1($1, $2) svd
        JOIN funcs_v1($1, $2) funcs
             ON svd.func_id = funcs.id
