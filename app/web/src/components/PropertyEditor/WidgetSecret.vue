@@ -18,7 +18,7 @@
           "
           @click="(e) => popoverRef.open(e)"
         >
-          {{ value }}
+          {{ value.name }}
         </div>
         <VButton
           v-else
@@ -70,7 +70,7 @@ const props = defineProps<{
   name: string;
   path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
-  value: unknown;
+  value?: Secret;
   propId: string;
   valueId: string;
   validation?: PropertyEditorValidation;
@@ -84,7 +84,7 @@ const props = defineProps<{
 const { name, path, collapsedPaths, valueId, propId, value } = toRefs(props);
 
 const disableUnset = computed(() => {
-  if ((value.value ?? null) === null) {
+  if ((value?.value ?? null) === null) {
     return true;
   } else {
     return false;

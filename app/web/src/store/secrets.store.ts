@@ -20,6 +20,16 @@ export type Secret = {
   expiration?: string;
 };
 
+export interface SecretDefinitionValue {
+  id: string;
+  displayName: string;
+  value: unknown;
+}
+
+export interface SecretDefinition {
+  fields: { [id: string]: SecretDefinitionValue };
+}
+
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
 
 export function useSecretsStore() {

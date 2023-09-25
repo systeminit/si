@@ -130,11 +130,11 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSecret
-      v-else-if="schemaProp.widgetKind.kind === 'secret'"
+      v-else-if="schemaProp.widgetKind.kind === 'secret' && propValue.value"
       :name="schemaProp.name"
       :path="path"
       :collapsedPaths="collapsedPaths"
-      :value="propValue.value"
+      :value="(propValue.value as Secret)"
       :propId="propValue.propId"
       :valueId="propValue.id"
     />
@@ -186,6 +186,7 @@ import WidgetMap from "./WidgetMap.vue";
 import WidgetComboBox from "./WidgetComboBox.vue";
 import WidgetColorBox from "./WidgetColorBox.vue";
 import WidgetSecret from "./WidgetSecret.vue";
+import { Secret } from "@/store/secrets.store";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 

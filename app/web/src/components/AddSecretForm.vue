@@ -43,11 +43,12 @@
             </div>
           </template>
         </VormInput>
-        <!-- TODO - this form should generate this part based on the secret definition, for now it's just a Value field -->
         <VormInput
-          v-model="secretFormData.value"
-          type="textarea"
-          label="Value"
+          v-for="field in testDefinition.fields"
+          :key="field.id"
+          v-model="secretFormData.value[field.id]"
+          type="text"
+          :label="field.displayName"
           required
         />
       </div>
@@ -95,9 +96,18 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import {
   Secret,
+  SecretDefinition,
   SecretDefinitionId,
   useSecretsStore,
 } from "@/store/secrets.store";
+
+// TODO(Wendy) - replace this test definition with a lookup of the given definitionId's definition
+const testDefinition: SecretDefinition = {
+  fields: {
+    test1: { id: "test1", displayName: "Test Value", value: "" },
+    test2: { id: "test2", displayName: "Whatever", value: "" },
+  },
+};
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
@@ -118,7 +128,7 @@ const addSecretReqStatus = secretsStore.getRequestStatus("SAVE_SECRET");
 const secretFormEmpty = {
   name: "",
   description: "",
-  value: "",
+  value: {} as Record<string, string>,
   expiration: "",
 };
 
@@ -130,7 +140,7 @@ const saveSecret = async () => {
   const res = await secretsStore.SAVE_SECRET(
     props.definitionId,
     secretFormData.name,
-    {},
+    secretFormData.value,
     secretFormData.description,
     secretFormData.expiration,
   );
