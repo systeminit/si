@@ -28,12 +28,12 @@ async function check() {
   const manifestUrl = `${
     window.location.origin
   }/manifest.json?timestamp=${Date.now()}`;
-  const res = await axios(manifestUrl, {
-    headers: { "Cache-Control": "no-cache" },
-  });
 
   try {
-    if (res.status !== 200) throw new Error("server offline");
+    const res = await axios(manifestUrl, {
+      headers: { "Cache-Control": "no-cache" },
+    });
+
     const latestAppFileWithHash = res.data["index.html"].file;
 
     const latestHash = latestAppFileWithHash.match(APP_FILENAME_REGEX)?.[1];
