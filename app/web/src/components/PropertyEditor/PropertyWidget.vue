@@ -177,6 +177,7 @@ import {
   AddToMap,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
+import { Secret } from "@/store/secrets.store";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";
@@ -186,7 +187,6 @@ import WidgetMap from "./WidgetMap.vue";
 import WidgetComboBox from "./WidgetComboBox.vue";
 import WidgetColorBox from "./WidgetColorBox.vue";
 import WidgetSecret from "./WidgetSecret.vue";
-import { Secret } from "@/store/secrets.store";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 
