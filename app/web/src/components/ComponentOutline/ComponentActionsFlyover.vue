@@ -1,6 +1,11 @@
 <template>
   <div
-    class="bg-neutral-700 w-96 h-96 rounded flex flex-col overflow-clip text-white shadow-3xl dark"
+    :class="
+      clsx(
+        'bg-neutral-700 w-96 h-96 rounded flex flex-col overflow-clip text-white shadow-3xl dark',
+        themeContainerClasses,
+      )
+    "
   >
     <div
       class="bg-black uppercase font-bold text-md pt-sm pb-xs px-xs shrink-0"
@@ -72,8 +77,9 @@
 import { computed, PropType } from "vue";
 import * as _ from "lodash-es";
 
-import { PillCounter } from "@si/vue-lib/design-system";
+import { PillCounter, useThemeContainer } from "@si/vue-lib/design-system";
 import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@headlessui/vue";
+import clsx from "clsx";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 
 import { useFixesStore } from "@/store/fixes.store";
@@ -82,6 +88,8 @@ import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import { useActionsStore } from "@/store/actions.store";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 import ActionWidget from "../ActionWidget.vue";
+
+const { themeContainerClasses } = useThemeContainer("dark");
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },

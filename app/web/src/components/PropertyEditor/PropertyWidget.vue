@@ -130,11 +130,11 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSecret
-      v-else-if="schemaProp.widgetKind.kind === 'secret'"
+      v-else-if="schemaProp.widgetKind.kind === 'secret' && propValue.value"
       :name="schemaProp.name"
       :path="path"
       :collapsedPaths="collapsedPaths"
-      :value="propValue.value"
+      :value="(propValue.value as Secret)"
       :propId="propValue.propId"
       :valueId="propValue.id"
     />
@@ -177,6 +177,7 @@ import {
   AddToMap,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
+import { Secret } from "@/store/secrets.store";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";

@@ -17,7 +17,18 @@ export type Secret = {
   description?: string;
   createdInfo: ActorAndTimestamp;
   updatedInfo?: ActorAndTimestamp;
+  expiration?: string;
 };
+
+export interface SecretDefinitionValue {
+  id: string;
+  displayName: string;
+  value: unknown;
+}
+
+export interface SecretDefinition {
+  fields: { [id: string]: SecretDefinitionValue };
+}
 
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
 
@@ -139,14 +150,23 @@ export function useSecretsStore() {
           name: string,
           value: Record<string, string>,
           description?: string,
+          expiration?: string,
         ) {
-          if (_.isEmpty(name)) return;
+          if (_.isEmpty(name)) {
+            throw new Error("All secrets must have a name.");
+          }
 
-          if (this.secretsByDefinitionId[definition] === undefined) return;
+          if (this.secretsByDefinitionId[definition] === undefined) {
+            throw new Error(
+              "All secrets must be created based on a definition.",
+            );
+          }
 
           const user = useAuthStore().user;
 
-          if (_.isNil(user)) return;
+          if (_.isNil(user)) {
+            throw new Error("All secrets must be created by a specific user.");
+          }
 
           const tempId = `-${Math.floor(
             Math.random() * 899999 + 100000,
@@ -160,6 +180,7 @@ export function useSecretsStore() {
               name,
               description,
               definition,
+              expiration,
             },
             optimistic: () => {
               const { pk: userId, name: userName } = user;
@@ -173,6 +194,7 @@ export function useSecretsStore() {
                   actor: { kind: "user", label: userName, id: userId },
                   timestamp: Date(),
                 },
+                expiration,
               });
               this.secretIsTransitioning[tempId] = true;
 

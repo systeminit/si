@@ -153,8 +153,8 @@ import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 import { useComponentOutlineContext } from "./ComponentOutline.vue";
-import ComponentActionsFlyover from "./ComponentActionsFlyover.vue";
 import ComponentQualificationsFlyover from "./ComponentQualificationsFlyover.vue";
+import ComponentActionsFlyover from "./ComponentActionsFlyover.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
