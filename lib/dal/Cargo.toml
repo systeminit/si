@@ -12,6 +12,7 @@ async-trait = { workspace = true }
 base64 = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
+content-store = { path = "../../lib/content-store" }
 convert_case = { workspace = true }
 council-server = { path = "../../lib/council-server" }
 derive_more = { workspace = true }

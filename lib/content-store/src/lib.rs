@@ -5,4 +5,7 @@ pub mod hash;
 pub mod pair;
 pub mod store;
 
+pub use hash::ContentHash;
+pub use store::local::LocalStore;
+pub use store::pg::PgStore;
 pub use store::Store;

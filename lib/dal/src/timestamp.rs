@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
+use postgres_types::{FromSql, Type};
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use thiserror::Error;
 
 #[remain::sorted]

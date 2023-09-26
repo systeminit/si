@@ -1,10 +1,11 @@
 CREATE TABLE change_set_pointers
 (
-    id                          ident                    NOT NULL DEFAULT ident_create_v1(),
+    id                          ident primary key        NOT NULL DEFAULT ident_create_v1(),
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
-    workspace_snapshot_id       ident
+    workspace_id                ident REFERENCES workspaces(id) NOT NULL,
+    workspace_snapshot_id       ident REFERENCES workspace_snapshots(id)
 );
 
 CREATE UNIQUE INDEX unique_change_set_pointers ON change_set_pointers (id);

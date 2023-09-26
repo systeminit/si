@@ -883,6 +883,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "content-store"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blake3",
+ "chrono",
+ "color-eyre",
+ "refinery",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-pg",
+ "telemetry",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,6 +1180,7 @@ dependencies = [
  "blake3",
  "buck2-resources",
  "chrono",
+ "content-store",
  "convert_case 0.6.0",
  "council-server",
  "dal-test",

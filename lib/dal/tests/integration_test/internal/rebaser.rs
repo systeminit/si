@@ -1,7 +1,7 @@
 //! For all tests in this module, provide "SI_TEST_BUILTIN_SCHEMAS=none" as an environment variable.
 
 use dal::change_set_pointer::ChangeSetPointer;
-use dal::content::hash::ContentHash;
+use dal::lib::hash::ContentHash;
 use dal::workspace_snapshot::node_weight::{ContentAddress, NodeWeight};
 use dal::{DalContext, Tenancy, Visibility, WorkspacePk, WorkspaceSnapshot};
 use dal_test::test;

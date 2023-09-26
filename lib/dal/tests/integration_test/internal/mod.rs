@@ -2,6 +2,7 @@ mod action_prototype;
 mod attribute;
 mod change_set;
 mod component;
+mod content_store;
 mod diagram;
 mod edge;
 mod func;

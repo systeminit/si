@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -10,7 +11,6 @@ use crate::{
         node_weight::{NodeWeightError, NodeWeightResult},
         vector_clock::VectorClock,
     },
-    ContentHash,
 };
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -1,4 +1,6 @@
 use chrono::Utc;
+use content_store::store::StoreError;
+use content_store::{ContentHash, Store};
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -7,16 +9,12 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
-use crate::{
-    content::{self, store::StoreError},
-    workspace_snapshot::{
-        conflict::Conflict,
-        content_address::ContentAddress,
-        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
-        node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
-        update::Update,
-    },
-    ContentHash,
+use crate::workspace_snapshot::{
+    conflict::Conflict,
+    content_address::ContentAddress,
+    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
+    node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
+    update::Update,
 };
 
 pub type LineageId = Ulid;
@@ -211,9 +209,10 @@ impl WorkspaceSnapshotGraph {
         Err(WorkspaceSnapshotGraphError::UnableToAddNode)
     }
 
-    pub fn attribute_value_view(
+    // FIXME(nick): use the store trait instead.
+    pub async fn attribute_value_view(
         &self,
-        content_store: &content::Store,
+        content_store: &content_store::LocalStore,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<serde_json::Value> {
         let mut view = serde_json::json![{}];
@@ -222,7 +221,8 @@ impl WorkspaceSnapshotGraph {
         while let Some((current_node_index, write_location)) = nodes_to_add.pop_front() {
             let current_node_weight = self.get_node_weight(current_node_index)?;
             let current_node_content: serde_json::Value = content_store
-                .get(&current_node_weight.content_hash())?
+                .get(&current_node_weight.content_hash())
+                .await?
                 .ok_or(WorkspaceSnapshotGraphError::ContentMissingForContentHash)?;
             // We don't need to care what kind the prop is, since assigning a value via
             // `pointer_mut` completely overwrites the existing value, regardless of any
@@ -1525,7 +1525,8 @@ fn prop_node_indexes_for_node_index(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ComponentId, ContentHash, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use content_store::ContentHash;
     use pretty_assertions_sorted::assert_eq;
 
     #[derive(Debug, PartialEq)]
@@ -4695,13 +4696,13 @@ mod test {
         );
     }
 
-    #[test]
-    fn attribute_value_build_view() {
+    #[tokio::test]
+    async fn attribute_value_build_view() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
         let (schema_content_hash, _) = content_store
@@ -4990,17 +4991,18 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_unordered_object() {
+    #[tokio::test]
+    async fn attribute_value_build_view_unordered_object() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
         let (schema_content_hash, _) = content_store
@@ -5358,17 +5360,18 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_ordered_array() {
+    #[tokio::test]
+    async fn attribute_value_build_view_ordered_array() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
         let (schema_content_hash, _) = content_store
@@ -5846,6 +5849,7 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -5871,6 +5875,7 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -5931,17 +5936,18 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_ordered_map() {
+    #[tokio::test]
+    async fn attribute_value_build_view_ordered_map() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
         let (schema_content_hash, _) = content_store
@@ -6431,6 +6437,7 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -6461,6 +6468,7 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -6524,6 +6532,7 @@ mod test {
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }

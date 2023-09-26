@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::PgError;
+use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
@@ -46,6 +46,20 @@ pub struct ChangeSetPointer {
     pub name: String,
 }
 
+// impl TryFrom<PgRow> for ChangeSetPointer {
+//     type Error = ChangeSetPointerError;
+//
+//     fn try_from(value: PgRow) -> Result<Self, Self::Error> {
+//         Ok(Self {
+//             id: value.try_get("id")?,
+//             timestamp: value.try_get("timestamp")?,
+//             generator: Arc::new(Mutex::new(Default::default())),
+//             workspace_snapshot_id: value.try_get("workspace_snapshot_id")?,
+//             name: value.try_get("name")?,
+//         })
+//     }
+// }
+
 impl ChangeSetPointer {
     pub fn new_local() -> ChangeSetPointerResult<Self> {
         let mut generator = Generator::new();
@@ -60,6 +74,7 @@ impl ChangeSetPointer {
         })
     }
 
+    // TODO(nick): remove versioned functions and insert directly.
     pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> ChangeSetPointerResult<Self> {
         let name = name.as_ref();
         let row = ctx
@@ -72,8 +87,7 @@ impl ChangeSetPointer {
             )
             .await?;
         let json: Value = row.try_get("object")?;
-        let object: Self = serde_json::from_value(json)?;
-        Ok(object)
+        Ok(serde_json::from_value(json)?)
     }
 
     pub fn generate_ulid(&self) -> ChangeSetPointerResult<Ulid> {

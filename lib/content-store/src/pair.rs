@@ -1,49 +1,43 @@
+use crate::hash::ContentHash;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::PgError;
+use si_data_pg::{PgError, PgPool, PgPoolError};
 use thiserror::Error;
-
-use crate::content::hash::ContentHash;
-use crate::{DalContext, StandardModelError, Timestamp, TransactionsError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ContentPairError {
-    #[error("si_data_pg error: {0}")]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] PgPoolError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
 }
 
 pub type ContentPairResult<T> = Result<T, ContentPairError>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ContentPair {
-    #[serde(flatten)]
-    timestamp: Timestamp,
     key: String,
+    created_at: DateTime<Utc>,
     value: Value,
 }
 
 impl ContentPair {
     pub async fn find_or_create(
-        ctx: &DalContext,
+        pg_pool: &PgPool,
         key: ContentHash,
         value: Value,
     ) -> ContentPairResult<(Self, bool)> {
-        let (pair, created): (Self, bool) = match Self::find(ctx, &key).await? {
+        let (pair, created): (Self, bool) = match Self::find(pg_pool, &key).await? {
             Some(found) => (found, false),
             None => {
-                let row = ctx
-                    .txns()
-                    .await?
-                    .pg()
+                let client = pg_pool.get().await?;
+                let row = client
                     .query_one(
-                        "SELECT content_pair_create_v1($1) AS object",
+                        "INSERT INTO content_pairs (key, value) VALUES ($1, $2) AS object",
                         &[&key.to_string(), &value],
                     )
                     .await?;
@@ -54,11 +48,9 @@ impl ContentPair {
         Ok((pair, created))
     }
 
-    pub async fn find(ctx: &DalContext, key: &ContentHash) -> ContentPairResult<Option<Self>> {
-        let maybe_row = ctx
-            .txns()
-            .await?
-            .pg()
+    pub async fn find(pg_pool: &PgPool, key: &ContentHash) -> ContentPairResult<Option<Self>> {
+        let client = pg_pool.get().await?;
+        let maybe_row = client
             .query_opt(
                 "SELECT * FROM content_pairs WHERE key = $1 AS object",
                 &[&key.to_string()],
