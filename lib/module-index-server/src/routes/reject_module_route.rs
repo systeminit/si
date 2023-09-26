@@ -55,9 +55,7 @@ pub async fn reject_module(
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<Option<ModuleDetailsResponse>>, RejectModuleError> {
-    if dbg!(state.restrict_listing())
-        && !dbg!(is_systeminit_auth_token(&auth_token, state.token_emails()).await?)
-    {
+    if !is_systeminit_auth_token(&auth_token, state.token_emails()).await? {
         return Ok(Json(None));
     }
 
