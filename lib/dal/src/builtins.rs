@@ -37,6 +37,7 @@ pub const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 pub const SI_GENERIC_FRAME_PKG: &str = "si-generic-frame-2023-09-13.sipkg";
 pub const SI_AWS_IAM_PKG: &str = "si-aws-iam-2023-09-13.sipkg";
 pub const SI_AWS_ECS_PKG: &str = "si-aws-ecs-2023-09-21.sipkg";
+pub const SI_AWS_CLOUDWATCH_PKG: &str = "si-aws-cloudwatch-2023-09-26.sipkg";
 
 #[remain::sorted]
 #[derive(Error, Debug)]

@@ -30,6 +30,7 @@ pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
     migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, None).await?;
     migrate_pkg(ctx, super::SI_AWS_IAM_PKG, None).await?;
     migrate_pkg(ctx, super::SI_AWS_ECS_PKG, None).await?;
+    migrate_pkg(ctx, super::SI_AWS_CLOUDWATCH_PKG, None).await?;
 
     Ok(())
 }
