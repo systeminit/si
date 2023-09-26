@@ -89,40 +89,39 @@
           </div>
 
           <!-- other status icons -->
-          <div
-            :class="clsx('flex items-center', isDestroyed ? 'mr-1' : 'mr-xs')"
-          >
+          <div :class="clsx('flex items-center mr-xs')">
             <!-- change status -->
             <StatusIndicatorIcon type="change" :status="hasChanges" size="md" />
 
-            <template v-if="!isDestroyed">
-              <!-- Component Status -->
-              <StatusIconWithPopover
-                type="qualification"
-                :status="qualificationStatus"
-                size="lg"
-                :popoverPosition="popoverPosition"
-              >
-                <ComponentQualificationsFlyover :componentId="componentId" />
-              </StatusIconWithPopover>
-
-              <!-- Resource Status -->
-              <StatusIndicatorIcon
-                type="resource"
-                :status="hasResource ? 'exists' : 'notexists'"
-                size="lg"
+            <!-- Component Status -->
+            <StatusIconWithPopover
+              type="qualification"
+              :status="isDestroyed ? 'notexists' : qualificationStatus"
+              size="lg"
+              :popoverPosition="popoverPosition"
+            >
+              <ComponentQualificationsFlyover
+                v-if="!isDestroyed"
+                :componentId="componentId"
               />
+            </StatusIconWithPopover>
 
-              <!-- Actions Menu -->
-              <StatusIconWithPopover
-                type="actions"
-                :status="'show'"
-                size="md"
-                :popoverPosition="popoverPosition"
-              >
-                <ComponentActionsFlyover :componentId="componentId" />
-              </StatusIconWithPopover>
-            </template>
+            <!-- Resource Status -->
+            <StatusIndicatorIcon
+              type="resource"
+              :status="hasResource ? 'exists' : 'notexists'"
+              size="lg"
+            />
+
+            <!-- Actions Menu -->
+            <StatusIconWithPopover
+              type="actions"
+              :status="'show'"
+              size="md"
+              :popoverPosition="popoverPosition"
+            >
+              <ComponentActionsFlyover :componentId="componentId" />
+            </StatusIconWithPopover>
           </div>
         </div>
       </div>
@@ -179,11 +178,7 @@ const hasResource = computed(() => component.value?.resource.data !== null);
 
 const hasChanges = computed(() => component.value?.changeStatus);
 
-const isDestroyed = computed(
-  () =>
-    component.value?.changeStatus === "deleted" &&
-    !component.value.resource.data,
-);
+const isDestroyed = computed(() => component.value?.changeStatus === "deleted");
 
 const childComponents = computed(
   () => componentsStore.componentsByParentId[props.componentId] || [],

@@ -21,6 +21,7 @@ const CONFIG = {
     warning: { iconName: "component-not-qualified-large", tone: "warning" },
     failure: { iconName: "component-not-qualified-large", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
+    notexists: { iconName: "empty-square", tone: "empty" },
   },
   fix: {
     success: { iconName: "check2", tone: "success" },
