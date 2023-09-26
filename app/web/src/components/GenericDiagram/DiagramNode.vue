@@ -341,18 +341,22 @@ const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
 
-const leftSockets = computed(() =>
-  _.filter(
+const leftSockets = computed(() => {
+  const leftSockets = _.filter(
     props.node.sockets,
     (s) => s.def.nodeSide === "left" && s.def.label !== "Frame",
-  ),
-);
-const rightSockets = computed(() =>
-  _.filter(
+  );
+
+  return _.sortBy(leftSockets, (s) => s.def.label);
+});
+const rightSockets = computed(() => {
+  const rightSockets = _.filter(
     props.node.sockets,
     (s) => s.def.nodeSide === "right" && s.def.label !== "Frame",
-  ),
-);
+  );
+
+  return _.sortBy(rightSockets, (s) => s.def.label);
+});
 
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
