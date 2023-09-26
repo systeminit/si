@@ -16,6 +16,8 @@ members = [
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
+    "lib/content-store",
+    "lib/content-store-test",
     "lib/cyclone-client",
     "lib/cyclone-core",
     "lib/cyclone-server",
