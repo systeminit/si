@@ -2,7 +2,8 @@
 
 use dal::change_set_pointer::ChangeSetPointer;
 use dal::content::hash::ContentHash;
-use dal::workspace_snapshot::node_weight::{ContentAddress, NodeWeight};
+use dal::workspace_snapshot::content_address::ContentAddress;
+use dal::workspace_snapshot::node_weight::NodeWeight;
 use dal::{DalContext, Tenancy, Visibility, WorkspacePk, WorkspaceSnapshot};
 use dal_test::test;
 use rebaser_client::Client;
