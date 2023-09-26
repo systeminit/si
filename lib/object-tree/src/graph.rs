@@ -937,6 +937,24 @@ pub fn write_key_value_line<W: Write>(
     write!(writer, "{key}:{len}={value}{NL}").map_err(GraphError::IoWrite)
 }
 
+/// If the optional value provided is "Some", Writes a key/value formatted line
+/// to a writer with the given key and value.
+///
+/// # Errors
+///
+/// Returns `Err` if an I/O error occurs while writing to the writer
+pub fn write_key_value_line_opt<W: Write>(
+    writer: &mut W,
+    key: impl fmt::Display,
+    maybe_value: Option<impl fmt::Display>,
+) -> Result<(), GraphError> {
+    if let Some(value) = maybe_value {
+        write_key_value_line(writer, key, value)
+    } else {
+        Ok(())
+    }
+}
+
 /// Writes a separator/blank line to a writer.
 ///
 /// # Errors

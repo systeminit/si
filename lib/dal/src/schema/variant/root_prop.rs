@@ -319,20 +319,19 @@ impl SchemaVariant {
         .await?;
         resource_value_prop.set_hidden(ctx, true).await?;
 
-        let reconciliation_func: Func =
+        if let Some(reconciliation_func) =
             Func::find_by_attr(ctx, "name", &"si:defaultReconciliation")
                 .await?
                 .pop()
-                .ok_or(FuncError::NotFoundByName(
-                    "si:defaultReconciliation".to_owned(),
-                ))?;
-        ReconciliationPrototype::upsert(
-            ctx,
-            *reconciliation_func.id(),
-            "Reconciliation",
-            ReconciliationPrototypeContext::new(*schema_variant.id()),
-        )
-        .await?;
+        {
+            ReconciliationPrototype::upsert(
+                ctx,
+                *reconciliation_func.id(),
+                "Reconciliation",
+                ReconciliationPrototypeContext::new(*schema_variant.id()),
+            )
+            .await?;
+        }
 
         SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id()).await?;
         SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;

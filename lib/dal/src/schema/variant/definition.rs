@@ -475,6 +475,7 @@ impl SchemaVariantDefinitionJson {
 
         let schema_data = schema_spec.data.unwrap_or(SchemaSpecData {
             name: schema_spec.name.to_owned(),
+            default_schema_variant: variant_spec.unique_id.to_owned(),
             category: "".into(),
             category_name: None,
             ui_hidden: false,

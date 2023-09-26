@@ -152,7 +152,6 @@ pub async fn exec_variant_def(
     let (_, schema_variant_ids) = import_pkg_from_pkg(
         &ctx,
         &pkg,
-        metadata.clone().name.as_str(),
         Some(dal::pkg::ImportOptions {
             schemas: None,
             skip_import_funcs: Some(HashMap::from_iter([(

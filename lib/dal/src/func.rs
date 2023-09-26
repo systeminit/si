@@ -48,6 +48,8 @@ pub enum FuncError {
     /// Could not find the identity [`Func`].
     #[error("identity func not found")]
     IdentityFuncNotFound,
+    #[error("intrinsic parse error: {0} is not an intrinsic")]
+    IntrinsicParse(String),
     #[error("intrinsic spec creation error {0}")]
     IntrinsicSpecCreation(String),
     #[error("nats txn error: {0}")]

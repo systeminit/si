@@ -56,6 +56,15 @@ pub enum SchemaVariantSpecPropRoot {
     ResourceValue,
 }
 
+impl SchemaVariantSpecPropRoot {
+    pub fn path_parts(&self) -> &'static [&'static str] {
+        match self {
+            Self::Domain => &["root", "domain"],
+            Self::ResourceValue => &["root", "resource_value"],
+        }
+    }
+}
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]

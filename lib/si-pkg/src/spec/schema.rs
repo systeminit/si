@@ -15,6 +15,8 @@ pub struct SchemaSpecData {
     pub category_name: Option<String>,
     #[builder(setter(into), default)]
     pub ui_hidden: bool,
+    #[builder(setter(into, strip_option), default)]
+    pub default_schema_variant: Option<String>,
 }
 
 impl SchemaSpecData {

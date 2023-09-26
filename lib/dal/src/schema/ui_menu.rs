@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_belongs_to, DalContext, StandardModel,
-    Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    DalContext, StandardModel, Tenancy, Timestamp, Visibility,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
@@ -64,13 +64,8 @@ impl SchemaUiMenu {
         Ok(object)
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn category(&self) -> &str {
-        &self.category
-    }
+    standard_model_accessor!(name, String, SchemaResult);
+    standard_model_accessor!(category, String, SchemaResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,

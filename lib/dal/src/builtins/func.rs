@@ -56,14 +56,14 @@ static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&st
 
 pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
     let intrinsics_pkg_spec = IntrinsicFunc::pkg_spec()?;
-    let name = intrinsics_pkg_spec.name.to_owned();
+    let _name = intrinsics_pkg_spec.name.to_owned();
     let intrinsics_pkg = SiPkg::load_from_spec(intrinsics_pkg_spec)?;
 
     if InstalledPkg::find_by_hash(ctx, &intrinsics_pkg.hash()?.to_string())
         .await?
         .is_none()
     {
-        import_pkg_from_pkg(ctx, &intrinsics_pkg, &name, None).await?;
+        import_pkg_from_pkg(ctx, &intrinsics_pkg, None).await?;
         ctx.blocking_commit().await?;
     }
 

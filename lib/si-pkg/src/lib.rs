@@ -3,9 +3,10 @@ mod pkg;
 mod spec;
 
 pub use pkg::{
-    SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgError, SiPkgFunc,
-    SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgValidation,
+    SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgChangeSet, SiPkgError,
+    SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc,
+    SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant,
+    SiPkgSchemaVariantData, SiPkgSocket, SiPkgSocketData, SiPkgValidation,
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,

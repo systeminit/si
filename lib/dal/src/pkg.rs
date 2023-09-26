@@ -24,6 +24,7 @@ use crate::{
     ExternalProviderId, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
     InternalProviderError, InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId,
     SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    WorkspaceError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -117,8 +118,12 @@ pub enum PkgError {
     MissingItemPropForMapProp(PropId),
     #[error("Cannot find installed prop {0}")]
     MissingProp(PropId),
+    #[error("Cannot find root prop for variant {0}")]
+    MissingRootProp(SchemaVariantId),
     #[error("Cannot find schema_variant_definition {0}")]
     MissingSchemaVariantDefinition(SchemaVariantId),
+    #[error("Unique id missing for node in workspace backup: {0}")]
+    MissingUniqueIdForNode(String),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error(transparent)]
@@ -152,9 +157,21 @@ pub enum PkgError {
     #[error("standard model relationship {0} found multiple belongs_to for {1} with id {2}")]
     StandardModelMultipleBelongsTo(&'static str, &'static str, String),
     #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
+    #[error(transparent)]
     UrlParse(#[from] ParseError),
     #[error("Validation creation error: {0}")]
     Validation(#[from] ValidationPrototypeError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
+    #[error("Cannot find default change set \"{0}\" in workspace backup")]
+    WorkspaceBackupNoDefaultChangeSet(String),
+    #[error("Workspace backup missing workspace name")]
+    WorkspaceNameNotInBackup,
+    #[error("Workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
+    #[error("Workspace backup missing workspace pk")]
+    WorkspacePkNotInBackup,
 }
 
 impl PkgError {

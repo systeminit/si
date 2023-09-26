@@ -8,7 +8,7 @@ use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
     SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, WsEventError,
+    UserError, WorkspaceError, WorkspacePk, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -21,6 +21,7 @@ const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
 pub mod export_pkg;
+pub mod export_workspace;
 pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
@@ -87,6 +88,10 @@ pub enum PkgError {
     Url(#[from] url::ParseError),
     #[error("transparent")]
     User(#[from] UserError),
+    #[error("transparent")]
+    Workspace(#[from] WorkspaceError),
+    #[error("Could not find current workspace {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -186,6 +191,10 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> PkgResult
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/export_pkg", post(export_pkg::export_pkg))
+        .route(
+            "/export_workspace",
+            post(export_workspace::export_workspace),
+        )
         .route("/get_module_by_hash", get(get_pkg::get_module_by_hash))
         .route("/install_pkg", post(install_pkg::install_pkg))
         .route("/list_pkgs", get(list_pkgs::list_pkgs))

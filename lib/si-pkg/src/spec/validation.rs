@@ -86,6 +86,34 @@ impl ValidationSpec {
     pub fn builder() -> ValidationSpecBuilder {
         ValidationSpecBuilder::default()
     }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        match self {
+            Self::CustomValidation { unique_id, .. }
+            | Self::IntegerIsBetweenTwoIntegers { unique_id, .. }
+            | Self::IntegerIsNotEmpty { unique_id, .. }
+            | Self::StringEquals { unique_id, .. }
+            | Self::StringHasPrefix { unique_id, .. }
+            | Self::StringInStringArray { unique_id, .. }
+            | Self::StringIsHexColor { unique_id, .. }
+            | Self::StringIsNotEmpty { unique_id, .. }
+            | Self::StringIsValidIpAddr { unique_id, .. } => unique_id.as_deref(),
+        }
+    }
+
+    pub fn deleted(&self) -> bool {
+        match self {
+            Self::CustomValidation { deleted, .. }
+            | Self::IntegerIsBetweenTwoIntegers { deleted, .. }
+            | Self::IntegerIsNotEmpty { deleted, .. }
+            | Self::StringEquals { deleted, .. }
+            | Self::StringHasPrefix { deleted, .. }
+            | Self::StringInStringArray { deleted, .. }
+            | Self::StringIsHexColor { deleted, .. }
+            | Self::StringIsNotEmpty { deleted, .. }
+            | Self::StringIsValidIpAddr { deleted, .. } => *deleted,
+        }
+    }
 }
 
 #[remain::sorted]

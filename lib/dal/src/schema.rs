@@ -17,7 +17,7 @@ use crate::{
     HistoryEventError, PropError, StandardModel, StandardModelError, Timestamp,
     ValidationPrototypeError, Visibility, WsEventError,
 };
-use crate::{Tenancy, TransactionsError};
+use crate::{Tenancy, TransactionsError, WorkspacePk};
 
 pub use ui_menu::SchemaUiMenu;
 pub use variant::root_prop::RootProp;
@@ -193,6 +193,20 @@ impl Schema {
                 .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?),
             None => Err(SchemaError::NoDefaultVariant(*self.id())),
         }
+    }
+
+    pub async fn is_builtin(&self, ctx: &DalContext) -> SchemaResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT id FROM schemas WHERE id = $1 and tenancy_workspace_pk = $2 LIMIT 1",
+                &[self.id(), &WorkspacePk::NONE],
+            )
+            .await?;
+
+        Ok(row.is_some())
     }
 
     pub async fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Schema> {

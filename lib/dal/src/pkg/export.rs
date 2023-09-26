@@ -1,4 +1,3 @@
-use chrono::Utc;
 use std::collections::{hash_map::Entry, HashMap};
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
@@ -12,8 +11,8 @@ use si_pkg::{
     SpecError, ValidationSpec, ValidationSpecKind,
 };
 
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::schema::variant::definition::SchemaVariantDefinition;
-use crate::ChangeSetPk;
 use crate::{
     func::{argument::FuncArgument, backend::validation::FuncBackendValidationArgs},
     prop_tree::{PropTree, PropTreeNode},
@@ -25,6 +24,7 @@ use crate::{
     InternalProviderId, LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema, SchemaId,
     SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, ValidationPrototype,
 };
+use crate::{ChangeSetPk, Workspace};
 
 use super::{PkgError, PkgResult};
 
@@ -69,13 +69,6 @@ impl FuncSpecMap {
         self.0
             .entry(change_set_pk.unwrap_or(ChangeSetPk::NONE))
             .or_default();
-    }
-
-    pub fn contains_func(&self, change_set_pk: Option<ChangeSetPk>, func_id: FuncId) -> bool {
-        match self.0.get(&change_set_pk.unwrap_or(ChangeSetPk::NONE)) {
-            None => false,
-            Some(inner_map) => inner_map.contains_key(&func_id),
-        }
     }
 
     pub fn insert(
@@ -143,13 +136,15 @@ impl PkgExporter {
         }
     }
 
-    pub fn new_workspace_exporter(name: impl Into<String>, created_by: impl Into<String>) -> Self {
-        let version = Utc::now().format("%Y-%m-%d_%H:%M:%S").to_string();
-        let description = "workspace backup";
-
+    pub fn new_workspace_exporter(
+        name: impl Into<String>,
+        created_by: impl Into<String>,
+        version: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
-            version,
+            version: version.into(),
             description: Some(description.into()),
             kind: SiPkgKind::WorkspaceBackup,
             created_by: created_by.into(),
@@ -190,6 +185,35 @@ impl PkgExporter {
         let in_change_set = std_model_change_set_matches(change_set_pk, schema);
         let is_deleted = schema.visibility().is_deleted();
 
+        let default_variant_id = schema.default_schema_variant_id().copied();
+        let mut default_variant_unique_id = None;
+
+        for variant in &variants {
+            let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
+
+            for func in &related_funcs {
+                let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
+                self.func_map
+                    .insert(change_set_pk, *func.id(), func_spec.clone());
+
+                if include {
+                    funcs.push(func_spec);
+                }
+            }
+
+            if !is_deleted {
+                let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
+                if variant_spec.unique_id.is_some() {
+                    if let Some(default_variant_id) = default_variant_id {
+                        if variant.id() == &default_variant_id {
+                            default_variant_unique_id = variant_spec.unique_id.to_owned();
+                        }
+                    }
+                }
+                schema_spec_builder.variant(variant_spec);
+            }
+        }
+
         if in_change_set && is_deleted {
             schema_spec_builder.deleted(true);
         } else if in_change_set {
@@ -205,26 +229,10 @@ impl PkgExporter {
             })?;
             data_builder.category(schema_ui_menu.category());
             data_builder.category_name(schema_ui_menu.name());
+            if let Some(default_unique_id) = default_variant_unique_id {
+                data_builder.default_schema_variant(default_unique_id);
+            }
             schema_spec_builder.data(data_builder.build()?);
-        }
-
-        for variant in &variants {
-            let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
-
-            for func in &related_funcs {
-                if !self.func_map.contains_func(change_set_pk, *func.id()) {
-                    if let Some(func_spec) = self.export_func(ctx, change_set_pk, func).await? {
-                        self.func_map
-                            .insert(change_set_pk, *func.id(), func_spec.clone());
-                        funcs.push(func_spec);
-                    }
-                }
-            }
-
-            if !is_deleted {
-                let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
-                schema_spec_builder.variant(variant_spec);
-            }
         }
 
         let schema_spec = schema_spec_builder.build()?;
@@ -245,6 +253,10 @@ impl PkgExporter {
             SchemaVariantDefinition::get_by_schema_variant_id(ctx, variant.id())
                 .await?
                 .ok_or(PkgError::MissingSchemaVariantDefinition(*variant.id()))?;
+
+        if self.is_workspace_export {
+            variant_spec_builder.unique_id(variant.id().to_string());
+        }
 
         if std_model_change_set_matches(change_set_pk, variant)
             || std_model_change_set_matches(change_set_pk, &schema_variant_definition)
@@ -914,7 +926,6 @@ impl PkgExporter {
 
                         inputs.push(
                             builder
-                                .name(arg_name)
                                 .kind(AttrFuncInputSpecKind::Prop)
                                 .prop_path(prop.path())
                                 .build()?,
@@ -931,7 +942,6 @@ impl PkgExporter {
 
                 inputs.push(
                     builder
-                        .name(arg_name)
                         .kind(AttrFuncInputSpecKind::OutputSocket)
                         .socket_name(ep.name())
                         .build()?,
@@ -1040,7 +1050,13 @@ impl PkgExporter {
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
         func: &Func,
-    ) -> PkgResult<Option<FuncSpec>> {
+    ) -> PkgResult<(FuncSpec, bool)> {
+        if self.is_workspace_export && func.is_intrinsic() {
+            if let Some(intrinsic) = IntrinsicFunc::maybe_from_str(func.name()) {
+                return Ok((intrinsic.to_spec()?, true));
+            }
+        }
+
         let mut func_spec_builder = FuncSpec::builder();
 
         func_spec_builder.name(func.name());
@@ -1055,7 +1071,7 @@ impl PkgExporter {
                 // These ids will be stable so long as the function is unchanged
                 func_spec_builder.unique_id(func_spec_builder.gen_unique_id()?);
             }
-            return Ok(Some(func_spec_builder.build()?));
+            return Ok((func_spec_builder.build()?, true));
         }
 
         if in_change_set {
@@ -1117,13 +1133,10 @@ impl PkgExporter {
         }
 
         let func_spec = func_spec_builder.build()?;
-
         // If we have data, or change set specific arguments, we're valid for this changeset
-        Ok(if func_spec.data.is_some() || !args.is_empty() {
-            Some(func_spec)
-        } else {
-            None
-        })
+        let include_in_export = func_spec.data.is_some() || !args.is_empty();
+
+        Ok((func_spec, include_in_export))
     }
 
     /// If change_set_pk is None, we export everything in the changeset without checking for
@@ -1168,17 +1181,20 @@ impl PkgExporter {
         }
 
         // XXX: make this SQL query
-        let schemas: Vec<Schema> = Schema::list(ctx)
-            .await?
-            .into_iter()
-            .filter(|sv| {
-                if let Some(schema_ids) = &self.schema_ids {
-                    schema_ids.contains(sv.id())
-                } else {
-                    true
-                }
-            })
-            .collect();
+        let mut schemas = vec![];
+        for schema in Schema::list(ctx).await? {
+            let add_schema = if let Some(schema_ids) = &self.schema_ids {
+                schema_ids.contains(schema.id())
+            } else if self.is_workspace_export {
+                !schema.is_builtin(ctx).await?
+            } else {
+                true
+            };
+
+            if add_schema {
+                schemas.push(schema);
+            }
+        }
 
         for schema in &schemas {
             let (schema_spec, funcs) = self.export_schema(ctx, change_set_pk, schema).await?;
@@ -1200,6 +1216,10 @@ impl PkgExporter {
 
         if let Some(workspace_pk) = ctx.tenancy().workspace_pk() {
             pkg_spec_builder.workspace_pk(workspace_pk.to_string());
+            let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
+                .await?
+                .ok_or(PkgError::WorkspaceNotFound(workspace_pk))?;
+            pkg_spec_builder.workspace_name(workspace.name());
         }
 
         if let Some(description) = &self.description {

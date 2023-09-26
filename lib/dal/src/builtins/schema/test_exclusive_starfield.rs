@@ -307,7 +307,6 @@ impl MigrationDriver {
         import_pkg_from_pkg(
             ctx,
             &starfield_pkg,
-            "test:starfield",
             Some(crate::pkg::ImportOptions {
                 schemas: Some(vec!["starfield".into()]),
                 ..Default::default()

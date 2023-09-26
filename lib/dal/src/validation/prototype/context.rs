@@ -123,6 +123,19 @@ impl ValidationPrototypeContext {
         ValidationPrototypeContextBuilder::new()
     }
 
+    /// Create a new [`ValidationPrototypeContext`] from raw fields
+    pub fn new_unchecked(
+        prop_id: PropId,
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+    ) -> Self {
+        Self {
+            prop_id,
+            schema_variant_id,
+            schema_id,
+        }
+    }
+
     /// Convert [`Self`] into [`ValidationPrototypeContextBuilder`].
     pub fn to_builder(&self) -> ValidationPrototypeContextBuilder {
         ValidationPrototypeContextBuilder::from(self.clone())

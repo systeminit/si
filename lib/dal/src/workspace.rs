@@ -116,6 +116,36 @@ impl Workspace {
         Ok(object)
     }
 
+    pub async fn clear(&self, ctx: &DalContext) -> WorkspaceResult<()> {
+        let tenancy = Tenancy::new(self.pk);
+
+        ctx.txns()
+            .await?
+            .pg()
+            .execute("SELECT clear_workspace_v1($1)", &[&tenancy])
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn clear_or_create_workspace(
+        ctx: &mut DalContext,
+        workspace_pk: WorkspacePk,
+        workspace_name: impl AsRef<str>,
+    ) -> WorkspaceResult<Self> {
+        let workspace = match Workspace::get_by_pk(ctx, &workspace_pk).await? {
+            Some(existing_workspace) => {
+                existing_workspace.clear(ctx).await?;
+                existing_workspace
+            }
+            None => Workspace::new(ctx, workspace_pk, workspace_name).await?,
+        };
+
+        ctx.import_builtins().await?;
+
+        Ok(workspace)
+    }
+
     pub async fn signup(
         ctx: &mut DalContext,
         workspace_name: impl AsRef<str>,
