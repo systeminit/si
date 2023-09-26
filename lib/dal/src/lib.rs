@@ -27,7 +27,6 @@ pub mod change_set_pointer;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
-pub mod content;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
@@ -101,7 +100,6 @@ pub use component::{
     resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
     ComponentError, ComponentId, ComponentView, ComponentViewProperties,
 };
-use content::hash::ContentHash;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,

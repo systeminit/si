@@ -1,4 +1,5 @@
 use chrono::Utc;
+use content_store::{ContentHash, Store, StoreError};
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -7,16 +8,12 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
-use crate::{
-    content::{self, store::StoreError},
-    workspace_snapshot::{
-        conflict::Conflict,
-        content_address::ContentAddress,
-        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
-        node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
-        update::Update,
-    },
-    ContentHash,
+use crate::workspace_snapshot::{
+    conflict::Conflict,
+    content_address::ContentAddress,
+    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
+    node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
+    update::Update,
 };
 
 pub type LineageId = Ulid;
@@ -211,9 +208,9 @@ impl WorkspaceSnapshotGraph {
         Err(WorkspaceSnapshotGraphError::UnableToAddNode)
     }
 
-    pub fn attribute_value_view(
+    pub async fn attribute_value_view(
         &self,
-        content_store: &content::Store,
+        content_store: &mut impl Store,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<serde_json::Value> {
         let mut view = serde_json::json![{}];
@@ -222,7 +219,8 @@ impl WorkspaceSnapshotGraph {
         while let Some((current_node_index, write_location)) = nodes_to_add.pop_front() {
             let current_node_weight = self.get_node_weight(current_node_index)?;
             let current_node_content: serde_json::Value = content_store
-                .get(&current_node_weight.content_hash())?
+                .get(&current_node_weight.content_hash())
+                .await?
                 .ok_or(WorkspaceSnapshotGraphError::ContentMissingForContentHash)?;
             // We don't need to care what kind the prop is, since assigning a value via
             // `pointer_mut` completely overwrites the existing value, regardless of any
@@ -1525,7 +1523,8 @@ fn prop_node_indexes_for_node_index(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ComponentId, ContentHash, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use content_store::ContentHash;
     use pretty_assertions_sorted::assert_eq;
 
     #[derive(Debug, PartialEq)]
@@ -4695,17 +4694,17 @@ mod test {
         );
     }
 
-    #[test]
-    fn attribute_value_build_view() {
+    #[tokio::test]
+    async fn attribute_value_build_view() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_content_hash, _) = content_store
-            .add(serde_json::json!("Schema A"))
+        let schema_content_hash = content_store
+            .add(&serde_json::json!("Schema A"))
             .expect("Unable to add to content store");
         let schema_node_index = graph
             .add_node(
@@ -4727,8 +4726,8 @@ mod test {
             .expect("Unable to add root -> schema edge");
 
         let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_variant_content_hash, _) = content_store
-            .add(serde_json::json!("Schema Variant A"))
+        let schema_variant_content_hash = content_store
+            .add(&serde_json::json!("Schema Variant A"))
             .expect("Unable to add to content store");
         let schema_variant_node_index = graph
             .add_node(
@@ -4752,8 +4751,8 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Root prop"))
+        let root_prop_content_hash = content_store
+            .add(&serde_json::json!("Root prop"))
             .expect("Unable to add to content store");
         let root_prop_node_index = graph
             .add_node(
@@ -4779,8 +4778,8 @@ mod test {
             .expect("Unable to add schema variant -> root prop edge");
 
         let si_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (si_prop_content_hash, _) = content_store
-            .add(serde_json::json!("SI Prop Content"))
+        let si_prop_content_hash = content_store
+            .add(&serde_json::json!("SI Prop Content"))
             .expect("Unable to add to content store");
         let si_prop_node_index = graph
             .add_node(
@@ -4806,8 +4805,8 @@ mod test {
             .expect("Unable to add root prop -> si prop edge");
 
         let name_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (name_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Name Prop Content"))
+        let name_prop_content_hash = content_store
+            .add(&serde_json::json!("Name Prop Content"))
             .expect("Unable to add to content store");
         let name_prop_node_index = graph
             .add_node(
@@ -4833,8 +4832,8 @@ mod test {
             .expect("Unable to add si prop -> name prop edge");
 
         let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (component_content_hash, _) = content_store
-            .add(serde_json::json!("Component Content"))
+        let component_content_hash = content_store
+            .add(&serde_json::json!("Component Content"))
             .expect("Unable to add to content store");
         let component_node_index = graph
             .add_node(
@@ -4868,8 +4867,8 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         let root_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let root_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let root_av_node_index = graph
             .add_node(
@@ -4905,8 +4904,8 @@ mod test {
             .expect("Unable to add root av -> root prop edge");
 
         let si_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (si_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let si_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let si_av_node_index = graph
             .add_node(
@@ -4942,8 +4941,8 @@ mod test {
             .expect("Unable to add si av -> si prop edge");
 
         let name_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (name_av_content_hash, _) = content_store
-            .add(serde_json::json!("component name"))
+        let name_av_content_hash = content_store
+            .add(&serde_json::json!("component name"))
             .expect("Unable to add to content store");
         let name_av_node_index = graph
             .add_node(
@@ -4985,26 +4984,27 @@ mod test {
             serde_json::json![{"si": {"name": "component name"}}],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_unordered_object() {
+    #[tokio::test]
+    async fn attribute_value_build_view_unordered_object() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_content_hash, _) = content_store
-            .add(serde_json::json!("Schema A"))
+        let schema_content_hash = content_store
+            .add(&serde_json::json!("Schema A"))
             .expect("Unable to add to content store");
         let schema_node_index = graph
             .add_node(
@@ -5026,8 +5026,8 @@ mod test {
             .expect("Unable to add root -> schema edge");
 
         let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_variant_content_hash, _) = content_store
-            .add(serde_json::json!("Schema Variant A"))
+        let schema_variant_content_hash = content_store
+            .add(&serde_json::json!("Schema Variant A"))
             .expect("Unable to add to content store");
         let schema_variant_node_index = graph
             .add_node(
@@ -5051,8 +5051,8 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Root prop"))
+        let root_prop_content_hash = content_store
+            .add(&serde_json::json!("Root prop"))
             .expect("Unable to add to content store");
         let root_prop_node_index = graph
             .add_node(
@@ -5078,8 +5078,8 @@ mod test {
             .expect("Unable to add schema variant -> root prop edge");
 
         let si_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (si_prop_content_hash, _) = content_store
-            .add(serde_json::json!("SI Prop Content"))
+        let si_prop_content_hash = content_store
+            .add(&serde_json::json!("SI Prop Content"))
             .expect("Unable to add to content store");
         let si_prop_node_index = graph
             .add_node(
@@ -5105,8 +5105,8 @@ mod test {
             .expect("Unable to add root prop -> si prop edge");
 
         let name_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (name_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Name Prop Content"))
+        let name_prop_content_hash = content_store
+            .add(&serde_json::json!("Name Prop Content"))
             .expect("Unable to add to content store");
         let name_prop_node_index = graph
             .add_node(
@@ -5132,8 +5132,8 @@ mod test {
             .expect("Unable to add si prop -> name prop edge");
 
         let description_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (description_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Description Prop Content"))
+        let description_prop_content_hash = content_store
+            .add(&serde_json::json!("Description Prop Content"))
             .expect("Unable to add to content store");
         let description_prop_node_index = graph
             .add_node(
@@ -5159,8 +5159,8 @@ mod test {
             .expect("Unable to add si prop -> description prop edge");
 
         let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (component_content_hash, _) = content_store
-            .add(serde_json::json!("Component Content"))
+        let component_content_hash = content_store
+            .add(&serde_json::json!("Component Content"))
             .expect("Unable to add to content store");
         let component_node_index = graph
             .add_node(
@@ -5194,8 +5194,8 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         let root_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let root_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let root_av_node_index = graph
             .add_node(
@@ -5231,8 +5231,8 @@ mod test {
             .expect("Unable to add root av -> root prop edge");
 
         let si_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (si_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let si_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let si_av_node_index = graph
             .add_node(
@@ -5268,8 +5268,8 @@ mod test {
             .expect("Unable to add si av -> si prop edge");
 
         let name_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (name_av_content_hash, _) = content_store
-            .add(serde_json::json!("component name"))
+        let name_av_content_hash = content_store
+            .add(&serde_json::json!("component name"))
             .expect("Unable to add to content store");
         let name_av_node_index = graph
             .add_node(
@@ -5305,8 +5305,8 @@ mod test {
             .expect("Unable to create name av -> name prop edge");
 
         let description_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (description_av_content_hash, _) = content_store
-            .add(serde_json::json!("Component description"))
+        let description_av_content_hash = content_store
+            .add(&serde_json::json!("Component description"))
             .expect("Unable to add to content store");
         let description_av_node_index = graph
             .add_node(
@@ -5353,26 +5353,27 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_ordered_array() {
+    #[tokio::test]
+    async fn attribute_value_build_view_ordered_array() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_content_hash, _) = content_store
-            .add(serde_json::json!("Schema A"))
+        let schema_content_hash = content_store
+            .add(&serde_json::json!("Schema A"))
             .expect("Unable to add to content store");
         let schema_node_index = graph
             .add_node(
@@ -5394,8 +5395,8 @@ mod test {
             .expect("Unable to add root -> schema edge");
 
         let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_variant_content_hash, _) = content_store
-            .add(serde_json::json!("Schema Variant A"))
+        let schema_variant_content_hash = content_store
+            .add(&serde_json::json!("Schema Variant A"))
             .expect("Unable to add to content store");
         let schema_variant_node_index = graph
             .add_node(
@@ -5419,8 +5420,8 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Root prop"))
+        let root_prop_content_hash = content_store
+            .add(&serde_json::json!("Root prop"))
             .expect("Unable to add to content store");
         let root_prop_node_index = graph
             .add_node(
@@ -5446,8 +5447,8 @@ mod test {
             .expect("Unable to add schema variant -> root prop edge");
 
         let domain_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (domain_prop_content_hash, _) = content_store
-            .add(serde_json::json!("domain Prop Content"))
+        let domain_prop_content_hash = content_store
+            .add(&serde_json::json!("domain Prop Content"))
             .expect("Unable to add to content store");
         let domain_prop_node_index = graph
             .add_node(
@@ -5473,8 +5474,8 @@ mod test {
             .expect("Unable to add root prop -> domain prop edge");
 
         let ports_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (ports_prop_content_hash, _) = content_store
-            .add(serde_json::json!("ports Prop Content"))
+        let ports_prop_content_hash = content_store
+            .add(&serde_json::json!("ports Prop Content"))
             .expect("Unable to add to content store");
         let ports_prop_node_index = graph
             .add_node(
@@ -5500,8 +5501,8 @@ mod test {
             .expect("Unable to add domain prop -> ports prop edge");
 
         let port_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port_prop_content_hash, _) = content_store
-            .add(serde_json::json!("port Prop Content"))
+        let port_prop_content_hash = content_store
+            .add(&serde_json::json!("port Prop Content"))
             .expect("Unable to add to content store");
         let port_prop_node_index = graph
             .add_node(
@@ -5527,8 +5528,8 @@ mod test {
             .expect("Unable to add ports prop -> port prop edge");
 
         let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (component_content_hash, _) = content_store
-            .add(serde_json::json!("Component Content"))
+        let component_content_hash = content_store
+            .add(&serde_json::json!("Component Content"))
             .expect("Unable to add to content store");
         let component_node_index = graph
             .add_node(
@@ -5562,8 +5563,8 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         let root_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let root_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let root_av_node_index = graph
             .add_node(
@@ -5599,8 +5600,8 @@ mod test {
             .expect("Unable to add root av -> root prop edge");
 
         let domain_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (domain_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let domain_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let domain_av_node_index = graph
             .add_node(
@@ -5636,8 +5637,8 @@ mod test {
             .expect("Unable to add domain av -> domain prop edge");
 
         let ports_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (ports_av_content_hash, _) = content_store
-            .add(serde_json::json!([]))
+        let ports_av_content_hash = content_store
+            .add(&serde_json::json!([]))
             .expect("Unable to add to content store");
         let ports_av_node_index = graph
             .add_ordered_node(
@@ -5674,8 +5675,8 @@ mod test {
             .expect("Unable to create ports av -> ports prop edge");
 
         let port1_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port1_av_content_hash, _) = content_store
-            .add(serde_json::json!("Port 1"))
+        let port1_av_content_hash = content_store
+            .add(&serde_json::json!("Port 1"))
             .expect("Unable to add to content store");
         let port1_av_node_index = graph
             .add_node(
@@ -5712,8 +5713,8 @@ mod test {
             .expect("Unable to add port 1 av -> port prop edge");
 
         let port2_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port2_av_content_hash, _) = content_store
-            .add(serde_json::json!("Port 2"))
+        let port2_av_content_hash = content_store
+            .add(&serde_json::json!("Port 2"))
             .expect("Unable to add to content store");
         let port2_av_node_index = graph
             .add_node(
@@ -5750,8 +5751,8 @@ mod test {
             .expect("Unable to add port 2 av -> port prop edge");
 
         let port3_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port3_av_content_hash, _) = content_store
-            .add(serde_json::json!("Port 3"))
+        let port3_av_content_hash = content_store
+            .add(&serde_json::json!("Port 3"))
             .expect("Unable to add to content store");
         let port3_av_node_index = graph
             .add_node(
@@ -5788,8 +5789,8 @@ mod test {
             .expect("Unable to add port 3 av -> port prop edge");
 
         let port4_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port4_av_content_hash, _) = content_store
-            .add(serde_json::json!("Port 4"))
+        let port4_av_content_hash = content_store
+            .add(&serde_json::json!("Port 4"))
             .expect("Unable to add to content store");
         let port4_av_node_index = graph
             .add_node(
@@ -5841,11 +5842,12 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -5866,17 +5868,18 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
         let port5_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (port5_av_content_hash, _) = content_store
-            .add(serde_json::json!("Port 5"))
+        let port5_av_content_hash = content_store
+            .add(&serde_json::json!("Port 5"))
             .expect("Unable to add to content store");
         let port5_av_node_index = graph
             .add_node(
@@ -5926,26 +5929,27 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }
 
-    #[test]
-    fn attribute_value_build_view_ordered_map() {
+    #[tokio::test]
+    async fn attribute_value_build_view_ordered_map() {
         let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let change_set = &change_set;
         let mut graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
-        let mut content_store = crate::content::Store::new();
+        let mut content_store = content_store::LocalStore::default();
 
         let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_content_hash, _) = content_store
-            .add(serde_json::json!("Schema A"))
+        let schema_content_hash = content_store
+            .add(&serde_json::json!("Schema A"))
             .expect("Unable to add to content store");
         let schema_node_index = graph
             .add_node(
@@ -5967,8 +5971,8 @@ mod test {
             .expect("Unable to add root -> schema edge");
 
         let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (schema_variant_content_hash, _) = content_store
-            .add(serde_json::json!("Schema Variant A"))
+        let schema_variant_content_hash = content_store
+            .add(&serde_json::json!("Schema Variant A"))
             .expect("Unable to add to content store");
         let schema_variant_node_index = graph
             .add_node(
@@ -5992,8 +5996,8 @@ mod test {
             .expect("Unable to add schema -> schema variant edge");
 
         let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_prop_content_hash, _) = content_store
-            .add(serde_json::json!("Root prop"))
+        let root_prop_content_hash = content_store
+            .add(&serde_json::json!("Root prop"))
             .expect("Unable to add to content store");
         let root_prop_node_index = graph
             .add_node(
@@ -6019,8 +6023,8 @@ mod test {
             .expect("Unable to add schema variant -> root prop edge");
 
         let domain_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (domain_prop_content_hash, _) = content_store
-            .add(serde_json::json!("domain Prop Content"))
+        let domain_prop_content_hash = content_store
+            .add(&serde_json::json!("domain Prop Content"))
             .expect("Unable to add to content store");
         let domain_prop_node_index = graph
             .add_node(
@@ -6046,8 +6050,8 @@ mod test {
             .expect("Unable to add root prop -> domain prop edge");
 
         let environment_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (environment_prop_content_hash, _) = content_store
-            .add(serde_json::json!("environment Prop Content"))
+        let environment_prop_content_hash = content_store
+            .add(&serde_json::json!("environment Prop Content"))
             .expect("Unable to add to content store");
         let environment_prop_node_index = graph
             .add_node(
@@ -6073,8 +6077,8 @@ mod test {
             .expect("Unable to add domain prop -> environment prop edge");
 
         let env_var_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var_prop_content_hash, _) = content_store
-            .add(serde_json::json!("port Prop Content"))
+        let env_var_prop_content_hash = content_store
+            .add(&serde_json::json!("port Prop Content"))
             .expect("Unable to add to content store");
         let env_var_prop_node_index = graph
             .add_node(
@@ -6100,8 +6104,8 @@ mod test {
             .expect("Unable to add environment prop -> env var prop edge");
 
         let component_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (component_content_hash, _) = content_store
-            .add(serde_json::json!("Component Content"))
+        let component_content_hash = content_store
+            .add(&serde_json::json!("Component Content"))
             .expect("Unable to add to content store");
         let component_node_index = graph
             .add_node(
@@ -6135,8 +6139,8 @@ mod test {
             .expect("Unable to add component -> schema variant edge");
 
         let root_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (root_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let root_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let root_av_node_index = graph
             .add_node(
@@ -6172,8 +6176,8 @@ mod test {
             .expect("Unable to add root av -> root prop edge");
 
         let domain_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (domain_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let domain_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let domain_av_node_index = graph
             .add_node(
@@ -6209,8 +6213,8 @@ mod test {
             .expect("Unable to add domain av -> domain prop edge");
 
         let envrionment_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (ports_av_content_hash, _) = content_store
-            .add(serde_json::json!({}))
+        let ports_av_content_hash = content_store
+            .add(&serde_json::json!({}))
             .expect("Unable to add to content store");
         let environment_av_node_index = graph
             .add_ordered_node(
@@ -6247,8 +6251,8 @@ mod test {
             .expect("Unable to create environment av -> environment prop edge");
 
         let env_var1_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var1_av_content_hash, _) = content_store
-            .add(serde_json::json!("1111"))
+        let env_var1_av_content_hash = content_store
+            .add(&serde_json::json!("1111"))
             .expect("Unable to add to content store");
         let port1_av_node_index = graph
             .add_node(
@@ -6288,8 +6292,8 @@ mod test {
             .expect("Unable to add env var 1 av -> env var prop edge");
 
         let env_var2_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var2_av_content_hash, _) = content_store
-            .add(serde_json::json!("2222"))
+        let env_var2_av_content_hash = content_store
+            .add(&serde_json::json!("2222"))
             .expect("Unable to add to content store");
         let env_var2_av_node_index = graph
             .add_node(
@@ -6329,8 +6333,8 @@ mod test {
             .expect("Unable to add env var 2 av -> env var prop edge");
 
         let env_var3_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var3_av_content_hash, _) = content_store
-            .add(serde_json::json!("3333"))
+        let env_var3_av_content_hash = content_store
+            .add(&serde_json::json!("3333"))
             .expect("Unable to add to content store");
         let port3_av_node_index = graph
             .add_node(
@@ -6370,8 +6374,8 @@ mod test {
             .expect("Unable to add env var 3 av -> env var prop edge");
 
         let env_var4_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var4_av_content_hash, _) = content_store
-            .add(serde_json::json!("4444"))
+        let env_var4_av_content_hash = content_store
+            .add(&serde_json::json!("4444"))
             .expect("Unable to add to content store");
         let env_var4_av_node_index = graph
             .add_node(
@@ -6426,11 +6430,12 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
@@ -6456,17 +6461,18 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
 
         let env_var5_av_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let (env_var5_av_content_hash, _) = content_store
-            .add(serde_json::json!("5555"))
+        let env_var5_av_content_hash = content_store
+            .add(&serde_json::json!("5555"))
             .expect("Unable to add to content store");
         let env_var5_av_node_index = graph
             .add_node(
@@ -6519,11 +6525,12 @@ mod test {
             }],
             graph
                 .attribute_value_view(
-                    &content_store,
+                    &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
                         .expect("Unable to get NodeIndex")
                 )
+                .await
                 .expect("Unable to generate attribute value view"),
         );
     }

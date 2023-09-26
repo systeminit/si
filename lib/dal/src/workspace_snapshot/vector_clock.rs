@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::workspace_snapshot::{
     lamport_clock::{LamportClock, LamportClockError},
