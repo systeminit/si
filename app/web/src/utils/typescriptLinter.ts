@@ -7,12 +7,9 @@ import { Extension } from "@codemirror/state";
 import { completeFromList, autocompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { Diagnostic } from "@codemirror/lint";
+import { DiagnosticMessageChain, System, CompilerOptions } from "typescript";
+import { snippets } from "./typescriptLinterSnippets";
 import type { CompletionContext } from "@codemirror/autocomplete";
-import type {
-  DiagnosticMessageChain,
-  System,
-  CompilerOptions,
-} from "typescript";
 
 export type AsyncLintSource = (
   view: EditorView,
@@ -75,12 +72,15 @@ export const createTypescriptSource = async (
           {},
         );
 
-        return completeFromList(
-          completions?.entries.map((c) => ({
-            type: c.kind,
+        const completionsWithSnippets = [
+          ...snippets,
+          ...(completions?.entries.map((c) => ({
+            type: "function",
             label: c.name,
-          })) ?? [],
-        )(ctx);
+          })) ?? []),
+        ];
+
+        return completeFromList(completionsWithSnippets)(ctx);
       },
     ],
   });
