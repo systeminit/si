@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
+use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{
     change_set_pointer::ChangeSetPointer,
-    content::hash::ContentHash,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,

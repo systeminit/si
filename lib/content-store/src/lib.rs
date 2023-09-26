@@ -1,4 +1,5 @@
-//! This crate provides the rebaser [`Server`].
+//! This crate provides the ability to interface with content stores of varying kinds as well as
+//! the ability to generate hashes for hashable content blobs.
 
 #![warn(
     missing_debug_implementations,
@@ -21,14 +22,13 @@
     clippy::missing_panics_doc
 )]
 
-pub use config::detect_and_configure_development;
-pub use config::Config;
-pub use config::ConfigBuilder;
-pub use config::ConfigError;
-pub use config::ConfigFile;
-pub use server::Server;
-pub use si_settings::StandardConfig;
-pub use si_settings::StandardConfigFile;
+mod hash;
+mod pair;
+mod store;
 
-mod config;
-mod server;
+pub use hash::ContentHash;
+pub use store::local::LocalStore;
+pub use store::pg::migrate::PgMigrationHelpers;
+pub use store::pg::PgStore;
+pub use store::Store;
+pub use store::StoreError;

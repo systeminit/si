@@ -9,6 +9,7 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+use content_store_test::PgTestMigrationClient;
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
@@ -287,6 +288,9 @@ impl TestContextBuilder {
     async fn build_for_test(&self) -> Result<TestContext> {
         let pg_pool = self.create_test_specific_db_with_pg_pool().await?;
 
+        // TODO(nick): create the test-specific content store db with a pg store upon request. Until
+        // this is resolved, use "TestPgStore::new" instead of "PgStore::new" for integration tests.
+
         self.build_inner(pg_pool).await
     }
 
@@ -518,13 +522,16 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     tokio::spawn(pinga_server.run());
 
     // Do not start up the Rebaser server since we do not need it for initial migrations.
-    info!("skipping Rebaser server startup and shutdown for initial migrations");
+    debug!("skipping Rebaser server startup and shutdown for initial migrations");
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
     let veritech_server = veritech_server_for_uds_cyclone(test_context.config.nats.clone()).await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
     tokio::spawn(veritech_server.run());
+
+    info!("creating client with pg pool for global Content Store test database");
+    let content_store_pg_test_migration_client = PgTestMigrationClient::new().await?;
 
     info!("testing database connection");
     services_ctx
@@ -533,8 +540,20 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to connect to database, is it running and available?")?;
 
+    info!("testing global Content Store database connection");
+    content_store_pg_test_migration_client
+        .test_connection()
+        .await
+        .wrap_err("failed to connect to database, is it running and available?")?;
+
     info!("dropping old test-specific databases");
     drop_old_test_databases(services_ctx.pg_pool())
+        .await
+        .wrap_err("failed to drop old databases")?;
+
+    info!("dropping old test-specific Content Store databases");
+    content_store_pg_test_migration_client
+        .drop_old_test_databases()
         .await
         .wrap_err("failed to drop old databases")?;
 
@@ -547,6 +566,18 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .wrap_err("failed to drop and create the database")?;
     info!("running database migrations");
     dal::migrate(services_ctx.pg_pool())
+        .await
+        .wrap_err("failed to migrate database")?;
+
+    // Ensure the Content Store database is totally clean, then run all migrations
+    info!("dropping and re-creating the Content Store database schema");
+    content_store_pg_test_migration_client
+        .drop_and_create_public_schema()
+        .await
+        .wrap_err("failed to drop and create the database")?;
+    info!("running Content Store database migrations");
+    content_store_pg_test_migration_client
+        .migrate()
         .await
         .wrap_err("failed to migrate database")?;
 

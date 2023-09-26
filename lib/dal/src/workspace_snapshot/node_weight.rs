@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -9,7 +10,7 @@ use crate::{
         content_address::ContentAddress,
         vector_clock::{VectorClock, VectorClockError},
     },
-    ContentHash, PropKind,
+    PropKind,
 };
 
 pub use content_node_weight::ContentNodeWeight;

@@ -1,12 +1,13 @@
 //! For all tests in this module, provide "SI_TEST_BUILTIN_SCHEMAS=none" as an environment variable.
 
+use content_store::ContentHash;
 use dal::change_set_pointer::ChangeSetPointer;
-use dal::content::hash::ContentHash;
 use dal::workspace_snapshot::content_address::ContentAddress;
 use dal::workspace_snapshot::node_weight::NodeWeight;
 use dal::{DalContext, Tenancy, Visibility, WorkspacePk, WorkspaceSnapshot};
 use dal_test::test;
 use rebaser_client::Client;
+use rebaser_core::ChangeSetReplyMessage;
 
 #[test]
 async fn simple_rebase(ctx: &mut DalContext) {
@@ -40,7 +41,7 @@ async fn simple_rebase(ctx: &mut DalContext) {
 
     snapshot.write(ctx).await.expect("could not write snapshot");
     base_change_set
-        .update_pointer(ctx, snapshot.id)
+        .update_pointer(ctx, snapshot.id())
         .await
         .expect("could not update pointer");
 
@@ -63,7 +64,7 @@ async fn simple_rebase(ctx: &mut DalContext) {
         .expect("could not add node");
     snapshot.write(ctx).await.expect("could not write snapshot");
     forked_change_set
-        .update_pointer(ctx, snapshot.id)
+        .update_pointer(ctx, snapshot.id())
         .await
         .expect("could not update pointer");
 
@@ -81,14 +82,19 @@ async fn simple_rebase(ctx: &mut DalContext) {
     let response = client
         .send_with_reply(
             base_change_set.id.into(),
-            snapshot.id.into(),
+            snapshot.id().into(),
             forked_change_set.id.into(),
         )
         .await
         .expect("could not send");
 
     // TODO(nick): do something useful with this.
-    dbg!(response);
+    match response {
+        ChangeSetReplyMessage::Success { results } => {
+            dbg!(results);
+        }
+        ChangeSetReplyMessage::Failure { error } => panic!("{}", error),
+    }
 
     // TODO(nick): move cleanup to the test harness.
     let _ = client
