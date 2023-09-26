@@ -937,6 +937,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "content-store"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blake3",
+ "chrono",
+ "color-eyre",
+ "refinery",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-data-pg",
+ "telemetry",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "content-store-test"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "content-store",
+ "si-data-pg",
+ "telemetry",
+ "uuid",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,6 +1299,8 @@ dependencies = [
  "buck2-resources",
  "chrono",
  "ciborium",
+ "content-store",
+ "content-store-test",
  "convert_case 0.6.0",
  "council-server",
  "dal-test",
@@ -1291,6 +1322,7 @@ dependencies = [
  "pretty_assertions_sorted",
  "rand 0.8.5",
  "rebaser-client",
+ "rebaser-core",
  "rebaser-server",
  "refinery",
  "regex",
@@ -1322,6 +1354,7 @@ version = "0.1.0"
 dependencies = [
  "buck2-resources",
  "color-eyre",
+ "content-store-test",
  "council-server",
  "dal",
  "derive_builder",
@@ -4115,12 +4148,8 @@ version = "0.1.0"
 dependencies = [
  "buck2-resources",
  "dal",
- "dal-test",
  "derive_builder",
- "futures",
  "nats-subscriber",
- "pretty_assertions_sorted",
- "rebaser-client",
  "rebaser-core",
  "remain",
  "serde",
@@ -4136,7 +4165,6 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
- "tokio-stream",
  "ulid",
  "veritech-client",
 ]

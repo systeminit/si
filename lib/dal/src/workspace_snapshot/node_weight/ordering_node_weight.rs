@@ -1,12 +1,10 @@
 use chrono::{DateTime, Utc};
+use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointer;
-use crate::{
-    workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock},
-    ContentHash,
-};
+use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
