@@ -2,17 +2,15 @@
 
 use std::sync::{Arc, Mutex};
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_data_pg::PgError;
+use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
 use crate::workspace_snapshot::WorkspaceSnapshotId;
-use crate::{pk, standard_model, DalContext, StandardModelError, Timestamp, TransactionsError};
-
-const FIND: &str = include_str!("queries/change_set_pointers/find.sql");
+use crate::{pk, DalContext, TransactionsError};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -25,8 +23,6 @@ pub enum ChangeSetPointerError {
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -38,12 +34,29 @@ pk!(ChangeSetPointerId);
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSetPointer {
     pub id: ChangeSetPointerId,
-    #[serde(flatten)]
-    pub timestamp: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+
+    pub name: String,
+    pub workspace_snapshot_id: Option<WorkspaceSnapshotId>,
+
     #[serde(skip)]
     pub generator: Arc<Mutex<Generator>>,
-    pub workspace_snapshot_id: Option<WorkspaceSnapshotId>,
-    pub name: String,
+}
+
+impl TryFrom<PgRow> for ChangeSetPointer {
+    type Error = ChangeSetPointerError;
+
+    fn try_from(value: PgRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.try_get("id")?,
+            created_at: value.try_get("created_at")?,
+            updated_at: value.try_get("updated_at")?,
+            name: value.try_get("name")?,
+            workspace_snapshot_id: value.try_get("workspace_snapshot_id")?,
+            generator: Arc::new(Mutex::new(Default::default())),
+        })
+    }
 }
 
 impl ChangeSetPointer {
@@ -53,7 +66,8 @@ impl ChangeSetPointer {
 
         Ok(Self {
             id: id.into(),
-            timestamp: Timestamp::now(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
             generator: Arc::new(Mutex::new(generator)),
             workspace_snapshot_id: None,
             name: "".to_string(),
@@ -67,13 +81,11 @@ impl ChangeSetPointer {
             .await?
             .pg()
             .query_one(
-                "SELECT change_set_pointer_create_v1($1) AS object",
+                "INSERT INTO change_set_pointers (name) VALUES ($1) RETURNING *",
                 &[&name],
             )
             .await?;
-        let json: Value = row.try_get("object")?;
-        let object: Self = serde_json::from_value(json)?;
-        Ok(object)
+        Ok(Self::try_from(row)?)
     }
 
     pub fn generate_ulid(&self) -> ChangeSetPointerResult<Ulid> {
@@ -93,7 +105,7 @@ impl ChangeSetPointer {
             .await?
             .pg()
             .query_none(
-                "UPDATE change_set_pointers AS object SET workspace_snapshot_id = $2 WHERE id = $1",
+                "UPDATE change_set_pointers SET workspace_snapshot_id = $2 WHERE id = $1",
                 &[&self.id, &workspace_snapshot_id],
             )
             .await?;
@@ -110,9 +122,12 @@ impl ChangeSetPointer {
             .txns()
             .await?
             .pg()
-            .query_one(FIND, &[&change_set_pointer_id])
+            .query_one(
+                "SELECT * FROM change_set_pointers WHERE id = $1",
+                &[&change_set_pointer_id],
+            )
             .await?;
-        Ok(standard_model::object_from_row(row)?)
+        Ok(Self::try_from(row)?)
     }
 }
 

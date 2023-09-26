@@ -1,6 +1,5 @@
+use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
-
-use crate::content::hash::ContentHash;
 
 #[remain::sorted]
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
