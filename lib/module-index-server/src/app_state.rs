@@ -25,7 +25,6 @@ pub struct AppState {
     posthog_client: PosthogClient,
     aws_creds: AwsCredentials,
     s3_config: S3Config,
-    restrict_listing: bool,
     token_emails: Arc<Mutex<HashMap<String, String>>>,
 
     shutdown_broadcast: ShutdownBroadcast,
@@ -44,7 +43,6 @@ impl AppState {
         posthog_client: PosthogClient,
         aws_creds: AwsCredentials,
         s3_config: S3Config,
-        restrict_listing: bool,
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
@@ -54,7 +52,6 @@ impl AppState {
             posthog_client,
             aws_creds,
             s3_config,
-            restrict_listing,
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             token_emails: Arc::new(Mutex::new(HashMap::new())),
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
@@ -88,9 +85,5 @@ impl AppState {
     /// Clones the ArcMutex that holds a hashmap between auth tokens and emails
     pub fn token_emails(&self) -> Arc<Mutex<HashMap<String, String>>> {
         self.token_emails.clone()
-    }
-
-    pub fn restrict_listing(&self) -> bool {
-        self.restrict_listing
     }
 }

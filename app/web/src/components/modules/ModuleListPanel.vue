@@ -91,7 +91,7 @@ const exportModalRef = ref<InstanceType<typeof Modal>>();
 const textSearch = ref("");
 
 async function triggerSearch() {
-  await moduleStore.SEARCH_REMOTE_MODULES();
+  await moduleStore.SEARCH_REMOTE_MODULES({ su: true });
 }
 
 onMounted(triggerSearch);

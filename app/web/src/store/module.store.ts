@@ -202,7 +202,11 @@ export const useModuleStore = () => {
           });
         },
 
-        async SEARCH_REMOTE_MODULES(params?: { name?: string; kind?: string }) {
+        async SEARCH_REMOTE_MODULES(params?: {
+          name?: string;
+          kind?: string;
+          su?: boolean;
+        }) {
           return new ModuleIndexApiRequest<{
             modules: (RemoteModuleSummary & {
               latestHash: ModuleHash;

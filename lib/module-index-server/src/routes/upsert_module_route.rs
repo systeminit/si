@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError, SiPkgKind};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
@@ -57,7 +56,7 @@ impl IntoResponse for UpsertModuleError {
 
 // #[debug_handler]
 pub async fn upsert_module_route(
-    Authorization { .. }: Authorization,
+    Authorization { user_claim, .. }: Authorization,
     ExtractedS3Bucket(s3_bucket): ExtractedS3Bucket,
     DbConnection(txn): DbConnection,
     mut multipart: Multipart,
@@ -99,8 +98,7 @@ pub async fn upsert_module_route(
     let new_module = si_module::ActiveModel {
         name: Set(module_metadata.name().to_owned()),
         description: Set(Some(module_metadata.description().to_owned())),
-        // owner_user_id: Set(claim.user_pk.to_string()),
-        owner_user_id: Set(Ulid::new().to_string()),
+        owner_user_id: Set(user_claim.user_pk.to_string()),
         owner_display_name: Set(Some(module_metadata.created_by().to_owned())),
         latest_hash: Set(module_metadata.hash().to_string()),
         // maybe use db's `CLOCK_TIMESTAMP()`?

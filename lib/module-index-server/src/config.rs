@@ -55,9 +55,6 @@ pub struct Config {
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
 
-    #[builder(default = "false")]
-    restrict_listing: bool,
-
     s3: S3Config,
 }
 
@@ -99,11 +96,6 @@ impl Config {
     pub fn s3(&self) -> &S3Config {
         &self.s3
     }
-
-    /// Whether to restrict module listing to SystemInit accounts
-    pub fn restrict_listing(&self) -> bool {
-        self.restrict_listing
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -120,8 +112,6 @@ pub struct ConfigFile {
     pub posthog: PosthogConfig,
     #[serde(default)]
     pub s3: S3Config,
-    #[serde(default)]
-    pub restrict_listing: bool,
 }
 
 impl Default for ConfigFile {
@@ -139,7 +129,6 @@ impl Default for ConfigFile {
             jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
             posthog: Default::default(),
             s3: Default::default(),
-            restrict_listing: Default::default(),
         }
     }
 }
@@ -161,7 +150,6 @@ impl TryFrom<ConfigFile> for Config {
         config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
         config.posthog(value.posthog);
         config.s3(value.s3);
-        config.restrict_listing(value.restrict_listing);
         config.build().map_err(Into::into)
     }
 }

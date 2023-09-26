@@ -42,6 +42,7 @@ impl IntoResponse for ListModulesError {
 pub struct ListModulesRequest {
     pub name: Option<String>,
     pub kind: Option<si_module::ModuleKind>,
+    pub su: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -52,7 +53,7 @@ pub struct ListModulesResponse {
 
 pub async fn list_module_route(
     Authorization {
-        user_claim: _user_claim,
+        user_claim,
         auth_token,
     }: Authorization,
     DbConnection(txn): DbConnection,
@@ -61,19 +62,24 @@ pub async fn list_module_route(
 ) -> Result<Json<ListModulesResponse>, ListModulesError> {
     let query = si_module::Entity::find();
 
-    if dbg!(state.restrict_listing())
-        && !dbg!(is_systeminit_auth_token(&auth_token, state.token_emails()).await?)
-    {
-        return Ok(Json(ListModulesResponse { modules: vec![] }));
-    }
+    let su = request.su.unwrap_or(false)
+        && is_systeminit_auth_token(&auth_token, state.token_emails()).await?;
+
+    dbg!(&su);
 
     let kind = request.kind.unwrap_or(si_module::ModuleKind::Module);
 
+    // filters
     let query = query
         .filter(si_module::Column::RejectedAt.is_null())
         .filter(si_module::Column::Kind.eq(kind.to_db_kind()));
-
-    // filters
+    let query = if !su {
+        let user_id = user_claim.user_pk.to_string();
+        dbg!(&user_id);
+        query.filter(si_module::Column::OwnerUserId.eq(user_id))
+    } else {
+        query
+    };
     let query = if let Some(name_filter) = request.name {
         query.filter(si_module::Column::Name.contains(&name_filter))
     } else {
