@@ -3,9 +3,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use ulid::Ulid;
 
-use crate::workspace_snapshot::{ChangeSetPointer, ChangeSetPointerError};
+use crate::workspace_snapshot::ChangeSetPointerError;
 
 #[derive(Debug, Error)]
 pub enum LamportClockError {

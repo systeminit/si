@@ -13,6 +13,7 @@ base64 = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
+content-store = { path = "../../lib/content-store" }
 convert_case = { workspace = true }
 council-server = { path = "../../lib/council-server" }
 derive_more = { workspace = true }
@@ -55,9 +56,11 @@ veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+content-store-test = { path = "../../lib/content-store-test" }
 dal-test = { path = "../../lib/dal-test" }
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
 rebaser-client = { path = "../../lib/rebaser-client" }
+rebaser-core = { path = "../../lib/rebaser-core" }
 rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }

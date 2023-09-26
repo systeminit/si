@@ -12,7 +12,6 @@
 //     overflowing_literals,
 //     path_statements,
 //     patterns_in_fns_without_body,
-//     private_in_public,
 //     unconditional_recursion,
 //     unused,
 //     unused_allocation,
@@ -31,13 +30,13 @@ pub mod node_weight;
 pub mod update;
 pub mod vector_clock;
 
+use chrono::{DateTime, Utc};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::conflict::Conflict;
@@ -45,12 +44,11 @@ use crate::workspace_snapshot::edge_weight::EdgeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::{
-    pk, standard_model,
+    pk,
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, StandardModelError, Timestamp, TransactionsError, WorkspaceSnapshotGraph,
+    DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
-const FIND: &str = include_str!("queries/workspace_snapshot/find.sql");
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
 
@@ -67,8 +65,6 @@ pub enum WorkspaceSnapshotError {
     Poison(String),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("WorkspaceSnapshotGraph error: {0}")]
@@ -83,12 +79,24 @@ pk!(WorkspaceSnapshotId);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceSnapshot {
-    pub id: WorkspaceSnapshotId,
-    #[serde(flatten)]
-    timestamp: Timestamp,
+    id: WorkspaceSnapshotId,
+    created_at: DateTime<Utc>,
     snapshot: Value,
     #[serde(skip_serializing)]
     working_copy: Option<WorkspaceSnapshotGraph>,
+}
+
+impl TryFrom<PgRow> for WorkspaceSnapshot {
+    type Error = WorkspaceSnapshotError;
+
+    fn try_from(row: PgRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            created_at: row.try_get("created_at")?,
+            snapshot: row.try_get("snapshot")?,
+            working_copy: None,
+        })
+    }
 }
 
 impl WorkspaceSnapshot {
@@ -97,44 +105,42 @@ impl WorkspaceSnapshot {
         change_set: &ChangeSetPointer,
     ) -> WorkspaceSnapshotResult<Self> {
         let snapshot = WorkspaceSnapshotGraph::new(change_set)?;
-        let serialized_snapshot = serde_json::to_value(&snapshot)?;
-
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "SELECT workspace_snapshot_create_v1($1) AS object",
-                &[&serialized_snapshot],
-            )
-            .await?;
-        let json: Value = row.try_get("object")?;
-        let object: WorkspaceSnapshot = serde_json::from_value(json)?;
-        Ok(object)
+        Ok(Self::new_inner(ctx, snapshot).await?)
     }
 
     pub async fn write(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
         let working_copy = self.working_copy()?;
         working_copy.cleanup();
 
-        let serialized_snapshot = serde_json::to_value(working_copy.clone())?;
+        let object = Self::new_inner(ctx, working_copy.clone()).await?;
+
+        self.id = object.id;
+        self.created_at = object.created_at;
+        self.snapshot = object.snapshot;
+        Ok(())
+    }
+
+    /// This _private_ method crates a new, immutable [`WorkspaceSnapshot`] from a
+    /// [`WorkspaceSnapshotGraph`].
+    async fn new_inner(
+        ctx: &DalContext,
+        graph: WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotResult<Self> {
+        let serialized_snapshot = serde_json::to_value(graph)?;
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT workspace_snapshot_create_v1($1) AS object",
+                "INSERT INTO workspace_snapshots (snapshot) VALUES ($1) RETURNING *",
                 &[&serialized_snapshot],
             )
             .await?;
+        Ok(Self::try_from(row)?)
+    }
 
-        let json: Value = row.try_get("object")?;
-        let object: WorkspaceSnapshot = serde_json::from_value(json)?;
-        self.id = object.id;
-        self.timestamp = object.timestamp;
-        self.snapshot = object.snapshot;
-
-        Ok(())
+    pub fn id(&self) -> WorkspaceSnapshotId {
+        self.id
     }
 
     fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
@@ -156,7 +162,6 @@ impl WorkspaceSnapshot {
 
     pub fn add_edge(
         &mut self,
-        change_set: &ChangeSetPointer,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -189,9 +194,12 @@ impl WorkspaceSnapshot {
             .txns()
             .await?
             .pg()
-            .query_one(FIND, &[&workspace_snapshot_id])
+            .query_one(
+                "SELECT * FROM workspace_snapshots WHERE id = $1",
+                &[&workspace_snapshot_id],
+            )
             .await?;
-        Ok(standard_model::object_from_row(row)?)
+        Ok(Self::try_from(row)?)
     }
 
     #[instrument(skip_all)]
@@ -205,6 +213,6 @@ impl WorkspaceSnapshot {
             .pg()
             .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
             .await?;
-        Ok(standard_model::object_from_row(row)?)
+        Ok(Self::try_from(row)?)
     }
 }

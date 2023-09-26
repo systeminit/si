@@ -7,15 +7,18 @@ use serde::{
 use serde_json::Value;
 use thiserror::Error;
 
+/// The [`blake3::Hash`] of a given set of contents.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct ContentHash(blake3::Hash);
 
 impl ContentHash {
+    /// Create a new [`ContentHash`] from a byte array.
     #[must_use]
     pub fn new(input: &[u8]) -> Self {
         Self(blake3::hash(input))
     }
 
+    /// Provide a [`hasher`](ContentHasher) to create [`hashes`](ContentHash).
     pub fn hasher() -> ContentHasher {
         ContentHasher::new()
     }

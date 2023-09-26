@@ -29,7 +29,6 @@ pub mod change_set_pointer;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
-pub mod content;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
