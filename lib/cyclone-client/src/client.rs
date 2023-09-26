@@ -816,6 +816,17 @@ mod tests {
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert!(output.message.starts_with("Output:"));
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
@@ -906,18 +917,27 @@ mod tests {
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={err:?}"),
-            None => panic!("output stream ended early"),
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert!(output.message.starts_with("Output:"));
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
         }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
-        };
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
@@ -1084,6 +1104,17 @@ mod tests {
         }
         loop {
             match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert!(output.message.starts_with("Output:"));
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
                 None => {
                     assert!(true);
                     break;
@@ -1150,6 +1181,17 @@ mod tests {
             match progress.next().await {
                 Some(Ok(ProgressMessage::OutputStream(output))) => {
                     assert_eq!(output.message, "second");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert!(output.message.starts_with("Output:"));
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,

@@ -21,6 +21,16 @@ export const makeExec = (executionId: string) => {
         ?.map((a) => `'${a}'`)
         ?.join(" ")}"`
     );
+    console.log(JSON.stringify({
+      protocol: "output",
+      executionId,
+      stream: "stderr",
+      level: "debug",
+      group: "log",
+      message: `Running CLI command: "${execaFile} ${execaArgs
+        ?.map((a) => `'${a}'`)
+        ?.join(" ")}"`
+    }));
 
     const child = await execa(execaFile, execaArgs, {
       all: true,

@@ -42,6 +42,14 @@ export async function executeActionRun(
 
   const result = await execute(vm, code, request.executionId, request.args);
   debug({ result });
+  console.log(JSON.stringify({
+      protocol: "output",
+      executionId: request.executionId,
+      stream: "stdout",
+      level: "info",
+      group: "log",
+      message: `Output: ${JSON.stringify(result, null, 2)}`,
+  }));
 
   console.log(JSON.stringify(result));
 }
