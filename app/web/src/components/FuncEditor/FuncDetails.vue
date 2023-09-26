@@ -60,6 +60,17 @@
                 loadingText="Detaching..."
                 @click="detachFunc"
               />
+
+              <VButton
+                :loading="isDeleting"
+                tone="destructive"
+                :disabled="hasAssociations"
+                icon="x"
+                label="Delete"
+                size="md"
+                loadingText="Deleting..."
+                @click="deleteFunc"
+              />
             </div>
 
             <ErrorMessage
@@ -376,6 +387,22 @@ const detachFunc = async () => {
     }
   }
 };
+
+const isDeleting = ref(false);
+const deleteFunc = async () => {
+  if (!funcId.value) return;
+  await funcStore.DELETE_FUNC(funcId.value);
+};
+
+const hasAssociations = computed(() => {
+  if (editingFunc?.value) {
+    return (
+      editingFunc.value.associations === undefined &&
+      !editingFunc.value.isBuiltin
+    );
+  }
+  return false;
+});
 
 // const getExecutionReqStatus = funcStore.getRequestStatus(
 //   "GET_FUNC_LAST_EXECUTION",
