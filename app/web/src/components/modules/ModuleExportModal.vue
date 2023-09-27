@@ -37,7 +37,7 @@
           @click="addSchemaVariantToExport"
         />
       </div>
-      <ul class="flex flex-col gap-2xs">
+      <ul class="flex flex-col gap-2xs max-h-72 overflow-y-scroll">
         <li
           v-for="svId in schemaVariantsForExport"
           :key="svId"
@@ -45,6 +45,7 @@
         >
           <span class="pr-2" role="decoration">•</span>
           {{ schemaVariantsById?.[svId]?.schemaName }}
+          {{ schemaVariantsById?.[svId]?.builtin ? "(builtin)" : "" }}
           <VButton
             class="ml-auto"
             size="xs"
@@ -86,7 +87,6 @@
 </template>
 
 <script lang="ts" setup>
-import { emit } from "process";
 import { ref, computed } from "vue";
 import {
   Modal,
@@ -168,7 +168,7 @@ const schemaVariantOptions = computed(() =>
   componentStore.schemaVariants
     .filter((sv) => !schemaVariantsForExport.value.includes(sv.id))
     .map((sv) => ({
-      label: sv.schemaName,
+      label: sv.schemaName + (sv.builtin ? " (builtin)" : ""),
       value: sv.id,
     })),
 );

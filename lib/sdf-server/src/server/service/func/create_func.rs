@@ -316,6 +316,14 @@ pub async fn create_func(
 ) -> FuncResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    if let Some(name) = request.name.as_deref() {
+        if dal::func::is_intrinsic(name)
+            || ["si:resourcePayloadToValue", "si:normalizeToArray"].contains(&name)
+        {
+            return Err(FuncError::FuncNameReserved(name.into()));
+        }
+    }
+
     let mut force_changeset_pk = None;
     if ctx.visibility().is_head() {
         let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
