@@ -316,7 +316,6 @@ impl ContainerEngine for DockerEngine {
             .name(name.clone())
             .image(format!("{0}:stable", image))
             .links(["local-jaeger-1:jaeger"])
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -329,7 +328,6 @@ impl ContainerEngine for DockerEngine {
             .name(name)
             .image(format!("{0}:stable", image))
             .expose(PublishPort::tcp(16686), HostPort::new(16686))
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -342,7 +340,6 @@ impl ContainerEngine for DockerEngine {
             .name(name)
             .image(format!("{0}:stable", image))
             .command(vec!["--config", "nats-server.conf", "-DVV"])
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -360,7 +357,6 @@ impl ContainerEngine for DockerEngine {
                 "POSTGRES_USER=si",
                 "POSTGRES_DB=si",
             ])
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -377,7 +373,6 @@ impl ContainerEngine for DockerEngine {
                 "SI_COUNCIL__NATS__URL=nats",
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
             ])
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -407,7 +402,6 @@ impl ContainerEngine for DockerEngine {
             .links(vec!["local-nats-1:nats", "local-otelcol-1:otelcol"])
             .env(env_vars)
             .volumes([format!("{}:/run/cyclone:z", data_dir.display())])
-            .restart_policy("on-failure", 3)
             .build();
 
         let container = self.docker.containers().create(&create_opts).await?;
@@ -429,7 +423,6 @@ impl ContainerEngine for DockerEngine {
                 "SI_PINGA__PG__HOSTNAME=postgres",
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
             ])
-            .restart_policy("on-failure", 3)
             .volumes([format!("{}:/run/pinga:z", data_dir.display())])
             .build();
 
@@ -460,7 +453,6 @@ impl ContainerEngine for DockerEngine {
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
             ])
             .network_mode("bridge")
-            .restart_policy("on-failure", 3)
             .expose(
                 PublishPort::tcp(5156),
                 HostPort::with_ip(host_port, host_ip),
@@ -495,7 +487,6 @@ impl ContainerEngine for DockerEngine {
             .links(vec!["local-sdf-1:sdf"])
             .env(["SI_LOG=trace"])
             .network_mode("bridge")
-            .restart_policy("on-failure", 3)
             .expose(
                 PublishPort::tcp(8080),
                 HostPort::with_ip(host_port, host_ip),
