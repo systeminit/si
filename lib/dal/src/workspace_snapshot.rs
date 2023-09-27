@@ -34,7 +34,7 @@ use chrono::{DateTime, Utc};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::{PgError, PgRow};
+use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
