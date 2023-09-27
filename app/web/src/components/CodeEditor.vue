@@ -28,7 +28,7 @@ import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
 import { Compartment, EditorState } from "@codemirror/state";
-import { ViewUpdate, keymap } from "@codemirror/view";
+import { ViewUpdate, keymap, hoverTooltip } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
@@ -128,6 +128,7 @@ const lintCompartment = new Compartment();
 const autocompleteCompartment = new Compartment();
 const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
+const hoverTooltipCompartment = new Compartment();
 
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
@@ -139,6 +140,8 @@ const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
   const tooltipBackground = appTheme.value === "dark" ? "#000000" : "#ffffff";
   const tooltipBorder = appTheme.value === "dark" ? "#737373" : "#A3A3A3";
+  const tooltipTagText = appTheme.value === "dark" ? "#0E9BFF" : "#2F80ED";
+
   return EditorView.theme({
     "&": { height: "100%" },
     ".cm-scroller": { overflow: "auto" },
@@ -160,6 +163,32 @@ const styleExtension = computed(() => {
       border: `1px solid ${tooltipBorder} !important`,
       borderRadius: "0 0.25rem 0.25rem 0",
     },
+    ".cm-tooltip-hover": {
+      backgroundColor: `${tooltipBackground} !important`,
+      border: `1px solid ${tooltipBorder} !important`,
+      borderRadius: "0.25rem",
+      padding: ".5rem !important",
+      whiteSpace: "pre-wrap",
+      fontFamily: "monospace",
+      maxWidth: "50vw",
+      maxHeight: "300px",
+      overflowY: "auto",
+      lineHeight: "1.5",
+    },
+    ".cm-tooltip-doc-signature": {
+      paddingBottom: ".5rem",
+      fontWeight: "bold",
+    },
+    ".cm-tooltip-doc-details": {
+      paddingBottom: ".5rem",
+      fontStyle: "italic",
+    },
+    ".cm-tooltip-doc-tag": {},
+    ".cm-tooltip-doc-tag-name": {
+      fontWeight: "bold",
+      color: `${tooltipTagText}`,
+    },
+    ".cm-tooltip-doc-tag-info": {},
   });
 });
 watch(codeMirrorTheme, () => {
@@ -193,12 +222,14 @@ const mountEditor = async () => {
 
   if (props.typescript) {
     if (!props.noLint) {
-      const { lintSource, autocomplete } = await createTypescriptSource(
-        props.typescript,
-      );
+      const { lintSource, autocomplete, hoverTooltipSource } =
+        await createTypescriptSource(props.typescript);
 
       extensions.push(autocompleteCompartment.of(autocomplete));
       extensions.push(lintCompartment.of(linter(lintSource)));
+      extensions.push(
+        hoverTooltipCompartment.of(hoverTooltip(hoverTooltipSource)),
+      );
       extensions.push(lintGutter());
     }
 
