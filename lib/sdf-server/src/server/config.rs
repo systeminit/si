@@ -19,6 +19,7 @@ pub use dal::{CycloneKeyPair, MigrationMode};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
+const DEFAULT_MODULE_INDEX_URL: &str = "https://module-index.systeminit.com";
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -73,7 +74,7 @@ pub struct Config {
 }
 
 fn default_module_index_url() -> String {
-    "https://module-index.systeminit.com".into()
+    DEFAULT_MODULE_INDEX_URL.into()
 }
 
 impl StandardConfig for Config {
