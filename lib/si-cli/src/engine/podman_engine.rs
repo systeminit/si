@@ -382,8 +382,6 @@ impl ContainerEngine for PodmanEngine {
                     static_mac: None,
                 },
             )]))
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -419,8 +417,6 @@ impl ContainerEngine for PodmanEngine {
                 protocol: None,
                 range: None,
             }])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -450,8 +446,6 @@ impl ContainerEngine for PodmanEngine {
                 },
             )]))
             .command(vec!["--config", "nats-server.conf", "-DVV"])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -486,8 +480,6 @@ impl ContainerEngine for PodmanEngine {
                 ("POSTGRES_USER", "si"),
                 ("POSTGRES_DB", "si"),
             ]))
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -520,8 +512,6 @@ impl ContainerEngine for PodmanEngine {
                 ("SI_COUNCIL__NATS__URL", "nats"),
                 ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otelcol:4317"),
             ]))
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -580,8 +570,6 @@ impl ContainerEngine for PodmanEngine {
                 uid_mappings: None,
                 gid_mappings: None,
             }])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -623,8 +611,6 @@ impl ContainerEngine for PodmanEngine {
                 uid_mappings: None,
                 gid_mappings: None,
             }])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -700,8 +686,6 @@ impl ContainerEngine for PodmanEngine {
                     gid_mappings: None,
                 },
             ])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
@@ -744,8 +728,6 @@ impl ContainerEngine for PodmanEngine {
                 protocol: None,
                 range: None,
             }])
-            .restart_policy(podman_api::opts::ContainerRestartPolicy::OnFailure)
-            .restart_tries(3)
             .build();
 
         let container = self.podman.containers().create(&create_opts).await?;
