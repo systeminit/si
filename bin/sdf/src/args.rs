@@ -73,6 +73,10 @@ pub(crate) struct Args {
 
     /// Location on disk of available packages
     pub(crate) pkgs_path: Option<String>,
+
+    /// The base URL for the module-index API server
+    #[arg(long, env = "SI_MODULE_INDEX_URL")]
+    pub(crate) module_index_url: Option<String>,
 }
 
 impl TryFrom<Args> for Config {
@@ -106,6 +110,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);
+            }
+            if let Some(module_index_url) = args.module_index_url {
+                config_map.set("module_index_url", module_index_url);
             }
 
             config_map.set("pg.application_name", NAME);
