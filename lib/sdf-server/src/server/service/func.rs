@@ -29,6 +29,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 pub mod create_func;
+pub mod delete_func;
 pub mod get_func;
 pub mod list_funcs;
 pub mod list_input_sources;
@@ -114,6 +115,8 @@ pub enum FuncError {
     FuncExecutionFailed(String),
     #[error("Function execution failed: this function is not connected to any assets, and was not executed")]
     FuncExecutionFailedNoPrototypes,
+    #[error("Function still has associations: {0}")]
+    FuncHasAssociations(FuncId),
     #[error("Function named \"{0}\" already exists in this changeset")]
     FuncNameExists(String),
     #[error("Function not found")]
@@ -684,7 +687,7 @@ async fn compile_leaf_function_input_types(
             get_per_variant_types_for_prop_path(
                 ctx,
                 schema_variant_ids,
-                &input_location.prop_path()
+                &input_location.prop_path(),
             )
             .await?
         );
@@ -815,6 +818,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
+        .route("/delete_func", post(delete_func::delete_func))
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
         .route("/revert_func", post(revert_func::revert_func))
         .route(

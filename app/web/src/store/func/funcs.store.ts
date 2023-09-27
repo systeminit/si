@@ -68,6 +68,10 @@ export interface SaveFuncResponse {
   success: boolean;
 }
 
+export interface DeleteFuncResponse {
+  success: boolean;
+}
+
 export interface OutputLocationOption {
   label: string;
   value: OutputLocation;
@@ -335,6 +339,16 @@ export const useFuncStore = () => {
             keyRequestStatusBy: funcId,
             onSuccess: (response) => {
               this.funcDetailsById[response.id] = response;
+            },
+          });
+        },
+        async DELETE_FUNC(funcId: FuncId) {
+          return new ApiRequest<DeleteFuncResponse>({
+            method: "post",
+            url: "func/delete_func",
+            params: {
+              id: funcId,
+              ...visibility,
             },
           });
         },
