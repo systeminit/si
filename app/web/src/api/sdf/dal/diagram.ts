@@ -31,6 +31,7 @@ export interface DiagramInputSocket {
 export interface DiagramSchemaVariant {
   id: string;
   name: string;
+  builtin: boolean;
   schemaName: string;
   schemaId: string;
   color: string;

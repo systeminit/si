@@ -119,6 +119,8 @@ pub enum FuncError {
     FuncHasAssociations(FuncId),
     #[error("Function named \"{0}\" already exists in this changeset")]
     FuncNameExists(String),
+    #[error("The function name \"{0}\" is reserved")]
+    FuncNameReserved(String),
     #[error("Function not found")]
     FuncNotFound,
     #[error("func is not revertible")]

@@ -172,9 +172,10 @@ impl PkgExporter {
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
         schema: &Schema,
-    ) -> PkgResult<(SchemaSpec, Vec<FuncSpec>)> {
+    ) -> PkgResult<(SchemaSpec, Vec<FuncSpec>, Vec<FuncSpec>)> {
         let variants = schema.variants(ctx).await?;
         let mut funcs = vec![];
+        let mut head_funcs = vec![];
 
         let mut schema_spec_builder = SchemaSpec::builder();
         schema_spec_builder.name(schema.name());
@@ -192,12 +193,27 @@ impl PkgExporter {
             let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
 
             for func in &related_funcs {
-                let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
-                self.func_map
-                    .insert(change_set_pk, *func.id(), func_spec.clone());
+                if change_set_pk.is_some()
+                    && change_set_pk.as_ref().expect("some is ensured") != &ChangeSetPk::NONE
+                    && self
+                        .func_map
+                        .get(Some(ChangeSetPk::NONE), *func.id())
+                        .is_none()
+                    && func.visibility().change_set_pk == ChangeSetPk::NONE
+                {
+                    let (func_spec, _) =
+                        self.export_func(ctx, Some(ChangeSetPk::NONE), func).await?;
+                    self.func_map
+                        .insert(Some(ChangeSetPk::NONE), *func.id(), func_spec.to_owned());
+                    head_funcs.push(func_spec);
+                } else {
+                    let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
+                    self.func_map
+                        .insert(change_set_pk, *func.id(), func_spec.to_owned());
 
-                if include {
-                    funcs.push(func_spec);
+                    if include {
+                        funcs.push(func_spec);
+                    }
                 }
             }
 
@@ -237,7 +253,7 @@ impl PkgExporter {
 
         let schema_spec = schema_spec_builder.build()?;
 
-        Ok((schema_spec, funcs))
+        Ok((schema_spec, funcs, head_funcs))
     }
 
     async fn export_variant(
@@ -1146,7 +1162,7 @@ impl PkgExporter {
         &mut self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
-    ) -> PkgResult<(Vec<FuncSpec>, Vec<SchemaSpec>)> {
+    ) -> PkgResult<(Vec<FuncSpec>, Vec<FuncSpec>, Vec<SchemaSpec>)> {
         let mut func_specs = vec![];
         let mut schema_specs = vec![];
 
@@ -1196,14 +1212,17 @@ impl PkgExporter {
             }
         }
 
+        let mut head_funcs = vec![];
         for schema in &schemas {
-            let (schema_spec, funcs) = self.export_schema(ctx, change_set_pk, schema).await?;
+            let (schema_spec, funcs, referenced_head_funcs) =
+                self.export_schema(ctx, change_set_pk, schema).await?;
 
+            head_funcs.extend_from_slice(&referenced_head_funcs);
             func_specs.extend_from_slice(&funcs);
             schema_specs.push(schema_spec);
         }
 
-        Ok((func_specs, schema_specs))
+        Ok((func_specs, head_funcs, schema_specs))
     }
 
     pub async fn export(&mut self, ctx: &DalContext) -> PkgResult<SiPkg> {
@@ -1228,23 +1247,23 @@ impl PkgExporter {
 
         match self.kind {
             SiPkgKind::Module => {
-                let (funcs, schemas) = self.export_change_set(ctx, None).await?;
+                let (funcs, _, schemas) = self.export_change_set(ctx, None).await?;
                 pkg_spec_builder.funcs(funcs);
                 pkg_spec_builder.schemas(schemas);
             }
             SiPkgKind::WorkspaceBackup => {
-                let (funcs, schemas) = self.export_change_set(ctx, Some(ChangeSetPk::NONE)).await?;
-                pkg_spec_builder.change_set(
-                    ChangeSetSpec::builder()
-                        .name("head")
-                        .funcs(funcs)
-                        .schemas(schemas)
-                        .build()?,
-                );
+                let (mut head_funcs, _, schemas) =
+                    self.export_change_set(ctx, Some(ChangeSetPk::NONE)).await?;
+
+                let mut head_builder = ChangeSetSpec::builder();
+                head_builder.name("head").schemas(schemas);
+
                 pkg_spec_builder.default_change_set("head");
 
                 for change_set in ChangeSet::list_open(ctx).await? {
-                    let (funcs, schemas) = self.export_change_set(ctx, Some(change_set.pk)).await?;
+                    let (funcs, referenced_head_funcs, schemas) =
+                        self.export_change_set(ctx, Some(change_set.pk)).await?;
+                    head_funcs.extend_from_slice(&referenced_head_funcs);
 
                     pkg_spec_builder.change_set(
                         ChangeSetSpec::builder()
@@ -1255,6 +1274,8 @@ impl PkgExporter {
                             .build()?,
                     );
                 }
+
+                pkg_spec_builder.change_set(head_builder.funcs(head_funcs).build()?);
             }
         }
 

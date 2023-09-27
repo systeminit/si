@@ -34,7 +34,7 @@ use crate::{
     FuncError, FuncId, HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind,
     ReconciliationPrototypeError, RootPropChild, Schema, SchemaId, SocketArity, StandardModel,
     StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
-    Visibility, WsEventError,
+    Visibility, WorkspacePk, WsEventError,
 };
 
 use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
@@ -250,6 +250,20 @@ impl SchemaVariant {
         .await?;
 
         Ok((object, root_prop))
+    }
+
+    pub async fn is_builtin(&self, ctx: &DalContext) -> SchemaVariantResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT id FROM schema_variants WHERE id = $1 and tenancy_workspace_pk = $2 LIMIT 1",
+                &[self.id(), &WorkspacePk::NONE],
+            )
+            .await?;
+
+        Ok(row.is_some())
     }
 
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].

@@ -54,6 +54,7 @@ pub struct InputSocketView {
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantView {
     id: SchemaVariantId,
+    builtin: bool,
     name: String,
     schema_name: String,
     schema_id: SchemaId,
@@ -125,6 +126,7 @@ pub async fn list_schema_variants(
 
         variants_view.push(SchemaVariantView {
             id: *variant.id(),
+            builtin: variant.is_builtin(&ctx).await?,
             name: variant.name().to_owned(),
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
