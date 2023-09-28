@@ -11,6 +11,7 @@ import { useHead } from "@vueuse/head";
 
 import hljs from "highlight.js/lib/core";
 import hljsJsLang from "highlight.js/lib/languages/javascript";
+import hljsTextLang from "highlight.js/lib/languages/plaintext";
 import hljsShellLang from "highlight.js/lib/languages/shell";
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
@@ -21,6 +22,7 @@ import hljsThemeDark from "highlight.js/styles/github-dark.css?raw";
 import { useTheme } from "../utils/theme_tools";
 
 hljs.registerLanguage("javascript", hljsJsLang);
+hljs.registerLanguage("text", hljsTextLang);
 hljs.registerAliases("js", { languageName: "javascript" });
 hljs.registerLanguage("shell", hljsShellLang);
 
