@@ -10,6 +10,7 @@ import { FuncVariant } from "@/api/sdf/dal/func";
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
+import { OutputStream } from "@/api/sdf/dal/resource";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -447,6 +448,24 @@ export const useFuncStore = () => {
             onSuccess: (response) => {
               this.lastFuncExecutionLogByFuncId[funcId] = response;
             },
+          });
+        },
+
+        async EXECUTE(executeRequest: {
+          id: FuncId;
+          args: unknown;
+          executionKey: string;
+        }) {
+          return new ApiRequest<{
+            id: FuncId;
+            args: unknown;
+            output: unknown;
+            executionKey: string;
+            logs: OutputStream[];
+          }>({
+            method: "post",
+            url: "func/execute",
+            params: { ...executeRequest, ...visibility },
           });
         },
 
