@@ -242,8 +242,6 @@ watch(activeStepSlug, () => {
   const kebabStepSlug = activeStepSlug.value.replace(/_/g, "-");
   // if going from /tutorial to /tutorial/intro, we use replace, otherwise push
 
-  console.log(kebabStepSlug);
-
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   router[route.params.stepSlug ? "push" : "replace"]({
     ...router.currentRoute,
