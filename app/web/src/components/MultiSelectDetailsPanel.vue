@@ -1,22 +1,24 @@
 <template>
-  <div class="flex flex-col h-full">
-    <div class="p-xs border-b dark:border-neutral-600">
+  <div class="flex flex-col h-full w-full overflow-hidden">
+    <div class="p-xs border-b dark:border-neutral-600 flex-none">
       <Inline alignY="center">
         <Icon size="md" name="multiselect" class="shrink-0 mr-2xs" />
         <div class="font-bold capsize">Multiple Components</div>
       </Inline>
     </div>
 
-    <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
-      {{ selectedComponentIds.length }} components selected:
+    <div class="overflow-y-auto">
+      <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
+        {{ selectedComponentIds.length }} components selected:
+      </div>
+      <Stack spacing="xs" class="p-xs">
+        <ComponentCard
+          v-for="componentId in selectedComponentIds"
+          :key="componentId"
+          :componentId="componentId"
+        />
+      </Stack>
     </div>
-    <Stack spacing="xs" class="p-xs">
-      <ComponentCard
-        v-for="componentId in selectedComponentIds"
-        :key="componentId"
-        :componentId="componentId"
-      />
-    </Stack>
 
     <!-- <div class="p-xs">
       <VButton
