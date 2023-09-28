@@ -27,7 +27,7 @@ use crate::{
         validation::FuncBackendValidation,
         FuncBackend, FuncDispatch, FuncDispatchContext,
     },
-    TransactionsError,
+    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
@@ -79,6 +79,8 @@ pub enum FuncBindingError {
     StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -371,5 +373,19 @@ impl FuncBinding {
 
         let (context, rx) = FuncDispatchContext::new(ctx);
         Ok((func, execution, context, rx))
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LogLinePayload {
+    pub line: OutputStream,
+    pub func_id: FuncId,
+    pub execution_key: String,
+}
+
+impl WsEvent {
+    pub async fn log_line(ctx: &DalContext, payload: LogLinePayload) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::LogLine(payload)).await
     }
 }

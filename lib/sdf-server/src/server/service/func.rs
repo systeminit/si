@@ -27,9 +27,11 @@ use dal::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 pub mod create_func;
 pub mod delete_func;
+pub mod execute;
 pub mod get_func;
 pub mod list_funcs;
 pub mod list_input_sources;
@@ -133,6 +135,8 @@ pub enum FuncError {
     Hyper(#[from] hyper::http::Error),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("failed to join async task; bug!")]
+    Join(#[from] JoinError),
     #[error("Missing required options for creating a function")]
     MissingOptions,
     #[error("Function is read-only")]
@@ -822,6 +826,7 @@ pub fn routes() -> Router<AppState> {
         .route("/save_func", post(save_func::save_func))
         .route("/delete_func", post(delete_func::delete_func))
         .route("/save_and_exec", post(save_and_exec::save_and_exec))
+        .route("/execute", post(execute::execute))
         .route("/revert_func", post(revert_func::revert_func))
         .route(
             "/list_input_sources",

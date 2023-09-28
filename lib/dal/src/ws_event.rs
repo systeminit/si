@@ -7,6 +7,7 @@ use crate::component::ComponentCreatedPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
     fix::{batch::FixBatchReturn, FixReturn},
+    func::binding::LogLinePayload,
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
@@ -46,6 +47,7 @@ pub enum WsPayload {
     ComponentCreated(ComponentCreatedPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
+    LogLine(LogLinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     SchemaCreated(SchemaPk),
     StatusUpdate(StatusMessage),
