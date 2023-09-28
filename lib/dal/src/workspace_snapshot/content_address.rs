@@ -1,8 +1,9 @@
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 #[remain::sorted]
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, EnumDiscriminants, Serialize, Deserialize)]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum ContentAddress {

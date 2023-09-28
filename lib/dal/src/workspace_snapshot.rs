@@ -34,11 +34,13 @@ use chrono::{DateTime, Utc};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::PgError;
+use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use crate::component::ComponentKind;
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::EdgeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
@@ -49,12 +51,17 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
+use self::content_address::ContentAddress;
+use self::node_weight::ContentNodeWeight;
+
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("ChangeSet error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
@@ -214,5 +221,67 @@ impl WorkspaceSnapshot {
             .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
             .await?;
         Ok(Self::try_from(row)?)
+    }
+
+    pub fn create_schema(
+        &self,
+        change_set: &ChangeSetPointer,
+        name: impl AsRef<str>,
+        component_kind: ComponentKind,
+    ) -> WorkspaceSnapshotResult<Ulid> {
+        let new_schema_id = change_set.generate_ulid()?;
+        // let new_schema =
+        // let schema_node_weight = NodeWeight::Content(ContentNodeWeight::new(
+        //     change_set,
+        //     new_schema_id,
+        //     ContentAddress::Schema(content_hash),
+        // )?);
+
+        // self.working_copy()?.add_node()
+
+        Ok(new_schema_id)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::component::ComponentKind;
+
+    use super::*;
+    use chrono::Utc;
+    use pretty_assertions_sorted::assert_eq;
+    use ulid::Ulid;
+
+    fn simple_initial_workspace_snapshot() -> WorkspaceSnapshotResult<WorkspaceSnapshot> {
+        let id = Ulid::new();
+        let timestamp = Utc::now();
+        // The `.map_err` is a little cursed, but `WorkspaceSnapshotGraphError` does do `From` for
+        // `ChangeSetPointerError`, and `WorkspaceSnapshotError` has `From` for
+        // `WorkspaceSnapshotGraphError`.
+        let change_set =
+            ChangeSetPointer::new_local().map_err(Into::<WorkspaceSnapshotGraphError>::into)?;
+        let new_graph = WorkspaceSnapshotGraph::new(&change_set)?;
+
+        serde_json::from_value(serde_json::json![
+            {
+                "id": id,
+                "timestamp_created_at": timestamp,
+                "timestamp_updated_at": timestamp,
+                "snapshot": new_graph
+            }
+        ])
+        .map_err(Into::into)
+    }
+
+    #[test]
+    fn create_schema_variant_basic() {
+        let workspace_snapshot = simple_initial_workspace_snapshot()
+            .expect("Unable to get basic starting WorkspaceSnapshot");
+        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSetPointer");
+
+        let schema = workspace_snapshot
+            .create_schema(&change_set, "First Schema", ComponentKind::Standard)
+            .expect("Unable to create first schema");
+        todo!();
     }
 }

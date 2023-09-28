@@ -16,6 +16,8 @@ use crate::workspace_snapshot::{
     update::Update,
 };
 
+use super::content_address::ContentAddressDiscriminants;
+
 pub type LineageId = Ulid;
 
 #[allow(clippy::large_enum_variant)]
@@ -1127,6 +1129,70 @@ impl WorkspaceSnapshotGraph {
     fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
+    }
+
+    fn is_descendant_of_content_kind(
+        &self,
+        descendant_node_index: NodeIndex,
+        content_address_discriminant: ContentAddressDiscriminants,
+    ) -> WorkspaceSnapshotGraphResult<bool> {
+        let control =
+            petgraph::visit::depth_first_search(&self.graph, Some(self.root_index), |event| {
+                self.is_descendant_of_content_kind_dfs_visitor(
+                    descendant_node_index,
+                    content_address_discriminant,
+                    event,
+                )
+            })?;
+        Ok(control
+            .break_value()
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?)
+    }
+
+    fn is_descendant_of_content_kind_dfs_visitor(
+        &self,
+        descendant_node_index: NodeIndex,
+        content_address_discriminant: ContentAddressDiscriminants,
+        dfs_event: DfsEvent<NodeIndex>,
+    ) -> WorkspaceSnapshotGraphResult<petgraph::visit::Control<bool>> {
+        match dfs_event {
+            DfsEvent::Discover(current_node_index, _) => {
+                if !self.is_on_path_between(
+                    self.root_index,
+                    descendant_node_index,
+                    current_node_index,
+                ) {
+                    return Ok(petgraph::visit::Control::Prune);
+                }
+
+                let current_node_weight = self.get_node_weight(current_node_index)?;
+                // This is the last possible node to have an address of the
+                // content_address_discriminant kind, so if it doesn't match, there's nothing left
+                // to check.
+                if let NodeWeight::Content(content_weight) = current_node_weight {
+                    Ok(petgraph::visit::Control::Break(
+                        content_address_discriminant == content_weight.content_address().into(),
+                    ))
+                } else {
+                    // current_node can't possibly have a ContentAddress of the right variant,
+                    // since it's not a NodeWeight::Content at all.
+                    if current_node_index == descendant_node_index {
+                        // We've gotten all the way down to descendant_node_index, so there's
+                        // nothing relevant left in the graph to check.
+                        Ok(petgraph::visit::Control::Break(false))
+                    } else {
+                        Ok(petgraph::visit::Control::Continue)
+                    }
+                }
+            }
+            DfsEvent::TreeEdge(_, _)
+            | DfsEvent::BackEdge(_, _)
+            | DfsEvent::CrossForwardEdge(_, _)
+            | DfsEvent::Finish(_, _) => {
+                // Nothing to do. Only interested in node discovery events.
+                Ok(petgraph::visit::Control::Continue)
+            }
+        }
     }
 
     fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
