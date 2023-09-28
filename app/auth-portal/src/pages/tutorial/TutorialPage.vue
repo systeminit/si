@@ -131,7 +131,6 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import Confetti from "@/components/Confetti.vue";
-
 import WorkspaceLinkWidget from "@/components/WorkspaceLinkWidget.vue";
 import { useOnboardingStore } from "@/store/onboarding.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
@@ -191,6 +190,7 @@ const stepsEnabled = computed(() => {
     }
   });
 });
+
 const lastEnabledStepSlug = computed(() =>
   _.last(_.keys(_.pickBy(stepsEnabled.value))),
 );
@@ -241,6 +241,8 @@ const route = useRoute();
 watch(activeStepSlug, () => {
   const kebabStepSlug = activeStepSlug.value.replace(/_/g, "-");
   // if going from /tutorial to /tutorial/intro, we use replace, otherwise push
+
+  console.log(kebabStepSlug);
 
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   router[route.params.stepSlug ? "push" : "replace"]({
