@@ -198,6 +198,7 @@ pub async fn create_node(
     if let Some(force_changeset_pk) = force_changeset_pk {
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
+    response = response.header("content-type", "application/json");
     Ok(response.body(serde_json::to_string(&CreateNodeResponse {
         component_id: *component.id(),
         node_id: *node.id(),
