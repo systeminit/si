@@ -65,8 +65,6 @@ pub async fn list_module_route(
     let su = request.su.unwrap_or(false)
         && is_systeminit_auth_token(&auth_token, state.token_emails()).await?;
 
-    dbg!(&su);
-
     let kind = request.kind.unwrap_or(si_module::ModuleKind::Module);
 
     // filters
@@ -87,7 +85,9 @@ pub async fn list_module_route(
     };
 
     // ordering
-    let query = query.order_by_asc(si_module::Column::Name);
+    let query = query
+        .order_by_desc(si_module::Column::OwnerUserId)
+        .order_by_desc(si_module::Column::CreatedAt);
 
     let modules: Vec<si_module::Model> = query.all(&txn).await?;
 

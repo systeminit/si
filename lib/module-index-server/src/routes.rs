@@ -1,4 +1,5 @@
 use axum::{
+    extract::DefaultBodyLimit,
     response::Json,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -17,6 +18,9 @@ pub(crate) mod reject_module_route;
 pub(crate) mod upsert_module_route;
 
 use super::{app_state::AppState, server::ServerError};
+
+// 20Mb upload limit
+const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 20;
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
@@ -37,7 +41,8 @@ pub fn routes(state: AppState) -> Router {
             "/modules/:module_id/reject",
             post(reject_module_route::reject_module),
         )
-        .layer(CorsLayer::permissive());
+        .layer(CorsLayer::permissive())
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES));
 
     router.with_state(state)
 }

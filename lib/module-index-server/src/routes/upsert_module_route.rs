@@ -1,5 +1,5 @@
 use axum::{
-    extract::Multipart,
+    extract::{multipart::MultipartError, Multipart},
     response::{IntoResponse, Response},
     Json,
 };
@@ -31,6 +31,8 @@ pub enum UpsertModuleError {
     DbErr(#[from] DbErr),
     #[error("file upload error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("multipart decode error: {0}")]
+    Multipart(#[from] MultipartError),
     #[error("s3 error: {0}")]
     S3Error(#[from] S3Error),
     #[error("JSON serialization/deserialization error: {0}")]
@@ -67,7 +69,7 @@ pub async fn upsert_module_route(
         None => return Err(UpsertModuleError::UploadRequiredError),
     };
     info!("Found multipart field");
-    let data = field.bytes().await.unwrap();
+    let data = field.bytes().await?;
     info!("Got part data");
 
     // SiPkg using old term "package" but we are dealing with a "module"
