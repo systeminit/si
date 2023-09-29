@@ -19,6 +19,7 @@ pub struct AttributeView {
     /// The value that was generated from [`Self::new()`]. This can also be referred to as the
     /// "properties" or "tree" of the view.
     value: Value,
+    json_pointer_for_attribute_value_id: HashMap<AttributeValueId, String>,
 }
 
 impl AttributeView {
@@ -139,6 +140,7 @@ impl AttributeView {
                                     // After we've processed the "root" property, we shouldn't hit this case any more.
                                     json_pointer.clone()
                                 };
+
                             let write_location = match properties.pointer_mut(&insertion_pointer) {
                                 Some(write_location) => write_location,
                                 None => {
@@ -220,7 +222,10 @@ impl AttributeView {
                         so the \"properties\" object is empty ({:?}), and does not contain a key matching \
                         our prop's name (root attribute value ({:?}) and root prop ({:?}))", properties, root_attribute_value, root_prop
                     );
-                    return Ok(Self { value: Value::Null });
+                    return Ok(Self {
+                        value: Value::Null,
+                        json_pointer_for_attribute_value_id,
+                    });
                 }
             };
 
@@ -228,16 +233,22 @@ impl AttributeView {
                 .pointer(root_json_pointer)
                 .ok_or(AttributeValueError::NoValueForJsonPointer)?;
             return Ok(Self {
-                value: properties.clone(),
+                value: properties.to_owned(),
+                json_pointer_for_attribute_value_id,
             });
         }
 
         Ok(Self {
-            value: properties.clone(),
+            value: properties.to_owned(),
+            json_pointer_for_attribute_value_id,
         })
     }
 
     pub fn value(&self) -> &serde_json::Value {
         &self.value
+    }
+
+    pub fn json_pointers_for_attribute_value_id(&self) -> &HashMap<AttributeValueId, String> {
+        &self.json_pointer_for_attribute_value_id
     }
 }
