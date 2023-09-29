@@ -57,10 +57,10 @@ buck2 build //lib/dal:dal
 
 ## I don't have syntax highlighting when viewing `BUCK` or prelude files. Help!
 
-Both `BUCK` files and the rules it uses are written in Starlark, which is a superset of Python.
+Both `BUCK` files and the rules it uses are written in [Starlark](https://github.com/bazelbuild/starlark), which is a superset of Python.
 
-There is an upstream [VS Code](https://github.com/facebook/buck2/tree/main/starlark-rust/vscode)
-extension that you can build using `npm`.
+There is an [upstream VS Code extension](https://github.com/facebook/buck2/tree/main/starlark-rust/vscode)
+that you can build locally using `npm`.
 After building it, you can install the `vsix` file as an extension in VS Code.
 
 One great thing about the extension is that you can use "Go To Definition" in VS Code to follow the path of where a rule
@@ -119,6 +119,6 @@ Essentially, you'll use the following pattern:
 
 ## Where are `buck2` users hanging out?
 
-![Discord Server](https://img.shields.io/badge/discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+[![Discord Server](https://img.shields.io/badge/discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/P5Tbrt735m)
 
 If you are looking to find other `buck2` users and/or ask questions, share ideas and share experiences related to `buck2`, check out the unofficial ["Buck2 Fans" Discord server](https://discord.gg/P5Tbrt735m).
