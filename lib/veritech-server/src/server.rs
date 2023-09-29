@@ -858,11 +858,11 @@ fn prepare_graceful_shutdown(
 
         tokio::select! {
             _ = sigterm_stream.recv() => {
-                info!("received SIGTERM signal, performing graceful shutdown");
+                trace!("received SIGTERM signal, performing graceful shutdown");
                 send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
             }
             source = shutdown_rx.recv() => {
-                info!(
+                trace!(
                     "received internal shutdown, performing graceful shutdown; source={:?}",
                     source,
                 );
