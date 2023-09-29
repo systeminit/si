@@ -166,36 +166,50 @@ declare class PropBuilder implements IPropBuilder {
     setDocLink(link: string): this;
     setDocLinkRef(ref: string): this;
     setHidden(hidden: boolean): this;
-
-    /**
-    * The type of the prop
-    *
-    * @param {string} kind [array | boolean | integer | map | object | string]
-    *
-    * @returns this
-    *
-    * @example
-    * .setKind("text")
-    */
     setKind(kind: PropDefinitionKind): this;
-
-    /**
-    * The prop name. This will appear in the model UI
-    *
-    * @param {string} name - the name of the prop
-    *
-    * @returns this
-    *
-    * @example
-    * .setName("Region")
-    */
     setName(name: string): this;
     setValueFrom(valueFrom: ValueFrom): this;
     setWidget(widget: PropWidgetDefinition): this;
 }
-
+interface SecretPropDefinition extends PropDefinition {
+}
+interface ISecretPropBuilder {
+    setName(name: string): this;
+    setSecretKind(kind: string): this;
+    setDocLinkRef(ref: string): this;
+    setDocLink(link: string): this;
+    addValidation(validation: Validation): this;
+    build(): SecretPropDefinition;
+}
+declare class SecretPropBuilder implements ISecretPropBuilder {
+    prop: SecretPropDefinition;
+    constructor();
+    setName(name: string): this;
+    setSecretKind(kind: string): this;
+    setDocLinkRef(ref: string): this;
+    setDocLink(link: string): this;
+    addValidation(validation: Validation): this;
+    build(): SecretPropDefinition;
+}
+interface SecretDefinition {
+    name: string;
+    props?: PropDefinition[];
+}
+interface ISecretDefinitionBuilder {
+    addProp(prop: PropDefinition): this;
+    build(): SecretDefinition;
+}
+declare class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
+    definition: SecretDefinition;
+    constructor();
+    setName(name: string): this;
+    addProp(prop: PropDefinition): this;
+    build(): SecretDefinition;
+}
 interface Asset {
     props: PropDefinition[];
+    secretProps: SecretPropDefinition[];
+    secretDefinition?: PropDefinition[];
     resourceProps: PropDefinition[];
     siPropValueFroms: SiPropValueFromDefinition[];
     inputSockets: SocketDefinition[];
@@ -204,6 +218,8 @@ interface Asset {
 }
 interface IAssetBuilder {
     addProp(prop: PropDefinition): this;
+    addSecretProp(prop: SecretPropDefinition): this;
+    defineSecret(definition: SecretDefinition): this;
     addResourceProp(prop: PropDefinition): this;
     addInputSocket(socket: SocketDefinition): this;
     addOutputSocket(socket: SocketDefinition): this;
@@ -215,6 +231,8 @@ declare class AssetBuilder implements IAssetBuilder {
     asset: Asset;
     constructor();
     addProp(prop: PropDefinition): this;
+    addSecretProp(prop: SecretPropDefinition): this;
+    defineSecret(definition: SecretDefinition): this;
     addResourceProp(prop: PropDefinition): this;
     addInputSocket(socket: SocketDefinition): this;
     addOutputSocket(socket: SocketDefinition): this;

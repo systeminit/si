@@ -8,7 +8,8 @@ use thiserror::Error;
 
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
-    PropId, SchemaVariantId, StandardModelError, TransactionsError, ValidationResolverError,
+    PropError, PropId, SchemaVariantId, StandardModelError, TransactionsError,
+    ValidationResolverError,
 };
 
 pub mod schema;
@@ -30,6 +31,8 @@ pub enum PropertyEditorError {
     NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("root prop not found for schema variant")]

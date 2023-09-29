@@ -654,6 +654,12 @@ impl PkgExporter {
                 SchemaVariantSpecPropRoot::ResourceValue => {
                     tree_node.name == "resource_value" && tree_node.path == "/root/"
                 }
+                SchemaVariantSpecPropRoot::Secrets => {
+                    tree_node.name == "secrets" && tree_node.path == "/root/"
+                }
+                SchemaVariantSpecPropRoot::SecretDefinition => {
+                    tree_node.name == "secret_definition" && tree_node.path == "/root/"
+                }
             }
         }) {
             Some(root_tree_node) => root_tree_node,

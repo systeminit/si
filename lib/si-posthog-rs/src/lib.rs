@@ -6,7 +6,7 @@ mod config;
 mod error;
 mod sender;
 
-pub use client::PosthogClient;
+pub use client::{FeatureFlag, PosthogClient};
 pub use config::{PosthogConfig, PosthogConfigBuilder};
 pub use error::{PosthogError, PosthogResult};
 pub use sender::PosthogSender;
@@ -17,7 +17,7 @@ pub fn new() -> PosthogConfigBuilder {
 
 pub fn from_config(config: &PosthogConfig) -> PosthogResult<(PosthogClient, PosthogSender)> {
     let (tx, rx) = mpsc::unbounded_channel();
-    let client = PosthogClient::new(tx);
+    let client = PosthogClient::new(tx, config)?;
     let sender = PosthogSender::new(rx, config)?;
     Ok((client, sender))
 }
