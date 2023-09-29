@@ -5,9 +5,14 @@ import {
 } from "@typescript/vfs";
 import { Extension } from "@codemirror/state";
 import { completeFromList, autocompletion } from "@codemirror/autocomplete";
-import { EditorView } from "@codemirror/view";
+import { EditorView, Tooltip } from "@codemirror/view";
 import { Diagnostic } from "@codemirror/lint";
-import { DiagnosticMessageChain, System, CompilerOptions } from "typescript";
+import {
+  DiagnosticMessageChain,
+  System,
+  CompilerOptions,
+  displayPartsToString,
+} from "typescript";
 import { snippets } from "./typescriptLinterSnippets";
 import type { CompletionContext } from "@codemirror/autocomplete";
 
@@ -15,9 +20,15 @@ export type AsyncLintSource = (
   view: EditorView,
 ) => Promise<readonly Diagnostic[]>;
 
+export type AsyncHoverTooltipSource = (
+  view: EditorView,
+  pos: number,
+) => Promise<Tooltip | null>;
+
 export interface TypescriptSource {
   lintSource: AsyncLintSource;
   autocomplete: Extension;
+  hoverTooltipSource: AsyncHoverTooltipSource;
 }
 
 const tsVersion = "4.7.4";
@@ -85,6 +96,54 @@ export const createTypescriptSource = async (
     ],
   });
 
+  const hoverTooltipSource = async (
+    view: EditorView,
+    pos: number,
+  ): Promise<Tooltip | null> => {
+    const quickInfo = tsEnv.languageService.getQuickInfoAtPosition(
+      defaultFilename,
+      pos,
+    );
+    if (!quickInfo) {
+      return null;
+    }
+
+    const parts = `<div class="cm-tooltip-doc-signature">${displayPartsToString(
+      quickInfo.displayParts,
+    )}</div>`;
+
+    const docs = quickInfo.documentation?.length
+      ? `<div class="cm-tooltip-doc-details">${displayPartsToString(
+          quickInfo?.documentation,
+        )}</div>`
+      : "";
+
+    const tags = quickInfo.tags?.length
+      ? quickInfo?.tags
+          ?.map(
+            (t) =>
+              `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
+                t.name
+              }:</span> <span class="cm-tooltip-doc-tag-info">${displayPartsToString(
+                t.text,
+              )}</span></div>`,
+          )
+          .join("")
+      : "";
+
+    return {
+      pos,
+      create() {
+        const dom = document.createElement("div");
+        dom.innerHTML = parts + docs + tags;
+        return {
+          dom,
+        };
+      },
+      above: false,
+    };
+  };
+
   const lintSource = async (view: EditorView) => {
     const doc = view.state.doc;
     // We could be more efficient by updating only the changed spans
@@ -93,9 +152,6 @@ export const createTypescriptSource = async (
       defaultFilename,
       docString.trim().length === 0 ? fallbackCode : docString,
     );
-
-    // TODO: use getQuickInfoAtPosition to display the types definitions on hover
-    // https://github.com/microsoft/TypeScript/blob/0f724c04308e20d93d397e82b11f82ad6f810c44/src/services/types.ts#L433
 
     let diagnostics: Diagnostic[] = [];
     for (const tsDiagnostic of tsEnv.languageService.getSyntacticDiagnostics(
@@ -130,7 +186,7 @@ export const createTypescriptSource = async (
     return diagnostics;
   };
 
-  return { lintSource, autocomplete };
+  return { lintSource, autocomplete, hoverTooltipSource };
 };
 
 function diagnosticsForMessage(
