@@ -135,6 +135,32 @@ const confirmationStatusToIconMap: Record<
   failure: { icon: "tools", tone: "error" },
 };
 
+export interface AttributeDebugData {
+  valueId: string;
+  proxyFor?: string | null;
+  funcName: string;
+  funcId: string;
+  funcArgs: object;
+  argSources: { [key: string]: string | null } | null;
+  visibility: {
+    visibility_change_set_pk: string;
+    visibility_deleted_at: Date | undefined | null;
+  };
+  value: object | string | number | boolean | null;
+}
+
+export interface AttributeDebugView {
+  path: string;
+  name: string;
+  debugData: AttributeDebugData;
+}
+
+export interface ComponentDebugView {
+  attributes: AttributeDebugView[];
+  inputSockets: AttributeDebugView[];
+  outputSockets: AttributeDebugView[];
+}
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -451,6 +477,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
+        async FETCH_COMPONENT_DEBUG_VIEW(componentId: string) {
+          return new ApiRequest<ComponentDebugView>({
+            url: "component/debug",
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+          });
+        },
+
         // used when adding new nodes
         async FETCH_AVAILABLE_SCHEMAS() {
           return new ApiRequest<DiagramSchemaVariants>({
@@ -523,6 +559,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           }>({
             method: "post",
             url: "diagram/create_node",
+            headers: { accept: "application/json" },
             params: {
               schemaId,
               parentId: parentNodeId,

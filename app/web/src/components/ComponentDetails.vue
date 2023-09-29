@@ -8,7 +8,10 @@
     </div> -->
 
     <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
-      COMPONENT ID = {{ selectedComponent.id }}
+      COMPONENT ID =
+      <span @click="openDebugModal(selectedComponent?.id)">{{
+        selectedComponent?.id
+      }}</span>
       <br />
       NODE ID = {{ selectedComponent.nodeId }}
     </div>
@@ -110,11 +113,12 @@
         </TabGroup>
       </div>
     </template>
+    <ComponentDebugModal ref="debugModalRef" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount } from "vue";
+import { computed, onBeforeMount, ref } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -131,10 +135,18 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
+import ComponentDebugModal from "./ComponentDebugModal.vue";
 
 const emit = defineEmits(["delete", "restore"]);
 
 const DEV_MODE = import.meta.env.DEV;
+
+const debugModalRef = ref<InstanceType<typeof ComponentDebugModal>>();
+const openDebugModal = (componentId?: string) => {
+  if (debugModalRef.value && componentId) {
+    debugModalRef.value?.open(componentId);
+  }
+};
 
 const componentsStore = useComponentsStore();
 const changeSetStore = useChangeSetsStore();

@@ -17,6 +17,7 @@ use thiserror::Error;
 use crate::{server::state::AppState, service::schema::SchemaError};
 
 pub mod alter_simulation;
+pub mod debug;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
@@ -52,6 +53,8 @@ pub enum ComponentError {
     ChangeStatus(#[from] ChangeStatusError),
     #[error("component error: {0}")]
     Component(#[from] DalComponentError),
+    #[error("component debug error: {0}")]
+    ComponentDebug(String),
     #[error("component name not found")]
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]
@@ -164,4 +167,5 @@ pub fn routes() -> Router<AppState> {
             "/alter_simulation",
             post(alter_simulation::alter_simulation),
         )
+        .route("/debug", get(debug::debug_component))
 }
