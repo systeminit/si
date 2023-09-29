@@ -583,7 +583,9 @@ function onRightClick(ke: KonvaEventObject<MouseEvent>) {
   if (!hoveredElement.value) return;
 
   if (!currentSelectionElements.value.includes(hoveredElement.value)) {
-    setSelectionByKey(hoveredElement.value.uniqueKey);
+    if (shiftKeyIsDown.value && hoveredElementKey.value) {
+      toggleSelectedByKey(hoveredElementKey.value);
+    } else setSelectionByKey(hoveredElement.value.uniqueKey);
   }
 
   emit("right-click-element", {
