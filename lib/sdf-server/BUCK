@@ -68,7 +68,6 @@ rust_test(
         "//third-party/rust:serde_url_params",
         "//third-party/rust:tokio",
         "//third-party/rust:tower",
-        "//lib/veritech-client:veritech-client",
         ":sdf-server",
     ],
     crate_root = "tests/api.rs",

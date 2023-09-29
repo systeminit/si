@@ -8,12 +8,6 @@ use dal_test::{
     AuthTokenRef, DalContextHead,
 };
 
-use dal::func::backend::js_attribute::FuncBackendJsAttributeArgs;
-
-use veritech_client::{
-    ResolverFunctionComponent, ResolverFunctionResponseType, ComponentView, ComponentKind
-};
-
 use sdf_server::service::func::execute::{
     ExecuteRequest, ExecuteResponse 
 }; 
@@ -40,16 +34,7 @@ async fn test_execution_endpoint_qualification_function(
 
     let request = ExecuteRequest {
         id: *func.id(), 
-        args: serde_json::to_value(FuncBackendJsAttributeArgs{
-            component: ResolverFunctionComponent {
-                data: ComponentView {
-                    kind: ComponentKind::Standard,
-                    properties: serde_json::json!({"some" : "info"})
-                },
-                parents: Vec::new()
-            },
-            response_type: ResolverFunctionResponseType::Qualification
-        }).expect("unable to serialize the arguments"),
+        args: serde_json::json!({"properties": {"some" : "info"}}),
         execution_key: "somethingfun".to_string(),
         visibility: *ctx.visibility()
     };
@@ -64,6 +49,5 @@ async fn test_execution_endpoint_qualification_function(
     .await;
 
     assert_eq!(response.output, serde_json::json!({"result": "success", "message": "info"}));
-
 
 }
