@@ -103,7 +103,11 @@ import {
 import * as _ from "lodash-es";
 import { ErrorMessage, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
+import {
+  ComponentId,
+  useComponentsStore,
+  FullComponent,
+} from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
@@ -127,6 +131,23 @@ const fetchComponentsReq =
 
 const rootComponents = computed(() => {
   return _.filter(componentsStore.allComponents, (c) => !c.parentNodeId);
+});
+
+const componentsTreeFlattened = computed(() => {
+  const flat: Array<FullComponent> = [];
+  const addAllChildren = (component: FullComponent) => {
+    flat.push(component);
+    const children = componentsStore.componentsByParentId[component.id];
+    if (children) {
+      children.forEach((child) => {
+        addAllChildren(child);
+      });
+    }
+  };
+  rootComponents.value.forEach((component) => {
+    addAllChildren(component);
+  });
+  return flat;
 });
 
 const filterString = ref("");
@@ -158,11 +179,51 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
     }
     e.preventDefault();
     emit("right-click-item", e);
-  } else if (e.shiftKey || e.metaKey) {
+  } else if (e.metaKey) {
     e.preventDefault();
-    // TODO: probably want shift-click behaviour to be different
-    // ie selecting all items in between 2 clicked items... but can do later
     componentsStore.setSelectedComponentId(id, true); // true = toggle mode
+  } else if (e.shiftKey) {
+    e.preventDefault();
+    const selectedComponentIds = componentsStore.selectedComponentIds;
+
+    if (selectedComponentIds.length === 0) {
+      // If nothing is selected, select the current component
+      componentsStore.setSelectedComponentId(id);
+    } else if (
+      selectedComponentIds.length === 1 &&
+      selectedComponentIds[0] === id
+    ) {
+      // If there's only one component selected and you clicked it, deselect it
+      componentsStore.setSelectedComponentId(null);
+    } else {
+      // Otherwise, attempt to select components between
+      let components = componentsTreeFlattened.value;
+      if (filterModeActive.value) {
+        components = filteredComponents.value;
+      }
+
+      let indexFrom = components.findIndex((c) =>
+        componentsStore.selectedComponentIds.includes(c.id),
+      );
+      const indexTo = components.findIndex((c) => c.id === id);
+
+      if (indexFrom > indexTo) {
+        indexFrom = _.findLastIndex(components, (c) =>
+          componentsStore.selectedComponentIds.includes(c.id),
+        );
+        const selection = components
+          .slice(indexTo, indexFrom + 1)
+          .map((component) => component.id);
+        componentsStore.setSelectedComponentId(selection, false);
+      } else if (indexFrom < indexTo) {
+        const selection = components
+          .slice(indexFrom, indexTo + 1)
+          .map((component) => component.id);
+        componentsStore.setSelectedComponentId(selection, false);
+      } else {
+        componentsStore.setSelectedComponentId(id);
+      }
+    }
   } else if (e.type === "dblclick") {
     // TODO: probably refactor this to call a fn on an event bus, but this is working for now
     componentsStore.panTargetComponentId = id;
