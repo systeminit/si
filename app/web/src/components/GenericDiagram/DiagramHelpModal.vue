@@ -4,7 +4,7 @@
       <li>Mouse - Add, Create, and Select Components</li>
       <li>Arrow Keys - Nudge Selected Component</li>
       <li>Spacebar - Hold To Drag Scroll</li>
-      <li>Plus/Minus Keys - Adjust Zoom Level</li>
+      <li>Plus/Minus - Adjust Zoom Level</li>
       <li>Esc - Deselect Component</li>
       <li>Backspace/Delete - Delete Selected Component</li>
     </ul>
