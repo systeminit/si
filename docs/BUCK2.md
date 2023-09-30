@@ -6,7 +6,7 @@ We recommend using the `buck2` binary provided by our [Nix flake](../flake.nix) 
 ## Terminology
 
 - A "target" is an instantiation of a rule
-- A "rule" is a library-esque function that is can be buildable, runnable and/or testable
+- A "rule" is a library-esque function that can be buildable, runnable and/or testable
 - A "buildable" rule (`buck2 build`) only runs when affected sources are changed, and _ignores_ environment variables and passed down command-line arguments
 - A "runnable" rule (`buck2 run`) runs upon every invocation, and _accepts_ environment variables and passed down command-line arguments
 - A "testable" rule (`buck2 test`) runs upon every invocation and is similar to a runnable rule, but collects test metadata and is intended for sandboxed environments (e.g. CI)
