@@ -226,8 +226,8 @@ export type PropWidgetDefinitionKind =
     | "textArea";
 
 export interface Option {
-    label: string,
-    value: string,
+    label: string;
+    value: string;
 }
 
 export interface PropWidgetDefinition {
@@ -246,7 +246,8 @@ export interface IPropWidgetDefinitionBuilder {
 }
 
 export class PropWidgetDefinitionBuilder
-    implements IPropWidgetDefinitionBuilder {
+    implements IPropWidgetDefinitionBuilder
+{
     propWidget = <PropWidgetDefinition>{};
 
     constructor() {
@@ -260,7 +261,7 @@ export class PropWidgetDefinitionBuilder
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     addOption(key: string, value: string): this {
-        if (!this.propWidget.options){
+        if (!this.propWidget.options) {
             this.propWidget.options = [];
         }
 
@@ -330,7 +331,8 @@ export interface ISiPropValueFromDefinitionBuilder {
 }
 
 export class SiPropValueFromDefinitionBuilder
-    implements ISiPropValueFromDefinitionBuilder {
+    implements ISiPropValueFromDefinitionBuilder
+{
     definition = <SiPropValueFromDefinition>{};
 
     constructor() {
@@ -414,7 +416,9 @@ export class PropBuilder implements IPropBuilder {
 
     addChild(child: PropDefinition): this {
         if (this.prop.kind !== "object") {
-            return this;
+            throw new Error(
+                "addChild can only be called on props that are objects"
+            );
         }
 
         if (!this.prop.children) {
@@ -426,8 +430,10 @@ export class PropBuilder implements IPropBuilder {
     }
 
     setEntry(entry: PropDefinition): this {
-        if (this.prop.kind !== "array" && this.prop.kind !== "map")  {
-            return this;
+        if (this.prop.kind !== "array" && this.prop.kind !== "map") {
+            throw new Error(
+                "setEntry can only be called on prop that are arrays or maps"
+            );
         }
 
         this.prop.entry = entry;
@@ -491,13 +497,123 @@ export class PropBuilder implements IPropBuilder {
     }
 
     setWidget(widget: PropWidgetDefinition): this {
+        if(widget.kind === 'secret') {
+          throw new Error("Cannot create prop with secret widget. Use addSecretProp() to create those.");
+        }
         this.prop.widget = widget;
         return this;
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface SecretPropDefinition extends PropDefinition {}
+
+export interface ISecretPropBuilder {
+    setName(name: string): this;
+
+    setSecretKind(kind: string): this;
+
+    setDocLinkRef(ref: string): this;
+
+    setDocLink(link: string): this;
+
+    addValidation(validation: Validation): this;
+
+    build(): SecretPropDefinition;
+}
+
+export class SecretPropBuilder implements ISecretPropBuilder {
+    prop = <SecretPropDefinition>{};
+
+    constructor() {
+        this.prop = <SecretPropDefinition>{};
+        this.prop.kind = "string";
+        this.prop.widget = {
+            kind: "secret",
+            options: [],
+        };
+    }
+    setName(name: string): this {
+        this.prop.name = name;
+        return this;
+    }
+
+    setSecretKind(kind: string): this {
+        this.prop.widget?.options.push({ label: "secretKind", value: kind });
+        return this;
+    }
+
+    setDocLinkRef(ref: string): this {
+        this.prop.docLinkRef = ref;
+        return this;
+    }
+
+    setDocLink(link: string): this {
+        this.prop.docLink = link;
+        return this;
+    }
+
+    addValidation(validation: Validation): this {
+        if (!this.prop.validations) {
+            this.prop.validations = [];
+        }
+        this.prop.validations.push(validation);
+        return this;
+    }
+
+    build(): SecretPropDefinition {
+        if (
+            this.prop.widget?.options?.find(
+                (option) => option.label === "secretKind"
+            ) === undefined
+        ) {
+            throw new Error("must call setSecretKind() before build()");
+        }
+
+        return this.prop;
+    }
+}
+
+export interface SecretDefinition {
+    name: string;
+    props?: PropDefinition[];
+}
+
+export interface ISecretDefinitionBuilder {
+    addProp(prop: PropDefinition): this;
+
+    build(): SecretDefinition;
+}
+
+export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
+    definition: SecretDefinition;
+
+    constructor() {
+        this.definition = <SecretDefinition>{};
+    }
+
+    setName(name: string): this {
+        this.definition.name = name;
+        return this;
+    }
+
+    addProp(prop: PropDefinition): this {
+        if (!this.definition.props) {
+            this.definition.props = [];
+        }
+        this.definition.props?.push(prop);
+        return this;
+    }
+
+    build(): SecretDefinition {
+        return this.definition;
+    }
+}
+
 export interface Asset {
     props: PropDefinition[];
+    secretProps: SecretPropDefinition[];
+    secretDefinition?: PropDefinition[];
     resourceProps: PropDefinition[];
     siPropValueFroms: SiPropValueFromDefinition[];
     inputSockets: SocketDefinition[];
@@ -507,6 +623,10 @@ export interface Asset {
 
 export interface IAssetBuilder {
     addProp(prop: PropDefinition): this;
+
+    addSecretProp(prop: SecretPropDefinition): this;
+
+    defineSecret(definition: SecretDefinition): this;
 
     addResourceProp(prop: PropDefinition): this;
 
@@ -533,6 +653,26 @@ export class AssetBuilder implements IAssetBuilder {
             this.asset.props = [];
         }
         this.asset.props?.push(prop);
+        return this;
+    }
+
+    addSecretProp(prop: SecretPropDefinition) {
+        if (!this.asset.secretProps) {
+            this.asset.secretProps = [];
+        }
+        this.asset.secretProps?.push(prop);
+        return this;
+    }
+
+    defineSecret(definition: SecretDefinition): this {
+        this.asset.secretDefinition = definition.props;
+        this.addSecretProp(
+            new SecretPropBuilder()
+                .setName(definition.name)
+                .setSecretKind(definition.name)
+                .build()
+        );
+
         return this;
     }
 

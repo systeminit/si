@@ -52,6 +52,14 @@ impl PropertyEditorSchema {
         for row in rows {
             let json: Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(json)?;
+            // Omit any secret definition props in the result
+            if prop
+                .json_pointer(ctx)
+                .await?
+                .starts_with("/root/secret_definition")
+            {
+                continue;
+            }
             let property_editor_prop = PropertyEditorProp::new(ctx, prop).await?;
             let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
                 row.try_get("child_prop_ids")?;
@@ -136,7 +144,7 @@ pub enum PropertyEditorPropWidgetKind {
     ComboBox { options: Option<Value> },
     Header,
     Map,
-    SecretSelect { options: LabelList<SecretId> },
+    Secret { options: LabelList<SecretId> },
     Select { options: Option<Value> },
     Text,
     TextArea,
@@ -159,7 +167,7 @@ pub enum WidgetKind {
     ComboBox,
     Header,
     Map,
-    SecretSelect,
+    Secret,
     /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
     Select,
@@ -176,7 +184,7 @@ impl From<WidgetKind> for PropSpecWidgetKind {
             WidgetKind::Map => Self::Map,
             WidgetKind::Select => Self::Select,
             WidgetKind::Color => Self::Color,
-            WidgetKind::SecretSelect => Self::SecretSelect,
+            WidgetKind::Secret => Self::Secret,
             WidgetKind::Text => Self::Text,
             WidgetKind::TextArea => Self::TextArea,
             WidgetKind::ComboBox => Self::ComboBox,
@@ -193,7 +201,7 @@ impl From<&PropSpecWidgetKind> for WidgetKind {
             PropSpecWidgetKind::Map => Self::Map,
             PropSpecWidgetKind::Select => Self::Select,
             PropSpecWidgetKind::Color => Self::Color,
-            PropSpecWidgetKind::SecretSelect => Self::SecretSelect,
+            PropSpecWidgetKind::Secret => Self::Secret,
             PropSpecWidgetKind::Text => Self::Text,
             PropSpecWidgetKind::TextArea => Self::TextArea,
             PropSpecWidgetKind::ComboBox => Self::ComboBox,
@@ -216,7 +224,7 @@ impl PropertyEditorPropWidgetKind {
                 options: widget_options,
             },
             WidgetKind::Color => Self::Color,
-            WidgetKind::SecretSelect => Self::SecretSelect {
+            WidgetKind::Secret => Self::Secret {
                 options: LabelList::new(
                     Secret::list(ctx)
                         .await?

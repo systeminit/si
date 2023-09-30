@@ -92,6 +92,11 @@
             "kind": "object",
             "entries": []
           },
+          "secrets": {
+            "name": "secrets",
+            "kind": "object",
+            "entries": []
+          },
           "domain": {
             "name": "domain",
             "kind": "object",

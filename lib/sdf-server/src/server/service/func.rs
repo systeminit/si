@@ -636,6 +636,67 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
     }
 }
 
+pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
+    if matches!(kind, FuncBackendKind::JsAttribute)
+        && !matches!(
+            ty,
+            FuncBackendResponseType::CodeGeneration | FuncBackendResponseType::Qualification
+        )
+    {
+        return ""; // attribute functions have their output compiled dynamically
+    }
+
+    match ty {
+        FuncBackendResponseType::Boolean => "type Output = boolean | null;",
+        FuncBackendResponseType::String => "type Output = string | null;",
+        FuncBackendResponseType::Integer => "type Output = number | null;",
+        FuncBackendResponseType::Qualification => {
+            "interface Output {
+  result: 'success' | 'warning' | 'failure';
+  message?: string | null;
+}"
+        }
+        FuncBackendResponseType::CodeGeneration => {
+            "interface Output {
+  format: string;
+  code: string;
+}"
+        }
+        FuncBackendResponseType::Validation => {
+            "interface Output {
+  valid: boolean;
+  message: string;
+}"
+        }
+        FuncBackendResponseType::Reconciliation => {
+            "interface Output {
+  updates: { [key: string]: unknown };
+  actions: string[];
+  message: string | null;
+}"
+        }
+        FuncBackendResponseType::Action => {
+            "interface Output {
+    status: 'ok' | 'warning' | 'error';
+    payload?: { [key: string]: unknown } | null;
+    message?: string | null;
+}"
+        }
+        FuncBackendResponseType::Json => "type Output = any;",
+        // Note: there is no ts function returning those
+        FuncBackendResponseType::Identity => "interface Output extends Input {}",
+        FuncBackendResponseType::Array => "type Output = any[];",
+        FuncBackendResponseType::Map => "type Output = Record<string, any>;",
+        FuncBackendResponseType::Object => "type Output = any;",
+        FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::SchemaVariantDefinition => concat!(
+            include_str!("./ts_types/asset_types_with_secrets.d.ts"),
+            "\n",
+            "type Output = any;"
+        ),
+    }
+}
+
 async fn compile_validation_types(
     ctx: &DalContext,
     prototypes: &[ValidationPrototype],

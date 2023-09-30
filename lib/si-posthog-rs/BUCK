@@ -5,10 +5,12 @@ rust_library(
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:derive_builder",
+        "//third-party/rust:once_cell",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
+        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
     ],

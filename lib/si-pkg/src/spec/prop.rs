@@ -27,7 +27,7 @@ pub enum PropSpecWidgetKind {
     ComboBox,
     Header,
     Map,
-    SecretSelect,
+    Secret,
     Select,
     #[default]
     Text,

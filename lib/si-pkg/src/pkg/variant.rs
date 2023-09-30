@@ -158,6 +158,12 @@ impl<'a> SiPkgSchemaVariant<'a> {
         SchemaVariantChildNode::SiPropFuncs,
         SiPkgSiPropFunc
     );
+    impl_variant_children_from_graph!(secrets, SchemaVariantChildNode::Secrets, SiPkgProp);
+    impl_variant_children_from_graph!(
+        secret_definitions,
+        SchemaVariantChildNode::SecretDefinition,
+        SiPkgProp
+    );
 
     fn prop_stack_from_source<I>(
         source: Source<'a>,
@@ -201,8 +207,9 @@ impl<'a> SiPkgSchemaVariant<'a> {
     async fn get_prop_root_idx(
         &self,
         prop_root: SchemaVariantSpecPropRoot,
-    ) -> PkgResult<NodeIndex> {
-        self.source
+    ) -> PkgResult<Option<NodeIndex>> {
+        let maybe_node_index = self
+            .source
             .graph
             .neighbors_directed(self.source.node_idx, Outgoing)
             .find(|node_idx| {
@@ -216,17 +223,38 @@ impl<'a> SiPkgSchemaVariant<'a> {
                         node,
                         PkgNode::SchemaVariantChild(SchemaVariantChildNode::ResourceValue)
                     ),
+                    SchemaVariantSpecPropRoot::Secrets => matches!(
+                        node,
+                        PkgNode::SchemaVariantChild(SchemaVariantChildNode::Secrets)
+                    ),
+                    SchemaVariantSpecPropRoot::SecretDefinition => {
+                        matches!(
+                            node,
+                            PkgNode::SchemaVariantChild(SchemaVariantChildNode::SecretDefinition)
+                        )
+                    }
                 }
-            })
-            .ok_or(SiPkgError::SchemaVariantChildNotFound(
+            });
+
+        // NOTE(victor, fletcher): Previous versions of prop trees didn't have the Secrets field
+        // under root, so we need to successfully ignore them for backwards compatibility
+        if maybe_node_index.is_some() || prop_root == SchemaVariantSpecPropRoot::Secrets {
+            Ok(maybe_node_index)
+        } else {
+            Err(SiPkgError::SchemaVariantChildNotFound(
                 match prop_root {
                     SchemaVariantSpecPropRoot::Domain => SchemaVariantChildNode::Domain,
                     SchemaVariantSpecPropRoot::ResourceValue => {
                         SchemaVariantChildNode::ResourceValue
                     }
+                    SchemaVariantSpecPropRoot::Secrets => SchemaVariantChildNode::Secrets,
+                    SchemaVariantSpecPropRoot::SecretDefinition => {
+                        SchemaVariantChildNode::SecretDefinition
+                    }
                 }
                 .kind_str(),
             ))
+        }
     }
 
     pub async fn visit_prop_tree<F, Fut, I, C, E>(
@@ -242,39 +270,40 @@ impl<'a> SiPkgSchemaVariant<'a> {
         E: std::convert::From<SiPkgError>,
         I: ToOwned + Clone,
     {
-        let prop_root_idx = self.get_prop_root_idx(prop_root).await?;
+        if let Some(prop_root_idx) = self.get_prop_root_idx(prop_root).await? {
+            let mut child_node_idxs: Vec<_> = self
+                .source
+                .graph
+                .neighbors_directed(prop_root_idx, Outgoing)
+                .collect();
+            let prop_root_node_idx = match child_node_idxs.pop() {
+                Some(idx) => idx,
+                None => Err(SiPkgError::PropRootNotFound(prop_root, self.hash()))?,
+            };
+            if !child_node_idxs.is_empty() {
+                Err(SiPkgError::PropRootMultipleFound(prop_root, self.hash()))?;
+            }
 
-        let mut child_node_idxs: Vec<_> = self
-            .source
-            .graph
-            .neighbors_directed(prop_root_idx, Outgoing)
-            .collect();
-        let prop_root_node_idx = match child_node_idxs.pop() {
-            Some(idx) => idx,
-            None => Err(SiPkgError::PropRootNotFound(prop_root, self.hash()))?,
-        };
-        if !child_node_idxs.is_empty() {
-            Err(SiPkgError::PropRootMultipleFound(prop_root, self.hash()))?;
-        }
-
-        // Skip processing the "root" prop for this tree as a `dal::SchemaVariant::new` already
-        // guarantees such a prop has already been created. Rather, we will push all immediate
-        // children of the domain prop to be ready for processing.
-        let mut stack = Self::prop_stack_from_source(
-            self.source.clone(),
-            prop_root_node_idx,
-            parent_info.to_owned(),
-        )?;
-
-        while let Some((prop, parent_info)) = stack.pop() {
-            let node_idx = prop.source().node_idx;
-            let new_parent_info = process_prop_fn(prop, parent_info.to_owned(), context).await?;
-
-            stack.extend(Self::prop_stack_from_source(
+            // Skip processing the "root" prop for this tree as a `dal::SchemaVariant::new` already
+            // guarantees such a prop has already been created. Rather, we will push all immediate
+            // children of the domain prop to be ready for processing.
+            let mut stack = Self::prop_stack_from_source(
                 self.source.clone(),
-                node_idx,
-                new_parent_info.to_owned(),
-            )?);
+                prop_root_node_idx,
+                parent_info.to_owned(),
+            )?;
+
+            while let Some((prop, parent_info)) = stack.pop() {
+                let node_idx = prop.source().node_idx;
+                let new_parent_info =
+                    process_prop_fn(prop, parent_info.to_owned(), context).await?;
+
+                stack.extend(Self::prop_stack_from_source(
+                    self.source.clone(),
+                    node_idx,
+                    new_parent_info.to_owned(),
+                )?);
+            }
         }
 
         Ok(())

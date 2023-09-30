@@ -4775,10 +4775,12 @@ name = "si-posthog"
 version = "0.1.0"
 dependencies = [
  "derive_builder",
+ "once_cell",
  "remain",
  "reqwest",
  "serde",
  "serde_json",
+ "strum",
  "telemetry",
  "thiserror",
  "tokio",

@@ -130,3 +130,12 @@ Content-Type: application/json
 }
 
 
+### Check Feature Flags
+POST https://e.systeminit.com/decide?v=3
+Content-Type: application/json
+
+{
+  "api_key": "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK",
+  "distinct_id": "01GW5C5WVQRSS9XP2YWFHKG2P3"
+}
+
