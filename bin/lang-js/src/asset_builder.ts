@@ -1,742 +1,803 @@
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
+
 export interface ValueFrom {
-    kind: ValueFromKind;
-    socket_name?: string;
-    prop_path?: string[];
+  kind: ValueFromKind;
+  socket_name?: string;
+  prop_path?: string[];
 }
 
 export interface IValueFromBuilder {
-    setKind(kind: ValueFromKind): this;
+  setKind(kind: ValueFromKind): this;
 
-    setSocketName(name: string): this;
+  setSocketName(name: string): this;
 
-    setPropPath(path: string[]): this;
+  setPropPath(path: string[]): this;
 
-    build(): ValueFrom;
+  build(): ValueFrom;
 }
 
 export class ValueFromBuilder implements IValueFromBuilder {
-    valueFrom = <ValueFrom>{};
+  valueFrom = <ValueFrom>{};
 
-    constructor() {
-        this.valueFrom = <ValueFrom>{};
+  constructor() {
+    this.valueFrom = <ValueFrom>{};
+  }
+
+  setKind(kind: ValueFromKind): this {
+    this.valueFrom.kind = kind;
+    return this;
+  }
+
+  setSocketName(name: string): this {
+    if (
+      this.valueFrom.kind !== "inputSocket" &&
+      this.valueFrom.kind !== "outputSocket"
+    ) {
+      return this;
     }
 
-    setKind(kind: ValueFromKind): this {
-        this.valueFrom.kind = kind;
-        return this;
+    this.valueFrom.socket_name = name;
+    return this;
+  }
+
+  setPropPath(path: string[]): this {
+    if (this.valueFrom.kind !== "prop") {
+      return this;
     }
 
-    setSocketName(name: string): this {
-        if (
-            this.valueFrom.kind !== "inputSocket" &&
-            this.valueFrom.kind !== "outputSocket"
-        ) {
-            return this;
-        }
+    this.valueFrom.prop_path = path;
+    return this;
+  }
 
-        this.valueFrom.socket_name = name;
-        return this;
-    }
-
-    setPropPath(path: string[]): this {
-        if (this.valueFrom.kind !== "prop") {
-            return this;
-        }
-
-        this.valueFrom.prop_path = path;
-        return this;
-    }
-
-    build(): ValueFrom {
-        return this.valueFrom;
-    }
+  build(): ValueFrom {
+    return this.valueFrom;
+  }
 }
 
 export type SocketDefinitionArityType = "many" | "one";
+
 export interface SocketDefinition {
-    name: string;
-    arity: SocketDefinitionArityType;
-    uiHidden?: boolean;
-    valueFrom?: ValueFrom;
+  name: string;
+  arity: SocketDefinitionArityType;
+  uiHidden?: boolean;
+  valueFrom?: ValueFrom;
 }
 
 export interface ISocketDefinitionBuilder {
-    setName(name: string): this;
+  setName(name: string): this;
 
-    setArity(arity: SocketDefinitionArityType): this;
+  setArity(arity: SocketDefinitionArityType): this;
 
-    setUiHidden(hidden: boolean): this;
+  setUiHidden(hidden: boolean): this;
 
-    setValueFrom(valueFrom: ValueFrom): this;
+  setValueFrom(valueFrom: ValueFrom): this;
 
-    build(): SocketDefinition;
+  build(): SocketDefinition;
 }
 
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
-    socket = <SocketDefinition>{};
+  socket = <SocketDefinition>{};
 
-    constructor() {
-        this.socket = <SocketDefinition>{};
-    }
+  constructor() {
+    this.socket = <SocketDefinition>{};
+  }
 
-    build(): SocketDefinition {
-        return this.socket;
-    }
+  build(): SocketDefinition {
+    return this.socket;
+  }
 
-    setArity(arity: SocketDefinitionArityType): this {
-        this.socket.arity = arity;
-        return this;
-    }
+  setArity(arity: SocketDefinitionArityType): this {
+    this.socket.arity = arity;
+    return this;
+  }
 
-    setName(name: string): this {
-        this.socket.name = name;
-        return this;
-    }
+  setName(name: string): this {
+    this.socket.name = name;
+    return this;
+  }
 
-    setUiHidden(hidden: boolean): this {
-        this.socket.uiHidden = hidden;
-        return this;
-    }
+  setUiHidden(hidden: boolean): this {
+    this.socket.uiHidden = hidden;
+    return this;
+  }
 
-    setValueFrom(valueFrom: ValueFrom): this {
-        this.socket.valueFrom = valueFrom;
-        return this;
-    }
+  setValueFrom(valueFrom: ValueFrom): this {
+    this.socket.valueFrom = valueFrom;
+    return this;
+  }
 }
 
 export type ValidationKind =
-    | "customValidation"
-    | "integerIsBetweenTwoIntegers"
-    | "integerIsNotEmpty"
-    | "stringEquals"
-    | "stringHasPrefix"
-    | "stringInStringArray"
-    | "stringIsHexColor"
-    | "stringIsNotEmpty"
-    | "stringIsValidIpAddr";
+  | "customValidation"
+  | "integerIsBetweenTwoIntegers"
+  | "integerIsNotEmpty"
+  | "stringEquals"
+  | "stringHasPrefix"
+  | "stringInStringArray"
+  | "stringIsHexColor"
+  | "stringIsNotEmpty"
+  | "stringIsValidIpAddr";
 
 export interface Validation {
-    kind: ValidationKind;
-    funcUniqueId?: Record<string, unknown>;
-    lowerBound?: number;
-    upperBound?: number;
-    expected?: string[];
-    displayExpected?: boolean;
+  kind: ValidationKind;
+  funcUniqueId?: Record<string, unknown>;
+  lowerBound?: number;
+  upperBound?: number;
+  expected?: string[];
+  displayExpected?: boolean;
 }
 
 export interface IValidationBuilder {
-    setKind(kind: ValidationKind): this;
+  setKind(kind: ValidationKind): this;
 
-    addFuncUniqueId(key: string, value: unknown): this;
+  addFuncUniqueId(key: string, value: unknown): this;
 
-    setLowerBound(value: number): this;
+  setLowerBound(value: number): this;
 
-    setUpperBound(value: number): this;
+  setUpperBound(value: number): this;
 
-    addExpected(expected: string): this;
+  addExpected(expected: string): this;
 
-    setDisplayExpected(display: boolean): this;
+  setDisplayExpected(display: boolean): this;
 
-    build(): Validation;
+  build(): Validation;
 }
 
 export class ValidationBuilder implements IValidationBuilder {
-    validation = <Validation>{};
+  validation = <Validation>{};
 
-    constructor() {
-        this.validation = <Validation>{};
+  constructor() {
+    this.validation = <Validation>{};
+  }
+
+  addFuncUniqueId(key: string, value: unknown): this {
+    if (this.validation.kind !== "customValidation") {
+      return this;
     }
 
-    addFuncUniqueId(key: string, value: unknown): this {
-        if (this.validation.kind !== "customValidation") {
-            return this;
-        }
-
-        if (!this.validation.funcUniqueId) {
-            this.validation.funcUniqueId = {};
-        }
-
-        this.validation.funcUniqueId[key] = value;
-        return this;
+    if (!this.validation.funcUniqueId) {
+      this.validation.funcUniqueId = {};
     }
 
-    build(): Validation {
-        return this.validation;
+    this.validation.funcUniqueId[key] = value;
+    return this;
+  }
+
+  build(): Validation {
+    return this.validation;
+  }
+
+  setDisplayExpected(display: boolean): this {
+    if (this.validation.kind !== "stringInStringArray") {
+      return this;
     }
 
-    setDisplayExpected(display: boolean): this {
-        if (this.validation.kind !== "stringInStringArray") {
-            return this;
-        }
+    this.validation.displayExpected = display;
+    return this;
+  }
 
-        this.validation.displayExpected = display;
-        return this;
+  addExpected(expected: string): this {
+    if (
+      this.validation.kind !== "stringEquals" &&
+      this.validation.kind !== "stringHasPrefix" &&
+      this.validation.kind !== "stringInStringArray"
+    ) {
+      return this;
     }
 
-    addExpected(expected: string): this {
-        if (
-            this.validation.kind !== "stringEquals" &&
-            this.validation.kind !== "stringHasPrefix" &&
-            this.validation.kind !== "stringInStringArray"
-        ) {
-            return this;
-        }
-
-        if (!this.validation.expected) {
-            this.validation.expected = [];
-        }
-
-        this.validation.expected.push(expected);
-        return this;
+    if (!this.validation.expected) {
+      this.validation.expected = [];
     }
 
-    setLowerBound(value: number): this {
-        if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
-            return this;
-        }
-        this.validation.lowerBound = value;
-        return this;
-    }
+    this.validation.expected.push(expected);
+    return this;
+  }
 
-    setKind(kind: ValidationKind): this {
-        this.validation.kind = kind;
-        return this;
+  setLowerBound(value: number): this {
+    if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
+      return this;
     }
+    this.validation.lowerBound = value;
+    return this;
+  }
 
-    setUpperBound(value: number): this {
-        if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
-            return this;
-        }
-        this.validation.upperBound = value;
-        return this;
+  setKind(kind: ValidationKind): this {
+    this.validation.kind = kind;
+    return this;
+  }
+
+  setUpperBound(value: number): this {
+    if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
+      return this;
     }
+    this.validation.upperBound = value;
+    return this;
+  }
 }
 
 export type PropWidgetDefinitionKind =
-    | "array"
-    | "checkbox"
-    | "color"
-    | "comboBox"
-    | "header"
-    | "map"
-    | "secret"
-    | "select"
-    | "text"
-    | "textArea";
+  | "array"
+  | "checkbox"
+  | "color"
+  | "comboBox"
+  | "header"
+  | "map"
+  | "secret"
+  | "select"
+  | "text"
+  | "textArea";
 
 export interface Option {
-    label: string;
-    value: string;
+  label: string;
+  value: string;
 }
 
 export interface PropWidgetDefinition {
-    kind: PropWidgetDefinitionKind;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    options: Option[];
+  kind: PropWidgetDefinitionKind;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: Option[];
 }
 
 export interface IPropWidgetDefinitionBuilder {
-    setKind(kind: string): this;
+  setKind(kind: string): this;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addOption(key: string, value: string): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addOption(key: string, value: string): this;
 
-    build(): PropWidgetDefinition;
+  build(): PropWidgetDefinition;
 }
 
 export class PropWidgetDefinitionBuilder
-    implements IPropWidgetDefinitionBuilder
-{
-    propWidget = <PropWidgetDefinition>{};
+  implements IPropWidgetDefinitionBuilder {
+  propWidget = <PropWidgetDefinition>{};
 
-    constructor() {
-        this.propWidget = <PropWidgetDefinition>{};
+  constructor() {
+    this.propWidget = <PropWidgetDefinition>{};
+  }
+
+  setKind(kind: PropWidgetDefinitionKind): this {
+    this.propWidget.kind = kind;
+    return this;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addOption(key: string, value: string): this {
+    if (!this.propWidget.options) {
+      this.propWidget.options = [];
     }
 
-    setKind(kind: PropWidgetDefinitionKind): this {
-        this.propWidget.kind = kind;
-        return this;
-    }
+    this.propWidget.options.push(<Option>{
+      label: key,
+      value: value,
+    });
+    return this;
+  }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addOption(key: string, value: string): this {
-        if (!this.propWidget.options) {
-            this.propWidget.options = [];
-        }
-
-        this.propWidget.options.push(<Option>{
-            label: key,
-            value: value,
-        });
-        return this;
-    }
-
-    build(): PropWidgetDefinition {
-        return this.propWidget;
-    }
+  build(): PropWidgetDefinition {
+    return this.propWidget;
+  }
 }
 
 export interface MapKeyFunc {
-    key: string;
-    valueFrom?: ValueFrom;
+  key: string;
+  valueFrom?: ValueFrom;
 }
 
 export interface IMapKeyFuncBuilder {
-    setKey(key: string): this;
+  setKey(key: string): this;
 
-    setValueFrom(valueFrom: ValueFrom): this;
+  setValueFrom(valueFrom: ValueFrom): this;
 
-    build(): MapKeyFunc;
+  build(): MapKeyFunc;
 }
 
 export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
-    mapKeyFunc = <MapKeyFunc>{};
+  mapKeyFunc = <MapKeyFunc>{};
 
-    constructor() {
-        this.mapKeyFunc = <MapKeyFunc>{};
-    }
+  constructor() {
+    this.mapKeyFunc = <MapKeyFunc>{};
+  }
 
-    build(): MapKeyFunc {
-        return this.mapKeyFunc;
-    }
+  build(): MapKeyFunc {
+    return this.mapKeyFunc;
+  }
 
-    setKey(key: string): this {
-        this.mapKeyFunc.key = key;
-        return this;
-    }
+  setKey(key: string): this {
+    this.mapKeyFunc.key = key;
+    return this;
+  }
 
-    setValueFrom(valueFrom: ValueFrom): this {
-        this.mapKeyFunc.valueFrom = valueFrom;
-        return this;
-    }
+  setValueFrom(valueFrom: ValueFrom): this {
+    this.mapKeyFunc.valueFrom = valueFrom;
+    return this;
+  }
 }
 
 export type SiPropValueFromDefinitionKind =
-    | "color"
-    | "name"
-    | "resourcePayload";
+  | "color"
+  | "name"
+  | "resourcePayload";
 
 export interface SiPropValueFromDefinition {
-    kind: SiPropValueFromDefinitionKind;
-    valueFrom: ValueFrom;
+  kind: SiPropValueFromDefinitionKind;
+  valueFrom: ValueFrom;
 }
 
 export interface ISiPropValueFromDefinitionBuilder {
-    setKind(kind: SiPropValueFromDefinitionKind): this;
+  setKind(kind: SiPropValueFromDefinitionKind): this;
 
-    setValueFrom(valueFrom: ValueFrom): this;
+  setValueFrom(valueFrom: ValueFrom): this;
 
-    build(): SiPropValueFromDefinition;
+  build(): SiPropValueFromDefinition;
 }
 
 export class SiPropValueFromDefinitionBuilder
-    implements ISiPropValueFromDefinitionBuilder
-{
-    definition = <SiPropValueFromDefinition>{};
+  implements ISiPropValueFromDefinitionBuilder {
+  definition = <SiPropValueFromDefinition>{};
 
-    constructor() {
-        this.definition = <SiPropValueFromDefinition>{};
-    }
+  constructor() {
+    this.definition = <SiPropValueFromDefinition>{};
+  }
 
-    build(): SiPropValueFromDefinition {
-        return this.definition;
-    }
+  build(): SiPropValueFromDefinition {
+    return this.definition;
+  }
 
-    setKind(kind: SiPropValueFromDefinitionKind): this {
-        this.definition.kind = kind;
-        return this;
-    }
+  setKind(kind: SiPropValueFromDefinitionKind): this {
+    this.definition.kind = kind;
+    return this;
+  }
 
-    setValueFrom(valueFrom: ValueFrom): this {
-        this.definition.valueFrom = valueFrom;
-        return this;
-    }
+  setValueFrom(valueFrom: ValueFrom): this {
+    this.definition.valueFrom = valueFrom;
+    return this;
+  }
 }
 
 export type PropDefinitionKind =
-    | "array"
-    | "boolean"
-    | "integer"
-    | "map"
-    | "object"
-    | "string";
+  | "array"
+  | "boolean"
+  | "integer"
+  | "map"
+  | "object"
+  | "string";
 
 export interface PropDefinition {
-    name: string;
-    kind: PropDefinitionKind;
-    docLinkRef?: string;
-    docLink?: string;
-    children?: PropDefinition[];
-    entry?: PropDefinition;
-    widget?: PropWidgetDefinition;
-    valueFrom?: ValueFrom;
-    hidden?: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    defaultValue?: any;
-    validations?: Validation[];
-    mapKeyFuncs?: MapKeyFunc[];
+  name: string;
+  kind: PropDefinitionKind;
+  docLinkRef?: string;
+  docLink?: string;
+  children?: PropDefinition[];
+  entry?: PropDefinition;
+  widget?: PropWidgetDefinition;
+  valueFrom?: ValueFrom;
+  hidden?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  defaultValue?: any;
+  validations?: Validation[];
+  mapKeyFuncs?: MapKeyFunc[];
 }
 
 export interface IPropBuilder {
-    setName(name: string): this;
+  setName(name: string): this;
 
-    setKind(kind: PropDefinitionKind): this;
+  setKind(kind: PropDefinitionKind): this;
 
-    setDocLinkRef(ref: string): this;
+  setDocLinkRef(ref: string): this;
 
-    setDocLink(link: string): this;
+  setDocLink(link: string): this;
 
-    addChild(child: PropDefinition): this;
+  addChild(child: PropDefinition): this;
 
-    setEntry(entry: PropDefinition): this;
+  setEntry(entry: PropDefinition): this;
 
-    setWidget(widget: PropWidgetDefinition): this;
+  setWidget(widget: PropWidgetDefinition): this;
 
-    setValueFrom(valueFrom: ValueFrom): this;
+  setValueFrom(valueFrom: ValueFrom): this;
 
-    setHidden(hidden: boolean): this;
+  setHidden(hidden: boolean): this;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setDefaultValue(value: any): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setDefaultValue(value: any): this;
 
-    addValidation(validation: Validation): this;
+  addValidation(validation: Validation): this;
 
-    addMapKeyFunc(func: MapKeyFunc): this;
+  addMapKeyFunc(func: MapKeyFunc): this;
 
-    build(): PropDefinition;
+  build(): PropDefinition;
 }
 
 export class PropBuilder implements IPropBuilder {
-    prop = <PropDefinition>{};
+  prop = <PropDefinition>{};
 
-    constructor() {
-        this.prop = <PropDefinition>{};
+  constructor() {
+    this.prop = <PropDefinition>{};
+  }
+
+  addChild(child: PropDefinition): this {
+    if (this.prop.kind !== "object") {
+      throw new Error(
+        "addChild can only be called on props that are objects"
+      );
     }
 
-    addChild(child: PropDefinition): this {
-        if (this.prop.kind !== "object") {
-            throw new Error(
-                "addChild can only be called on props that are objects"
-            );
-        }
-
-        if (!this.prop.children) {
-            this.prop.children = [];
-        }
-
-        this.prop.children.push(child);
-        return this;
+    if (!this.prop.children) {
+      this.prop.children = [];
     }
 
-    setEntry(entry: PropDefinition): this {
-        if (this.prop.kind !== "array" && this.prop.kind !== "map") {
-            throw new Error(
-                "setEntry can only be called on prop that are arrays or maps"
-            );
-        }
+    this.prop.children.push(child);
+    return this;
+  }
 
-        this.prop.entry = entry;
-        return this;
+  setEntry(entry: PropDefinition): this {
+    if (this.prop.kind !== "array" && this.prop.kind !== "map") {
+      throw new Error(
+        "setEntry can only be called on prop that are arrays or maps"
+      );
     }
 
-    addMapKeyFunc(func: MapKeyFunc): this {
-        if (!this.prop.mapKeyFuncs) {
-            this.prop.mapKeyFuncs = [];
-        }
-        this.prop.mapKeyFuncs.push(func);
-        return this;
-    }
+    this.prop.entry = entry;
+    return this;
+  }
 
-    addValidation(validation: Validation): this {
-        if (!this.prop.validations) {
-            this.prop.validations = [];
-        }
-        this.prop.validations.push(validation);
-        return this;
+  addMapKeyFunc(func: MapKeyFunc): this {
+    if (!this.prop.mapKeyFuncs) {
+      this.prop.mapKeyFuncs = [];
     }
+    this.prop.mapKeyFuncs.push(func);
+    return this;
+  }
 
-    build(): PropDefinition {
-        return this.prop;
+  addValidation(validation: Validation): this {
+    if (!this.prop.validations) {
+      this.prop.validations = [];
     }
+    this.prop.validations.push(validation);
+    return this;
+  }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setDefaultValue(value: any): this {
-        this.prop.defaultValue = value;
-        return this;
-    }
+  build(): PropDefinition {
+    return this.prop;
+  }
 
-    setDocLink(link: string): this {
-        this.prop.docLink = link;
-        return this;
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setDefaultValue(value: any): this {
+    this.prop.defaultValue = value;
+    return this;
+  }
 
-    setDocLinkRef(ref: string): this {
-        this.prop.docLinkRef = ref;
-        return this;
-    }
+  setDocLink(link: string): this {
+    this.prop.docLink = link;
+    return this;
+  }
 
-    setHidden(hidden: boolean): this {
-        this.prop.hidden = hidden;
-        return this;
-    }
+  setDocLinkRef(ref: string): this {
+    this.prop.docLinkRef = ref;
+    return this;
+  }
 
-    /**
-    * The type of the prop
-    *
-    * @param {string} kind [array | boolean | integer | map | object | string]
-    *
-    * @returns this
-    *
-    * @example
-    * .setKind("text")
-    */
-    setKind(kind: PropDefinitionKind): this {
-        this.prop.kind = kind;
-        return this;
-    }
+  setHidden(hidden: boolean): this {
+    this.prop.hidden = hidden;
+    return this;
+  }
 
-    /**
-    * The prop name. This will appear in the model UI
-    *
-    * @param {string} name - the name of the prop
-    *
-    * @returns this
-    *
-    * @example
-    * .setName("Region")
-    */
-    setName(name: string): this {
-        this.prop.name = name;
-        return this;
-    }
+  /**
+   * The type of the prop
+   *
+   * @param {string} kind [array | boolean | integer | map | object | string]
+   *
+   * @returns this
+   *
+   * @example
+   * .setKind("text")
+   */
+  setKind(kind: PropDefinitionKind): this {
+    this.prop.kind = kind;
+    return this;
+  }
 
-    setValueFrom(valueFrom: ValueFrom): this {
-        this.prop.valueFrom = valueFrom;
-        return this;
-    }
+  /**
+   * The prop name. This will appear in the model UI
+   *
+   * @param {string} name - the name of the prop
+   *
+   * @returns this
+   *
+   * @example
+   * .setName("Region")
+   */
+  setName(name: string): this {
+    this.prop.name = name;
+    return this;
+  }
 
-    setWidget(widget: PropWidgetDefinition): this {
-        if(widget.kind === 'secret') {
-          throw new Error("Cannot create prop with secret widget. Use addSecretProp() to create those.");
-        }
-        this.prop.widget = widget;
-        return this;
+  setValueFrom(valueFrom: ValueFrom): this {
+    this.prop.valueFrom = valueFrom;
+    return this;
+  }
+
+  setWidget(widget: PropWidgetDefinition): this {
+    if (widget.kind === 'secret') {
+      throw new Error("Cannot create prop with secret widget. Use addSecretProp() to create those.");
     }
+    this.prop.widget = widget;
+    return this;
+  }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface SecretPropDefinition extends PropDefinition {}
+export interface SecretPropDefinition extends PropDefinition {
+  hasInputSocket: boolean
+}
 
 export interface ISecretPropBuilder {
-    setName(name: string): this;
+  setName(name: string): this;
 
-    setSecretKind(kind: string): this;
+  setSecretKind(kind: string): this;
 
-    setDocLinkRef(ref: string): this;
+  setDocLinkRef(ref: string): this;
 
-    setDocLink(link: string): this;
+  setDocLink(link: string): this;
 
-    addValidation(validation: Validation): this;
+  addValidation(validation: Validation): this;
 
-    build(): SecretPropDefinition;
+  skipInputSocket(): this;
+
+  build(): SecretPropDefinition;
 }
 
 export class SecretPropBuilder implements ISecretPropBuilder {
-    prop = <SecretPropDefinition>{};
+  prop = <SecretPropDefinition>{};
 
-    constructor() {
-        this.prop = <SecretPropDefinition>{};
-        this.prop.kind = "string";
-        this.prop.widget = {
-            kind: "secret",
-            options: [],
-        };
+  constructor() {
+    this.prop = <SecretPropDefinition>{};
+    this.prop.kind = "string";
+    this.prop.widget = {
+      kind: "secret",
+      options: [],
+    };
+    this.prop.hasInputSocket = true;
+  }
+
+  setName(name: string): this {
+    this.prop.name = name;
+    return this;
+  }
+
+  setSecretKind(kind: string): this {
+    this.prop.widget?.options.push({label: "secretKind", value: kind});
+    return this;
+  }
+
+  setDocLinkRef(ref: string): this {
+    this.prop.docLinkRef = ref;
+    return this;
+  }
+
+  setDocLink(link: string): this {
+    this.prop.docLink = link;
+    return this;
+  }
+
+  addValidation(validation: Validation): this {
+    if (!this.prop.validations) {
+      this.prop.validations = [];
     }
-    setName(name: string): this {
-        this.prop.name = name;
-        return this;
+    this.prop.validations.push(validation);
+    return this;
+  }
+
+  skipInputSocket(): this {
+    this.prop.hasInputSocket = false;
+    return this
+  }
+
+  build(): SecretPropDefinition {
+    if (
+      this.prop.widget?.options?.find(
+        (option) => option.label === "secretKind"
+      ) === undefined
+    ) {
+      throw new Error("must call setSecretKind() before build()");
     }
 
-    setSecretKind(kind: string): this {
-        this.prop.widget?.options.push({ label: "secretKind", value: kind });
-        return this;
-    }
-
-    setDocLinkRef(ref: string): this {
-        this.prop.docLinkRef = ref;
-        return this;
-    }
-
-    setDocLink(link: string): this {
-        this.prop.docLink = link;
-        return this;
-    }
-
-    addValidation(validation: Validation): this {
-        if (!this.prop.validations) {
-            this.prop.validations = [];
-        }
-        this.prop.validations.push(validation);
-        return this;
-    }
-
-    build(): SecretPropDefinition {
-        if (
-            this.prop.widget?.options?.find(
-                (option) => option.label === "secretKind"
-            ) === undefined
-        ) {
-            throw new Error("must call setSecretKind() before build()");
-        }
-
-        return this.prop;
-    }
+    return this.prop;
+  }
 }
 
 export interface SecretDefinition {
-    name: string;
-    props?: PropDefinition[];
+  name: string;
+  props: PropDefinition[];
 }
 
 export interface ISecretDefinitionBuilder {
-    addProp(prop: PropDefinition): this;
+  addProp(prop: PropDefinition): this;
 
-    build(): SecretDefinition;
+  build(): SecretDefinition;
 }
 
 export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
-    definition: SecretDefinition;
+  definition: SecretDefinition;
 
-    constructor() {
-        this.definition = <SecretDefinition>{};
+  constructor() {
+    this.definition = <SecretDefinition>{};
+    this.definition.name = '';
+    this.definition.props = [];
+  }
+
+  setName(name: string): this {
+    this.definition.name = name;
+    return this;
+  }
+
+  addProp(prop: PropDefinition): this {
+    this.definition.props?.push(prop);
+    return this;
+  }
+
+  build(): SecretDefinition {
+
+    const def = this.definition
+
+    if (def.name.length === 0) {
+      throw new Error(
+        "Cannot build SecretDefinition with empty name"
+      );
     }
 
-    setName(name: string): this {
-        this.definition.name = name;
-        return this;
+    if (def.props.length === 0) {
+      throw new Error(
+        "Cannot build SecretDefinition with no props"
+      );
     }
 
-    addProp(prop: PropDefinition): this {
-        if (!this.definition.props) {
-            this.definition.props = [];
-        }
-        this.definition.props?.push(prop);
-        return this;
-    }
-
-    build(): SecretDefinition {
-        return this.definition;
-    }
+    return this.definition;
+  }
 }
 
 export interface Asset {
-    props: PropDefinition[];
-    secretProps: SecretPropDefinition[];
-    secretDefinition?: PropDefinition[];
-    resourceProps: PropDefinition[];
-    siPropValueFroms: SiPropValueFromDefinition[];
-    inputSockets: SocketDefinition[];
-    outputSockets: SocketDefinition[];
-    docLinks: Record<string, string>;
+  props: PropDefinition[];
+  secretProps: SecretPropDefinition[];
+  secretDefinition?: PropDefinition[];
+  resourceProps: PropDefinition[];
+  siPropValueFroms: SiPropValueFromDefinition[];
+  inputSockets: SocketDefinition[];
+  outputSockets: SocketDefinition[];
+  docLinks: Record<string, string>;
 }
 
 export interface IAssetBuilder {
-    addProp(prop: PropDefinition): this;
+  addProp(prop: PropDefinition): this;
 
-    addSecretProp(prop: SecretPropDefinition): this;
+  addSecretProp(prop: SecretPropDefinition): this;
 
-    defineSecret(definition: SecretDefinition): this;
+  defineSecret(definition: SecretDefinition): this;
 
-    addResourceProp(prop: PropDefinition): this;
+  addResourceProp(prop: PropDefinition): this;
 
-    addInputSocket(socket: SocketDefinition): this;
+  addInputSocket(socket: SocketDefinition): this;
 
-    addOutputSocket(socket: SocketDefinition): this;
+  addOutputSocket(socket: SocketDefinition): this;
 
-    addSiPropValueFrom(siPropValueFrom: SiPropValueFromDefinition): this;
+  addSiPropValueFrom(siPropValueFrom: SiPropValueFromDefinition): this;
 
-    addDocLink(key: string, value: string): this;
+  addDocLink(key: string, value: string): this;
 
-    build(): Asset;
+  build(): Asset;
 }
 
 export class AssetBuilder implements IAssetBuilder {
-    asset = <Asset>{};
+  asset = <Asset>{};
 
-    constructor() {
-        this.asset = <Asset>{};
+  constructor() {
+    this.asset = <Asset>{};
+  }
+
+  addProp(prop: PropDefinition) {
+    if (!this.asset.props) {
+      this.asset.props = [];
+    }
+    this.asset.props?.push(prop);
+    return this;
+  }
+
+  addSecretProp(prop: SecretPropDefinition) {
+    if (!this.asset.secretProps) {
+      this.asset.secretProps = [];
     }
 
-    addProp(prop: PropDefinition) {
-        if (!this.asset.props) {
-            this.asset.props = [];
-        }
-        this.asset.props?.push(prop);
-        return this;
+    if (prop.hasInputSocket) {
+      const secretKind = prop.widget?.options?.find(
+        (option) => option.label === "secretKind"
+      )?.value;
+
+      if (secretKind === undefined) {
+        throw new Error(`Could not find secretKind for ${prop.name}`)
+      }
+
+      this.addInputSocket(
+        new SocketDefinitionBuilder()
+          .setArity("one")
+          .setName(secretKind)
+          .build()
+      )
+
+      prop.valueFrom = new ValueFromBuilder()
+        .setKind("inputSocket")
+        .setSocketName(secretKind)
+        .build()
     }
 
-    addSecretProp(prop: SecretPropDefinition) {
-        if (!this.asset.secretProps) {
-            this.asset.secretProps = [];
-        }
-        this.asset.secretProps?.push(prop);
-        return this;
+    this.asset.secretProps?.push(prop);
+
+    return this;
+  }
+
+  defineSecret(definition: SecretDefinition): this {
+    this.asset.secretDefinition = definition.props;
+    this.addSecretProp(
+      new SecretPropBuilder()
+        .setName(definition.name)
+        .setSecretKind(definition.name)
+        .skipInputSocket()
+        .build()
+    );
+
+    this.addOutputSocket(
+      new SocketDefinitionBuilder()
+        .setArity("one")
+        .setName(definition.name)
+        .setValueFrom(new ValueFromBuilder().setKind("prop").setPropPath(["root", "secrets", definition.name]).build())
+        .build()
+    )
+
+    return this;
+  }
+
+  addResourceProp(prop: PropDefinition) {
+    if (!this.asset.resourceProps) {
+      this.asset.resourceProps = [];
+    }
+    this.asset.resourceProps?.push(prop);
+    return this;
+  }
+
+  addInputSocket(socket: SocketDefinition) {
+    if (!this.asset.inputSockets) {
+      this.asset.inputSockets = [];
+    }
+    this.asset.inputSockets?.push(socket);
+    return this;
+  }
+
+  addOutputSocket(socket: SocketDefinition) {
+    if (!this.asset.outputSockets) {
+      this.asset.outputSockets = [];
+    }
+    this.asset.outputSockets?.push(socket);
+    return this;
+  }
+
+  addSiPropValueFrom(siPropValueFrom: SiPropValueFromDefinition): this {
+    if (!this.asset.siPropValueFroms) {
+      this.asset.siPropValueFroms = [];
+    }
+    this.asset.siPropValueFroms.push(siPropValueFrom);
+    return this;
+  }
+
+  addDocLink(key: string, value: string) {
+    if (!this.asset.docLinks) {
+      this.asset.docLinks = {};
+    }
+    this.asset.docLinks[key] = value;
+    return this;
+  }
+
+  build() {
+    if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
+      throw new Error("Secret defining schema shouldn't define any extra secret props")
     }
 
-    defineSecret(definition: SecretDefinition): this {
-        this.asset.secretDefinition = definition.props;
-        this.addSecretProp(
-            new SecretPropBuilder()
-                .setName(definition.name)
-                .setSecretKind(definition.name)
-                .build()
-        );
-
-        return this;
-    }
-
-    addResourceProp(prop: PropDefinition) {
-        if (!this.asset.resourceProps) {
-            this.asset.resourceProps = [];
-        }
-        this.asset.resourceProps?.push(prop);
-        return this;
-    }
-
-    addInputSocket(socket: SocketDefinition) {
-        if (!this.asset.inputSockets) {
-            this.asset.inputSockets = [];
-        }
-        this.asset.inputSockets?.push(socket);
-        return this;
-    }
-
-    addOutputSocket(socket: SocketDefinition) {
-        if (!this.asset.outputSockets) {
-            this.asset.outputSockets = [];
-        }
-        this.asset.outputSockets?.push(socket);
-        return this;
-    }
-
-    addSiPropValueFrom(siPropValueFrom: SiPropValueFromDefinition): this {
-        if (!this.asset.siPropValueFroms) {
-            this.asset.siPropValueFroms = [];
-        }
-        this.asset.siPropValueFroms.push(siPropValueFrom);
-        return this;
-    }
-
-    addDocLink(key: string, value: string) {
-        if (!this.asset.docLinks) {
-            this.asset.docLinks = {};
-        }
-        this.asset.docLinks[key] = value;
-        return this;
-    }
-
-    build() {
-        return this.asset;
-    }
+    return this.asset;
+  }
 }

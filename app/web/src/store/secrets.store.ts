@@ -5,6 +5,7 @@ import * as _ from "lodash-es";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { LabelList } from "@/api/sdf/dal/label_list";
 import { ActorAndTimestamp } from "./components.store";
 
 export type SecretId = string;
@@ -20,6 +21,18 @@ export type Secret = {
   expiration?: string;
 };
 
+export interface SecretFormSchema {
+  name: string;
+  kind: string;
+  widgetKind: string;
+  widgetOptions: null | LabelList<string | number>;
+}
+
+export interface SecretDefinitionView {
+  secretDefinition: SecretDefinitionId;
+  formData: SecretFormSchema[];
+}
+
 export interface SecretDefinitionValue {
   id: string;
   displayName: string;
@@ -31,6 +44,13 @@ export interface SecretDefinition {
 }
 
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
+export type SecretsDefinitionHashMap = Record<
+  SecretDefinitionId,
+  {
+    definition: SecretDefinitionView;
+    secrets: Secret[];
+  }
+>;
 
 export function useSecretsStore() {
   const workspacesStore = useWorkspacesStore();
@@ -52,96 +72,45 @@ export function useSecretsStore() {
   return addStoreHooks(
     defineStore("secrets", {
       state: () => ({
-        secretsByDefinitionId: {} as SecretsHashMap,
+        secretDefinitionByDefinitionId: {} as SecretsDefinitionHashMap,
         secretIsTransitioning: {} as Record<SecretId, boolean>,
       }),
       getters: {
-        secrets: (state) => _.flatMap(state.secretsByDefinitionId),
+        secretsByDefinitionId(state): SecretsHashMap {
+          return _.transform(
+            state.secretDefinitionByDefinitionId,
+            (acc, value, key) => {
+              acc[key] = value.secrets;
+            },
+          );
+        },
+        secrets(): Secret[] {
+          return _.flatMap(this.secretsByDefinitionId);
+        },
         secretsById(): Record<SecretId, Secret> {
           return _.keyBy(this.secrets, (s) => s.id);
         },
-        definitions: (state) => _.keys(state.secretsByDefinitionId),
+        definitions: (state) => _.keys(state.secretDefinitionByDefinitionId),
+        secretFormSchemaByDefinitionId(
+          state,
+        ): Record<SecretDefinitionId, SecretFormSchema[]> {
+          return _.transform(
+            state.secretDefinitionByDefinitionId,
+            (acc, value, key) => {
+              acc[key] = value.definition.formData;
+            },
+          );
+        },
       },
       actions: {
         async LOAD_SECRETS() {
-          return new ApiRequest<SecretsHashMap>({
+          return new ApiRequest<SecretsDefinitionHashMap>({
             url: "secret",
             params: {
               ...visibilityParams,
             },
             onSuccess: (response) => {
-              this.secretsByDefinitionId = response;
-              if (!this.secretsByDefinitionId.Mocks)
-                this.secretsByDefinitionId.Mocks = [];
-
-              // this.secretsByDefinitionId.Mocks = [
-              //   {
-              //     id: "mock secret id 1",
-              //     definition: "Mocks",
-              //     name: "Mock Secret Name 1",
-              //     description:
-              //       "this is the description of the secret written by the user it can be very long and they can just put as much content as they want Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa  qui officia deserunt mollit anim id est laborum",
-              //     createdInfo: {
-              //       actor: { kind: "user", label: "wendywildshape" },
-              //       timestamp: new Date().toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              //   {
-              //     id: "mock secret id 2",
-              //     definition: "Mocks",
-              //     name: "Mock Secret Name 2 here this name is very long omg testing long names is important!",
-              //     description: "this is a shorter description",
-              //     createdInfo: {
-              //       actor: { kind: "user", label: "cooldood420" },
-              //       timestamp: new Date("12/20/2021").toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              //   {
-              //     id: "mock secret id 3",
-              //     definition: "Mocks",
-              //     name: "Mock Secret Name 3",
-              //     description: "",
-              //     createdInfo: {
-              //       actor: {
-              //         kind: "user",
-              //         label:
-              //           "whateverpersonlongusernamewowthatisreallylongidkwaytoolong",
-              //       },
-              //       timestamp: new Date("01/01/2023").toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              //   {
-              //     id: "mock secret id 4",
-              //     definition: "Mocks",
-              //     name: "Mock Secret Name 4",
-              //     description: "this one is cool",
-              //     createdInfo: {
-              //       actor: { kind: "user", label: "angiecat" },
-              //       timestamp: new Date().toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              //   {
-              //     id: "mock secret id 5",
-              //     definition: "Mocks",
-              //     name: "Mock Secret Name 5",
-              //     description: "",
-              //     createdInfo: {
-              //       actor: { kind: "user", label: "gabycat" },
-              //       timestamp: new Date().toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              //   {
-              //     id: "mock secret id 6",
-              //     definition: "Mocks",
-              //     name: "THE FINAL MOCK SECRET",
-              //     description:
-              //       "with a description that fits on two lines but is not long enough to be truncated at all",
-              //     createdInfo: {
-              //       actor: { kind: "system", label: "System Initiative" },
-              //       timestamp: new Date().toDateString(),
-              //     } as ActorAndTimestamp,
-              //   },
-              // ];
+              this.secretDefinitionByDefinitionId = response;
             },
           });
         },

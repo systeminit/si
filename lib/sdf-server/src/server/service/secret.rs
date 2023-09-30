@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
@@ -12,6 +13,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use dal::diagram::node::HistoryEventMetadata;
+use dal::secret::{list_secret_definitions, SecretDefinitionView};
 use dal::{
     DiagramError, HistoryActorTimestamp, KeyPairError, SecretId, StandardModelError,
     TransactionsError, UserError, Visibility, WorkspacePk, WsEventError,
@@ -47,7 +49,7 @@ pub enum SecretError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type SecretResult<T> = std::result::Result<T, SecretError>;
+pub type SecretResult<T> = Result<T, SecretError>;
 
 // NOTE(victor): This is a temporary struct created only for the static array storage to work
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -87,6 +89,13 @@ pub fn routes() -> Router<AppState> {
         .route("/", post(create_secret))
         .route("/", get(list_secrets))
         .route("/", delete(delete_secrets))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretDefinitionViewWithSecrets {
+    definition: SecretDefinitionView,
+    secrets: Vec<Secret>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -137,11 +146,42 @@ pub async fn create_secret(
     Ok(Json(secret))
 }
 
-pub type ListSecretResponse = HashMap<String, Vec<Secret>>;
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListSecretRequest {
+    #[serde(flatten)]
+    pub visibility: Visibility,
+}
 
-pub async fn list_secrets() -> SecretResult<Json<ListSecretResponse>> {
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    Ok(Json((*SECRETOS.lock().await).clone()))
+pub type ListSecretResponse = HashMap<String, SecretDefinitionViewWithSecrets>;
+
+pub async fn list_secrets(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Query(request): Query<ListSecretRequest>,
+) -> SecretResult<Json<ListSecretResponse>> {
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let definitions = list_secret_definitions(&ctx).await?;
+    let secrets = SECRETOS.lock().await;
+
+    Ok(Json(
+        definitions
+            .into_iter()
+            .map(|def| {
+                let secret_definition = def.secret_definition.clone();
+
+                let view = SecretDefinitionViewWithSecrets {
+                    definition: def,
+                    secrets: secrets
+                        .get(&secret_definition)
+                        .map_or_else(Vec::new, |view| view.clone()),
+                };
+
+                (secret_definition, view)
+            })
+            .collect::<HashMap<String, SecretDefinitionViewWithSecrets>>(),
+    ))
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -153,6 +193,7 @@ pub struct DeleteSecretRequest {
 }
 
 pub async fn delete_secrets(Json(request): Json<DeleteSecretRequest>) -> SecretResult<Json<()>> {
+    // TODO Block deleting secrets that are set on any props
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     SECRETOS

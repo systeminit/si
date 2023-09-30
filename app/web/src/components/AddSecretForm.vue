@@ -44,11 +44,11 @@
           </template>
         </VormInput>
         <VormInput
-          v-for="field in testDefinition.fields"
-          :key="field.id"
-          v-model="secretFormData.value[field.id]"
+          v-for="(field, index) in fields"
+          :key="index"
+          v-model="secretFormData.value[field.name]"
           type="text"
-          :label="field.displayName"
+          :label="field.name"
           required
         />
       </div>
@@ -91,23 +91,14 @@ import {
   useValidatedInputGroup,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { PropType, reactive } from "vue";
+import { PropType, reactive, computed } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import {
   Secret,
-  SecretDefinition,
   SecretDefinitionId,
   useSecretsStore,
 } from "@/store/secrets.store";
-
-// TODO(Wendy) - replace this test definition with a lookup of the given definitionId's definition
-const testDefinition: SecretDefinition = {
-  fields: {
-    test1: { id: "test1", displayName: "Test Value", value: "" },
-    test2: { id: "test2", displayName: "Whatever", value: "" },
-  },
-};
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
@@ -122,6 +113,10 @@ const props = defineProps({
 });
 
 const secretsStore = useSecretsStore();
+
+const fields = computed(
+  () => secretsStore.secretFormSchemaByDefinitionId[props.definitionId],
+);
 
 const addSecretReqStatus = secretsStore.getRequestStatus("SAVE_SECRET");
 

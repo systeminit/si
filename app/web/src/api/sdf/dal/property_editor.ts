@@ -55,7 +55,7 @@ export interface PropertyEditorPropWidgetKindSelect {
 
 export interface PropertyEditorPropWidgetKindSecret {
   kind: "secret";
-  options: LabelList<string | number>;
+  options: LabelList<string>;
 }
 
 export interface PropertyEditorPropWidgetKindColor {

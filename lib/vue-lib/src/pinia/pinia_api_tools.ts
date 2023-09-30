@@ -38,7 +38,7 @@ type SubType<Base, CheckExtends> = Pick<
   }[keyof Base]
 >;
 
-// here we are filtering all of the actions down to those that return an ApiRequest object only
+// here we are filtering all the actions down to those that return an ApiRequest object only
 type ApiRequestActionsOnly<A> = SubType<
   A,
   (
@@ -91,6 +91,7 @@ export class ApiRequest<
     this.#rawSuccess = true;
     this.#rawResponseData = data;
   }
+
   setFailedResult(err: AxiosError | Error) {
     this.#rawSuccess = false;
     this.#rawResponseError = err;
@@ -138,6 +139,7 @@ export function registerApi(axiosInstance: AxiosInstance) {
   > extends ApiRequest<Response, RequestParams> {
     static api = axiosInstance;
   }
+
   return ApiRequestForSpecificApi;
 }
 
@@ -159,7 +161,7 @@ export type ApiRequestDescription<
   /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
   /** function to call if request fails (>=400) - not common */
-  onFail?(response: any): Promise<void> | void;
+  onFail?(response: any): any | void;
   /** additional headers to pass with request */
   headers?: Record<string, any>;
   /** additional axios options */
@@ -336,6 +338,18 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         // if we made an optimistic update, we'll roll it back here
         if (optimisticRollbackFn) optimisticRollbackFn();
 
+        // call explicit failure handler if one is defined (usually rare)
+        if (typeof onFail === "function") {
+          const convertedData = onFail(err.response?.data);
+
+          if (convertedData) {
+            err.response = {
+              ...err.response,
+              data: convertedData,
+            };
+          }
+        }
+
         // mark the request as failure and store the error info
         store.$patch((state) => {
           state.apiRequestStatuses[trackingKey].receivedAt = new Date();
@@ -355,12 +369,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             };
           }
         });
-
-        // call explicit failure handler if one is defined (usually rare)
-        if (typeof onFail === "function") {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          onFail(err.response?.data);
-        }
 
         // return false so caller can easily detect a failure
         completed.resolve({

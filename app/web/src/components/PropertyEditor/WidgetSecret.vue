@@ -7,7 +7,7 @@
     <div class="flex flex-row items-center w-full">
       <div class="flex flex-col grow">
         <div
-          v-if="value"
+          v-if="secret"
           :class="
             clsx(
               'sm:text-sm font-bold grow p-xs block',
@@ -18,7 +18,7 @@
           "
           @click="(e) => popoverRef.open(e)"
         >
-          {{ value.name }}
+          {{ secret.name }}
         </div>
         <VButton
           v-else
@@ -26,7 +26,7 @@
           @click="(e) => popoverRef.open(e)"
         />
         <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-          <SecretsList definitionId="Mocks" @select="setField" />
+          <SecretsList :definitionId="definitionId" @select="setField" />
         </Popover>
       </div>
       <div v-if="value" class="pl-xs">
@@ -59,10 +59,12 @@ import {
   PropertyPath,
   UpdatedProperty,
 } from "@/api/sdf/dal/property_editor";
-import { Secret } from "@/store/secrets.store";
+import { Secret, SecretId, useSecretsStore } from "@/store/secrets.store";
+import { LabelList } from "@/api/sdf/dal/label_list";
 import SiButtonIcon from "../SiButtonIcon.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
+const secretStore = useSecretsStore();
 
 const popoverRef = ref();
 
@@ -70,7 +72,8 @@ const props = defineProps<{
   name: string;
   path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
-  value?: Secret;
+  options: LabelList<string>;
+  value?: SecretId;
   propId: string;
   valueId: string;
   validation?: PropertyEditorValidation;
@@ -106,9 +109,20 @@ const unsetField = () => {
 const setField = (secret: Secret) => {
   popoverRef.value.close();
   emit("updatedProperty", {
-    value: secret,
+    value: secret.id,
     propId: propId.value,
     valueId: valueId.value,
   });
 };
+
+const secret = computed(() =>
+  props.value ? secretStore.secretsById[props.value] : undefined,
+);
+
+const definitionId = computed(() => {
+  return (
+    props.options.find((e) => e.label === "secretKind")?.value ??
+    "NO secretKind ON WIDGET"
+  );
+});
 </script>

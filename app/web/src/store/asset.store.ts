@@ -358,6 +358,23 @@ export const useAssetStore = () => {
                 "updatedAt",
               ]),
             },
+            onFail(response) {
+              const rawMessage = response?.error?.message;
+              if (typeof rawMessage === "string") {
+                const match = rawMessage.match(
+                  "function execution result failure:.*message=(.*?),",
+                )?.[1];
+
+                if (match) {
+                  return {
+                    error: {
+                      ...response?.error,
+                      message: match,
+                    },
+                  };
+                }
+              }
+            },
           });
         },
       },
