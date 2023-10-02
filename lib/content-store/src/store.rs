@@ -1,14 +1,13 @@
-pub(crate) mod local;
-pub(crate) mod pg;
-
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data_pg::{PgError, PgPoolError};
-
 use thiserror::Error;
 
 use crate::hash::ContentHash;
 use crate::pair::ContentPairError;
+
+pub(crate) mod local;
+pub(crate) mod pg;
 
 #[allow(missing_docs)]
 #[remain::sorted]

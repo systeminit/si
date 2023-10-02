@@ -1,6 +1,5 @@
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use telemetry::prelude::*;
-use thiserror::Error;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -8,25 +7,16 @@ mod embedded {
     embed_migrations!("./src/store/pg/migrations");
 }
 
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum PgMigrationHelpersError {
-    #[error("pg pool error: {0}")]
-    PgPool(#[from] PgPoolError),
-}
-
-pub(crate) type PgMigrationHelpersResult<T> = Result<T, PgMigrationHelpersError>;
-
 const DBNAME: &str = "si_content_store";
 const APPLICATION_NAME: &str = "si_test_content_store";
 
 /// A unit struct that provides helpers for performing [`PgStore`] migrations.
 #[allow(missing_debug_implementations)]
-pub struct PgMigrationHelpers;
+pub struct PgStoreTools;
 
-impl PgMigrationHelpers {
+impl PgStoreTools {
     /// Create a new [`PgPool`] for a production [`PgStore`].
-    pub async fn new_production_pg_pool() -> PgMigrationHelpersResult<PgPool> {
+    pub async fn new_production_pg_pool() -> Result<PgPool, PgPoolError> {
         let pg_pool_config = PgPoolConfig {
             dbname: DBNAME.to_string(),
             application_name: APPLICATION_NAME.to_string(),
@@ -38,7 +28,7 @@ impl PgMigrationHelpers {
 
     /// Perform migrations for the database.
     #[instrument(skip_all)]
-    pub async fn migrate(pg_pool: &PgPool) -> PgMigrationHelpersResult<()> {
-        Ok(pg_pool.migrate(embedded::migrations::runner()).await?)
+    pub async fn migrate(pg_pool: &PgPool) -> Result<(), PgPoolError> {
+        pg_pool.migrate(embedded::migrations::runner()).await
     }
 }
