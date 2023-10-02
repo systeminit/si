@@ -146,6 +146,14 @@
               Reject this module
             </VButton>
 
+            <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
+            <VButton
+              :requestStatus="promoteToBuiltinReqStatus"
+              @click="promoteToBuiltinSpecHandler"
+            >
+              Promote this module to be a builtin
+            </VButton>
+
             <div v-if="remoteSpec && remoteSpec.funcs.length > 0">
               <ul>
                 <li
@@ -219,6 +227,8 @@ const remoteModuleSpecStatus = moduleStore.getRequestStatus(
 );
 
 const rejectReqStatus = moduleStore.getRequestStatus("REJECT_REMOTE_MODULE");
+const promoteToBuiltinReqStatus =
+  moduleStore.getRequestStatus("PROMOTE_TO_BUILTIN");
 
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 
@@ -266,6 +276,11 @@ async function installButtonHandler() {
 async function rejectModuleSpecHandler() {
   if (!remoteSummary.value) return;
   await moduleStore.REJECT_REMOTE_MODULE(remoteSummary.value?.id);
+}
+
+async function promoteToBuiltinSpecHandler() {
+  if (!remoteSummary.value) return;
+  await moduleStore.PROMOTE_TO_BUILTIN(remoteSummary.value?.id);
 }
 
 async function viewModuleSpecHandler() {

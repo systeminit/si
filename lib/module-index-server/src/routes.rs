@@ -16,6 +16,7 @@ mod download_module_route;
 mod get_module_details_route;
 mod list_builtins_route;
 mod list_modules_route;
+pub(crate) mod promote_builtin_route;
 pub(crate) mod reject_module_route;
 pub(crate) mod upsert_module_route;
 
@@ -31,6 +32,10 @@ pub fn routes(state: AppState) -> Router {
         .route("/", get(system_status_route))
         .route("/modules", get(list_modules_route::list_module_route))
         .route("/builtins", get(list_builtins_route::list_builtins_route))
+        .route(
+            "/builtins/:module_id/promote",
+            post(promote_builtin_route::promote_builtin_route),
+        )
         .route("/modules", post(upsert_module_route::upsert_module_route))
         .route(
             "/modules/:module_id",

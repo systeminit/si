@@ -279,6 +279,18 @@ export const useModuleStore = () => {
           });
         },
 
+        async PROMOTE_TO_BUILTIN(moduleId: ModuleId) {
+          return new ApiRequest<{ success: true }>({
+            method: "post",
+            url: "/pkg/set_as_builtin",
+            params: { id: moduleId, ...visibility },
+            onSuccess: (_response) => {
+              // response is just success, so we have to reload local modules
+              this.LOAD_LOCAL_MODULES();
+            },
+          });
+        },
+
         async EXPORT_WORKSPACE() {
           return new ApiRequest({
             method: "post",
