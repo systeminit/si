@@ -166,7 +166,6 @@ declare class PropBuilder implements IPropBuilder {
     setDocLink(link: string): this;
     setDocLinkRef(ref: string): this;
     setHidden(hidden: boolean): this;
-
     /**
     * The type of the prop
     *
@@ -178,7 +177,6 @@ declare class PropBuilder implements IPropBuilder {
     * .setKind("text")
     */
     setKind(kind: PropDefinitionKind): this;
-
     /**
     * The prop name. This will appear in the model UI
     *

@@ -629,7 +629,7 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
-            include_str!("./ts_types/asset_types.d.ts"),
+            include_str!("./ts_types/asset_builder.d.ts"),
             "\n",
             "type Output = any;"
         ),

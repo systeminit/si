@@ -166,7 +166,27 @@ declare class PropBuilder implements IPropBuilder {
     setDocLink(link: string): this;
     setDocLinkRef(ref: string): this;
     setHidden(hidden: boolean): this;
+    /**
+    * The type of the prop
+    *
+    * @param {string} kind [array | boolean | integer | map | object | string]
+    *
+    * @returns this
+    *
+    * @example
+    * .setKind("text")
+    */
     setKind(kind: PropDefinitionKind): this;
+    /**
+    * The prop name. This will appear in the model UI
+    *
+    * @param {string} name - the name of the prop
+    *
+    * @returns this
+    *
+    * @example
+    * .setName("Region")
+    */
     setName(name: string): this;
     setValueFrom(valueFrom: ValueFrom): this;
     setWidget(widget: PropWidgetDefinition): this;
