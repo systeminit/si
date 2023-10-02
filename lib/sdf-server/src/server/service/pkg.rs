@@ -20,6 +20,7 @@ use tokio::fs::read_dir;
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
+pub mod builtin_module_spec;
 pub mod export_pkg;
 pub mod export_workspace;
 pub mod get_pkg;
@@ -169,7 +170,7 @@ pub async fn get_new_pkg_path(
                 real_pkg_path.to_string_lossy().to_string(),
             ));
         } else if real_pkg_path.is_file() {
-            attempts += 1;
+            attempts = 1;
             continue;
         }
 
@@ -201,6 +202,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/remote_module_spec",
             get(remote_module_spec::remote_module_spec),
+        )
+        .route(
+            "/set_as_builtin",
+            post(builtin_module_spec::promote_to_builtin),
         )
         .route("/reject_pkg", post(reject_pkg::reject_pkg))
 }

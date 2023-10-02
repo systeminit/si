@@ -1,7 +1,7 @@
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::{BuiltinsDetailsResponse, ModuleRejectionResponse};
+use crate::types::{BuiltinsDetailsResponse, ModulePromotedResponse, ModuleRejectionResponse};
 use crate::{IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,31 @@ impl IndexClient {
             .error_for_status()?;
 
         Ok(upload_response.json::<ModuleRejectionResponse>().await?)
+    }
+
+    pub async fn promote_to_builtin(
+        &self,
+        module_id: Ulid,
+        promoted_to_builtin_by_display_name: String,
+    ) -> IndexClientResult<ModulePromotedResponse> {
+        let reject_url = dbg!(self
+            .base_url
+            .join("builtins/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("promote"))?;
+
+        let promote_response = reqwest::Client::new()
+            .post(reject_url)
+            .multipart(
+                reqwest::multipart::Form::new()
+                    .text("promoted by user", promoted_to_builtin_by_display_name),
+            )
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(promote_response.json::<ModulePromotedResponse>().await?)
     }
 
     pub async fn upload_module(
