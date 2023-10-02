@@ -528,12 +528,15 @@ pub(crate) trait FnSetupExpander {
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var_nw = Ident::new("nw", Span::call_site());
         let var_auth_token = Ident::new("auth_token", Span::call_site());
         self.code_extend(quote! {
             let (#var_nw, #var_auth_token) = {
                 let ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for workspace_signup")?;
                 let r = ::dal_test::helpers::workspace_signup(&ctx).await?;
@@ -576,11 +579,14 @@ pub(crate) trait FnSetupExpander {
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var = Ident::new("default_dal_context", Span::call_site());
         self.code_extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -607,11 +613,14 @@ pub(crate) trait FnSetupExpander {
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var = Ident::new("dal_context_default_mut", Span::call_site());
         self.code_extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -638,11 +647,14 @@ pub(crate) trait FnSetupExpander {
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var = Ident::new("dal_context_head", Span::call_site());
         self.code_extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -665,11 +677,14 @@ pub(crate) trait FnSetupExpander {
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var = Ident::new("dal_context_head_ref", Span::call_site());
         self.code_extend(quote! {
             let _dchr = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
@@ -693,11 +708,14 @@ pub(crate) trait FnSetupExpander {
         let bas = self.setup_workspace_signup();
         let nw = bas.0.as_ref();
 
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+
         let var = Ident::new("dal_context_head_mut_ref", Span::call_site());
         self.code_extend(quote! {
             let mut _dchmr = {
                 let mut ctx = #dal_context_builder
-                    .build_default()
+                    .build_default_with_content_store(#test_context.content_store().clone())
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_mut_ref")?;
                 ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));

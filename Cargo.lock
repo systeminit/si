@@ -1354,6 +1354,7 @@ version = "0.1.0"
 dependencies = [
  "buck2-resources",
  "color-eyre",
+ "content-store",
  "content-store-test",
  "council-server",
  "dal",

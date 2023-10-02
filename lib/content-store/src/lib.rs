@@ -28,7 +28,7 @@ mod store;
 
 pub use hash::ContentHash;
 pub use store::local::LocalStore;
-pub use store::pg::migrate::PgMigrationHelpers;
+pub use store::pg::tools::PgStoreTools;
 pub use store::pg::PgStore;
 pub use store::Store;
 pub use store::StoreError;
