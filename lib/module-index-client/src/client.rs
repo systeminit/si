@@ -1,7 +1,7 @@
 use ulid::Ulid;
 use url::Url;
 
-use crate::types::ModuleRejectionResponse;
+use crate::types::{BuiltinsDetailsResponse, ModuleRejectionResponse};
 use crate::{IndexClientResult, ModuleDetailsResponse};
 
 #[derive(Debug, Clone)]
@@ -15,6 +15,13 @@ impl IndexClient {
         Self {
             base_url,
             auth_token: auth_token.to_owned(),
+        }
+    }
+
+    pub fn unauthenticated_client(base_url: Url) -> Self {
+        Self {
+            base_url,
+            auth_token: "".to_string(),
         }
     }
 
@@ -78,6 +85,37 @@ impl IndexClient {
 
         let bytes = response.bytes().await?;
         dbg!(&bytes.len());
+
+        Ok(bytes.to_vec())
+    }
+
+    pub async fn list_builtins(&self) -> IndexClientResult<BuiltinsDetailsResponse> {
+        let url = self.base_url.join("builtins")?;
+        let resp = reqwest::Client::new()
+            .get(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let modules = resp.json::<BuiltinsDetailsResponse>().await?;
+
+        Ok(modules)
+    }
+
+    pub async fn get_builtin(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
+        let download_url = dbg!(self
+            .base_url
+            .join("modules/")?
+            .join(&format!("{}/", module_id.to_string()))?
+            .join("download_builtin"))?;
+        let response = reqwest::Client::new()
+            .get(download_url)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let bytes = response.bytes().await?;
 
         Ok(bytes.to_vec())
     }

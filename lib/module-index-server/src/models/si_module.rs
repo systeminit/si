@@ -95,6 +95,8 @@ pub struct Model {
     pub rejected_at: Option<DateTimeWithTimeZone>,
     pub rejected_by_display_name: Option<String>,
     pub kind: ModuleKind,
+    pub is_builtin_at: Option<DateTimeWithTimeZone>,
+    pub is_builtin_at_by_display_name: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

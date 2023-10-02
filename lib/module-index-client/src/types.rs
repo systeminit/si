@@ -23,6 +23,12 @@ pub struct ModuleRejectionResponse {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BuiltinsDetailsResponse {
+    pub modules: Vec<ModuleDetailsResponse>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModuleDetailsResponse {
     pub id: String,
     pub name: String,

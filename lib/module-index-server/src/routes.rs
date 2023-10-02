@@ -11,8 +11,10 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use tower_http::cors::CorsLayer;
 
+mod download_builtin_route;
 mod download_module_route;
 mod get_module_details_route;
+mod list_builtins_route;
 mod list_modules_route;
 pub(crate) mod reject_module_route;
 pub(crate) mod upsert_module_route;
@@ -28,6 +30,7 @@ pub fn routes(state: AppState) -> Router {
     router = router
         .route("/", get(system_status_route))
         .route("/modules", get(list_modules_route::list_module_route))
+        .route("/builtins", get(list_builtins_route::list_builtins_route))
         .route("/modules", post(upsert_module_route::upsert_module_route))
         .route(
             "/modules/:module_id",
@@ -36,6 +39,10 @@ pub fn routes(state: AppState) -> Router {
         .route(
             "/modules/:module_id/download",
             get(download_module_route::download_module_route),
+        )
+        .route(
+            "/modules/:module_id/download_builtin",
+            get(download_builtin_route::download_builtin_route),
         )
         .route(
             "/modules/:module_id/reject",

@@ -84,6 +84,9 @@ pub async fn list_module_route(
         query
     };
 
+    // We want to filter out the builtins from the list as they will already be in our system
+    let query = query.filter(si_module::Column::IsBuiltinAt.is_null());
+
     // ordering
     let query = query
         .order_by_desc(si_module::Column::OwnerUserId)
