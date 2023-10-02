@@ -12,6 +12,7 @@ mod scenario;
 mod schema;
 mod secret;
 mod session;
+mod functions;
 
 pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
