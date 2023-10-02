@@ -172,18 +172,7 @@ function onSearchUpdated(newFilterString: string) {
 }
 
 function itemClickHandler(e: MouseEvent, id: ComponentId) {
-  // right click
-  if (e.button === 2) {
-    if (!componentsStore.selectedComponentIds.includes(id)) {
-      componentsStore.setSelectedComponentId(id);
-    }
-    e.preventDefault();
-    emit("right-click-item", e);
-  } else if (e.metaKey) {
-    e.preventDefault();
-    componentsStore.setSelectedComponentId(id, true); // true = toggle mode
-  } else if (e.shiftKey) {
-    e.preventDefault();
+  const shiftKeyBehavior = () => {
     const selectedComponentIds = componentsStore.selectedComponentIds;
 
     if (selectedComponentIds.length === 0) {
@@ -224,6 +213,27 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
         componentsStore.setSelectedComponentId(id);
       }
     }
+  };
+
+  // right click
+  if (e.button === 2) {
+    e.preventDefault();
+    if (e.shiftKey) {
+      shiftKeyBehavior();
+    } else if (!componentsStore.selectedComponentIds.includes(id)) {
+      if (e.metaKey) {
+        componentsStore.setSelectedComponentId(id, true); // true = toggle mode
+      } else {
+        componentsStore.setSelectedComponentId(id);
+      }
+    }
+    emit("right-click-item", e);
+  } else if (e.shiftKey) {
+    e.preventDefault();
+    shiftKeyBehavior();
+  } else if (e.metaKey) {
+    e.preventDefault();
+    componentsStore.setSelectedComponentId(id, true); // true = toggle mode
   } else if (e.type === "dblclick") {
     // TODO: probably refactor this to call a fn on an event bus, but this is working for now
     componentsStore.panTargetComponentId = id;
