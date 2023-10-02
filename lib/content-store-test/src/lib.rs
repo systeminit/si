@@ -22,7 +22,7 @@
 )]
 
 use color_eyre::eyre::{Result, WrapErr};
-use content_store::{PgMigrationHelpers, PgStore};
+use content_store::{PgStore, PgStoreTools};
 use si_data_pg::{PgPool, PgPoolConfig};
 use telemetry::prelude::*;
 use uuid::Uuid;
@@ -83,24 +83,35 @@ impl PgTestMigrationClient {
 
     /// Perform migrations for the global content store test database.
     pub async fn migrate(&self) -> Result<()> {
-        Ok(PgMigrationHelpers::migrate(&self.pg_pool).await?)
+        Ok(PgStoreTools::migrate(&self.pg_pool).await?)
     }
 }
 
-/// This unit struct provides method(s) for creating [`PgStores`](PgStore) in `dal` integration
-/// tests.
+/// This unit struct provides method(s) for creating [`PgStores`](PgStore) in integration tests.
 #[allow(missing_debug_implementations)]
-pub struct DalTestPgStore;
+pub struct PgStoreFactory;
 
-impl DalTestPgStore {
+impl PgStoreFactory {
+    /// Creates a [`PgStore`] for the global test database.
+    pub async fn global() -> Result<PgStore> {
+        let pg_pool_config = PgPoolConfig {
+            dbname: TEST_DBNAME.to_string(),
+            application_name: TEST_APPLICATION_NAME.to_string(),
+            ..Default::default()
+        };
+        let pg_pool = PgPool::new(&pg_pool_config).await?;
+        PgStore::new(pg_pool)
+            .await
+            .wrap_err("failed to create PgStore for global")
+    }
+
     /// Creates a test-specific database using the global content store test database. Then, a
     /// [`PgPool`] is created for the new database. Finally, a [`PgStore`] is created from that
     /// pool.
     ///
     /// This should be used over [`PgStore::new`] for `dal` integration tests until `dal-test` is
     /// able to perform this functionality on its own.
-    #[allow(clippy::new_ret_no_self)]
-    pub async fn new() -> Result<PgStore> {
+    pub async fn test_specific() -> Result<PgStore> {
         let global_test_dbname = TEST_DBNAME.to_string();
         let global_application_name = TEST_APPLICATION_NAME.to_string();
 
