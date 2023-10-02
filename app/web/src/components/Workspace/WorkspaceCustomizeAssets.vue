@@ -53,7 +53,10 @@
           :assetId="assetStore.selectedAssetId"
         />
       </template>
-      <div class="p-sm text-center text-neutral-400 dark:text-neutral-300">
+      <div
+        v-else
+        class="p-sm text-center text-neutral-400 dark:text-neutral-300"
+      >
         Select an asset to edit it.
       </div>
     </div>
