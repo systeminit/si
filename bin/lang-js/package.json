@@ -25,6 +25,7 @@
     "build:watch": "npm run clean && tsc --watch",
     "package": "pnpm run build && pkg . --output ./target/lang-js",
     "package:nobuild": "pkg . --output ./target/lang-js",
+    "generate": "OUTDIR=\"$(git rev-parse --show-toplevel)/lib/sdf-server/src/server/service/ts_types/\" && tsc --emitDeclarationOnly --declaration --target es2020 --moduleResolution node --outDir $OUTDIR ./src/asset_builder.ts && sed 's/export //g' -i $OUTDIR/asset_builder.d.ts",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js --ignore-path .gitignore src",
     "lint:fix": "eslint --fix",

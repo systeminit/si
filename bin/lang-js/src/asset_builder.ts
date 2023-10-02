@@ -481,11 +481,31 @@ export class PropBuilder implements IPropBuilder {
         return this;
     }
 
+    /**
+    * The type of the prop
+    *
+    * @param {string} kind [array | boolean | integer | map | object | string]
+    *
+    * @returns this
+    *
+    * @example
+    * .setKind("text")
+    */
     setKind(kind: PropDefinitionKind): this {
         this.prop.kind = kind;
         return this;
     }
 
+    /**
+    * The prop name. This will appear in the model UI
+    *
+    * @param {string} name - the name of the prop
+    *
+    * @returns this
+    *
+    * @example
+    * .setName("Region")
+    */
     setName(name: string): this {
         this.prop.name = name;
         return this;
