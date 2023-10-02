@@ -1,5 +1,6 @@
 use std::{mem, path::PathBuf, sync::Arc};
 
+use content_store::{PgStore, StoreError};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
@@ -66,6 +67,7 @@ impl ServicesContext {
         DalContextBuilder {
             services_context: self,
             blocking,
+            content_store: None,
         }
     }
 
@@ -202,6 +204,11 @@ pub struct DalContext {
     /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
+    /// The content-addressable [`store`](content_store::Store) used by the "dal".
+    ///
+    /// This should be configurable in the future, but for now, the only kind of store used is the
+    /// [`PgStore`](content_store::PgStore).
+    content_store: Arc<Mutex<PgStore>>,
 }
 
 impl DalContext {
@@ -211,6 +218,7 @@ impl DalContext {
         DalContextBuilder {
             services_context,
             blocking,
+            content_store: None,
         }
     }
 
@@ -458,6 +466,11 @@ impl DalContext {
         self.services_context.module_index_url.as_deref()
     }
 
+    /// Gets a reference to the content store.
+    pub fn content_store(&self) -> &Arc<Mutex<PgStore>> {
+        &self.content_store
+    }
+
     /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(
@@ -566,11 +579,39 @@ pub struct DalContextBuilder {
     /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
+    /// The content store, which defaults to the production [`PgStore`], if empty.
+    ///
+    /// In the future, this should use the [`Store`](content_store::Store) trait instead of the
+    /// [`PgStore`] directly.
+    content_store: Option<PgStore>,
 }
 
 impl DalContextBuilder {
-    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
+        let conns = self.connections().await?;
+        let raw_content_store = match &self.content_store {
+            Some(found_content_store) => found_content_store.clone(),
+            None => PgStore::new_production().await?,
+        };
+
+        Ok(DalContext {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+            tenancy: Tenancy::new_empty(),
+            visibility: Visibility::new_head(false),
+            history_actor: HistoryActor::SystemInit,
+            content_store: Arc::new(Mutex::new(raw_content_store)),
+        })
+    }
+
+    /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`] and a
+    /// provided content store.
+    pub async fn build_default_with_content_store(
+        &self,
+        content_store: PgStore,
+    ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
         Ok(DalContext {
             services_context: self.services_context.clone(),
@@ -579,15 +620,21 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
+            content_store: Arc::new(Mutex::new(content_store)),
         })
     }
 
-    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
     pub async fn build_head(
         &self,
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
+        let raw_content_store = match &self.content_store {
+            Some(found_content_store) => found_content_store.clone(),
+            None => PgStore::new_production().await?,
+        };
+
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -595,15 +642,21 @@ impl DalContextBuilder {
             tenancy: access_builder.tenancy,
             history_actor: access_builder.history_actor,
             visibility: Visibility::new_head(false),
+            content_store: Arc::new(Mutex::new(raw_content_store)),
         })
     }
 
-    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
     pub async fn build(
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
+        let raw_content_store = match &self.content_store {
+            Some(found_content_store) => found_content_store.clone(),
+            None => PgStore::new_production().await?,
+        };
+
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -611,6 +664,7 @@ impl DalContextBuilder {
             tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
+            content_store: Arc::new(Mutex::new(raw_content_store)),
         })
     }
 
@@ -624,6 +678,7 @@ impl DalContextBuilder {
         &self.services_context.nats_conn
     }
 
+    /// Gets a clone of the job queue processor.
     pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
         self.services_context.job_processor.clone()
     }
@@ -662,6 +717,8 @@ pub enum TransactionsError {
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
     #[error("cannot commit transactions on invalid connections state")]

@@ -1,15 +1,17 @@
-use crate::hash::ContentHash;
-use crate::pair::ContentPair;
-use crate::store::{Store, StoreResult};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data_pg::PgPool;
 use std::collections::HashMap;
 
-pub(crate) mod migrate;
+use crate::hash::ContentHash;
+use crate::pair::ContentPair;
+use crate::store::{Store, StoreResult};
+use crate::PgStoreTools;
+
+pub(crate) mod tools;
 
 /// A content store backed by Postgres.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PgStore {
     inner: HashMap<ContentHash, PgStoreItem>,
     pg_pool: PgPool,
@@ -33,6 +35,15 @@ impl PgStoreItem {
 impl PgStore {
     /// Create a new [`PgStore`] from a given [`PgPool`].
     pub async fn new(pg_pool: PgPool) -> StoreResult<Self> {
+        Ok(Self {
+            inner: Default::default(),
+            pg_pool,
+        })
+    }
+
+    /// Create a new [`PgStore`] from a given [`PgPool`].
+    pub async fn new_production() -> StoreResult<Self> {
+        let pg_pool = PgStoreTools::new_production_pg_pool().await?;
         Ok(Self {
             inner: Default::default(),
             pg_pool,
