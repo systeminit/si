@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+content-store = { path = "../../lib/content-store" }
 content-store-test = { path = "../../lib/content-store-test" }
 council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }

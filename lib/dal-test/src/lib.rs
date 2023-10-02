@@ -9,7 +9,8 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
-use content_store_test::PgTestMigrationClient;
+use content_store::PgStore;
+use content_store_test::{PgStoreFactory, PgTestMigrationClient};
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
@@ -164,6 +165,11 @@ pub struct TestContext {
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
+    /// The content-addressable [`store`](content_store::Store) used by the "dal".
+    ///
+    /// This should be configurable in the future, but for now, the only kind of store used is the
+    /// [`PgStore`](content_store::PgStore).
+    content_store: PgStore,
 }
 
 impl TestContext {
@@ -244,6 +250,11 @@ impl TestContext {
     pub fn nats_config(&self) -> &NatsConfig {
         &self.config.nats
     }
+
+    /// Gets a reference to the content store.
+    pub fn content_store(&self) -> &PgStore {
+        &self.content_store
+    }
 }
 
 /// A builder for a [`TestContext`].
@@ -280,21 +291,20 @@ impl TestContextBuilder {
         let pg_pool = PgPool::new(&self.config.pg)
             .await
             .wrap_err("failed to create global setup PgPool")?;
+        let content_store = PgStoreFactory::global().await?;
 
-        self.build_inner(pg_pool).await
+        self.build_inner(pg_pool, content_store).await
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling for each test.
     async fn build_for_test(&self) -> Result<TestContext> {
         let pg_pool = self.create_test_specific_db_with_pg_pool().await?;
+        let content_store = PgStoreFactory::test_specific().await?;
 
-        // TODO(nick): create the test-specific content store db with a pg store upon request. Until
-        // this is resolved, use "TestPgStore::new" instead of "PgStore::new" for integration tests.
-
-        self.build_inner(pg_pool).await
+        self.build_inner(pg_pool, content_store).await
     }
 
-    async fn build_inner(&self, pg_pool: PgPool) -> Result<TestContext> {
+    async fn build_inner(&self, pg_pool: PgPool, content_store: PgStore) -> Result<TestContext> {
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
         // without leaking it to other tests.
         let mut nats_config = self.config.nats.clone();
@@ -315,6 +325,7 @@ impl TestContextBuilder {
             nats_conn,
             job_processor,
             encryption_key: self.encryption_key.clone(),
+            content_store,
         })
     }
 
