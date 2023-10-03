@@ -52,6 +52,7 @@
               )
             "
             @click.prevent="selectTab(tab.props.slug)"
+            @auxclick.prevent.stop="closeTab(tab)"
           >
             <template v-if="tab.slots.label">
               <component :is="tab.slots.label" />
@@ -68,7 +69,7 @@
                   ),
                 )
               "
-              @click.prevent.stop="emit('closeTab', tab.props.slug)"
+              @click.prevent.stop="closeTab(tab)"
             >
               <Icon name="x" size="xs" />
             </button>
@@ -200,6 +201,12 @@ const orderedTabs = computed(
     ) as TabGroupItemDefinition[],
 );
 const selectedTabSlug = ref<string>();
+
+const closeTab = (tab: TabGroupItemDefinition) => {
+  if (props.closeable && !tab.props.uncloseable) {
+    emit("closeTab", tab.props.slug);
+  }
+};
 
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;

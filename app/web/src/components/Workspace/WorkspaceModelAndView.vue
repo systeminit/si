@@ -191,7 +191,7 @@
       <div class="flex flex-col h-full">
         <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
 
-        <div class="flex-1">
+        <div class="flex-1 overflow-hidden">
           <template v-if="selectedEdge">
             <EdgeDetailsPanel
               @delete="triggerDeleteSelection"

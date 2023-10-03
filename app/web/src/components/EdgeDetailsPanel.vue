@@ -1,43 +1,45 @@
 <template>
-  <div v-if="selectedEdge" class="flex flex-col h-full">
-    <div class="p-xs border-b dark:border-neutral-600">
+  <div v-if="selectedEdge" class="flex flex-col h-full w-full overflow-hidden">
+    <div class="p-xs border-b dark:border-neutral-600 flex-none">
       <Inline alignY="center">
         <Icon size="md" name="plug" class="shrink-0 mr-2xs" />
         <div class="font-bold capsize">Connection Details</div>
       </Inline>
     </div>
 
-    <div class="border-b dark:border-neutral-600">
-      <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
-        EDGE ID = {{ selectedEdge.id }}
-      </div>
+    <div class="overflow-y-auto">
+      <div class="border-b dark:border-neutral-600">
+        <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
+          EDGE ID = {{ selectedEdge.id }}
+        </div>
 
-      <div class="p-xs">
-        <EdgeCard :edgeId="selectedEdge.id" />
-      </div>
-      <DetailsPanelTimestamps
-        :changeStatus="selectedEdge.changeStatus"
-        :created="selectedEdge.createdInfo"
-        :deleted="selectedEdge.deletedInfo"
-      />
-    </div>
-
-    <template v-if="selectedEdge.changeStatus === 'deleted'">
-      <Stack class="p-sm">
-        <ErrorMessage icon="alert-triangle" tone="warning">
-          This edge will be removed from your model when this change set is
-          merged
-        </ErrorMessage>
-        <VButton
-          tone="shade"
-          variant="ghost"
-          size="md"
-          icon="trash-restore"
-          label="Restore edge"
-          @click="emit('restore')"
+        <div class="p-xs">
+          <EdgeCard :edgeId="selectedEdge.id" />
+        </div>
+        <DetailsPanelTimestamps
+          :changeStatus="selectedEdge.changeStatus"
+          :created="selectedEdge.createdInfo"
+          :deleted="selectedEdge.deletedInfo"
         />
-      </Stack>
-    </template>
+      </div>
+
+      <template v-if="selectedEdge.changeStatus === 'deleted'">
+        <Stack class="p-sm">
+          <ErrorMessage icon="alert-triangle" tone="warning">
+            This edge will be removed from your model when this change set is
+            merged
+          </ErrorMessage>
+          <VButton
+            tone="shade"
+            variant="ghost"
+            size="md"
+            icon="trash-restore"
+            label="Restore edge"
+            @click="emit('restore')"
+          />
+        </Stack>
+      </template>
+    </div>
     <!-- <template v-else>
       <div class="p-sm">
         <VButton

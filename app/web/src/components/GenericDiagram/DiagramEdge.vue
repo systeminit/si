@@ -5,7 +5,7 @@
         visible: isHovered || isSelected,
         points,
         stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 7 : 4,
+        strokeWidth: isSelected ? 9 : 5,
         listening: false,
       }"
     />
@@ -27,7 +27,7 @@
         points,
         stroke: strokeColor,
         strokeWidth: 2,
-        hitStrokeWidth: 8,
+        hitStrokeWidth: 10,
         listening: !edge.def.isInvisible,
         opacity: isDeleted ? 0.5 : 1,
         dash: [10, 10],

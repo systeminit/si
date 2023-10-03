@@ -461,6 +461,14 @@ function onKeyDown(e: KeyboardEvent) {
   // handle opening the help modal
   if (e.key === "?" || e.key === "/") helpModalRef.value?.open();
 
+  // handle zoom hotkeys
+  if (e.key === "=" || e.key === "+") {
+    setZoom(zoomLevel.value + 0.1);
+  }
+  if (e.key === "-" || e.key === "_") {
+    setZoom(zoomLevel.value - 0.1);
+  }
+
   // handle arrow keys - nudge and alignment
   if (!props.readOnly && e.key.startsWith("Arrow")) {
     const direction = convertArrowKeyToDirection(e.key);
@@ -575,7 +583,9 @@ function onRightClick(ke: KonvaEventObject<MouseEvent>) {
   if (!hoveredElement.value) return;
 
   if (!currentSelectionElements.value.includes(hoveredElement.value)) {
-    setSelectionByKey(hoveredElement.value.uniqueKey);
+    if (shiftKeyIsDown.value && hoveredElementKey.value) {
+      toggleSelectedByKey(hoveredElementKey.value);
+    } else setSelectionByKey(hoveredElement.value.uniqueKey);
   }
 
   emit("right-click-element", {
