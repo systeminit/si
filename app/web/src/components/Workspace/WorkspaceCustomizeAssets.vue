@@ -26,12 +26,6 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div class="absolute w-full flex flex-col h-full">
-      <div
-        v-if="!changeSetsStore.headSelected"
-        class="p-xs border-b dark:border-neutral-500"
-      >
-        <ApplyChangeSetButton class="w-full" />
-      </div>
       <SidebarSubpanelTitle>
         {{
           assetStore.selectedFuncId ? "Asset Function Details" : "Asset Details"
@@ -69,8 +63,6 @@ import { ResizablePanel } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -79,7 +71,6 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const funcStore = useFuncStore();
-const changeSetsStore = useChangeSetsStore();
 
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");

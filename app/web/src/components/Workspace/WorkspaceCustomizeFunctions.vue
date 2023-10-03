@@ -18,7 +18,6 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div class="absolute w-full flex flex-col h-full">
-      <ApplyChangeSetButton class="w-10/12 m-4" />
       <SidebarSubpanelTitle>Function Details</SidebarSubpanelTitle>
 
       <FuncDetails
@@ -37,7 +36,6 @@ import FuncListPanel from "@/components/FuncEditor/FuncListPanel.vue";
 import FuncEditorTabs from "@/components/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/components/FuncEditor/FuncDetails.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 

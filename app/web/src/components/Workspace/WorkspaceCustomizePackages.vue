@@ -18,7 +18,6 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div class="flex flex-col h-full items-center">
-      <ApplyChangeSetButton class="w-10/12 mx-auto my-4" />
       <SidebarSubpanelTitle>Module Details</SidebarSubpanelTitle>
       <ModuleDetailsPanel :key="moduleSlug" class="w-full" />
     </div>
@@ -34,7 +33,6 @@ import ModuleDisplay from "@/components/modules/ModuleDisplay.vue";
 import ModuleDetailsPanel from "@/components/modules/ModuleDetailsPanel.vue";
 import { useModuleStore } from "@/store/module.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 
 const moduleStore = useModuleStore();
