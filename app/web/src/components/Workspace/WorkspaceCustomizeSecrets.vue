@@ -43,7 +43,6 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div v-if="FF_SECRETS" class="flex flex-col h-full items-center">
-      <ApplyChangeSetButton class="w-10/12 mx-auto my-4" />
       <SidebarSubpanelTitle>Secret Details</SidebarSubpanelTitle>
       WIP
     </div>
@@ -55,7 +54,6 @@ import { computed } from "vue";
 import { ResizablePanel, VButton } from "@si/vue-lib/design-system";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useSecretsStore } from "@/store/secrets.store";
 import AddSecretForm from "@/components/AddSecretForm.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
