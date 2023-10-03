@@ -8,11 +8,11 @@ use tower::ServiceExt;
 
 mod change_set;
 mod component;
+mod functions;
 mod scenario;
 mod schema;
 mod secret;
 mod session;
-mod functions;
 
 pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
