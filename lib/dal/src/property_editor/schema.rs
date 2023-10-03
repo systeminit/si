@@ -9,10 +9,7 @@ use strum::{AsRefStr, Display, EnumString};
 use si_pkg::PropSpecWidgetKind;
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
-use crate::{
-    DalContext, LabelEntry, LabelList, Prop, PropKind, SchemaVariant, SchemaVariantId, Secret,
-    SecretId, StandardModel,
-};
+use crate::{DalContext, Prop, PropKind, SchemaVariant, SchemaVariantId, StandardModel};
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/property_editor_schema_for_schema_variant.sql");
@@ -60,7 +57,8 @@ impl PropertyEditorSchema {
             {
                 continue;
             }
-            let property_editor_prop = PropertyEditorProp::new(ctx, prop).await?;
+            let property_editor_prop = PropertyEditorProp::new(prop);
+
             let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
                 row.try_get("child_prop_ids")?;
             if let Some(child_prop_ids) = maybe_child_prop_ids {
@@ -92,19 +90,17 @@ pub struct PropertyEditorProp {
 }
 
 impl PropertyEditorProp {
-    pub async fn new(ctx: &DalContext, prop: Prop) -> PropertyEditorResult<PropertyEditorProp> {
-        Ok(PropertyEditorProp {
+    pub fn new(prop: Prop) -> PropertyEditorProp {
+        PropertyEditorProp {
             id: (*prop.id()).into(),
             name: prop.name().into(),
             kind: prop.kind().into(),
             widget_kind: PropertyEditorPropWidgetKind::new(
-                ctx,
                 *prop.widget_kind(),
                 prop.widget_options().map(|v| v.to_owned()),
-            )
-            .await?,
+            ),
             doc_link: prop.doc_link().map(Into::into),
-        })
+        }
     }
 }
 
@@ -144,7 +140,7 @@ pub enum PropertyEditorPropWidgetKind {
     ComboBox { options: Option<Value> },
     Header,
     Map,
-    Secret { options: LabelList<SecretId> },
+    Secret { options: Option<Value> },
     Select { options: Option<Value> },
     Text,
     TextArea,
@@ -210,12 +206,8 @@ impl From<&PropSpecWidgetKind> for WidgetKind {
 }
 
 impl PropertyEditorPropWidgetKind {
-    pub async fn new(
-        ctx: &DalContext,
-        widget_kind: WidgetKind,
-        widget_options: Option<Value>,
-    ) -> PropertyEditorResult<Self> {
-        Ok(match widget_kind {
+    pub fn new(widget_kind: WidgetKind, widget_options: Option<Value>) -> Self {
+        match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
             WidgetKind::Header => Self::Header,
@@ -225,19 +217,13 @@ impl PropertyEditorPropWidgetKind {
             },
             WidgetKind::Color => Self::Color,
             WidgetKind::Secret => Self::Secret {
-                options: LabelList::new(
-                    Secret::list(ctx)
-                        .await?
-                        .into_iter()
-                        .map(|s| LabelEntry::new(s.name(), *s.id()))
-                        .collect(),
-                ),
+                options: widget_options,
             },
             WidgetKind::Text => Self::Text,
             WidgetKind::TextArea => Self::TextArea,
             WidgetKind::ComboBox => Self::ComboBox {
                 options: widget_options,
             },
-        })
+        }
     }
 }

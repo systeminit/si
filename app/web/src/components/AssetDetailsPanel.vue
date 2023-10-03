@@ -32,8 +32,8 @@
       </template>
 
       <Stack class="p-xs py-sm">
-        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning"
-          >{{ disabledWarning }}
+        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning">
+          {{ disabledWarning }}
         </ErrorMessage>
 
         <ErrorMessage

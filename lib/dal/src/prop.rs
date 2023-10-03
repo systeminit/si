@@ -315,6 +315,7 @@ impl Prop {
     standard_model_accessor!(hidden, bool, PropResult);
     standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
     standard_model_accessor!(diff_func_id, Option<Pk(FuncId)>, PropResult);
+    standard_model_accessor!(schema_variant_id, Pk(SchemaVariantId), PropResult);
 
     pub fn path(&self) -> PropPath {
         self.path.to_owned().into()

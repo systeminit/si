@@ -22,16 +22,6 @@
         @add-to-map="addToMap($event)"
       />
     </div>
-    <!-- temporary code for testing secrets popover -->
-    <WidgetSecret
-      name="TEST SECRET EXAMPLE YAY"
-      :collapsedPaths="[]"
-      :value="undefined"
-      propId="test"
-      valueId="test"
-      docLink="https://www.wendywildsha.pe/"
-    />
-    <!-- temporary code for testing secrets popover -->
   </div>
 </template>
 
@@ -51,7 +41,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
-import WidgetSecret from "./PropertyEditor/WidgetSecret.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
 

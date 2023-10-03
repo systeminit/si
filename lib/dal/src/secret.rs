@@ -14,6 +14,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
+use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model,
     key_pair::KeyPairPk,
@@ -23,6 +24,8 @@ use crate::{
     HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError, Timestamp,
     Visibility,
 };
+
+const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
 
 /// Error type for Secrets.
 #[remain::sorted]
@@ -383,6 +386,33 @@ pub enum SecretKind {
     DockerHub,
     /// A Helm repository credential
     HelmRepo,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SecretFormDataView {
+    name: String,
+    kind: String,
+    widget_kind: String,
+    widget_options: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SecretDefinitionView {
+    pub secret_definition: String,
+    form_data: Vec<SecretFormDataView>,
+}
+
+pub async fn list_secret_definitions(ctx: &DalContext) -> SecretResult<Vec<SecretDefinitionView>> {
+    let rows = ctx
+        .txns()
+        .await?
+        .pg()
+        .query(LIST_SECRET_DEFINITIONS, &[ctx.tenancy(), ctx.visibility()])
+        .await?;
+
+    Ok(objects_from_rows(rows)?)
 }
 
 fn encode_crypted(crypted: &[u8]) -> String {
