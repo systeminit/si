@@ -27,6 +27,8 @@ pub enum FuncExecutionError {
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("pg error: {0}")]
+    NotFound(FuncExecutionPk),
+    #[error(transparent)]
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
@@ -283,4 +285,9 @@ impl FuncExecution {
 
     standard_model_accessor_ro!(func_id, FuncId);
     standard_model_accessor_ro!(function_failure, Option<FunctionResultFailure>);
+    standard_model_accessor_ro!(func_binding_args, serde_json::Value);
+    standard_model_accessor_ro!(handler, Option<String>);
+    standard_model_accessor_ro!(backend_kind, FuncBackendKind);
+    standard_model_accessor_ro!(backend_response_type, FuncBackendResponseType);
+    standard_model_accessor_ro!(code_base64, Option<String>);
 }

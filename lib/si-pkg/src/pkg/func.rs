@@ -151,6 +151,7 @@ pub struct SiPkgFunc<'a> {
     data: Option<SiPkgFuncData>,
     unique_id: String,
     deleted: bool,
+    is_from_builtin: Option<bool>,
 
     hash: Hash,
     source: Source<'a>,
@@ -188,6 +189,7 @@ impl<'a> SiPkgFunc<'a> {
             hash: func_hashed_node.hash(),
             unique_id: func_node.unique_id,
             deleted: func_node.deleted,
+            is_from_builtin: func_node.is_from_builtin,
             source: Source::new(graph, node_idx),
         })
     }
@@ -256,6 +258,10 @@ impl<'a> SiPkgFunc<'a> {
             None => None,
             Some(data) => data.link.as_ref(),
         }
+    }
+
+    pub fn is_from_builtin(&self) -> Option<bool> {
+        self.is_from_builtin
     }
 
     pub fn hash(&self) -> Hash {

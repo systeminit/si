@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use thiserror::Error;
 use url::ParseError;
 
@@ -10,6 +11,7 @@ pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
 use crate::{
+    component::view::debug::ComponentDebugViewError,
     func::{
         argument::{FuncArgumentError, FuncArgumentId},
         binding::FuncBindingError,
@@ -20,11 +22,11 @@ use crate::{
     socket::SocketError,
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ExternalProviderError,
-    ExternalProviderId, FuncBackendKind, FuncBackendResponseType, FuncError, FuncId,
-    InternalProviderError, InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkspaceError, WorkspacePk,
+    AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ComponentError,
+    ComponentId, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
+    PropError, PropId, PropKind, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
+    StandardModelError, ValidationPrototypeError, WorkspaceError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -60,6 +62,12 @@ pub enum PkgError {
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} not found")]
     ChangeSetNotFound(ChangeSetPk),
+    #[error(transparent)]
+    Component(#[from] ComponentError),
+    #[error(transparent)]
+    ComponentDebugView(#[from] ComponentDebugViewError),
+    #[error("component has no node: {0}")]
+    ComponentMissingNode(ComponentId),
     #[error("map item prop {0} has both custom key prototypes and custom prop only prototype")]
     ConflictingMapKeyPrototypes(PropId),
     #[error("expected data on an SiPkg node, but none found: {0}")]
@@ -271,5 +279,59 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
             FuncSpecBackendResponseType::Unset => Self::Unset,
             FuncSpecBackendResponseType::Validation => Self::Validation,
         }
+    }
+}
+
+/// A generic hash map of hash maps for tracking the presence of a thing in each change set. If a
+/// thing is asked for in a specific change set, and not found, the NONE change set will be
+/// checked.
+pub struct ChangeSetThingMap<Key, Thing>(HashMap<ChangeSetPk, HashMap<Key, Thing>>);
+
+impl<Key, Thing> ChangeSetThingMap<Key, Thing>
+where
+    Key: Eq + PartialEq + std::hash::Hash,
+{
+    pub fn new() -> Self {
+        let head_thing_map = HashMap::new();
+
+        let mut change_set_map: HashMap<ChangeSetPk, HashMap<Key, Thing>> = HashMap::new();
+        change_set_map.insert(ChangeSetPk::NONE, head_thing_map);
+
+        Self(change_set_map)
+    }
+
+    pub fn get(&self, change_set_pk: Option<ChangeSetPk>, key: &Key) -> Option<&Thing> {
+        match self.0.get(&change_set_pk.unwrap_or(ChangeSetPk::NONE)) {
+            Some(change_set_map) => change_set_map.get(key).or_else(|| {
+                self.0
+                    .get(&ChangeSetPk::NONE)
+                    .and_then(|things| things.get(key))
+            }),
+            None => self
+                .0
+                .get(&ChangeSetPk::NONE)
+                .and_then(|things| things.get(key)),
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        change_set_pk: Option<ChangeSetPk>,
+        key: Key,
+        thing: Thing,
+    ) -> Option<Thing> {
+        self.0
+            .entry(change_set_pk.unwrap_or(ChangeSetPk::NONE))
+            .or_insert(HashMap::new())
+            .insert(key, thing)
+    }
+}
+
+impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>
+where
+    Key: Eq + PartialEq + std::hash::Hash,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }

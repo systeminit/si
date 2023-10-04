@@ -6,7 +6,8 @@ use axum::{
 };
 use dal::change_status::ChangeStatusError;
 use dal::{
-    node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
+    component::view::debug::ComponentDebugViewError, node::NodeError,
+    property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError, ChangeSetError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
     FuncBindingError, FuncError, InternalProviderError, PropId, ReconciliationPrototypeError,
@@ -53,8 +54,10 @@ pub enum ComponentError {
     ChangeStatus(#[from] ChangeStatusError),
     #[error("component error: {0}")]
     Component(#[from] DalComponentError),
-    #[error("component debug error: {0}")]
+    #[error("component debug view error: {0}")]
     ComponentDebug(String),
+    #[error("component debug view error: {0}")]
+    ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("component name not found")]
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]

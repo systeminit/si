@@ -5,8 +5,8 @@ use std::{
 use url::Url;
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
 use crate::spec::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType};
@@ -22,6 +22,7 @@ const KEY_BACKEND_KIND_STR: &str = "backend_kind";
 const KEY_RESPONSE_TYPE_STR: &str = "response_type";
 const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_LINK_STR: &str = "link";
+const KEY_IS_FROM_BUILTIN: &str = "is_from_builtin";
 
 #[derive(Clone, Debug)]
 pub struct FuncData {
@@ -42,6 +43,7 @@ pub struct FuncNode {
     pub data: Option<FuncData>,
     pub unique_id: String,
     pub deleted: bool,
+    pub is_from_builtin: Option<bool>,
 }
 
 impl NameStr for FuncNode {
@@ -77,6 +79,7 @@ impl WriteBytes for FuncNode {
         }
 
         write_common_fields(writer, Some(self.unique_id.as_str()), self.deleted)?;
+        write_key_value_line_opt(writer, KEY_IS_FROM_BUILTIN, self.is_from_builtin)?;
 
         Ok(())
     }
@@ -134,12 +137,19 @@ impl ReadBytes for FuncNode {
         };
 
         let (unique_id, deleted) = read_common_fields(reader)?;
+        let is_from_builtin_str = read_key_value_line_opt(reader, KEY_IS_FROM_BUILTIN)?;
+        let is_from_builtin = if let Some(is_from_builtin) = is_from_builtin_str {
+            Some(bool::from_str(&is_from_builtin).map_err(GraphError::parse)?)
+        } else {
+            None
+        };
 
         Ok(Some(Self {
             name,
             data,
             unique_id: unique_id.unwrap_or("".into()),
             deleted,
+            is_from_builtin,
         }))
     }
 }
@@ -171,6 +181,7 @@ impl NodeChild for FuncSpec {
                 }),
                 unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,
+                is_from_builtin: self.is_from_builtin.to_owned(),
             }),
             children,
         )

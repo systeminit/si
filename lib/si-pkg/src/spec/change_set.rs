@@ -1,4 +1,4 @@
-use super::{FuncSpec, SchemaSpec, SpecError};
+use super::{ComponentSpec, FuncSpec, SchemaSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
@@ -25,6 +25,10 @@ pub struct ChangeSetSpec {
 
     #[builder(setter(into), default = "ChangeSetSpecStatus::Open")]
     pub status: ChangeSetSpecStatus,
+
+    #[builder(setter(each(name = "component", into)), default)]
+    #[serde(default)]
+    pub components: Vec<ComponentSpec>,
 
     #[builder(setter(each(name = "schema", into)), default)]
     #[serde(default)]
