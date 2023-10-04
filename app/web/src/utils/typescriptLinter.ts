@@ -228,14 +228,21 @@ export function GetTooltipFromPos(pos: number): Tooltip | null {
 
   const tags = quickInfo.tags?.length
     ? quickInfo?.tags
-        ?.map(
-          (t) =>
-            `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
+        ?.map(function format(t) {
+          let tag = `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
+            t.name
+          }:</span> <span class="cm-tooltip-doc-tag-info">${displayPartsToString(
+            t.text,
+          )}</span></div>`;
+          if (t.name === "example") {
+            tag = `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
               t.name
-            }:</span> <span class="cm-tooltip-doc-tag-info">${displayPartsToString(
+            }:</span>\n <span class="cm-tooltip-doc-tag-example">${displayPartsToString(
               t.text,
-            )}</span></div>`,
-        )
+            )}</span></div>`;
+          }
+          return tag;
+        })
         .join("")
     : "";
 

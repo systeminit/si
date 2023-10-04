@@ -16,6 +16,15 @@ export interface IValueFromBuilder {
   build(): ValueFrom;
 }
 
+  /**
+   * Gets a value from a socket or prop
+   *
+   * @example
+   * const value = new ValueFromBuilder()
+   *  .setKind("prop")
+   *  .setPropPath(["root", "si", "name"])
+   *  .build()
+   */
 export class ValueFromBuilder implements IValueFromBuilder {
   valueFrom = <ValueFrom>{};
 
@@ -23,11 +32,31 @@ export class ValueFromBuilder implements IValueFromBuilder {
     this.valueFrom = <ValueFrom>{};
   }
 
+  /**
+   * The type of the builder
+   *
+   * @param {string} kind [inputSocket | outputSocket | prop]
+   *
+   * @returns this
+   *
+   * @example
+   * .setKind("prop")
+   */
   setKind(kind: ValueFromKind): this {
     this.valueFrom.kind = kind;
     return this;
   }
 
+  /**
+   * Specify the socket name if using an inputSocket or outputSocket
+   *
+   * @param {string} name
+   *
+   * @returns this
+   *
+   * @example
+   * .setSocketName("Region")
+   */
   setSocketName(name: string): this {
     if (
       this.valueFrom.kind !== "inputSocket" &&
@@ -40,6 +69,16 @@ export class ValueFromBuilder implements IValueFromBuilder {
     return this;
   }
 
+  /**
+   * Specify the prop path if using a prop
+   *
+   * @param {string[]} path - a list of strings that represent the path to the prop
+   *
+   * @returns this
+   *
+   * @example
+   *  .setPropPath(["root", "si", "name"])
+   */
   setPropPath(path: string[]): this {
     if (this.valueFrom.kind !== "prop") {
       return this;
@@ -49,6 +88,12 @@ export class ValueFromBuilder implements IValueFromBuilder {
     return this;
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): ValueFrom {
     return this.valueFrom;
   }
@@ -75,6 +120,15 @@ export interface ISocketDefinitionBuilder {
   build(): SocketDefinition;
 }
 
+  /**
+   * Defines an input or output socket for passing values between components
+   *
+   * @example
+   * const regionSocket = new SocketDefinitionBuilder()
+   *  .setName("Region")
+   *  .setArity("one")
+   *  .build();
+   */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   socket = <SocketDefinition>{};
 
@@ -82,25 +136,75 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
     this.socket = <SocketDefinition>{};
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): SocketDefinition {
     return this.socket;
   }
 
+  /**
+   * Specify the prop path if using a prop
+   *
+   * @param {string} arity - [one | many]
+   *
+   * @returns this
+   *
+   * @example
+   *  .setArity("one")
+   */
   setArity(arity: SocketDefinitionArityType): this {
     this.socket.arity = arity;
     return this;
   }
 
+  /**
+   * The name of the socket. Note that this will be used to connect sockets
+   * and to reference the socket within the asset.
+   *
+   * @param {string} name
+   *
+   * @returns this
+   *
+   * @example
+   *  .setName("Subnet ID")
+   */
   setName(name: string): this {
     this.socket.name = name;
     return this;
   }
 
+  /**
+   * Should this socket show in the UI. Note that the socket can still be connected when the component is placed in a frame.
+   *
+   * @param {boolean} hidden
+   *
+   * @returns this
+   *
+   * @example
+   *  .setName("Subnet ID")
+   */
   setUiHidden(hidden: boolean): this {
     this.socket.uiHidden = hidden;
     return this;
   }
 
+  /**
+   * Set the value of this socket using a ValueFromBuilder
+   *
+   * @param {ValueFrom} valueFrom
+   *
+   * @returns this
+   *
+   * @example
+   *  .setValueFrom(new ValueFromBuilder()
+   *    .setKind("inputSocket")
+   *    .setSocketName("Region")
+   *    .build())
+   */
   setValueFrom(valueFrom: ValueFrom): this {
     this.socket.valueFrom = valueFrom;
     return this;
@@ -143,6 +247,14 @@ export interface IValidationBuilder {
   build(): Validation;
 }
 
+  /**
+   * Validates a prop using a function or from a list of common validations
+   *
+   * @example
+   * const validation = new ValidationBuilder()
+   *  .setKind("stringIsNotEmpty")
+   *  .build()
+   */
 export class ValidationBuilder implements IValidationBuilder {
   validation = <Validation>{};
 
@@ -163,6 +275,12 @@ export class ValidationBuilder implements IValidationBuilder {
     return this;
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): Validation {
     return this.validation;
   }
@@ -201,6 +319,16 @@ export class ValidationBuilder implements IValidationBuilder {
     return this;
   }
 
+  /**
+   * The type of validation
+   *
+   * @param {string} kind [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
+   *
+   * @returns this
+   *
+   * @example
+   * .setKind("integerIsNotEmpty")
+   */
   setKind(kind: ValidationKind): this {
     this.validation.kind = kind;
     return this;
@@ -247,6 +375,14 @@ export interface IPropWidgetDefinitionBuilder {
   build(): PropWidgetDefinition;
 }
 
+  /**
+   * Create a widget for interacting with a prop that is displayed in the modelling view.
+   *
+   * @example
+   * const validation = new PropWidgetDefinitionBuilder()
+   *  .setKind("text")
+   *  .build()
+   */
 export class PropWidgetDefinitionBuilder
   implements IPropWidgetDefinitionBuilder {
   propWidget = <PropWidgetDefinition>{};
@@ -255,11 +391,32 @@ export class PropWidgetDefinitionBuilder
     this.propWidget = <PropWidgetDefinition>{};
   }
 
+  /**
+   * The type of widget
+   *
+   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea]
+   *
+   * @returns this
+   *
+   * @example
+   * .setKind("color")
+   */
   setKind(kind: PropWidgetDefinitionKind): this {
     this.propWidget.kind = kind;
     return this;
   }
 
+  /**
+   * Add an option when using a comboBox
+   *
+   * @param {string} key - the value displayed in the comboBoxx
+   * @param {string} value - the value the prop is set to
+   *
+   * @returns this
+   *
+   * @example
+   * .setOption("us-east-2 - US East (Ohio)", "us-east-2")
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addOption(key: string, value: string): this {
     if (!this.propWidget.options) {
@@ -273,6 +430,12 @@ export class PropWidgetDefinitionBuilder
     return this;
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): PropWidgetDefinition {
     return this.propWidget;
   }
@@ -291,6 +454,14 @@ export interface IMapKeyFuncBuilder {
   build(): MapKeyFunc;
 }
 
+  /**
+   * Used to add a value to a map
+   *
+   * @example
+   *  const mapButton = new MapKeyFuncBuilder()
+   *    .setKey("Name")
+   *    .build()
+   */
 export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
   mapKeyFunc = <MapKeyFunc>{};
 
@@ -298,15 +469,44 @@ export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
     this.mapKeyFunc = <MapKeyFunc>{};
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): MapKeyFunc {
     return this.mapKeyFunc;
   }
 
+  /**
+   * Set the value of the key for the map entry
+   *
+   * @param {string} key - the name of the key
+   *
+   * @returns this
+   *
+   * @example
+   *  .setKey("Name")
+   */
   setKey(key: string): this {
     this.mapKeyFunc.key = key;
     return this;
   }
 
+  /**
+   * Set the value of this key from a ValueFromBuilder
+   *
+   * @param {ValueFrom} valueFrom
+   *
+   * @returns this
+   *
+   * @example
+   *  .setValueFrom(new ValueFromBuilder()
+   *    .setKind("prop")
+   *    .setPropPath(["root", "si", "name"])
+   *    .build())
+   */
   setValueFrom(valueFrom: ValueFrom): this {
     this.mapKeyFunc.valueFrom = valueFrom;
     return this;
@@ -339,6 +539,12 @@ export class SiPropValueFromDefinitionBuilder
     this.definition = <SiPropValueFromDefinition>{};
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): SiPropValueFromDefinition {
     return this.definition;
   }
@@ -407,6 +613,16 @@ export interface IPropBuilder {
   build(): PropDefinition;
 }
 
+  /**
+   * Creates a prop to attach values to an asset
+   *
+   * @example
+   *  const propName = new PropBuilder()
+   *   .setName("name")
+   *   .setKind("string")
+   *   .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+   *  .build();
+   */
 export class PropBuilder implements IPropBuilder {
   prop = <PropDefinition>{};
 
@@ -414,6 +630,20 @@ export class PropBuilder implements IPropBuilder {
     this.prop = <PropDefinition>{};
   }
 
+  /**
+   * Adds a child to an object type prop
+   *
+   * @param {PropDefinition} child
+   *
+   * @returns this
+   *
+   * @example
+   *   .addChild(new PropBuilder()
+   *     .setKind("string")
+   *     .setName("sweetChildProp")
+   *     .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+   *     .build())
+   */
   addChild(child: PropDefinition): this {
     if (this.prop.kind !== "object") {
       throw new Error(
@@ -429,6 +659,20 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Adds an entry to array or map type props
+   *
+   * @param {PropDefinition} entry
+   *
+   * @returns this
+   *
+   * @example
+   *   .setEntry(new PropBuilder()
+   *     .setKind("string")
+   *     .setName("iamanentryprop")
+   *     .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+   *     .build())
+   */
   setEntry(entry: PropDefinition): this {
     if (this.prop.kind !== "array" && this.prop.kind !== "map") {
       throw new Error(
@@ -440,6 +684,18 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Add a button for putting entries into maps
+   *
+   * @param {MapKeyFunc} func
+   *
+   * @returns this
+   *
+   * @example
+   *  .addMapKeyFunc(new MapKeyFuncBuilder()
+   *    .setKey("Name")
+   *    .build()
+   */
   addMapKeyFunc(func: MapKeyFunc): this {
     if (!this.prop.mapKeyFuncs) {
       this.prop.mapKeyFuncs = [];
@@ -448,6 +704,18 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Add functions to validate the value of the prop
+   *
+   * @param {Validation} validation
+   *
+   * @returns this
+   *
+   * @example
+   * .addValidation(new ValidationBuilder()
+   *  .setKind("stringIsNotEmpty")
+   *  .build())
+   */
   addValidation(validation: Validation): this {
     if (!this.prop.validations) {
       this.prop.validations = [];
@@ -456,16 +724,42 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Build the object
+   *
+   * @example
+   *  .build()
+   */
   build(): PropDefinition {
     return this.prop;
   }
 
+  /**
+   * Set a value to be automatically populated in the prop
+   *
+   * @param {any} value
+   *
+   * @returns this
+   *
+   * @example
+   * .setDefaultValue("cats")
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setDefaultValue(value: any): this {
     this.prop.defaultValue = value;
     return this;
   }
 
+  /**
+   * Set a link to external documentation that will appear beneath the prop
+   *
+   * @param {string} link
+   *
+   * @returns this
+   *
+   * @example
+   *  .setDocLink("https://www.systeminit.com/")
+   */
   setDocLink(link: string): this {
     this.prop.docLink = link;
     return this;
@@ -476,6 +770,16 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Whether the prop should be displayed in th UI or not
+   *
+   * @param {boolean} hidden
+   *
+   * @returns this
+   *
+   * @example
+   *  .setHidden(true)
+   */
   setHidden(hidden: boolean): this {
     this.prop.hidden = hidden;
     return this;
@@ -511,11 +815,36 @@ export class PropBuilder implements IPropBuilder {
     return this;
   }
 
+  /**
+   * Set the value of this prop using a ValueFromBuilder
+   *
+   * @param {ValueFrom} valueFrom
+   *
+   * @returns this
+   *
+   * @example
+   *  .setValueFrom(new ValueFromBuilder()
+   *    .setKind("inputSocket")
+   *    .setSocketName("Region")
+   *    .build())
+   */
   setValueFrom(valueFrom: ValueFrom): this {
     this.prop.valueFrom = valueFrom;
     return this;
   }
 
+  /**
+   * The type of widget for the prop, determing how it is displayed in the UI
+   *
+   * @param {PropWidgetDefinition} widget
+   *
+   * @returns this
+   *
+   * @example
+   * setWidget(new PropWidgetDefinitionBuilder()
+   * .setKind("text")
+   * .build())
+   */
   setWidget(widget: PropWidgetDefinition): this {
     if (widget.kind === 'secret') {
       throw new Error("Cannot create prop with secret widget. Use addSecretProp() to create those.");
