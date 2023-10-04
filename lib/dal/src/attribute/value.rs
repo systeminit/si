@@ -1238,7 +1238,7 @@ impl AttributeValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AttributeValuePayload {
     pub prop: Prop,
     pub func_binding_return_value: Option<FuncBindingReturnValue>,

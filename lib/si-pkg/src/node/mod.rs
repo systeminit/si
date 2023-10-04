@@ -10,14 +10,19 @@ use object_tree::{
 
 mod action_func;
 mod attr_func_input;
+mod attribute_value;
+mod attribute_value_child;
 mod category;
 mod change_set;
 mod change_set_child;
+mod component;
+mod component_child;
 mod func;
 mod func_argument;
 mod leaf_function;
 mod map_key_func;
 mod package;
+mod position;
 mod prop;
 mod prop_child;
 mod schema;
@@ -30,14 +35,19 @@ mod validation;
 pub(crate) use self::{
     action_func::ActionFuncNode,
     attr_func_input::AttrFuncInputNode,
+    attribute_value::AttributeValueNode,
+    attribute_value_child::AttributeValueChildNode,
     category::CategoryNode,
     change_set::ChangeSetNode,
     change_set_child::{ChangeSetChild, ChangeSetChildNode},
+    component::ComponentNode,
+    component_child::ComponentChildNode,
     func::FuncNode,
     func_argument::FuncArgumentNode,
     leaf_function::LeafFunctionNode,
     map_key_func::MapKeyFuncNode,
     package::PackageNode,
+    position::PositionNode,
     prop::{PropNode, PropNodeData},
     prop_child::PropChildNode,
     schema::SchemaNode,
@@ -49,22 +59,27 @@ pub(crate) use self::{
 };
 
 const NODE_KIND_ACTION_FUNC: &str = "action_func";
+const NODE_KIND_ATTRIBUTE_VALUE: &str = "attribute_value";
+const NODE_KIND_ATTRIBUTE_VALUE_CHILD: &str = "attribute_value_child";
 const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
 const NODE_KIND_CATEGORY: &str = "category";
 const NODE_KIND_CHANGE_SET: &str = "change_set";
 const NODE_KIND_CHANGE_SET_CHILD: &str = "change_set_child";
+const NODE_KIND_COMPONENT: &str = "component";
+const NODE_KIND_COMPONENT_CHILD: &str = "component_child";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
 const NODE_KIND_MAP_KEY_FUNC: &str = "map_key_func";
 const NODE_KIND_PACKAGE: &str = "package";
+const NODE_KIND_POSITION: &str = "position";
 const NODE_KIND_PROP: &str = "prop";
 const NODE_KIND_PROP_CHILD: &str = "prop_child";
 const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
-const NODE_KIND_SOCKET: &str = "socket";
 const NODE_KIND_SI_PROP_FUNC: &str = "si_prop_func";
+const NODE_KIND_SOCKET: &str = "socket";
 const NODE_KIND_VALIDATION: &str = "validation";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
@@ -115,14 +130,19 @@ fn write_common_fields<W: Write>(
 pub enum PkgNode {
     ActionFunc(ActionFuncNode),
     AttrFuncInput(AttrFuncInputNode),
+    AttributeValue(AttributeValueNode),
+    AttributeValueChild(AttributeValueChildNode),
     Category(CategoryNode),
     ChangeSet(ChangeSetNode),
     ChangeSetChild(ChangeSetChildNode),
+    Component(ComponentNode),
+    ComponentChild(ComponentChildNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
     LeafFunction(LeafFunctionNode),
     MapKeyFunc(MapKeyFuncNode),
     Package(PackageNode),
+    Position(PositionNode),
     Prop(PropNode),
     PropChild(PropChildNode),
     Schema(SchemaNode),
@@ -136,9 +156,13 @@ pub enum PkgNode {
 impl PkgNode {
     pub const ACTION_FUNC_KIND_STR: &str = NODE_KIND_ACTION_FUNC;
     pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
+    pub const ATTRIBUTE_VALUE_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE;
+    pub const ATTRIBUTE_VALUE_CHILD_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE_CHILD;
     pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
     pub const CHANGE_SET_KIND_STR: &str = NODE_KIND_CHANGE_SET;
     pub const CHANGE_SET_CHILD_KIND_STR: &str = NODE_KIND_CHANGE_SET_CHILD;
+    pub const COMPONENT_KIND_STR: &str = NODE_KIND_COMPONENT;
+    pub const COMPONENT_CHILD_KIND_STR: &str = NODE_KIND_COMPONENT_CHILD;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
@@ -155,23 +179,28 @@ impl PkgNode {
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {
+            Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::AttrFuncInput(_) => NODE_KIND_ATTR_FUNC_INPUT,
+            Self::AttributeValue(_) => NODE_KIND_ATTRIBUTE_VALUE,
+            Self::AttributeValueChild(_) => NODE_KIND_ATTRIBUTE_VALUE_CHILD,
             Self::Category(_) => NODE_KIND_CATEGORY,
             Self::ChangeSet(_) => NODE_KIND_CHANGE_SET,
             Self::ChangeSetChild(_) => NODE_KIND_CHANGE_SET_CHILD,
-            Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
+            Self::Component(_) => NODE_KIND_COMPONENT,
+            Self::ComponentChild(_) => NODE_KIND_COMPONENT_CHILD,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(_) => NODE_KIND_PACKAGE,
+            Self::Position(_) => NODE_KIND_POSITION,
             Self::Prop(_) => NODE_KIND_PROP,
             Self::PropChild(_) => NODE_KIND_PROP_CHILD,
             Self::Schema(_) => NODE_KIND_SCHEMA,
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
-            Self::Socket(_) => NODE_KIND_SOCKET,
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
+            Self::Socket(_) => NODE_KIND_SOCKET,
             Self::Validation(_) => NODE_KIND_VALIDATION,
         }
     }
@@ -180,23 +209,28 @@ impl PkgNode {
 impl NameStr for PkgNode {
     fn name(&self) -> &str {
         match self {
+            Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
             Self::AttrFuncInput(node) => node.name(),
+            Self::AttributeValue(_) => NODE_KIND_ATTRIBUTE_VALUE,
+            Self::AttributeValueChild(node) => node.name(),
             Self::Category(node) => node.name(),
             Self::ChangeSet(node) => node.name(),
             Self::ChangeSetChild(node) => node.name(),
-            Self::ActionFunc(_) => NODE_KIND_ACTION_FUNC,
+            Self::Component(node) => node.name(),
+            Self::ComponentChild(node) => node.name(),
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
             Self::MapKeyFunc(_) => NODE_KIND_MAP_KEY_FUNC,
             Self::Package(node) => node.name(),
+            Self::Position(_) => NODE_KIND_POSITION,
             Self::Prop(node) => node.name(),
             Self::PropChild(node) => node.name(),
             Self::Schema(node) => node.name(),
             Self::SchemaVariant(node) => node.name(),
             Self::SchemaVariantChild(node) => node.name(),
-            Self::Socket(node) => node.name(),
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
+            Self::Socket(node) => node.name(),
             Self::Validation(_) => NODE_KIND_VALIDATION,
         }
     }
@@ -207,23 +241,28 @@ impl WriteBytes for PkgNode {
         write_key_value_line(writer, KEY_NODE_KIND_STR, self.node_kind_str())?;
 
         match self {
+            Self::ActionFunc(node) => node.write_bytes(writer)?,
             Self::AttrFuncInput(node) => node.write_bytes(writer)?,
+            Self::AttributeValue(node) => node.write_bytes(writer)?,
+            Self::AttributeValueChild(node) => node.write_bytes(writer)?,
             Self::Category(node) => node.write_bytes(writer)?,
             Self::ChangeSet(node) => node.write_bytes(writer)?,
             Self::ChangeSetChild(node) => node.write_bytes(writer)?,
-            Self::ActionFunc(node) => node.write_bytes(writer)?,
+            Self::Component(node) => node.write_bytes(writer)?,
+            Self::ComponentChild(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
             Self::MapKeyFunc(node) => node.write_bytes(writer)?,
             Self::Package(node) => node.write_bytes(writer)?,
+            Self::Position(node) => node.write_bytes(writer)?,
             Self::Prop(node) => node.write_bytes(writer)?,
             Self::PropChild(node) => node.write_bytes(writer)?,
             Self::Schema(node) => node.write_bytes(writer)?,
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
-            Self::Socket(node) => node.write_bytes(writer)?,
             Self::SiPropFunc(node) => node.write_bytes(writer)?,
+            Self::Socket(node) => node.write_bytes(writer)?,
             Self::Validation(node) => node.write_bytes(writer)?,
         };
 
@@ -243,10 +282,20 @@ impl ReadBytes for PkgNode {
             NODE_KIND_ATTR_FUNC_INPUT => {
                 AttrFuncInputNode::read_bytes(reader)?.map(Self::AttrFuncInput)
             }
+            NODE_KIND_ATTRIBUTE_VALUE => {
+                AttributeValueNode::read_bytes(reader)?.map(Self::AttributeValue)
+            }
+            NODE_KIND_ATTRIBUTE_VALUE_CHILD => {
+                AttributeValueChildNode::read_bytes(reader)?.map(Self::AttributeValueChild)
+            }
             NODE_KIND_CATEGORY => CategoryNode::read_bytes(reader)?.map(Self::Category),
             NODE_KIND_CHANGE_SET => ChangeSetNode::read_bytes(reader)?.map(Self::ChangeSet),
             NODE_KIND_CHANGE_SET_CHILD => {
                 ChangeSetChildNode::read_bytes(reader)?.map(Self::ChangeSetChild)
+            }
+            NODE_KIND_COMPONENT => ComponentNode::read_bytes(reader)?.map(Self::Component),
+            NODE_KIND_COMPONENT_CHILD => {
+                ComponentChildNode::read_bytes(reader)?.map(Self::ComponentChild)
             }
             NODE_KIND_FUNC => FuncNode::read_bytes(reader)?.map(Self::Func),
             NODE_KIND_FUNC_ARGUMENT => {
@@ -257,6 +306,7 @@ impl ReadBytes for PkgNode {
             }
             NODE_KIND_MAP_KEY_FUNC => MapKeyFuncNode::read_bytes(reader)?.map(Self::MapKeyFunc),
             NODE_KIND_PACKAGE => PackageNode::read_bytes(reader)?.map(Self::Package),
+            NODE_KIND_POSITION => PositionNode::read_bytes(reader)?.map(Self::Position),
             NODE_KIND_PROP => PropNode::read_bytes(reader)?.map(Self::Prop),
             NODE_KIND_PROP_CHILD => PropChildNode::read_bytes(reader)?.map(Self::PropChild),
             NODE_KIND_SCHEMA => SchemaNode::read_bytes(reader)?.map(Self::Schema),

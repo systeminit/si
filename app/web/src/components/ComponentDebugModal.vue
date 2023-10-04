@@ -1,7 +1,22 @@
 <template>
   <Modal ref="modalRef" title="Component Debug" size="4xl">
-    Component Id: {{ selectedComponentId ?? "none" }}
     <Stack v-if="debugData" class="m-4 overflow-y-scroll max-h-[80vh]">
+      <Collapsible label="Component" defaultOpen textSize="lg">
+        <dl class="border-l-2 p-2 my-2">
+          <dt class="uppercase text-xs italic opacity-80">Id</dt>
+          <dd class="p-2 my-2 border-2 border-opacity-10">
+            <pre>{{ selectedComponentId ?? "none" }}</pre>
+          </dd>
+          <dt class="uppercase text-xs italic opacity-80">Name</dt>
+          <dd class="p-2 my-2 border-2 border-opacity-10">
+            {{ debugData.name }}
+          </dd>
+          <dt class="uppercase text-xs italic opacity-80">Variant Id</dt>
+          <dd class="p-2 my-2 border-2 border-opacity-10">
+            <pre>{{ debugData.schemaVariantId }}</pre>
+          </dd>
+        </dl>
+      </Collapsible>
       <Collapsible
         label="Attributes"
         :defaultOpen="false"

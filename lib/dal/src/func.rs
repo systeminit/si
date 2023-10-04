@@ -12,7 +12,7 @@ use crate::func::argument::FuncArgumentError;
 use crate::{
     generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
     standard_model_accessor_ro, DalContext, FuncBinding, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility, WorkspacePk,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -190,6 +190,20 @@ impl Func {
             )?),
             None => None,
         })
+    }
+
+    pub async fn is_builtin(&self, ctx: &DalContext) -> FuncResult<bool> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT id FROM funcs WHERE id = $1 and tenancy_workspace_pk = $2 LIMIT 1",
+                &[self.id(), &WorkspacePk::NONE],
+            )
+            .await?;
+
+        Ok(row.is_some())
     }
 
     pub async fn set_code_plaintext(

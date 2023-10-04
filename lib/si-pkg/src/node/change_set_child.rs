@@ -7,8 +7,9 @@ use object_tree::{
 };
 
 use super::PkgNode;
-use crate::{FuncSpec, SchemaSpec};
+use crate::{ComponentSpec, FuncSpec, SchemaSpec};
 
+const CHANGE_SET_CHILD_TYPE_COMPONENTS: &str = "components";
 const CHANGE_SET_CHILD_TYPE_FUNCS: &str = "funcs";
 const CHANGE_SET_CHILD_TYPE_SCHEMAS: &str = "schemas";
 
@@ -18,6 +19,7 @@ const KEY_KIND_STR: &str = "kind";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ChangeSetChild {
+    Components(Vec<ComponentSpec>),
     Funcs(Vec<FuncSpec>),
     Schemas(Vec<SchemaSpec>),
 }
@@ -25,6 +27,7 @@ pub enum ChangeSetChild {
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum ChangeSetChildNode {
+    Components,
     Funcs,
     Schemas,
 }
@@ -32,6 +35,7 @@ pub enum ChangeSetChildNode {
 impl ChangeSetChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
+            Self::Components => CHANGE_SET_CHILD_TYPE_COMPONENTS,
             Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
             Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
@@ -41,6 +45,7 @@ impl ChangeSetChildNode {
 impl NameStr for ChangeSetChildNode {
     fn name(&self) -> &str {
         match self {
+            Self::Components => CHANGE_SET_CHILD_TYPE_COMPONENTS,
             Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
             Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
@@ -62,6 +67,7 @@ impl ReadBytes for ChangeSetChildNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let node = match kind_str.as_str() {
+            CHANGE_SET_CHILD_TYPE_COMPONENTS => Self::Components,
             CHANGE_SET_CHILD_TYPE_FUNCS => Self::Funcs,
             CHANGE_SET_CHILD_TYPE_SCHEMAS => Self::Schemas,
             invalid_kind => {
@@ -81,6 +87,16 @@ impl NodeChild for ChangeSetChild {
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
         match self {
+            Self::Components(entries) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::ChangeSetChild(ChangeSetChildNode::Components),
+                entries
+                    .iter()
+                    .map(|func| {
+                        Box::new(func.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
             Self::Funcs(entries) => NodeWithChildren::new(
                 NodeKind::Tree,
                 Self::NodeType::ChangeSetChild(ChangeSetChildNode::Funcs),

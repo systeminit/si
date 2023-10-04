@@ -5,10 +5,13 @@ use thiserror::Error;
 
 mod action_func;
 mod attr_func_input;
+mod attribute_value;
 mod change_set;
+mod component;
 mod func;
 mod leaf_function;
 mod map_key_func;
+mod position;
 mod prop;
 mod schema;
 mod si_prop_func;
@@ -17,8 +20,9 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, change_set::*, func::*, leaf_function::*, map_key_func::*,
-    prop::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
+    action_func::*, attr_func_input::*, attribute_value::*, change_set::*, component::*, func::*,
+    leaf_function::*, map_key_func::*, position::*, prop::*, schema::*, si_prop_func::*, socket::*,
+    validation::*, variant::*,
 };
 
 use super::SiPkgKind;

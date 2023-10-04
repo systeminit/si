@@ -158,6 +158,9 @@ pub struct FuncSpec {
     #[builder(setter(into), default)]
     #[serde(default)]
     pub deleted: bool,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub is_from_builtin: Option<bool>,
 
     #[builder(setter(each(name = "argument"), into), default)]
     pub arguments: Vec<FuncArgumentSpec>,

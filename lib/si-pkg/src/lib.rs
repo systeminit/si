@@ -10,16 +10,17 @@ pub use pkg::{
 };
 pub use spec::{
     ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
-    AttrFuncInputSpecKind, ChangeSetSpec, ChangeSetSpecBuilder, ChangeSetSpecStatus,
+    AttrFuncInputSpecKind, AttributeValuePath, AttributeValueSpec, ChangeSetSpec,
+    ChangeSetSpecBuilder, ChangeSetSpecStatus, ComponentSpec, ComponentSpecVariant,
     FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncSpecData, FuncSpecDataBuilder, LeafFunctionSpec,
     LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder,
-    PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, PropSpecWidgetKind,
-    SchemaSpec, SchemaSpecBuilder, SchemaSpecData, SchemaSpecDataBuilder, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
-    SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder, SiPropFuncSpecKind,
-    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecDataBuilder, SocketSpecKind, SpecError,
-    ValidationSpec, ValidationSpecKind,
+    PkgSpec, PkgSpecBuilder, PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaSpecData, SchemaSpecDataBuilder,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder,
+    SiPropFuncSpecKind, SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecDataBuilder,
+    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
 };
 
 #[cfg(test)]
