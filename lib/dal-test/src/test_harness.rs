@@ -7,8 +7,7 @@ use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Schema, SchemaId, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, User, UserPk, Visibility, Workspace,
-    WorkspacePk,
+    Secret, StandardModel, User, UserPk, Visibility, Workspace, WorkspacePk,
 };
 use names::{Generator, Name};
 
@@ -186,8 +185,8 @@ pub async fn create_secret(ctx: &DalContext, key_pair_pk: KeyPairPk) -> Secret {
     EncryptedSecret::new(
         ctx,
         &name,
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
+        "Mock".to_owned(),
+        Some("Description".to_owned()),
         &encrypt_message(ctx, key_pair_pk, &serde_json::json!({ "name": name })).await,
         key_pair_pk,
         Default::default(),
@@ -206,8 +205,8 @@ pub async fn create_secret_with_message(
     EncryptedSecret::new(
         ctx,
         &name,
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
+        "Mock".to_owned(),
+        Some("Description".to_owned()),
         &encrypt_message(ctx, key_pair_pk, message).await,
         key_pair_pk,
         Default::default(),

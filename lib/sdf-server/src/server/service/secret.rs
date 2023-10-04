@@ -13,7 +13,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use dal::diagram::node::HistoryEventMetadata;
-use dal::secret::{list_secret_definitions, SecretDefinitionView};
+use dal::secret::SecretDefinitionView;
 use dal::{
     DiagramError, HistoryActorTimestamp, KeyPairError, SecretId, StandardModelError,
     TransactionsError, UserError, Visibility, WorkspacePk, WsEventError,
@@ -21,8 +21,11 @@ use dal::{
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::server::state::AppState;
+use crate::service::secret::list_secrets::{ListSecretResponse, SecretDefinitionViewWithSecrets};
 
+pub mod create_secret;
 pub mod get_public_key;
+pub mod list_secrets;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -39,6 +42,8 @@ pub enum SecretError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     Secret(#[from] dal::SecretError),
+    #[error("definition not found for secret: {0}")]
+    SecretWithInvalidDefinition(SecretId),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
@@ -86,16 +91,9 @@ impl IntoResponse for SecretError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/get_public_key", get(get_public_key::get_public_key))
-        .route("/", post(create_secret))
-        .route("/", get(list_secrets))
+        .route("/", post(create_secret::create_secret))
+        .route("/", get(list_secrets::list_secrets))
         .route("/", delete(delete_secrets))
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SecretDefinitionViewWithSecrets {
-    definition: SecretDefinitionView,
-    secrets: Vec<Secret>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -110,7 +108,7 @@ pub struct CreateSecretRequest {
 
 pub type CreateSecretResponse = Secret;
 
-pub async fn create_secret(
+pub async fn _create_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     Json(request): Json<CreateSecretRequest>,
@@ -152,9 +150,6 @@ pub struct ListSecretRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
-
-pub type ListSecretResponse = HashMap<String, SecretDefinitionViewWithSecrets>;
-
 pub async fn list_secrets(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -162,8 +157,7 @@ pub async fn list_secrets(
 ) -> SecretResult<Json<ListSecretResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let definitions = list_secret_definitions(&ctx).await?;
-    let secrets = SECRETOS.lock().await;
+    let definitions = SecretDefinitionView::list(&ctx).await?;
 
     Ok(Json(
         definitions
@@ -173,9 +167,7 @@ pub async fn list_secrets(
 
                 let view = SecretDefinitionViewWithSecrets {
                     definition: def,
-                    secrets: secrets
-                        .get(&secret_definition)
-                        .map_or_else(Vec::new, |view| view.clone()),
+                    secrets: Vec::new(),
                 };
 
                 (secret_definition, view)

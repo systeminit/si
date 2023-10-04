@@ -188,6 +188,9 @@ importers:
       javascript-time-ago:
         specifier: ^2.5.7
         version: 2.5.9
+      js-base64:
+        specifier: ^3.7.5
+        version: 3.7.5
       js-beautify:
         specifier: ^1.14.9
         version: 1.14.9
@@ -203,6 +206,9 @@ importers:
       less:
         specifier: ^4.1.3
         version: 4.1.3
+      libsodium-wrappers:
+        specifier: ^0.7.13
+        version: 0.7.13
       local-storage-fallback:
         specifier: ^4.1.2
         version: 4.1.2
@@ -267,6 +273,9 @@ importers:
       '@types/js-beautify':
         specifier: ^1.14.1
         version: 1.14.1
+      '@types/libsodium-wrappers':
+        specifier: ^0.7.11
+        version: 0.7.11
       '@types/lodash-es':
         specifier: ^4.17.7
         version: 4.17.7
@@ -3626,6 +3635,10 @@ packages:
     resolution: {integrity: sha512-S6eHyZyoWCZLNHyy8j0sMW85cPrpByCbGGU2/BO4IzGiI87aHJ92lZh4E9xfsM9DcbCT469/OIqyC0sSJXSIBQ==}
     dependencies:
       '@types/koa': 2.13.5
+    dev: true
+
+  /@types/libsodium-wrappers@0.7.11:
+    resolution: {integrity: sha512-8avZYJny690B6lFZQEDz4PEdCgC8D8qmGE/mhJBzCwzZvsqne61tCRbtJOhxsjYMItEZd3k4SoR4xKKLnI9Ztg==}
     dev: true
 
   /@types/lodash-es@4.17.7:
@@ -10675,6 +10688,10 @@ packages:
     resolution: {integrity: sha512-MSJQC5vXco5Br38mzaQKiq9mwt7lwj2eXpgpRyQYNHYt2lq1PjkWa7DLXX0WVcQLE9HhMh3jPiufS7fhJf+CLQ==}
     dev: false
 
+  /js-base64@3.7.5:
+    resolution: {integrity: sha512-3MEt5DTINKqfScXKfJFrRbxkrnk2AxPWGBL/ycjz4dK8iqiSJ06UxD8jh8xuh6p10TX4t2+7FsBYVxxQbMg+qA==}
+    dev: false
+
   /js-beautify@1.14.9:
     resolution: {integrity: sha512-coM7xq1syLcMyuVGyToxcj2AlzhkDjmfklL8r0JgJ7A76wyGMpJ1oA35mr4APdYNO/o/4YY8H54NQIJzhMbhBg==}
     engines: {node: '>=12'}
@@ -11124,6 +11141,16 @@ packages:
       prelude-ls: 1.2.1
       type-check: 0.4.0
     dev: true
+
+  /libsodium-wrappers@0.7.13:
+    resolution: {integrity: sha512-kasvDsEi/r1fMzKouIDv7B8I6vNmknXwGiYodErGuESoFTohGSKZplFtVxZqHaoQ217AynyIFgnOVRitpHs0Qw==}
+    dependencies:
+      libsodium: 0.7.13
+    dev: false
+
+  /libsodium@0.7.13:
+    resolution: {integrity: sha512-mK8ju0fnrKXXfleL53vtp9xiPq5hKM0zbDQtcxQIsSmxNgSxqCj6R7Hl9PkrNe2j29T4yoDaF7DJLK9/i5iWUw==}
+    dev: false
 
   /libtap@1.4.0:
     resolution: {integrity: sha512-STLFynswQ2A6W14JkabgGetBNk6INL1REgJ9UeNKw5llXroC2cGLgKTqavv0sl8OLVztLLipVKMcQ7yeUcqpmg==}
@@ -11865,6 +11892,7 @@ packages:
 
   /ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+    requiresBuild: true
 
   /muggle-string@0.2.2:
     resolution: {integrity: sha512-YVE1mIJ4VpUMqZObFndk9CJu6DBJR/GB13p3tXuNbwD4XExaI5EOuRl6BHeIDxIqXZVxSfAC+y6U1Z/IxCfKUg==}
