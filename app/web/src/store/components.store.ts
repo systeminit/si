@@ -154,6 +154,7 @@ export interface AttributeDebugData {
     external_provider_id: string;
     component_id: string;
   };
+  kind: string;
 }
 
 export interface AttributeDebugView {

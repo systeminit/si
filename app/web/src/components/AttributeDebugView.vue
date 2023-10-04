@@ -1,6 +1,10 @@
 <template>
   <div class="overflow-x-scroll my-2 p-4 border-opacity-10 border-l-2">
     <dl>
+      <dt class="uppercase text-xs italic opacity-80">Type</dt>
+      <dd class="p-2 my-2 border-2 border-opacity-10">
+        <pre>{{ data.kind ?? "any" }}</pre>
+      </dd>
       <dt class="uppercase text-xs italic opacity-80">Set By Function</dt>
       <dd class="p-2 my-2 border-2 border-opacity-10">
         <pre>{{ data.funcName }} {{ data.funcId }}</pre>

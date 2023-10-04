@@ -12,7 +12,7 @@ use dal::{
     component::view::{AttributeDebugView, ComponentDebugView},
     AttributeContext, AttributePrototypeArgument, AttributePrototypeId, AttributeValueId,
     Component, ComponentId, DalContext, FuncArgument, FuncId, InternalProvider, Prop, PropId,
-    SchemaVariantId, StandardModel, Visibility,
+    PropKind, SchemaVariantId, StandardModel, Visibility,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -45,6 +45,7 @@ pub struct AttributeMetadataView {
     pub value: Option<serde_json::Value>,
     pub prototype_id: AttributePrototypeId,
     pub prototype_context: AttributeContext,
+    pub kind: Option<PropKind>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -182,5 +183,6 @@ async fn get_attribute_metadata(
             .await?,
         prototype_id: *debug_view.prototype.id(),
         prototype_context: debug_view.prototype.context,
+        kind: debug_view.prop.map(|prop| *prop.kind()),
     })
 }
