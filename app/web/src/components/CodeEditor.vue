@@ -27,8 +27,15 @@
 import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
-import { Compartment, EditorState } from "@codemirror/state";
-import { ViewUpdate, keymap, hoverTooltip } from "@codemirror/view";
+import { Compartment, EditorState, StateEffect } from "@codemirror/state";
+import {
+  ViewUpdate,
+  keymap,
+  hoverTooltip,
+  Tooltip,
+  showTooltip,
+  getTooltip,
+} from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
@@ -39,7 +46,10 @@ import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import beautify from "js-beautify";
-import { createTypescriptSource } from "@/utils/typescriptLinter";
+import {
+  createTypescriptSource,
+  GetTooltipFromPos,
+} from "@/utils/typescriptLinter";
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -129,6 +139,7 @@ const autocompleteCompartment = new Compartment();
 const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const hoverTooltipCompartment = new Compartment();
+const removeTooltipOnUpdateCompartment = new Compartment();
 
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
@@ -163,7 +174,7 @@ const styleExtension = computed(() => {
       border: `1px solid ${tooltipBorder} !important`,
       borderRadius: "0 0.25rem 0.25rem 0",
     },
-    ".cm-tooltip-hover": {
+    ".cm-tooltip": {
       backgroundColor: `${tooltipBackground} !important`,
       border: `1px solid ${tooltipBorder} !important`,
       borderRadius: "0.25rem",
@@ -214,25 +225,61 @@ watch(vimEnabled, (useVim) => {
 // Emit when the user writes (i.e. ":w") in vim mode.
 Vim.defineEx("write", "w", onLocalSave);
 
+// Code Tooltip /////////////////////////////////////////////////////////////////////////////////
+
+const codeTooltip = {
+  currentTooltip: null as Tooltip | null,
+  destroy() {
+    if (this.currentTooltip) {
+      const tt = getTooltip(view, this.currentTooltip);
+      if (tt?.destroy) tt?.destroy();
+      this.currentTooltip = null;
+    }
+  },
+  update() {
+    this.currentTooltip = GetTooltipFromPos(view.state.selection.main.head);
+    view.dispatch({
+      effects: [
+        StateEffect.appendConfig.of(showTooltip.of(this.currentTooltip)),
+      ],
+    });
+  },
+  toggle() {
+    if (codeTooltip.currentTooltip) {
+      codeTooltip.destroy();
+      return true;
+    }
+    codeTooltip.update();
+    return true;
+  },
+};
+
 // Initialization /////////////////////////////////////////////////////////////////////////////////
 const mountEditor = async () => {
   if (!editorMount.value) return;
-
   const extensions = [basicSetup];
 
   if (props.typescript) {
     if (!props.noLint) {
-      const { lintSource, autocomplete, hoverTooltipSource } =
-        await createTypescriptSource(props.typescript);
+      const {
+        lintSource,
+        autocomplete,
+        hoverTooltipSource,
+        removeTooltipOnUpdateSource,
+      } = await createTypescriptSource(props.typescript);
 
       extensions.push(autocompleteCompartment.of(autocomplete));
       extensions.push(lintCompartment.of(linter(lintSource)));
       extensions.push(
         hoverTooltipCompartment.of(hoverTooltip(hoverTooltipSource)),
       );
+      extensions.push(
+        removeTooltipOnUpdateCompartment.of(
+          removeTooltipOnUpdateSource(codeTooltip),
+        ),
+      );
       extensions.push(lintGutter());
     }
-
     extensions.push(language.of(CodemirrorJsLang()));
   }
 
@@ -249,6 +296,8 @@ const mountEditor = async () => {
         indentWithTab,
         { key: "ctrl-s", run: onLocalSave },
         { key: "cmd-s", run: onLocalSave },
+        { key: "ctrl-m", run: codeTooltip?.toggle },
+        { key: "cmd-m", run: codeTooltip?.toggle },
       ]),
 
       readOnly.of(EditorState.readOnly.of(props.disabled)),

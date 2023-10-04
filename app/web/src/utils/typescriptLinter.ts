@@ -2,6 +2,7 @@ import {
   createSystem,
   createDefaultMapFromCDN,
   createVirtualTypeScriptEnvironment,
+  VirtualTypeScriptEnvironment,
 } from "@typescript/vfs";
 import { Extension } from "@codemirror/state";
 import { completeFromList, autocompletion } from "@codemirror/autocomplete";
@@ -20,15 +21,26 @@ export type AsyncLintSource = (
   view: EditorView,
 ) => Promise<readonly Diagnostic[]>;
 
-export type AsyncHoverTooltipSource = (
+export type HoverTooltipSource = (
   view: EditorView,
   pos: number,
-) => Promise<Tooltip | null>;
+) => Tooltip | null;
+
+export type RemoveTooltipOnUpdateSource = (
+  codeTooltip: CodeTooltip,
+) => Extension;
 
 export interface TypescriptSource {
   lintSource: AsyncLintSource;
   autocomplete: Extension;
-  hoverTooltipSource: AsyncHoverTooltipSource;
+  hoverTooltipSource: HoverTooltipSource;
+  removeTooltipOnUpdateSource: RemoveTooltipOnUpdateSource;
+}
+
+export interface CodeTooltip {
+  currentTooltip: Tooltip | null;
+  destroy: () => void;
+  update: () => void;
 }
 
 const tsVersion = "4.7.4";
@@ -39,6 +51,7 @@ let vfsSystem: System;
 const defaultFilename = "index.ts";
 // If the document gets blanked out, typescript still needs something.
 const fallbackCode = "console.log('foo')";
+let tsEnv: VirtualTypeScriptEnvironment;
 
 export const createTypescriptSource = async (
   types: string,
@@ -66,7 +79,7 @@ export const createTypescriptSource = async (
   fsMap.set(defaultFilename, fallbackCode);
   fsMap.set("func.d.ts", types);
 
-  const tsEnv = createVirtualTypeScriptEnvironment(
+  tsEnv = createVirtualTypeScriptEnvironment(
     vfsSystem,
     [defaultFilename, "func.d.ts"],
     ts,
@@ -96,52 +109,11 @@ export const createTypescriptSource = async (
     ],
   });
 
-  const hoverTooltipSource = async (
+  const hoverTooltipSource = (
     view: EditorView,
     pos: number,
-  ): Promise<Tooltip | null> => {
-    const quickInfo = tsEnv.languageService.getQuickInfoAtPosition(
-      defaultFilename,
-      pos,
-    );
-    if (!quickInfo) {
-      return null;
-    }
-
-    const parts = `<div class="cm-tooltip-doc-signature">${displayPartsToString(
-      quickInfo.displayParts,
-    )}</div>`;
-
-    const docs = quickInfo.documentation?.length
-      ? `<div class="cm-tooltip-doc-details">${displayPartsToString(
-          quickInfo?.documentation,
-        )}</div>`
-      : "";
-
-    const tags = quickInfo.tags?.length
-      ? quickInfo?.tags
-          ?.map(
-            (t) =>
-              `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
-                t.name
-              }:</span> <span class="cm-tooltip-doc-tag-info">${displayPartsToString(
-                t.text,
-              )}</span></div>`,
-          )
-          .join("")
-      : "";
-
-    return {
-      pos,
-      create() {
-        const dom = document.createElement("div");
-        dom.innerHTML = parts + docs + tags;
-        return {
-          dom,
-        };
-      },
-      above: false,
-    };
+  ): Tooltip | null => {
+    return GetTooltipFromPos(pos);
   };
 
   const lintSource = async (view: EditorView) => {
@@ -186,7 +158,24 @@ export const createTypescriptSource = async (
     return diagnostics;
   };
 
-  return { lintSource, autocomplete, hoverTooltipSource };
+  const removeTooltipOnUpdateSource = (codeTooltip: CodeTooltip): Extension => {
+    return EditorView.updateListener.of((update) => {
+      if (
+        codeTooltip.currentTooltip &&
+        update.startState.selection.main.head !==
+          update.state.selection.main.head
+      ) {
+        codeTooltip.destroy();
+      }
+    });
+  };
+
+  return {
+    lintSource,
+    autocomplete,
+    hoverTooltipSource,
+    removeTooltipOnUpdateSource,
+  };
 };
 
 function diagnosticsForMessage(
@@ -216,4 +205,52 @@ function diagnosticsForMessage(
     }
     return messages;
   }
+}
+
+export function GetTooltipFromPos(pos: number): Tooltip | null {
+  const quickInfo = tsEnv.languageService.getQuickInfoAtPosition(
+    defaultFilename,
+    pos,
+  );
+  if (!quickInfo) {
+    return null;
+  }
+
+  const parts = `<div class="cm-tooltip-doc-signature">${displayPartsToString(
+    quickInfo.displayParts,
+  )}</div>`;
+
+  const docs = quickInfo.documentation?.length
+    ? `<div class="cm-tooltip-doc-details">${displayPartsToString(
+        quickInfo?.documentation,
+      )}</div>`
+    : "";
+
+  const tags = quickInfo.tags?.length
+    ? quickInfo?.tags
+        ?.map(
+          (t) =>
+            `<div class="cm-tooltip-doc-tag"><span class="cm-tooltip-doc-tag-name">@${
+              t.name
+            }:</span> <span class="cm-tooltip-doc-tag-info">${displayPartsToString(
+              t.text,
+            )}</span></div>`,
+        )
+        .join("")
+    : "";
+
+  return {
+    pos,
+    create() {
+      const dom = document.createElement("div");
+      dom.innerHTML = parts + docs + tags;
+      return {
+        dom,
+        destroy: () => {
+          dom.remove();
+        },
+      };
+    },
+    above: false,
+  };
 }
