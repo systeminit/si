@@ -181,7 +181,7 @@ const styleExtension = computed(() => {
       padding: ".5rem !important",
       whiteSpace: "pre-wrap",
       fontFamily: "monospace",
-      maxWidth: "50vw",
+      maxWidth: "60vw",
       maxHeight: "300px",
       overflowY: "auto",
       lineHeight: "1.5",
@@ -200,6 +200,9 @@ const styleExtension = computed(() => {
       color: `${tooltipTagText}`,
     },
     ".cm-tooltip-doc-tag-info": {},
+    ".cm-tooltip-doc-tag-example": {
+      fontStyle: "italic",
+    },
   });
 });
 watch(codeMirrorTheme, () => {
