@@ -318,9 +318,9 @@ pub async fn connect_component_to_frame(
     if let Some(force_changeset_pk) = force_changeset_pk {
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
-    Ok(
-        response.body(serde_json::to_string(&CreateFrameConnectionResponse {
+    Ok(response
+        .header("content-type", "application/json")
+        .body(serde_json::to_string(&CreateFrameConnectionResponse {
             connection,
-        })?)?,
-    )
+        })?)?)
 }
