@@ -28,9 +28,10 @@ use crate::{
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
-    DalContext, ExternalProviderId, Func, FuncBackendResponseType, HistoryEventError,
-    InternalProviderId, PropKind, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility,
+    DalContext, ExternalProvider, ExternalProviderId, Func, FuncBackendResponseType,
+    HistoryEventError, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility,
 };
 
 pub mod argument;
@@ -70,6 +71,8 @@ pub enum AttributePrototypeError {
     AttributeValue(#[from] AttributeValueError),
     #[error("unable to construct component view for attribute function execution")]
     ComponentView,
+    #[error("external provider not found by id: {0}")]
+    ExternalProviderNotFound(ExternalProviderId),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
@@ -78,6 +81,8 @@ pub enum AttributePrototypeError {
     HardDeletePrototypeWithNoHeadPrototypeOrKey(AttributePrototypeId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("internal provider not found by id: {0}")]
+    InternalProviderNotFound(InternalProviderId),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
     #[error("cannot remove prototype with a least-specific context: {0}")]
@@ -107,6 +112,8 @@ pub enum AttributePrototypeError {
     ParentNotAllowed(AttributePrototypeId, PropKind),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("prop not found by id: {0}")]
+    PropNotFound(PropId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
@@ -918,6 +925,34 @@ impl AttributePrototype {
         };
 
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    pub async fn external_provider(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributePrototypeResult<ExternalProvider> {
+        ExternalProvider::get_by_id(ctx, &self.context.external_provider_id())
+            .await?
+            .ok_or(AttributePrototypeError::ExternalProviderNotFound(
+                self.context.external_provider_id(),
+            ))
+    }
+
+    pub async fn internal_provider(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributePrototypeResult<InternalProvider> {
+        InternalProvider::get_by_id(ctx, &self.context.internal_provider_id())
+            .await?
+            .ok_or(AttributePrototypeError::InternalProviderNotFound(
+                self.context.internal_provider_id(),
+            ))
+    }
+
+    pub async fn prop(&self, ctx: &DalContext) -> AttributePrototypeResult<Prop> {
+        Prop::get_by_id(ctx, &self.context.prop_id()).await?.ok_or(
+            AttributePrototypeError::PropNotFound(self.context.prop_id()),
+        )
     }
 }
 

@@ -13,11 +13,11 @@ use crate::prop::PropPath;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, ComponentType, DalContext, FuncId, HistoryEventError,
-    NatsError, PgError, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, SocketArity,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model, standard_model_accessor, Component, ComponentError, ComponentType, DalContext,
+    FuncId, HistoryEventError, NatsError, PgError, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility,
 };
-use crate::{Component, ComponentError, SchemaId, TransactionsError};
 use si_pkg::{
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
     SchemaVariantSpecData, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,

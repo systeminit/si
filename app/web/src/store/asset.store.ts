@@ -6,6 +6,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -89,6 +90,7 @@ export const useAssetStore = () => {
   };
 
   const funcsStore = useFuncStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -343,12 +345,13 @@ export const useAssetStore = () => {
           const asset = this.assetsById[assetId];
           return new ApiRequest<
             { success: true; schemaVariantId: string },
-            AssetSaveRequest
+            AssetSaveRequest & { autoReattachFunctions?: boolean }
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
+              autoReattachFunctions: featureFlagsStore.AUTO_REATTACH_FUNCTIONS,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",

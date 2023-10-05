@@ -144,6 +144,8 @@ pub enum InternalProviderError {
     NotFound(InternalProviderId),
     #[error("internal provider not found for prop id: {0}")]
     NotFoundForProp(PropId),
+    #[error("internal provider not found for socket id: {0}")]
+    NotFoundForSocket(SocketId),
     #[error("internal provider not found for prop socket name: {0}")]
     NotFoundForSocketName(String),
     #[error("pg error: {0}")]

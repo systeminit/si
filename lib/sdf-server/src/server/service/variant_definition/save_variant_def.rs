@@ -20,6 +20,8 @@ pub struct SaveVariantDefRequest {
     pub handler: String,
     pub description: Option<String>,
     pub component_type: ComponentType,
+    #[serde(default)]
+    pub auto_reattach_functions: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
