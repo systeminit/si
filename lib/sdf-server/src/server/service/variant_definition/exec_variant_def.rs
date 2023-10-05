@@ -159,6 +159,7 @@ pub async fn exec_variant_def(
                 asset_func.clone(),
             )])),
             no_record: true,
+            is_builtin: false,
         }),
     )
     .await?;

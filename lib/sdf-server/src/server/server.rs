@@ -4,7 +4,7 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 use crate::server::config::CycloneKeyPair;
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::pkg::{import_pkg_from_pkg, PkgError};
+use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
 use dal::tasks::{StatusReceiver, StatusReceiverError};
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
@@ -400,6 +400,8 @@ pub async fn migrate_builtins_from_module_index(
 
     info!("migrating intrinsic functions");
     builtins::func::migrate_intrinsics(&ctx).await?;
+    info!("migrating builtin functions");
+    builtins::func::migrate(&ctx).await?;
 
     let module_index_client =
         IndexClient::unauthenticated_client(module_index_url.clone().as_str().try_into()?);
@@ -478,7 +480,17 @@ async fn install_builtin(
     let pkg = SiPkg::load_from_bytes(module)?;
     let pkg_name = pkg.metadata()?.name().to_owned();
     println!("Installing Pkg {}", pkg_name);
-    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    import_pkg_from_pkg(
+        ctx,
+        &pkg,
+        Some(ImportOptions {
+            schemas: None,
+            skip_import_funcs: None,
+            no_record: false,
+            is_builtin: true,
+        }),
+    )
+    .await?;
     Ok(())
 }
 
