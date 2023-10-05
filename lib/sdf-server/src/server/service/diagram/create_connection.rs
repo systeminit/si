@@ -157,9 +157,9 @@ pub async fn create_connection(
     if let Some(force_changeset_pk) = force_changeset_pk {
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
-    Ok(
-        response.body(serde_json::to_string(&CreateConnectionResponse {
+    Ok(response
+        .header("content-type", "application/json")
+        .body(serde_json::to_string(&CreateConnectionResponse {
             connection,
-        })?)?,
-    )
+        })?)?)
 }
