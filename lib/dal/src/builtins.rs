@@ -27,7 +27,7 @@ use crate::{
 };
 
 // Private builtins modules.
-mod func;
+pub mod func;
 pub mod schema;
 
 pub const SI_AWS_PKG: &str = "si-aws-2023-09-13.sipkg";

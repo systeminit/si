@@ -1,27 +1,38 @@
+use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 
 use crate::server::config::CycloneKeyPair;
 use axum::routing::IntoMakeService;
 use axum::Router;
+use dal::pkg::{import_pkg_from_pkg, PkgError};
 use dal::tasks::{StatusReceiver, StatusReceiverError};
-use dal::JwtPublicSigningKey;
+use dal::{
+    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
+    Workspace, WorkspaceError,
+};
 use dal::{
     cyclone_key_pair::CycloneKeyPairError, job::processor::JobQueueProcessor,
     tasks::ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use module_index_client::types::BuiltinsDetailsResponse;
+use module_index_client::{IndexClient, ModuleDetailsResponse};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time::Instant;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal,
     sync::{broadcast, mpsc, oneshot},
+    time,
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
 use super::state::AppState;
@@ -30,6 +41,8 @@ use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStream
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error("intrinsics installation error")]
+    Builtins(#[from] BuiltinsError),
     #[error("cyclone public key already set")]
     CyclonePublicKeyAlreadySet,
     #[error("cyclone public key error: {0}")]
@@ -46,6 +59,8 @@ pub enum ServerError {
     JwtSecretKey(#[from] dal::jwt_key::JwtKeyError),
     #[error(transparent)]
     Model(#[from] dal::ModelError),
+    #[error("Module index: {0}")]
+    ModuleIndex(#[from] module_index_client::IndexClientError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -53,13 +68,25 @@ pub enum ServerError {
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
     #[error(transparent)]
+    Pkg(#[from] PkgError),
+    #[error("failed to install package")]
+    PkgInstall,
+    #[error(transparent)]
     Posthog(#[from] si_posthog::PosthogError),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
     StatusReceiver(#[from] StatusReceiverError),
+    #[error("transactions error")]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
+    #[error("Unable to parse URL: {0}")]
+    Url(#[from] url::ParseError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
 }
@@ -232,6 +259,16 @@ impl Server<(), ()> {
         dal::migrate_all_with_progress(
             pg,
             nats,
+            job_processor.clone(),
+            veritech.clone(),
+            encryption_key,
+            pkgs_path.clone(),
+            module_index_url.clone(),
+        )
+        .await?;
+        migrate_builtins_from_module_index(
+            pg,
+            nats,
             job_processor,
             veritech,
             encryption_key,
@@ -331,6 +368,118 @@ where
     pub fn local_socket(&self) -> &S {
         &self.socket
     }
+}
+
+pub async fn migrate_builtins_from_module_index(
+    pg: &PgPool,
+    nats: &NatsClient,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    veritech: veritech_client::Client,
+    encryption_key: &EncryptionKey,
+    pkgs_path: PathBuf,
+    module_index_url: String,
+) -> Result<()> {
+    let mut interval = time::interval(Duration::from_secs(5));
+    let instant = Instant::now();
+
+    let services_context = ServicesContext::new(
+        pg.clone(),
+        nats.clone(),
+        job_processor,
+        veritech,
+        Arc::new(*encryption_key),
+        Some(pkgs_path),
+        Some(module_index_url.clone()),
+    );
+    let dal_context = services_context.into_builder(true);
+    let mut ctx = dal_context.build_default().await?;
+
+    let workspace = Workspace::builtin(&ctx).await?;
+    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+    ctx.blocking_commit().await?;
+
+    info!("migrating intrinsic functions");
+    builtins::func::migrate_intrinsics(&ctx).await?;
+
+    let module_index_client =
+        IndexClient::unauthenticated_client(module_index_url.clone().as_str().try_into()?);
+    let module_list = module_index_client.list_builtins().await?;
+    let install_builtins = install_builtins(ctx, module_list, module_index_client);
+    tokio::pin!(install_builtins);
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
+            }
+            result = &mut install_builtins  => match result {
+                Ok(_) => {
+                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
+                    break;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn install_builtins(
+    ctx: DalContext,
+    module_list: BuiltinsDetailsResponse,
+    module_index_client: IndexClient,
+) -> Result<()> {
+    let dal = &ctx;
+    let client = &module_index_client.clone();
+    let modules = module_list.modules;
+    let handles: Vec<_> = modules
+        .iter()
+        .map(|item| {
+            let dal = dal.clone();
+            let client = client.clone();
+            let item = item.clone();
+            tokio::spawn(async move {
+                install_builtin(&dal.clone(), &item, &client)
+                    .await
+                    .unwrap_or_else(|e| {
+                        eprintln!("Error in install_builtin: {}", e);
+                    })
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        match handle.await {
+            Ok(()) => {
+                println!("Pkg Install finished successfully");
+            }
+            Err(_err) => {
+                println!("Pkg Install failed");
+                let _ = Err::<Result<()>, ServerError>(ServerError::PkgInstall)
+                    .expect("TODO: panic message");
+            }
+        }
+    }
+
+    dal.blocking_commit().await?;
+
+    Ok(())
+}
+
+async fn install_builtin(
+    ctx: &DalContext,
+    module: &ModuleDetailsResponse,
+    module_index_client: &IndexClient,
+) -> Result<()> {
+    let module = module_index_client
+        .get_builtin(Ulid::from_string(module.id.as_str()).unwrap_or(Ulid::new()))
+        .await?;
+
+    let pkg = SiPkg::load_from_bytes(module)?;
+    let pkg_name = pkg.metadata()?.name().to_owned();
+    println!("Installing Pkg {}", pkg_name);
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
+    Ok(())
 }
 
 pub fn build_service_for_tests(

@@ -123,9 +123,25 @@ impl IndexClient {
             .await?
             .error_for_status()?;
 
-        let modules = resp.json::<BuiltinsDetailsResponse>().await?;
+        let mut builtins = resp.json::<BuiltinsDetailsResponse>().await?;
 
-        Ok(modules)
+        if builtins.modules.is_empty()
+            && self.base_url.clone().as_str().contains("http://localhost")
+        {
+            // We want to fall back to the production module index to pull builtins from there instead
+            let url = Url::parse("https://module-index.systeminit.com")?.join("builtins")?;
+
+            let resp = reqwest::Client::new()
+                .get(url)
+                .bearer_auth(&self.auth_token)
+                .send()
+                .await?
+                .error_for_status()?;
+
+            builtins = resp.json::<BuiltinsDetailsResponse>().await?
+        };
+
+        Ok(builtins)
     }
 
     pub async fn get_builtin(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {

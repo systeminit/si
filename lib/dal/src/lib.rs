@@ -216,25 +216,14 @@ pub type ModelResult<T> = Result<T, ModelError>;
 #[instrument(skip_all)]
 pub async fn migrate_all(
     pg: &PgPool,
-    nats: &NatsClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: Client,
-    encryption_key: &EncryptionKey,
-    pkgs_path: PathBuf,
-    module_index_url: String,
+    _nats: &NatsClient,
+    _job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    _veritech: Client,
+    _encryption_key: &EncryptionKey,
+    _pkgs_path: PathBuf,
+    _module_index_url: String,
 ) -> ModelResult<()> {
     migrate(pg).await?;
-    migrate_builtins(
-        pg,
-        nats,
-        job_processor,
-        veritech,
-        encryption_key,
-        None,
-        pkgs_path,
-        module_index_url,
-    )
-    .await?;
     Ok(())
 }
 
