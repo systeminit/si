@@ -60,6 +60,9 @@ pub struct ImportOptions {
     /// If set to `true`, the importer will install the assets from the module
     /// but will not make a record of the install as an "installed module".
     pub no_record: bool,
+    /// If set to `true` then we will set the functions to a builtin
+    /// in the UI. They will be marked as such.
+    pub is_builtin: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -96,8 +99,15 @@ async fn import_change_set(
                     unique_id.to_owned(),
                     Thing::Func(func.to_owned()),
                 );
-            } else if let Some(func) =
-                import_func(ctx, None, func_spec, installed_pkg_id, thing_map).await?
+            } else if let Some(func) = import_func(
+                ctx,
+                None,
+                func_spec,
+                installed_pkg_id,
+                thing_map,
+                options.is_builtin,
+            )
+            .await?
             {
                 let args = func_spec.arguments()?;
 
@@ -132,7 +142,15 @@ async fn import_change_set(
 
                 None
             } else {
-                import_func(ctx, change_set_pk, func_spec, installed_pkg_id, thing_map).await?
+                import_func(
+                    ctx,
+                    change_set_pk,
+                    func_spec,
+                    installed_pkg_id,
+                    thing_map,
+                    options.is_builtin,
+                )
+                .await?
             };
 
             if let Some(func) = func {
@@ -359,6 +377,7 @@ async fn import_func(
     func_spec: &SiPkgFunc<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
+    is_builtin: bool,
 ) -> PkgResult<Option<Func>> {
     let func = match change_set_pk {
         None => {
@@ -368,7 +387,7 @@ async fn import_func(
                     .await?
                     .pop();
 
-            let (func, created) = match existing_func {
+            let (mut func, created) = match existing_func {
                 Some(installed_func_record) => match installed_func_record.as_installed_func()? {
                     InstalledPkgAssetTyped::Func { id, .. } => {
                         match Func::get_by_id(ctx, &id).await? {
@@ -380,6 +399,10 @@ async fn import_func(
                 },
                 None => (create_func(ctx, func_spec).await?, true),
             };
+
+            if is_builtin {
+                func.set_builtin(ctx, true).await?
+            }
 
             if let Some(installed_pkg_id) = installed_pkg_id {
                 InstalledPkgAsset::new(
