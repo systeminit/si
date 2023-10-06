@@ -1,19 +1,21 @@
 CREATE TABLE encrypted_secrets
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
-    tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
-    visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    name                        text                     NOT NULL,
-    object_type                 text                     NOT NULL,
-    kind                        text                     NOT NULL,
-    key_pair_pk                 ident                    NOT NULL,
-    crypted                     text                     NOT NULL,
-    version                     text                     NOT NULL,
-    algorithm                   text                     NOT NULL
+    pk                       ident primary key                 default ident_create_v1(),
+    id                       ident                    not null default ident_create_v1(),
+    tenancy_workspace_pk     ident,
+    visibility_change_set_pk ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at    timestamp with time zone,
+    created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    created_by               ident,
+    updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_by               ident,
+    name                     text                     NOT NULL,
+    definition               text                     NOT NULL,
+    description              text,
+    key_pair_pk              ident                    NOT NULL,
+    crypted                  text                     NOT NULL,
+    version                  text                     NOT NULL,
+    algorithm                text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('encrypted_secrets');
 
@@ -30,77 +32,82 @@ SELECT pk,
        visibility_deleted_at,
        key_pair_pk,
        created_at,
+       created_by,
        updated_at,
+       updated_by,
        name,
-       object_type,
-       kind
+       definition,
+       description
 FROM encrypted_secrets;
 
 -- We need to create the following tenancy and visibility related functions by hand
 -- because we're trying to pretend that the secrets view is a "normal" standard model
 -- table.
 CREATE OR REPLACE FUNCTION in_tenancy_v1(
-    this_tenancy      jsonb,
-    record_to_check   secrets
+    this_tenancy jsonb,
+    record_to_check secrets
 )
-RETURNS bool
-LANGUAGE sql
-IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
-AS $$
-    SELECT in_tenancy_v1(
-        this_tenancy,
-        record_to_check.tenancy_workspace_pk
-    )
+    RETURNS bool
+    LANGUAGE sql
+    IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS
+$$
+SELECT in_tenancy_v1(
+               this_tenancy,
+               record_to_check.tenancy_workspace_pk
+           )
 $$;
 
 CREATE OR REPLACE FUNCTION is_visible_v1(
     this_visibility jsonb,
     record_to_check secrets
 )
-RETURNS bool
-LANGUAGE sql
-IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
-AS $$
-    SELECT is_visible_v1(
-        this_visibility,
-        record_to_check.visibility_change_set_pk,
-        record_to_check.visibility_deleted_at
-    )
+    RETURNS bool
+    LANGUAGE sql
+    IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS
+$$
+SELECT is_visible_v1(
+               this_visibility,
+               record_to_check.visibility_change_set_pk,
+               record_to_check.visibility_deleted_at
+           )
 $$;
 
 CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(
-    this_tenancy      jsonb,
-    this_visibility   jsonb,
-    record_to_check   secrets
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    record_to_check secrets
 )
-RETURNS bool
-LANGUAGE sql
-IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
-AS $$
-    SELECT
-        in_tenancy_v1(
-            this_tenancy,
-            record_to_check.tenancy_workspace_pk
-        )
-        AND is_visible_v1(
-            this_visibility,
-            record_to_check.visibility_change_set_pk,
-            record_to_check.visibility_deleted_at
-        )
+    RETURNS bool
+    LANGUAGE sql
+    IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS
+$$
+SELECT in_tenancy_v1(
+               this_tenancy,
+               record_to_check.tenancy_workspace_pk
+           )
+           AND is_visible_v1(
+               this_visibility,
+               record_to_check.visibility_change_set_pk,
+               record_to_check.visibility_deleted_at
+           )
 $$;
 
 CREATE OR REPLACE FUNCTION secrets_v1(
-    this_tenancy      jsonb,
-    this_visibility   jsonb
+    this_tenancy jsonb,
+    this_visibility jsonb
 )
-RETURNS SETOF secrets
-LANGUAGE sql
-STABLE PARALLEL SAFE CALLED ON NULL INPUT
-AS $$
-    SELECT DISTINCT ON (id) secrets.*
-    FROM secrets
-    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, secrets)
-    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST
+    RETURNS SETOF secrets
+    LANGUAGE sql
+    STABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS
+$$
+SELECT DISTINCT ON (id) secrets.*
+FROM secrets
+WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, secrets)
+ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST
 $$;
 
 
@@ -108,12 +115,13 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_name text,
-    this_object_type text,
-    this_kind text,
+    this_definition text,
+    this_description text,
     this_crypted text,
     this_version text,
     this_algorithm text,
     this_key_pair_pk ident,
+    this_created_by ident,
     OUT object json) AS
 $$
 DECLARE
@@ -127,21 +135,25 @@ BEGIN
     INSERT INTO encrypted_secrets (tenancy_workspace_pk,
                                    visibility_change_set_pk,
                                    name,
-                                   object_type,
-                                   kind,
+                                   definition,
+                                   description,
                                    crypted,
                                    version,
                                    algorithm,
-			           key_pair_pk)
+                                   key_pair_pk,
+                                   created_by,
+                                   updated_by)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_name,
-            this_object_type,
-            this_kind,
+            this_definition,
+            this_description,
             this_crypted,
             this_version,
             this_algorithm,
-            this_key_pair_pk)
+            this_key_pair_pk,
+            this_created_by,
+            this_created_by)
     RETURNING * INTO this_new_row;
 
     -- Purge the returning record of sensitive data to avoid accidentally

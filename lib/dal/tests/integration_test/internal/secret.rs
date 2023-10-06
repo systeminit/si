@@ -1,6 +1,6 @@
 use dal::{
-    DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, StandardModel, WorkspaceSignup,
+    DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion, StandardModel,
+    WorkspaceSignup,
 };
 use dal_test::{
     test,
@@ -14,8 +14,8 @@ async fn new_encrypted_secret(ctx: &DalContext, nw: &WorkspaceSignup) {
     let secret = EncryptedSecret::new(
         ctx,
         &name,
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
+        "Mock".to_owned(),
+        Some("Description".to_owned()),
         "im-crypted-bytes-maybe".as_bytes(),
         nw.key_pair.pk(),
         SecretVersion::V1,
@@ -25,8 +25,8 @@ async fn new_encrypted_secret(ctx: &DalContext, nw: &WorkspaceSignup) {
     .expect("failed to create secret");
 
     assert_eq!(secret.name(), name);
-    assert_eq!(secret.object_type(), &SecretObjectType::Credential);
-    assert_eq!(secret.kind(), &SecretKind::DockerHub);
+    assert_eq!(secret.definition(), "Mock");
+    assert_eq!(secret.description().as_deref(), Some("Description"));
 
     let key_pair = secret
         .key_pair(ctx)
@@ -57,8 +57,8 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret.id(), encrypted_secret.id());
     assert_eq!(secret.pk(), encrypted_secret.pk());
     assert_eq!(secret.name(), encrypted_secret.name());
-    assert_eq!(secret.object_type(), encrypted_secret.object_type());
-    assert_eq!(secret.kind(), encrypted_secret.kind());
+    assert_eq!(secret.description(), encrypted_secret.description());
+    assert_eq!(secret.definition(), encrypted_secret.definition());
 }
 
 #[test]
@@ -89,8 +89,8 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     let secret = EncryptedSecret::new(
         ctx,
         &name,
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
+        "imasecret".to_owned(),
+        None,
         &crypted,
         nw.key_pair.pk(),
         Default::default(),
@@ -107,8 +107,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
         .await
         .expect("failed to decrypt encrypted secret");
     assert_eq!(decrypted.name(), secret.name());
-    assert_eq!(decrypted.object_type(), *secret.object_type());
-    assert_eq!(decrypted.kind(), *secret.kind());
+    assert_eq!(decrypted.definition(), secret.definition());
 
     // We don't provide a direct getter for the raw decrypted message (higher effort should mean
     // less chance of developer error when handling `DecryptedSecret` types), so we'll serialize to

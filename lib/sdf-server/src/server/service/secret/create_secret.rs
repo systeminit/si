@@ -1,7 +1,7 @@
 use axum::Json;
+use dal::secret::SecretView;
 use dal::{
-    key_pair::KeyPairPk, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, Visibility, WsEvent,
+    key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,8 +13,8 @@ use super::SecretResult;
 #[serde(rename_all = "camelCase")]
 pub struct CreateSecretRequest {
     pub name: String,
-    pub object_type: SecretObjectType,
-    pub kind: SecretKind,
+    pub definition: String,
+    pub description: Option<String>,
     pub crypted: Vec<u8>,
     pub key_pair_pk: KeyPairPk,
     pub version: SecretVersion,
@@ -23,11 +23,7 @@ pub struct CreateSecretRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateSecretResponse {
-    pub secret: Secret,
-}
+pub type CreateSecretResponse = SecretView;
 
 pub async fn create_secret(
     HandlerContext(builder): HandlerContext,
@@ -39,8 +35,8 @@ pub async fn create_secret(
     let secret = EncryptedSecret::new(
         &ctx,
         request.name,
-        request.object_type,
-        request.kind,
+        request.definition,
+        request.description,
         &request.crypted,
         request.key_pair_pk,
         request.version,
@@ -55,5 +51,5 @@ pub async fn create_secret(
 
     ctx.commit().await?;
 
-    Ok(Json(CreateSecretResponse { secret }))
+    Ok(Json(SecretView::from_secret(&ctx, secret).await?))
 }

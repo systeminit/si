@@ -149,8 +149,8 @@ pub use schema::variant::root_prop::RootPropChild;
 pub use schema::variant::SchemaVariantError;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaPk, SchemaVariant, SchemaVariantId};
 pub use secret::{
-    DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
-    SecretObjectType, SecretPk, SecretResult, SecretVersion,
+    DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretPk,
+    SecretResult, SecretVersion,
 };
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};

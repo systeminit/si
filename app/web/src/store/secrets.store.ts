@@ -6,11 +6,55 @@ import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { LabelList } from "@/api/sdf/dal/label_list";
+import { encryptMessage } from "@/utils/messageEncryption";
 import { ActorAndTimestamp } from "./components.store";
+import { useRealtimeStore } from "./realtime/realtime.store";
+
+/**
+ * A public key with metadata, used to encrypt secrets
+ */
+export interface PublicKey {
+  /**
+   * The PK of the public key
+   */
+  pk: string;
+  /**
+   * The name of the public key
+   */
+  name: string;
+  /**
+   * The public key contents, encoded as a Base64 string
+   *
+   * # Examples
+   *
+   * Decoding a public key into a `Uint8Array` type:
+   *
+   * ```ts
+   * Base64.toUint8Array(key.public_key);
+   * ```
+   */
+  public_key: string;
+  /**
+   * A created lamport clock, used to sort multiple generations of key pairs
+   */
+  created_lamport_clock: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export enum SecretVersion {
+  V1 = "v1",
+}
+
+export enum SecretAlgorithm {
+  Sealedbox = "sealedbox",
+}
 
 export type SecretId = string;
 export type SecretDefinitionId = string;
 
+// TODO: Store description on the secrets table
 export type Secret = {
   id: SecretId;
   definition: SecretDefinitionId;
@@ -74,6 +118,7 @@ export function useSecretsStore() {
       state: () => ({
         secretDefinitionByDefinitionId: {} as SecretsDefinitionHashMap,
         secretIsTransitioning: {} as Record<SecretId, boolean>,
+        publicKey: null as PublicKey | null,
       }),
       getters: {
         secretsByDefinitionId(state): SecretsHashMap {
@@ -115,17 +160,16 @@ export function useSecretsStore() {
           });
         },
         async SAVE_SECRET(
-          definition: SecretDefinitionId,
+          definitionId: SecretDefinitionId,
           name: string,
           value: Record<string, string>,
           description?: string,
-          expiration?: string,
         ) {
           if (_.isEmpty(name)) {
             throw new Error("All secrets must have a name.");
           }
 
-          if (this.secretsByDefinitionId[definition] === undefined) {
+          if (this.secretsByDefinitionId[definitionId] === undefined) {
             throw new Error(
               "All secrets must be created based on a definition.",
             );
@@ -141,6 +185,18 @@ export function useSecretsStore() {
             Math.random() * 899999 + 100000,
           ).toString()}`;
 
+          // Encrypt Value
+          if (_.isNil(this.publicKey)) {
+            throw new Error("Couldn't fetch publicKey.");
+          }
+
+          const algorithm = SecretAlgorithm.Sealedbox;
+          const version = SecretVersion.V1;
+
+          const keyPairPk = this.publicKey.pk;
+
+          const crypted = await encryptMessage(value, this.publicKey);
+
           return new ApiRequest<Secret>({
             method: "post",
             url: "secret",
@@ -148,40 +204,46 @@ export function useSecretsStore() {
               ...visibilityParams,
               name,
               description,
-              definition,
-              expiration,
+              definition: definitionId,
+              crypted,
+              keyPairPk,
+              version,
+              algorithm,
             },
             optimistic: () => {
               const { pk: userId, name: userName } = user;
 
-              this.secretsByDefinitionId[definition]?.push({
+              this.secretDefinitionByDefinitionId[definitionId]?.secrets?.push({
                 id: tempId,
-                definition,
+                definition: definitionId,
                 name,
                 description,
                 createdInfo: {
                   actor: { kind: "user", label: userName, id: userId },
                   timestamp: Date(),
                 },
-                expiration,
               });
               this.secretIsTransitioning[tempId] = true;
 
               return () => {
-                const secretsOnDef = this.secretsByDefinitionId[definition];
-                if (secretsOnDef === undefined) return;
+                const definition =
+                  this.secretDefinitionByDefinitionId[definitionId];
 
-                this.secretsByDefinitionId[definition] = secretsOnDef.filter(
+                if (definition === undefined) return;
+
+                definition.secrets = definition.secrets.filter(
                   (s) => s.id !== tempId,
                 );
                 this.secretIsTransitioning[tempId] = false;
               };
             },
             onSuccess: (response) => {
-              const secretsOnDef = this.secretsByDefinitionId[definition];
-              if (secretsOnDef === undefined) return;
+              const definition =
+                this.secretDefinitionByDefinitionId[definitionId];
 
-              this.secretsByDefinitionId[definition] = secretsOnDef.map((s) =>
+              if (definition === undefined) return;
+
+              definition.secrets = definition.secrets.map((s) =>
                 s.id === tempId ? response : s,
               );
               this.secretIsTransitioning[tempId] = false;
@@ -219,10 +281,38 @@ export function useSecretsStore() {
             },
           });
         },
+        async GET_PUBLIC_KEY() {
+          return new ApiRequest<PublicKey>({
+            url: "secret/get_public_key",
+            params: {
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              this.publicKey = response;
+            },
+          });
+        },
       },
       onActivated() {
         // TODO Run load secrets on websocket message too
         this.LOAD_SECRETS();
+        this.GET_PUBLIC_KEY();
+
+        const realtimeStore = useRealtimeStore();
+        realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+          {
+            eventType: "ChangeSetWritten",
+            callback: (writtenChangeSetId) => {
+              // ideally we wouldn't have to check this - since the topic subscription
+              // would mean we only receive the event for this changeset already...
+              // but this is fine for now
+              if (writtenChangeSetId !== changeSetId) return;
+
+              // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
+              this.LOAD_SECRETS();
+            },
+          },
+        ]);
       },
     }),
   )();

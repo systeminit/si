@@ -1,4 +1,3 @@
-use crate::{Tenancy, TransactionsError};
 use std::fmt;
 
 use base64::{engine::general_purpose, Engine};
@@ -14,6 +13,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
+use crate::diagram::node::HistoryEventMetadata;
 use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model,
@@ -24,6 +24,7 @@ use crate::{
     HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError, Timestamp,
     Visibility,
 };
+use crate::{ActorView, HistoryActor, Tenancy, TransactionsError, UserPk};
 
 const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
 
@@ -64,13 +65,15 @@ pub struct Secret {
     pk: SecretPk,
     id: SecretId,
     name: String,
-    object_type: SecretObjectType,
     key_pair_pk: KeyPairPk,
-    kind: SecretKind,
+    definition: String,
+    description: Option<String>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
+    created_by: Option<UserPk>,
+    updated_by: Option<UserPk>,
     #[serde(flatten)]
     visibility: Visibility,
 }
@@ -118,8 +121,8 @@ impl Secret {
     }
 
     // Once created, these object fields are to be considered immutable
-    standard_model_accessor_ro!(object_type, SecretObjectType);
-    standard_model_accessor_ro!(kind, SecretKind);
+    standard_model_accessor_ro!(definition, String);
+    standard_model_accessor_ro!(description, Option<String>);
 
     pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
         Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
@@ -131,18 +134,54 @@ impl Secret {
 pub struct SecretView {
     pub id: SecretId,
     pub name: String,
-    pub object_type: SecretObjectType,
-    pub kind: SecretKind,
+    pub definition: String,
+    pub description: Option<String>,
+    pub created_info: HistoryEventMetadata,
+    pub updated_info: Option<HistoryEventMetadata>,
 }
 
-impl From<Secret> for SecretView {
-    fn from(secret: Secret) -> Self {
-        Self {
-            id: *secret.id(),
-            name: secret.name().to_owned(),
-            object_type: *secret.object_type(),
-            kind: *secret.kind(),
-        }
+impl SecretView {
+    pub async fn from_secret(ctx: &DalContext, secret: Secret) -> SecretResult<Self> {
+        let created_info = {
+            let actor = match secret.created_by {
+                None => HistoryActor::SystemInit,
+                Some(user_pk) => HistoryActor::from(user_pk),
+            };
+
+            let view = ActorView::from_history_actor(ctx, actor).await?;
+
+            HistoryEventMetadata {
+                actor: view,
+                timestamp: secret.timestamp.created_at,
+            }
+        };
+
+        let updated_info = {
+            let actor = match secret.updated_by {
+                None => HistoryActor::SystemInit,
+                Some(user_pk) => HistoryActor::from(user_pk),
+            };
+
+            let view = ActorView::from_history_actor(ctx, actor).await?;
+
+            if secret.timestamp.created_at == secret.timestamp.updated_at {
+                None
+            } else {
+                Some(HistoryEventMetadata {
+                    actor: view,
+                    timestamp: secret.timestamp.updated_at,
+                })
+            }
+        };
+
+        Ok(Self {
+            id: secret.id,
+            name: secret.name,
+            definition: secret.definition,
+            description: secret.description,
+            created_info,
+            updated_info,
+        })
     }
 }
 
@@ -158,8 +197,8 @@ pub struct EncryptedSecret {
     pk: SecretPk,
     id: SecretId,
     name: String,
-    object_type: SecretObjectType,
-    kind: SecretKind,
+    definition: String,
+    description: Option<String>,
     key_pair_pk: KeyPairPk,
     #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
@@ -169,6 +208,8 @@ pub struct EncryptedSecret {
     tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
+    created_by: Option<UserPk>,
+    updated_by: Option<UserPk>,
     #[serde(flatten)]
     visibility: Visibility,
 }
@@ -179,8 +220,8 @@ impl fmt::Debug for EncryptedSecret {
             .field("pk", &self.pk)
             .field("id", &self.id)
             .field("name", &self.name)
-            .field("object_type", &self.object_type)
-            .field("kind", &self.kind)
+            .field("definition", &self.definition)
+            .field("description", &self.description)
             .field("version", &self.version)
             .field("algorithm", &self.algorithm)
             .field("tenancy", &self.tenancy)
@@ -200,13 +241,13 @@ impl_standard_model! {
 }
 
 impl EncryptedSecret {
-    /// Creates a new encypted secret and returns a corresponding [`Secret`] representation.
+    /// Creates a new encrypted secret and returns a corresponding [`Secret`] representation.
     #[allow(clippy::too_many_arguments, clippy::new_ret_no_self)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
-        object_type: SecretObjectType,
-        kind: SecretKind,
+        definition: String,
+        description: Option<String>,
         crypted: &[u8],
         key_pair_pk: KeyPairPk,
         version: SecretVersion,
@@ -214,22 +255,28 @@ impl EncryptedSecret {
     ) -> SecretResult<Secret> {
         let name = name.as_ref();
 
+        let maybe_actor = match ctx.history_actor() {
+            HistoryActor::SystemInit => None,
+            HistoryActor::User(user_pk) => Some(user_pk),
+        };
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &name,
-                    &object_type.as_ref(),
-                    &kind.as_ref(),
+                    &definition,
+                    &description,
                     &encode_crypted(crypted),
                     &version.as_ref(),
                     &algorithm.as_ref(),
                     &key_pair_pk,
+                    &maybe_actor,
                 ],
             )
             .await?;
@@ -239,10 +286,10 @@ impl EncryptedSecret {
     }
 
     standard_model_accessor!(name, String, SecretResult);
+    standard_model_accessor_ro!(description, Option<String>);
 
     // Once created, these object fields are to be considered immutable
-    standard_model_accessor_ro!(object_type, SecretObjectType);
-    standard_model_accessor_ro!(kind, SecretKind);
+    standard_model_accessor_ro!(definition, String);
     standard_model_accessor_ro!(version, SecretVersion);
     standard_model_accessor_ro!(algorithm, SecretAlgorithm);
 
@@ -259,8 +306,7 @@ impl EncryptedSecret {
         match (self.version, self.algorithm) {
             (SecretVersion::V1, SecretAlgorithm::Sealedbox) => Ok(DecryptedSecret {
                 name: self.name,
-                object_type: self.object_type,
-                secret_kind: self.kind,
+                definition: self.definition,
                 message: serde_json::from_slice(
                     &sealedbox::open(&self.crypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
@@ -281,13 +327,12 @@ impl EncryptedSecret {
 /// decrypted message, and without the encrypted payload and other metadata. It is not persistable
 /// and is only intended to be used internally when passing secrets through to Cyclone.
 //
-// NOTE: We're being a bit careful here as to which traits are derrived in an effort to minimize
+// NOTE: We're being a bit careful here as to which traits are drrived in an effort to minimize
 // leaking sensitive data.
 #[derive(Serialize)]
 pub struct DecryptedSecret {
     name: String,
-    object_type: SecretObjectType,
-    secret_kind: SecretKind,
+    definition: String,
     message: Value,
 }
 
@@ -301,14 +346,9 @@ impl DecryptedSecret {
         self.message.clone().into()
     }
 
-    /// Gets the decrypted secret's object type.
-    pub fn object_type(&self) -> SecretObjectType {
-        self.object_type
-    }
-
-    /// Gets the decrypted secret's kind.
-    pub fn kind(&self) -> SecretKind {
-        self.secret_kind
+    /// Gets the decrypted secret's definition.
+    pub fn definition(&self) -> &str {
+        self.definition.as_ref()
     }
 }
 
@@ -316,8 +356,7 @@ impl fmt::Debug for DecryptedSecret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DecryptedSecret")
             .field("name", &self.name)
-            .field("object_type", &self.object_type)
-            .field("secret_kind", &self.secret_kind)
+            .field("definition", &self.definition)
             .finish_non_exhaustive()
     }
 }
@@ -358,36 +397,6 @@ impl Default for SecretAlgorithm {
     }
 }
 
-/// The object type of a secret.
-#[remain::sorted]
-#[derive(
-    AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum SecretObjectType {
-    /// Represents a secret which is a credential
-    Credential,
-}
-
-/// The kind of a secret.
-#[remain::sorted]
-#[derive(
-    AsRefStr, Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum SecretKind {
-    /// An AWS access key
-    AwsAccessKey,
-    /// An Azure service principal
-    AzureServicePrincipal,
-    /// A Docker Hub credential
-    DockerHub,
-    /// A Helm repository credential
-    HelmRepo,
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SecretFormDataView {
@@ -404,15 +413,17 @@ pub struct SecretDefinitionView {
     form_data: Vec<SecretFormDataView>,
 }
 
-pub async fn list_secret_definitions(ctx: &DalContext) -> SecretResult<Vec<SecretDefinitionView>> {
-    let rows = ctx
-        .txns()
-        .await?
-        .pg()
-        .query(LIST_SECRET_DEFINITIONS, &[ctx.tenancy(), ctx.visibility()])
-        .await?;
+impl SecretDefinitionView {
+    pub async fn list(ctx: &DalContext) -> SecretResult<Vec<SecretDefinitionView>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(LIST_SECRET_DEFINITIONS, &[ctx.tenancy(), ctx.visibility()])
+            .await?;
 
-    Ok(objects_from_rows(rows)?)
+        Ok(objects_from_rows(rows)?)
+    }
 }
 
 fn encode_crypted(crypted: &[u8]) -> String {
@@ -457,8 +468,8 @@ mod tests {
 
         fn encrypted_secret(
             name: impl Into<String>,
-            object_type: SecretObjectType,
-            kind: SecretKind,
+            definition: String,
+            description: Option<String>,
             crypted: impl Into<Vec<u8>>,
             wid: WorkspacePk,
         ) -> EncryptedSecret {
@@ -469,14 +480,16 @@ mod tests {
                 pk: SecretPk::NONE,
                 id: SecretId::NONE,
                 name,
-                object_type,
-                kind,
+                definition,
+                description,
                 key_pair_pk: KeyPairPk::NONE,
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
                 tenancy: Tenancy::new(wid),
                 timestamp: Timestamp::now(),
+                created_by: None,
+                updated_by: None,
                 visibility: Visibility::new_head(false),
             }
         }
@@ -502,8 +515,8 @@ mod tests {
 
             let encrypted = encrypted_secret(
                 "the-cadillac-three",
-                SecretObjectType::Credential,
-                SecretKind::DockerHub,
+                "dockerHub".to_owned(),
+                None,
                 crypted,
                 WorkspacePk::NONE,
             );
@@ -512,103 +525,8 @@ mod tests {
                 .expect("could not decrypt secret");
 
             assert_eq!("the-cadillac-three", decrypted.name);
-            assert_eq!(SecretObjectType::Credential, decrypted.object_type);
-            assert_eq!(SecretKind::DockerHub, decrypted.secret_kind);
+            assert_eq!("dockerHub", decrypted.definition);
             assert_eq!(message, decrypted.message);
-        }
-    }
-
-    mod secret_object_type {
-        use super::*;
-
-        #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Object {
-            object_type: SecretObjectType,
-        }
-
-        fn str() -> &'static str {
-            r#"{"objectType":"credential"}"#
-        }
-
-        fn invalid() -> &'static str {
-            r#"{"objectType":"nope"}"#
-        }
-
-        fn object() -> Object {
-            Object {
-                object_type: SecretObjectType::Credential,
-            }
-        }
-
-        #[test]
-        fn serialize() {
-            assert_eq!(
-                str(),
-                serde_json::to_string(&object()).expect("failed to serialize")
-            );
-        }
-
-        #[test]
-        fn deserialize() {
-            assert_eq!(
-                object(),
-                serde_json::from_str(str()).expect("failed to deserialize")
-            );
-        }
-
-        #[test]
-        fn deserialize_invalid() {
-            if serde_json::from_str::<Object>(invalid()).is_ok() {
-                panic!("deserialize should not succeed")
-            }
-        }
-    }
-
-    mod secret_kind {
-        use super::*;
-
-        #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Object {
-            kind: SecretKind,
-        }
-
-        fn str() -> &'static str {
-            r#"{"kind":"dockerHub"}"#
-        }
-
-        fn invalid() -> &'static str {
-            r#"{"kind":"nope"}"#
-        }
-
-        fn object() -> Object {
-            Object {
-                kind: SecretKind::DockerHub,
-            }
-        }
-
-        #[test]
-        fn serialize() {
-            assert_eq!(
-                str(),
-                serde_json::to_string(&object()).expect("failed to serialize")
-            );
-        }
-
-        #[test]
-        fn deserialize() {
-            assert_eq!(
-                object(),
-                serde_json::from_str(str()).expect("failed to deserialize")
-            );
-        }
-
-        #[test]
-        fn deserialize_invalid() {
-            if serde_json::from_str::<Object>(invalid()).is_ok() {
-                panic!("deserialize should not succeed")
-            }
         }
     }
 

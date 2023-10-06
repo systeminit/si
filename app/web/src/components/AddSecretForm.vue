@@ -32,7 +32,7 @@
             </div>
           </template>
         </VormInput>
-        <VormInput
+        <!--VormInput
           v-model="secretFormData.expiration"
           type="date"
           label="Expiration"
@@ -42,7 +42,7 @@
               Optional: Set an expiration date for this secret
             </div>
           </template>
-        </VormInput>
+        </VormInput-->
         <VormInput
           v-for="(field, index) in fields"
           :key="index"
@@ -91,7 +91,7 @@ import {
   useValidatedInputGroup,
   ErrorMessage,
 } from "@si/vue-lib/design-system";
-import { PropType, reactive, computed } from "vue";
+import { PropType, ref, computed } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import {
@@ -124,20 +124,18 @@ const secretFormEmpty = {
   name: "",
   description: "",
   value: {} as Record<string, string>,
-  expiration: "",
 };
 
-const secretFormData = reactive(_.clone(secretFormEmpty));
+const secretFormData = ref(_.cloneDeep(secretFormEmpty));
 
 const saveSecret = async () => {
   if (validationMethods.hasError()) return;
 
   const res = await secretsStore.SAVE_SECRET(
     props.definitionId,
-    secretFormData.name,
-    secretFormData.value,
-    secretFormData.description,
-    secretFormData.expiration,
+    secretFormData.value.name,
+    secretFormData.value.value,
+    secretFormData.value.description,
   );
 
   if (res.result.success) {
@@ -145,7 +143,7 @@ const saveSecret = async () => {
     setTimeout(() => {
       secretsStore.clearRequestStatus("SAVE_SECRET");
 
-      _.assign(secretFormData, secretFormEmpty);
+      secretFormData.value = _.cloneDeep(secretFormEmpty);
 
       validationMethods.resetAll();
 
