@@ -14,12 +14,21 @@ you can pass in options as props too */
     :key="formInputId"
     ref="wrapperRef"
     class="vorm-input"
-    :class="computedClasses"
+    :class="
+      clsx(
+        computedClasses,
+        inlineLabel ? 'flex flex-row gap-xs items-center' : 'block',
+      )
+    "
   >
-    <label v-if="!noLabel" class="vorm-input__label" :for="formInputId">
+    <label
+      v-if="!noLabel"
+      :class="clsx('vorm-input__label', !inlineLabel && 'pb-xs block')"
+      :for="formInputId"
+    >
       <Icon
         v-if="disabledBySelfOrParent"
-        class="vorm-input__locked-icon"
+        :class="clsx('vorm-input__locked-icon')"
         name="lock"
       />
       <slot name="label">
@@ -163,6 +172,7 @@ you can pass in options as props too */
 import { ref, computed, onMounted, onUpdated, watch, toRefs } from "vue";
 import * as _ from "lodash-es";
 
+import clsx from "clsx";
 import Icon from "../icons/Icon.vue";
 
 import { useValidatedInput, validators } from "./helpers/form-validation";
@@ -801,8 +811,6 @@ defineExpose({
 
 .vorm-input__label {
   @apply capsize text-sm;
-  padding-bottom: @vertical-gap;
-  display: block;
   align-items: center;
   color: currentColor;
   font-weight: 700;

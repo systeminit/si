@@ -24,7 +24,12 @@
       />
     </div>
   </div>
-  <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
+  <ResizablePanel
+    ref="rightPanelRef"
+    rememberSizeKey="func-details"
+    side="right"
+    :minSize="200"
+  >
     <div class="absolute w-full flex flex-col h-full">
       <SidebarSubpanelTitle>
         {{
@@ -38,6 +43,7 @@
           :schemaVariantId="assetStore.selectedAsset?.schemaVariantId"
           singleModelScreen
           @detached="onDetach"
+          @expand-panel="rightPanelRef.maximize"
         />
         <!-- the key here is to force remounting so we get the proper asset
         request statuses -->
@@ -58,7 +64,7 @@
 </template>
 
 <script lang="ts" setup>
-import { watch } from "vue";
+import { ref, watch } from "vue";
 import { ResizablePanel } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -74,6 +80,8 @@ const funcStore = useFuncStore();
 
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+
+const rightPanelRef = ref();
 
 watch(
   [

@@ -139,6 +139,17 @@ const setSize = (newSize: number) => {
   }
 };
 
+const maximize = () => {
+  if (props.maxSize) {
+    setSize(props.maxSize);
+  } else if (props.maxSizeRatio) {
+    const limit =
+      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
+      props.maxSizeRatio;
+    setSize(limit);
+  }
+};
+
 const primarySizeLocalStorageKey = computed(
   () => `${props.rememberSizeKey}-size`,
 );
@@ -241,6 +252,8 @@ onBeforeUnmount(() => {
 
 defineExpose({
   setSize,
+  maximize,
   resetSize,
+  maxSize: props.maxSize,
 });
 </script>

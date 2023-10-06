@@ -22,11 +22,23 @@
       )
     "
   >
-    <TabGroup rememberSelectedTabKey="func_details">
+    <TabGroup
+      ref="funcDetailsTabGroupRef"
+      @update:selected-tab="expandTestPanel"
+    >
       <TabGroupItem label="Properties" slug="properties">
         <ScrollArea>
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
-            <div class="flex gap-1">
+            <div class="flex gap-1 flex-wrap">
+              <VButton
+                v-if="featureFlagsStore.FUNC_TEST_PANEL"
+                class="--tone-action"
+                icon="save"
+                size="md"
+                label="Test"
+                @click="funcDetailsTabGroupRef.selectTab('test')"
+              />
+
               <VButton
                 class="--tone-success"
                 icon="save"
@@ -234,6 +246,14 @@
           @change="updateFunc"
         />
       </TabGroupItem>
+
+      <TabGroupItem
+        v-if="featureFlagsStore.FUNC_TEST_PANEL"
+        label="Test"
+        slug="test"
+      >
+        <FuncTest />
+      </TabGroupItem>
     </TabGroup>
   </div>
   <div
@@ -262,12 +282,16 @@ import {
 import clsx from "clsx";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
+import FuncTest from "./FuncTest.vue";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   funcId?: FuncId;
@@ -275,9 +299,14 @@ const props = defineProps<{
   singleModelScreen?: boolean;
 }>();
 
+const funcDetailsTabGroupRef = ref();
+
 const funcStore = useFuncStore();
 
-const emit = defineEmits<{ (e: "detached"): void }>();
+const emit = defineEmits<{
+  (e: "detached"): void;
+  (e: "expandPanel"): void;
+}>();
 
 type DetachType =
   | InstanceType<typeof ActionDetails>
@@ -403,6 +432,12 @@ const hasAssociations = computed(() => {
   }
   return false;
 });
+
+const expandTestPanel = (selectedTabSlug: string | undefined) => {
+  if (selectedTabSlug === "test") {
+    emit("expandPanel");
+  }
+};
 
 // const getExecutionReqStatus = funcStore.getRequestStatus(
 //   "GET_FUNC_LAST_EXECUTION",
