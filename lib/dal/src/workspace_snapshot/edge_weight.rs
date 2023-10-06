@@ -52,7 +52,7 @@ impl EdgeWeight {
         &mut self,
         change_set: &ChangeSetPointer,
     ) -> EdgeWeightResult<()> {
-        self.vector_clock_write.inc(change_set)?;
+        self.vector_clock_write.inc(change_set.vector_clock_id())?;
 
         Ok(())
     }
@@ -62,16 +62,21 @@ impl EdgeWeight {
     }
 
     pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
-        if self.vector_clock_first_seen.entry_for(change_set).is_none() {
-            self.vector_clock_first_seen.inc_to(change_set, seen_at);
+        if self
+            .vector_clock_first_seen
+            .entry_for(change_set.vector_clock_id())
+            .is_none()
+        {
+            self.vector_clock_first_seen
+                .inc_to(change_set.vector_clock_id(), seen_at);
         }
     }
 
     pub fn new(change_set: &ChangeSetPointer, kind: EdgeWeightKind) -> EdgeWeightResult<Self> {
         Ok(Self {
             kind,
-            vector_clock_first_seen: VectorClock::new(change_set)?,
-            vector_clock_write: VectorClock::new(change_set)?,
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
         })
     }
 

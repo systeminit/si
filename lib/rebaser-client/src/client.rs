@@ -81,9 +81,10 @@ impl Client {
             .producer
             .send_single(
                 ChangeSetMessage {
-                    change_set_to_update,
-                    workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at,
-                    change_set_that_dictates_changes,
+                    to_rebase_vector_clock_id: change_set_to_update,
+                    to_rebase_workspace_snapshot_id:
+                        workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at,
+                    onto_change_set_id: change_set_that_dictates_changes,
                 },
                 Some(stream.reply_stream.clone()),
             )

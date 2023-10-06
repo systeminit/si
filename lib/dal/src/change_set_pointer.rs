@@ -9,6 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{pk, DalContext, TransactionsError};
 
@@ -86,6 +87,12 @@ impl ChangeSetPointer {
             )
             .await?;
         Ok(Self::try_from(row)?)
+    }
+
+    /// Create a [`VectorClockId`] from the [`ChangeSetPointer`].
+    pub fn vector_clock_id(&self) -> VectorClockId {
+        let ulid: Ulid = self.id.into();
+        VectorClockId::from(ulid)
     }
 
     pub fn generate_ulid(&self) -> ChangeSetPointerResult<Ulid> {
