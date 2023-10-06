@@ -55,13 +55,14 @@ pub struct ManagementMessage {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChangeSetMessage {
     /// Corresponds to the change set whose pointer is to be updated.
-    pub change_set_to_update: Ulid,
-    /// Corresponds to the workspace snapshot that will be rebased on top of the snapshot that the
-    /// change set is currently pointing at.
-    pub workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at: Ulid,
-    /// Corresponds to the change set that's either the base change set, the last change set before
-    /// edits were made, or the change set that you are trying to “merge” into the base.
-    pub change_set_that_dictates_changes: Ulid,
+    pub onto_change_set_id: Ulid,
+    /// Corresponds to the workspace snapshot that will be rebased on top of the workspace snapshot
+    /// that the change set is currently pointing at.
+    pub to_rebase_workspace_snapshot_id: Ulid,
+    /// Derived from the ephemeral or persisted change set that's either the base change set, the
+    /// last change set before edits were made, or the change set that you are trying to rebase
+    /// onto base.
+    pub to_rebase_vector_clock_id: Ulid,
 }
 
 /// The message shape that the rebaser change set loop will use for replying to the client.
