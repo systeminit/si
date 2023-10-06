@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
     workspace_snapshot::{
@@ -88,13 +89,15 @@ impl NodeWeight {
         }
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
         match self {
-            NodeWeight::Content(content_weight) => content_weight.mark_seen_at(change_set, seen_at),
-            NodeWeight::Ordering(ordering_weight) => {
-                ordering_weight.mark_seen_at(change_set, seen_at)
+            NodeWeight::Content(content_weight) => {
+                content_weight.mark_seen_at(vector_clock_id, seen_at)
             }
-            NodeWeight::Prop(prop_weight) => prop_weight.mark_seen_at(change_set, seen_at),
+            NodeWeight::Ordering(ordering_weight) => {
+                ordering_weight.mark_seen_at(vector_clock_id, seen_at)
+            }
+            NodeWeight::Prop(prop_weight) => prop_weight.mark_seen_at(vector_clock_id, seen_at),
         }
     }
 

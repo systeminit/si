@@ -3932,6 +3932,7 @@ dependencies = [
 name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
+ "log",
  "rebaser-core",
  "remain",
  "serde",

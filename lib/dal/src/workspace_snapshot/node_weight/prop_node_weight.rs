@@ -3,6 +3,7 @@ use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
@@ -75,16 +76,16 @@ impl PropNodeWeight {
         self.lineage_id
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
         self.vector_clock_recently_seen
-            .inc_to(change_set.vector_clock_id(), seen_at.clone());
+            .inc_to(vector_clock_id, seen_at);
         if self
             .vector_clock_first_seen
-            .entry_for(change_set.vector_clock_id())
+            .entry_for(vector_clock_id)
             .is_none()
         {
             self.vector_clock_first_seen
-                .inc_to(change_set.vector_clock_id(), seen_at);
+                .inc_to(vector_clock_id, seen_at);
         }
     }
 
@@ -119,62 +120,62 @@ impl PropNodeWeight {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "AttributePrototype".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::AttributeValue(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "AttributeValue".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::Component(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Component".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::ExternalProvider(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "ExternalProvider".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::Func(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Func".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::FuncArg(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "FuncArc".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::InternalProvider(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "InternalProvider".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),
             ContentAddress::Root => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Root".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::Schema(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Schema".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
             ContentAddress::SchemaVariant(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "SchemaVariant".to_string(),
                     "Prop".to_string(),
-                ))
+                ));
             }
         };
 

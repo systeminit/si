@@ -8,17 +8,17 @@ use serde::{Deserialize, Serialize};
 pub enum Update {
     NewEdge {
         source: NodeIndex,
+        // Check if already exists in "onto" (source). Grab node weight from "to_rebase"
+        // (destination) and see if there is an equivalent node (id and lineage) in "onto".
+        // If not, use "import_subgraph".
         destination: NodeIndex,
         edge_weight: EdgeWeight,
     },
-    NewSubgraph {
-        source: NodeIndex,
-    },
     RemoveEdge(EdgeIndex),
     ReplaceSubgraph {
-        // "onto"
-        new: NodeIndex,
-        // "to_rebase"
-        old: NodeIndex,
+        onto: NodeIndex,
+        // Check if already exists in "onto". Grab node weight from "to_rebase" and see if there is
+        // an equivalent node (id and lineage) in "onto". If not, use "import_subgraph".
+        to_rebase: NodeIndex,
     },
 }

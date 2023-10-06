@@ -60,7 +60,7 @@ mod tests {
             .await
             .expect("could not create stream");
 
-        let mut producer = Producer::new(&environment, "producer", stream)
+        let mut producer = Producer::new(&environment, stream)
             .await
             .expect("could not create producer");
 
