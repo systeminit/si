@@ -89,12 +89,7 @@ async fn simple_rebase(ctx: &mut DalContext) {
         .expect("could not send");
 
     // TODO(nick): do something useful with this.
-    match response {
-        ChangeSetReplyMessage::Success { results } => {
-            dbg!(results);
-        }
-        ChangeSetReplyMessage::Failure { error } => panic!("{}", error),
-    }
+    dbg!(response);
 
     // TODO(nick): move cleanup to the test harness.
     let _ = client

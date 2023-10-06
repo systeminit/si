@@ -80,12 +80,7 @@ async fn process_delivery_infallible_wrapper(
                 match Producer::for_reply(&environment, inbound_stream, reply_to).await {
                     Ok(mut producer) => {
                         if let Err(err) = producer
-                            .send_single(
-                                ChangeSetReplyMessage::Failure {
-                                    error: format!("{err}"),
-                                },
-                                None,
-                            )
+                            .send_single(ChangeSetReplyMessage::Error(err.to_string()), None)
                             .await
                         {
                             error!(error = ?err, "sending reply failed");
@@ -118,6 +113,7 @@ async fn process_delivery(
     };
     let message: ChangeSetMessage = serde_json::from_value(raw_message.clone())?;
 
+    // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_workspace_snapshot: WorkspaceSnapshot =
         WorkspaceSnapshot::find(ctx, message.to_rebase_workspace_snapshot_id.into()).await?;
     let onto_change_set = ChangeSetPointer::find(ctx, message.onto_change_set_id.into()).await?;
@@ -127,6 +123,7 @@ async fn process_delivery(
     let mut onto_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, onto_workspace_snapshot_id).await?;
 
+    // Perform the conflicts and updates detection.
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             message.to_rebase_vector_clock_id.into(),
@@ -135,13 +132,22 @@ async fn process_delivery(
         )
         .await?;
 
-    // TODO(nick): for now, just send back the conflicts and updates. We'll need to do something
-    // with those updates later.
-    let serialized = serde_json::to_value(ChangeSetReplyMessage::Success {
-        results: format!("{:?} {:?}", conflicts, updates),
-    })?;
+    // If there are conflicts, immediately assemble a reply message that conflicts were found.
+    // Otherwise, we can perform updates and assemble a "success" reply message.
+    let message: ChangeSetReplyMessage = if conflicts.is_empty() {
+        ChangeSetReplyMessage::ConflictsFound {
+            conflicts_found: serde_json::to_value(conflicts)?,
+            updates_found_and_skipped: serde_json::to_value(updates)?,
+        }
+    } else {
+        // TODO(nick): actually perform updates.
+        ChangeSetReplyMessage::Success(serde_json::to_value(updates)?)
+    };
+
     let mut producer = Producer::for_reply(&environment, inbound_stream, reply_to).await?;
-    producer.send_single(serialized, None).await?;
+    producer
+        .send_single(serde_json::to_value(message)?, None)
+        .await?;
     producer.close().await?;
 
     Ok(())
