@@ -27,6 +27,7 @@
 
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
 use ulid::Ulid;
 
 /// Stream to manage rebaser consumer loops.
@@ -68,14 +69,16 @@ pub struct ChangeSetMessage {
 /// The message shape that the rebaser change set loop will use for replying to the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ChangeSetReplyMessage {
-    /// Processing the delivery was a success.
-    Success {
-        /// The results of processing the delivery.
-        results: String,
+    /// Updates performed when processing the delivery.
+    Success(Value),
+    /// Conflicts found when processing the delivery.
+    ConflictsFound {
+        /// A serialized list of the conflicts found during detection.
+        conflicts_found: Value,
+        /// A serialized list of the updates found during detection and skipped because at least
+        /// once conflict was found.
+        updates_found_and_skipped: Value,
     },
-    /// Processing the delivery was a failure.
-    Failure {
-        /// The error encountered when processing the delivery.
-        error: String,
-    },
+    /// Error encountered when processing the delivery.
+    Error(String),
 }
