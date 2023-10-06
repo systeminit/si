@@ -1,10 +1,35 @@
-use dal::change_set_pointer::ChangeSetPointer;
-use dal::{DalContext, DalContextBuilder, Tenancy, Visibility, WorkspacePk, WorkspaceSnapshot};
+use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use dal::workspace_snapshot::WorkspaceSnapshotError;
+use dal::{
+    DalContext, DalContextBuilder, Tenancy, TransactionsError, Visibility, WorkspacePk,
+    WorkspaceSnapshot,
+};
 use rebaser_core::{ChangeSetMessage, ChangeSetReplyMessage};
-use si_rabbitmq::{Consumer, Delivery, Environment, Producer};
+use si_rabbitmq::{Consumer, Delivery, Environment, Producer, RabbitError};
 use telemetry::prelude::*;
+use thiserror::Error;
 
-use crate::server::{ServerError, ServerResult};
+#[allow(missing_docs)]
+#[remain::sorted]
+#[derive(Debug, Error)]
+enum ChangeSetLoopError {
+    #[error("workspace snapshot error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("missing change set message \"reply_to\" field")]
+    MissingChangeSetMessageReplyTo,
+    #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
+    MissingWorkspaceSnapshotForChangeSet(ChangeSetPointerId),
+    #[error("rabbit error: {0}")]
+    Rabbit(#[from] RabbitError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+type ChangeSetLoopResult<T> = Result<T, ChangeSetLoopError>;
 
 pub(crate) async fn change_set_loop_infallible_wrapper(
     ctx_builder: DalContextBuilder,
@@ -18,7 +43,7 @@ pub(crate) async fn change_set_loop_infallible_wrapper(
 async fn change_set_loop(
     ctx_builder: DalContextBuilder,
     mut consumer: Consumer,
-) -> ServerResult<Option<(String, String)>> {
+) -> ChangeSetLoopResult<Option<(String, String)>> {
     let mut ctx = ctx_builder.build_default().await?;
     ctx.update_visibility(Visibility::new_head(false));
     ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
@@ -80,37 +105,33 @@ async fn process_delivery_infallible_wrapper(
     }
 }
 
-// TODO(nick): use real errors in this function.
 async fn process_delivery(
     ctx: &mut DalContext,
     environment: &Environment,
     inbound_stream: impl AsRef<str>,
     delivery: &Delivery,
     reply_to: impl AsRef<str>,
-) -> ServerResult<()> {
+) -> ChangeSetLoopResult<()> {
     let raw_message = match &delivery.message_contents {
         Some(found_raw_message) => found_raw_message,
-        None => return Err(ServerError::MissingManagementMessageReplyTo),
+        None => return Err(ChangeSetLoopError::MissingChangeSetMessageReplyTo),
     };
     let message: ChangeSetMessage = serde_json::from_value(raw_message.clone())?;
 
-    // ------------------------------------
-    // NOTE(nick): the "work" begins below!
-    // ------------------------------------
+    let mut to_rebase_workspace_snapshot: WorkspaceSnapshot =
+        WorkspaceSnapshot::find(ctx, message.to_rebase_workspace_snapshot_id.into()).await?;
+    let onto_change_set = ChangeSetPointer::find(ctx, message.onto_change_set_id.into()).await?;
+    let onto_workspace_snapshot_id = onto_change_set.workspace_snapshot_id.ok_or(
+        ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(onto_change_set.id),
+    )?;
+    let onto_workspace_snapshot = WorkspaceSnapshot::find(ctx, onto_workspace_snapshot_id).await?;
 
-    let to_rebase: WorkspaceSnapshot = WorkspaceSnapshot::find(
-        ctx,
-        message
-            .workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at
-            .into(),
-    )
-    .await?;
-    let to_rebase_change_set =
-        ChangeSetPointer::find(ctx, message.change_set_that_dictates_changes.into()).await?;
-    let onto_change_set = ChangeSetPointer::find(ctx, message.change_set_to_update.into()).await?;
-
-    let (conflicts, updates) = to_rebase
-        .detect_conflicts_and_updates(ctx, &to_rebase_change_set, &onto_change_set)
+    let (conflicts, updates) = to_rebase_workspace_snapshot
+        .detect_conflicts_and_updates(
+            message.to_rebase_vector_clock_id.into(),
+            &onto_workspace_snapshot,
+            onto_change_set.vector_clock_id(),
+        )
         .await?;
 
     // TODO(nick): for now, just send back the conflicts and updates. We'll need to do something
