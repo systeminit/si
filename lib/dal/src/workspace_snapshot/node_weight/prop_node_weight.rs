@@ -42,9 +42,9 @@ impl PropNodeWeight {
             merkle_tree_hash: ContentHash::default(),
             kind,
             name,
-            vector_clock_first_seen: VectorClock::new(change_set)?,
-            vector_clock_recently_seen: VectorClock::new(change_set)?,
-            vector_clock_write: VectorClock::new(change_set)?,
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
         })
     }
 
@@ -64,8 +64,9 @@ impl PropNodeWeight {
         &mut self,
         change_set: &ChangeSetPointer,
     ) -> NodeWeightResult<()> {
-        self.vector_clock_write.inc(change_set)?;
-        self.vector_clock_recently_seen.inc(change_set)?;
+        self.vector_clock_write.inc(change_set.vector_clock_id())?;
+        self.vector_clock_recently_seen
+            .inc(change_set.vector_clock_id())?;
 
         Ok(())
     }
@@ -76,9 +77,14 @@ impl PropNodeWeight {
 
     pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
         self.vector_clock_recently_seen
-            .inc_to(change_set, seen_at.clone());
-        if self.vector_clock_first_seen.entry_for(change_set).is_none() {
-            self.vector_clock_first_seen.inc_to(change_set, seen_at);
+            .inc_to(change_set.vector_clock_id(), seen_at.clone());
+        if self
+            .vector_clock_first_seen
+            .entry_for(change_set.vector_clock_id())
+            .is_none()
+        {
+            self.vector_clock_first_seen
+                .inc_to(change_set.vector_clock_id(), seen_at);
         }
     }
 
@@ -88,11 +94,13 @@ impl PropNodeWeight {
         other: &Self,
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
-            .merge(change_set, &other.vector_clock_write)?;
+            .merge(change_set.vector_clock_id(), &other.vector_clock_write)?;
         self.vector_clock_first_seen
-            .merge(change_set, &other.vector_clock_first_seen)?;
-        self.vector_clock_recently_seen
-            .merge(change_set, &other.vector_clock_recently_seen)?;
+            .merge(change_set.vector_clock_id(), &other.vector_clock_first_seen)?;
+        self.vector_clock_recently_seen.merge(
+            change_set.vector_clock_id(),
+            &other.vector_clock_recently_seen,
+        )?;
 
         Ok(())
     }
@@ -202,7 +210,8 @@ impl PropNodeWeight {
         change_set: &ChangeSetPointer,
         new_val: DateTime<Utc>,
     ) {
-        self.vector_clock_recently_seen.inc_to(change_set, new_val);
+        self.vector_clock_recently_seen
+            .inc_to(change_set.vector_clock_id(), new_val);
     }
 
     pub fn vector_clock_first_seen(&self) -> &VectorClock {

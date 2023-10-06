@@ -8,6 +8,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{
     conflict::Conflict,
     content_address::ContentAddress,
@@ -389,18 +390,18 @@ impl WorkspaceSnapshotGraph {
 
     pub fn detect_conflicts_and_updates(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_vector_clock_id: VectorClockId,
         onto: &WorkspaceSnapshotGraph,
-        onto_change_set: &ChangeSetPointer,
+        onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
         let mut conflicts: Vec<Conflict> = Vec::new();
         let mut updates: Vec<Update> = Vec::new();
         if let Err(traversal_error) =
             petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
                 self.detect_conflicts_and_updates_process_dfs_event(
-                    to_rebase_change_set,
+                    to_rebase_vector_clock_id,
                     onto,
-                    onto_change_set,
+                    onto_vector_clock_id,
                     event,
                     &mut conflicts,
                     &mut updates,
@@ -415,9 +416,9 @@ impl WorkspaceSnapshotGraph {
 
     fn detect_conflicts_and_updates_process_dfs_event(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_vector_clock_id: VectorClockId,
         onto: &WorkspaceSnapshotGraph,
-        onto_change_set: &ChangeSetPointer,
+        onto_vector_clock_id: VectorClockId,
         event: DfsEvent<NodeIndex>,
         conflicts: &mut Vec<Conflict>,
         updates: &mut Vec<Update>,
@@ -555,10 +556,10 @@ impl WorkspaceSnapshotGraph {
 
                             let (container_conflicts, container_updates) = self
                                 .find_unordered_container_membership_conflicts_and_updates(
-                                    to_rebase_change_set,
+                                    to_rebase_vector_clock_id,
                                     to_rebase_node_index,
                                     onto,
-                                    onto_change_set,
+                                    onto_vector_clock_id,
                                     onto_node_index,
                                 )
                                 .map_err(|err| {
@@ -586,11 +587,11 @@ impl WorkspaceSnapshotGraph {
                             );
                             let (container_conflicts, container_updates) = self
                                 .find_ordered_container_membership_conflicts_and_updates(
-                                    to_rebase_change_set,
+                                    to_rebase_vector_clock_id,
                                     to_rebase_node_index,
                                     to_rebase_ordering_node_index,
                                     onto,
-                                    onto_change_set,
+                                    onto_vector_clock_id,
                                     onto_node_index,
                                     onto_ordering_node_index,
                                 )
@@ -641,11 +642,11 @@ impl WorkspaceSnapshotGraph {
 
     fn find_ordered_container_membership_conflicts_and_updates(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_vector_clock_id: VectorClockId,
         to_rebase_container_index: NodeIndex,
         to_rebase_ordering_index: NodeIndex,
         onto: &WorkspaceSnapshotGraph,
-        onto_change_set: &ChangeSetPointer,
+        onto_vector_clock_id: VectorClockId,
         onto_container_index: NodeIndex,
         onto_ordering_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
@@ -800,14 +801,14 @@ impl WorkspaceSnapshotGraph {
                     if to_rebase_edgeref
                         .weight()
                         .vector_clock_first_seen()
-                        .entry_for(onto_change_set)
+                        .entry_for(onto_vector_clock_id)
                         .is_none()
                     {
                         // `only_to_rebase_item` is new: Edge in `to_rebase` does not have a "First Seen" for `onto`.
                     } else if self
                         .get_node_weight(only_to_rebase_item_index)?
                         .vector_clock_write()
-                        .entry_for(to_rebase_change_set)
+                        .entry_for(to_rebase_vector_clock_id)
                         .is_some()
                     {
                         // Entry was deleted in `onto`. If we have also modified the entry, then
@@ -832,7 +833,7 @@ impl WorkspaceSnapshotGraph {
             let onto_root_seen_as_of = self
                 .get_node_weight(self.root_index)?
                 .vector_clock_recently_seen()
-                .entry_for(onto_change_set);
+                .entry_for(onto_vector_clock_id);
             for only_onto_item in only_onto_items {
                 let only_onto_item_index = *only_onto_item_indexes.get(&only_onto_item).ok_or(
                     WorkspaceSnapshotGraphError::NodeWithIdNotFound(only_onto_item),
@@ -847,7 +848,7 @@ impl WorkspaceSnapshotGraph {
                     if let Some(onto_first_seen) = onto_edgeref
                         .weight()
                         .vector_clock_first_seen()
-                        .entry_for(onto_change_set)
+                        .entry_for(onto_vector_clock_id)
                     {
                         if let Some(root_seen_as_of) = onto_root_seen_as_of {
                             if onto_first_seen > root_seen_as_of {
@@ -890,10 +891,10 @@ impl WorkspaceSnapshotGraph {
 
     fn find_unordered_container_membership_conflicts_and_updates(
         &self,
-        to_rebase_change_set: &ChangeSetPointer,
+        to_rebase_vector_clock_id: VectorClockId,
         to_rebase_container_index: NodeIndex,
         onto: &WorkspaceSnapshotGraph,
-        onto_change_set: &ChangeSetPointer,
+        onto_vector_clock_id: VectorClockId,
         onto_container_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -962,7 +963,7 @@ impl WorkspaceSnapshotGraph {
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
             .vector_clock_recently_seen()
-            .entry_for(onto_change_set);
+            .entry_for(onto_vector_clock_id);
         for only_to_rebase_edge_info in only_to_rebase_edges.values() {
             let to_rebase_edge_weight = self
                 .graph
@@ -975,12 +976,12 @@ impl WorkspaceSnapshotGraph {
             // no updates.
             if to_rebase_edge_weight
                 .vector_clock_first_seen()
-                .entry_for(onto_change_set)
+                .entry_for(onto_vector_clock_id)
                 .is_some()
             {
                 if to_rebase_item_weight
                     .vector_clock_write()
-                    .entry_for(to_rebase_change_set)
+                    .entry_for(to_rebase_vector_clock_id)
                     > root_seen_as_of_onto
                 {
                     // Edge has been modified in `onto` (`onto` item write vector clock > "seen as
@@ -1005,7 +1006,7 @@ impl WorkspaceSnapshotGraph {
 
             if let Some(onto_first_seen) = onto_edge_weight
                 .vector_clock_first_seen()
-                .entry_for(onto_change_set)
+                .entry_for(onto_vector_clock_id)
             {
                 if let Some(root_seen_as_of) = root_seen_as_of_onto {
                     if onto_first_seen > root_seen_as_of {
@@ -2047,7 +2048,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &initial_graph, initial_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &initial_graph,
+                initial_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
@@ -2152,7 +2157,11 @@ mod test {
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
@@ -2309,7 +2318,11 @@ mod test {
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
@@ -2451,7 +2464,11 @@ mod test {
         base_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(
@@ -2591,7 +2608,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(
@@ -2867,7 +2888,11 @@ mod test {
             .expect("Unable to update the schema");
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &base_graph, base_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         println!("base graph current root: {:?}", base_graph.root_index);
@@ -3887,7 +3912,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &initial_graph, initial_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &initial_graph,
+                initial_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
@@ -4119,7 +4148,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &initial_graph, initial_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &initial_graph,
+                initial_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
@@ -4392,7 +4425,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &initial_graph, initial_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &initial_graph,
+                initial_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(
@@ -4676,7 +4713,11 @@ mod test {
         new_graph.dot();
 
         let (conflicts, updates) = new_graph
-            .detect_conflicts_and_updates(new_change_set, &initial_graph, initial_change_set)
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &initial_graph,
+                initial_change_set.vector_clock_id(),
+            )
             .expect("Unable to detect conflicts and updates");
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);

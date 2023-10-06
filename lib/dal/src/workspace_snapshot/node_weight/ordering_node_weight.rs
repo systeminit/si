@@ -32,7 +32,8 @@ impl OrderingNodeWeight {
         &mut self,
         change_set: &ChangeSetPointer,
     ) -> NodeWeightResult<()> {
-        self.vector_clock_first_seen.inc(change_set)?;
+        self.vector_clock_first_seen
+            .inc(change_set.vector_clock_id())?;
 
         Ok(())
     }
@@ -41,7 +42,9 @@ impl OrderingNodeWeight {
         &mut self,
         change_set: &ChangeSetPointer,
     ) -> NodeWeightResult<()> {
-        self.vector_clock_write.inc(change_set).map_err(Into::into)
+        self.vector_clock_write
+            .inc(change_set.vector_clock_id())
+            .map_err(Into::into)
     }
 
     pub fn lineage_id(&self) -> Ulid {
@@ -50,9 +53,14 @@ impl OrderingNodeWeight {
 
     pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
         self.vector_clock_recently_seen
-            .inc_to(change_set, seen_at.clone());
-        if self.vector_clock_first_seen.entry_for(change_set).is_none() {
-            self.vector_clock_first_seen.inc_to(change_set, seen_at);
+            .inc_to(change_set.vector_clock_id(), seen_at.clone());
+        if self
+            .vector_clock_first_seen
+            .entry_for(change_set.vector_clock_id())
+            .is_none()
+        {
+            self.vector_clock_first_seen
+                .inc_to(change_set.vector_clock_id(), seen_at);
         }
     }
 
@@ -62,9 +70,11 @@ impl OrderingNodeWeight {
         other: &OrderingNodeWeight,
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
-            .merge(change_set, other.vector_clock_write())?;
-        self.vector_clock_first_seen
-            .merge(change_set, other.vector_clock_first_seen())?;
+            .merge(change_set.vector_clock_id(), other.vector_clock_write())?;
+        self.vector_clock_first_seen.merge(
+            change_set.vector_clock_id(),
+            other.vector_clock_first_seen(),
+        )?;
 
         Ok(())
     }
@@ -77,8 +87,8 @@ impl OrderingNodeWeight {
         Ok(Self {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
-            vector_clock_write: VectorClock::new(change_set)?,
-            vector_clock_first_seen: VectorClock::new(change_set)?,
+            vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
+            vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             ..Default::default()
         })
     }
@@ -122,7 +132,8 @@ impl OrderingNodeWeight {
         change_set: &ChangeSetPointer,
         new_val: DateTime<Utc>,
     ) {
-        self.vector_clock_recently_seen.inc_to(change_set, new_val);
+        self.vector_clock_recently_seen
+            .inc_to(change_set.vector_clock_id(), new_val);
     }
 
     fn update_content_hash(&mut self) {
