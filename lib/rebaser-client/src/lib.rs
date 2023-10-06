@@ -29,7 +29,6 @@ pub use client::Client;
 use si_rabbitmq::{Delivery, RabbitError};
 use telemetry::prelude::error;
 use thiserror::Error;
-use tokio::time::error::Elapsed;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -43,8 +42,8 @@ pub enum ClientError {
     Rabbit(#[from] RabbitError),
     #[error("rebaser stream for change set not found")]
     RebaserStreamForChangeSetNotFound,
-    #[error("hit timeout while waiting for message on reply stream: {0}")]
-    ReplyTimeout(Elapsed),
+    #[error("hit timeout while waiting for message on reply stream")]
+    ReplyTimeout,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

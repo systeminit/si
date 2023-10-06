@@ -17,6 +17,9 @@ use crate::workspace_snapshot::{
     update::Update,
 };
 
+/// Ensure [`NodeIndex`] is usable by external crates.
+pub use petgraph::graph::NodeIndex;
+
 pub type LineageId = Ulid;
 
 #[allow(clippy::large_enum_variant)]
@@ -33,6 +36,8 @@ pub enum WorkspaceSnapshotGraphError {
     ContentStore(#[from] StoreError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("Edge does not exist for EdgeIndex: {0:?}")]
+    EdgeDoesNotExist(EdgeIndex),
     #[error("EdgeWeight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("EdgeWeight not found")]
@@ -47,6 +52,8 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
+    #[error("node weight not found by node index: {0:?}")]
+    NodeWeightNotFoundByNodeIndex(NodeIndex),
     #[error("Node with ID {} not found", .0.to_string())]
     NodeWithIdNotFound(Ulid),
     #[error("No Prop found for NodeIndex {0:?}")]
@@ -92,10 +99,14 @@ impl WorkspaceSnapshotGraph {
         Ok(Self { root_index, graph })
     }
 
+    pub fn root(&self) -> NodeIndex {
+        self.root_index
+    }
+
     pub fn add_edge(
         &mut self,
         from_node_index: NodeIndex,
-        mut edge_weight: EdgeWeight,
+        edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
@@ -180,6 +191,7 @@ impl WorkspaceSnapshotGraph {
         Ok(new_edge_index)
     }
 
+    #[allow(dead_code)]
     fn add_ordered_node(
         &mut self,
         change_set: &ChangeSetPointer,
@@ -378,6 +390,24 @@ impl WorkspaceSnapshotGraph {
         });
     }
 
+    pub fn find_equivalent_node(
+        &self,
+        id: Ulid,
+        lineage_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        // This looks a bit clunky and could be improved with the following issue resolved:
+        // https://github.com/petgraph/petgraph/issues/577
+        for node_index in self.graph.node_indices() {
+            let node_weight = self.graph.node_weight(node_index).ok_or(
+                WorkspaceSnapshotGraphError::NodeWeightNotFoundByNodeIndex(node_index),
+            )?;
+            if id == node_weight.id() && lineage_id == node_weight.lineage_id() {
+                return Ok(Some(node_index));
+            }
+        }
+        Ok(None)
+    }
+
     fn copy_node_index(
         &mut self,
         node_index_to_copy: NodeIndex,
@@ -509,8 +539,8 @@ impl WorkspaceSnapshotGraph {
                             // `to_rebase`. There is no conflict, and we should update to use the
                             // `onto` node.
                             updates.push(Update::ReplaceSubgraph {
-                                new: onto_node_index,
-                                old: to_rebase_node_index,
+                                onto: onto_node_index,
+                                to_rebase: to_rebase_node_index,
                             });
                         } else {
                             // There are changes on both sides that have not been seen by the other
@@ -627,7 +657,8 @@ impl WorkspaceSnapshotGraph {
         }
     }
 
-    fn dot(&self) {
+    #[allow(dead_code)]
+    pub fn dot(&self) {
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
         // process and open a new tab in your browser.
         // ```
@@ -726,8 +757,8 @@ impl WorkspaceSnapshotGraph {
 
             // Use the ordering from `other` in `to_rebase`.
             updates.push(Update::ReplaceSubgraph {
-                new: onto_ordering_index,
-                old: to_rebase_ordering_index,
+                onto: onto_ordering_index,
+                to_rebase: to_rebase_ordering_index,
             });
         } else if to_rebase_ordering
             .vector_clock_write()
@@ -1008,10 +1039,13 @@ impl WorkspaceSnapshotGraph {
                 .vector_clock_first_seen()
                 .entry_for(onto_vector_clock_id)
             {
-                if let Some(root_seen_as_of) = root_seen_as_of_onto {
-                    if onto_first_seen > root_seen_as_of {
+                match root_seen_as_of_onto {
+                    Some(root_seen_as_of) if onto_first_seen <= root_seen_as_of => {}
+                    _ => {
                         // Edge first seen by `onto` > "seen as of" on `to_rebase` graph for `onto`'s entry on
                         // root node: Item is new.
+                        // Other case where item is new: the `to_rebase` has never seen anything from
+                        // the `onto` change set. All the items are new.
                         updates.push(Update::NewEdge {
                             source: to_rebase_container_index,
                             destination: only_onto_edge_info.target_node_index,
@@ -1039,7 +1073,7 @@ impl WorkspaceSnapshotGraph {
         Ok((conflicts, updates))
     }
 
-    fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+    pub(crate) fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         for node_index in self.graph.node_indices() {
             // It's possible that there are multiple nodes in the petgraph that have the
             // same ID as the one we're interested in, as we may not yet have cleaned up
@@ -1074,7 +1108,10 @@ impl WorkspaceSnapshotGraph {
         Ok(results)
     }
 
-    fn get_node_weight(&self, node_index: NodeIndex) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
+    pub fn get_node_weight(
+        &self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
         self.graph
             .node_weight(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
@@ -1093,11 +1130,11 @@ impl WorkspaceSnapshotGraph {
         algo::has_path_connecting(&self.graph, self.root_index, node, None)
     }
 
-    fn import_subgraph(
+    pub fn import_subgraph(
         &mut self,
         other: &WorkspaceSnapshotGraph,
         root_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
         let mut new_node_indexes = HashMap::new();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
@@ -1116,11 +1153,7 @@ impl WorkspaceSnapshotGraph {
                 );
             }
         }
-
-        new_node_indexes
-            .get(&root_index)
-            .copied()
-            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+        Ok(new_node_indexes)
     }
 
     fn is_acyclic_directed(&self) -> bool {
@@ -1135,14 +1168,14 @@ impl WorkspaceSnapshotGraph {
 
     pub fn mark_graph_seen(
         &mut self,
-        change_set: &ChangeSetPointer,
+        vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let seen_at = Utc::now();
         for edge in self.graph.edge_weights_mut() {
-            edge.mark_seen_at(change_set, seen_at.clone());
+            edge.mark_seen_at(vector_clock_id, seen_at.clone());
         }
         for node in self.graph.node_weights_mut() {
-            node.mark_seen_at(change_set, seen_at.clone());
+            node.mark_seen_at(vector_clock_id, seen_at);
         }
 
         Ok(())
@@ -1224,7 +1257,8 @@ impl WorkspaceSnapshotGraph {
     /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
     /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
     /// [`Self::cleanup()`] has run should be considered invalid.
-    fn remove_edge(
+    #[allow(dead_code)]
+    pub(crate) fn remove_edge(
         &mut self,
         change_set: &ChangeSetPointer,
         source_node_index: NodeIndex,
@@ -1290,7 +1324,28 @@ impl WorkspaceSnapshotGraph {
         Ok(())
     }
 
-    fn replace_references(
+    pub(crate) fn remove_edge_for_update_stableish(
+        &mut self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let _ = self
+            .graph
+            .remove_edge(edge_index)
+            .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))?;
+        Ok(())
+    }
+
+    pub(crate) fn get_edge_by_index_stableish(
+        &mut self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotGraphResult<EdgeWeight> {
+        self.graph
+            .edge_weight(edge_index)
+            .cloned()
+            .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))
+    }
+
+    pub fn replace_references(
         &mut self,
         original_node_index: NodeIndex,
         new_node_index: NodeIndex,
@@ -2184,6 +2239,104 @@ mod test {
     }
 
     #[test]
+    fn detect_conflicts_and_updates_with_purely_new_content_in_new_graph() {
+        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let base_change_set = &initial_change_set;
+        let mut base_graph = WorkspaceSnapshotGraph::new(base_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let component_id = base_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let component_index = base_graph
+            .add_node(
+                NodeWeight::new_content(
+                    base_change_set,
+                    component_id,
+                    ContentAddress::Component(ContentHash::from("Component A")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Schema A");
+        base_graph
+            .add_edge(
+                base_graph.root_index,
+                EdgeWeight::new(base_change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                component_index,
+            )
+            .expect("Unable to add root -> component edge");
+
+        base_graph.cleanup();
+        println!("Initial base graph (Root {:?}):", base_graph.root_index);
+        base_graph.dot();
+
+        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = &new_change_set;
+        let mut new_graph = base_graph.clone();
+
+        let new_component_id = new_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let new_component_index = new_graph
+            .add_node(
+                NodeWeight::new_content(
+                    new_change_set,
+                    new_component_id,
+                    ContentAddress::Component(ContentHash::from("Component B")),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add Component B");
+        new_graph
+            .add_edge(
+                new_graph.root_index,
+                EdgeWeight::new(new_change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                new_component_index,
+            )
+            .expect("Unable to add root -> component edge");
+
+        new_graph.cleanup();
+        println!("Updated new graph (Root: {:?}):", new_graph.root_index);
+        new_graph.dot();
+
+        let (conflicts, updates) = new_graph
+            .detect_conflicts_and_updates(
+                new_change_set.vector_clock_id(),
+                &base_graph,
+                base_change_set.vector_clock_id(),
+            )
+            .expect("Unable to detect conflicts and updates");
+
+        assert!(updates.is_empty());
+        assert!(conflicts.is_empty());
+
+        let (conflicts, updates) = base_graph
+            .detect_conflicts_and_updates(
+                base_change_set.vector_clock_id(),
+                &new_graph,
+                new_change_set.vector_clock_id(),
+            )
+            .expect("Unable to detect conflicts and updates");
+
+        assert!(conflicts.is_empty());
+
+        match updates.as_slice() {
+            [Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            }] => {
+                assert_eq!(base_graph.root_index, *source);
+                assert_eq!(new_component_index, *destination);
+                assert_eq!(&EdgeWeightKind::Use, edge_weight.kind());
+            }
+            other => panic!("Unexpected updates: {:?}", other),
+        }
+    }
+
+    #[test]
     fn detect_conflicts_and_updates_simple_no_conflicts_with_updates_on_both_sides() {
         let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let base_change_set = &initial_change_set;
@@ -2916,10 +3069,10 @@ mod test {
             },
         ];
         let expected_updates = vec![Update::ReplaceSubgraph {
-            new: base_graph
+            onto: base_graph
                 .get_node_index_by_id(docker_image_schema_id)
                 .expect("Unable to get NodeIndex"),
-            old: new_graph
+            to_rebase: new_graph
                 .get_node_index_by_id(docker_image_schema_id)
                 .expect("Unable to get NodeIndex"),
         }];
@@ -4168,7 +4321,7 @@ mod test {
                     edge_weight: new_edge_weight,
                 },
                 Update::ReplaceSubgraph {
-                    new: initial_graph
+                    onto: initial_graph
                         .ordering_node_index_for_container(
                             initial_graph
                                 .get_node_index_by_id(container_prop_id)
@@ -4176,7 +4329,7 @@ mod test {
                         )
                         .expect("Unable to get new ordering NodeIndex")
                         .expect("Ordering NodeIndex not found"),
-                    old: new_graph
+                    to_rebase: new_graph
                         .ordering_node_index_for_container(
                             new_graph
                                 .get_node_index_by_id(container_prop_id)
@@ -4658,7 +4811,7 @@ mod test {
 
         initial_graph.cleanup();
         initial_graph
-            .mark_graph_seen(initial_change_set)
+            .mark_graph_seen(initial_change_set.vector_clock_id())
             .expect("Unable to update recently seen information");
         // initial_graph.dot();
 
@@ -5028,7 +5181,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -5397,7 +5550,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -5886,7 +6039,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -5912,7 +6065,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -5973,7 +6126,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -6474,7 +6627,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -6505,7 +6658,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),
@@ -6569,7 +6722,7 @@ mod test {
                     &mut content_store,
                     graph
                         .get_node_index_by_id(root_av_id)
-                        .expect("Unable to get NodeIndex")
+                        .expect("Unable to get NodeIndex"),
                 )
                 .await
                 .expect("Unable to generate attribute value view"),

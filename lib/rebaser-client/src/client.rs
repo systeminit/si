@@ -3,23 +3,22 @@
 
 use rebaser_core::{
     ChangeSetMessage, ChangeSetReplyMessage, ManagementMessage, ManagementMessageAction,
-    REBASER_MANAGEMENT_STREAM,
+    StreamNameGenerator,
 };
 use si_rabbitmq::{Consumer, ConsumerOffsetSpecification, Environment, Producer};
 use std::collections::HashMap;
 use std::time::Duration;
-
 use telemetry::prelude::*;
 use ulid::Ulid;
 
 use crate::{ClientError, ClientResult};
 
-const REBASER_REPLY_STREAM_PREFIX: &str = "rebaser-reply";
 const REPLY_TIMEOUT_SECONDS: u64 = 10;
 
 /// A client for communicating with a running rebaser [`Server`](rebaser_server::Server).
 #[allow(missing_debug_implementations)]
 pub struct Client {
+    id: Ulid,
     management_stream: Stream,
     streams: HashMap<Ulid, Stream>,
     reply_timeout: Duration,
@@ -38,10 +37,10 @@ impl Client {
     pub async fn new() -> ClientResult<Self> {
         let environment = Environment::new().await?;
 
-        // First, create the reply stream. We do not check if it already exists since the reply
-        // stream name is ULID-based. It's unlikely that there will be a collision.
-        let unique_identifier = Ulid::new().to_string();
-        let management_reply_stream = format!("rebaser-management-reply-{unique_identifier}");
+        let id = Ulid::new();
+        let management_stream = StreamNameGenerator::management();
+        let management_reply_stream = StreamNameGenerator::management_reply(id);
+
         environment.create_stream(&management_reply_stream).await?;
         let management_reply_consumer = Consumer::new(
             &environment,
@@ -52,10 +51,10 @@ impl Client {
 
         // Name the producer using the reply stream, but produce to the primary rebaser stream. This
         // may... will... uh... potentially?... be useful for tracing.
-        let management_producer =
-            Producer::new(&environment, unique_identifier, REBASER_MANAGEMENT_STREAM).await?;
+        let management_producer = Producer::new(&environment, management_stream).await?;
 
         Ok(Self {
+            id,
             management_stream: Stream {
                 producer: management_producer,
                 reply_stream: management_reply_stream,
@@ -67,33 +66,42 @@ impl Client {
     }
 
     /// Send a message to a rebaser stream for a change set and block for a reply.
-    pub async fn send_with_reply(
+    pub async fn request_rebase(
         &mut self,
-        change_set_to_update: Ulid,
-        workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at: Ulid,
-        change_set_that_dictates_changes: Ulid,
+        to_rebase_change_set_id: Ulid,
+        onto_workspace_snapshot_id: Ulid,
+        onto_vector_clock_id: Ulid,
     ) -> ClientResult<ChangeSetReplyMessage> {
         let stream = self
             .streams
-            .get_mut(&change_set_to_update)
+            .get_mut(&to_rebase_change_set_id)
             .ok_or(ClientError::RebaserStreamForChangeSetNotFound)?;
         stream
             .producer
             .send_single(
                 ChangeSetMessage {
-                    to_rebase_vector_clock_id: change_set_to_update,
-                    to_rebase_workspace_snapshot_id:
-                        workspace_snapshot_to_rebase_on_top_of_current_snapshot_being_pointed_at,
-                    onto_change_set_id: change_set_that_dictates_changes,
+                    to_rebase_change_set_id,
+                    onto_workspace_snapshot_id,
+                    onto_vector_clock_id,
                 },
                 Some(stream.reply_stream.clone()),
             )
             .await?;
-        let maybe_delivery =
-            match tokio::time::timeout(self.reply_timeout, stream.reply_consumer.next()).await {
-                Ok(result) => result?,
-                Err(e) => return Err(ClientError::ReplyTimeout(e)),
-            };
+        let maybe_delivery = match tokio::time::timeout(
+            self.reply_timeout,
+            stream.reply_consumer.next(),
+        )
+        .await
+        {
+            Ok(result) => result?,
+            Err(_elapsed) => {
+                debug!(
+                    "hit timeout for consuming on the reply stream (\"{}\") from the rebaser server",
+                    stream.reply_consumer.stream()
+                );
+                return Err(ClientError::ReplyTimeout);
+            }
+        };
 
         let delivery = maybe_delivery.ok_or(ClientError::EmptyDelivery(
             stream.reply_consumer.stream().to_string(),
@@ -107,7 +115,7 @@ impl Client {
     }
 
     /// Send a message to the management stream to open a rebaser loop and block for a reply.
-    pub async fn send_management_open_change_set(
+    pub async fn open_stream_for_change_set(
         &mut self,
         change_set_id: Ulid,
     ) -> ClientResult<String> {
@@ -122,6 +130,9 @@ impl Client {
             )
             .await?;
 
+        // FIXME(nick): we should probably not await a reply and assume that it is working OR we
+        // should await a reply, but only to see if it was successful. This is because we should
+        // know the name already and not have to get it from the route.
         let maybe_delivery = match tokio::time::timeout(
             self.reply_timeout,
             self.management_stream.reply_consumer.next(),
@@ -129,7 +140,7 @@ impl Client {
         .await
         {
             Ok(result) => result?,
-            Err(e) => return Err(ClientError::ReplyTimeout(e)),
+            Err(_elapsed) => return Err(ClientError::ReplyTimeout),
         };
 
         let delivery = maybe_delivery.ok_or(ClientError::EmptyDelivery(
@@ -142,12 +153,13 @@ impl Client {
 
         let change_set_stream: String = serde_json::from_value(contents)?;
 
+        // TODO(nick): move stream generation to a common crate.
         let environment = Environment::new().await?;
-        let reply_stream = format!("{REBASER_REPLY_STREAM_PREFIX}-{change_set_id}");
+        let reply_stream = StreamNameGenerator::change_set_reply(change_set_id, self.id);
         environment.create_stream(&reply_stream).await?;
 
         // FIXME(nick): name the producer properly.
-        let producer = Producer::new(&environment, "producer", &change_set_stream).await?;
+        let producer = Producer::new(&environment, &change_set_stream).await?;
         let reply_consumer = Consumer::new(
             &environment,
             &reply_stream,
@@ -167,10 +179,7 @@ impl Client {
     }
 
     /// Send a message to the management stream to close a rebaser loop and do not wait for a reply.
-    pub async fn send_management_close_change_set(
-        &mut self,
-        change_set_id: Ulid,
-    ) -> ClientResult<()> {
+    pub async fn close_stream_for_change_set(&mut self, change_set_id: Ulid) -> ClientResult<()> {
         self.management_stream
             .producer
             .send_single(

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointer;
-use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError};
+use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -61,14 +61,14 @@ impl EdgeWeight {
         &self.kind
     }
 
-    pub fn mark_seen_at(&mut self, change_set: &ChangeSetPointer, seen_at: DateTime<Utc>) {
+    pub fn mark_seen_at(&mut self, vector_clock_id: VectorClockId, seen_at: DateTime<Utc>) {
         if self
             .vector_clock_first_seen
-            .entry_for(change_set.vector_clock_id())
+            .entry_for(vector_clock_id)
             .is_none()
         {
             self.vector_clock_first_seen
-                .inc_to(change_set.vector_clock_id(), seen_at);
+                .inc_to(vector_clock_id, seen_at);
         }
     }
 

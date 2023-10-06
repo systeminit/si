@@ -1,4 +1,7 @@
 use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use dal::workspace_snapshot::graph::NodeIndex;
+use dal::workspace_snapshot::update::Update;
+use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
     DalContext, DalContextBuilder, Tenancy, TransactionsError, Visibility, WorkspacePk,
@@ -6,6 +9,7 @@ use dal::{
 };
 use rebaser_core::{ChangeSetMessage, ChangeSetReplyMessage};
 use si_rabbitmq::{Consumer, Delivery, Environment, Producer, RabbitError};
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -15,6 +19,8 @@ use thiserror::Error;
 enum ChangeSetLoopError {
     #[error("workspace snapshot error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("when performing updates, could not find the newly imported subgraph (may god have mercy on your soul)")]
+    DestinationNotUpdatedWhenImportingSubgraph,
     #[error("missing change set message \"reply_to\" field")]
     MissingChangeSetMessageReplyTo,
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
@@ -44,19 +50,13 @@ async fn change_set_loop(
     ctx_builder: DalContextBuilder,
     mut consumer: Consumer,
 ) -> ChangeSetLoopResult<Option<(String, String)>> {
-    let mut ctx = ctx_builder.build_default().await?;
-    ctx.update_visibility(Visibility::new_head(false));
-    ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
-
     // Create an environment for reply streams.
     let environment = Environment::new().await?;
     while let Some(delivery) = consumer.next().await? {
-        // TODO(nick): first detect conflicts and updates, second perform the updates.
-        // If conflicts appears, do not perform updates if they exist, and report conflicts back.
-        // In other words...
-        //   1) succeed everywhere
-        //   2) store offset with changeset
-        //   3) update requester stream w/out waiting for reply
+        let mut ctx = ctx_builder.build_default().await?;
+        ctx.update_visibility(Visibility::new_head(false));
+        ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
+
         process_delivery_infallible_wrapper(&mut ctx, &environment, consumer.stream(), &delivery)
             .await;
     }
@@ -77,10 +77,15 @@ async fn process_delivery_infallible_wrapper(
                 process_delivery(ctx, environment, inbound_stream, delivery, reply_to).await
             {
                 error!(error = ?err, "processing delivery failed, attempting to reply");
-                match Producer::for_reply(&environment, inbound_stream, reply_to).await {
+                match Producer::new(&environment, reply_to).await {
                     Ok(mut producer) => {
                         if let Err(err) = producer
-                            .send_single(ChangeSetReplyMessage::Error(err.to_string()), None)
+                            .send_single(
+                                ChangeSetReplyMessage::Error {
+                                    message: err.to_string(),
+                                },
+                                None,
+                            )
                             .await
                         {
                             error!(error = ?err, "sending reply failed");
@@ -105,7 +110,7 @@ async fn process_delivery(
     environment: &Environment,
     inbound_stream: impl AsRef<str>,
     delivery: &Delivery,
-    reply_to: impl AsRef<str>,
+    reply_to_stream: impl AsRef<str>,
 ) -> ChangeSetLoopResult<()> {
     let raw_message = match &delivery.message_contents {
         Some(found_raw_message) => found_raw_message,
@@ -114,41 +119,152 @@ async fn process_delivery(
     let message: ChangeSetMessage = serde_json::from_value(raw_message.clone())?;
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
-    let mut to_rebase_workspace_snapshot: WorkspaceSnapshot =
-        WorkspaceSnapshot::find(ctx, message.to_rebase_workspace_snapshot_id.into()).await?;
-    let onto_change_set = ChangeSetPointer::find(ctx, message.onto_change_set_id.into()).await?;
-    let onto_workspace_snapshot_id = onto_change_set.workspace_snapshot_id.ok_or(
-        ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(onto_change_set.id),
+    let mut to_rebase_change_set =
+        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into()).await?;
+    let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
+        ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;
-    let mut onto_workspace_snapshot =
-        WorkspaceSnapshot::find(ctx, onto_workspace_snapshot_id).await?;
+    let mut to_rebase_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_id).await?;
+    let mut onto_workspace_snapshot: WorkspaceSnapshot =
+        WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_id.into()).await?;
 
     // Perform the conflicts and updates detection.
+    let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
-            message.to_rebase_vector_clock_id.into(),
+            to_rebase_change_set.vector_clock_id(),
             &mut onto_workspace_snapshot,
-            onto_change_set.vector_clock_id(),
+            onto_vector_clock_id,
         )
         .await?;
+    debug!("conflicts and updates detected: {conflicts:?} {updates:?}");
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
     let message: ChangeSetReplyMessage = if conflicts.is_empty() {
+        // TODO(nick): store the offset with the change set.
+        perform_updates_and_write_out_and_update_pointer(
+            ctx,
+            &mut to_rebase_workspace_snapshot,
+            &mut to_rebase_change_set,
+            &mut onto_workspace_snapshot,
+            &updates,
+        )
+        .await?;
+        ChangeSetReplyMessage::Success {
+            updates_performed: serde_json::to_value(updates)?,
+        }
+    } else {
         ChangeSetReplyMessage::ConflictsFound {
             conflicts_found: serde_json::to_value(conflicts)?,
             updates_found_and_skipped: serde_json::to_value(updates)?,
         }
-    } else {
-        // TODO(nick): actually perform updates.
-        ChangeSetReplyMessage::Success(serde_json::to_value(updates)?)
     };
 
-    let mut producer = Producer::for_reply(&environment, inbound_stream, reply_to).await?;
+    // Before replying to the requester, we must commit.
+    ctx.blocking_commit().await?;
+
+    // Send reply to the "reply to stream" for the specific client.
+    let inbound_stream = inbound_stream.as_ref();
+    let reply_to_stream = reply_to_stream.as_ref();
+    debug!(
+        "processed delivery from \"{inbound_stream}\", committed transaction and sending reply to \"{reply_to_stream}\"",
+    );
+    let mut producer = Producer::new(&environment, reply_to_stream).await?;
     producer
         .send_single(serde_json::to_value(message)?, None)
         .await?;
+
+    // Close the producer _after_ logging, but do not make it an infallible close. We do that
+    // because the function managing the change set loop is infallible and will log the error.
+    debug!("sent reply to \"{reply_to_stream}\"");
     producer.close().await?;
 
     Ok(())
+}
+
+async fn perform_updates_and_write_out_and_update_pointer(
+    ctx: &DalContext,
+    to_rebase_workspace_snapshot: &mut WorkspaceSnapshot,
+    to_rebase_change_set: &mut ChangeSetPointer,
+    onto_workspace_snapshot: &mut WorkspaceSnapshot,
+    updates: &Vec<Update>,
+) -> ChangeSetLoopResult<()> {
+    let mut updated = HashMap::new();
+    for update in updates {
+        match update {
+            Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            } => {
+                let source = *updated.get(source).unwrap_or(source);
+                let destination = find_in_to_rebase_or_create_using_onto(
+                    *destination,
+                    &mut updated,
+                    onto_workspace_snapshot,
+                    to_rebase_workspace_snapshot,
+                )?;
+                to_rebase_workspace_snapshot.add_edge(source, edge_weight.clone(), destination)?;
+            }
+            Update::RemoveEdge(edge) => {
+                to_rebase_workspace_snapshot.remove_edge_for_update_stableish(*edge)?;
+            }
+            Update::ReplaceSubgraph { onto, to_rebase } => {
+                let to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
+                let new_subgraph_root = find_in_to_rebase_or_create_using_onto(
+                    *onto,
+                    &mut updated,
+                    onto_workspace_snapshot,
+                    to_rebase_workspace_snapshot,
+                )?;
+                to_rebase_workspace_snapshot.replace_references(to_rebase, new_subgraph_root)?;
+            }
+        }
+    }
+
+    // Once all updates have been performed, we can write out, mark everything as recently seen
+    // and update the pointer.
+    to_rebase_workspace_snapshot
+        .write(ctx, to_rebase_change_set.vector_clock_id())
+        .await?;
+    to_rebase_change_set
+        .update_pointer(ctx, to_rebase_workspace_snapshot.id())
+        .await?;
+
+    Ok(())
+}
+
+fn find_in_to_rebase_or_create_using_onto(
+    unchecked: NodeIndex,
+    updated: &mut HashMap<NodeIndex, NodeIndex>,
+    onto_workspace_snapshot: &mut WorkspaceSnapshot,
+    to_rebase_workspace_snapshot: &mut WorkspaceSnapshot,
+) -> ChangeSetLoopResult<NodeIndex> {
+    let found_or_created = match updated.get(&unchecked) {
+        Some(found) => *found,
+        None => {
+            let unchecked_node_weight = onto_workspace_snapshot.get_node_weight(unchecked)?;
+            match to_rebase_workspace_snapshot.find_equivalent_node(
+                unchecked_node_weight.id(),
+                unchecked_node_weight.lineage_id(),
+            )? {
+                Some(found_equivalent_node) => {
+                    updated.insert(unchecked, found_equivalent_node);
+                    found_equivalent_node
+                }
+                None => {
+                    updated.extend(
+                        to_rebase_workspace_snapshot
+                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
+                    );
+                    *updated
+                        .get(&unchecked)
+                        .ok_or(ChangeSetLoopError::DestinationNotUpdatedWhenImportingSubgraph)?
+                }
+            }
+        }
+    };
+    Ok(found_or_created)
 }
