@@ -30,9 +30,6 @@ use serde::Serialize;
 use serde_json::Value;
 use ulid::Ulid;
 
-/// Stream to manage rebaser consumer loops.
-pub const REBASER_MANAGEMENT_STREAM: &str = "rebaser-management";
-
 /// The action for the rebaser management loop.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ManagementMessageAction {
@@ -52,25 +49,28 @@ pub struct ManagementMessage {
     pub action: ManagementMessageAction,
 }
 
-/// The message that the rebaser change set consumer expects in the server.
+/// The message that the server's listener loop uses to perform a rebase.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChangeSetMessage {
     /// Corresponds to the change set whose pointer is to be updated.
-    pub onto_change_set_id: Ulid,
-    /// Corresponds to the workspace snapshot that will be rebased on top of the workspace snapshot
-    /// that the change set is currently pointing at.
-    pub to_rebase_workspace_snapshot_id: Ulid,
+    pub to_rebase_change_set_id: Ulid,
+    /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
+    /// rebasing the "to rebase" workspace snapshot.
+    pub onto_workspace_snapshot_id: Ulid,
     /// Derived from the ephemeral or persisted change set that's either the base change set, the
     /// last change set before edits were made, or the change set that you are trying to rebase
     /// onto base.
-    pub to_rebase_vector_clock_id: Ulid,
+    pub onto_vector_clock_id: Ulid,
 }
 
 /// The message shape that the rebaser change set loop will use for replying to the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ChangeSetReplyMessage {
-    /// Updates performed when processing the delivery.
-    Success(Value),
+    /// Processing the delivery and performing updates was successful.
+    Success {
+        /// The serialized updates performed when rebasing.
+        updates_performed: Value,
+    },
     /// Conflicts found when processing the delivery.
     ConflictsFound {
         /// A serialized list of the conflicts found during detection.
@@ -80,5 +80,36 @@ pub enum ChangeSetReplyMessage {
         updates_found_and_skipped: Value,
     },
     /// Error encountered when processing the delivery.
-    Error(String),
+    Error {
+        /// The error message.
+        message: String,
+    },
+}
+
+/// A generator that provides stream names in a centralized location.
+#[allow(missing_debug_implementations)]
+pub struct StreamNameGenerator;
+
+impl StreamNameGenerator {
+    /// Returns the name of the management stream.
+    pub fn management() -> &'static str {
+        "rebaser-management"
+    }
+
+    /// Returns the name of the stream that the rebaser will reply to for messages sent to the
+    /// management stream from a specific client.
+    pub fn management_reply(client_id: Ulid) -> String {
+        format!("rebaser-management-reply-{client_id}")
+    }
+
+    /// Returns the name of a stream for a given change set.
+    pub fn change_set(change_set_id: Ulid) -> String {
+        format!("rebaser-{change_set_id}")
+    }
+
+    /// Returns the name of the stream that the rebaser will reply to for messages sent to a change
+    /// set stream from a specific client.
+    pub fn change_set_reply(change_set_id: Ulid, client_id: Ulid) -> String {
+        format!("rebaser-{change_set_id}-reply-{client_id}")
+    }
 }

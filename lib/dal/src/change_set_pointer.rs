@@ -86,13 +86,12 @@ impl ChangeSetPointer {
                 &[&name],
             )
             .await?;
-        Ok(Self::try_from(row)?)
+        Self::try_from(row)
     }
 
     /// Create a [`VectorClockId`] from the [`ChangeSetPointer`].
     pub fn vector_clock_id(&self) -> VectorClockId {
-        let ulid: Ulid = self.id.into();
-        VectorClockId::from(ulid)
+        VectorClockId::from(Ulid::from(self.id))
     }
 
     pub fn generate_ulid(&self) -> ChangeSetPointerResult<Ulid> {
@@ -134,7 +133,7 @@ impl ChangeSetPointer {
                 &[&change_set_pointer_id],
             )
             .await?;
-        Ok(Self::try_from(row)?)
+        Self::try_from(row)
     }
 }
 

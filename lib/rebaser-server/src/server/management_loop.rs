@@ -1,6 +1,6 @@
 use dal::{DalContext, JobQueueProcessor, ServicesContext};
 
-use rebaser_core::{ManagementMessage, ManagementMessageAction, REBASER_MANAGEMENT_STREAM};
+use rebaser_core::{ManagementMessage, ManagementMessageAction, StreamNameGenerator};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use si_rabbitmq::{Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment, Producer};
@@ -72,15 +72,16 @@ async fn management_loop(
     // NOTE: QUERY DB FOR OFFSET NUMBER OR GO TO FIRST SPECIFICATION
 
     // Prepare the environment and management stream.
+    let management_stream = StreamNameGenerator::management();
     let environment = Environment::new().await?;
     if recreate_management_stream {
-        environment.delete_stream(REBASER_MANAGEMENT_STREAM).await?;
+        environment.delete_stream(management_stream).await?;
     }
-    environment.create_stream(REBASER_MANAGEMENT_STREAM).await?;
+    environment.create_stream(management_stream).await?;
 
     let mut management_consumer = Consumer::new(
         &environment,
-        REBASER_MANAGEMENT_STREAM,
+        management_stream,
         ConsumerOffsetSpecification::Next,
     )
     .await?;
@@ -114,8 +115,7 @@ async fn management_loop(
                 }
             }
             ManagementMessageAction::OpenChangeSet => {
-                // TODO(nick): move stream naming to a centralized system, perhaps behind a unit struct.
-                let new_stream = format!("rebaser-{}", mm.change_set_id);
+                let new_stream = StreamNameGenerator::change_set(mm.change_set_id);
                 let stream_already_exists = environment.create_stream(&new_stream).await?;
 
                 // Only create the new stream and loop if the stream does not already exist.
@@ -134,7 +134,7 @@ async fn management_loop(
                 }
 
                 // Return the requested stream and then close the producer.
-                let mut producer = Producer::for_reply(&environment, &new_stream, reply_to).await?;
+                let mut producer = Producer::new(&environment, reply_to).await?;
                 producer.send_single(new_stream, None).await?;
                 producer.close().await?;
             }

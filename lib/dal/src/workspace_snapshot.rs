@@ -31,16 +31,19 @@ pub mod update;
 pub mod vector_clock;
 
 use chrono::{DateTime, Utc};
+use content_store::ContentHash;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_cbor::CborError;
 use si_data_pg::{PgError, PgRow};
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::conflict::Conflict;
-use crate::workspace_snapshot::edge_weight::EdgeWeight;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -58,6 +61,10 @@ const FIND_FOR_CHANGE_SET: &str =
 pub enum WorkspaceSnapshotError {
     #[error("cbor error: {0}")]
     Cbor(#[from] CborError),
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
@@ -106,18 +113,29 @@ impl WorkspaceSnapshot {
         change_set: &ChangeSetPointer,
     ) -> WorkspaceSnapshotResult<Self> {
         let snapshot = WorkspaceSnapshotGraph::new(change_set)?;
-        Ok(Self::new_inner(ctx, snapshot).await?)
+        Self::new_inner(ctx, snapshot).await
     }
 
-    pub async fn write(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<()> {
+    pub async fn write(
+        &mut self,
+        ctx: &DalContext,
+        vector_clock_id: VectorClockId,
+    ) -> WorkspaceSnapshotResult<()> {
+        // Pull out the working copy and clean it up.
         let working_copy = self.working_copy()?;
         working_copy.cleanup();
 
+        // Mark everything left as seen.
+        working_copy.mark_graph_seen(vector_clock_id)?;
+
+        // Stamp the new workspace snapshot.
         let object = Self::new_inner(ctx, working_copy.clone()).await?;
 
+        // Reset relevant fields on self.
         self.id = object.id;
         self.created_at = object.created_at;
         self.snapshot = object.snapshot;
+        self.working_copy = None;
         Ok(())
     }
 
@@ -153,8 +171,26 @@ impl WorkspaceSnapshot {
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
     }
 
+    pub fn root(&mut self) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.working_copy()?.root())
+    }
+
+    // TODO(nick): replace this with the api.
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy()?.add_node(node)?)
+        let new_node_index = self.working_copy()?.add_node(node)?;
+        Ok(new_node_index)
+    }
+
+    // TODO(nick): replace this with the api.
+    pub fn update_content(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        id: Ulid,
+        new_content_hash: ContentHash,
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self
+            .working_copy()?
+            .update_content(change_set, id, new_content_hash)?)
     }
 
     pub fn add_edge(
@@ -181,6 +217,84 @@ impl WorkspaceSnapshot {
         )?)
     }
 
+    pub fn remove_edge_for_update_stableish(
+        &mut self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self
+            .working_copy()?
+            .remove_edge_for_update_stableish(edge_index)?)
+    }
+
+    pub fn get_edge_by_index_stableish(
+        &mut self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotResult<EdgeWeight> {
+        Ok(self
+            .working_copy()?
+            .get_edge_by_index_stableish(edge_index)?)
+    }
+
+    pub fn import_subgraph(
+        &mut self,
+        other: &mut Self,
+        root_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+        let updated_indices = self
+            .working_copy()?
+            .import_subgraph(other.working_copy()?, root_index)?;
+        Ok(updated_indices)
+    }
+
+    pub fn replace_references(
+        &mut self,
+        original_node_index: NodeIndex,
+        new_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self
+            .working_copy()?
+            .replace_references(original_node_index, new_node_index)?)
+    }
+
+    pub fn get_node_weight(
+        &mut self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<&NodeWeight> {
+        Ok(self.working_copy()?.get_node_weight(node_index)?)
+    }
+
+    pub fn find_equivalent_node(
+        &mut self,
+        id: Ulid,
+        lineage_id: Ulid,
+    ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
+        Ok(self.working_copy()?.find_equivalent_node(id, lineage_id)?)
+    }
+
+    pub fn dot(&mut self) {
+        self.working_copy()
+            .expect("failed on accessing or creating a working copy")
+            .dot();
+    }
+
+    pub fn get_node_index_by_id(&mut self, id: Ulid) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.working_copy()?.get_node_index_by_id(id)?)
+    }
+
+    pub fn add_edge_from_root(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        destination: NodeIndex,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let root = self.working_copy()?.root();
+        let new_edge = self.working_copy()?.add_edge(
+            root,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            destination,
+        )?;
+        Ok(new_edge)
+    }
+
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
@@ -195,7 +309,7 @@ impl WorkspaceSnapshot {
                 &[&workspace_snapshot_id],
             )
             .await?;
-        Ok(Self::try_from(row)?)
+        Self::try_from(row)
     }
 
     #[instrument(skip_all)]
@@ -209,6 +323,6 @@ impl WorkspaceSnapshot {
             .pg()
             .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
             .await?;
-        Ok(Self::try_from(row)?)
+        Self::try_from(row)
     }
 }

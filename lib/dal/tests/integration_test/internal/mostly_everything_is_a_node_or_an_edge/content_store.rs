@@ -1,5 +1,3 @@
-//! For all tests in this file, provide "SI_TEST_BUILTIN_SCHEMAS=none" as an environment variable.
-
 use content_store::Store;
 use dal::component::ComponentKind;
 use dal::{DalContext, Schema};

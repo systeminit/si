@@ -1,5 +1,5 @@
 use rabbitmq_stream_client::types::Message;
-use rabbitmq_stream_client::{Dedup, Producer as UpstreamProducer};
+use rabbitmq_stream_client::{NoDedup, Producer as UpstreamProducer};
 use serde::Serialize;
 
 use crate::environment::Environment;
@@ -8,43 +8,22 @@ use crate::{RabbitError, RabbitResult};
 /// An interface for producing and sending RabbitMQ stream messages.
 #[allow(missing_debug_implementations)]
 pub struct Producer {
-    inner: UpstreamProducer<Dedup>,
+    inner: UpstreamProducer<NoDedup>,
     closed: bool,
 }
 
 impl Producer {
     /// Creates a new [`Producer`] for producing and sending RabbitMQ stream messages.
-    pub async fn new(
-        environment: &Environment,
-        name: impl AsRef<str>,
-        stream: impl AsRef<str>,
-    ) -> RabbitResult<Self> {
+    pub async fn new(environment: &Environment, stream: impl AsRef<str>) -> RabbitResult<Self> {
         let inner = environment
             .inner()
             .producer()
-            .name(name.as_ref())
             .build(stream.as_ref())
             .await?;
         Ok(Self {
             inner,
             closed: false,
         })
-    }
-
-    /// Creates a new [`Producer`] for replying to the sender from an inbound stream.
-    pub async fn for_reply(
-        environment: &Environment,
-        inbound_stream: impl AsRef<str>,
-        reply_to_stream: impl AsRef<str>,
-    ) -> RabbitResult<Self> {
-        let inbound_stream = inbound_stream.as_ref();
-        let reply_to_stream = reply_to_stream.as_ref();
-        Self::new(
-            &environment,
-            format!("{inbound_stream}-reply-{reply_to_stream}"),
-            reply_to_stream,
-        )
-        .await
     }
 
     /// Sends a single message to a stream.
