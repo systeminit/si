@@ -43,6 +43,7 @@ use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::EdgeWeight;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     pk,
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
@@ -172,16 +173,15 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn detect_conflicts_and_updates(
-        &self,
-        ctx: &DalContext,
-        to_rebase_change_set: &ChangeSetPointer,
-        onto_change_set: &ChangeSetPointer,
+        &mut self,
+        to_rebase_vector_clock_id: VectorClockId,
+        onto_workspace_snapshot: &WorkspaceSnapshot,
+        onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<(Vec<Conflict>, Vec<Update>)> {
-        let onto: WorkspaceSnapshot = Self::find_for_change_set(ctx, onto_change_set.id).await?;
-        Ok(self.snapshot()?.detect_conflicts_and_updates(
-            to_rebase_change_set,
-            &onto.snapshot()?,
-            onto_change_set,
+        Ok(self.working_copy()?.detect_conflicts_and_updates(
+            to_rebase_vector_clock_id,
+            &onto_workspace_snapshot.snapshot()?,
+            onto_vector_clock_id,
         )?)
     }
 
