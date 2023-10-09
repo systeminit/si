@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use ulid::Ulid;
 use url::Url;
 
@@ -150,13 +151,23 @@ impl IndexClient {
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
             .join("download_builtin"))?;
-        let response = reqwest::Client::new()
-            .get(download_url)
-            .send()
-            .await?
-            .error_for_status()?;
+        let mut response = reqwest::Client::new().get(download_url).send().await?;
 
-        let bytes = response.bytes().await?;
+        if response.status() == StatusCode::NOT_FOUND
+            && self.base_url.clone().as_str().contains("http://localhost")
+        {
+            // We want to fall back to the production module index to pull builtins from there instead
+            let url = Url::parse("https://module-index.systeminit.com")?
+                .join("modules/")?
+                .join(&format!("{}/", module_id.to_string()))?
+                .join("download_builtin")?;
+
+            let prod_response = reqwest::Client::new().get(url).send().await?;
+
+            response = prod_response
+        }
+
+        let bytes = response.error_for_status()?.bytes().await?;
 
         Ok(bytes.to_vec())
     }
