@@ -61,9 +61,9 @@
         </div>
         <div class="flex flex-row items-center gap-sm">
           <VormInput
+            v-model="testAttribute"
             class="flex-grow"
             type="dropdown"
-            :modelValue="testAttribute"
             placeholder="no attribute selected"
             noLabel
             :options="componentAttributeOptions"
@@ -76,9 +76,9 @@
           Do you want the results of this test to be applied to the component?
         </div>
         <VormInput
+          v-model="dryRun"
           class="flex-grow justify-center"
           type="checkbox"
-          :modelValue="dryRun"
           placeholder="no attribute selected"
           label="Dry Run"
           inlineLabel
@@ -102,10 +102,16 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { useAssetStore } from "@/store/asset.store";
+import { useComponentsStore } from "@/store/components.store";
 import CodeViewer from "../CodeViewer.vue";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
+const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
+const assetStore = useAssetStore();
+
+const asset = computed(() => assetStore.selectedAsset);
 
 const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
 const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
@@ -113,7 +119,18 @@ const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
 const testAttribute = ref(undefined);
 const dryRun = ref(false);
 
-const componentAttributeOptions = ["test", "test2", "test3"];
+const components = computed(() => {
+  return componentsStore.allComponents.filter(
+    (c) => c.schemaVariantId === asset.value?.schemaVariantId,
+  );
+});
+
+const componentAttributeOptions = computed(() => {
+  return components.value.map((c) => {
+    // TODO(Wendy) - make the label a bit clearer!
+    return { value: c.id, label: c.displayName };
+  });
+});
 
 const testStarted = ref(false); // TODO(Wendy) - we should make this persist!
 
