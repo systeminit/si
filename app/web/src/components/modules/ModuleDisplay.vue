@@ -44,13 +44,37 @@
           </div>
         </div>
 
-        <ErrorMessage v-if="!remoteSummary" tone="warning" class="mb-sm">
+        <ErrorMessage
+          v-if="!remoteSummary && !builtinSummary"
+          tone="warning"
+          class="mb-sm"
+        >
           Module only exists locally
         </ErrorMessage>
 
         <div
           class="border dark:border-neutral-600 rounded flex flex-col gap-sm overflow-auto"
         >
+          <template v-if="interactWithBuiltin">
+            <ErrorMessage :requestStatus="rejectReqStatus" />
+            <VButton
+              :requestStatus="rejectReqStatus"
+              :disabled="!builtinSummary"
+              @click="rejectModuleSpecHandler"
+            >
+              Reject this builtin
+            </VButton>
+
+            <ErrorMessage :requestStatus="promoteToBuiltinReqStatus" />
+            <VButton
+              :requestStatus="promoteToBuiltinReqStatus"
+              :disabled="builtinSummary && builtinSummary.isBuiltin"
+              @click="promoteToBuiltinSpecHandler"
+            >
+              Promote this module to be a builtin
+            </VButton>
+          </template>
+
           <div
             class="px-sm py-xs border-b dark:border-neutral-600 font-bold flex-none"
           >
@@ -175,22 +199,6 @@
         </template>
       </template>
     </div>
-
-    <!-- <div
-      v-if="
-        loadRemoteModulesReqStatus.isPending ||
-        !loadRemoteModulesReqStatus.isRequested
-      "
-    >
-      loading remote modules...
-    </div>
-    <div v-else-if="loadRemoteModulesReqStatus.isError">
-      <ErrorMessage :requestStatus="loadRemoteModulesReqStatus" />
-    </div>
-    <div v-else-if="loadRemoteModulesReqStatus.isSuccess">
-      <template v-if="remoteSummary">Module exists on remote! </template>
-      <template v-else> Module NOT on index</template>
-    </div> -->
   </div>
 </template>
 
@@ -235,7 +243,15 @@ const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 const localSummary = computed(() => moduleStore.selectedModuleLocalSummary);
 const localDetails = computed(() => moduleStore.selectedModuleLocalDetails);
 const remoteSummary = computed(() => moduleStore.selectedModuleRemoteSummary);
-const remoteDetails = computed(() => moduleStore.selectedModuleRemoteDetails);
+const remoteDetails = computed(
+  () =>
+    moduleStore.selectedModuleRemoteDetails ||
+    moduleStore.selectedBuiltinModuleDetails,
+);
+const builtinSummary = computed(() => moduleStore.selectedBuiltinModuleSummary);
+const interactWithBuiltin = computed(
+  () => builtinSummary.value || !localSummary.value?.isBuiltin,
+);
 const remoteSpec = computed(() =>
   remoteSummary.value?.id
     ? moduleStore.remoteModuleSpecsById[remoteSummary.value?.id]

@@ -37,7 +37,8 @@ const moduleStore = useModuleStore();
 const moduleSummary = computed(() => {
   return (
     moduleStore.localModulesByHash[props.moduleSlug] ||
-    moduleStore.remoteModuleSummaryByHash[props.moduleSlug]
+    moduleStore.remoteModuleSummaryByHash[props.moduleSlug] ||
+    moduleStore.builtinModuleSummaryByHash[props.moduleSlug]
   );
 });
 const isSelected = computed(
