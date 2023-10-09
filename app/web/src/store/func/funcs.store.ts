@@ -461,7 +461,12 @@ export const useFuncStore = () => {
             args: unknown;
             output: unknown;
             executionKey: string;
-            logs: OutputStream[];
+            logs: {
+              stream: string;
+              level: string;
+              message: string;
+              timestamp: string;
+            }[];
           }>({
             method: "post",
             url: "func/execute",

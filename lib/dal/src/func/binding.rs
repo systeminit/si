@@ -379,7 +379,7 @@ impl FuncBinding {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct LogLinePayload {
-    pub line: OutputStream,
+    pub stream: OutputStream,
     pub func_id: FuncId,
     pub execution_key: String,
 }

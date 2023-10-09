@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::change_status::ChangeStatusError;
+use dal::{change_status::ChangeStatusError, component::ComponentViewError};
 use dal::{
     component::view::debug::ComponentDebugViewError, node::NodeError,
     property_editor::PropertyEditorError, AttributeContextBuilderError,
@@ -26,6 +26,7 @@ pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod insert_property_editor_value;
+pub mod json;
 pub mod list_qualifications;
 pub mod list_resources;
 pub mod refresh;
@@ -62,6 +63,8 @@ pub enum ComponentError {
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]
     ComponentNotFound(ComponentId),
+    #[error("component view error: {0}")]
+    ComponentView(#[from] ComponentViewError),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("diagram error: {0}")]
@@ -171,4 +174,5 @@ pub fn routes() -> Router<AppState> {
             post(alter_simulation::alter_simulation),
         )
         .route("/debug", get(debug::debug_component))
+        .route("/json", get(json::json))
 }

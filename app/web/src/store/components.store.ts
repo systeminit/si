@@ -691,6 +691,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
+        async FETCH_COMPONENT_JSON(componentId: ComponentId) {
+          return new ApiRequest<{ json: unknown }>({
+            url: "component/json",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+          });
+        },
+
         async DELETE_EDGE(edgeId: EdgeId) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");

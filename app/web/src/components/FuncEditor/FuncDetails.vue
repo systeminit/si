@@ -248,7 +248,10 @@
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="featureFlagsStore.FUNC_TEST_PANEL"
+        v-if="
+          featureFlagsStore.FUNC_TEST_PANEL &&
+          funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute
+        "
         label="Test"
         slug="test"
       >
@@ -347,6 +350,13 @@ function resetEditingFunc() {
 watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
   resetEditingFunc();
 });
+
+watch(
+  () => funcStore.selectedFuncId,
+  () => {
+    funcDetailsTabGroupRef.value.selectTab("properties");
+  },
+);
 
 const isRevertible = computed(() =>
   funcId.value ? funcStore.funcDetailsById[funcId.value]?.isRevertible : false,
