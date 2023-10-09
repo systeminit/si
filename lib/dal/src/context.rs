@@ -66,6 +66,7 @@ impl ServicesContext {
         DalContextBuilder {
             services_context: self,
             blocking,
+            no_dependent_values: false,
         }
     }
 
@@ -202,6 +203,9 @@ pub struct DalContext {
     /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
+    /// Determines if we should not enqueue dependent value update jobs for attribute updates in
+    /// this context
+    no_dependent_values: bool,
 }
 
 impl DalContext {
@@ -211,6 +215,7 @@ impl DalContext {
         DalContextBuilder {
             services_context,
             blocking,
+            no_dependent_values: false,
         }
     }
 
@@ -228,6 +233,10 @@ impl DalContext {
 
     pub fn blocking(&self) -> bool {
         self.blocking
+    }
+
+    pub fn no_dependent_values(&self) -> bool {
+        self.no_dependent_values
     }
 
     pub fn services_context(&self) -> ServicesContext {
@@ -566,6 +575,9 @@ pub struct DalContextBuilder {
     /// This is useful to ensure child jobs of blocking jobs also block so there is no race-condition in the DAL.
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
+    /// Determines if we should not enqueue dependent value update jobs for attribute value
+    /// changes.
+    no_dependent_values: bool,
 }
 
 impl DalContextBuilder {
@@ -579,6 +591,7 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
+            no_dependent_values: self.no_dependent_values,
         })
     }
 
@@ -595,6 +608,7 @@ impl DalContextBuilder {
             tenancy: access_builder.tenancy,
             history_actor: access_builder.history_actor,
             visibility: Visibility::new_head(false),
+            no_dependent_values: self.no_dependent_values,
         })
     }
 
@@ -611,6 +625,7 @@ impl DalContextBuilder {
             tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
+            no_dependent_values: self.no_dependent_values,
         })
     }
 
@@ -646,6 +661,10 @@ impl DalContextBuilder {
     /// Set blocking flag
     pub fn set_blocking(&mut self) {
         self.blocking = true;
+    }
+
+    pub fn set_no_dependent_values(&mut self) {
+        self.no_dependent_values = true;
     }
 }
 
