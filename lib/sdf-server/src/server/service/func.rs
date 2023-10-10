@@ -590,32 +590,32 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
         FuncBackendResponseType::String => "type Output = string | null;",
         FuncBackendResponseType::Integer => "type Output = number | null;",
         FuncBackendResponseType::Qualification => {
-            "interface Output {
+            "type Output {
   result: 'success' | 'warning' | 'failure';
   message?: string | null;
 }"
         }
         FuncBackendResponseType::CodeGeneration => {
-            "interface Output {
+            "type Output {
   format: string;
   code: string;
 }"
         }
         FuncBackendResponseType::Validation => {
-            "interface Output {
+            "type Output {
   valid: boolean;
   message: string;
 }"
         }
         FuncBackendResponseType::Reconciliation => {
-            "interface Output {
+            "type Output {
   updates: { [key: string]: unknown };
   actions: string[];
   message: string | null;
 }"
         }
         FuncBackendResponseType::Action => {
-            "interface Output {
+            "type Output {
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
     message?: string | null;
@@ -651,32 +651,32 @@ pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind
         FuncBackendResponseType::String => "type Output = string | null;",
         FuncBackendResponseType::Integer => "type Output = number | null;",
         FuncBackendResponseType::Qualification => {
-            "interface Output {
+            "type Output {
   result: 'success' | 'warning' | 'failure';
   message?: string | null;
 }"
         }
         FuncBackendResponseType::CodeGeneration => {
-            "interface Output {
+            "type Output {
   format: string;
   code: string;
 }"
         }
         FuncBackendResponseType::Validation => {
-            "interface Output {
+            "type Output {
   valid: boolean;
   message: string;
 }"
         }
         FuncBackendResponseType::Reconciliation => {
-            "interface Output {
+            "type Output {
   updates: { [key: string]: unknown };
   actions: string[];
   message: string | null;
 }"
         }
         FuncBackendResponseType::Action => {
-            "interface Output {
+            "type Output {
     status: 'ok' | 'warning' | 'error';
     payload?: { [key: string]: unknown } | null;
     message?: string | null;
@@ -851,7 +851,7 @@ async fn compile_action_types(
     }
 
     Ok(format!(
-        "interface Input {{
+        "type Input {{
     kind: 'standard';
     properties: {};
 }}",
