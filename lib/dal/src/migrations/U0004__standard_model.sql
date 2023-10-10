@@ -206,12 +206,12 @@ BEGIN
             INTO copy_change_set_column_names;
             EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, tenancy_workspace_pk, %3$s) '
                            '   SELECT %4$L, %5$L, %8$L, %3$s '
-			   '   FROM %1$I '
-			   '   WHERE %1$I.id = %6$L '
+                           '   FROM %1$I '
+                           '   WHERE %1$I.id = %6$L '
                            '         AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
                            '         AND %1$I.visibility_change_set_pk = ident_nil_v1() '
                            '         AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
-		           ' ON CONFLICT (id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING ' 
+                           ' ON CONFLICT (id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING '
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -918,25 +918,36 @@ CREATE OR REPLACE FUNCTION disassociate_many_to_many_v1(this_table_name text,
 ) RETURNS VOID AS
 $$
 DECLARE
-    update_query text;
+    this_existing_record_id   ident;
+    find_query text;
 BEGIN
-
-    update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
-                   '  WHERE left_object_id = %2$L '
-                   '    AND right_object_id = %3$L '
-                   '    AND in_tenancy_v1(%4$L, %1$I.tenancy_workspace_pk) '
-                   '    AND is_visible_v1(%5$L, '
-                   '                    %1$I.visibility_change_set_pk, '
-                   '                    %1$I.visibility_deleted_at)',
+    find_query :=
+            format('SELECT id FROM %1$I_v1(%2$L, %3$L) '
+                   '  WHERE left_object_id = %4$L '
+                   '    AND right_object_id = %5$L ',
                    this_table_name,
-                   this_left_object_id,
-                   this_right_object_id,
                    this_tenancy,
-                   this_visibility
+                   this_visibility,
+                   this_left_object_id,
+                   this_right_object_id
                 );
-    RAISE DEBUG 'disassociate many to many: %', update_query;
-    EXECUTE update_query;
+    RAISE DEBUG 'disassociate many to many: %', find_query;
+
+    EXECUTE find_query INTO this_existing_record_id;
+
+    IF this_existing_record_id IS NOT NULL THEN
+        -- Since there is an existing relation record for the object we're interested in,
+        -- we need to update that record, rather than create a new relation record.
+        PERFORM update_by_id_v1(
+            this_table_name,
+            'visibility_deleted_at',
+            this_tenancy,
+            this_visibility,
+            this_existing_record_id,
+            CAST(clock_timestamp() as text)
+        );
+        RETURN;
+    END IF;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
@@ -947,23 +958,31 @@ CREATE OR REPLACE FUNCTION disassociate_all_many_to_many_v1(this_table_name text
 ) RETURNS VOID AS
 $$
 DECLARE
-    update_query text;
+    this_existing_record_id   ident;
 BEGIN
+    SELECT id
+    INTO this_existing_record_id
+    FROM find_by_attr_v1(
+        this_table_name,
+        this_tenancy,
+        this_visibility,
+        'left_object_id',
+        this_left_object_id::text
+    );
 
-    update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
-                   '  WHERE left_object_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
-                   '    AND is_visible_v1(%4$L, '
-                   '                    %1$I.visibility_change_set_pk, '
-                   '                    %1$I.visibility_deleted_at)',
-                   this_table_name,
-                   this_left_object_id,
-                   this_tenancy,
-                   this_visibility
-                );
-    RAISE DEBUG 'disassociate all many to many: %', update_query;
-    EXECUTE update_query;
+    IF this_existing_record_id IS NOT NULL THEN
+        -- Since there is an existing relation record for the object we're interested in,
+        -- we need to update that record, rather than create a new relation record.
+        PERFORM update_by_id_v1(
+            this_table_name,
+            'visibility_deleted_at',
+            this_tenancy,
+            this_visibility,
+            this_existing_record_id,
+            CAST(clock_timestamp() as text)
+        );
+        RETURN;
+    END IF;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
@@ -1036,23 +1055,31 @@ CREATE OR REPLACE FUNCTION unset_belongs_to_v1(this_table_name text,
 ) RETURNS VOID AS
 $$
 DECLARE
-    update_query text;
+    this_existing_record_id   ident;
 BEGIN
+    SELECT id
+    INTO this_existing_record_id
+    FROM find_by_attr_v1(
+        this_table_name,
+        this_tenancy,
+        this_visibility,
+        'object_id',
+        this_object_id::text
+    );
 
-    update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
-                   '  WHERE object_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
-                   '    AND is_visible_v1(%4$L, '
-                   '                    %1$I.visibility_change_set_pk, '
-                   '                    %1$I.visibility_deleted_at)',
-                   this_table_name,
-                   this_object_id,
-                   this_tenancy,
-                   this_visibility
-                );
-    RAISE DEBUG 'unset belongs to: %', update_query;
-    EXECUTE update_query;
+    IF this_existing_record_id IS NOT NULL THEN
+        -- Since there is an existing relation record for the object we're interested in,
+        -- we need to update that record, rather than create a new relation record.
+        PERFORM update_by_id_v1(
+            this_table_name,
+            'visibility_deleted_at',
+            this_tenancy,
+            this_visibility,
+            this_existing_record_id,
+            CAST(clock_timestamp() as text)
+        );
+        RETURN;
+    END IF;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
@@ -1091,23 +1118,35 @@ CREATE OR REPLACE FUNCTION unset_all_belongs_to_v1(this_table_name text,
 ) RETURNS VOID AS
 $$
 DECLARE
-    update_query text;
+    this_existing_record_ids   ident[];
+    find_query text;
+    id ident;
 BEGIN
-
-    update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
-                   '  WHERE belongs_to_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
-                   '    AND is_visible_v1(%4$L, '
-                   '                      %1$I.visibility_change_set_pk, '
-                   '                      %1$I.visibility_deleted_at)',
+    find_query :=
+            format('SELECT array_agg(DISTINCT id) FROM %1$I_v1(%2$L, %3$L) '
+                   '  WHERE belongs_to_id = %4$L',
                    this_table_name,
-                   this_belongs_to_id,
                    this_tenancy,
-                   this_visibility
+                   this_visibility,
+                   this_belongs_to_id
                 );
-    RAISE DEBUG 'unset belongs to: %', update_query;
-    EXECUTE update_query;
+    RAISE DEBUG 'unset all belongs to: %', find_query;
+
+    EXECUTE find_query INTO this_existing_record_ids;
+    FOREACH id IN ARRAY coalesce(this_existing_record_ids, '{}')
+        LOOP
+        -- Since there is an existing relation record for the object we're interested in,
+        -- we need to update that record, rather than create a new relation record.
+        PERFORM update_by_id_v1(
+            this_table_name,
+            'visibility_deleted_at',
+            this_tenancy,
+            this_visibility,
+            id,
+            CAST(clock_timestamp() as text)
+        );
+        RETURN;
+        END LOOP;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
