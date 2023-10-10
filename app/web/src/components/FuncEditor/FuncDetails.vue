@@ -31,7 +31,11 @@
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
             <div class="flex gap-1 flex-wrap">
               <VButton
-                v-if="featureFlagsStore.FUNC_TEST_PANEL"
+                v-if="
+                  featureFlagsStore.FUNC_TEST_PANEL &&
+                  funcStore.selectedFuncDetails?.variant ===
+                    FuncVariant.Attribute
+                "
                 class="--tone-action"
                 icon="save"
                 size="md"
