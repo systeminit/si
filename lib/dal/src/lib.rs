@@ -27,6 +27,7 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
+pub mod crypto;
 pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod edge;
