@@ -29,6 +29,7 @@ use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal,
     sync::{broadcast, mpsc, oneshot},
+    task::{JoinError, JoinSet},
     time,
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -55,6 +56,8 @@ pub enum ServerError {
     Hyper(#[from] hyper::Error),
     #[error("error initializing the server")]
     Init,
+    #[error(transparent)]
+    Join(#[from] JoinError),
     #[error("jwt secret key error")]
     JwtSecretKey(#[from] dal::jwt_key::JwtKeyError),
     #[error(transparent)]
@@ -79,7 +82,7 @@ pub enum ServerError {
     SiPkg(#[from] SiPkgError),
     #[error(transparent)]
     StatusReceiver(#[from] StatusReceiverError),
-    #[error("transactions error")]
+    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
@@ -434,31 +437,37 @@ async fn install_builtins(
     let dal = &ctx;
     let client = &module_index_client.clone();
     let modules = module_list.modules;
-    let handles: Vec<_> = modules
-        .iter()
-        .map(|item| {
-            let dal = dal.clone();
-            let client = client.clone();
-            let item = item.clone();
-            tokio::spawn(async move {
-                install_builtin(&dal.clone(), &item, &client)
-                    .await
-                    .unwrap_or_else(|e| {
-                        eprintln!("Error in install_builtin: {}", e);
-                    })
-            })
-        })
-        .collect();
+    let total = modules.len();
 
-    for handle in handles {
-        match handle.await {
+    let mut join_set = JoinSet::new();
+    for module in modules {
+        let module = module.clone();
+        let client = client.clone();
+        let mut context_builder = ctx.services_context().into_builder(false);
+        context_builder.set_no_dependent_values();
+        let mut ctx = context_builder.build_default().await?;
+        let workspace = Workspace::builtin(&ctx).await?;
+        ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+        join_set.spawn(async move {
+            (
+                module.name.to_owned(),
+                install_builtin(&ctx, &module, &client).await,
+            )
+        });
+    }
+
+    let mut count: usize = 0;
+    while let Some(res) = join_set.join_next().await {
+        let (pkg_name, res) = res?;
+        match res {
             Ok(()) => {
-                println!("Pkg Install finished successfully");
+                count += 1;
+                println!(
+                    "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
+                );
             }
-            Err(_err) => {
-                println!("Pkg Install failed");
-                let _ = Err::<Result<()>, ServerError>(ServerError::PkgInstall)
-                    .expect("TODO: panic message");
+            Err(err) => {
+                println!("Pkg {pkg_name} Install failed, {err}");
             }
         }
     }
@@ -478,8 +487,7 @@ async fn install_builtin(
         .await?;
 
     let pkg = SiPkg::load_from_bytes(module)?;
-    let pkg_name = pkg.metadata()?.name().to_owned();
-    println!("Installing Pkg {}", pkg_name);
+
     import_pkg_from_pkg(
         ctx,
         &pkg,
@@ -491,6 +499,9 @@ async fn install_builtin(
         }),
     )
     .await?;
+
+    ctx.commit().await?;
+
     Ok(())
 }
 

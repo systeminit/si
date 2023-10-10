@@ -1079,13 +1079,7 @@ async fn import_socket(
             )
             .await?;
         }
-        (Some(func_unique_id), _, Some(_)) => {
-            dbg!(
-                "Input socket that is set by a function?",
-                func_unique_id,
-                socket_spec.inputs()?
-            );
-        }
+        (Some(_), _, Some(_)) => {}
         _ => {}
     }
 

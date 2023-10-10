@@ -776,7 +776,7 @@ impl AttributeValue {
         // TODO(fnichol): we might want to fire off a status even at this point, however we've
         // already updated the initial attribute value, so is there much value?
 
-        if propagate_dependent_values {
+        if propagate_dependent_values && !ctx.no_dependent_values() {
             ctx.enqueue_job(DependentValuesUpdate::new(
                 ctx.access_builder(),
                 *ctx.visibility(),
@@ -857,12 +857,14 @@ impl AttributeValue {
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![new_attribute_value_id],
-        ))
-        .await?;
+        if !ctx.no_dependent_values() {
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx.access_builder(),
+                *ctx.visibility(),
+                vec![new_attribute_value_id],
+            ))
+            .await?;
+        }
 
         Ok(new_attribute_value_id)
     }
