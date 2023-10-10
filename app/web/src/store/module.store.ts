@@ -39,6 +39,7 @@ export interface PkgExportRequest {
 export interface LocalModuleSummary {
   name: string;
   hash: ModuleHash;
+  isBuiltin: boolean;
 }
 
 export interface LocalModuleDetails {
@@ -87,6 +88,7 @@ export type RemoteModuleSummary = {
   hashCreatedAt: IsoDateString;
   ownerDisplayName: string;
   ownerUserId: string; // userid?
+  isBuiltin: boolean; // only set for builtins
 };
 
 export type RemoteModuleDetails = RemoteModuleSummary & {
@@ -110,6 +112,7 @@ export const useModuleStore = () => {
         localModuleDetailsByName: {} as Record<ModuleName, LocalModuleDetails>,
 
         remoteModuleSearchResults: [] as RemoteModuleSummary[],
+        builtinsSearchResults: [] as RemoteModuleSummary[],
         remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
         remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
       }),
@@ -137,7 +140,10 @@ export const useModuleStore = () => {
             (m) => m.hash,
           );
         },
-
+        builtinModuleSummaryByHash: (state) =>
+          _.keyBy(state.builtinsSearchResults, (m) => m.hash),
+        builtinModuleDetailsByHash: (state) =>
+          _.keyBy(state.builtinsSearchResults, (m) => m.hash),
         selectedModuleLocalSummary(): LocalModuleSummary | undefined {
           if (!this.urlSelectedModuleSlug) return undefined;
           return this.localModulesByHash[this.urlSelectedModuleSlug];
@@ -153,6 +159,14 @@ export const useModuleStore = () => {
         selectedModuleRemoteDetails(): RemoteModuleDetails | undefined {
           if (!this.urlSelectedModuleSlug) return undefined;
           return this.remoteModuleDetailsByHash[this.urlSelectedModuleSlug];
+        },
+        selectedBuiltinModuleDetails(): RemoteModuleDetails | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.builtinModuleDetailsByHash[this.urlSelectedModuleSlug];
+        },
+        selectedBuiltinModuleSummary(): RemoteModuleDetails | undefined {
+          if (!this.urlSelectedModuleSlug) return undefined;
+          return this.builtinModuleSummaryByHash[this.urlSelectedModuleSlug];
         },
       },
       actions: {
@@ -199,6 +213,26 @@ export const useModuleStore = () => {
             method: "get",
             url: "/modules",
             params: { kind: "workspaceBackup" },
+          });
+        },
+
+        async LIST_BUILTINS() {
+          return new ModuleIndexApiRequest<{
+            modules: (RemoteModuleSummary & {
+              latestHash: ModuleHash;
+              latestHashCreatedAt: IsoDateString;
+            })[];
+          }>({
+            method: "get",
+            url: "/builtins",
+            onSuccess: (response) => {
+              this.builtinsSearchResults = _.map(response.modules, (m) => ({
+                ...m,
+                hash: m.latestHash,
+                hashCreatedAt: m.latestHashCreatedAt,
+                isBuiltin: true,
+              }));
+            },
           });
         },
 
@@ -309,6 +343,7 @@ export const useModuleStore = () => {
       },
       onActivated() {
         this.LOAD_LOCAL_MODULES();
+        this.LIST_BUILTINS();
       },
     }),
   )();
