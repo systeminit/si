@@ -45,6 +45,8 @@ pub struct AttributeMetadataView {
     pub value: Option<serde_json::Value>,
     pub prototype_id: AttributePrototypeId,
     pub prototype_context: AttributeContext,
+    pub prototype_in_change_set: bool,
+    pub value_in_change_set: bool,
     pub kind: Option<PropKind>,
 }
 
@@ -184,5 +186,7 @@ async fn get_attribute_metadata(
         prototype_id: *debug_view.prototype.id(),
         prototype_context: debug_view.prototype.context,
         kind: debug_view.prop.map(|prop| *prop.kind()),
+        prototype_in_change_set: debug_view.prototype.visibility().in_change_set(),
+        value_in_change_set: debug_view.attribute_value.visibility().in_change_set(),
     })
 }

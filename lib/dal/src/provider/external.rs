@@ -43,6 +43,8 @@ pub enum ExternalProviderError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("not found for id: {0}")]
     NotFound(ExternalProviderId),
+    #[error("not found for socket name: {0}")]
+    NotFoundForSocketName(String),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]

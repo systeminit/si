@@ -16,7 +16,7 @@ impl Default for S3Config {
             access_key_id: None,
             secret_access_key: None,
             region: String::from("us-east-2"),
-            bucket: String::from("modules-index-dev"),
+            bucket: String::from("modules-index-sandbox"),
             // TODO? is this right?
             path_prefix: String::from("dev"),
         }

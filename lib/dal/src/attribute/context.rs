@@ -54,7 +54,7 @@ pub enum AttributeContextError {
 
 pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AttributeContext {
     #[serde(rename = "attribute_context_prop_id")]
     prop_id: PropId,
@@ -295,6 +295,15 @@ impl AttributeContextBuilder {
             internal_provider_id: InternalProviderId::NONE,
             external_provider_id: ExternalProviderId::NONE,
             component_id: ComponentId::NONE,
+        }
+    }
+
+    pub fn to_context_unchecked(&self) -> AttributeContext {
+        AttributeContext {
+            prop_id: self.prop_id,
+            internal_provider_id: self.internal_provider_id,
+            external_provider_id: self.external_provider_id,
+            component_id: self.component_id,
         }
     }
 

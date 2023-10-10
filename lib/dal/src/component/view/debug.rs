@@ -34,7 +34,7 @@ pub struct ComponentDebugView {
 #[serde(rename_all = "camelCase")]
 pub struct AttributeDebugView {
     pub path: String,
-    pub parent_attribute_value_id: Option<AttributeValueId>,
+    pub parent_info: Option<ParentInfo>,
     pub attribute_value: AttributeValue,
     pub func: Func,
     pub func_binding: FuncBinding,
@@ -44,6 +44,7 @@ pub struct AttributeDebugView {
     pub internal_provider: Option<InternalProvider>,
     pub external_provider: Option<ExternalProvider>,
     pub prototype: AttributePrototype,
+    pub array_index: Option<i64>,
 }
 
 #[remain::sorted]
@@ -104,6 +105,16 @@ pub enum AttributeDebugInput<'a> {
     AttributeValuePayload(&'a AttributeValuePayload),
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParentInfo {
+    pub value: AttributeValue,
+    pub kind: PropKind,
+    pub path: String,
+    pub key: Option<String>,
+    pub array_index: Option<i64>,
+}
+
 impl ComponentDebugView {
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let debug_view_start = Instant::now();
@@ -162,53 +173,55 @@ impl ComponentDebugView {
 
         let mut index_map: HashMap<PropId, i64> = HashMap::new();
         let mut work_queue = VecDeque::from(initial_work);
-        let mut parent_queue: VecDeque<(Option<AttributeValue>, Option<PropKind>, String)> =
-            VecDeque::from([(None, None, "".to_string())]);
+        let mut parent_queue: VecDeque<Option<ParentInfo>> = VecDeque::from([None]);
         let mut attributes = vec![];
 
         while !work_queue.is_empty() {
             let mut unprocessed = vec![];
 
-            if let Some((parent, parent_kind, parent_path)) = parent_queue.pop_front() {
-                let mut current_parent = parent;
-                let mut current_parent_kind = parent_kind;
-                let mut current_parent_path = parent_path;
+            if let Some(parent_info) = parent_queue.pop_front() {
+                let mut current_parent = parent_info;
 
                 while let Some(payload) = work_queue.pop_front() {
-                    if current_parent.as_ref().map(|parent| *parent.id())
+                    if current_parent.as_ref().map(|parent| *parent.value.id())
                         == payload.parent_attribute_value_id
                     {
                         let current_prop_name = payload.prop.name();
-                        let prop_full_path = match current_parent_kind {
+                        let current_parent_path = current_parent
+                            .as_ref()
+                            .map(|p| p.path.as_str())
+                            .unwrap_or("");
+
+                        let prop_full_path = match current_parent.as_ref().map(|p| p.kind) {
                             Some(PropKind::Array) => {
                                 let array_index = *index_map.get(payload.prop.id()).unwrap_or(&0);
                                 let path = format!(
                                     "{}/{}/{}",
-                                    &current_parent_path, current_prop_name, array_index
+                                    current_parent_path, current_prop_name, array_index
                                 );
                                 index_map.insert(*payload.prop.id(), array_index + 1);
                                 path
                             }
                             Some(PropKind::Map) => {
                                 if let Some(key) = payload.attribute_value.key() {
-                                    format!(
-                                        "{}/{}/{}",
-                                        &current_parent_path, current_prop_name, key
-                                    )
+                                    format!("{}/{}/{}", current_parent_path, current_prop_name, key)
                                 } else {
                                     // This should be an error
-                                    format!("{}/{}", &current_parent_path, current_prop_name)
+                                    format!("{}/{}", current_parent_path, current_prop_name)
                                 }
                             }
-                            _ => format!("{}/{}", &current_parent_path, current_prop_name),
+                            _ => format!("{}/{}", current_parent_path, current_prop_name),
                         };
+
+                        let current_index = index_map.get(payload.prop.id()).map(|index| index - 1);
 
                         attributes.push(
                             Self::get_attribute_debug_view(
                                 ctx,
                                 AttributeDebugInput::AttributeValuePayload(&payload),
-                                current_parent.as_ref().map(|parent| *parent.id()),
+                                current_parent.to_owned(),
                                 Some(prop_full_path.to_owned()),
+                                current_index,
                             )
                             .await?,
                         );
@@ -218,15 +231,21 @@ impl ComponentDebugView {
                                 // The current parent is pushed back onto the queue and swapped
                                 // with this value, which transforms this into a depth-first search
                                 // (but preserves index-map ordering above)
-                                parent_queue.push_front((
-                                    current_parent,
-                                    current_parent_kind,
-                                    current_parent_path,
-                                ));
+                                parent_queue.push_front(current_parent);
                                 // too much cloning!
-                                current_parent = Some(payload.attribute_value.to_owned());
-                                current_parent_kind = Some(*payload.prop.kind());
-                                current_parent_path = prop_full_path;
+                                //
+                                let (key, array_index) = match &current_index {
+                                    Some(index) => (None, Some(*index)),
+                                    None => (payload.attribute_value.key.to_owned(), None),
+                                };
+
+                                current_parent = Some(ParentInfo {
+                                    value: payload.attribute_value.to_owned(),
+                                    kind: *payload.prop.kind(),
+                                    path: prop_full_path,
+                                    key,
+                                    array_index,
+                                });
 
                                 // Since we've changed parents we need to reprocess the unprocessed
                                 // in case they are children of this parent but were skipped
@@ -268,6 +287,7 @@ impl ComponentDebugView {
                 AttributeDebugInput::ComponentSocket((socket, *component.id())),
                 None,
                 None,
+                None,
             )
             .await?;
 
@@ -282,11 +302,13 @@ impl ComponentDebugView {
 
         dbg!(attributes_duration, sockets_duration);
 
+        let name = component
+            .name(ctx)
+            .await
+            .map_err(|e| ComponentDebugViewError::Component(format!("get name error: {}", e)))?;
+
         let debug_view = ComponentDebugView {
-            name: component
-                .name(ctx)
-                .await
-                .map_err(|e| ComponentDebugViewError::Component(e.to_string()))?,
+            name,
             schema_variant_id: *schema_variant.id(),
             attributes,
             input_sockets,
@@ -299,8 +321,9 @@ impl ComponentDebugView {
     pub async fn get_attribute_debug_view(
         ctx: &DalContext,
         payload: AttributeDebugInput<'_>,
-        parent_attribute_value_id: Option<AttributeValueId>,
+        parent_info: Option<ParentInfo>,
         path: Option<String>,
+        array_index: Option<i64>,
     ) -> ComponentDebugViewResult<AttributeDebugView> {
         let (
             attribute_value,
@@ -427,7 +450,7 @@ impl ComponentDebugView {
 
         Ok(AttributeDebugView {
             path,
-            parent_attribute_value_id,
+            parent_info,
             attribute_value,
             func,
             func_binding,
@@ -437,6 +460,7 @@ impl ComponentDebugView {
             internal_provider,
             external_provider,
             prototype,
+            array_index,
         })
     }
 }

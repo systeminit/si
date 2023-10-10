@@ -168,6 +168,7 @@ impl PkgNode {
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
     pub const MAP_KEY_FUNC_KIND_STR: &str = NODE_KIND_MAP_KEY_FUNC;
     pub const PACKAGE_KIND_STR: &str = NODE_KIND_PACKAGE;
+    pub const POSTITION_KIND_STR: &str = NODE_KIND_POSITION;
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
     pub const PROP_CHILD_KIND_STR: &str = NODE_KIND_PROP_CHILD;
     pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;

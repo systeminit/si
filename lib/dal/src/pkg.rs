@@ -24,9 +24,10 @@ use crate::{
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ComponentError,
     ComponentId, ExternalProviderError, ExternalProviderId, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, PropKind, SchemaError, SchemaId, SchemaVariantError, SchemaVariantId,
-    StandardModelError, ValidationPrototypeError, WorkspaceError, WorkspacePk,
+    FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
+    InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
+    SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    WorkspaceError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -58,6 +59,14 @@ pub enum PkgError {
     ),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
+    #[error("parent prop could not be found with path: {0}")]
+    AttributeValueParentPropNotFound(String),
+    #[error("parent value could not be found for prop path: {0} and key {1:?}, index {2:?}")]
+    AttributeValueParentValueNotFound(String, Option<String>, Option<i64>),
+    #[error("attribute value is a proxy but there is no value to proxy")]
+    AttributeValueSetToProxyButNoProxyFound,
+    #[error("encountered an attribute value with a key or index but no parent")]
+    AttributeValueWithKeyOrIndexButNoParent,
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} not found")]
@@ -66,8 +75,18 @@ pub enum PkgError {
     Component(#[from] ComponentError),
     #[error(transparent)]
     ComponentDebugView(#[from] ComponentDebugViewError),
+    #[error("component import can only happen during a workspace import")]
+    ComponentImportWithoutChangeSet,
+    #[error("could not find schema {0} for package component {1}")]
+    ComponentMissingBuiltinSchema(String, String),
+    #[error("could not find schema {0} with variant {1} for package component {2}")]
+    ComponentMissingBuiltinSchemaVariant(String, String, String),
     #[error("component has no node: {0}")]
     ComponentMissingNode(ComponentId),
+    #[error("could not find schema variant {0} for package component {1}")]
+    ComponentMissingSchemaVariant(String, String),
+    #[error("component spec has no position")]
+    ComponentSpecMissingPosition,
     #[error("map item prop {0} has both custom key prototypes and custom prop only prototype")]
     ConflictingMapKeyPrototypes(PropId),
     #[error("expected data on an SiPkg node, but none found: {0}")]
@@ -84,6 +103,10 @@ pub enum PkgError {
     FuncArgument(#[from] FuncArgumentError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error(transparent)]
+    FuncExecution(#[from] crate::func::execution::FuncExecutionError),
     #[error("Installed func id {0} does not exist")]
     InstalledFuncMissing(FuncId),
     #[error(transparent)]
@@ -106,12 +129,16 @@ pub enum PkgError {
     MissingAttributePrototypeForOutputSocket(AttributePrototypeId, ExternalProviderId),
     #[error("Missing Func {1} for AttributePrototype {0}")]
     MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
+    #[error("Missing value for context {0:?}")]
+    MissingAttributeValueForContext(AttributeReadContext),
     #[error("Missing a func map for changeset {0}")]
     MissingChangeSetFuncMap(ChangeSetPk),
     #[error("Func {0} missing from exported funcs")]
     MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
     MissingFuncArgument(String, FuncId),
+    #[error("Cannot find FuncArgument {0}")]
+    MissingFuncArgumentById(FuncArgumentId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
     #[error("Cannot find InternalProvider for Prop {0}")]
@@ -132,6 +159,8 @@ pub enum PkgError {
     MissingSchemaVariantDefinition(SchemaVariantId),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
+    #[error(transparent)]
+    Node(#[from] NodeError),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error(transparent)]

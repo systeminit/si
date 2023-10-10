@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
@@ -23,12 +23,11 @@ use crate::{
     socket::SocketKind,
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    ChangeSet, ChangeSetPk, Component, ComponentError, ComponentType, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncError, FuncId, InternalProvider, InternalProviderId,
-    LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind, Schema, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, ValidationPrototype,
-    Workspace,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
+    Component, ComponentError, ComponentType, DalContext, ExternalProvider, ExternalProviderId,
+    Func, FuncError, FuncId, InternalProvider, InternalProviderId, LeafInputLocation, LeafKind,
+    Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Socket, StandardModel, ValidationPrototype, Workspace,
 };
 
 use super::{PkgError, PkgResult};
@@ -107,7 +106,7 @@ impl PkgExporter {
             func_map: FuncSpecMap::new(),
             variant_map: VariantSpecMap::new(),
             is_workspace_export: true,
-            include_components: false,
+            include_components: true,
         }
     }
 
@@ -1197,6 +1196,7 @@ impl PkgExporter {
                 let (component_spec, component_funcs, component_head_funcs) = self
                     .export_component(ctx, change_set_pk, &component)
                     .await?;
+
                 component_specs.push(component_spec);
                 func_specs.extend_from_slice(&component_funcs);
                 head_funcs.extend_from_slice(&component_head_funcs);
@@ -1213,7 +1213,9 @@ impl PkgExporter {
         component: &Component,
     ) -> PkgResult<(ComponentSpec, Vec<FuncSpec>, Vec<FuncSpec>)> {
         let mut component_spec_builder = ComponentSpec::builder();
-        component_spec_builder.name(component.name(ctx).await?);
+        component_spec_builder
+            .name(component.name(ctx).await?)
+            .unique_id(*component.id());
         let mut funcs = vec![];
         let mut head_funcs = vec![];
 
@@ -1311,21 +1313,33 @@ impl PkgExporter {
         let mut funcs = vec![];
         let mut head_funcs = vec![];
 
-        if let Some(parent_av_id) = view.parent_attribute_value_id {
-            let parent_av = AttributeValue::get_by_id(ctx, &parent_av_id).await?.ok_or(
-                AttributeValueError::NotFound(parent_av_id, *ctx.visibility()),
-            )?;
+        if let Some(parent_info) = view.parent_info {
+            let parent_av = parent_info.value;
             let prop_id = parent_av.context.prop_id();
             if prop_id.is_some() {
                 let parent_prop = Prop::get_by_id(ctx, &prop_id)
                     .await?
                     .ok_or(PropError::NotFound(prop_id, *ctx.visibility()))?;
-                builder.parent_path(AttributeValuePath::Prop(parent_prop.path().to_string()));
+
+                builder.parent_path(AttributeValuePath::Prop {
+                    path: parent_prop.path().to_string(),
+                    key: parent_info.key,
+                    index: parent_info.array_index,
+                });
             }
         }
 
         if let Some(prop) = &view.prop {
-            builder.path(AttributeValuePath::Prop(prop.path().to_string()));
+            let (key, index) = match &view.array_index {
+                Some(index) => (None, Some(*index)),
+                None => (view.attribute_value.key.to_owned(), None),
+            };
+
+            builder.path(AttributeValuePath::Prop {
+                path: prop.path().to_string(),
+                key,
+                index,
+            });
         } else if let Some(ip) = &view.internal_provider {
             builder.path(AttributeValuePath::InputSocket(ip.name().into()));
         } else if let Some(ep) = &view.external_provider {
@@ -1335,7 +1349,19 @@ impl PkgExporter {
         let func_id = *view.func.id();
 
         let func_unique_id = match self.func_map.get(change_set_pk, &func_id) {
-            Some(func_spec) => func_spec.unique_id.to_owned(),
+            Some(func_spec) => {
+                let func = Func::get_by_id(ctx, &func_id)
+                    .await?
+                    .expect("it should be there");
+
+                if func.visibility().change_set_pk == ChangeSetPk::NONE {
+                    head_funcs.push(func_spec.to_owned());
+                } else {
+                    funcs.push(func_spec.to_owned());
+                }
+
+                func_spec.unique_id.to_owned()
+            }
             None => {
                 let func = Func::get_by_id(ctx, &func_id)
                     .await?
@@ -1365,41 +1391,43 @@ impl PkgExporter {
         builder.func_unique_id(func_unique_id);
         builder.func_binding_args(view.func_execution.func_binding_args().to_owned());
 
-        if let Some(key) = view.attribute_value.key() {
-            builder.key(key);
-        }
-
         if let Some(handler) = view.func_execution.handler().as_deref() {
             builder.handler(handler);
         }
 
         builder.backend_kind(*view.func_execution.backend_kind());
-        builder.reponse_type(*view.func_execution.backend_response_type());
+        builder.response_type(*view.func_execution.backend_response_type());
 
         if let Some(code) = view.func_execution.code_base64().as_deref() {
             builder.code_base64(code);
         }
 
-        if let Some(unprocessed_value) = view.func_execution.unprocessed_value() {
+        if let Some(unprocessed_value) = view.func_binding_return_value.unprocessed_value() {
             builder.unprocessed_value(unprocessed_value.to_owned());
         }
-        if let Some(value) = view.func_execution.value() {
+        if let Some(value) = view.func_binding_return_value.value() {
             builder.value(value.to_owned());
         }
         if let Some(output_stream) = view.func_execution.output_stream() {
-            builder.value(serde_json::to_value(output_stream)?);
+            builder.output_stream(serde_json::to_value(output_stream)?);
         }
+        builder.is_proxy(
+            view.attribute_value
+                .proxy_for_attribute_value_id()
+                .is_some(),
+        );
         builder.sealed_proxy(view.attribute_value.sealed_proxy());
 
         if view.prototype.context.component_id().is_some() {
             builder.component_specific(true);
-            let inputs = self
-                .export_input_func_and_arguments(ctx, change_set_pk, &view.prototype)
-                .await?;
+        }
 
-            if let Some((_, inputs)) = inputs {
-                builder.inputs(inputs);
-            }
+        let inputs = self
+            .export_input_func_and_arguments(ctx, None, &view.prototype)
+            .await?;
+
+        if let Some((_, inputs)) = inputs {
+            builder.inputs(inputs);
         }
 
         Ok((builder.build()?, funcs, head_funcs))
@@ -1432,8 +1460,10 @@ impl PkgExporter {
                 pkg_spec_builder.schemas(schemas);
             }
             SiPkgKind::WorkspaceBackup => {
-                let (mut head_funcs, _, schemas, component_specs) =
+                let (mut head_funcs, funcs, schemas, component_specs) =
                     self.export_change_set(ctx, Some(ChangeSetPk::NONE)).await?;
+
+                head_funcs.extend_from_slice(&funcs);
 
                 let mut head_builder = ChangeSetSpec::builder();
                 head_builder
@@ -1452,14 +1482,18 @@ impl PkgExporter {
                         ChangeSetSpec::builder()
                             .name(&change_set.name)
                             .based_on_change_set("head")
-                            .funcs(funcs)
+                            .funcs(remove_duplicate_func_specs(&funcs))
                             .schemas(schemas)
                             .components(component_specs)
                             .build()?,
                     );
                 }
 
-                pkg_spec_builder.change_set(head_builder.funcs(head_funcs).build()?);
+                pkg_spec_builder.change_set(
+                    head_builder
+                        .funcs(remove_duplicate_func_specs(&head_funcs))
+                        .build()?,
+                );
             }
         }
 
@@ -1468,6 +1502,22 @@ impl PkgExporter {
 
         Ok(pkg)
     }
+}
+
+fn remove_duplicate_func_specs(func_specs: &[FuncSpec]) -> Vec<FuncSpec> {
+    let mut unique_id_set = HashSet::new();
+
+    func_specs
+        .iter()
+        .filter_map(|spec| {
+            if unique_id_set.contains(&spec.unique_id) {
+                None
+            } else {
+                unique_id_set.insert(spec.unique_id.to_owned());
+                Some(spec.to_owned())
+            }
+        })
+        .collect()
 }
 
 pub async fn get_component_type(

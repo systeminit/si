@@ -9,7 +9,11 @@ use super::{
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeValuePath {
-    Prop(String),
+    Prop {
+        path: String,
+        key: Option<String>,
+        index: Option<i64>,
+    },
     InputSocket(String),
     OutputSocket(String),
 }
@@ -27,13 +31,11 @@ pub struct AttributeValueSpec {
     #[builder(setter(into))]
     pub func_binding_args: serde_json::Value,
     #[builder(setter(into, strip_option), default)]
-    pub key: Option<String>,
-    #[builder(setter(into, strip_option), default)]
     pub handler: Option<String>,
     #[builder(setter(into))]
     pub backend_kind: FuncSpecBackendKind,
     #[builder(setter(into))]
-    pub reponse_type: FuncSpecBackendResponseType,
+    pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into, strip_option), default)]
     pub code_base64: Option<String>,
     #[builder(setter(into, strip_option), default)]
@@ -42,6 +44,9 @@ pub struct AttributeValueSpec {
     pub value: Option<serde_json::Value>,
     #[builder(setter(into, strip_option), default)]
     pub output_stream: Option<serde_json::Value>,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub is_proxy: bool,
     #[builder(setter(into), default)]
     #[serde(default)]
     pub sealed_proxy: bool,

@@ -8,7 +8,7 @@ use object_tree::{
     NodeWithChildren, ReadBytes, WriteBytes,
 };
 
-use super::{component_child::ComponentChild, PkgNode, KEY_DELETED_STR};
+use super::{component_child::ComponentChild, PkgNode, KEY_DELETED_STR, KEY_UNIQUE_ID_STR};
 use crate::{ComponentSpec, ComponentSpecVariant};
 
 const KEY_NAME_STR: &str = "name";
@@ -22,6 +22,7 @@ pub struct ComponentNode {
     pub variant: ComponentSpecVariant,
     pub needs_destroy: bool,
     pub deletion_user_pk: Option<String>,
+    pub unique_id: String,
     pub deleted: bool,
 }
 
@@ -47,6 +48,7 @@ impl WriteBytes for ComponentNode {
             "".into()
         };
         write_key_value_line(writer, KEY_DELETION_USER_PK_STR, deletion_user_pk_str)?;
+        write_key_value_line(writer, KEY_UNIQUE_ID_STR, &self.unique_id)?;
         write_key_value_line(writer, KEY_DELETED_STR, self.deleted)?;
 
         Ok(())
@@ -71,6 +73,7 @@ impl ReadBytes for ComponentNode {
         } else {
             Some(deletion_user_pk_str.to_owned())
         };
+        let unique_id = read_key_value_line(reader, KEY_UNIQUE_ID_STR)?;
         let deleted = bool::from_str(&read_key_value_line(reader, KEY_DELETED_STR)?)
             .map_err(GraphError::parse)?;
 
@@ -79,6 +82,7 @@ impl ReadBytes for ComponentNode {
             variant,
             needs_destroy,
             deletion_user_pk,
+            unique_id,
             deleted,
         }))
     }
@@ -95,6 +99,7 @@ impl NodeChild for ComponentSpec {
                 variant: self.variant.to_owned(),
                 needs_destroy: self.needs_destroy,
                 deletion_user_pk: self.deletion_user_pk.to_owned(),
+                unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,
             }),
             vec![

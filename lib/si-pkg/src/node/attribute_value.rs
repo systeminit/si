@@ -19,10 +19,10 @@ const KEY_CODE_STR: &str = "code";
 const KEY_FUNC_BINDING_ARGS_STR: &str = "func_binding_args";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_HANDLER_STR: &str = "handler";
-const KEY_KEY_STR: &str = "key";
 const KEY_OUTPUT_STREAM_STR: &str = "output_stream";
 const KEY_PARENT_PATH_STR: &str = "parent_path";
 const KEY_PATH_STR: &str = "path";
+const KEY_IS_PROXY_STR: &str = "is_proxy";
 const KEY_SEALED_PROXY_STR: &str = "sealed_proxy";
 const KEY_UNPROCESSED_VALUE_STR: &str = "unprocessed_value";
 const KEY_VALUE_STR: &str = "value";
@@ -35,11 +35,11 @@ pub struct AttributeValueNode {
     pub func_binding_args: serde_json::Value,
     pub func_unique_id: String,
     pub handler: Option<String>,
-    pub key: Option<String>,
     pub output_stream: Option<serde_json::Value>,
     pub parent_path: Option<AttributeValuePath>,
     pub path: AttributeValuePath,
     pub response_type: FuncSpecBackendResponseType,
+    pub is_proxy: bool,
     pub sealed_proxy: bool,
     pub component_specific: bool,
     pub unprocessed_value: Option<serde_json::Value>,
@@ -68,7 +68,6 @@ impl WriteBytes for AttributeValueNode {
             KEY_HANDLER_STR,
             self.handler.as_deref().unwrap_or(""),
         )?;
-        write_key_value_line(writer, KEY_KEY_STR, self.key.as_deref().unwrap_or(""))?;
 
         let output_stream = if let Some(output_stream_value) = &self.output_stream {
             serde_json::to_string(output_stream_value).map_err(GraphError::parse)?
@@ -89,6 +88,7 @@ impl WriteBytes for AttributeValueNode {
             serde_json::to_string(&self.path).map_err(GraphError::parse)?,
         )?;
         write_key_value_line(writer, KEY_RESPONSE_TYPE_STR, self.response_type)?;
+        write_key_value_line(writer, KEY_IS_PROXY_STR, self.is_proxy)?;
         write_key_value_line(writer, KEY_SEALED_PROXY_STR, self.sealed_proxy)?;
         write_key_value_line(writer, KEY_COMPONENT_SPECIFIC_STR, self.component_specific)?;
 
@@ -139,13 +139,6 @@ impl ReadBytes for AttributeValueNode {
             Some(handler_str)
         };
 
-        let key_str = read_key_value_line(reader, KEY_KEY_STR)?;
-        let key = if key_str.is_empty() {
-            None
-        } else {
-            Some(key_str)
-        };
-
         let output_stream_str = read_key_value_line(reader, KEY_OUTPUT_STREAM_STR)?;
         let output_stream = if output_stream_str.is_empty() {
             None
@@ -167,6 +160,8 @@ impl ReadBytes for AttributeValueNode {
         let response_type =
             FuncSpecBackendResponseType::from_str(&response_type_str).map_err(GraphError::parse)?;
 
+        let is_proxy = bool::from_str(&read_key_value_line(reader, KEY_IS_PROXY_STR)?)
+            .map_err(GraphError::parse)?;
         let sealed_proxy = bool::from_str(&read_key_value_line(reader, KEY_SEALED_PROXY_STR)?)
             .map_err(GraphError::parse)?;
         let component_specific =
@@ -193,11 +188,11 @@ impl ReadBytes for AttributeValueNode {
             func_binding_args,
             func_unique_id,
             handler,
-            key,
             output_stream,
             parent_path,
             path,
             response_type,
+            is_proxy,
             sealed_proxy,
             component_specific,
             unprocessed_value,
@@ -218,15 +213,15 @@ impl NodeChild for AttributeValueSpec {
                 func_binding_args: self.func_binding_args.to_owned(),
                 func_unique_id: self.func_unique_id.to_owned(),
                 handler: self.handler.to_owned(),
-                key: self.key.to_owned(),
                 output_stream: self.output_stream.as_ref().cloned(),
                 parent_path: self.parent_path.as_ref().cloned(),
                 path: self.path.to_owned(),
-                response_type: self.reponse_type,
+                response_type: self.response_type,
+                is_proxy: self.is_proxy,
                 sealed_proxy: self.sealed_proxy,
                 component_specific: self.component_specific,
-                unprocessed_value: self.unprocessed_value.as_ref().cloned(),
-                value: self.value.as_ref().cloned(),
+                unprocessed_value: self.unprocessed_value.to_owned(),
+                value: self.value.to_owned(),
             }),
             vec![
                 Box::new(AttributeValueChild::AttrFuncInputs(self.inputs.to_owned()))
