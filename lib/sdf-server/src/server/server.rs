@@ -394,7 +394,8 @@ pub async fn migrate_builtins_from_module_index(
         Some(pkgs_path),
         Some(module_index_url.clone()),
     );
-    let dal_context = services_context.into_builder(true);
+    let mut dal_context = services_context.into_builder(true);
+    dal_context.set_no_dependent_values();
     let mut ctx = dal_context.build_default().await?;
 
     let workspace = Workspace::builtin(&ctx).await?;
@@ -443,15 +444,10 @@ async fn install_builtins(
     for module in modules {
         let module = module.clone();
         let client = client.clone();
-        let mut context_builder = ctx.services_context().into_builder(false);
-        context_builder.set_no_dependent_values();
-        let mut ctx = context_builder.build_default().await?;
-        let workspace = Workspace::builtin(&ctx).await?;
-        ctx.update_tenancy(Tenancy::new(*workspace.pk()));
         join_set.spawn(async move {
             (
                 module.name.to_owned(),
-                install_builtin(&ctx, &module, &client).await,
+                fetch_builtin(&module, &client).await,
             )
         });
     }
@@ -460,11 +456,28 @@ async fn install_builtins(
     while let Some(res) = join_set.join_next().await {
         let (pkg_name, res) = res?;
         match res {
-            Ok(()) => {
-                count += 1;
-                println!(
-                    "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
-                );
+            Ok(pkg) => {
+                if let Err(err) = import_pkg_from_pkg(
+                    &ctx,
+                    &pkg,
+                    Some(ImportOptions {
+                        schemas: None,
+                        skip_import_funcs: None,
+                        no_record: false,
+                        is_builtin: true,
+                    }),
+                )
+                .await
+                {
+                    println!("Pkg {pkg_name} Install failed, {err}");
+                } else {
+                    ctx.commit().await?;
+
+                    count += 1;
+                    println!(
+                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
+                    );
+                }
             }
             Err(err) => {
                 println!("Pkg {pkg_name} Install failed, {err}");
@@ -472,37 +485,20 @@ async fn install_builtins(
         }
     }
 
-    dal.blocking_commit().await?;
+    dal.commit().await?;
 
     Ok(())
 }
 
-async fn install_builtin(
-    ctx: &DalContext,
+async fn fetch_builtin(
     module: &ModuleDetailsResponse,
     module_index_client: &IndexClient,
-) -> Result<()> {
+) -> Result<SiPkg> {
     let module = module_index_client
         .get_builtin(Ulid::from_string(module.id.as_str()).unwrap_or(Ulid::new()))
         .await?;
 
-    let pkg = SiPkg::load_from_bytes(module)?;
-
-    import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        Some(ImportOptions {
-            schemas: None,
-            skip_import_funcs: None,
-            no_record: false,
-            is_builtin: true,
-        }),
-    )
-    .await?;
-
-    ctx.commit().await?;
-
-    Ok(())
+    Ok(SiPkg::load_from_bytes(module)?)
 }
 
 pub fn build_service_for_tests(
