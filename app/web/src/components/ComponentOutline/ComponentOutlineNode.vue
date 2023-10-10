@@ -140,7 +140,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, ref, watch, onBeforeUnmount } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
