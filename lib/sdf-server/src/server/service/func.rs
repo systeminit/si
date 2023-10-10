@@ -839,10 +839,6 @@ async fn compile_attribute_function_types(
     Ok(format!("{}\n{}", input_ts_types, output_ts))
 }
 
-// TODO FIXME(paulo): arguments for command functions are provided through a js function, so we can't predict this, we should fix it so the types are predictable
-// Right now all workflow functions are builtins and the user can't create new workflow functions, so we can trust that they all are providing the same argument
-//
-// TODO: build properties types from prop tree
 // Note: ComponentKind::Credential is unused and the implementation is broken, so let's ignore it for now
 async fn compile_action_types(
     ctx: &DalContext,
