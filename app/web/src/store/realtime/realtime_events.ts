@@ -2,7 +2,6 @@
 // used in the subscribe fn to limit valid event names and set callback payload type
 
 import { ActorView } from "@/api/sdf/dal/history_actor";
-import { OutputStream } from "@/api/sdf/dal/resource";
 import { FuncId } from "@/store/func/funcs.store";
 import { ComponentId } from "../components.store";
 import { FixStatus } from "../fixes.store";
@@ -32,13 +31,18 @@ export type WsEventPayloadMap = {
     componentId: string;
   };
 
-  // NOT CURRENTLY USED - but leaving here so we remember these events exist
-  // SecretCreated: number;
   LogLine: {
-    line: OutputStream;
+    stream: {
+      stream: string;
+      level: string;
+      message: string;
+      timestamp: string;
+    };
     funcId: FuncId;
     executionKey: string;
   };
+  // NOT CURRENTLY USED - but leaving here so we remember these events exist
+  // SecretCreated: number;
   ResourceRefreshed: {
     componentId: string;
   };

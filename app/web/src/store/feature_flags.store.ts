@@ -10,6 +10,7 @@ const FLAG_MAPPING = {
   CONTRIBUTE_BUTTON: "contribute_button",
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
+  FUNC_TEST_PANEL: "func_test_panel",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

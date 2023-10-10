@@ -49,6 +49,7 @@
                       'hover:text-neutral-400 font-medium hover:bg-neutral-100',
                       'hover:text-neutral-300 font-medium hover:bg-neutral-900',
                     ),
+                growTabsToFillWidth && 'flex-grow justify-center',
               )
             "
             @click.prevent="selectTab(tab.props.slug)"
@@ -79,6 +80,7 @@
           />
         </template>
         <div
+          v-if="!growTabsToFillWidth"
           class="flex-grow border-b border-neutral-300 dark:border-neutral-600 order-last"
         ></div>
 
@@ -181,6 +183,7 @@ const props = defineProps({
     default: "xs",
   },
   trackingSlug: String,
+  growTabsToFillWidth: { type: Boolean },
 });
 
 const emit = defineEmits<{
@@ -403,7 +406,7 @@ watch(
 
 // Externally exposed info /////////////////////////////////////////////////////////////////////////////////////////
 
-// this object gets provided to the child DropDownMenuItems
+// this object gets provided to the child TabGroupItems
 const context = {
   selectedTabSlug,
   registerTab,

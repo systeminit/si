@@ -5,7 +5,9 @@
       :class="titleClasses"
     >
       <!-- NOTE(nick): add defaults for title if the need arises -->
-      <slot name="title"></slot>
+      <slot name="title"
+        ><div v-if="title" class="text-lg">{{ title }}</div>
+      </slot>
 
       <div class="flex">
         <SiButtonIcon
@@ -21,12 +23,11 @@
     <div
       :class="
         clsx(
-          'w-full h-full overflow-auto',
+          'w-full h-full overflow-auto mt-xs',
           border && 'border',
           themeClasses('border-neutral-300', 'dark:border-neutral-600'),
         )
       "
-      class="mt-4"
     >
       <div
         ref="editorMountRef"
@@ -74,6 +75,7 @@ const props = defineProps({
   fontSize: { type: String },
   // // Format: "0.0px" or "0%"
   height: { type: String },
+  title: { type: String },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
 });

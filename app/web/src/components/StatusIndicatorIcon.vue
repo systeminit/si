@@ -42,6 +42,12 @@ const CONFIG = {
   actions: {
     show: { iconName: "chevron--right", tone: "neutral" },
   },
+  funcTest: {
+    success: { iconName: "check-circle", tone: "success" },
+    running: { iconName: "loader", tone: "action" },
+    failure: { iconName: "alert-triangle", tone: "destructive" },
+    _default: { iconName: "help-circle", tone: "warning" },
+  },
 };
 
 export type IconType = keyof typeof CONFIG;

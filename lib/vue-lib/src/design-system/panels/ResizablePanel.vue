@@ -15,6 +15,7 @@
           bottom: 'border-t shadow-[0_-4px_4px_0_rgba(0,0,0,0.15)]',
         }[side],
         `${side}-0`,
+        !resizing && 'transition-[width]',
       )
     "
     :style="{
@@ -29,6 +30,7 @@
       :panelSide="side"
       @resize-start="onResizeStart"
       @resize-move="onResizeMove"
+      @resize-end="onResizeEnd"
       @resize-reset="resetSize"
     />
     <div class="si-panel__inner absolute w-full h-full flex flex-col">
@@ -139,6 +141,17 @@ const setSize = (newSize: number) => {
   }
 };
 
+const maximize = () => {
+  if (props.maxSize) {
+    setSize(props.maxSize);
+  } else if (props.maxSizeRatio) {
+    const limit =
+      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
+      props.maxSizeRatio;
+    setSize(limit);
+  }
+};
+
 const primarySizeLocalStorageKey = computed(
   () => `${props.rememberSizeKey}-size`,
 );
@@ -146,15 +159,21 @@ const subpanelSplitLocalStorageKey = computed(
   () => `${props.rememberSizeKey}-split`,
 );
 
+const resizing = ref(false);
 const beginResizeValue = ref(0);
 const onResizeStart = () => {
   beginResizeValue.value = currentSize.value;
+  resizing.value = true;
 };
 
 const onResizeMove = (delta: number) => {
   const adjustedDelta =
     props.side === "right" || props.side === "bottom" ? delta : -delta;
   setSize(beginResizeValue.value + adjustedDelta);
+};
+
+const onResizeEnd = () => {
+  resizing.value = false;
 };
 
 const resetSize = (useDefaultSize = true) => {
@@ -241,6 +260,8 @@ onBeforeUnmount(() => {
 
 defineExpose({
   setSize,
+  maximize,
   resetSize,
+  maxSize: props.maxSize,
 });
 </script>

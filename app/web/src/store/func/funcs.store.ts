@@ -10,7 +10,6 @@ import { FuncVariant } from "@/api/sdf/dal/func";
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
-import { OutputStream } from "@/api/sdf/dal/resource";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -461,7 +460,12 @@ export const useFuncStore = () => {
             args: unknown;
             output: unknown;
             executionKey: string;
-            logs: OutputStream[];
+            logs: {
+              stream: string;
+              level: string;
+              message: string;
+              timestamp: string;
+            }[];
           }>({
             method: "post",
             url: "func/execute",

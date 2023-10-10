@@ -53,7 +53,7 @@ pub async fn execute(
             output.push(output_stream.clone());
 
             let log_line = LogLinePayload {
-                line: output_stream,
+                stream: output_stream,
                 func_id,
                 execution_key: execution_key.clone(),
             };
