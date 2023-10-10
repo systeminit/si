@@ -32,6 +32,8 @@ pub struct ComponentSpec {
     #[builder(setter(into, strip_option), default)]
     pub deletion_user_pk: Option<String>,
     #[builder(setter(into), default)]
+    pub unique_id: String,
+    #[builder(setter(into), default)]
     pub deleted: bool,
 
     #[builder(setter(each(name = "attribute"), into), default)]

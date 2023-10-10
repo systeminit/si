@@ -170,6 +170,14 @@ impl<'a> SiPkgAttrFuncInput<'a> {
             },
         })
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            SiPkgAttrFuncInput::Prop { name, .. }
+            | SiPkgAttrFuncInput::InputSocket { name, .. }
+            | SiPkgAttrFuncInput::OutputSocket { name, .. } => name.as_str(),
+        }
+    }
 }
 
 impl<'a> TryFrom<SiPkgAttrFuncInput<'a>> for AttrFuncInputSpec {

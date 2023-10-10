@@ -1,6 +1,10 @@
 <template>
   <div class="overflow-x-scroll my-2 p-4 border-opacity-10 border-l-2">
     <dl>
+      <dt class="uppercase text-xs italic opacity-80">Attribute Value Id</dt>
+      <dd class="p-2 my-2 border-2 border-opacity-10">
+        <pre>{{ data.valueId }}</pre>
+      </dd>
       <dt class="uppercase text-xs italic opacity-80">Type</dt>
       <dd class="p-2 my-2 border-2 border-opacity-10">
         <pre>{{ data.kind ?? "any" }}</pre>
@@ -35,6 +39,11 @@
       <dd class="p-2 my-2 border-2 border-opacity-10">
         <pre>{{ data.prototypeContext }}</pre>
       </dd>
+      <p class="text-2xs p-2 my-2 border-2 border-opacity-10">
+        prototype in change set?
+        {{ data.prototypeInChangeSet ? "y" : "n" }} value in change set?
+        {{ data.valueInChangeSet ? "y" : "n" }}
+      </p>
     </dl>
   </div>
 </template>

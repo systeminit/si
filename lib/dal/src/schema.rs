@@ -9,6 +9,7 @@ use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
+use crate::standard_model::object_option_from_row_option;
 use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, pk,
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
@@ -25,6 +26,9 @@ pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod ui_menu;
 pub mod variant;
+
+const FIND_SCHEMA_VARIANT_BY_NAME_FOR_SCHEMA: &str =
+    include_str!("./queries/find_schema_variant_for_schema_and_name.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -216,6 +220,37 @@ impl Schema {
             .first()
             .ok_or_else(|| SchemaError::NotFoundByName(name.into()))
             .cloned()
+    }
+
+    pub async fn find_by_name_builtin(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaResult<Option<Schema>> {
+        let name = name.as_ref();
+
+        let builtin_ctx = ctx.clone_with_new_tenancy(Tenancy::new(WorkspacePk::NONE));
+        let builtin_schema = Self::find_by_name(&builtin_ctx, name).await?;
+
+        Ok(Self::get_by_id(ctx, builtin_schema.id()).await?)
+    }
+
+    pub async fn find_variant_by_name(
+        &self,
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaResult<Option<SchemaVariant>> {
+        let name: &str = name.as_ref();
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                FIND_SCHEMA_VARIANT_BY_NAME_FOR_SCHEMA,
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &name],
+            )
+            .await?;
+
+        Ok(object_option_from_row_option(row)?)
     }
 
     pub async fn default_schema_variant_id_for_name(

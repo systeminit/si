@@ -2,26 +2,8 @@ pub(crate) mod node;
 mod pkg;
 mod spec;
 
-pub use pkg::{
-    SiPkg, SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgChangeSet, SiPkgError,
-    SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMapKeyFunc,
-    SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant,
-    SiPkgSchemaVariantData, SiPkgSocket, SiPkgSocketData, SiPkgValidation,
-};
-pub use spec::{
-    ActionFuncSpec, ActionFuncSpecBuilder, ActionFuncSpecKind, AttrFuncInputSpec,
-    AttrFuncInputSpecKind, AttributeValuePath, AttributeValueSpec, ChangeSetSpec,
-    ChangeSetSpecBuilder, ChangeSetSpecStatus, ComponentSpec, ComponentSpecVariant,
-    FuncArgumentKind, FuncArgumentSpec, FuncArgumentSpecBuilder, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncSpecData, FuncSpecDataBuilder, LeafFunctionSpec,
-    LeafFunctionSpecBuilder, LeafInputLocation, LeafKind, MapKeyFuncSpec, MapKeyFuncSpecBuilder,
-    PkgSpec, PkgSpecBuilder, PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    PropSpecWidgetKind, SchemaSpec, SchemaSpecBuilder, SchemaSpecData, SchemaSpecDataBuilder,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
-    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPropFuncSpec, SiPropFuncSpecBuilder,
-    SiPropFuncSpecKind, SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecDataBuilder,
-    SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
-};
+pub use pkg::*;
+pub use spec::*;
 
 #[cfg(test)]
 mod tests {

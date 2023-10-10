@@ -155,6 +155,8 @@ export interface AttributeDebugData {
     component_id: string;
   };
   kind: string;
+  prototypeInChangeSet: boolean;
+  valueInChangeSet: boolean;
 }
 
 export interface AttributeDebugView {
