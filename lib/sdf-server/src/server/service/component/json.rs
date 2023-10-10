@@ -1,5 +1,4 @@
 use axum::{extract::Query, Json};
-use dal::component::diff::ComponentDiff;
 use dal::{ComponentId, ComponentView, ComponentViewProperties, Visibility};
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +33,7 @@ pub async fn json(
         }));
     }
 
-    let mut json = ComponentViewProperties::try_from(curr_component_view)?;
+    let json = ComponentViewProperties::try_from(curr_component_view)?;
 
     Ok(Json(JsonResponse { json }))
 }
