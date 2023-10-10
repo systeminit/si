@@ -300,6 +300,12 @@ function setZoom(newZoomLevel: number) {
   if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
   else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
   else zoomLevel.value = newZoomLevel;
+
+  if (zoomLevel.value === 1) {
+    window.localStorage.removeItem("si-diagram-zoom");
+  } else {
+    window.localStorage.setItem("si-diagram-zoom", `${zoomLevel.value}`);
+  }
 }
 watch(zoomLevel, () => {
   emit("update:zoom", zoomLevel.value);
@@ -414,6 +420,10 @@ const isMounted = ref(false);
 onMounted(() => {
   resizeObserver.observe(containerRef.value!);
   isMounted.value = true;
+  const zoom = window.localStorage.getItem("si-diagram-zoom");
+  if (zoom) {
+    zoomLevel.value = Number(zoom);
+  }
 });
 
 watch([customFontsLoaded, () => isMounted.value, () => stageRef.value], () => {
