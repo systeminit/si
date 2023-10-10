@@ -384,6 +384,11 @@ impl Prop {
             return Ok("any".to_string());
         }
 
+        // Note: we should fix this by having propper enums as prop types
+        if self.path() == PropPath::new(["root", "resource", "status"]) {
+            return Ok("'ok' | 'warning' | 'error' | undefined | null".to_owned());
+        }
+
         Ok(match self.kind() {
             PropKind::Array => format!(
                 "{}[]",
