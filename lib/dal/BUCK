@@ -18,6 +18,7 @@ rust_library(
         "//third-party/rust:async-recursion",
         "//third-party/rust:async-trait",
         "//third-party/rust:base64",
+        "//third-party/rust:blake3",
         "//third-party/rust:chrono",
         "//third-party/rust:convert_case",
         "//third-party/rust:derive_more",

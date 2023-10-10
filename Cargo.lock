@@ -1159,6 +1159,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "base64 0.21.2",
+ "blake3",
  "buck2-resources",
  "chrono",
  "convert_case 0.6.0",
