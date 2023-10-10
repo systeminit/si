@@ -99,6 +99,7 @@
               :status="isDestroyed ? 'notexists' : qualificationStatus"
               size="lg"
               :popoverPosition="popoverPosition"
+              @open="popoverResize"
             >
               <ComponentQualificationsFlyover
                 v-if="!isDestroyed"
@@ -119,6 +120,7 @@
               :status="'show'"
               size="md"
               :popoverPosition="popoverPosition"
+              @open="popoverResize"
             >
               <ComponentActionsFlyover :componentId="componentId" />
             </StatusIconWithPopover>
@@ -240,7 +242,7 @@ const parentBreadcrumbsText = computed(() => {
 // POPOVER CODE
 // Since we anchor the popover on the parent, for now it makes sense to have the position calculated on the parent
 const popoverPosition = ref<{ x: number; y: number } | undefined>();
-const popoverResize = _.debounce(() => {
+const popoverResize = () => {
   if (!nodeRef.value) {
     popoverPosition.value = undefined;
     return;
@@ -251,18 +253,5 @@ const popoverResize = _.debounce(() => {
     x: Math.floor(nodeRect.right),
     y: Math.floor(nodeRect.top),
   };
-}, 50);
-const resizeObserver = new ResizeObserver(popoverResize);
-
-watch(nodeRef, () => {
-  if (nodeRef.value) {
-    resizeObserver.observe(nodeRef.value);
-  } else {
-    resizeObserver.disconnect();
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver.disconnect();
-});
+};
 </script>

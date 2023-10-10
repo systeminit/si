@@ -10,7 +10,7 @@
     "
     @mouseenter="setHover(true)"
     @mouseleave="setHover(false)"
-    @click="popoverRef.open"
+    @click="openPopover"
   >
     <StatusIndicatorIcon
       :type="type"
@@ -46,6 +46,10 @@ const props = defineProps({
   popoverPosition: { type: Object as PropType<{ x: number; y: number }> },
 });
 
+const emit = defineEmits<{
+  (e: "open"): void;
+}>();
+
 const isHovered = ref(false);
 
 function setHover(v: boolean) {
@@ -53,4 +57,9 @@ function setHover(v: boolean) {
 }
 
 const popoverRef = ref();
+
+const openPopover = () => {
+  emit("open");
+  popoverRef.value.open();
+};
 </script>
