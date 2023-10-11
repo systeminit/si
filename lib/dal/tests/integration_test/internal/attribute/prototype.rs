@@ -512,8 +512,8 @@ async fn remove_component_specific(ctx: &DalContext) {
 
             // Perform removal on the prototype.
             assert!(
-                AttributePrototype::remove(ctx, updated_prototype.id(), false)
-                    .await
+                dbg!(AttributePrototype::remove(ctx, updated_prototype.id(), false)
+                    .await)
                     .is_ok()
             );
 
