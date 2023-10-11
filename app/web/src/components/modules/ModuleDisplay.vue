@@ -60,7 +60,7 @@
             <VButton
               :requestStatus="rejectReqStatus"
               :disabled="!builtinSummary"
-              @click="rejectModuleSpecHandler"
+              @click="rejectBuiltinSpecHandler"
             >
               Reject this builtin
             </VButton>
@@ -292,6 +292,11 @@ async function installButtonHandler() {
 async function rejectModuleSpecHandler() {
   if (!remoteSummary.value) return;
   await moduleStore.REJECT_REMOTE_MODULE(remoteSummary.value?.id);
+}
+
+async function rejectBuiltinSpecHandler() {
+  if (!builtinSummary.value) return;
+  await moduleStore.REJECT_REMOTE_MODULE(builtinSummary.value?.id);
 }
 
 async function promoteToBuiltinSpecHandler() {
