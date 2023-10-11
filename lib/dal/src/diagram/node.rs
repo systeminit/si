@@ -225,8 +225,8 @@ impl DiagramComponentView {
         let mut deleted_info: Option<HistoryEventMetadata> = None;
         {
             if let Some(deleted_at) = ctx.visibility().deleted_at {
-                if let Some(deletion_user_pk) = component.deletion_user_pk {
-                    let history_actor = history_event::HistoryActor::User(deletion_user_pk);
+                if let Some(deletion_user_pk) = component.deletion_user_pk() {
+                    let history_actor = history_event::HistoryActor::User(*deletion_user_pk);
                     let actor = ActorView::from_history_actor(ctx, history_actor).await?;
 
                     deleted_info = Some(HistoryEventMetadata {

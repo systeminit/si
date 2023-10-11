@@ -1261,43 +1261,41 @@ impl PkgExporter {
 
         component_spec_builder.needs_destroy(component.needs_destroy());
 
-        if let Some(deletion_user_pk) = component.deletion_user_pk.as_ref() {
+        if let Some(deletion_user_pk) = component.deletion_user_pk() {
             component_spec_builder.deletion_user_pk(deletion_user_pk.to_string());
         }
 
-        if component.visibility().is_deleted() {
-            component_spec_builder.deleted(true);
-        } else {
-            // ensure we are not in a deleted visibility here
-            let new_ctx = ctx.clone_without_deleted_visibility();
+        component_spec_builder.deleted(component.visibility().is_deleted());
 
-            let debug_view = ComponentDebugView::new(&new_ctx, component).await?;
-            for attribute in debug_view.attributes {
-                let (attr_spec, attr_funcs, attr_head_funcs) = self
-                    .export_attribute_value(ctx, change_set_pk, attribute)
-                    .await?;
-                funcs.extend_from_slice(&attr_funcs);
-                head_funcs.extend_from_slice(&attr_head_funcs);
-                component_spec_builder.attribute(attr_spec);
-            }
+        // ensure we are not in a deleted visibility here
+        let new_ctx = ctx.clone_without_deleted_visibility();
 
-            for attribute in debug_view.input_sockets {
-                let (attr_spec, attr_funcs, attr_head_funcs) = self
-                    .export_attribute_value(ctx, change_set_pk, attribute)
-                    .await?;
-                funcs.extend_from_slice(&attr_funcs);
-                head_funcs.extend_from_slice(&attr_head_funcs);
-                component_spec_builder.attribute(attr_spec);
-            }
+        let debug_view = ComponentDebugView::new(&new_ctx, component).await?;
+        for attribute in debug_view.attributes {
+            let (attr_spec, attr_funcs, attr_head_funcs) = self
+                .export_attribute_value(ctx, change_set_pk, attribute)
+                .await?;
+            funcs.extend_from_slice(&attr_funcs);
+            head_funcs.extend_from_slice(&attr_head_funcs);
+            component_spec_builder.attribute(attr_spec);
+        }
 
-            for attribute in debug_view.output_sockets {
-                let (attr_spec, attr_funcs, attr_head_funcs) = self
-                    .export_attribute_value(ctx, change_set_pk, attribute)
-                    .await?;
-                component_spec_builder.attribute(attr_spec);
-                funcs.extend_from_slice(&attr_funcs);
-                head_funcs.extend_from_slice(&attr_head_funcs);
-            }
+        for attribute in debug_view.input_sockets {
+            let (attr_spec, attr_funcs, attr_head_funcs) = self
+                .export_attribute_value(ctx, change_set_pk, attribute)
+                .await?;
+            funcs.extend_from_slice(&attr_funcs);
+            head_funcs.extend_from_slice(&attr_head_funcs);
+            component_spec_builder.attribute(attr_spec);
+        }
+
+        for attribute in debug_view.output_sockets {
+            let (attr_spec, attr_funcs, attr_head_funcs) = self
+                .export_attribute_value(ctx, change_set_pk, attribute)
+                .await?;
+            component_spec_builder.attribute(attr_spec);
+            funcs.extend_from_slice(&attr_funcs);
+            head_funcs.extend_from_slice(&attr_head_funcs);
         }
 
         Ok((component_spec_builder.build()?, funcs, head_funcs))

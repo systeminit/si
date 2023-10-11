@@ -237,7 +237,7 @@ pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
     kind: ComponentKind,
-    pub deletion_user_pk: Option<UserPk>,
+    deletion_user_pk: Option<UserPk>,
     needs_destroy: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -339,6 +339,7 @@ impl Component {
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
     standard_model_accessor!(needs_destroy, bool, ComponentResult);
+    standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, ComponentResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,

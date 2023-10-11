@@ -39,12 +39,12 @@ use crate::{
     validation::{Validation, ValidationKind},
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
-    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentError,
-    ComponentId, DalContext, ExternalProvider, ExternalProviderError, ExternalProviderId, Func,
-    FuncArgument, FuncBindingError, FuncBindingReturnValueError, FuncError, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Prop, PropId, PropKind,
-    Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel,
-    Tenancy, ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
+    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
+    DalContext, ExternalProvider, ExternalProviderError, ExternalProviderId, Func, FuncArgument,
+    FuncBindingError, FuncBindingReturnValueError, FuncError, FuncId, InternalProvider,
+    InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy,
+    UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -53,7 +53,7 @@ use super::{PkgError, PkgResult};
 enum Thing {
     ActionPrototype(ActionPrototype),
     AttributePrototypeArgument(AttributePrototypeArgument),
-    Component(Component),
+    Component((Component, Node)),
     Func(Func),
     FuncArgument(FuncArgument),
     Schema(Schema),
@@ -277,20 +277,18 @@ async fn import_component(
 
     let (mut component, mut node) =
         match thing_map.get(change_set_pk, &component_spec.unique_id().to_owned()) {
-            Some(Thing::Component(existing_component)) => (
-                existing_component.to_owned(),
-                existing_component.node(ctx).await?.pop().ok_or(
-                    ComponentError::NodeNotFoundForComponent(*existing_component.id()),
-                )?,
-            ),
+            Some(Thing::Component((existing_component, node))) => {
+                (existing_component.to_owned(), node.to_owned())
+            }
             _ => {
                 let (component, node) =
                     Component::new(ctx, component_spec.name(), *variant.id()).await?;
                 thing_map.insert(
                     change_set_pk,
                     component_spec.unique_id().into(),
-                    Thing::Component(component.to_owned()),
+                    Thing::Component((component.to_owned(), node.to_owned())),
                 );
+
                 (component, node)
             }
         };
@@ -364,8 +362,14 @@ async fn import_component(
         component.set_needs_destroy(ctx, true).await?;
     }
 
-    //    if let Some(deletion_user_pk) = component_spec.deletion_user_pk() {
-    //    }
+    if component_spec.deleted() {
+        component.delete_and_propagate(ctx).await?;
+        if let Some(deletion_user_pk) = component_spec.deletion_user_pk() {
+            component
+                .set_deletion_user_pk(ctx, Some(UserPk::from_str(deletion_user_pk)?))
+                .await?;
+        }
+    }
 
     Ok(())
 }
