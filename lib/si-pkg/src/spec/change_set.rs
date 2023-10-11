@@ -1,4 +1,4 @@
-use super::{ComponentSpec, FuncSpec, SchemaSpec, SpecError};
+use super::{ComponentSpec, EdgeSpec, FuncSpec, SchemaSpec, SpecError};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
@@ -37,6 +37,10 @@ pub struct ChangeSetSpec {
     #[builder(setter(each(name = "func", into)), default)]
     #[serde(default)]
     pub funcs: Vec<FuncSpec>,
+
+    #[builder(setter(each(name = "edge", into)), default)]
+    #[serde(default)]
+    pub edges: Vec<EdgeSpec>,
 }
 
 impl ChangeSetSpec {

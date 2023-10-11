@@ -134,9 +134,9 @@ pub struct Edge {
     tail_object_kind: VertexObjectKind,
     tail_object_id: EdgeObjectId,
     tail_socket_id: SocketId,
-    pub creation_user_pk: Option<UserPk>,
-    pub deletion_user_pk: Option<UserPk>,
-    pub deleted_implicitly: bool,
+    creation_user_pk: Option<UserPk>,
+    deletion_user_pk: Option<UserPk>,
+    deleted_implicitly: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -317,6 +317,9 @@ impl Edge {
     standard_model_accessor!(tail_object_kind, Enum(VertexObjectKind), EdgeResult);
     standard_model_accessor!(tail_object_id, Pk(EdgeObjectId), EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
+    standard_model_accessor!(creation_user_pk, Option<Pk(UserPk)>, EdgeResult);
+    standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, EdgeResult);
+    standard_model_accessor!(deleted_implicitly, bool, EdgeResult);
 
     pub async fn list_parents_for_component(
         ctx: &DalContext,

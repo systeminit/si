@@ -19,11 +19,11 @@ use crate::{
     installed_pkg::InstalledPkgError,
     prop_tree::PropTreeError,
     schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId},
-    socket::SocketError,
+    socket::{SocketEdgeKind, SocketError},
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ComponentError,
-    ComponentId, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    ComponentId, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
     InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
     SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
@@ -91,6 +91,10 @@ pub enum PkgError {
     ConflictingMapKeyPrototypes(PropId),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
+    #[error("edge refers to component not in export: {0}")]
+    EdgeRefersToMissingComponent(ComponentId),
     #[error("Cannot find Socket for explicit InternalProvider {0}")]
     ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error(transparent)]
@@ -157,6 +161,8 @@ pub enum PkgError {
     MissingRootProp(SchemaVariantId),
     #[error("Cannot find schema_variant_definition {0}")]
     MissingSchemaVariantDefinition(SchemaVariantId),
+    #[error("Cannot find socket with name {0} for edge kind {1}")]
+    MissingSocketName(String, SocketEdgeKind),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
     #[error(transparent)]

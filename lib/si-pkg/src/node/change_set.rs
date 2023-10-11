@@ -83,9 +83,11 @@ impl NodeChild for ChangeSetSpec {
             vec![
                 Box::new(ChangeSetChild::Components(self.components.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
-                Box::new(ChangeSetChild::Schemas(self.schemas.clone()))
+                Box::new(ChangeSetChild::Edges(self.edges.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
                 Box::new(ChangeSetChild::Funcs(self.funcs.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(ChangeSetChild::Schemas(self.schemas.clone()))
                     as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             ],
         )

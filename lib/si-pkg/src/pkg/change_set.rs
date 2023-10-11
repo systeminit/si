@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, SiPkgSchema, Source};
 use crate::{
     node::{ChangeSetChildNode, PkgNode},
-    ChangeSetSpec, ChangeSetSpecStatus, FuncSpec, SiPkgComponent, SiPkgFunc,
+    ChangeSetSpec, ChangeSetSpecStatus, FuncSpec, SiPkgComponent, SiPkgEdge, SiPkgFunc,
 };
 
 #[derive(Clone, Debug)]
@@ -97,6 +97,7 @@ impl<'a> SiPkgChangeSet<'a> {
         ChangeSetChildNode::Components,
         SiPkgComponent
     );
+    impl_change_set_children_from_graph!(edges, ChangeSetChildNode::Edges, SiPkgEdge);
     impl_change_set_children_from_graph!(funcs, ChangeSetChildNode::Funcs, SiPkgFunc);
     impl_change_set_children_from_graph!(schemas, ChangeSetChildNode::Schemas, SiPkgSchema);
 

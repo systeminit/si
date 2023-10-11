@@ -17,6 +17,7 @@ mod change_set;
 mod change_set_child;
 mod component;
 mod component_child;
+mod edge;
 mod func;
 mod func_argument;
 mod leaf_function;
@@ -42,6 +43,7 @@ pub(crate) use self::{
     change_set_child::{ChangeSetChild, ChangeSetChildNode},
     component::ComponentNode,
     component_child::ComponentChildNode,
+    edge::EdgeNode,
     func::FuncNode,
     func_argument::FuncArgumentNode,
     leaf_function::LeafFunctionNode,
@@ -67,6 +69,7 @@ const NODE_KIND_CHANGE_SET: &str = "change_set";
 const NODE_KIND_CHANGE_SET_CHILD: &str = "change_set_child";
 const NODE_KIND_COMPONENT: &str = "component";
 const NODE_KIND_COMPONENT_CHILD: &str = "component_child";
+const NODE_KIND_EDGE: &str = "edge";
 const NODE_KIND_FUNC: &str = "func";
 const NODE_KIND_FUNC_ARGUMENT: &str = "func_argument";
 const NODE_KIND_LEAF_FUNCTION: &str = "leaf_function";
@@ -137,6 +140,7 @@ pub enum PkgNode {
     ChangeSetChild(ChangeSetChildNode),
     Component(ComponentNode),
     ComponentChild(ComponentChildNode),
+    Edge(EdgeNode),
     Func(FuncNode),
     FuncArgument(FuncArgumentNode),
     LeafFunction(LeafFunctionNode),
@@ -163,6 +167,7 @@ impl PkgNode {
     pub const CHANGE_SET_CHILD_KIND_STR: &str = NODE_KIND_CHANGE_SET_CHILD;
     pub const COMPONENT_KIND_STR: &str = NODE_KIND_COMPONENT;
     pub const COMPONENT_CHILD_KIND_STR: &str = NODE_KIND_COMPONENT_CHILD;
+    pub const NODE_KIND_EDGE_STR: &str = NODE_KIND_EDGE;
     pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
     pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
     pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
@@ -189,6 +194,7 @@ impl PkgNode {
             Self::ChangeSetChild(_) => NODE_KIND_CHANGE_SET_CHILD,
             Self::Component(_) => NODE_KIND_COMPONENT,
             Self::ComponentChild(_) => NODE_KIND_COMPONENT_CHILD,
+            Self::Edge(_) => NODE_KIND_EDGE,
             Self::Func(_) => NODE_KIND_FUNC,
             Self::FuncArgument(_) => NODE_KIND_FUNC_ARGUMENT,
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
@@ -219,6 +225,7 @@ impl NameStr for PkgNode {
             Self::ChangeSetChild(node) => node.name(),
             Self::Component(node) => node.name(),
             Self::ComponentChild(node) => node.name(),
+            Self::Edge(_) => NODE_KIND_EDGE,
             Self::Func(node) => node.name(),
             Self::FuncArgument(node) => node.name(),
             Self::LeafFunction(_) => NODE_KIND_LEAF_FUNCTION,
@@ -251,6 +258,7 @@ impl WriteBytes for PkgNode {
             Self::ChangeSetChild(node) => node.write_bytes(writer)?,
             Self::Component(node) => node.write_bytes(writer)?,
             Self::ComponentChild(node) => node.write_bytes(writer)?,
+            Self::Edge(node) => node.write_bytes(writer)?,
             Self::Func(node) => node.write_bytes(writer)?,
             Self::FuncArgument(node) => node.write_bytes(writer)?,
             Self::LeafFunction(node) => node.write_bytes(writer)?,
@@ -298,6 +306,7 @@ impl ReadBytes for PkgNode {
             NODE_KIND_COMPONENT_CHILD => {
                 ComponentChildNode::read_bytes(reader)?.map(Self::ComponentChild)
             }
+            NODE_KIND_EDGE => EdgeNode::read_bytes(reader)?.map(Self::Edge),
             NODE_KIND_FUNC => FuncNode::read_bytes(reader)?.map(Self::Func),
             NODE_KIND_FUNC_ARGUMENT => {
                 FuncArgumentNode::read_bytes(reader)?.map(Self::FuncArgument)
