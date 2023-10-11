@@ -4,7 +4,8 @@ import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
-  getUserWorkspaces, getWorkspaceById,
+  createWorkspace,
+  getUserWorkspaces, getWorkspaceById, patchWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -37,7 +38,7 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
     throw new ApiError('NotFound', 'Workspace not found');
   }
 
-  // overly simplified access model...
+  // TODO(Wendy) - here is where we can change which users are allowed to access which workspaces!
   if (workspace.creatorUserId !== ctx.state.authUser.id) {
     throw new ApiError('Forbidden', 'You do not have access to that workspace');
   }
@@ -50,12 +51,38 @@ router.get("/workspaces/:workspaceId", async (ctx) => {
   ctx.body = workspace;
 });
 
-router.patch("/workspaces/:workspaceId", async (ctx) => {
-  const workspace = await handleWorkspaceIdParam(ctx);
-  // TODO: update workspace name and other settings...
-  ctx.body = workspace;
+router.post("/workspaces/new", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
 
-  throw new ApiError('NotImplemented', 'Not yet implemented');
+  const reqBody = validate(ctx.request.body, z.object({
+    instanceUrl: z.string().url(),
+    displayName: z.string(),
+  }));
+
+  await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
+
+  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+});
+
+router.patch("/workspaces/:workspaceId", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    instanceUrl: z.string().url(),
+    displayName: z.string(),
+  }));
+
+  await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName);
+
+  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {

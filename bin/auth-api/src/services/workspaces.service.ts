@@ -24,13 +24,13 @@ export async function getWorkspaceById(id: WorkspaceId) {
   return await prisma.workspace.findUnique({ where: { id } });
 }
 
-export async function createWorkspace(creatorUser: User) {
+export async function createWorkspace(creatorUser: User, instanceUrl = 'http://localhost:8080', displayName = `${creatorUser.nickname}'s dev workspace`) {
   const newWorkspace = await prisma.workspace.create({
     data: {
       id: ulid(),
       instanceEnvType: InstanceEnvType.LOCAL,
-      instanceUrl: 'http://localhost:8080',
-      displayName: `${creatorUser.nickname}'s dev workspace`,
+      instanceUrl,
+      displayName,
       creatorUserId: creatorUser.id,
     },
   });
@@ -40,6 +40,10 @@ export async function createWorkspace(creatorUser: User) {
   });
 
   return newWorkspace;
+}
+
+export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displayName: string) {
+  return await prisma.workspace.update({ where: { id }, data: { instanceUrl, displayName } });
 }
 
 export async function getUserWorkspaces(userId: UserId) {
