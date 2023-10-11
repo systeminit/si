@@ -1,27 +1,29 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::fs::File;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::secretbox;
 use sodiumoxide::crypto::secretbox::{Key, Nonce};
 use thiserror::Error;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::task::JoinError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SymmetricCryptoError {
     #[error("error when decrypting ciphertext")]
     DecryptionFailed,
+    #[error("error deserializing key file: {0}")]
+    Deserialize(#[from] ciborium::de::Error<std::io::Error>),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("no key present matching provided hash")]
     MissingDonkeyForHash,
-    #[error("error deserializing json: {0}")]
-    SerdeDeserializeJson(serde_json::Error),
-    #[error("error serializing json: {0}")]
-    SerdeSerializeJson(serde_json::Error),
+    #[error("error serializing key file: {0}")]
+    Serialize(#[from] ciborium::ser::Error<std::io::Error>),
+    #[error("Error joining task: {0}")]
+    TaskJoin(#[from] JoinError),
 }
 
 pub type SymmetricCryptoResult<T> = Result<T, SymmetricCryptoError>;
@@ -32,12 +34,12 @@ type Hash = [u8; 32];
 pub struct SymmetricKey(Key);
 
 impl SymmetricKey {
-    async fn save(&self, path: impl AsRef<Path>) -> SymmetricCryptoResult<()> {
+    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
         let file_data = SymmetricKeyFile { key: self.clone() };
 
         file_data.save(path).await
     }
-    async fn load(path: impl AsRef<Path>) -> SymmetricCryptoResult<Self> {
+    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
         Ok(SymmetricKeyFile::load(path).await?.into())
     }
 }
@@ -48,28 +50,34 @@ impl From<SymmetricKeyFile> for SymmetricKey {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 struct SymmetricKeyFile {
     key: SymmetricKey,
 }
 
 impl SymmetricKeyFile {
-    async fn save(&self, path: impl AsRef<Path>) -> SymmetricCryptoResult<()> {
-        let mut file = File::create(&path).await?;
-        file.write_all(
-            &(serde_json::to_vec(self).map_err(SymmetricCryptoError::SerdeSerializeJson)?),
-        )
-        .await?;
+    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
+        let path = path.into();
+        let self_clone = self.clone();
 
-        Ok(())
+        tokio::task::spawn_blocking(move || {
+            let file = File::create(&path)?;
+
+            ciborium::into_writer(&self_clone, file)
+        })
+        .await?
+        .map_err(Into::into)
     }
 
-    async fn load(path: impl AsRef<Path>) -> SymmetricCryptoResult<Self> {
-        let mut file = File::open(&path).await?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf).await?;
+    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
+        let path = path.into();
 
-        Ok(serde_json::from_slice(&buf).map_err(SymmetricCryptoError::SerdeDeserializeJson)?)
+        tokio::task::spawn_blocking(move || {
+            let file = File::open(path)?;
+            ciborium::from_reader(file)
+        })
+        .await?
+        .map_err(Into::into)
     }
 }
 
