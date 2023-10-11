@@ -30,57 +30,6 @@ pub type SymmetricCryptoResult<T> = Result<T, SymmetricCryptoError>;
 
 type Hash = [u8; 32];
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SymmetricKey(Key);
-
-impl SymmetricKey {
-    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
-        let file_data = SymmetricKeyFile { key: self.clone() };
-
-        file_data.save(path).await
-    }
-    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
-        Ok(SymmetricKeyFile::load(path).await?.into())
-    }
-}
-
-impl From<SymmetricKeyFile> for SymmetricKey {
-    fn from(value: SymmetricKeyFile) -> Self {
-        value.key
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-struct SymmetricKeyFile {
-    key: SymmetricKey,
-}
-
-impl SymmetricKeyFile {
-    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
-        let path = path.into();
-        let self_clone = self.clone();
-
-        tokio::task::spawn_blocking(move || {
-            let file = File::create(&path)?;
-
-            ciborium::into_writer(&self_clone, file)
-        })
-        .await?
-        .map_err(Into::into)
-    }
-
-    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
-        let path = path.into();
-
-        tokio::task::spawn_blocking(move || {
-            let file = File::open(path)?;
-            ciborium::from_reader(file)
-        })
-        .await?
-        .map_err(Into::into)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct SymmetricCryptoService {
     donkeys: Arc<HashMap<Hash, secretbox::Key>>,
@@ -88,6 +37,11 @@ pub struct SymmetricCryptoService {
 }
 
 /// si-cli exec --key=~/keys/prod.key --extra-keys=~/keys/*.key
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SymmetricCryptoServiceConfig {
+    pub active_key: PathBuf,
+    pub extra_keys: Vec<PathBuf>,
+}
 
 impl SymmetricCryptoService {
     pub fn new(active_key: SymmetricKey, extra_keys: Vec<SymmetricKey>) -> Self {
@@ -137,6 +91,69 @@ impl SymmetricCryptoService {
             .ok_or(SymmetricCryptoError::MissingDonkeyForHash)?;
 
         secretbox::open(ciphertext, nonce, key).map_err(|_| SymmetricCryptoError::DecryptionFailed)
+    }
+
+    pub async fn from_config(config: &SymmetricCryptoServiceConfig) -> SymmetricCryptoResult<Self> {
+        let active_key = SymmetricKey::load(&config.active_key).await?;
+
+        let mut extra_keys = vec![];
+
+        for key_path in config.extra_keys.iter() {
+            extra_keys.push(SymmetricKey::load(&key_path).await?);
+        }
+
+        Ok(Self::new(active_key, extra_keys))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct SymmetricKey(Key);
+
+impl SymmetricKey {
+    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
+        let file_data = SymmetricKeyFile { key: self.clone() };
+
+        file_data.save(path).await
+    }
+    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
+        Ok(SymmetricKeyFile::load(path).await?.into())
+    }
+}
+
+impl From<SymmetricKeyFile> for SymmetricKey {
+    fn from(value: SymmetricKeyFile) -> Self {
+        value.key
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+struct SymmetricKeyFile {
+    key: SymmetricKey,
+}
+
+impl SymmetricKeyFile {
+    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
+        let path = path.into();
+        let self_clone = self.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let file = File::create(&path)?;
+
+            ciborium::into_writer(&self_clone, file)
+        })
+        .await?
+        .map_err(Into::into)
+    }
+
+    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
+        let path = path.into();
+
+        tokio::task::spawn_blocking(move || {
+            let file = File::open(path)?;
+            ciborium::from_reader(file)
+        })
+        .await?
+        .map_err(Into::into)
     }
 }
 

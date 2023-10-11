@@ -1,5 +1,6 @@
 use std::{io, path::Path, sync::Arc};
 
+use dal::crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -51,6 +52,8 @@ pub enum ServerError {
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
     #[error(transparent)]
+    SymmetricCryptoService(#[from] SymmetricCryptoError),
+    #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
     #[error("unknown job kind {0}")]
     UnknownJobKind(String),
@@ -78,11 +81,7 @@ type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server {
     concurrency_limit: usize,
-    encryption_key: Arc<EncryptionKey>,
-    nats: NatsClient,
-    pg_pool: PgPool,
-    veritech: VeritechClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    services_context: ServicesContext,
     /// An internal shutdown watch receiver handle which can be provided to internal tasks which
     /// want to be notified when a shutdown event is in progress.
     shutdown_watch_rx: watch::Receiver<()>,
@@ -106,15 +105,24 @@ impl Server {
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
+        let symmetric_crypto_service =
+            Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+
+        let services_context = ServicesContext::new(
+            pg_pool,
+            nats.clone(),
+            job_processor,
+            veritech.clone(),
+            encryption_key,
+            None,
+            None,
+            symmetric_crypto_service,
+        );
 
         Self::from_services(
             config.instance_id().to_string(),
             config.concurrency(),
-            encryption_key,
-            nats,
-            pg_pool,
-            veritech,
-            job_processor,
+            services_context,
         )
     }
 
@@ -123,11 +131,7 @@ impl Server {
     pub fn from_services(
         instance_id: impl Into<String>,
         concurrency_limit: usize,
-        encryption_key: Arc<EncryptionKey>,
-        nats: NatsClient,
-        pg_pool: PgPool,
-        veritech: VeritechClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        services_context: ServicesContext,
     ) -> Result<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -148,11 +152,7 @@ impl Server {
 
         Ok(Server {
             concurrency_limit,
-            pg_pool,
-            nats,
-            veritech,
-            encryption_key,
-            job_processor,
+            services_context,
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
@@ -174,11 +174,7 @@ impl Server {
         receive_job_requests_task(
             tx,
             self.metadata,
-            self.pg_pool,
-            self.nats,
-            self.veritech,
-            self.job_processor,
-            self.encryption_key,
+            self.services_context,
             self.shutdown_watch_rx,
         )
         .await;
@@ -225,6 +221,15 @@ impl Server {
     fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
         Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
     }
+
+    #[instrument(name = "pinga.init.create_symmetric_crypto_service", skip_all)]
+    async fn create_symmetric_crypto_service(
+        config: &SymmetricCryptoServiceConfig,
+    ) -> Result<SymmetricCryptoService> {
+        SymmetricCryptoService::from_config(config)
+            .await
+            .map_err(Into::into)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -269,26 +274,14 @@ pub struct Subscriber;
 impl Subscriber {
     pub async fn jobs(
         metadata: Arc<ServerMetadata>,
-        pg_pool: PgPool,
-        nats: NatsClient,
-        veritech: veritech_client::Client,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        encryption_key: Arc<veritech_client::EncryptionKey>,
+        services_context: ServicesContext,
     ) -> Result<impl Stream<Item = JobItem>> {
+        let nats = services_context.nats_conn().clone();
+
         let subject = nats_jobs_subject(nats.metadata().subject_prefix());
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for job requests"
-        );
-
-        let services_context = ServicesContext::new(
-            pg_pool,
-            nats.clone(),
-            job_processor,
-            veritech.clone(),
-            encryption_key,
-            None,
-            None,
         );
 
         // Make non blocking context here, and update it for each job
@@ -310,54 +303,27 @@ impl Subscriber {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn receive_job_requests_task(
     tx: UnboundedSender<JobItem>,
     metadata: Arc<ServerMetadata>,
-    pg_pool: PgPool,
-    nats: NatsClient,
-    veritech: veritech_client::Client,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
+    services_context: ServicesContext,
     shutdown_watch_rx: watch::Receiver<()>,
 ) {
-    if let Err(err) = receive_job_requests(
-        tx,
-        metadata,
-        pg_pool,
-        nats,
-        veritech,
-        job_processor,
-        encryption_key,
-        shutdown_watch_rx,
-    )
-    .await
+    if let Err(err) = receive_job_requests(tx, metadata, services_context, shutdown_watch_rx).await
     {
         warn!(error = ?err, "processing job requests failed");
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn receive_job_requests(
     tx: UnboundedSender<JobItem>,
     metadata: Arc<ServerMetadata>,
-    pg_pool: PgPool,
-    nats: NatsClient,
-    veritech: veritech_client::Client,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
+    services_context: ServicesContext,
     mut shutdown_watch_rx: watch::Receiver<()>,
 ) -> Result<()> {
-    let mut requests = Subscriber::jobs(
-        metadata,
-        pg_pool,
-        nats,
-        veritech,
-        job_processor,
-        encryption_key,
-    )
-    .await?
-    .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
+    let mut requests = Subscriber::jobs(metadata, services_context)
+        .await?
+        .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
 
     // Forward each request off the stream to a consuming task via an *unbounded* channel so we
     // buffer requests until we run out of memory. Have fun!

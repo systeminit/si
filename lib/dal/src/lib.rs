@@ -6,67 +6,10 @@ use std::time::Duration;
 
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_data_nats::{NatsClient, NatsError};
-use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum::{Display, EnumString, EnumVariantNames};
-use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
-use veritech_client::{Client, EncryptionKey};
-
-use crate::builtins::SelectedTestBuiltinSchemas;
-
-pub mod action;
-pub mod action_prototype;
-pub mod actor_view;
-pub mod attribute;
-pub mod builtins;
-pub mod change_set;
-pub mod change_status;
-pub mod code_view;
-pub mod component;
-pub mod context;
-pub mod crypto;
-pub mod cyclone_key_pair;
-pub mod diagram;
-pub mod edge;
-pub mod fix;
-pub mod func;
-pub mod history_event;
-pub mod index_map;
-pub mod installed_pkg;
-pub mod job;
-pub mod job_failure;
-pub mod jwt_key;
-pub mod key_pair;
-pub mod label_list;
-pub mod node;
-pub mod node_menu;
-pub mod pkg;
-pub mod prop;
-pub mod prop_tree;
-pub mod property_editor;
-pub mod prototype_context;
-pub mod prototype_list_for_func;
-pub mod provider;
-pub mod qualification;
-pub mod reconciliation_prototype;
-pub mod schema;
-pub mod secret;
-pub mod socket;
-pub mod standard_accessors;
-pub mod standard_model;
-pub mod standard_pk;
-pub mod status;
-pub mod tasks;
-pub mod tenancy;
-pub mod timestamp;
-pub mod user;
-pub mod validation;
-pub mod visibility;
-pub mod workspace;
-pub mod ws_event;
 
 pub use action::{Action, ActionError, ActionId};
 pub use action_prototype::{
@@ -153,11 +96,14 @@ pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretPk,
     SecretResult, SecretVersion,
 };
+use si_data_nats::{NatsClient, NatsError};
+use si_data_pg::{PgError, PgPool, PgPoolError};
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use status::{
     StatusUpdate, StatusUpdateError, StatusUpdateResult, StatusUpdater, StatusUpdaterError,
 };
+use telemetry::prelude::*;
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
@@ -168,9 +114,64 @@ pub use validation::prototype::{
 pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
+use veritech_client::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
+
+use crate::builtins::SelectedTestBuiltinSchemas;
+use crate::crypto::SymmetricCryptoService;
+
+pub mod action;
+pub mod action_prototype;
+pub mod actor_view;
+pub mod attribute;
+pub mod builtins;
+pub mod change_set;
+pub mod change_status;
+pub mod code_view;
+pub mod component;
+pub mod context;
+pub mod crypto;
+pub mod cyclone_key_pair;
+pub mod diagram;
+pub mod edge;
+pub mod fix;
+pub mod func;
+pub mod history_event;
+pub mod index_map;
+pub mod installed_pkg;
+pub mod job;
+pub mod job_failure;
+pub mod jwt_key;
+pub mod key_pair;
+pub mod label_list;
+pub mod node;
+pub mod node_menu;
+pub mod pkg;
+pub mod prop;
+pub mod prop_tree;
+pub mod property_editor;
+pub mod prototype_context;
+pub mod prototype_list_for_func;
+pub mod provider;
+pub mod qualification;
+pub mod reconciliation_prototype;
+pub mod schema;
+pub mod secret;
+pub mod socket;
+pub mod standard_accessors;
+pub mod standard_model;
+pub mod standard_pk;
+pub mod status;
+pub mod tasks;
+pub mod tenancy;
+pub mod timestamp;
+pub mod user;
+pub mod validation;
+pub mod visibility;
+pub mod workspace;
+pub mod ws_event;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -215,40 +216,16 @@ pub enum ModelError {
 pub type ModelResult<T> = Result<T, ModelError>;
 
 #[instrument(skip_all)]
-pub async fn migrate_all(
-    pg: &PgPool,
-    _nats: &NatsClient,
-    _job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    _veritech: Client,
-    _encryption_key: &EncryptionKey,
-    _pkgs_path: PathBuf,
-    _module_index_url: String,
-) -> ModelResult<()> {
-    migrate(pg).await?;
+pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> {
+    migrate(services_context.pg_pool()).await?;
     Ok(())
 }
 
 #[instrument(skip_all)]
-pub async fn migrate_all_with_progress(
-    pg: &PgPool,
-    nats: &NatsClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: Client,
-    encryption_key: &EncryptionKey,
-    pkgs_path: PathBuf,
-    module_index_url: String,
-) -> ModelResult<()> {
+pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> ModelResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
-    let migrate_all = migrate_all(
-        pg,
-        nats,
-        job_processor,
-        veritech,
-        encryption_key,
-        pkgs_path,
-        module_index_url,
-    );
+    let migrate_all = migrate_all(services_context);
     tokio::pin!(migrate_all);
 
     loop {
@@ -285,6 +262,7 @@ pub async fn migrate_builtins(
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
     pkgs_path: PathBuf,
     module_index_url: String,
+    symmetric_crypto_service: &SymmetricCryptoService,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -294,6 +272,7 @@ pub async fn migrate_builtins(
         Arc::new(*encryption_key),
         Some(pkgs_path),
         Some(module_index_url),
+        symmetric_crypto_service.clone(),
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
@@ -358,8 +337,9 @@ impl MigrationMode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     mod migration_mode {
         use super::*;

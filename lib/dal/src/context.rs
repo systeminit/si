@@ -9,6 +9,7 @@ use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
+use crate::crypto::SymmetricCryptoService;
 use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
@@ -37,6 +38,8 @@ pub struct ServicesContext {
     pkgs_path: Option<PathBuf>,
     /// The URL of the module index
     module_index_url: Option<String>,
+    /// A service that can encrypt values based on the loaded donkeys
+    symmetric_crypto_service: SymmetricCryptoService,
 }
 
 impl ServicesContext {
@@ -49,6 +52,7 @@ impl ServicesContext {
         encryption_key: Arc<EncryptionKey>,
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
+        symmetric_crypto_service: SymmetricCryptoService,
     ) -> Self {
         Self {
             pg_pool,
@@ -58,6 +62,7 @@ impl ServicesContext {
             encryption_key,
             pkgs_path,
             module_index_url,
+            symmetric_crypto_service,
         }
     }
 
@@ -92,6 +97,16 @@ impl ServicesContext {
     /// Gets a reference to the encryption key.
     pub fn encryption_key(&self) -> Arc<EncryptionKey> {
         self.encryption_key.clone()
+    }
+
+    /// Get a reference to the module index url
+    pub fn module_index_url(&self) -> &Option<String> {
+        &self.module_index_url
+    }
+
+    /// Get a reference to the symmetric encryption service
+    pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoService {
+        &self.symmetric_crypto_service
     }
 
     /// Builds and returns a new [`Connections`].
@@ -241,6 +256,10 @@ impl DalContext {
 
     pub fn services_context(&self) -> ServicesContext {
         self.services_context.clone()
+    }
+
+    pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoService {
+        self.services_context.symmetric_crypto_service()
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and

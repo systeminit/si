@@ -1,24 +1,21 @@
-use std::collections::HashMap;
 use std::fmt;
 
 use base64::{engine::general_purpose, Engine};
-use blake3::Hash;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sodiumoxide::crypto::secretbox::{Key, Nonce};
+use sodiumoxide::crypto::secretbox::Nonce;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
-    sealedbox, secretbox,
+    sealedbox,
 };
 use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
-use tokio::sync::Mutex;
 
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
+use crate::crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use crate::diagram::node::HistoryEventMetadata;
 use crate::standard_model::objects_from_rows;
 use crate::{
@@ -54,6 +51,8 @@ pub enum SecretError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("symmetric crypto error: {0}")]
+    SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -250,8 +249,6 @@ impl_standard_model! {
     history_event_message_name: "Encrypted Secret"
 }
 
-static DONKEYS: Lazy<Mutex<HashMap<Hash, Key>>> = Lazy::new(Mutex::default);
-
 impl EncryptedSecret {
     /// Creates a new encrypted secret and returns a corresponding [`Secret`] representation.
     #[allow(clippy::too_many_arguments, clippy::new_ret_no_self)]
@@ -272,14 +269,7 @@ impl EncryptedSecret {
             HistoryActor::User(user_pk) => Some(user_pk),
         };
 
-        // TODO(victor): Load keys from ctx
-        let key = secretbox::gen_key();
-        let nonce = secretbox::gen_nonce();
-        let double_crypted = secretbox::seal(crypted, &nonce, &key);
-
-        let key_hash = blake3::hash(key.as_ref());
-
-        DONKEYS.lock().await.insert(key_hash, key);
+        let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(crypted);
 
         let row = ctx
             .txns()
@@ -298,7 +288,7 @@ impl EncryptedSecret {
                     &algorithm.as_ref(),
                     &key_pair_pk,
                     &nonce.as_ref(),
-                    &key_hash.as_bytes().as_ref(),
+                    &key_hash.as_ref(),
                     &maybe_actor,
                 ],
             )
@@ -321,26 +311,28 @@ impl EncryptedSecret {
     pub async fn decrypt(self, ctx: &DalContext) -> SecretResult<DecryptedSecret> {
         let key_pair = self.key_pair(ctx).await?;
 
-        let donkeys = DONKEYS.lock().await;
-        let donkey = donkeys
-            .get(&Hash::from_bytes(self.donkey_hash))
-            .ok_or(SecretError::DonkeyNotFound)?;
-
-        self.into_decrypted(key_pair.public_key(), key_pair.secret_key(), donkey)
+        self.into_decrypted(
+            key_pair.public_key(),
+            key_pair.secret_key(),
+            ctx.services_context().symmetric_crypto_service(),
+        )
     }
 
     fn into_decrypted(
         self,
         pkey: &PublicKey,
         skey: &SecretKey,
-        donkey: &Key,
+        symmetric_crypto_service: &SymmetricCryptoService,
     ) -> SecretResult<DecryptedSecret> {
         // Explicitly match on (version, algorithm) tuple to ensure that any new
         // versions/algorithms will trigger a compilation failure
         match (self.version, self.algorithm) {
             (SecretVersion::V1, SecretAlgorithm::Sealedbox) => {
-                let donkey_decrypted = secretbox::open(&self.crypted, &self.nonce, donkey)
-                    .map_err(|_| SecretError::DecryptionFailed)?;
+                let donkey_decrypted = symmetric_crypto_service.decrypt(
+                    &self.crypted,
+                    &self.nonce,
+                    &self.donkey_hash,
+                )?;
 
                 let message = serde_json::from_slice(
                     &sealedbox::open(&donkey_decrypted, pkey, skey)
@@ -513,16 +505,14 @@ mod tests {
             definition: String,
             description: Option<String>,
             crypted: impl Into<Vec<u8>>,
-            donkey: &Key,
+            symmetric_crypto_service: &SymmetricCryptoService,
             wid: WorkspacePk,
         ) -> EncryptedSecret {
             let name = name.into();
             let crypted = crypted.into();
 
-            let nonce = secretbox::gen_nonce();
-            let double_crypted = secretbox::seal(crypted.as_ref(), &nonce, donkey);
-
-            let donkey_hash = *blake3::hash(donkey.as_ref()).as_bytes();
+            let (double_crypted, nonce, donkey_hash) =
+                symmetric_crypto_service.encrypt(crypted.as_ref());
 
             EncryptedSecret {
                 pk: SecretPk::NONE,
@@ -532,7 +522,7 @@ mod tests {
                 description,
                 key_pair_pk: KeyPairPk::NONE,
                 nonce,
-                donkey_hash,
+                donkey_hash: *donkey_hash,
                 crypted: double_crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
@@ -563,18 +553,19 @@ mod tests {
                 serde_json::json!({"username": "The Cadillac Three", "password": "Slow Rollin"});
             let crypted = crypt(&message, &pkey);
 
-            let donkey = secretbox::gen_key();
+            let service =
+                SymmetricCryptoService::new(SymmetricCryptoService::generate_key(), vec![]);
 
             let encrypted = encrypted_secret(
                 "the-cadillac-three",
                 "dockerHub".to_owned(),
                 None,
                 crypted,
-                &donkey,
+                &service,
                 WorkspacePk::NONE,
             );
             let decrypted = encrypted
-                .into_decrypted(&pkey, &skey, &donkey)
+                .into_decrypted(&pkey, &skey, &service)
                 .expect("could not decrypt secret");
 
             assert_eq!("the-cadillac-three", decrypted.name);

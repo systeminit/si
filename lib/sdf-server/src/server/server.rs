@@ -1,28 +1,9 @@
 use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 
-use crate::server::config::CycloneKeyPair;
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
-use dal::tasks::{StatusReceiver, StatusReceiverError};
-use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
-    Workspace, WorkspaceError,
-};
-use dal::{
-    cyclone_key_pair::CycloneKeyPairError, job::processor::JobQueueProcessor,
-    tasks::ResourceScheduler, ServicesContext,
-};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use module_index_client::types::BuiltinsDetailsResponse;
-use module_index_client::{IndexClient, ModuleDetailsResponse};
-use si_data_nats::{NatsClient, NatsConfig, NatsError};
-use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_pkg::{SiPkg, SiPkgError};
-use si_posthog::{PosthogClient, PosthogConfig};
-use si_std::SensitiveString;
-use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
 use tokio::{
@@ -34,7 +15,26 @@ use tokio::{
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
+
+use dal::crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
+use dal::tasks::{StatusReceiver, StatusReceiverError};
+use dal::{
+    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
+    Workspace, WorkspaceError,
+};
+use dal::{cyclone_key_pair::CycloneKeyPairError, tasks::ResourceScheduler, ServicesContext};
+use module_index_client::types::BuiltinsDetailsResponse;
+use module_index_client::{IndexClient, ModuleDetailsResponse};
+use si_data_nats::{NatsClient, NatsConfig, NatsError};
+use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_pkg::{SiPkg, SiPkgError};
+use si_posthog::{PosthogClient, PosthogConfig};
+use si_std::SensitiveString;
+use telemetry::prelude::*;
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
+
+use crate::server::config::CycloneKeyPair;
 
 use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
@@ -64,6 +64,8 @@ pub enum ServerError {
     Model(#[from] dal::ModelError),
     #[error("Module index: {0}")]
     ModuleIndex(#[from] module_index_client::IndexClientError),
+    #[error("Module index url not set")]
+    ModuleIndexNotSet,
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -82,6 +84,8 @@ pub enum ServerError {
     SiPkg(#[from] SiPkgError),
     #[error(transparent)]
     StatusReceiver(#[from] StatusReceiverError),
+    #[error(transparent)]
+    SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
@@ -113,28 +117,12 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub fn http(
         config: Config,
-        pg_pool: PgPool,
-        nats: NatsClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: VeritechClient,
-        encryption_key: EncryptionKey,
+        services_context: ServicesContext,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
-        pkgs_path: PathBuf,
-        module_index_url: String,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let services_context = ServicesContext::new(
-                    pg_pool,
-                    nats,
-                    job_processor,
-                    veritech,
-                    Arc::new(encryption_key),
-                    Some(pkgs_path),
-                    Some(module_index_url),
-                );
-
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_public_signing_key,
@@ -165,28 +153,12 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub async fn uds(
         config: Config,
-        pg_pool: PgPool,
-        nats: NatsClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: VeritechClient,
-        encryption_key: EncryptionKey,
+        services_context: ServicesContext,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
-        pkgs_path: PathBuf,
-        module_index_url: String,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let services_context = ServicesContext::new(
-                    pg_pool,
-                    nats,
-                    job_processor,
-                    veritech,
-                    Arc::new(encryption_key),
-                    Some(pkgs_path),
-                    Some(module_index_url),
-                );
-
                 let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     services_context,
                     jwt_public_signing_key,
@@ -250,76 +222,24 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.migrate_database", skip_all)]
-    pub async fn migrate_database(
-        pg: &PgPool,
-        nats: &NatsClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: VeritechClient,
-        encryption_key: &EncryptionKey,
-        pkgs_path: PathBuf,
-        module_index_url: String,
-    ) -> Result<()> {
-        dal::migrate_all_with_progress(
-            pg,
-            nats,
-            job_processor.clone(),
-            veritech.clone(),
-            encryption_key,
-            pkgs_path.clone(),
-            module_index_url.clone(),
-        )
-        .await?;
-        migrate_builtins_from_module_index(
-            pg,
-            nats,
-            job_processor,
-            veritech,
-            encryption_key,
-            pkgs_path,
-            module_index_url,
-        )
-        .await?;
+    pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
+        dal::migrate_all_with_progress(services_context).await?;
+        migrate_builtins_from_module_index(services_context).await?;
         Ok(())
     }
 
     /// Start the basic resource refresh scheduler
     pub async fn start_resource_refresh_scheduler(
-        pg: PgPool,
-        nats: NatsClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: VeritechClient,
-        encryption_key: EncryptionKey,
+        services_context: ServicesContext,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
-        let services_context = ServicesContext::new(
-            pg,
-            nats,
-            job_processor,
-            veritech,
-            Arc::new(encryption_key),
-            None,
-            None,
-        );
         ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
     }
 
     pub async fn start_status_updater(
-        pg: PgPool,
-        nats: NatsClient,
-        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: VeritechClient,
-        encryption_key: EncryptionKey,
+        services_context: ServicesContext,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) -> Result<()> {
-        let services_context = ServicesContext::new(
-            pg,
-            nats,
-            job_processor,
-            veritech,
-            Arc::new(encryption_key),
-            None,
-            None,
-        );
         StatusReceiver::new(services_context)
             .await?
             .start(shutdown_broadcast_rx);
@@ -342,6 +262,15 @@ impl Server<(), ()> {
 
     pub fn create_veritech_client(nats: NatsClient) -> VeritechClient {
         VeritechClient::new(nats)
+    }
+
+    #[instrument(name = "sdf.init.create_symmetric_crypto_service", skip_all)]
+    pub async fn create_symmetric_crypto_service(
+        config: &SymmetricCryptoServiceConfig,
+    ) -> Result<SymmetricCryptoService> {
+        SymmetricCryptoService::from_config(config)
+            .await
+            .map_err(Into::into)
     }
 }
 
@@ -373,28 +302,11 @@ where
     }
 }
 
-pub async fn migrate_builtins_from_module_index(
-    pg: &PgPool,
-    nats: &NatsClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech_client::Client,
-    encryption_key: &EncryptionKey,
-    pkgs_path: PathBuf,
-    module_index_url: String,
-) -> Result<()> {
+pub async fn migrate_builtins_from_module_index(services_context: &ServicesContext) -> Result<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
 
-    let services_context = ServicesContext::new(
-        pg.clone(),
-        nats.clone(),
-        job_processor,
-        veritech,
-        Arc::new(*encryption_key),
-        Some(pkgs_path),
-        Some(module_index_url.clone()),
-    );
-    let mut dal_context = services_context.into_builder(true);
+    let mut dal_context = services_context.clone().into_builder(true);
     dal_context.set_no_dependent_values();
     let mut ctx = dal_context.build_default().await?;
 
@@ -406,6 +318,11 @@ pub async fn migrate_builtins_from_module_index(
     builtins::func::migrate_intrinsics(&ctx).await?;
     info!("migrating builtin functions");
     builtins::func::migrate(&ctx).await?;
+
+    let module_index_url = services_context
+        .module_index_url()
+        .as_ref()
+        .ok_or(ServerError::ModuleIndexNotSet)?;
 
     let module_index_client =
         IndexClient::unauthenticated_client(module_index_url.clone().as_str().try_into()?);
