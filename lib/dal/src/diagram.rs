@@ -208,7 +208,7 @@ impl Diagram {
                 for edge in &edges_with_deleted {
                     if edge.tail_node_id() == *node.id()
                         && edge.tail_socket_id().to_string() == socket_to_parent.id
-                        && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly)
+                        && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly())
                     {
                         parent_node_id = Some(edge.head_node_id());
                         break;
@@ -227,7 +227,7 @@ impl Diagram {
                     if edge.head_node_id() == *node.id()
                         && edge.head_socket_id().to_string() == socket_from_children.id
                         && (edge.visibility().deleted_at.is_none()
-                            || (edge.deleted_implicitly && edge.visibility().in_change_set()))
+                            || (edge.deleted_implicitly() && edge.visibility().in_change_set()))
                     {
                         let child_node = Node::get_by_id(ctx_with_deleted, &edge.tail_node_id())
                             .await?

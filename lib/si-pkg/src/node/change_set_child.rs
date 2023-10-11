@@ -7,9 +7,10 @@ use object_tree::{
 };
 
 use super::PkgNode;
-use crate::{ComponentSpec, FuncSpec, SchemaSpec};
+use crate::{ComponentSpec, EdgeSpec, FuncSpec, SchemaSpec};
 
 const CHANGE_SET_CHILD_TYPE_COMPONENTS: &str = "components";
+const CHANGE_SET_CHILD_TYPE_EDGES: &str = "edges";
 const CHANGE_SET_CHILD_TYPE_FUNCS: &str = "funcs";
 const CHANGE_SET_CHILD_TYPE_SCHEMAS: &str = "schemas";
 
@@ -20,6 +21,7 @@ const KEY_KIND_STR: &str = "kind";
 #[serde(rename_all = "camelCase")]
 pub enum ChangeSetChild {
     Components(Vec<ComponentSpec>),
+    Edges(Vec<EdgeSpec>),
     Funcs(Vec<FuncSpec>),
     Schemas(Vec<SchemaSpec>),
 }
@@ -28,6 +30,7 @@ pub enum ChangeSetChild {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum ChangeSetChildNode {
     Components,
+    Edges,
     Funcs,
     Schemas,
 }
@@ -36,6 +39,7 @@ impl ChangeSetChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::Components => CHANGE_SET_CHILD_TYPE_COMPONENTS,
+            Self::Edges => CHANGE_SET_CHILD_TYPE_EDGES,
             Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
             Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
@@ -46,6 +50,7 @@ impl NameStr for ChangeSetChildNode {
     fn name(&self) -> &str {
         match self {
             Self::Components => CHANGE_SET_CHILD_TYPE_COMPONENTS,
+            Self::Edges => CHANGE_SET_CHILD_TYPE_EDGES,
             Self::Funcs => CHANGE_SET_CHILD_TYPE_FUNCS,
             Self::Schemas => CHANGE_SET_CHILD_TYPE_SCHEMAS,
         }
@@ -68,6 +73,7 @@ impl ReadBytes for ChangeSetChildNode {
 
         let node = match kind_str.as_str() {
             CHANGE_SET_CHILD_TYPE_COMPONENTS => Self::Components,
+            CHANGE_SET_CHILD_TYPE_EDGES => Self::Edges,
             CHANGE_SET_CHILD_TYPE_FUNCS => Self::Funcs,
             CHANGE_SET_CHILD_TYPE_SCHEMAS => Self::Schemas,
             invalid_kind => {
@@ -94,6 +100,16 @@ impl NodeChild for ChangeSetChild {
                     .iter()
                     .map(|func| {
                         Box::new(func.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::Edges(entries) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::ChangeSetChild(ChangeSetChildNode::Edges),
+                entries
+                    .iter()
+                    .map(|edge| {
+                        Box::new(edge.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),

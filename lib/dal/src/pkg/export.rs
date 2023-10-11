@@ -4,16 +4,18 @@ use telemetry::prelude::*;
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AttributeValuePath,
-    AttributeValueSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant, FuncArgumentSpec,
-    FuncSpec, FuncSpecData, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec, PositionSpec, PropSpec,
-    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
-    SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec,
-    SocketSpecData, SocketSpecKind, SpecError, ValidationSpec, ValidationSpecKind,
+    AttributeValueSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant, EdgeSpec, EdgeSpecKind,
+    FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
+    PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecData,
+    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
+    SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
+    ValidationSpecKind,
 };
 
 use crate::{
     component::view::{AttributeDebugView, ComponentDebugView},
+    edge::EdgeKind,
     func::{
         argument::FuncArgument, backend::validation::FuncBackendValidationArgs,
         intrinsics::IntrinsicFunc,
@@ -24,16 +26,18 @@ use crate::{
     validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
-    Component, ComponentError, ComponentType, DalContext, ExternalProvider, ExternalProviderId,
-    Func, FuncError, FuncId, InternalProvider, InternalProviderId, LeafInputLocation, LeafKind,
-    Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, Socket, StandardModel, ValidationPrototype, Workspace,
+    Component, ComponentError, ComponentId, ComponentType, DalContext, Edge, EdgeError,
+    ExternalProvider, ExternalProviderId, Func, FuncError, FuncId, InternalProvider,
+    InternalProviderId, LeafInputLocation, LeafKind, NodeError, Prop, PropError, PropId, PropKind,
+    Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel,
+    ValidationPrototype, Workspace,
 };
 
 use super::{PkgError, PkgResult};
 
 type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;
+type ComponentMap = super::ChangeSetThingMap<ComponentId, ComponentSpec>;
 
 pub struct PkgExporter {
     name: String,
@@ -44,6 +48,7 @@ pub struct PkgExporter {
     schema_ids: Option<Vec<SchemaId>>,
     func_map: FuncSpecMap,
     variant_map: VariantSpecMap,
+    component_map: ComponentMap,
     is_workspace_export: bool,
     include_components: bool,
 }
@@ -85,6 +90,7 @@ impl PkgExporter {
             schema_ids: Some(schema_ids),
             func_map: FuncSpecMap::new(),
             variant_map: VariantSpecMap::new(),
+            component_map: ComponentMap::new(),
             is_workspace_export: false,
             include_components: false,
         }
@@ -105,6 +111,7 @@ impl PkgExporter {
             schema_ids: None,
             func_map: FuncSpecMap::new(),
             variant_map: VariantSpecMap::new(),
+            component_map: ComponentMap::new(),
             is_workspace_export: true,
             include_components: true,
         }
@@ -1132,11 +1139,13 @@ impl PkgExporter {
         Vec<FuncSpec>,
         Vec<SchemaSpec>,
         Vec<ComponentSpec>,
+        Vec<EdgeSpec>,
     )> {
         let mut func_specs = vec![];
         let mut head_funcs = vec![];
         let mut schema_specs = vec![];
         let mut component_specs = vec![];
+        let mut edge_specs = vec![];
 
         let new_ctx = match change_set_pk {
             None => ctx.clone(),
@@ -1197,13 +1206,92 @@ impl PkgExporter {
                     .export_component(ctx, change_set_pk, &component)
                     .await?;
 
+                self.component_map.insert(
+                    change_set_pk,
+                    *component.id(),
+                    component_spec.to_owned(),
+                );
+
                 component_specs.push(component_spec);
                 func_specs.extend_from_slice(&component_funcs);
                 head_funcs.extend_from_slice(&component_head_funcs);
             }
+
+            for edge in Edge::list(ctx).await? {
+                dbg!(edge.id());
+                edge_specs.push(self.export_edge(ctx, change_set_pk, &edge).await?);
+            }
         }
 
-        Ok((func_specs, head_funcs, schema_specs, component_specs))
+        Ok((
+            func_specs,
+            head_funcs,
+            schema_specs,
+            component_specs,
+            edge_specs,
+        ))
+    }
+
+    pub async fn export_edge(
+        &mut self,
+        ctx: &DalContext,
+        change_set_pk: Option<ChangeSetPk>,
+        edge: &Edge,
+    ) -> PkgResult<EdgeSpec> {
+        // head = to, tail = from
+        let head_component = Component::find_for_node(ctx, edge.head_node_id())
+            .await
+            .map_err(|err| EdgeError::Component(err.to_string()))?
+            .ok_or(NodeError::ComponentIsNone)?;
+        let tail_component = Component::find_for_node(ctx, edge.tail_node_id())
+            .await
+            .map_err(|err| EdgeError::Component(err.to_string()))?
+            .ok_or(NodeError::ComponentIsNone)?;
+
+        let head_explicit_internal_provider =
+            InternalProvider::find_explicit_for_socket(ctx, edge.head_socket_id())
+                .await?
+                .ok_or(EdgeError::InternalProviderNotFoundForSocket(
+                    edge.head_socket_id(),
+                ))?;
+        let tail_external_provider = ExternalProvider::find_for_socket(ctx, edge.tail_socket_id())
+            .await?
+            .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
+                edge.tail_socket_id(),
+            ))?;
+
+        let mut edge_builder = EdgeSpec::builder();
+
+        let to_component_spec = self
+            .component_map
+            .get(change_set_pk, head_component.id())
+            .ok_or(PkgError::EdgeRefersToMissingComponent(*head_component.id()))?;
+
+        let to_socket_name = head_explicit_internal_provider.name().to_owned();
+
+        let from_component_spec = self
+            .component_map
+            .get(change_set_pk, tail_component.id())
+            .ok_or(PkgError::EdgeRefersToMissingComponent(*tail_component.id()))?;
+
+        let from_socket_name = tail_external_provider.name().to_owned();
+
+        edge_builder
+            .edge_kind(match edge.kind() {
+                EdgeKind::Configuration => EdgeSpecKind::Configuration,
+                EdgeKind::Symbolic => EdgeSpecKind::Symbolic,
+            })
+            .to_component_unique_id(&to_component_spec.unique_id)
+            .to_socket_name(to_socket_name)
+            .from_component_unique_id(&from_component_spec.unique_id)
+            .from_socket_name(from_socket_name)
+            .deleted(edge.visibility().is_deleted())
+            .creation_user_pk(edge.creation_user_pk().map(|pk| pk.to_string()))
+            .deletion_user_pk(edge.deletion_user_pk().map(|pk| pk.to_string()))
+            .deleted_implicitly(edge.deleted_implicitly())
+            .unique_id(*edge.id());
+
+        Ok(edge_builder.build()?)
     }
 
     pub async fn export_component(
@@ -1350,7 +1438,7 @@ impl PkgExporter {
             Some(func_spec) => {
                 let func = Func::get_by_id(ctx, &func_id)
                     .await?
-                    .expect("it should be there");
+                    .ok_or(FuncError::NotFound(func_id))?;
 
                 if func.visibility().change_set_pk == ChangeSetPk::NONE {
                     head_funcs.push(func_spec.to_owned());
@@ -1453,12 +1541,12 @@ impl PkgExporter {
 
         match self.kind {
             SiPkgKind::Module => {
-                let (funcs, _, schemas, _) = self.export_change_set(ctx, None).await?;
+                let (funcs, _, schemas, _, _) = self.export_change_set(ctx, None).await?;
                 pkg_spec_builder.funcs(funcs);
                 pkg_spec_builder.schemas(schemas);
             }
             SiPkgKind::WorkspaceBackup => {
-                let (mut head_funcs, funcs, schemas, component_specs) =
+                let (mut head_funcs, funcs, schemas, components, edges) =
                     self.export_change_set(ctx, Some(ChangeSetPk::NONE)).await?;
 
                 head_funcs.extend_from_slice(&funcs);
@@ -1467,12 +1555,13 @@ impl PkgExporter {
                 head_builder
                     .name("head")
                     .schemas(schemas)
-                    .components(component_specs);
+                    .components(components)
+                    .edges(edges);
 
                 pkg_spec_builder.default_change_set("head");
 
                 for change_set in ChangeSet::list_open(ctx).await? {
-                    let (funcs, referenced_head_funcs, schemas, component_specs) =
+                    let (funcs, referenced_head_funcs, schemas, components, edges) =
                         self.export_change_set(ctx, Some(change_set.pk)).await?;
                     head_funcs.extend_from_slice(&referenced_head_funcs);
 
@@ -1482,7 +1571,8 @@ impl PkgExporter {
                             .based_on_change_set("head")
                             .funcs(remove_duplicate_func_specs(&funcs))
                             .schemas(schemas)
-                            .components(component_specs)
+                            .components(components)
+                            .edges(edges)
                             .build()?,
                     );
                 }

@@ -7,15 +7,16 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    AttributeValuePath, ComponentSpecVariant, SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc,
-    SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgAttributeValue, SiPkgComponent, SiPkgError,
-    SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMetadata,
-    SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket,
-    SiPkgSocketData, SocketSpecKind, ValidationSpec,
+    AttributeValuePath, ComponentSpecVariant, EdgeSpecKind, SchemaVariantSpecPropRoot, SiPkg,
+    SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgAttributeValue,
+    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
+    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
 use crate::{
     component::ComponentKind,
+    edge::EdgeKind,
     func::{
         self,
         argument::FuncArgumentKind,
@@ -36,15 +37,17 @@ use crate::{
         },
         SchemaUiMenu,
     },
+    socket::SocketEdgeKind,
     validation::{Validation, ValidationKind},
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
-    DalContext, ExternalProvider, ExternalProviderError, ExternalProviderId, Func, FuncArgument,
-    FuncBindingError, FuncBindingReturnValueError, FuncError, FuncId, InternalProvider,
-    InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy,
-    UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
+    DalContext, Edge, ExternalProvider, ExternalProviderError, ExternalProviderId, Func,
+    FuncArgument, FuncBindingError, FuncBindingReturnValueError, FuncError, FuncId,
+    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
+    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
+    StandardModel, Tenancy, UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace,
+    WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -54,6 +57,7 @@ enum Thing {
     ActionPrototype(ActionPrototype),
     AttributePrototypeArgument(AttributePrototypeArgument),
     Component((Component, Node)),
+    Edge(Edge),
     Func(Func),
     FuncArgument(FuncArgument),
     Schema(Schema),
@@ -84,6 +88,7 @@ async fn import_change_set(
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
     components: &[SiPkgComponent<'_>],
+    edges: &[SiPkgEdge<'_>],
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
@@ -203,6 +208,10 @@ async fn import_change_set(
         import_component(ctx, change_set_pk, component_spec, thing_map).await?;
     }
 
+    for edge_spec in edges {
+        import_edge(ctx, change_set_pk, edge_spec, thing_map).await?;
+    }
+
     Ok(installed_schema_variant_ids)
 }
 
@@ -231,6 +240,111 @@ impl ValueCacheKey {
             index,
         }
     }
+}
+
+async fn import_edge(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    edge_spec: &SiPkgEdge<'_>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let edge = match thing_map.get(change_set_pk, &edge_spec.unique_id().to_owned()) {
+        Some(Thing::Edge(edge)) => Some(edge.to_owned()),
+        _ => {
+            if !edge_spec.deleted() {
+                let head_component_unique_id = edge_spec.to_component_unique_id().to_owned();
+                let (_, head_node) = match thing_map.get(change_set_pk, &head_component_unique_id) {
+                    Some(Thing::Component((component, node))) => (component, node),
+                    _ => panic!("where is it"),
+                };
+
+                let tail_component_unique_id = edge_spec.from_component_unique_id().to_owned();
+                let (_, tail_node) = match thing_map.get(change_set_pk, &tail_component_unique_id) {
+                    Some(Thing::Component((component, node))) => (component, node),
+                    _ => panic!("where is it"),
+                };
+
+                let to_socket = Socket::find_by_name_for_edge_kind_and_node(
+                    ctx,
+                    edge_spec.to_socket_name(),
+                    SocketEdgeKind::ConfigurationInput,
+                    *head_node.id(),
+                )
+                .await?
+                .ok_or(PkgError::MissingSocketName(
+                    edge_spec.to_socket_name().into(),
+                    SocketEdgeKind::ConfigurationInput,
+                ))?;
+
+                let from_socket = Socket::find_by_name_for_edge_kind_and_node(
+                    ctx,
+                    edge_spec.from_socket_name(),
+                    SocketEdgeKind::ConfigurationOutput,
+                    *tail_node.id(),
+                )
+                .await?
+                .ok_or(PkgError::MissingSocketName(
+                    edge_spec.from_socket_name().into(),
+                    SocketEdgeKind::ConfigurationOutput,
+                ))?;
+
+                Some(
+                    Edge::new_for_connection(
+                        ctx,
+                        *head_node.id(),
+                        *to_socket.id(),
+                        *tail_node.id(),
+                        *from_socket.id(),
+                        match edge_spec.edge_kind() {
+                            EdgeSpecKind::Configuration => EdgeKind::Configuration,
+                            EdgeSpecKind::Symbolic => EdgeKind::Symbolic,
+                        },
+                    )
+                    .await?,
+                )
+            } else {
+                None
+            }
+        }
+    };
+
+    if let Some(mut edge) = edge {
+        let creation_user_pk = match edge_spec.creation_user_pk() {
+            Some(pk_str) => Some(UserPk::from_str(pk_str)?),
+            None => None,
+        };
+        if creation_user_pk.as_ref() != edge.creation_user_pk() {
+            edge.set_creation_user_pk(ctx, creation_user_pk).await?;
+        }
+
+        let deletion_user_pk = match edge_spec.deletion_user_pk() {
+            Some(pk_str) => Some(UserPk::from_str(pk_str)?),
+            None => None,
+        };
+
+        if deletion_user_pk.as_ref() != edge.deletion_user_pk() {
+            edge.set_deletion_user_pk(ctx, deletion_user_pk).await?;
+        }
+
+        if edge.deleted_implicitly() != edge_spec.deleted_implicitly() {
+            edge.set_deleted_implicitly(ctx, edge_spec.deleted_implicitly())
+                .await?;
+        }
+
+        if edge.visibility().is_deleted() && !edge_spec.deleted() {
+            Edge::restore_by_id(ctx, *edge.id()).await?;
+        } else if !edge.visibility().is_deleted() && edge_spec.deleted() {
+            edge.delete_and_propagate(ctx).await?;
+        }
+
+        thing_map.insert(
+            change_set_pk,
+            edge_spec.unique_id().to_owned(),
+            Thing::Edge(edge),
+        );
+    }
+
+    Ok(())
 }
 
 async fn import_component(
@@ -362,13 +476,10 @@ async fn import_component(
         component.set_needs_destroy(ctx, true).await?;
     }
 
-    if component_spec.deleted() {
+    if component.visibility().is_deleted() && !component_spec.deleted() {
+        Component::restore_and_propagate(ctx, *component.id()).await?;
+    } else if !component.visibility().is_deleted() && component_spec.deleted() {
         component.delete_and_propagate(ctx).await?;
-        if let Some(deletion_user_pk) = component_spec.deletion_user_pk() {
-            component
-                .set_deletion_user_pk(ctx, Some(UserPk::from_str(deletion_user_pk)?))
-                .await?;
-        }
     }
 
     Ok(())
@@ -1171,6 +1282,7 @@ pub async fn import_pkg_from_pkg(
                 &pkg.funcs()?,
                 &pkg.schemas()?,
                 &[],
+                &[],
                 installed_pkg_id,
                 &mut change_set_things,
                 &options,
@@ -1211,6 +1323,7 @@ pub async fn import_pkg_from_pkg(
                 &default_change_set.funcs()?,
                 &default_change_set.schemas()?,
                 &default_change_set.components()?,
+                &default_change_set.edges()?,
                 installed_pkg_id,
                 &mut change_set_things,
                 &options,
@@ -1235,6 +1348,7 @@ pub async fn import_pkg_from_pkg(
                     &change_set.funcs()?,
                     &change_set.schemas()?,
                     &change_set.components()?,
+                    &change_set.edges()?,
                     installed_pkg_id,
                     &mut change_set_things,
                     &options,

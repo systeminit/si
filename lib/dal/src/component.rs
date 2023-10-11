@@ -1063,7 +1063,7 @@ impl Component {
                 for edge in &edges_with_deleted {
                     if edge.tail_object_id() == (*component.id()).into()
                         && edge.tail_socket_id() == *socket_to_parent.id()
-                        && (edge.visibility().deleted_at.is_some() && edge.deleted_implicitly)
+                        && (edge.visibility().deleted_at.is_some() && edge.deleted_implicitly())
                     {
                         maybe_deleted_parent_id = Some(edge.head_object_id().into());
                         break;
