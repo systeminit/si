@@ -7,7 +7,10 @@ use crate::{
 };
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
+use dal::{
+    pkg::{import_pkg_from_pkg, ImportSkips},
+    Visibility, WsEvent,
+};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
 use si_pkg::SiPkg;
@@ -25,6 +28,8 @@ pub struct InstallPkgRequest {
 #[serde(rename_all = "camelCase")]
 pub struct InstallPkgResponse {
     pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import_skips: Option<Vec<ImportSkips>>,
 }
 
 pub async fn install_pkg(
@@ -47,7 +52,7 @@ pub async fn install_pkg(
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let pkg_name = pkg.metadata()?.name().to_owned();
-    import_pkg_from_pkg(&ctx, &pkg, None).await?;
+    let (_, _, import_skips) = import_pkg_from_pkg(&ctx, &pkg, None).await?;
 
     track(
         &posthog_client,
@@ -65,5 +70,8 @@ pub async fn install_pkg(
         .await?;
     ctx.commit().await?;
 
-    Ok(Json(InstallPkgResponse { success: true }))
+    Ok(Json(InstallPkgResponse {
+        success: true,
+        import_skips,
+    }))
 }

@@ -24,6 +24,8 @@
 
         <p>Click the button below to continue:</p>
 
+        <ErrorMessage :requestStatus="exportReqStatus" />
+
         <VButton
           icon="cloud-upload"
           :requestStatus="exportReqStatus"
@@ -37,7 +39,13 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, Stack, VButton, useModal } from "@si/vue-lib/design-system";
+import {
+  ErrorMessage,
+  Modal,
+  Stack,
+  VButton,
+  useModal,
+} from "@si/vue-lib/design-system";
 import { ref } from "vue";
 import { useModuleStore } from "@/store/module.store";
 

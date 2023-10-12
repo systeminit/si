@@ -149,7 +149,7 @@ pub async fn exec_variant_def(
         .build()?;
 
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
-    let (_, schema_variant_ids) = import_pkg_from_pkg(
+    let (_, schema_variant_ids, _) = import_pkg_from_pkg(
         &ctx,
         &pkg,
         Some(dal::pkg::ImportOptions {

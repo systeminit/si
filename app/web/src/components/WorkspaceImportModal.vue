@@ -72,6 +72,8 @@
           I understand my local workspace data will be overwritten
         </VormInput>
 
+        <ErrorMessage :requestStatus="importReqStatus" />
+
         <VButton
           icon="cloud-download"
           :disabled="!loadExportsReqStatus.isSuccess || validationState.isError"
