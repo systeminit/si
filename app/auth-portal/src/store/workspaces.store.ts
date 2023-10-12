@@ -7,7 +7,7 @@ import { ISODateString } from "./shared-types";
 export type WorkspaceId = string;
 
 // TODO: do we want to share this type with the backend?
-type Workspace = {
+export type Workspace = {
   id: WorkspaceId;
   instanceType: "local" | "private" | "si_sass"; // only local used for now...
   instanceUrl: string;
@@ -30,6 +30,28 @@ export const useWorkspacesStore = defineStore("workspaces", {
     async LOAD_WORKSPACES() {
       return new ApiRequest<Workspace[]>({
         url: "/workspaces",
+        onSuccess: (response) => {
+          this.workspacesById = _.keyBy(response, (w) => w.id);
+        },
+      });
+    },
+
+    async CREATE_WORKSPACE(workspace: Partial<Workspace>) {
+      return new ApiRequest<Workspace[]>({
+        method: "post",
+        url: "/workspaces/new",
+        params: workspace,
+        onSuccess: (response) => {
+          this.workspacesById = _.keyBy(response, (w) => w.id);
+        },
+      });
+    },
+
+    async EDIT_WORKSPACE(workspace: Partial<Workspace>) {
+      return new ApiRequest<Workspace[]>({
+        method: "patch",
+        url: `/workspaces/${workspace.id}`,
+        params: workspace,
         onSuccess: (response) => {
           this.workspacesById = _.keyBy(response, (w) => w.id);
         },

@@ -79,7 +79,12 @@
               </div>
 
               <div class="flex justify-between items-center p-sm">
-                <DialogTitle as="p" class="capitalize capsize font-medium">
+                <DialogTitle
+                  as="p"
+                  :class="
+                    clsx('capsize font-medium', capitalizeTitle && 'capitalize')
+                  "
+                >
                   <slot name="title">{{ title }}</slot>
                 </DialogTitle>
                 <button
@@ -131,6 +136,7 @@ const props = defineProps({
     default: "md",
   },
   title: { type: String },
+  capitalizeTitle: { type: Boolean, default: true },
   noExit: { type: Boolean },
   type: {
     type: String as PropType<"save" | "custom">,
