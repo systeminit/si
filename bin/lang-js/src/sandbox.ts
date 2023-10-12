@@ -53,6 +53,7 @@ function reconciliationSandbox(executionId: string): Sandbox {
 function commandRunSandbox(executionId: string): Sandbox {
     return {
         siExec: makeExec(executionId),
+        fetch,
     };
 }
 
