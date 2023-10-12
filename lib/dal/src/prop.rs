@@ -34,7 +34,7 @@ use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, Tran
 pub const PROP_PATH_SEPARATOR: &str = "\x0B";
 
 /// This type should be used to manage prop paths instead of a raw string
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PropPath(String);
 
 impl PropPath {

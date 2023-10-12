@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     path::Path,
@@ -42,12 +43,11 @@ use crate::{
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
-    DalContext, Edge, ExternalProvider, ExternalProviderError, ExternalProviderId, Func,
-    FuncArgument, FuncBindingError, FuncBindingReturnValueError, FuncError, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
-    StandardModel, Tenancy, UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace,
-    WorkspacePk,
+    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncBindingError,
+    FuncBindingReturnValueError, FuncError, FuncId, InternalProvider, InternalProviderId, LeafKind,
+    Node, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, Socket, StandardModel, Tenancy, UserPk, ValidationPrototype,
+    ValidationPrototypeContext, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -92,7 +92,11 @@ async fn import_change_set(
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
-) -> PkgResult<Vec<SchemaVariantId>> {
+) -> PkgResult<(
+    Vec<SchemaVariantId>,
+    Vec<(String, Vec<ImportAttributeSkip>)>,
+    Vec<ImportEdgeSkip>,
+)> {
     for func_spec in funcs {
         let unique_id = func_spec.unique_id().to_string();
 
@@ -204,15 +208,26 @@ async fn import_change_set(
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
 
+    let mut component_attribute_skips = vec![];
     for component_spec in components {
-        import_component(ctx, change_set_pk, component_spec, thing_map).await?;
+        let skips = import_component(ctx, change_set_pk, component_spec, thing_map).await?;
+        if !skips.is_empty() {
+            component_attribute_skips.push((component_spec.name().to_owned(), skips));
+        }
     }
 
+    let mut edge_skips = vec![];
     for edge_spec in edges {
-        import_edge(ctx, change_set_pk, edge_spec, thing_map).await?;
+        if let Some(skip) = import_edge(ctx, change_set_pk, edge_spec, thing_map).await? {
+            edge_skips.push(skip);
+        }
     }
 
-    Ok(installed_schema_variant_ids)
+    Ok((
+        installed_schema_variant_ids,
+        component_attribute_skips,
+        edge_skips,
+    ))
 }
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
@@ -247,7 +262,7 @@ async fn import_edge(
     change_set_pk: Option<ChangeSetPk>,
     edge_spec: &SiPkgEdge<'_>,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> PkgResult<Option<ImportEdgeSkip>> {
     let edge = match thing_map.get(change_set_pk, &edge_spec.unique_id().to_owned()) {
         Some(Thing::Edge(edge)) => Some(edge.to_owned()),
         _ => {
@@ -255,38 +270,58 @@ async fn import_edge(
                 let head_component_unique_id = edge_spec.to_component_unique_id().to_owned();
                 let (_, head_node) = match thing_map.get(change_set_pk, &head_component_unique_id) {
                     Some(Thing::Component((component, node))) => (component, node),
-                    _ => panic!("where is it"),
+                    _ => {
+                        return Err(PkgError::MissingComponentForEdge(
+                            head_component_unique_id,
+                            edge_spec.from_socket_name().to_owned(),
+                            edge_spec.to_socket_name().to_owned(),
+                        ))
+                    }
                 };
 
                 let tail_component_unique_id = edge_spec.from_component_unique_id().to_owned();
                 let (_, tail_node) = match thing_map.get(change_set_pk, &tail_component_unique_id) {
                     Some(Thing::Component((component, node))) => (component, node),
-                    _ => panic!("where is it"),
+                    _ => {
+                        return Err(PkgError::MissingComponentForEdge(
+                            tail_component_unique_id,
+                            edge_spec.from_socket_name().to_owned(),
+                            edge_spec.to_socket_name().to_owned(),
+                        ))
+                    }
                 };
 
-                let to_socket = Socket::find_by_name_for_edge_kind_and_node(
+                let to_socket = match Socket::find_by_name_for_edge_kind_and_node(
                     ctx,
                     edge_spec.to_socket_name(),
                     SocketEdgeKind::ConfigurationInput,
                     *head_node.id(),
                 )
                 .await?
-                .ok_or(PkgError::MissingSocketName(
-                    edge_spec.to_socket_name().into(),
-                    SocketEdgeKind::ConfigurationInput,
-                ))?;
+                {
+                    Some(socket) => socket,
+                    None => {
+                        return Ok(Some(ImportEdgeSkip::MissingInputSocket(
+                            edge_spec.to_socket_name().to_owned(),
+                        )))
+                    }
+                };
 
-                let from_socket = Socket::find_by_name_for_edge_kind_and_node(
+                let from_socket = match Socket::find_by_name_for_edge_kind_and_node(
                     ctx,
                     edge_spec.from_socket_name(),
                     SocketEdgeKind::ConfigurationOutput,
                     *tail_node.id(),
                 )
                 .await?
-                .ok_or(PkgError::MissingSocketName(
-                    edge_spec.from_socket_name().into(),
-                    SocketEdgeKind::ConfigurationOutput,
-                ))?;
+                {
+                    Some(socket) => socket,
+                    None => {
+                        return Ok(Some(ImportEdgeSkip::MissingOutputSocket(
+                            edge_spec.from_socket_name().to_owned(),
+                        )))
+                    }
+                };
 
                 Some(
                     Edge::new_for_connection(
@@ -344,7 +379,7 @@ async fn import_edge(
         );
     }
 
-    Ok(())
+    Ok(None)
 }
 
 async fn import_component(
@@ -352,7 +387,7 @@ async fn import_component(
     change_set_pk: Option<ChangeSetPk>,
     component_spec: &SiPkgComponent<'_>,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> PkgResult<Vec<ImportAttributeSkip>> {
     let _change_set_pk_inner = change_set_pk.ok_or(PkgError::ComponentImportWithoutChangeSet)?;
 
     let variant = match component_spec.variant() {
@@ -432,8 +467,10 @@ async fn import_component(
     let mut value_cache: HashMap<ValueCacheKey, AttributeValue> = HashMap::new();
     let mut prop_cache: HashMap<String, Option<Prop>> = HashMap::new();
 
+    let mut skips = vec![];
+
     for attribute in component_spec.attributes()? {
-        import_component_attribute(
+        if let Some(skip) = import_component_attribute(
             ctx,
             change_set_pk,
             &component,
@@ -443,10 +480,13 @@ async fn import_component(
             &mut prop_cache,
             thing_map,
         )
-        .await?;
+        .await?
+        {
+            skips.push(skip);
+        }
     }
     for attribute in component_spec.input_sockets()? {
-        import_component_attribute(
+        if let Some(skip) = import_component_attribute(
             ctx,
             change_set_pk,
             &component,
@@ -456,10 +496,13 @@ async fn import_component(
             &mut prop_cache,
             thing_map,
         )
-        .await?;
+        .await?
+        {
+            skips.push(skip);
+        }
     }
     for attribute in component_spec.output_sockets()? {
-        import_component_attribute(
+        if let Some(skip) = import_component_attribute(
             ctx,
             change_set_pk,
             &component,
@@ -469,7 +512,10 @@ async fn import_component(
             &mut prop_cache,
             thing_map,
         )
-        .await?;
+        .await?
+        {
+            skips.push(skip);
+        }
     }
 
     if component_spec.needs_destroy() {
@@ -482,7 +528,19 @@ async fn import_component(
         component.delete_and_propagate(ctx).await?;
     }
 
-    Ok(())
+    Ok(skips)
+}
+
+fn get_prop_kind_for_value(value: Option<&serde_json::Value>) -> Option<PropKind> {
+    match value {
+        Some(serde_json::Value::Array(_)) => Some(PropKind::Array),
+        Some(serde_json::Value::Bool(_)) => Some(PropKind::Boolean),
+        Some(serde_json::Value::Number(_)) => Some(PropKind::Integer),
+        Some(serde_json::Value::Object(_)) => Some(PropKind::Object),
+        Some(serde_json::Value::String(_)) => Some(PropKind::String),
+
+        _ => None,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -495,7 +553,7 @@ async fn import_component_attribute(
     value_cache: &mut HashMap<ValueCacheKey, AttributeValue>,
     prop_cache: &mut HashMap<String, Option<Prop>>,
     thing_map: &mut ThingMap,
-) -> PkgResult<()> {
+) -> PkgResult<Option<ImportAttributeSkip>> {
     match attribute.path() {
         AttributeValuePath::Prop { path, key, index } => {
             if attribute.parent_path().is_none() && (key.is_some() || index.is_some()) {
@@ -525,6 +583,23 @@ async fn import_component_attribute(
 
             match prop {
                 Some(prop) => {
+                    // Validate type if possible
+                    let expected_prop_kind = get_prop_kind_for_value(attribute.value());
+                    if let Some(expected_kind) = expected_prop_kind {
+                        if expected_kind
+                            != match prop.kind() {
+                                PropKind::Map | PropKind::Object => PropKind::Object,
+                                other => *other,
+                            }
+                        {
+                            return Ok(Some(ImportAttributeSkip::KindMismatch {
+                                path: PropPath::from(path),
+                                expected_kind,
+                                variant_kind: *prop.kind(),
+                            }));
+                        }
+                    }
+
                     let parent_data = if let Some(AttributeValuePath::Prop { path, key, index }) =
                         attribute.parent_path()
                     {
@@ -770,7 +845,7 @@ async fn import_component_attribute(
                 }
                 None => {
                     // collect missing props and log them
-                    return Ok(());
+                    return Ok(Some(ImportAttributeSkip::MissingProp(PropPath::from(path))));
                 }
             }
         }
@@ -779,15 +854,20 @@ async fn import_component_attribute(
             let (default_read_context, read_context, write_context) =
                 if matches!(attribute.path(), AttributeValuePath::InputSocket(_)) {
                     let internal_provider =
-                        InternalProvider::find_explicit_for_schema_variant_and_name(
+                        match InternalProvider::find_explicit_for_schema_variant_and_name(
                             ctx,
                             *variant.id(),
                             socket_name.as_str(),
                         )
                         .await?
-                        .ok_or(
-                            InternalProviderError::NotFoundForSocketName(socket_name.to_owned()),
-                        )?;
+                        {
+                            None => {
+                                return Ok(Some(ImportAttributeSkip::MissingInputSocket(
+                                    socket_name.to_owned(),
+                                )))
+                            }
+                            Some(ip) => ip,
+                        };
 
                     let default_read_context = AttributeReadContext {
                         prop_id: Some(PropId::NONE),
@@ -808,15 +888,21 @@ async fn import_component_attribute(
 
                     (default_read_context, read_context, write_context)
                 } else {
-                    let external_provider = ExternalProvider::find_for_schema_variant_and_name(
-                        ctx,
-                        *variant.id(),
-                        socket_name.as_str(),
-                    )
-                    .await?
-                    .ok_or(ExternalProviderError::NotFoundForSocketName(
-                        socket_name.to_owned(),
-                    ))?;
+                    let external_provider =
+                        match ExternalProvider::find_for_schema_variant_and_name(
+                            ctx,
+                            *variant.id(),
+                            socket_name.as_str(),
+                        )
+                        .await?
+                        {
+                            None => {
+                                return Ok(Some(ImportAttributeSkip::MissingOutputSocket(
+                                    socket_name.to_owned(),
+                                )))
+                            }
+                            Some(ep) => ep,
+                        };
 
                     let default_read_context = AttributeReadContext {
                         prop_id: Some(PropId::NONE),
@@ -873,7 +959,7 @@ async fn import_component_attribute(
         }
     }
 
-    Ok(())
+    Ok(None)
 }
 
 async fn get_ip_for_input(
@@ -883,8 +969,16 @@ async fn get_ip_for_input(
 ) -> PkgResult<Option<InternalProviderId>> {
     Ok(match input {
         SiPkgAttrFuncInput::Prop { prop_path, .. } => {
-            let input_source_prop =
-                Prop::find_prop_by_path(ctx, schema_variant_id, &PropPath::from(prop_path)).await?;
+            let input_source_prop = match Prop::find_prop_by_path_opt(
+                ctx,
+                schema_variant_id,
+                &PropPath::from(prop_path),
+            )
+            .await?
+            {
+                Some(p) => p,
+                None => return Ok(None),
+            };
 
             let ip = InternalProvider::find_for_prop(ctx, *input_source_prop.id())
                 .await?
@@ -895,15 +989,16 @@ async fn get_ip_for_input(
             Some(*ip.id())
         }
         SiPkgAttrFuncInput::InputSocket { socket_name, .. } => {
-            let explicit_ip = InternalProvider::find_explicit_for_schema_variant_and_name(
+            let explicit_ip = match InternalProvider::find_explicit_for_schema_variant_and_name(
                 ctx,
                 schema_variant_id,
                 &socket_name,
             )
             .await?
-            .ok_or(PkgError::MissingInternalProviderForSocketName(
-                socket_name.to_owned(),
-            ))?;
+            {
+                Some(ip) => ip,
+                None => return Ok(None),
+            };
 
             Some(*explicit_ip.id())
         }
@@ -1244,11 +1339,45 @@ async fn update_attribute_value(
     Ok(value)
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSkips {
+    change_set_pk: ChangeSetPk,
+    edge_skips: Vec<ImportEdgeSkip>,
+    attribute_skips: Vec<(String, Vec<ImportAttributeSkip>)>,
+}
+
+#[remain::sorted]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ImportAttributeSkip {
+    #[serde(rename_all = "camelCase")]
+    KindMismatch {
+        path: PropPath,
+        expected_kind: PropKind,
+        variant_kind: PropKind,
+    },
+    MissingInputSocket(String),
+    MissingOutputSocket(String),
+    MissingProp(PropPath),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ImportEdgeSkip {
+    MissingInputSocket(String),
+    MissingOutputSocket(String),
+}
+
 pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
     pkg: &SiPkg,
     options: Option<ImportOptions>,
-) -> PkgResult<(Option<InstalledPkgId>, Vec<SchemaVariantId>)> {
+) -> PkgResult<(
+    Option<InstalledPkgId>,
+    Vec<SchemaVariantId>,
+    Option<Vec<ImportSkips>>,
+)> {
     // We have to write the installed_pkg row first, so that we have an id, and rely on transaction
     // semantics to remove the row if anything in the installation process fails
     let root_hash = pkg.hash()?.to_string();
@@ -1275,7 +1404,7 @@ pub async fn import_pkg_from_pkg(
 
     match metadata.kind() {
         SiPkgKind::Module => {
-            let installed_schema_variant_ids = import_change_set(
+            let (installed_schema_variant_ids, _, _) = import_change_set(
                 ctx,
                 None,
                 &metadata,
@@ -1289,10 +1418,12 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
-            Ok((installed_pkg_id, installed_schema_variant_ids))
+            Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
         SiPkgKind::WorkspaceBackup => {
             let mut ctx = ctx.clone_with_new_visibility(ctx.visibility().to_head());
+
+            let mut import_skips = vec![];
 
             let workspace_pk = WorkspacePk::from_str(
                 metadata
@@ -1316,7 +1447,7 @@ pub async fn import_pkg_from_pkg(
                     default_change_set_name.into(),
                 ))?;
 
-            import_change_set(
+            let (_, attribute_skips, edge_skips) = import_change_set(
                 &ctx,
                 Some(ChangeSetPk::NONE),
                 &metadata,
@@ -1330,6 +1461,12 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
+            import_skips.push(ImportSkips {
+                change_set_pk: ChangeSetPk::NONE,
+                attribute_skips,
+                edge_skips,
+            });
+
             for change_set in change_sets {
                 if change_set.name() == default_change_set_name {
                     continue;
@@ -1341,7 +1478,7 @@ pub async fn import_pkg_from_pkg(
                 // Switch to new change set visibility
                 let ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_cs.pk));
 
-                import_change_set(
+                let (_, attribute_skips, edge_skips) = import_change_set(
                     &ctx,
                     Some(new_cs.pk),
                     &metadata,
@@ -1354,9 +1491,23 @@ pub async fn import_pkg_from_pkg(
                     &options,
                 )
                 .await?;
+
+                import_skips.push(ImportSkips {
+                    change_set_pk: new_cs.pk,
+                    attribute_skips,
+                    edge_skips,
+                });
             }
 
-            Ok((None, vec![]))
+            Ok((
+                None,
+                vec![],
+                if import_skips.is_empty() {
+                    None
+                } else {
+                    Some(import_skips)
+                },
+            ))
         }
     }
 }

@@ -6,7 +6,10 @@ mod export;
 mod import;
 
 pub use export::{get_component_type, PkgExporter};
-pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
+pub use import::{
+    import_pkg, import_pkg_from_pkg, ImportAttributeSkip, ImportEdgeSkip, ImportOptions,
+    ImportSkips,
+};
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
@@ -137,6 +140,8 @@ pub enum PkgError {
     MissingAttributeValueForContext(AttributeReadContext),
     #[error("Missing a func map for changeset {0}")]
     MissingChangeSetFuncMap(ChangeSetPk),
+    #[error("Missing component {0} for edge from {1} to {2}")]
+    MissingComponentForEdge(String, String, String),
     #[error("Func {0} missing from exported funcs")]
     MissingExportedFunc(FuncId),
     #[error("Cannot find FuncArgument {0} for Func {1}")]
