@@ -1,6 +1,22 @@
 import execa from "execa";
-import { ExecaReturnValue, Options } from "execa";
+import {ExecaReturnValue, Options} from "execa";
 import Debug from "debug";
+import {setTimeout} from "timers/promises";
+
+export interface WatchArgs {
+    cmd: string,
+    args?: readonly string[],
+    execaOptions?: Options<string>,
+    retryMs?: number,
+    maxRetryCount?: number,
+    callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
+}
+
+export interface WatchResult {
+    result: SiExecResult,
+    failed?: "deadlineExceeded" | "commandFailed",
+}
+
 const debug = Debug("langJs:siExec");
 
 //import readline from "readline";
@@ -11,37 +27,70 @@ export type SiExecResult = ExecaReturnValue<string>;
 // Note(paulo): This is highly dangerous as it bypasses the sandbox
 // We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
 export const makeExec = (executionId: string) => {
-  async function waitUntilEnd(
-    execaFile: string,
-    execaArgs?: readonly string[],
-    execaOptions?: Options<string>
-  ): Promise<SiExecResult> {
-    debug(
-      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
-        ?.map((a) => `'${a}'`)
-        ?.join(" ")}"`
-    );
-    console.log(JSON.stringify({
-      protocol: "output",
-      executionId,
-      stream: "stderr",
-      level: "debug",
-      group: "log",
-      message: `Running CLI command: "${execaFile} ${execaArgs
-        ?.map((a) => `'${a}'`)
-        ?.join(" ")}"`
-    }));
+    async function waitUntilEnd(
+        execaFile: string,
+        execaArgs?: readonly string[],
+        execaOptions?: Options<string>
+    ): Promise<SiExecResult> {
+        debug(
+            `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
+                ?.map((a) => `'${a}'`)
+                ?.join(" ")}"`
+        );
+        console.log(JSON.stringify({
+            protocol: "output",
+            executionId,
+            stream: "stderr",
+            level: "debug",
+            group: "log",
+            message: `Running CLI command: "${execaFile} ${execaArgs
+                ?.map((a) => `'${a}'`)
+                ?.join(" ")}"`
+        }));
 
-    const child = await execa(execaFile, execaArgs, {
-      all: true,
-      buffer: true,
-      reject: false,
-      ...execaOptions,
-    });
-    return child;
-  }
+        const child = await execa(execaFile, execaArgs, {
+            all: true,
+            buffer: true,
+            reject: false,
+            ...execaOptions,
+        });
+        return child;
+    }
 
-  return { waitUntilEnd };
+    async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult> {
+        if (!options.retryMs) {
+            options.retryMs = 2000;
+        }
+        if (!options.maxRetryCount) {
+            options.maxRetryCount = 10;
+        }
+        if (!deadlineCount) {
+            deadlineCount = 0;
+        }
+        const c = await waitUntilEnd(options.cmd, options.args, options.execaOptions);
+        // Update the count of how many attempts we have made
+        deadlineCount += 1;
+
+        // If the process fails, fail immediately
+        if (c.failed) {
+            return {result: c, failed: "commandFailed"};
+        }
+
+        // If the deadline exceeded, fail
+        if (deadlineCount >= options.maxRetryCount) {
+            return {result: c, failed: "deadlineExceeded"};
+        }
+
+        // Evaluate the callback, and return if it found what it was looking for
+        const o = await options.callback(c);
+        if (o) {
+            return {result: c};
+        } else {
+            return await setTimeout(options.retryMs, watch(options, deadlineCount));
+        }
+    }
+
+    return {waitUntilEnd, watch};
 };
 
 //export async function siExecStream(
