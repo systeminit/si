@@ -25,6 +25,7 @@ function commonSandbox(executionId: string): Sandbox {
     return {
         console: makeConsole(executionId),
         _,
+        Buffer,
     };
 }
 
