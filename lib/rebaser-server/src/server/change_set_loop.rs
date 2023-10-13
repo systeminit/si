@@ -124,12 +124,13 @@ async fn process_delivery(
     let onto_workspace_snapshot_id = onto_change_set.workspace_snapshot_id.ok_or(
         ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(onto_change_set.id),
     )?;
-    let onto_workspace_snapshot = WorkspaceSnapshot::find(ctx, onto_workspace_snapshot_id).await?;
+    let mut onto_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, onto_workspace_snapshot_id).await?;
 
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             message.to_rebase_vector_clock_id.into(),
-            &onto_workspace_snapshot,
+            &mut onto_workspace_snapshot,
             onto_change_set.vector_clock_id(),
         )
         .await?;

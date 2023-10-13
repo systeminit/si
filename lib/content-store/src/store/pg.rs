@@ -65,7 +65,7 @@ impl Store for PgStore {
     where
         T: Serialize + ?Sized,
     {
-        let value = serde_json::to_vec(object)?;
+        let value = si_cbor::encode(object)?;
         let key = ContentHash::new(&value);
         self.inner.insert(key, PgStoreItem::new(value));
         Ok(key)
@@ -79,9 +79,9 @@ impl Store for PgStore {
             Some(item) => serde_json::from_slice(&item.value)?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
-                    let bytes = content_pair.value();
-                    self.add(bytes)?;
-                    serde_json::from_slice(bytes)?
+                    let encoded = content_pair.value();
+                    self.add(encoded)?;
+                    si_cbor::decode(encoded)?
                 }
                 None => return Ok(None),
             },

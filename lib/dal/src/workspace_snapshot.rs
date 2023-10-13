@@ -33,7 +33,7 @@ pub mod vector_clock;
 use chrono::{DateTime, Utc};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use si_cbor::CborError;
 use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -56,6 +56,8 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("cbor error: {0}")]
+    Cbor(#[from] CborError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
@@ -64,8 +66,6 @@ pub enum WorkspaceSnapshotError {
     Pg(#[from] PgError),
     #[error("poison error: {0}")]
     Poison(String),
-    #[error("serde json error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("WorkspaceSnapshotGraph error: {0}")]
@@ -82,7 +82,7 @@ pk!(WorkspaceSnapshotId);
 pub struct WorkspaceSnapshot {
     id: WorkspaceSnapshotId,
     created_at: DateTime<Utc>,
-    snapshot: Value,
+    snapshot: Vec<u8>,
     #[serde(skip_serializing)]
     working_copy: Option<WorkspaceSnapshotGraph>,
 }
@@ -127,7 +127,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         graph: WorkspaceSnapshotGraph,
     ) -> WorkspaceSnapshotResult<Self> {
-        let serialized_snapshot = serde_json::to_value(graph)?;
+        let serialized_snapshot = si_cbor::encode(&graph)?;
         let row = ctx
             .txns()
             .await?
@@ -146,15 +146,11 @@ impl WorkspaceSnapshot {
 
     fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
         if self.working_copy.is_none() {
-            self.working_copy = Some(serde_json::from_value(self.snapshot.clone())?);
+            self.working_copy = Some(si_cbor::decode(&self.snapshot)?);
         }
         self.working_copy
             .as_mut()
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
-    }
-
-    fn snapshot(&self) -> WorkspaceSnapshotResult<WorkspaceSnapshotGraph> {
-        Ok(serde_json::from_value(self.snapshot.clone())?)
     }
 
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
@@ -175,12 +171,12 @@ impl WorkspaceSnapshot {
     pub async fn detect_conflicts_and_updates(
         &mut self,
         to_rebase_vector_clock_id: VectorClockId,
-        onto_workspace_snapshot: &WorkspaceSnapshot,
+        onto_workspace_snapshot: &mut WorkspaceSnapshot,
         onto_vector_clock_id: VectorClockId,
     ) -> WorkspaceSnapshotResult<(Vec<Conflict>, Vec<Update>)> {
         Ok(self.working_copy()?.detect_conflicts_and_updates(
             to_rebase_vector_clock_id,
-            &onto_workspace_snapshot.snapshot()?,
+            onto_workspace_snapshot.working_copy()?,
             onto_vector_clock_id,
         )?)
     }

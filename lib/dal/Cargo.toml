@@ -38,6 +38,7 @@ serde = { workspace = true }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+si-cbor = { path = "../../lib/si-cbor" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-pkg = { path = "../../lib/si-pkg" }
