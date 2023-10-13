@@ -46,6 +46,8 @@ const CONFIG = {
     success: { iconName: "check-circle", tone: "success" },
     running: { iconName: "loader", tone: "action" },
     failure: { iconName: "alert-triangle", tone: "destructive" },
+    error: { iconName: "alert-triangle", tone: "destructive" },
+    unknown: { iconName: "question-circle", tone: "warning" },
     _default: { iconName: "help-circle", tone: "warning" },
   },
 };
@@ -71,7 +73,9 @@ export type Status =
   | "neverStarted"
   | "unmodified"
   | "deleted"
-  | "show";
+  | "show"
+  | "pending"
+  | "error";
 
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
