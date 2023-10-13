@@ -1,11 +1,11 @@
 use std::{collections::HashMap, io::Read, path::PathBuf, str::FromStr, string::FromUtf8Error};
 
 use petgraph::prelude::*;
+use si_hash::{Hash, HashParseError};
 use thiserror::Error;
 
 use crate::{
     graph::{GraphError, HashedNodeWithEntries, NodeWithEntries, ObjectTree, ReadBytes},
-    hash::{Hash, HashParseError},
     tar::{object_path, ref_path},
 };
 

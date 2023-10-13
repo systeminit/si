@@ -2,6 +2,7 @@ use std::{mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
+use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use telemetry::prelude::*;
@@ -9,7 +10,6 @@ use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
-use crate::crypto::SymmetricCryptoService;
 use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
@@ -38,12 +38,13 @@ pub struct ServicesContext {
     pkgs_path: Option<PathBuf>,
     /// The URL of the module index
     module_index_url: Option<String>,
-    /// A service that can encrypt values based on the loaded donkeys
+    /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
 }
 
 impl ServicesContext {
     /// Constructs a new instance of a `ServicesContext`.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pg_pool: PgPool,
         nats_conn: NatsClient,

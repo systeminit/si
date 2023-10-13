@@ -3,13 +3,13 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_crypto::SymmetricCryptoServiceConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::crypto::SymmetricCryptoServiceConfig;
 pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;

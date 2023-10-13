@@ -3,7 +3,8 @@ use std::fmt;
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sodiumoxide::crypto::secretbox::Nonce;
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
+use si_hash::Hash;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
@@ -15,19 +16,16 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
-use crate::crypto::{SymmetricCryptoError, SymmetricCryptoService};
-use crate::diagram::node::HistoryEventMetadata;
-use crate::standard_model::objects_from_rows;
 use crate::{
+    diagram::node::HistoryEventMetadata,
     impl_standard_model,
     key_pair::KeyPairPk,
     pk,
-    standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, DalContext, HistoryEvent,
-    HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError, Timestamp,
-    Visibility,
+    standard_model::{self, objects_from_rows, TypeHint},
+    standard_model_accessor, standard_model_accessor_ro, ActorView, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
+    Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
 };
-use crate::{ActorView, HistoryActor, Tenancy, TransactionsError, UserPk};
 
 const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
 
@@ -39,8 +37,6 @@ pub enum SecretError {
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
-    #[error("donkey not found for secret")]
-    DonkeyNotFound,
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("key pair error: {0}")]
@@ -207,9 +203,10 @@ pub struct EncryptedSecret {
     definition: String,
     description: Option<String>,
     key_pair_pk: KeyPairPk,
-    nonce: Nonce,
-    donkey_hash: [u8; 32],
-    #[serde(with = "crypted_serde")]
+    #[serde(with = "nonce_serde")]
+    nonce: SymmetricNonce,
+    key_hash: Hash,
+    #[serde(with = "base64_bytes_serde")]
     crypted: Vec<u8>,
     version: SecretVersion,
     algorithm: SecretAlgorithm,
@@ -233,6 +230,7 @@ impl fmt::Debug for EncryptedSecret {
             .field("description", &self.description)
             .field("version", &self.version)
             .field("algorithm", &self.algorithm)
+            .field("key_hash", &self.key_hash)
             .field("tenancy", &self.tenancy)
             .field("timestamp", &self.timestamp)
             .field("visibility", &self.visibility)
@@ -283,12 +281,12 @@ impl EncryptedSecret {
                     &name,
                     &definition,
                     &description,
-                    &encode_crypted(double_crypted.as_slice()),
+                    &base64_encode_bytes(double_crypted.as_slice()),
                     &version.as_ref(),
                     &algorithm.as_ref(),
                     &key_pair_pk,
-                    &nonce.as_ref(),
-                    &key_hash.as_ref(),
+                    &base64_encode_bytes(nonce.as_ref()),
+                    &key_hash.to_string(),
                     &maybe_actor,
                 ],
             )
@@ -314,7 +312,7 @@ impl EncryptedSecret {
         self.into_decrypted(
             key_pair.public_key(),
             key_pair.secret_key(),
-            ctx.services_context().symmetric_crypto_service(),
+            ctx.symmetric_crypto_service(),
         )
     }
 
@@ -328,14 +326,11 @@ impl EncryptedSecret {
         // versions/algorithms will trigger a compilation failure
         match (self.version, self.algorithm) {
             (SecretVersion::V1, SecretAlgorithm::Sealedbox) => {
-                let donkey_decrypted = symmetric_crypto_service.decrypt(
-                    &self.crypted,
-                    &self.nonce,
-                    &self.donkey_hash,
-                )?;
+                let symmetric_decrypted =
+                    symmetric_crypto_service.decrypt(&self.crypted, &self.nonce, &self.key_hash)?;
 
                 let message = serde_json::from_slice(
-                    &sealedbox::open(&donkey_decrypted, pkey, skey)
+                    &sealedbox::open(&symmetric_decrypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
                 )
                 .map_err(SecretError::DeserializeMessage)?;
@@ -459,21 +454,21 @@ impl SecretDefinitionView {
     }
 }
 
-fn encode_crypted(crypted: &[u8]) -> String {
-    general_purpose::STANDARD_NO_PAD.encode(crypted)
+fn base64_encode_bytes(bytes: &[u8]) -> String {
+    general_purpose::STANDARD_NO_PAD.encode(bytes)
 }
 
-mod crypted_serde {
+mod base64_bytes_serde {
     use base64::{engine::general_purpose, Engine};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    use super::encode_crypted;
+    use super::base64_encode_bytes;
 
-    pub fn serialize<S>(crypted: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = encode_crypted(crypted);
+        let s = base64_encode_bytes(bytes);
         serializer.serialize_str(&s)
     }
 
@@ -486,6 +481,32 @@ mod crypted_serde {
             .decode(s)
             .map_err(serde::de::Error::custom)?;
         Ok(buffer)
+    }
+}
+
+mod nonce_serde {
+    use serde::{self, Deserializer, Serializer};
+    use si_crypto::SymmetricNonce;
+
+    use super::base64_bytes_serde;
+
+    pub fn serialize<S>(nonce: &SymmetricNonce, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        base64_bytes_serde::serialize(nonce.as_ref(), serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SymmetricNonce, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let nonce = SymmetricNonce::from_slice(&base64_bytes_serde::deserialize(deserializer)?)
+            .ok_or(serde::de::Error::custom(
+                "length of bytes is invalid for nonce value",
+            ))?;
+
+        Ok(nonce)
     }
 }
 
@@ -511,7 +532,7 @@ mod tests {
             let name = name.into();
             let crypted = crypted.into();
 
-            let (double_crypted, nonce, donkey_hash) =
+            let (double_crypted, nonce, key_hash) =
                 symmetric_crypto_service.encrypt(crypted.as_ref());
 
             EncryptedSecret {
@@ -522,7 +543,7 @@ mod tests {
                 description,
                 key_pair_pk: KeyPairPk::NONE,
                 nonce,
-                donkey_hash: *donkey_hash,
+                key_hash: *key_hash,
                 crypted: double_crypted,
                 version: Default::default(),
                 algorithm: Default::default(),

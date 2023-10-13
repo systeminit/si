@@ -1,0 +1,20 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-crypto",
+    deps = [
+        "//lib/si-hash:si-hash",
+        "//third-party/rust:ciborium",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:sodiumoxide",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+    test_unit_deps = [
+        "//third-party/rust:tempfile",
+    ],
+)

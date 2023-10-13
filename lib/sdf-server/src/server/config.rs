@@ -7,6 +7,7 @@ use std::{
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_crypto::SymmetricCryptoServiceConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
@@ -15,7 +16,6 @@ use si_std::SensitiveString;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::crypto::SymmetricCryptoServiceConfig;
 pub use dal::{CycloneKeyPair, MigrationMode};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 

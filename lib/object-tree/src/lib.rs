@@ -76,7 +76,6 @@
 )]
 
 mod graph;
-mod hash;
 mod tar;
 
 pub use crate::tar::{
@@ -88,4 +87,8 @@ pub use graph::{
     GraphError, HashedNode, NameStr, NodeChild, NodeKind, NodeWithChildren, ObjectTree, ReadBytes,
     WriteBytes,
 };
-pub use hash::{Hash, HashParseError};
+// The `Hash` type is faily coupled to the implementation and data structures in this crate,
+// despite being defined in an external crate. Due to this coupling, we'll re-export
+// `si_hash::Hash` to simplfy crates which consume this one, reducing an extra dependency for a
+// fairly important type.
+pub use si_hash::Hash;

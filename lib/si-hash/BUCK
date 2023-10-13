@@ -1,0 +1,13 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-hash",
+    deps = [
+        "//third-party/rust:blake3",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

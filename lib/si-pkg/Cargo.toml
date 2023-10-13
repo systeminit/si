@@ -12,6 +12,7 @@ petgraph = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-hash = { path = "../../lib/si-hash" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

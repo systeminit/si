@@ -1,0 +1,11 @@
+[package]
+name = "si-hash"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+blake3 = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

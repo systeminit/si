@@ -10,10 +10,9 @@ use std::{
 
 use petgraph::prelude::*;
 use serde::Serialize;
+use si_hash::Hash;
 use strum::{AsRefStr, EnumString};
 use thiserror::Error;
-
-use crate::Hash;
 
 const KEY_VERSION_STR: &str = "version";
 const KEY_NODE_KIND_STR: &str = "node_kind";

@@ -1,0 +1,18 @@
+[package]
+name = "si-crypto"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+ciborium = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+sodiumoxide = { workspace = true }
+si-hash = { path = "../../lib/si-hash" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,5 +1,5 @@
 use std::time::Duration;
-use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
+use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 
 use axum::routing::IntoMakeService;
 use axum::Router;
@@ -16,7 +16,6 @@ use tokio::{
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
 
-use dal::crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
 use dal::tasks::{StatusReceiver, StatusReceiverError};
 use dal::{
@@ -26,6 +25,7 @@ use dal::{
 use dal::{cyclone_key_pair::CycloneKeyPairError, tasks::ResourceScheduler, ServicesContext};
 use module_index_client::types::BuiltinsDetailsResponse;
 use module_index_client::{IndexClient, ModuleDetailsResponse};
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_pkg::{SiPkg, SiPkgError};

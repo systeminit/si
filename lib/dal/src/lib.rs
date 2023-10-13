@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
+use si_crypto::SymmetricCryptoService;
 use strum::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 use tokio::time;
@@ -120,7 +121,6 @@ pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, Wor
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 use crate::builtins::SelectedTestBuiltinSchemas;
-use crate::crypto::SymmetricCryptoService;
 
 pub mod action;
 pub mod action_prototype;
@@ -132,7 +132,6 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
-pub mod crypto;
 pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod edge;

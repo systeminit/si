@@ -1,98 +1,93 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::path::PathBuf;
-use std::sync::Arc;
+//! Symmetric key cryptography.
+
+use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
+use si_hash::Hash;
 use sodiumoxide::crypto::secretbox;
-use sodiumoxide::crypto::secretbox::{Key, Nonce};
 use thiserror::Error;
 use tokio::task::JoinError;
 
+pub use sodiumoxide::crypto::secretbox::Nonce as SymmetricNonce;
+
+/// An error that can be returned when working with the [`SymmetricCryptoService`].
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SymmetricCryptoError {
+    /// When a cipertext fails to decrypt
     #[error("error when decrypting ciphertext")]
     DecryptionFailed,
+    /// When deserializing from a key file format fails
     #[error("error deserializing key file: {0}")]
     Deserialize(#[from] ciborium::de::Error<std::io::Error>),
+    /// When an error is returned while reading or writing to a key file
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    /// When attempting to decrypt and provided with a hash for a key that is not present
     #[error("no key present matching provided hash")]
-    MissingDonkeyForHash,
+    MissingKeyForHash,
+    /// When serializing to a key file format fails
     #[error("error serializing key file: {0}")]
     Serialize(#[from] ciborium::ser::Error<std::io::Error>),
-    #[error("Error joining task: {0}")]
+    /// When a Tokio task join fails
+    #[error("error joining task: {0}")]
     TaskJoin(#[from] JoinError),
 }
 
+/// A result type when working with a [`SymmetricCryptoService`].
 pub type SymmetricCryptoResult<T> = Result<T, SymmetricCryptoError>;
 
-type Hash = [u8; 32];
-
+/// A service that can encrypt and decrypt arbitrary data using a set of symmetric keys.
 #[derive(Clone, Debug)]
 pub struct SymmetricCryptoService {
-    donkeys: Arc<HashMap<Hash, secretbox::Key>>,
+    keys: Arc<HashMap<Hash, SymmetricKey>>,
     active_key_hash: Arc<Hash>,
 }
 
-/// si-cli exec --key=~/keys/prod.key --extra-keys=~/keys/*.key
+/// A configuration that can be used to build a [`SymmetricCryptoService`].
+///
+/// A primary "active key" is used when encrypting data and may be used when decrypting data. A
+/// [`Hash`] of a key is provided when decrypting data which is used to look up the appropriate
+/// loaded key. In this way the service can take an arbitrary number of keys which is useful in
+/// operations such as key rotation where at least 2 keys are needed (the new key and the old
+/// keys).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymmetricCryptoServiceConfig {
+    /// The path to the active key file which will be used for all encryption.
     pub active_key: PathBuf,
+
+    /// Extra keys which can be used when decrypting data.
     pub extra_keys: Vec<PathBuf>,
 }
 
 impl SymmetricCryptoService {
+    /// Creates and returns a new service loaded with the given [`SymmetricKey`]s.
     pub fn new(active_key: SymmetricKey, extra_keys: Vec<SymmetricKey>) -> Self {
-        let mut map = HashMap::new();
+        let mut keys = HashMap::new();
 
-        let active_key_hash = *blake3::hash(active_key.0.as_ref()).as_bytes();
-
-        map.insert(active_key_hash, active_key.0);
+        let active_key_hash = Hash::new(active_key.0.as_ref());
+        keys.insert(active_key_hash, active_key);
 
         for key in extra_keys {
-            map.insert(*blake3::hash(key.0.as_ref()).as_bytes(), key.0);
+            keys.insert(Hash::new(key.0.as_ref()), key);
         }
 
         Self {
-            donkeys: Arc::new(map),
+            keys: Arc::new(keys),
             active_key_hash: Arc::new(active_key_hash),
         }
     }
 
-    pub fn generate_key() -> SymmetricKey {
-        SymmetricKey(secretbox::gen_key())
-    }
-
-    pub fn encrypt(&self, message: &[u8]) -> (Vec<u8>, Nonce, &Hash) {
-        let key = self
-            .donkeys
-            .get(self.active_key_hash.as_ref())
-            .expect("active_key value not present in donkeys HashMap (bug!)");
-        let nonce = secretbox::gen_nonce();
-
-        (
-            secretbox::seal(message, &nonce, key),
-            nonce,
-            self.active_key_hash.as_ref(),
-        )
-    }
-
-    pub fn decrypt(
-        &self,
-        ciphertext: &[u8],
-        nonce: &Nonce,
-        key_hash: &Hash,
-    ) -> SymmetricCryptoResult<Vec<u8>> {
-        let key = self
-            .donkeys
-            .get(key_hash)
-            .ok_or(SymmetricCryptoError::MissingDonkeyForHash)?;
-
-        secretbox::open(ciphertext, nonce, key).map_err(|_| SymmetricCryptoError::DecryptionFailed)
-    }
-
+    /// Creates and returns a new service from the given [`SymmetricCryptoServiceConfig`].
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key file was not found
+    /// - A key file was not readable (i.e. incorrect permissions and/or ownership)
+    /// - A key file could not be successfully parsed
+    /// - The [`SymmetricKey`] could not be successfully resolved from loading the key file
     pub async fn from_config(config: &SymmetricCryptoServiceConfig) -> SymmetricCryptoResult<Self> {
         let active_key = SymmetricKey::load(&config.active_key).await?;
 
@@ -104,18 +99,87 @@ impl SymmetricCryptoService {
 
         Ok(Self::new(active_key, extra_keys))
     }
+
+    /// Generates a new [`SymmetricKey`].
+    pub fn generate_key() -> SymmetricKey {
+        SymmetricKey(secretbox::gen_key())
+    }
+
+    /// Encrypts a message and returns the crypted bytes, a nonce, and a [`Hash`] of the encrypting
+    /// [`SymmetricKey`].
+    pub fn encrypt(&self, message: &[u8]) -> (Vec<u8>, SymmetricNonce, &Hash) {
+        let key = self
+            .keys
+            .get(self.active_key_hash.as_ref())
+            .expect("active_key value not present in keys hashmap; this is bug!");
+        let nonce = secretbox::gen_nonce();
+
+        (
+            secretbox::seal(message, &nonce, &key.0),
+            nonce,
+            self.active_key_hash.as_ref(),
+        )
+    }
+
+    /// Decrypts a ciphertext provided with a nonce and a [`Hash`] of the encrypting
+    /// [`SymmetricKey`] and returns the decrypted message.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - No key was loaded for the given key hash
+    /// - An invalid nonce is provided
+    /// - An incorrect key hash is provided (i.e. referring to another loaded key that was not used
+    ///   to encrypt the message)
+    /// - An invalid ciphertext was provided
+    pub fn decrypt(
+        &self,
+        ciphertext: &[u8],
+        nonce: &SymmetricNonce,
+        key_hash: &Hash,
+    ) -> SymmetricCryptoResult<Vec<u8>> {
+        let key = self
+            .keys
+            .get(key_hash)
+            .ok_or(SymmetricCryptoError::MissingKeyForHash)?;
+
+        secretbox::open(ciphertext, nonce, &key.0)
+            .map_err(|_| SymmetricCryptoError::DecryptionFailed)
+    }
 }
 
+/// A symmetric encryption key (i.e. a key which can encrypt *and* decrypt data).
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SymmetricKey(Key);
+pub struct SymmetricKey(secretbox::Key);
 
 impl SymmetricKey {
-    async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
+    /// Save a simple key to a file on the given path.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - The key file could not be created (i.e. permissions/ownership issues)
+    /// - The key file's parent directory is not created or not accessible due to
+    ///   permissions/ownship issues
+    pub async fn save(&self, path: impl Into<PathBuf>) -> SymmetricCryptoResult<()> {
         let file_data = SymmetricKeyFile { key: self.clone() };
 
         file_data.save(path).await
     }
-    async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
+
+    /// Load a key from a file on the given path.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - The key file was not found
+    /// - The key file was not readable (i.e. incorrect permissions and/or ownership)
+    /// - The key file could not be successfully parsed
+    /// - The [`SymmetricKey`] could not be successfully resolved from loading the key file
+    pub async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
         Ok(SymmetricKeyFile::load(path).await?.into())
     }
 }
@@ -214,7 +278,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SymmetricCryptoError::MissingDonkeyForHash)
+            Err(SymmetricCryptoError::MissingKeyForHash)
         ));
     }
 

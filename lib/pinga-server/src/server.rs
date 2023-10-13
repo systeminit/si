@@ -1,6 +1,5 @@
 use std::{io, path::Path, sync::Arc};
 
-use dal::crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
@@ -12,6 +11,7 @@ use dal::{
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use stream_cancel::StreamExt as StreamCancelStreamExt;

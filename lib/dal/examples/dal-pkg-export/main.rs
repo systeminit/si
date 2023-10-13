@@ -2,11 +2,11 @@ use buck2_resources::Buck2Resources;
 use std::{env, path::Path, str::FromStr, sync::Arc};
 use tokio::fs;
 
-use dal::crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use dal::{
     pkg::PkgExporter, ChangeSet, ChangeSetPk, DalContext, JobQueueProcessor, NatsProcessor, Schema,
     ServicesContext, StandardModel, Tenancy, Workspace,
 };
+use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use veritech_client::{Client as VeritechClient, EncryptionKey};
@@ -118,8 +118,9 @@ async fn load_encryption_key() -> Result<EncryptionKey> {
     EncryptionKey::load(path).await.map_err(Into::into)
 }
 
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
 async fn create_symmetric_crypto_service() -> Result<SymmetricCryptoService> {
-    let key_path = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+    let active_key = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         Buck2Resources::read()?.get_ends_with("dev.donkey.key")?
     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
         Path::new(&dir).join("../../lib/dal/dev.donkey.key")
@@ -128,8 +129,8 @@ async fn create_symmetric_crypto_service() -> Result<SymmetricCryptoService> {
     };
 
     SymmetricCryptoService::from_config(&SymmetricCryptoServiceConfig {
-        active_key: key_path.into(),
-        extra_keys: vec![],
+        active_key,
+        extra_keys: Default::default(),
     })
     .await
     .map_err(Into::into)

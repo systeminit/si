@@ -17,6 +17,7 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
+use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
@@ -30,7 +31,6 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
-use dal::crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use telemetry;
 pub use tracing_subscriber;
@@ -655,7 +655,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .to_string_lossy()
         .to_string();
     let symmetric_crypto_service_key = resources
-        .get_ends_with("donkey.dev.key")?
+        .get_ends_with("dev.donkey.key")?
         .to_string_lossy()
         .to_string();
     let pkgs_path = resources

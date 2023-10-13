@@ -13,8 +13,8 @@ CREATE TABLE encrypted_secrets
     definition               text                     NOT NULL,
     description              text,
     key_pair_pk              ident                    NOT NULL,
-    nonce                    bytea                    NOT NULL,
-    donkey_hash              bytea                    NOT NULL,
+    nonce                    text                     NOT NULL,
+    key_hash                 text                     NOT NULL,
     crypted                  text                     NOT NULL,
     version                  text                     NOT NULL,
     algorithm                text                     NOT NULL
@@ -123,8 +123,8 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_version text,
     this_algorithm text,
     this_key_pair_pk ident,
-    this_nonce bytea,
-    this_donkey_hash bytea,
+    this_nonce text,
+    this_key_hash text,
     this_created_by ident,
     OUT object json) AS
 $$
@@ -146,7 +146,7 @@ BEGIN
                                    algorithm,
                                    key_pair_pk,
                                    nonce,
-                                   donkey_hash,
+                                   key_hash,
                                    created_by,
                                    updated_by)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
@@ -159,13 +159,15 @@ BEGIN
             this_algorithm,
             this_key_pair_pk,
             this_nonce,
-            this_donkey_hash,
+            this_key_hash,
             this_created_by,
             this_created_by)
     RETURNING * INTO this_new_row;
 
     -- Purge the returning record of sensitive data to avoid accidentally
     -- deserializing these fields in application code
+    this_new_row.nonce = null;
+    this_new_row.key_hash = null;
     this_new_row.crypted = null;
     this_new_row.version = null;
     this_new_row.algorithm = null;

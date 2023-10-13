@@ -1217,8 +1217,10 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with 3.3.0",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
+ "si-hash",
  "si-pkg",
  "sodiumoxide",
  "strum",
@@ -1249,6 +1251,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-std",
@@ -3005,7 +3008,6 @@ dependencies = [
 name = "object-tree"
 version = "0.1.0"
 dependencies = [
- "blake3",
  "petgraph",
  "remain",
  "serde",
@@ -3424,6 +3426,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
@@ -4295,6 +4298,7 @@ dependencies = [
  "serde_json",
  "serde_url_params",
  "serde_with 3.3.0",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-pkg",
@@ -4749,6 +4753,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-crypto"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "remain",
+ "serde",
+ "si-hash",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "si-data-nats"
 version = "0.1.0"
 dependencies = [
@@ -4787,6 +4805,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-hash"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "si-pkg"
 version = "0.1.0"
 dependencies = [
@@ -4798,6 +4825,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-hash",
  "strum",
  "tempfile",
  "thiserror",
