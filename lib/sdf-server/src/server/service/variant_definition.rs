@@ -225,6 +225,7 @@ pub async fn is_variant_def_locked(
 pub struct ValidationPrototypeDefinition {
     pub id: ValidationPrototypeId,
     pub func_id: FuncId,
+    pub func_name: String,
     pub args: serde_json::Value,
     pub link: Option<String>,
     pub prop_path: String,
@@ -297,7 +298,7 @@ pub enum AttributePrototypeArgumentKind {
 
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "data")]
 pub enum AttributePrototypeContextKind {
     ExternalProviderSocket { name: String, kind: SocketEdgeKind },
     InternalProviderProp { path: String, kind: PropKind },
@@ -689,9 +690,15 @@ pub async fn cleanup_orphaned_objects(
         validation_prototype.delete_by_id(ctx).await?;
 
         let prop = validation_prototype.prop(ctx).await?;
+        let func = Func::get_by_id(ctx, &validation_prototype.func_id())
+            .await?
+            .ok_or_else(|| {
+                SchemaVariantDefinitionError::FuncNotFound(validation_prototype.func_id())
+            })?;
         validation_prototypes.push(ValidationPrototypeDefinition {
             id: *validation_prototype.id(),
             func_id: validation_prototype.func_id(),
+            func_name: func.name().to_owned(),
             args: validation_prototype.args().clone(),
             link: validation_prototype.link().map(ToOwned::to_owned),
             prop_path: prop.path().as_str().to_owned(),

@@ -2,10 +2,12 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
+import { FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
+import { PropKind } from "@/api/sdf/dal/prop";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -28,6 +30,43 @@ export interface InstalledPkgAssetView {
   assetId: string;
   assetHash: string;
   assetKind: string;
+}
+
+export type DetachedAttributePrototypeKind =
+  | {
+      type: "ExternalProviderSocket";
+      data: {
+        name: string;
+        kind: "ConfigurationInput" | "ConfigurationOutput";
+      };
+    }
+  | {
+      type: "InternalProviderSocket";
+      data: {
+        name: string;
+        kind: "ConfigurationInput" | "ConfigurationOutput";
+      };
+    }
+  | { type: "InternalProviderProp"; data: { path: string; kind: PropKind } }
+  | { type: "Prop"; data: { path: string; kind: PropKind } };
+
+export interface DetachedAttributePrototype {
+  id: string;
+  funcId: FuncId;
+  funcName: string;
+  key: string | null;
+  variant: FuncVariant;
+  context: DetachedAttributePrototypeKind;
+}
+
+export interface DetachedValidationPrototype {
+  id: string;
+  funcId: FuncId;
+  funcName: string;
+  args: unknown;
+  link: string | null;
+  propPath: string;
+  propKind: PropKind;
 }
 
 export type ComponentType =
@@ -344,7 +383,12 @@ export const useAssetStore = () => {
 
           const asset = this.assetsById[assetId];
           return new ApiRequest<
-            { success: true; schemaVariantId: string },
+            {
+              success: true;
+              schemaVariantId: string;
+              detachedAttributePrototypes: DetachedAttributePrototype[];
+              detachedValidationPrototypes: DetachedValidationPrototype[];
+            },
             AssetSaveRequest & { autoReattachFunctions?: boolean }
           >({
             method: "post",

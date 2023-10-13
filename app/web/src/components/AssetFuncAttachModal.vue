@@ -269,16 +269,16 @@ const attachEnabled = computed(() => {
   return nameIsSet && hasOutput && hasAttrToValidate && existingSelected;
 });
 
-const open = (existing?: boolean) => {
+const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
   attachExisting.value = existing ?? false;
 
   name.value = "";
-  funcVariant.value = FuncVariant.Action;
+  funcVariant.value = variant ?? FuncVariant.Action;
   isCreate.value = false;
   isDelete.value = false;
   isRefresh.value = false;
-  selectedExistingFuncId.value = undefined;
   selectedFuncCode.value = "";
+  selectedExistingFuncId.value = funcId;
   attrToValidate.value = undefined;
 
   attributeOutputLocationOptions.value = props.schemaVariantId
