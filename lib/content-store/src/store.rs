@@ -1,5 +1,6 @@
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use si_cbor::CborError;
 use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 
@@ -13,6 +14,8 @@ pub(crate) mod pg;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StoreError {
+    #[error("cbor error: {0}")]
+    Cbor(#[from] CborError),
     #[error("content pair error: {0}")]
     ContentPair(#[from] ContentPairError),
     #[error("pg error: {0}")]
