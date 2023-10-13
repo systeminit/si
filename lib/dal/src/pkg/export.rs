@@ -920,17 +920,20 @@ impl PkgExporter {
                     }
                 }
             } else if apa.external_provider_id() != ExternalProviderId::NONE {
-                let ep = ExternalProvider::get_by_id(ctx, &apa.external_provider_id())
-                    .await?
-                    .ok_or(PkgError::AttributePrototypeArgumentMissingExternalProvider(
-                        *apa.id(),
-                        apa.external_provider_id(),
-                    ))?;
+                // We don't want to create these on import of schema variants, so we don't care if
+                // we find it or not. But we do need to ensure the input length is correct for when
+                // we do this on *component import*, so that we don't modify the inputs to the
+                // attribute function on the component.
+                let socket_name =
+                    match ExternalProvider::get_by_id(ctx, &apa.external_provider_id()).await? {
+                        None => "__si-dummy-output-socket__".to_owned(),
+                        Some(ep) => ep.name().to_owned(),
+                    };
 
                 inputs.push(
                     builder
                         .kind(AttrFuncInputSpecKind::OutputSocket)
-                        .socket_name(ep.name())
+                        .socket_name(socket_name)
                         .build()?,
                 );
             }
@@ -1202,23 +1205,23 @@ impl PkgExporter {
 
         if self.is_workspace_export && self.include_components {
             for component in Component::list(ctx).await? {
-                let (component_spec, component_funcs, component_head_funcs) = self
+                if let Some((component_spec, component_funcs, component_head_funcs)) = self
                     .export_component(ctx, change_set_pk, &component)
-                    .await?;
+                    .await?
+                {
+                    self.component_map.insert(
+                        change_set_pk,
+                        *component.id(),
+                        component_spec.to_owned(),
+                    );
 
-                self.component_map.insert(
-                    change_set_pk,
-                    *component.id(),
-                    component_spec.to_owned(),
-                );
-
-                component_specs.push(component_spec);
-                func_specs.extend_from_slice(&component_funcs);
-                head_funcs.extend_from_slice(&component_head_funcs);
+                    component_specs.push(component_spec);
+                    func_specs.extend_from_slice(&component_funcs);
+                    head_funcs.extend_from_slice(&component_head_funcs);
+                }
             }
 
             for edge in Edge::list(ctx).await? {
-                dbg!(edge.id());
                 edge_specs.push(self.export_edge(ctx, change_set_pk, &edge).await?);
             }
         }
@@ -1299,7 +1302,7 @@ impl PkgExporter {
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
         component: &Component,
-    ) -> PkgResult<(ComponentSpec, Vec<FuncSpec>, Vec<FuncSpec>)> {
+    ) -> PkgResult<Option<(ComponentSpec, Vec<FuncSpec>, Vec<FuncSpec>)>> {
         let mut component_spec_builder = ComponentSpec::builder();
         component_spec_builder
             .name(component.name(ctx).await?)
@@ -1307,16 +1310,20 @@ impl PkgExporter {
         let mut funcs = vec![];
         let mut head_funcs = vec![];
 
+        let variant = component
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
+
+        if variant.visibility().is_deleted() && component.visibility().is_deleted() {
+            return Ok(None);
+        }
+
         let node = component
             .node(ctx)
             .await?
             .pop()
             .ok_or(PkgError::ComponentMissingNode(*component.id()))?;
-
-        let variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
 
         let component_variant = match self.variant_map.get(change_set_pk, variant.id()) {
             Some(variant_spec) => ComponentSpecVariant::WorkspaceVariant {
@@ -1386,7 +1393,7 @@ impl PkgExporter {
             head_funcs.extend_from_slice(&attr_head_funcs);
         }
 
-        Ok((component_spec_builder.build()?, funcs, head_funcs))
+        Ok(Some((component_spec_builder.build()?, funcs, head_funcs)))
     }
 
     pub async fn export_attribute_value(
