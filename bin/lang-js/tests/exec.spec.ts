@@ -27,6 +27,7 @@ describe("exec", () => {
             let didIt = "nope";
             const r = await e.watch({
                 cmd: "bigGunsBangBang", args: ["+%s"], retryMs: 2000, callback: async (r) => {
+		    console.log(r)
                     didIt = "yep";
                     return true;
                 }
