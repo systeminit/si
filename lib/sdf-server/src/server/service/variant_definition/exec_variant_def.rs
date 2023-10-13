@@ -1,6 +1,6 @@
 use super::{
-    maybe_delete_schema_variant_connected_to_variant_def, migrate_actions_to_new_schema_variant,
-    migrate_attribute_functions_to_new_schema_variant,
+    super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
+    migrate_actions_to_new_schema_variant, migrate_attribute_functions_to_new_schema_variant,
     migrate_leaf_functions_to_new_schema_variant,
     migrate_validation_functions_to_new_schema_variant, AttributePrototypeContextKind,
     SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
@@ -34,6 +34,8 @@ pub type ExecVariantDefRequest = SaveVariantDefRequest;
 pub struct AttributePrototypeView {
     pub id: AttributePrototypeId,
     pub func_id: FuncId,
+    pub func_name: String,
+    pub variant: Option<FuncVariant>,
     pub key: Option<String>,
     pub context: AttributePrototypeContextKind,
 }
@@ -218,10 +220,18 @@ pub async fn exec_variant_def(
             )
             .await?;
             let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
+
             for attribute_prototype in attribute_prototypes {
+                let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
+                    .await?
+                    .ok_or_else(|| {
+                        SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
+                    })?;
                 detached_attribute_prototypes.push(AttributePrototypeView {
                     id: attribute_prototype.id,
                     func_id: attribute_prototype.func_id,
+                    func_name: func.name().to_owned(),
+                    variant: (&func).try_into().ok(),
                     key: attribute_prototype.key,
                     context: attribute_prototype.context,
                 });

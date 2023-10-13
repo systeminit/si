@@ -4,11 +4,12 @@
       v-if="loadAssetReqStatus.isPending"
       :requestStatus="loadAssetReqStatus"
     />
-    <ScrollArea v-else-if="editingAsset && assetId">
+    <ScrollArea v-else-if="editingAsset && props.assetId">
       <template #top>
         <div
           class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
         >
+          <ErrorMessage :requestStatus="executeAssetReqStatus" />
           <VButton
             :requestStatus="executeAssetReqStatus"
             loadingText="Creating Asset..."
@@ -29,6 +30,31 @@
             @click="cloneAsset"
           />
         </div>
+
+        <ErrorMessage
+          v-for="(warning, index) in detachedWarnings"
+          :key="warning.message"
+          class="mx-1"
+          :class="{ 'cursor-pointer': !!warning.variant }"
+          icon="alert-triangle"
+          tone="warning"
+          @click="openAttachModal(warning)"
+        >
+          {{ warning.message }}
+          <VButton
+            tone="destructive"
+            buttonRank="tertiary"
+            icon="trash"
+            size="xs"
+            @click.stop="detachedWarnings.splice(index, 1)"
+          />
+        </ErrorMessage>
+
+        <AssetFuncAttachModal
+          ref="attachModalRef"
+          :schemaVariantId="assetSchemaVariantId"
+          :assetId="props.assetId"
+        />
       </template>
 
       <Stack class="p-xs py-sm">
@@ -118,7 +144,9 @@
       v-else
       class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
     >
-      <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>
+      <template v-if="props.assetId"
+        >Asset "{{ props.assetId }}" does not exist!</template
+      >
       <template v-else>Select an asset to view its details.</template>
     </div>
     <Modal ref="executeAssetModalRef" size="sm" :title="assetModalTitle">
@@ -139,12 +167,14 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
+import { FuncVariant } from "@/api/sdf/dal/func";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAssetStore } from "@/store/asset.store";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
 import { useComponentsStore } from "@/store/components.store";
 import ColorPicker from "./ColorPicker.vue";
+import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 
 const props = defineProps<{
   assetId?: string;
@@ -165,11 +195,26 @@ const executeAssetReqStatus = assetStore.getRequestStatus(
 const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
 
+const openAttachModal = (warning: {
+  variant?: FuncVariant;
+  funcId?: FuncId;
+}) => {
+  if (!warning.variant) return;
+  attachModalRef.value?.open(true, warning.variant, warning.funcId);
+};
+
 const componentTypeOptions = [
   { label: "Aggregation Frame", value: "aggregationFrame" },
   { label: "Component", value: "component" },
   { label: "Configuration Frame", value: "configurationFrame" },
 ];
+
+const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
+const assetSchemaVariantId = computed(() =>
+  props.assetId
+    ? assetStore.assetsById[props.assetId]?.schemaVariantId
+    : undefined,
+);
 
 const editingAsset = ref(_.cloneDeep(assetStore.selectedAsset));
 watch(
@@ -219,12 +264,52 @@ const disabledWarning = computed(() => {
   return `This asset cannot be edited because it is in use ${byComponents}${and}${byFuncs}.`;
 });
 
+const detachedWarnings = ref<
+  { message: string; funcId: FuncId; variant?: FuncVariant }[]
+>([]);
 const executeAsset = async () => {
+  detachedWarnings.value = [];
+
   if (assetStore.selectedAssetId) {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value?.open();
-      const { schemaVariantId } = result.result.data;
+      const {
+        schemaVariantId,
+        detachedValidationPrototypes,
+        detachedAttributePrototypes,
+      } = result.result.data;
+
+      for (const detached of detachedValidationPrototypes) {
+        detachedWarnings.value.push({
+          funcId: detached.funcId,
+          variant: FuncVariant.Validation,
+          message: `Validation ${detached.funcName} detached from asset because the property associated to it changed (Path=${detached.propPath} of Kind=${detached.propKind})`,
+        });
+      }
+
+      for (const detached of detachedAttributePrototypes) {
+        if (
+          detached.context.type === "ExternalProviderSocket" ||
+          detached.context.type === "InternalProviderSocket"
+        ) {
+          detachedWarnings.value.push({
+            funcId: detached.funcId,
+            variant: detached.variant ?? undefined,
+            message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
+          });
+        } else if (
+          detached.context.type === "InternalProviderProp" ||
+          detached.context.type === "Prop"
+        ) {
+          detachedWarnings.value.push({
+            funcId: detached.funcId,
+            variant: detached.variant ?? undefined,
+            message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
+          });
+        }
+      }
+
       if (schemaVariantId !== nilId()) {
         assetStore.setSchemaVariantIdForAsset(
           assetStore.selectedAssetId,
