@@ -867,7 +867,25 @@ fn langjs_types() -> &'static str {
     function stringify(obj: unknown): string;
 }
     declare namespace siExec {
+
+    interface WatchArgs {
+        cmd: string,
+        args?: readonly string[],
+        execaOptions?: Options<string>,
+        retryMs?: number,
+        maxRetryCount?: number,
+        callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
+    }
+
+    interface WatchResult {
+        result: SiExecResult,
+        failed?: 'deadlineExceeded' | 'commandFailed',
+    }
+
+    type SiExecResult = ExecaReturnValue<string>;
+
     async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
+    async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
 }"
 }
 
