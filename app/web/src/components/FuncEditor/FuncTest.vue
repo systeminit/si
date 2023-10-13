@@ -2,58 +2,30 @@
   <ScrollArea>
     <template #top>
       <div
-        class="flex flex-row gap-xs items-center p-xs m-xs border dark:border-neutral-600 rounded"
+        class="flex flex-row gap-xs items-center p-xs m-xs border dark:border-neutral-600 rounded justify-between"
       >
         <div
-          class="text-xl font-bold text-center flex-grow overflow-hidden text-ellipsis"
+          class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow"
         >
-          Test Attribute Function
+          Test {{ funcStore.selectedFuncDetails?.variant + " " || "" }}Function
           <span class="italic">{{ editingFunc?.name }}</span>
         </div>
-
-        <template v-if="testStarted">
-          <VButton label="New Test" size="sm" tone="success" @click="newTest" />
-          <VButton
-            label="Rerun"
-            size="sm"
-            :disabled="testStatus === 'running'"
-            @click="startTest"
-          />
-          <StatusIndicatorIcon type="funcTest" :status="testStatus" />
-        </template>
+        <StatusIndicatorIcon
+          v-if="runningTest"
+          type="funcTest"
+          :status="testStatus"
+        />
       </div>
-    </template>
-    <template v-if="testStarted">
-      <TabGroup startSelectedTabSlug="logs" growTabsToFillWidth>
-        <TabGroupItem label="Input" slug="input">
-          <CodeViewer
-            :code="testInputCode"
-            :title="`Input: ${testComponentDisplayName}`"
-          />
-        </TabGroupItem>
-        <TabGroupItem label="Execution Logs" slug="logs">
-          <ScrollArea>
-            <CodeViewer
-              v-for="(log, index) in testLogs"
-              :key="index"
-              :code="log"
-              :title="`Log: ${testComponentDisplayName}`"
-            />
-          </ScrollArea>
-        </TabGroupItem>
-        <TabGroupItem label="Output" slug="output">
-          <CodeViewer
-            :code="testOutputCode"
-            :title="`Output: ${testComponentDisplayName}`"
-          />
-        </TabGroupItem>
-      </TabGroup>
-    </template>
-    <template v-else>
-      <div class="border dark:border-neutral-600 p-xs m-xs rounded">
+
+      <div
+        class="flex flex-col border dark:border-neutral-600 p-xs m-xs rounded"
+      >
         <div class="pb-xs">
-          Select the bound component attribute to use as the input for your
-          test:
+          Select the
+          <span v-if="assetStore.selectedAsset" class="italic font-bold">
+            {{ assetStore.selectedAsset.name }}
+          </span>
+          component to use as the input for your test:
         </div>
         <div class="flex flex-row items-center gap-sm">
           <VormInput
@@ -63,11 +35,25 @@
             placeholder="no attribute selected"
             noLabel
             :options="componentAttributeOptions"
+            @update:model-value="loadInput"
           />
-          <VButton label="Create New" />
+          <VButton
+            label="Run Test"
+            size="sm"
+            :loading="testStatus === 'running'"
+            loadingText="Running"
+            loadingIcon="loader"
+            icon="play"
+            :disabled="!testAttribute || !readyToTest"
+            @click="startTest"
+          />
         </div>
       </div>
-      <div class="border dark:border-neutral-600 p-xs m-xs rounded">
+      <!-- DRY RUN SECTION -->
+      <div
+        v-if="dryRunConfig === 'choose'"
+        class="border dark:border-neutral-600 p-xs m-xs rounded"
+      >
         <div class="pb-xs">
           Do you want the results of this test to be applied to the component?
         </div>
@@ -80,18 +66,132 @@
           inlineLabel
           disabled
         />
-        <!-- TODO(Wendy) - currently testing is dry run only, need to implement not dry running -->
       </div>
-      <div class="pt-sm m-xs flex flex-row gap-sm items-center justify-center">
-        <VButton
-          label="Start"
-          tone="action"
-          size="lg"
-          :disabled="!testAttribute"
-          @click="startTest"
-        />
+      <div v-else class="py-xs px-sm rounded text-center italic">
+        <span
+          v-if="dryRunConfig === 'dry'"
+          class="text-neutral-500 dark:text-neutral-400"
+        >
+          The results of this test will not be applied to the component.
+        </span>
+        <span v-else class="font-bold">
+          WARNING: The results of this test will be applied to the component!
+        </span>
       </div>
+      <!-- END DRY RUN SECTION -->
     </template>
+
+    <TabGroup
+      v-if="testAttribute"
+      ref="funcTestTabsRef"
+      startSelectedTabSlug="input"
+      growTabsToFillWidth
+    >
+      <TabGroupItem label="Input" slug="input">
+        <CodeViewer
+          :code="testInputCode"
+          :title="`Input: ${testComponentDisplayName}`"
+        />
+      </TabGroupItem>
+      <TabGroupItem label="Execution Logs" slug="logs">
+        <ScrollArea>
+          <template v-if="rawTestLogs.length > 0">
+            <!-- TODO(WENDY) - a chip here to show output info -->
+            <div
+              class="border dark:border-neutral-600 dark:bg-shade-100 bg-neutral-100 rounded-xl m-xs p-xs flex flex-row items-center gap-xs"
+            >
+              <StatusIndicatorIcon
+                :status="testLogs.status"
+                type="funcTest"
+                size="2xl"
+              />
+              <div class="text-xl font-bold capitalize">
+                Status: {{ testLogs.status }}
+              </div>
+              <div class="flex-grow text-right">
+                <a
+                  class="text-action-400 font-bold text-sm hover:underline cursor-pointer"
+                  @click="additionalOutputInfoModalRef.open"
+                >
+                  Additional Output Info
+                </a>
+                <Modal
+                  ref="additionalOutputInfoModalRef"
+                  :title="`Output Information For Test On ${testComponentDisplayName}`"
+                >
+                  <CodeViewer
+                    :code="testLogs.output"
+                    :title="`Output Info: ${testComponentDisplayName}`"
+                  />
+                </Modal>
+              </div>
+            </div>
+
+            <CodeViewer
+              :code="testLogs.stdout"
+              :title="`stdout: ${testComponentDisplayName}`"
+            />
+            <CodeViewer
+              :code="testLogs.stderr"
+              :title="`stderr: ${testComponentDisplayName}`"
+            />
+          </template>
+          <div
+            v-else-if="runningTest"
+            class="w-full p-md text-center text-neutral-500 dark:text-neutral-400 flex flex-col items-center"
+          >
+            <template v-if="testStatus === 'running'">
+              <div class="pb-sm">
+                Awaiting logs for the currently running test...
+              </div>
+              <StatusIndicatorIcon
+                type="funcTest"
+                :status="testStatus"
+                size="2xl"
+                tone="neutral"
+              />
+            </template>
+            <template v-else>No logs available for this test.</template>
+          </div>
+          <div
+            v-else
+            class="w-full p-md text-center text-neutral-500 dark:text-neutral-400"
+          >
+            Run a test to see the execution logs.
+          </div>
+        </ScrollArea>
+      </TabGroupItem>
+      <TabGroupItem label="Output" slug="output">
+        <CodeViewer
+          v-if="testOutputCode"
+          :code="testOutputCode"
+          :title="`Output: ${testComponentDisplayName}`"
+        />
+        <div
+          v-else-if="runningTest"
+          class="w-full p-md text-center text-neutral-500 dark:text-neutral-400 flex flex-col items-center"
+        >
+          <template v-if="testStatus === 'running'">
+            <div class="pb-sm">
+              Awaiting output for the currently running test...
+            </div>
+            <StatusIndicatorIcon
+              type="funcTest"
+              :status="testStatus"
+              size="2xl"
+              tone="neutral"
+            />
+          </template>
+          <template v-else>No output available for this test.</template>
+        </div>
+        <div
+          v-else
+          class="w-full p-md text-center text-neutral-500 dark:text-neutral-400"
+        >
+          Run a test to see the output.
+        </div>
+      </TabGroupItem>
+    </TabGroup>
   </ScrollArea>
 </template>
 
@@ -103,6 +203,7 @@ import {
   ScrollArea,
   TabGroupItem,
   TabGroup,
+  Modal,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -110,8 +211,9 @@ import { useAssetStore } from "@/store/asset.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { FuncVariant } from "@/api/sdf/dal/func";
 import CodeViewer from "../CodeViewer.vue";
-import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import StatusIndicatorIcon, { Status } from "../StatusIndicatorIcon.vue";
 
 const componentsStore = useComponentsStore();
 const funcStore = useFuncStore();
@@ -124,10 +226,28 @@ const asset = computed(() => assetStore.selectedAsset);
 const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
 const editingFunc = ref(_.cloneDeep(storeFuncDetails.value));
 
+const additionalOutputInfoModalRef = ref();
+
+const funcTestTabsRef = ref();
 const testAttribute = ref(undefined);
 const dryRun = ref(true);
 const testInputCode = ref("");
+const testInputProperties = ref<Record<string, unknown> | null>();
 const testOutputCode = ref("");
+const readyToTest = ref(false);
+const runningTest = ref(false);
+
+const dryRunConfig = computed(() => {
+  // TODO(Wendy) - which function variants allow for a choice of dry run? which are always dry and which are always wet?
+  if (funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute) {
+    return "dry";
+    // eslint-disable-next-line no-constant-condition
+  } else if (false) {
+    return "choose";
+  } else {
+    return "wet";
+  }
+});
 
 const components = computed(() => {
   return componentsStore.allComponents.filter(
@@ -137,7 +257,6 @@ const components = computed(() => {
 
 const componentAttributeOptions = computed(() => {
   return components.value.map((c) => {
-    // TODO(Wendy) - make the label a bit clearer!
     return { value: c.id, label: c.displayName };
   });
 });
@@ -148,7 +267,6 @@ const testComponentDisplayName = computed(() => {
   } else return "ERROR";
 });
 
-const testStarted = ref(false); // TODO(Wendy) - we should make this persist!
 const testStatus = computed(() => {
   const status = funcStore.getRequestStatus("EXECUTE").value;
 
@@ -156,15 +274,54 @@ const testStatus = computed(() => {
   else if (status.isSuccess) return "success";
   else return "failure";
 });
-const testLogs = ref<string[]>([]);
+const rawTestLogs = ref<
+  { stream: string; level: string; message: string; timestamp: string }[]
+>([]);
+const testLogs = computed(() => {
+  const logs = {
+    stdout: "",
+    stderr: "",
+    output: "",
+    status: "running" as Status,
+  };
+  if (rawTestLogs.value && rawTestLogs.value.length > 0) {
+    rawTestLogs.value.forEach((log) => {
+      if (log.stream === "stdout") {
+        if (logs.stdout !== "") logs.stdout += "\n";
+        logs.stdout += log.message;
+      } else if (log.stream === "stderr") {
+        if (logs.stderr !== "") logs.stderr += "\n";
+        logs.stderr += log.message;
+      } else if (
+        log.stream === "output" &&
+        log.message.slice(0, 8) === "Output: "
+      ) {
+        logs.output = log.message.slice(8);
+        const outputJSON = JSON.parse(logs.output);
+        logs.status = (outputJSON.status as Status) ?? "unknown";
+      }
+    });
+  }
+
+  return logs;
+});
 
 const resetTestData = () => {
   testInputCode.value = "";
   testOutputCode.value = "";
-  testLogs.value = [];
+  rawTestLogs.value = [];
+  readyToTest.value = false;
+  runningTest.value = false;
 };
 
-const startTest = async () => {
+const loadInput = async () => {
+  await prepareTest();
+  if (funcTestTabsRef.value && funcTestTabsRef.value.tabExists("input")) {
+    funcTestTabsRef.value.selectTab("input");
+  }
+};
+
+const prepareTest = async () => {
   if (!funcStore.selectedFuncId || !testAttribute.value) return;
 
   resetTestData();
@@ -216,7 +373,16 @@ const startTest = async () => {
   }
 
   testInputCode.value = JSON.stringify(properties);
-  testStarted.value = true;
+  testInputProperties.value = properties;
+  readyToTest.value = true;
+};
+
+const startTest = async () => {
+  if (!funcStore.selectedFuncId || !testAttribute.value || !readyToTest.value)
+    return;
+
+  prepareTest();
+  readyToTest.value = false;
 
   const executionKey = new Date().toString() + _.random();
 
@@ -227,31 +393,30 @@ const startTest = async () => {
       eventType: "LogLine",
       callback: (logLine) => {
         if (logLine.executionKey === executionKey) {
-          testLogs.value.push(logLine.stream.message);
+          rawTestLogs.value.push(logLine.stream);
         }
       },
     },
   ]);
 
+  // Run the test!
+  runningTest.value = true;
+  rawTestLogs.value = [];
+  funcTestTabsRef.value.selectTab("logs");
   const output = await funcStore.EXECUTE({
     id: funcStore.selectedFuncId,
-    args: { properties },
+    args: { testInputProperties },
     executionKey,
   });
 
   realtimeStore.unsubscribe(executionKey);
+  readyToTest.value = true;
 
   if (output.result.success) {
     testOutputCode.value = JSON.stringify(output.result.data.output);
-    testLogs.value = output.result.data.logs.map((log) => {
-      return log.message;
-    });
+    rawTestLogs.value = output.result.data.logs;
   } else {
     testOutputCode.value = "ERROR: Test Failed To Run";
   }
-};
-
-const newTest = () => {
-  testStarted.value = false;
 };
 </script>

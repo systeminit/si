@@ -198,7 +198,7 @@ export async function executeResolverFunction(
   console.log(JSON.stringify({
       protocol: "output",
       executionId: request.executionId,
-      stream: "stdout",
+      stream: "output",
       level: "info",
       group: "log",
       message: `Output: ${JSON.stringify(result, null, 2)}`,

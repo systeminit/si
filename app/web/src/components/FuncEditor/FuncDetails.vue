@@ -33,6 +33,7 @@
               <VButton
                 v-if="
                   featureFlagsStore.FUNC_TEST_PANEL &&
+                  testPanelEnabled &&
                   funcStore.selectedFuncDetails?.variant ===
                     FuncVariant.Attribute
                 "
@@ -254,7 +255,8 @@
       <TabGroupItem
         v-if="
           featureFlagsStore.FUNC_TEST_PANEL &&
-          funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute
+          funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute &&
+          testPanelEnabled
         "
         label="Test"
         slug="test"
@@ -304,6 +306,7 @@ const props = defineProps<{
   funcId?: FuncId;
   schemaVariantId?: string;
   singleModelScreen?: boolean;
+  testPanelEnabled?: boolean;
 }>();
 
 const funcDetailsTabGroupRef = ref();
@@ -358,7 +361,12 @@ watch([loadFuncDetailsReqStatus, updateFuncReqStatus], () => {
 watch(
   () => funcStore.selectedFuncId,
   () => {
-    funcDetailsTabGroupRef.value.selectTab("properties");
+    if (
+      funcDetailsTabGroupRef.value &&
+      funcDetailsTabGroupRef.value.tabExists("properties")
+    ) {
+      funcDetailsTabGroupRef.value.selectTab("properties");
+    }
   },
 );
 
