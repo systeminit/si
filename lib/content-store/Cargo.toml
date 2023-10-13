@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+si-cbor = { path = "../../lib/si-cbor" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 telemetry = { path = "../../lib/telemetry-rs" }
 

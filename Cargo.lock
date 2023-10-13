@@ -948,6 +948,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-cbor",
  "si-data-pg",
  "telemetry",
  "thiserror",
@@ -1331,6 +1332,7 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with 3.4.0",
+ "si-cbor",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
@@ -5091,6 +5093,16 @@ dependencies = [
  "strum 0.24.1",
  "telemetry-application",
  "tokio",
+]
+
+[[package]]
+name = "si-cbor"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "remain",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]

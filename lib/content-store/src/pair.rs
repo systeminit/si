@@ -21,6 +21,7 @@ pub(crate) type ContentPairResult<T> = Result<T, ContentPairError>;
 pub(crate) struct ContentPair {
     key: String,
     created_at: DateTime<Utc>,
+    /// Serialized CBOR bytes.
     value: Vec<u8>,
 }
 
