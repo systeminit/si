@@ -111,7 +111,17 @@ impl ToLabelList for SocketArity {}
 /// Dictates the kind of [`Edges`](crate::Edge) that can be created for a [`Socket`](Socket).
 #[remain::sorted]
 #[derive(
-    AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
+    AsRefStr,
+    Copy,
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

@@ -24,7 +24,10 @@ use std::cmp::Ordering;
 use std::default::Default;
 use thiserror::Error;
 
-use crate::{ComponentId, ExternalProviderId, InternalProviderId, PropId};
+use crate::{
+    ComponentId, DalContext, ExternalProviderId, InternalProviderId, Prop, PropId, StandardModel,
+    StandardModelError,
+};
 
 pub mod read;
 
@@ -50,6 +53,8 @@ pub enum AttributeContextError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("could not find least specific field")]
     LeastSpecificFieldKindNotFound,
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
@@ -254,6 +259,24 @@ impl AttributeContext {
             // against potential regressions.
             Err(AttributeContextError::LeastSpecificFieldKindNotFound)
         }
+    }
+
+    pub async fn prop(&self, ctx: &DalContext) -> AttributeContextResult<Option<Prop>> {
+        Ok(Prop::get_by_id(ctx, &self.prop_id()).await?)
+    }
+
+    pub async fn internal_provider(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeContextResult<Option<crate::InternalProvider>> {
+        Ok(crate::InternalProvider::get_by_id(ctx, &self.internal_provider_id()).await?)
+    }
+
+    pub async fn external_provider(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeContextResult<Option<crate::ExternalProvider>> {
+        Ok(crate::ExternalProvider::get_by_id(ctx, &self.external_provider_id()).await?)
     }
 }
 

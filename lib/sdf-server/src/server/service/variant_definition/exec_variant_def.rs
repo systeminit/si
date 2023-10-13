@@ -1,7 +1,10 @@
 use super::{
     maybe_delete_schema_variant_connected_to_variant_def, migrate_actions_to_new_schema_variant,
-    migrate_leaf_functions_to_new_schema_variant, SchemaVariantDefinitionError,
-    SchemaVariantDefinitionResult,
+    migrate_attribute_functions_to_new_schema_variant,
+    migrate_leaf_functions_to_new_schema_variant,
+    migrate_validation_functions_to_new_schema_variant, AttributePrototypeContextKind,
+    SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
+    ValidationPrototypeDefinition,
 };
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -15,8 +18,8 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    ChangeSet, Func, FuncBinding, HistoryActor, SchemaVariantId, StandardModel, User, Visibility,
-    WsEvent,
+    AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, StandardModel, User, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{
@@ -24,7 +27,16 @@ use si_pkg::{
 };
 use std::collections::HashMap;
 
-pub type ExecVariantDefRequest = super::save_variant_def::SaveVariantDefRequest;
+pub type ExecVariantDefRequest = SaveVariantDefRequest;
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {
+    pub id: AttributePrototypeId,
+    pub func_id: FuncId,
+    pub key: Option<String>,
+    pub context: AttributePrototypeContextKind,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +44,8 @@ pub struct ExecVariantDefResponse {
     pub success: bool,
     pub schema_variant_id: SchemaVariantId,
     pub func_exec_response: serde_json::Value,
+    pub detached_validation_prototypes: Vec<ValidationPrototypeDefinition>,
+    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
 }
 
 pub async fn exec_variant_def(
@@ -78,8 +92,17 @@ pub async fn exec_variant_def(
             request.id,
         ))?;
 
-    let (maybe_previous_variant_id, leaf_funcs_to_migrate) =
-        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
+    let (
+        maybe_previous_variant_id,
+        leaf_funcs_to_migrate,
+        attribute_prototypes,
+        validation_prototypes,
+    ) = maybe_delete_schema_variant_connected_to_variant_def(
+        &ctx,
+        &mut variant_def,
+        request.auto_reattach_functions,
+    )
+    .await?;
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -169,16 +192,56 @@ pub async fn exec_variant_def(
         .copied()
         .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
 
-    if let Some(previous_schema_variant_id) = maybe_previous_variant_id {
-        migrate_leaf_functions_to_new_schema_variant(
-            &ctx,
-            leaf_funcs_to_migrate,
-            schema_variant_id,
-        )
-        .await?;
-        migrate_actions_to_new_schema_variant(&ctx, previous_schema_variant_id, schema_variant_id)
+    let (detached_attribute_prototypes, detached_validation_prototypes) =
+        if let Some(previous_schema_variant_id) = maybe_previous_variant_id {
+            migrate_leaf_functions_to_new_schema_variant(
+                &ctx,
+                leaf_funcs_to_migrate,
+                schema_variant_id,
+            )
             .await?;
-    }
+            migrate_actions_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
+
+            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+                .await?
+                .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+
+            let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+                &ctx,
+                attribute_prototypes,
+                &schema_variant,
+            )
+            .await?;
+            let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
+            for attribute_prototype in attribute_prototypes {
+                detached_attribute_prototypes.push(AttributePrototypeView {
+                    id: attribute_prototype.id,
+                    func_id: attribute_prototype.func_id,
+                    key: attribute_prototype.key,
+                    context: attribute_prototype.context,
+                });
+            }
+
+            let detached_validation_prototypes =
+                migrate_validation_functions_to_new_schema_variant(
+                    &ctx,
+                    validation_prototypes,
+                    schema_variant_id,
+                )
+                .await?;
+
+            (
+                detached_attribute_prototypes,
+                detached_validation_prototypes,
+            )
+        } else {
+            (Vec::new(), Vec::new())
+        };
 
     track(
         &posthog_client,
@@ -211,6 +274,8 @@ pub async fn exec_variant_def(
             success: true,
             func_exec_response: func_resp.to_owned(),
             schema_variant_id,
+            detached_validation_prototypes,
+            detached_attribute_prototypes,
         })?)?,
     )
 }

@@ -10,8 +10,8 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_accessor, DalContext, HistoryEventError, Prop, PropId, SchemaVariantId,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{PropKind, SchemaId, TransactionsError, ValidationPrototypeContext};
 
@@ -204,5 +204,11 @@ impl ValidationPrototype {
             .await?;
 
         Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn prop(&self, ctx: &DalContext) -> ValidationPrototypeResult<Prop> {
+        Prop::get_by_id(ctx, &self.prop_id())
+            .await?
+            .ok_or(ValidationPrototypeError::PropNotFound(self.prop_id()))
     }
 }
