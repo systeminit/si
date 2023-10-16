@@ -158,6 +158,7 @@ pub mod qualification;
 pub mod reconciliation_prototype;
 pub mod schema;
 pub mod secret;
+pub mod serde_impls;
 pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
