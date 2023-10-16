@@ -13,6 +13,7 @@
           <br />
           workspace settings (gear in top right) > "Import Workspace"
         </p>
+        <VButton icon="check" @click="close">Close this window</VButton>
       </template>
       <template v-else>
         <p>
@@ -23,17 +24,14 @@
         <p>Click the button below to continue:</p>
 
         <ErrorMessage :requestStatus="exportReqStatus" />
+        <VButton
+          icon="cloud-upload"
+          :requestStatus="exportReqStatus"
+          loadingText="Exporting your workspace..."
+          @click="continueHandler"
+          >Export this workspace</VButton
+        >
       </template>
-
-      <VButton
-        v-if="!exportReqStatus.isSuccess"
-        icon="cloud-upload"
-        :requestStatus="exportReqStatus"
-        loadingText="Exporting your workspace..."
-        @click="continueHandler"
-        >Export this workspace</VButton
-      >
-      <VButton v-else icon="check" @click="close">Close this window</VButton>
     </Stack>
   </Modal>
 </template>
@@ -60,8 +58,8 @@ function open() {
   openModal();
 }
 
-async function continueHandler() {
-  await moduleStore.EXPORT_WORKSPACE();
+function continueHandler() {
+  moduleStore.EXPORT_WORKSPACE();
 }
 function closeHandler() {
   moduleStore.clearRequestStatus("EXPORT_WORKSPACE");

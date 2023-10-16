@@ -1,8 +1,10 @@
-import { Slot, VNode, Fragment, DefineComponent } from "vue";
+import { Slot, VNode, Comment, Fragment, DefineComponent } from "vue";
 
 // helper for wrapping slot children in functional components
 export function getSlotChildren(slot: Slot | undefined): VNode[] {
-  const rawChildren = slot?.() || [];
+  return unwrapChildren(slot?.() || []);
+}
+function unwrapChildren(rawChildren: VNode[]) {
   const children = [] as VNode[];
   rawChildren.forEach((child) => {
     // components that are hidden via v-if end up as a Comment <!--v-if--> so we skip over them
@@ -10,7 +12,7 @@ export function getSlotChildren(slot: Slot | undefined): VNode[] {
 
     // if the child is a template with a v-for, we actually want to get all of its children
     if (child.type === Fragment) {
-      children.push(...(child.children as VNode[]));
+      children.push(...unwrapChildren(child.children as VNode[]));
     } else {
       children.push(child);
     }
