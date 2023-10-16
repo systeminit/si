@@ -8,6 +8,21 @@
 //!
 //! [BLAKE3]: https://github.com/BLAKE3-team/BLAKE3
 
+#![warn(
+    clippy::unwrap_in_result,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn,
+    missing_docs
+)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::module_inception,
+    clippy::module_name_repetitions
+)]
 use std::{default::Default, fmt, str::FromStr};
 
 use serde::{

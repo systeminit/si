@@ -1,13 +1,19 @@
 [package]
-name = "si-settings"
+name = "si-crypto"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.64"
 publish = false
 
 [dependencies]
-config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
+ciborium = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
+sodiumoxide = { workspace = true }
+si-hash = { path = "../../lib/si-hash" }
 si-std = { path = "../../lib/si-std" }
 thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

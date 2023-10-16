@@ -2,13 +2,13 @@ use base64::{engine::general_purpose, Engine};
 use serde::{self, Deserialize, Deserializer, Serializer};
 use sodiumoxide::crypto::box_::PublicKey as BoxPublicKey;
 
-use super::encode_public_key;
+use super::base64_encode_bytes;
 
 pub fn serialize<S>(box_public_key: &BoxPublicKey, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let s = encode_public_key(box_public_key);
+    let s = base64_encode_bytes(box_public_key.as_ref());
     serializer.serialize_str(&s)
 }
 

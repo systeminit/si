@@ -177,6 +177,7 @@ pub fn safe_canonically_join(
     }
 }
 
+#[allow(clippy::panic_in_result_fn)]
 #[cfg(test)]
 mod tests {
     use super::*;

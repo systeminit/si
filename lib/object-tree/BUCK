@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "object-tree",
     deps = [
+        "//lib/si-hash:si-hash",
         "//third-party/rust:blake3",
         "//third-party/rust:petgraph",
         "//third-party/rust:remain",

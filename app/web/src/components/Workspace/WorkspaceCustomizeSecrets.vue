@@ -35,14 +35,15 @@
                     <i class="text-xs text-neutral-500">
                       by {{ secret.createdInfo?.actor?.label || "UNDEF" }}
                     </i>
-                    <VButton
+                    <!-- Disabled until delete gets reimplemented on the backend -->
+                    <!--VButton
                       :disabled="secretsStore.secretIsTransitioning[secret.id]"
                       class="ml-2"
                       size="xs"
                       tone="neutral"
                       icon="x-circle"
                       @click="secretsStore.DELETE_SECRET(secret.id)"
-                    />
+                    /-->
                   </li>
                 </ul>
               </li>
@@ -72,7 +73,7 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { ResizablePanel, VButton, VormInput } from "@si/vue-lib/design-system";
+import { ResizablePanel, VormInput } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";

@@ -41,6 +41,8 @@ pub enum SiCliError {
     Podman(#[from] podman_api::Error),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("symmetric crypto: {0}")]
+    SymmetricCrypto(#[from] si_crypto::SymmetricCryptoError),
     #[error("toml deserialize error: {0}")]
     TomlDeserialize(#[from] toml::de::Error),
     #[error("unable to download update, status = {0}")]

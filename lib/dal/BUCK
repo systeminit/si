@@ -10,14 +10,18 @@ rust_library(
         "//lib/council-server:council-server",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/object-tree:object-tree",
+        "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
+        "//lib/si-hash:si-hash",
         "//lib/si-pkg:si-pkg",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:async-recursion",
         "//third-party/rust:async-trait",
         "//third-party/rust:base64",
+        "//third-party/rust:blake3",
+        "//third-party/rust:ciborium",
         "//third-party/rust:chrono",
         "//third-party/rust:convert_case",
         "//third-party/rust:derive_more",
@@ -96,8 +100,14 @@ rust_test(
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
         "dev.jwt_signing_private_key.pem": "//config/keys:dev.jwt_signing_private_key.pem",
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
+        "dev.donkey.key": "//lib/dal:dev.donkey.key",
         "lang-js": "//bin/lang-js:bin",
         "pkgs_path": "//pkgs:pkgs",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
     },
+)
+
+export_file(
+    name = "dev.donkey.key",
+    visibility = ["PUBLIC"],
 )

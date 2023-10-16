@@ -2,6 +2,7 @@ use crate::{CliResult, SiCliError};
 use base64::{engine::general_purpose, Engine};
 use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
+use si_crypto::SymmetricCryptoService;
 use sodiumoxide::crypto::box_;
 use std::fs::File;
 use std::io::Write;
@@ -47,6 +48,18 @@ pub async fn ensure_encryption_keys() -> CliResult<()> {
         let mut file = File::create(&public_key_path)?;
         file.write_all(&public_key.0)?;
     }
+    Ok(())
+}
+
+pub async fn ensure_symmetric_crypto_key() -> CliResult<()> {
+    let si_data_dir = get_si_data_dir().await?;
+    let active_key_path = si_data_dir.join("donkey.key");
+    if !active_key_path.exists() {
+        SymmetricCryptoService::generate_key()
+            .save(active_key_path)
+            .await?;
+    }
+
     Ok(())
 }
 

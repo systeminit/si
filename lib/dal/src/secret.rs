@@ -3,28 +3,30 @@ use std::fmt;
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::PgError;
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
+use si_hash::Hash;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
 };
 use strum::{AsRefStr, Display, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
+
+use si_data_pg::PgError;
+use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
-use crate::diagram::node::HistoryEventMetadata;
-use crate::standard_model::objects_from_rows;
 use crate::{
+    diagram::node::HistoryEventMetadata,
     impl_standard_model,
     key_pair::KeyPairPk,
     pk,
-    standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, DalContext, HistoryEvent,
-    HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError, Timestamp,
-    Visibility,
+    serde_impls::{base64_bytes_serde, nonce_serde},
+    standard_model::{self, objects_from_rows, TypeHint},
+    standard_model_accessor, standard_model_accessor_ro, ActorView, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
+    Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
 };
-use crate::{ActorView, HistoryActor, Tenancy, TransactionsError, UserPk};
 
 const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
 
@@ -46,6 +48,8 @@ pub enum SecretError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("symmetric crypto error: {0}")]
+    SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -200,7 +204,10 @@ pub struct EncryptedSecret {
     definition: String,
     description: Option<String>,
     key_pair_pk: KeyPairPk,
-    #[serde(with = "crypted_serde")]
+    #[serde(with = "nonce_serde")]
+    nonce: SymmetricNonce,
+    key_hash: Hash,
+    #[serde(with = "base64_bytes_serde")]
     crypted: Vec<u8>,
     version: SecretVersion,
     algorithm: SecretAlgorithm,
@@ -224,6 +231,7 @@ impl fmt::Debug for EncryptedSecret {
             .field("description", &self.description)
             .field("version", &self.version)
             .field("algorithm", &self.algorithm)
+            .field("key_hash", &self.key_hash)
             .field("tenancy", &self.tenancy)
             .field("timestamp", &self.timestamp)
             .field("visibility", &self.visibility)
@@ -260,22 +268,26 @@ impl EncryptedSecret {
             HistoryActor::User(user_pk) => Some(user_pk),
         };
 
+        let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(crypted);
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &definition,
                     &description,
-                    &encode_crypted(crypted),
+                    &base64_encode_bytes(double_crypted.as_slice()),
                     &version.as_ref(),
                     &algorithm.as_ref(),
                     &key_pair_pk,
+                    &base64_encode_bytes(nonce.as_ref()),
+                    &key_hash.to_string(),
                     &maybe_actor,
                 ],
             )
@@ -297,22 +309,39 @@ impl EncryptedSecret {
     /// [`DecryptedSecret`].
     pub async fn decrypt(self, ctx: &DalContext) -> SecretResult<DecryptedSecret> {
         let key_pair = self.key_pair(ctx).await?;
-        self.into_decrypted(key_pair.public_key(), key_pair.secret_key())
+
+        self.into_decrypted(
+            key_pair.public_key(),
+            key_pair.secret_key(),
+            ctx.symmetric_crypto_service(),
+        )
     }
 
-    fn into_decrypted(self, pkey: &PublicKey, skey: &SecretKey) -> SecretResult<DecryptedSecret> {
+    fn into_decrypted(
+        self,
+        pkey: &PublicKey,
+        skey: &SecretKey,
+        symmetric_crypto_service: &SymmetricCryptoService,
+    ) -> SecretResult<DecryptedSecret> {
         // Explicitly match on (version, algorithm) tuple to ensure that any new
         // versions/algorithms will trigger a compilation failure
         match (self.version, self.algorithm) {
-            (SecretVersion::V1, SecretAlgorithm::Sealedbox) => Ok(DecryptedSecret {
-                name: self.name,
-                definition: self.definition,
-                message: serde_json::from_slice(
-                    &sealedbox::open(&self.crypted, pkey, skey)
+            (SecretVersion::V1, SecretAlgorithm::Sealedbox) => {
+                let symmetric_decrypted =
+                    symmetric_crypto_service.decrypt(&self.crypted, &self.nonce, &self.key_hash)?;
+
+                let message = serde_json::from_slice(
+                    &sealedbox::open(&symmetric_decrypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
                 )
-                .map_err(SecretError::DeserializeMessage)?,
-            }),
+                .map_err(SecretError::DeserializeMessage)?;
+
+                Ok(DecryptedSecret {
+                    name: self.name,
+                    definition: self.definition,
+                    message,
+                })
+            }
         }
     }
 
@@ -426,34 +455,8 @@ impl SecretDefinitionView {
     }
 }
 
-fn encode_crypted(crypted: &[u8]) -> String {
-    general_purpose::STANDARD_NO_PAD.encode(crypted)
-}
-
-mod crypted_serde {
-    use base64::{engine::general_purpose, Engine};
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    use super::encode_crypted;
-
-    pub fn serialize<S>(crypted: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = encode_crypted(crypted);
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let buffer = general_purpose::STANDARD_NO_PAD
-            .decode(s)
-            .map_err(serde::de::Error::custom)?;
-        Ok(buffer)
-    }
+fn base64_encode_bytes(bytes: &[u8]) -> String {
+    general_purpose::STANDARD_NO_PAD.encode(bytes)
 }
 
 #[cfg(test)]
@@ -463,18 +466,23 @@ mod tests {
     mod encrypted_secret {
         use sodiumoxide::crypto::box_;
 
-        use super::*;
         use crate::WorkspacePk;
+
+        use super::*;
 
         fn encrypted_secret(
             name: impl Into<String>,
             definition: String,
             description: Option<String>,
             crypted: impl Into<Vec<u8>>,
+            symmetric_crypto_service: &SymmetricCryptoService,
             wid: WorkspacePk,
         ) -> EncryptedSecret {
             let name = name.into();
             let crypted = crypted.into();
+
+            let (double_crypted, nonce, key_hash) =
+                symmetric_crypto_service.encrypt(crypted.as_ref());
 
             EncryptedSecret {
                 pk: SecretPk::NONE,
@@ -483,7 +491,9 @@ mod tests {
                 definition,
                 description,
                 key_pair_pk: KeyPairPk::NONE,
-                crypted,
+                nonce,
+                key_hash: *key_hash,
+                crypted: double_crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
                 tenancy: Tenancy::new(wid),
@@ -513,15 +523,19 @@ mod tests {
                 serde_json::json!({"username": "The Cadillac Three", "password": "Slow Rollin"});
             let crypted = crypt(&message, &pkey);
 
+            let service =
+                SymmetricCryptoService::new(SymmetricCryptoService::generate_key(), vec![]);
+
             let encrypted = encrypted_secret(
                 "the-cadillac-three",
                 "dockerHub".to_owned(),
                 None,
                 crypted,
+                &service,
                 WorkspacePk::NONE,
             );
             let decrypted = encrypted
-                .into_decrypted(&pkey, &skey)
+                .into_decrypted(&pkey, &skey, &service)
                 .expect("could not decrypt secret");
 
             assert_eq!("the-cadillac-three", decrypted.name);

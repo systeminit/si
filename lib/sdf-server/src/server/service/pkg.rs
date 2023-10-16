@@ -12,7 +12,7 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
-use si_settings::{safe_canonically_join, CanonicalFileError};
+use si_std::{canonical_file::safe_canonically_join, CanonicalFileError};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;

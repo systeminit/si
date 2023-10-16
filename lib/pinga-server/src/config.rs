@@ -3,9 +3,10 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_settings::{CanonicalFile, CanonicalFileError};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -51,6 +52,8 @@ pub struct Config {
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
+
+    symmetric_crypto_service: SymmetricCryptoServiceConfig,
 }
 
 impl StandardConfig for Config {
@@ -81,6 +84,10 @@ impl Config {
         self.cyclone_encryption_key_path.as_path()
     }
 
+    pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
+        &self.symmetric_crypto_service
+    }
+
     /// Gets the config's concurrency limit.
     pub fn concurrency(&self) -> usize {
         self.concurrency
@@ -104,6 +111,8 @@ pub struct ConfigFile {
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
+    #[serde(default = "default_symmetric_crypto_config")]
+    symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
 
 impl Default for ConfigFile {
@@ -114,6 +123,7 @@ impl Default for ConfigFile {
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             concurrency_limit: default_concurrency_limit(),
             instance_id: random_instance_id(),
+            symmetric_crypto_service: default_symmetric_crypto_config(),
         }
     }
 }
@@ -134,6 +144,7 @@ impl TryFrom<ConfigFile> for Config {
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
+        config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.build().map_err(Into::into)
     }
 }
@@ -144,6 +155,13 @@ fn random_instance_id() -> String {
 
 fn default_cyclone_encryption_key_path() -> String {
     "/run/pinga/cyclone_encryption.key".to_string()
+}
+
+fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
+    SymmetricCryptoServiceConfigFile {
+        active_key: "/run/pinga/donkey.key".into(),
+        extra_keys: vec![],
+    }
 }
 
 fn default_concurrency_limit() -> usize {
@@ -169,13 +187,23 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = resources
+        .get_ends_with("dev.donkey.key")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         "detected development run",
     );
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
 
     Ok(())
 }
@@ -185,13 +213,22 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .join("../../lib/cyclone-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = Path::new(&dir)
+        .join("../../lib/dal/dev.donkey.key")
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         "detected development run",
     );
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
 
     Ok(())
 }

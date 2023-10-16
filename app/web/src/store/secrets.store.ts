@@ -117,6 +117,7 @@ export function useSecretsStore() {
     defineStore("secrets", {
       state: () => ({
         secretDefinitionByDefinitionId: {} as SecretsDefinitionHashMap,
+        // Stores whether a request is running on a secret. Previously used to disable the delete button temporarily
         secretIsTransitioning: {} as Record<SecretId, boolean>,
         publicKey: null as PublicKey | null,
       }),
