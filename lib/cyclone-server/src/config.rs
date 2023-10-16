@@ -5,7 +5,7 @@ use std::{
 };
 
 use derive_builder::Builder;
-use si_settings::{CanonicalFile, CanonicalFileError};
+use si_std::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
 
 #[remain::sorted]

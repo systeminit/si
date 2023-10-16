@@ -6,6 +6,7 @@ use dal::{
     pkg::import_pkg_from_pkg, ChangeSet, DalContext, JobQueueProcessor, NatsProcessor,
     ServicesContext, Tenancy, Workspace,
 };
+use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfigFile};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_pkg::SiPkg;
@@ -57,6 +58,7 @@ async fn ctx() -> Result<DalContext> {
     let pg_pool = create_pg_pool().await?;
     let nats_conn = connect_to_nats().await?;
     let veritech = create_veritech_client(nats_conn.clone());
+    let symmetric_crypto_service = create_symmetric_crypto_service().await?;
 
     let job_processor = connect_processor(nats_conn.clone()).await?;
 
@@ -68,6 +70,7 @@ async fn ctx() -> Result<DalContext> {
         encryption_key,
         None,
         None,
+        symmetric_crypto_service,
     );
 
     Ok(DalContext::builder(services_context, false)
@@ -102,6 +105,27 @@ async fn load_encryption_key() -> Result<EncryptionKey> {
     };
 
     EncryptionKey::load(path).await.map_err(Into::into)
+}
+
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
+async fn create_symmetric_crypto_service() -> Result<SymmetricCryptoService> {
+    let active_key = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        Buck2Resources::read()?.get_ends_with("dev.donkey.key")?
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        Path::new(&dir).join("../../lib/dal/dev.donkey.key")
+    } else {
+        unimplemented!("not running with Buck2 or Cargo, unsupported")
+    };
+
+    SymmetricCryptoService::from_config(
+        &SymmetricCryptoServiceConfigFile {
+            active_key: active_key.to_string_lossy().into_owned(),
+            extra_keys: Default::default(),
+        }
+        .try_into()?,
+    )
+    .await
+    .map_err(Into::into)
 }
 
 async fn connect_processor(

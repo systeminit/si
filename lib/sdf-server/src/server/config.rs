@@ -7,11 +7,11 @@ use std::{
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
-use si_settings::{CanonicalFile, CanonicalFileError};
-use si_std::SensitiveString;
+use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -63,6 +63,8 @@ pub struct Config {
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
 
+    symmetric_crypto_service: SymmetricCryptoServiceConfig,
+
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
@@ -71,10 +73,6 @@ pub struct Config {
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
-}
-
-fn default_module_index_url() -> String {
-    DEFAULT_MODULE_INDEX_URL.into()
 }
 
 impl StandardConfig for Config {
@@ -136,6 +134,10 @@ impl Config {
         &self.posthog
     }
 
+    pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
+        &self.symmetric_crypto_service
+    }
+
     /// URL to the module index service
     #[must_use]
     pub fn module_index_url(&self) -> &str {
@@ -173,6 +175,8 @@ pub struct ConfigFile {
     pub posthog: PosthogConfig,
     #[serde(default)]
     pub module_index_url: String,
+    #[serde(default = "default_symmetric_crypto_config")]
+    symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
 
 impl Default for ConfigFile {
@@ -187,6 +191,7 @@ impl Default for ConfigFile {
             pkgs_path: default_pkgs_path(),
             posthog: Default::default(),
             module_index_url: default_module_index_url(),
+            symmetric_crypto_service: default_symmetric_crypto_config(),
         }
     }
 }
@@ -211,6 +216,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
+        config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.build().map_err(Into::into)
     }
 }
@@ -260,6 +266,17 @@ fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
 
+fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
+    SymmetricCryptoServiceConfigFile {
+        active_key: "/run/sdf/donkey.key".into(),
+        extra_keys: vec![],
+    }
+}
+
+fn default_module_index_url() -> String {
+    DEFAULT_MODULE_INDEX_URL.into()
+}
+
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
 pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
@@ -296,6 +313,11 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = resources
+        .get_ends_with("dev.donkey.key")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = resources
         .get_ends_with("pkgs_path")
         .map_err(ConfigError::development)?
@@ -305,12 +327,17 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
     config.pkgs_path = pkgs_path;
 
     Ok(())
@@ -336,6 +363,10 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .join("../../lib/cyclone-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = Path::new(&dir)
+        .join("../../lib/dal/dev.donkey.key")
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = Path::new(&dir)
         .join("../../pkgs/")
         .to_string_lossy()
@@ -344,12 +375,17 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
     config.pkgs_path = pkgs_path;
 
     Ok(())

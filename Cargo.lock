@@ -660,6 +660,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "ciborium"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "effd91f6c78e5a4ace8a5d3c0b6bfaec9e2baaef55f3efc00e45fb2e477ee926"
+dependencies = [
+ "ciborium-io",
+ "ciborium-ll",
+ "serde",
+]
+
+[[package]]
+name = "ciborium-io"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdf919175532b369853f5d5e20b26b43112613fd6fe7aee757e35f7a44642656"
+
+[[package]]
+name = "ciborium-ll"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "defaa24ecc093c77630e6c15e17c51f5e187bf35ee514f4e2d67baaa96dae22b"
+dependencies = [
+ "ciborium-io",
+ "half",
+]
+
+[[package]]
 name = "clap"
 version = "4.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1142,6 +1169,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-settings",
+ "si-std",
  "sodiumoxide",
  "telemetry",
  "thiserror",
@@ -1159,8 +1187,10 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "base64 0.21.2",
+ "blake3",
  "buck2-resources",
  "chrono",
+ "ciborium",
  "convert_case 0.6.0",
  "council-server",
  "dal-test",
@@ -1188,8 +1218,10 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with 3.3.0",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
+ "si-hash",
  "si-pkg",
  "sodiumoxide",
  "strum",
@@ -1220,6 +1252,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-std",
@@ -2036,6 +2069,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2738,6 +2777,7 @@ dependencies = [
  "si-pkg",
  "si-posthog",
  "si-settings",
+ "si-std",
  "stream-cancel",
  "telemetry",
  "thiserror",
@@ -2970,7 +3010,6 @@ dependencies = [
 name = "object-tree"
 version = "0.1.0"
 dependencies = [
- "blake3",
  "petgraph",
  "remain",
  "serde",
@@ -3389,9 +3428,11 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
+ "si-std",
  "stream-cancel",
  "telemetry",
  "thiserror",
@@ -4260,6 +4301,7 @@ dependencies = [
  "serde_json",
  "serde_url_params",
  "serde_with 3.3.0",
+ "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-pkg",
@@ -4703,6 +4745,7 @@ dependencies = [
  "self-replace",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-posthog",
  "sodiumoxide",
  "tar",
@@ -4711,6 +4754,21 @@ dependencies = [
  "thiserror",
  "tokio",
  "toml 0.7.6",
+]
+
+[[package]]
+name = "si-crypto"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "remain",
+ "serde",
+ "si-hash",
+ "si-std",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -4752,6 +4810,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-hash"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "si-pkg"
 version = "0.1.0"
 dependencies = [
@@ -4763,6 +4830,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-hash",
  "strum",
  "tempfile",
  "thiserror",
@@ -4793,7 +4861,7 @@ dependencies = [
  "config-file",
  "remain",
  "serde",
- "serde_with 3.3.0",
+ "si-std",
  "thiserror",
 ]
 
@@ -4801,7 +4869,10 @@ dependencies = [
 name = "si-std"
 version = "0.1.0"
 dependencies = [
+ "remain",
  "serde",
+ "serde_with 3.3.0",
+ "thiserror",
 ]
 
 [[package]]

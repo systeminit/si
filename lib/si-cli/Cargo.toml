@@ -27,6 +27,7 @@ reqwest = { workspace = true }
 self-replace = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-crypto = { path = "../../lib/si-crypto" }
 si-posthog = { path = "../../lib/si-posthog-rs" }
 sodiumoxide = { workspace = true }
 tar = { workspace = true }

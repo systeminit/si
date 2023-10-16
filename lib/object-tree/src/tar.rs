@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::Hash;
+use si_hash::Hash;
 
 pub mod read;
 pub mod write;

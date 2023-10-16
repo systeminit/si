@@ -17,6 +17,9 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
+use si_crypto::{
+    SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
+};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
@@ -88,6 +91,7 @@ pub struct Config {
     jwt_signing_private_key_path: String,
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
+    symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
 }
 
 impl Config {
@@ -163,6 +167,8 @@ pub struct TestContext {
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
+    /// A service that can encrypt values based on the loaded donkeys
+    symmetric_crypto_service: SymmetricCryptoService,
 }
 
 impl TestContext {
@@ -236,6 +242,7 @@ impl TestContext {
             self.encryption_key.clone(),
             self.config.pkgs_path.to_owned(),
             None,
+            self.symmetric_crypto_service.clone(),
         )
     }
 
@@ -305,12 +312,17 @@ impl TestContextBuilder {
         let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
             as Box<dyn JobQueueProcessor + Send + Sync>;
 
+        let symmetric_crypto_service =
+            SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
+                .await?;
+
         Ok(TestContext {
             config,
             pg_pool,
             nats_conn,
             job_processor,
             encryption_key: self.encryption_key.clone(),
+            symmetric_crypto_service,
         })
     }
 
@@ -429,11 +441,7 @@ pub fn pinga_server(services_context: &ServicesContext) -> Result<pinga_server::
     let server = pinga_server::Server::from_services(
         config.instance_id(),
         config.concurrency(),
-        services_context.encryption_key(),
-        services_context.nats_conn().clone(),
-        services_context.pg_pool().clone(),
-        services_context.veritech().clone(),
-        services_context.job_processor(),
+        services_context.clone(),
     )
     .wrap_err("failed to create Pinga server")?;
 
@@ -541,6 +549,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .to_owned()
             .expect("no pkgs path configured"),
         test_context.config.module_index_url.clone(),
+        services_ctx.symmetric_crypto_service(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -647,6 +656,10 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .get_ends_with("dev.jwt_signing_private_key.pem")?
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = resources
+        .get_ends_with("dev.donkey.key")?
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = resources
         .get_ends_with("pkgs_path")?
         .to_string_lossy()
@@ -656,6 +669,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -663,6 +677,13 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+    builder.symmetric_crypto_service_config(
+        SymmetricCryptoServiceConfigFile {
+            active_key: symmetric_crypto_service_key,
+            extra_keys: vec![],
+        }
+        .try_into()?,
+    );
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
@@ -681,6 +702,10 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         .join("../../config/keys/dev.jwt_signing_private_key.pem")
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = Path::new(&dir)
+        .join("../../lib/dal/dev.donkey.key")
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = Path::new(&dir)
         .join("../../pkgs")
         .to_string_lossy()
@@ -690,6 +715,7 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -697,6 +723,13 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
+    builder.symmetric_crypto_service_config(
+        SymmetricCryptoServiceConfigFile {
+            active_key: symmetric_crypto_service_key,
+            extra_keys: vec![],
+        }
+        .try_into()?,
+    );
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())

@@ -10,6 +10,7 @@ rust_library(
         "//lib/si-pkg:si-pkg",
         "//lib/si-posthog-rs:si-posthog",
         "//lib/si-settings:si-settings",
+        "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",
         "//third-party/rust:base64",

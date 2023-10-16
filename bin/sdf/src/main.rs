@@ -1,10 +1,12 @@
 #![recursion_limit = "256"]
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use color_eyre::Result;
 use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
+    ServicesContext,
 };
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
@@ -75,32 +77,34 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let jwt_public_signing_key =
         Server::load_jwt_public_signing_key(config.jwt_signing_public_key_path()).await?;
 
-    let nats = Server::connect_to_nats(config.nats()).await?;
+    let nats_conn = Server::connect_to_nats(config.nats()).await?;
 
     let (job_client, job_processor) = JobProcessor::connect(&config).await?;
 
-    let (_resource_job_client, resource_job_processor) = JobProcessor::connect(&config).await?;
-    let (_, status_receiver_job_processor) = JobProcessor::connect(&config).await?;
-
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
-    let veritech = Server::create_veritech_client(nats.clone());
+    let veritech = Server::create_veritech_client(nats_conn.clone());
+
+    let symmetric_crypto_service =
+        Server::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
     let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
 
     let module_index_url = config.module_index_url().to_string();
 
+    let services_context = ServicesContext::new(
+        pg_pool,
+        nats_conn,
+        job_processor,
+        veritech,
+        Arc::from(encryption_key),
+        Some(pkgs_path),
+        Some(module_index_url),
+        symmetric_crypto_service,
+    );
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
-        Server::migrate_database(
-            &pg_pool,
-            &nats,
-            job_processor.clone(),
-            veritech.clone(),
-            &encryption_key,
-            pkgs_path.to_owned(),
-            module_index_url.clone(),
-        )
-        .await?;
+        Server::migrate_database(&services_context).await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
             info!(
                 "migration mode is {}, shutting down",
@@ -120,75 +124,39 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         IncomingStream::HTTPSocket(_) => {
             let (server, initial_shutdown_broadcast_rx) = Server::http(
                 config,
-                pg_pool.clone(),
-                nats.clone(),
-                job_processor,
-                veritech.clone(),
-                encryption_key,
+                services_context.clone(),
                 jwt_public_signing_key,
                 posthog_client,
-                pkgs_path,
-                module_index_url,
             )?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             Server::start_resource_refresh_scheduler(
-                pg_pool.clone(),
-                nats.clone(),
-                resource_job_processor,
-                veritech.clone(),
-                encryption_key,
+                services_context.clone(),
                 initial_shutdown_broadcast_rx,
             )
             .await;
 
-            Server::start_status_updater(
-                pg_pool,
-                nats,
-                status_receiver_job_processor,
-                veritech,
-                encryption_key,
-                second_shutdown_broadcast_rx,
-            )
-            .await?;
+            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }
         IncomingStream::UnixDomainSocket(_) => {
             let (server, initial_shutdown_broadcast_rx) = Server::uds(
                 config,
-                pg_pool.clone(),
-                nats.clone(),
-                job_processor,
-                veritech.clone(),
-                encryption_key,
+                services_context.clone(),
                 jwt_public_signing_key,
                 posthog_client,
-                pkgs_path,
-                module_index_url,
             )
             .await?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             Server::start_resource_refresh_scheduler(
-                pg_pool.clone(),
-                nats.clone(),
-                resource_job_processor,
-                veritech.clone(),
-                encryption_key,
+                services_context.clone(),
                 initial_shutdown_broadcast_rx,
             )
             .await;
 
-            Server::start_status_updater(
-                pg_pool,
-                nats,
-                status_receiver_job_processor,
-                veritech,
-                encryption_key,
-                second_shutdown_broadcast_rx,
-            )
-            .await?;
+            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }

@@ -1,6 +1,6 @@
 use crate::key_management::{
-    ensure_encryption_keys, ensure_jwt_public_signing_key, format_credentials_for_veritech,
-    get_si_data_dir, get_user_email,
+    ensure_encryption_keys, ensure_jwt_public_signing_key, ensure_symmetric_crypto_key,
+    format_credentials_for_veritech, get_si_data_dir, get_user_email,
 };
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
@@ -26,6 +26,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
     }
 
     ensure_encryption_keys().await?;
+    ensure_symmetric_crypto_key().await?;
     ensure_jwt_public_signing_key().await?;
     let si_data_dir = get_si_data_dir().await?;
 

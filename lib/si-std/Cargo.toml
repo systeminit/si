@@ -8,4 +8,7 @@ publish = false
 # NOTE: dependencies should be extremely minimal or very broadly re-used
 # amongst a potential large number of component crates
 [dependencies]
+remain = { workspace = true }
 serde = { version = "1.0.123", features = ["derive"] }
+serde_with = { workspace = true }
+thiserror = { workspace = true }
