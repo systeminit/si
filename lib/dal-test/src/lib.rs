@@ -17,7 +17,9 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
-use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_crypto::{
+    SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
+};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_std::ResultExt;
@@ -675,10 +677,13 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
-    builder.symmetric_crypto_service_config(SymmetricCryptoServiceConfig {
-        active_key: symmetric_crypto_service_key.into(),
-        extra_keys: vec![],
-    });
+    builder.symmetric_crypto_service_config(
+        SymmetricCryptoServiceConfigFile {
+            active_key: symmetric_crypto_service_key,
+            extra_keys: vec![],
+        }
+        .try_into()?,
+    );
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
@@ -718,10 +723,13 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
     builder.cyclone_encryption_key_path(cyclone_encryption_key_path);
     builder.jwt_signing_public_key_path(jwt_signing_public_key_path);
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
-    builder.symmetric_crypto_service_config(SymmetricCryptoServiceConfig {
-        active_key: symmetric_crypto_service_key.into(),
-        extra_keys: vec![],
-    });
+    builder.symmetric_crypto_service_config(
+        SymmetricCryptoServiceConfigFile {
+            active_key: symmetric_crypto_service_key,
+            extra_keys: vec![],
+        }
+        .try_into()?,
+    );
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())

@@ -4,6 +4,7 @@ rust_library(
     name = "si-crypto",
     deps = [
         "//lib/si-hash:si-hash",
+        "//lib/si-std:si-std",
         "//third-party/rust:ciborium",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

@@ -20,5 +20,5 @@ mod symmetric;
 
 pub use symmetric::{
     SymmetricCryptoError, SymmetricCryptoResult, SymmetricCryptoService,
-    SymmetricCryptoServiceConfig, SymmetricKey, SymmetricNonce,
+    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, SymmetricKey, SymmetricNonce,
 };

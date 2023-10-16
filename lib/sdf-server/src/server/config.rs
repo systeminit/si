@@ -7,7 +7,7 @@ use std::{
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_crypto::SymmetricCryptoServiceConfig;
+use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
@@ -176,7 +176,7 @@ pub struct ConfigFile {
     #[serde(default)]
     pub module_index_url: String,
     #[serde(default = "default_symmetric_crypto_config")]
-    symmetric_crypto_service: SymmetricCryptoServiceConfig,
+    symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
 
 impl Default for ConfigFile {
@@ -216,7 +216,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pkgs_path(value.pkgs_path.try_into()?);
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
-        config.symmetric_crypto_service(value.symmetric_crypto_service);
+        config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.build().map_err(Into::into)
     }
 }
@@ -266,8 +266,8 @@ fn default_pkgs_path() -> String {
     "/run/sdf/pkgs/".to_string()
 }
 
-fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfig {
-    SymmetricCryptoServiceConfig {
+fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
+    SymmetricCryptoServiceConfigFile {
         active_key: "/run/sdf/donkey.key".into(),
         extra_keys: vec![],
     }
@@ -334,8 +334,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
-    config.symmetric_crypto_service = SymmetricCryptoServiceConfig {
-        active_key: symmetric_crypto_service_key.into(),
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
         extra_keys: vec![],
     };
     config.pkgs_path = pkgs_path;
@@ -382,8 +382,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
-    config.symmetric_crypto_service = SymmetricCryptoServiceConfig {
-        active_key: symmetric_crypto_service_key.into(),
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
         extra_keys: vec![],
     };
     config.pkgs_path = pkgs_path;

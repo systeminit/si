@@ -6,7 +6,7 @@ use dal::{
     pkg::PkgExporter, ChangeSet, ChangeSetPk, DalContext, JobQueueProcessor, NatsProcessor, Schema,
     ServicesContext, StandardModel, Tenancy, Workspace,
 };
-use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfigFile};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use veritech_client::{Client as VeritechClient, EncryptionKey};
@@ -128,10 +128,13 @@ async fn create_symmetric_crypto_service() -> Result<SymmetricCryptoService> {
         unimplemented!("not running with Buck2 or Cargo, unsupported")
     };
 
-    SymmetricCryptoService::from_config(&SymmetricCryptoServiceConfig {
-        active_key,
-        extra_keys: Default::default(),
-    })
+    SymmetricCryptoService::from_config(
+        &SymmetricCryptoServiceConfigFile {
+            active_key: active_key.to_string_lossy().into_owned(),
+            extra_keys: Default::default(),
+        }
+        .try_into()?,
+    )
     .await
     .map_err(Into::into)
 }

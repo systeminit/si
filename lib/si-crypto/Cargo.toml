@@ -11,6 +11,7 @@ remain = { workspace = true }
 serde = { workspace = true }
 sodiumoxide = { workspace = true }
 si-hash = { path = "../../lib/si-hash" }
+si-std = { path = "../../lib/si-std" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

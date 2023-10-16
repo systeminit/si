@@ -4,6 +4,7 @@ use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_hash::Hash;
+use si_std::{CanonicalFile, CanonicalFileError};
 use sodiumoxide::crypto::secretbox;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -14,6 +15,9 @@ pub use sodiumoxide::crypto::secretbox::Nonce as SymmetricNonce;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SymmetricCryptoError {
+    /// When a file fails to be canonicalized
+    #[error(transparent)]
+    CanonicalFile(#[from] CanonicalFileError),
     /// When a cipertext fails to decrypt
     #[error("error when decrypting ciphertext")]
     DecryptionFailed,
@@ -54,10 +58,38 @@ pub struct SymmetricCryptoService {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymmetricCryptoServiceConfig {
     /// The path to the active key file which will be used for all encryption.
-    pub active_key: PathBuf,
+    pub active_key: CanonicalFile,
 
     /// Extra keys which can be used when decrypting data.
-    pub extra_keys: Vec<PathBuf>,
+    pub extra_keys: Vec<CanonicalFile>,
+}
+
+/// A config file representation of a [`SymmetricCryptoService`] configuration.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SymmetricCryptoServiceConfigFile {
+    /// The path to the active key file which will be used for all encryption.
+    pub active_key: String,
+
+    /// Extra keys which can be used when decrypting data.
+    pub extra_keys: Vec<String>,
+}
+
+impl TryFrom<SymmetricCryptoServiceConfigFile> for SymmetricCryptoServiceConfig {
+    type Error = CanonicalFileError;
+
+    fn try_from(value: SymmetricCryptoServiceConfigFile) -> Result<Self, Self::Error> {
+        let active_key = value.active_key.try_into()?;
+
+        let mut extra_keys = Vec::new();
+        for extra_key_str in value.extra_keys {
+            extra_keys.push(extra_key_str.try_into()?);
+        }
+
+        Ok(Self {
+            active_key,
+            extra_keys,
+        })
+    }
 }
 
 impl SymmetricCryptoService {
@@ -84,7 +116,6 @@ impl SymmetricCryptoService {
     ///
     /// Return `Err` if:
     ///
-    /// - A key file was not found
     /// - A key file was not readable (i.e. incorrect permissions and/or ownership)
     /// - A key file could not be successfully parsed
     /// - The [`SymmetricKey`] could not be successfully resolved from loading the key file
