@@ -463,6 +463,10 @@ impl ContainerEngine for DockerEngine {
                     data_dir.join("cyclone_encryption.key").display()
                 ),
                 format!(
+                    "{}:/run/sdf/donkey.key:z",
+                    data_dir.join("donkey.key").display()
+                ),
+                format!(
                     "{}:/run/sdf/jwt_signing_public_key.pem:z",
                     data_dir.join("jwt_signing_public_key.pem").display()
                 ),

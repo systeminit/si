@@ -673,6 +673,14 @@ impl ContainerEngine for PodmanEngine {
                     gid_mappings: None,
                 },
                 ContainerMount {
+                    destination: Some("/run/sdf/donkey.key".to_owned()),
+                    source: Some(data_dir.join("donkey.key").display().to_string()),
+                    options: Some(get_container_mount_opts()),
+                    _type: Some("bind".to_owned()),
+                    uid_mappings: None,
+                    gid_mappings: None,
+                },
+                ContainerMount {
                     destination: Some("/run/sdf/jwt_signing_public_key.pem".to_owned()),
                     source: Some(
                         data_dir

@@ -4745,6 +4745,7 @@ dependencies = [
  "self-replace",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-posthog",
  "sodiumoxide",
  "tar",
