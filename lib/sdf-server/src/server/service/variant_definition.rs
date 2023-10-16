@@ -18,18 +18,16 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    socket::SocketEdgeKind,
     socket::SocketError,
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributePrototype,
-    AttributePrototypeError, AttributePrototypeId, AttributeValueError, AttributeValueId,
-    ChangeSetError, DalContext, ExternalProvider, ExternalProviderError, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBinding, FuncBindingError, FuncError, FuncId, InternalProvider,
-    InternalProviderError, InternalProviderId, LeafInputLocation, LeafKind, Prop, PropError,
-    PropKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, SocketId,
-    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError,
-    ValidationPrototype, ValidationPrototypeContext, ValidationPrototypeError,
-    ValidationPrototypeId, WsEventError,
+    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError, DalContext,
+    ExternalProvider, ExternalProviderError, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBinding, FuncBindingError, FuncError, FuncId, InternalProvider, InternalProviderError,
+    LeafInputLocation, LeafKind, Prop, PropError, PropKind, SchemaError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, SocketId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, UserError, ValidationPrototype, ValidationPrototypeContext,
+    ValidationPrototypeError, ValidationPrototypeId, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -94,6 +92,8 @@ pub enum SchemaVariantDefinitionError {
     InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for socket: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
+    #[error("updating the schema variant found an invalid state: {0}")]
+    InvalidState(String),
     #[error("No new asset was created")]
     NoAssetCreated,
     #[error(transparent)]
@@ -274,35 +274,38 @@ pub async fn migrate_validation_functions_to_new_schema_variant(
 }
 
 #[derive(Clone, Debug)]
+pub struct ParentAttributeValueDefinition {
+    prop_path: String,
+    key: Option<String>,
+}
+
+#[derive(Clone, Debug)]
 pub struct AttributeValueDefinition {
-    pub parent: Option<AttributeValueId>,
+    pub parent: Option<ParentAttributeValueDefinition>,
     pub value: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AttributePrototypeArgumentDefinition {
     kind: AttributePrototypeArgumentKind,
-    internal_provider_id: InternalProviderId,
     func_argument_id: FuncArgumentId,
     name: String,
 }
 
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum AttributePrototypeArgumentKind {
-    InternalProviderProp { kind: PropKind },
-    InternalProviderSocket { kind: SocketEdgeKind },
     Invalid,
+    Prop { kind: PropKind },
+    Socket,
 }
 
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum AttributePrototypeContextKind {
-    ExternalProviderSocket { name: String, kind: SocketEdgeKind },
-    InternalProviderProp { path: String, kind: PropKind },
-    InternalProviderSocket { name: String, kind: SocketEdgeKind },
+    ExternalProvider { name: String },
     Prop { path: String, kind: PropKind },
 }
 
@@ -312,8 +315,8 @@ pub struct AttributePrototypeDefinition {
     pub func_id: FuncId,
     pub attribute_value: AttributeValueDefinition,
     pub context: AttributePrototypeContextKind,
-    pub key: Option<String>,
     pub arguments: Vec<AttributePrototypeArgumentDefinition>,
+    pub key: Option<String>,
 }
 
 // Returns prototypes that were not migrated
@@ -323,49 +326,86 @@ pub async fn migrate_attribute_functions_to_new_schema_variant(
     new_schema_variant: &SchemaVariant,
 ) -> SchemaVariantDefinitionResult<Vec<AttributePrototypeDefinition>> {
     let new_props = SchemaVariant::all_props(ctx, *new_schema_variant.id()).await?;
-    let new_sockets = new_schema_variant.sockets(ctx).await?;
+    let new_external_providers =
+        ExternalProvider::list_for_schema_variant(ctx, *new_schema_variant.id()).await?;
+    let new_internal_providers =
+        InternalProvider::list_for_schema_variant(ctx, *new_schema_variant.id()).await?;
+
     let mut invalid_attribute_prototypes = Vec::new();
     'outer: for attribute_prototype in attribute_prototypes {
-        let existing_value = &attribute_prototype.attribute_value;
-        let maybe_parent_attribute_value = existing_value.parent;
+        let (new_context, new_attribute_prototype) = match &attribute_prototype.context {
+            AttributePrototypeContextKind::ExternalProvider { name } => {
+                if let Some(new_external_provider) =
+                    new_external_providers.iter().find(|s| s.name() == name)
+                {
+                    let context = AttributeContext::builder()
+                        .set_external_provider_id(*new_external_provider.id())
+                        .to_context()?;
+                    let prototype = AttributePrototype::find_for_context_and_key(
+                        ctx,
+                        context,
+                        &attribute_prototype.key,
+                    )
+                    .await?
+                    .pop();
+                    (context, prototype)
+                } else {
+                    // Arguments don't match, bail on this prototype
+                    invalid_attribute_prototypes.push(attribute_prototype);
+                    continue 'outer;
+                }
+            }
+            AttributePrototypeContextKind::Prop { path, kind } => {
+                if let Some(new_prop) = new_props
+                    .iter()
+                    .find(|p| p.path().as_str() == path && p.kind() == kind)
+                {
+                    let context = AttributeContext::builder()
+                        .set_prop_id(*new_prop.id())
+                        .to_context()?;
+                    let prototype = AttributePrototype::find_for_context_and_key(
+                        ctx,
+                        context,
+                        &attribute_prototype.key,
+                    )
+                    .await?
+                    .pop();
+                    (context, prototype)
+                } else {
+                    // Arguments don't match, bail on this prototype
+                    invalid_attribute_prototypes.push(attribute_prototype);
+                    continue 'outer;
+                }
+            }
+        };
 
         let mut arguments_to_create = Vec::new();
         for apa in &attribute_prototype.arguments {
             match apa.kind {
-                AttributePrototypeArgumentKind::InternalProviderProp { kind } => {
+                AttributePrototypeArgumentKind::Prop { kind } => {
                     if let Some(new_prop) = new_props
                         .iter()
                         .find(|p| p.path().as_str() == apa.name && p.kind() == &kind)
                     {
-                        let internal_provider =
+                        let new_internal_provider =
                             InternalProvider::find_for_prop(ctx, *new_prop.id())
                                 .await?
                                 .ok_or_else(|| {
                                     InternalProviderError::NotFoundForProp(*new_prop.id())
                                 })?;
-
-                        let mut apa = apa.clone();
-                        apa.internal_provider_id = *internal_provider.id();
-                        arguments_to_create.push(apa);
+                        arguments_to_create.push((apa, *new_internal_provider.id()));
                     } else {
                         // Arguments don't match, bail on this prototype
                         invalid_attribute_prototypes.push(attribute_prototype);
                         continue 'outer;
                     }
                 }
-                AttributePrototypeArgumentKind::InternalProviderSocket { kind } => {
-                    if let Some(new_socket) = new_sockets
+                AttributePrototypeArgumentKind::Socket => {
+                    if let Some(new_internal_provider) = new_internal_providers
                         .iter()
-                        .find(|s| s.name() == apa.name && s.edge_kind() == &kind)
+                        .find(|s| s.name() == apa.name && s.prop_id().is_none())
                     {
-                        let internal_provider =
-                            new_socket.internal_provider(ctx).await?.ok_or_else(|| {
-                                InternalProviderError::NotFoundForSocket(*new_socket.id())
-                            })?;
-
-                        let mut apa = apa.clone();
-                        apa.internal_provider_id = *internal_provider.id();
-                        arguments_to_create.push(apa);
+                        arguments_to_create.push((apa, *new_internal_provider.id()));
                     } else {
                         // Arguments don't match, bail on this prototype
                         invalid_attribute_prototypes.push(attribute_prototype);
@@ -379,6 +419,61 @@ pub async fn migrate_attribute_functions_to_new_schema_variant(
             }
         }
 
+        if let Some(mut new_attribute_prototype) = new_attribute_prototype {
+            new_attribute_prototype
+                .set_func_id(ctx, attribute_prototype.func_id)
+                .await?;
+            for mut arg in AttributePrototypeArgument::list_for_attribute_prototype(
+                ctx,
+                *new_attribute_prototype.id(),
+            )
+            .await?
+            {
+                arg.delete_by_id(ctx).await?;
+            }
+
+            for (argument, id) in arguments_to_create {
+                AttributePrototypeArgument::new_for_intra_component(
+                    ctx,
+                    *new_attribute_prototype.id(),
+                    argument.func_argument_id,
+                    id,
+                )
+                .await?;
+            }
+
+            continue;
+        }
+
+        let existing_value = &attribute_prototype.attribute_value;
+        let new_maybe_parent_attribute_value = if let Some(parent) = &existing_value.parent {
+            if let Some(new_prop) = new_props
+                .iter()
+                .find(|p| p.path().as_str() == parent.prop_path)
+            {
+                let context = AttributeContext::builder()
+                    .set_prop_id(*new_prop.id())
+                    .to_context()?;
+                if let Some(prototype) =
+                    AttributePrototype::find_for_context_and_key(ctx, context, &parent.key)
+                        .await?
+                        .pop()
+                {
+                    prototype
+                        .attribute_values(ctx)
+                        .await?
+                        .pop()
+                        .map(|v| *v.id())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         let (mut func_binding, fbrv) = FuncBinding::create_with_existing_value(
             ctx,
             serde_json::json!({}),
@@ -391,96 +486,24 @@ pub async fn migrate_attribute_functions_to_new_schema_variant(
         // AttributeValue::update_from_prototype_function
         func_binding.set_code_sha256(ctx, "0").await?;
 
-        let context = match &attribute_prototype.context {
-            AttributePrototypeContextKind::Prop { path, kind } => {
-                if let Some(new_prop) = new_props
-                    .iter()
-                    .find(|p| p.path().as_str() == path && p.kind() == kind)
-                {
-                    AttributeContext::builder()
-                        .set_prop_id(*new_prop.id())
-                        .to_context()?
-                } else {
-                    // Arguments don't match, bail on this prototype
-                    invalid_attribute_prototypes.push(attribute_prototype);
-                    continue;
-                }
-            }
-            AttributePrototypeContextKind::InternalProviderProp { path, kind } => {
-                if let Some(new_prop) = new_props
-                    .iter()
-                    .find(|p| p.path().as_str() == path && p.kind() == kind)
-                {
-                    AttributeContext::builder()
-                        .set_prop_id(*new_prop.id())
-                        .to_context()?
-                } else {
-                    // Arguments don't match, bail on this prototype
-                    invalid_attribute_prototypes.push(attribute_prototype);
-                    continue;
-                }
-            }
-            AttributePrototypeContextKind::InternalProviderSocket { name, kind } => {
-                if let Some(new_socket) = new_sockets
-                    .iter()
-                    .find(|s| s.name() == name && s.edge_kind() == kind)
-                {
-                    let internal_provider =
-                        new_socket.internal_provider(ctx).await?.ok_or_else(|| {
-                            SchemaVariantDefinitionError::InternalProviderNotFoundForSocket(
-                                *new_socket.id(),
-                            )
-                        })?;
-
-                    AttributeContext::builder()
-                        .set_internal_provider_id(*internal_provider.id())
-                        .to_context()?
-                } else {
-                    // Arguments don't match, bail on this prototype
-                    invalid_attribute_prototypes.push(attribute_prototype);
-                    continue;
-                }
-            }
-            AttributePrototypeContextKind::ExternalProviderSocket { name, kind } => {
-                if let Some(new_socket) = new_sockets
-                    .iter()
-                    .find(|s| s.name() == name && s.edge_kind() == kind)
-                {
-                    let external_provider =
-                        new_socket.external_provider(ctx).await?.ok_or_else(|| {
-                            SchemaVariantDefinitionError::ExternalProviderNotFoundForSocket(
-                                *new_socket.id(),
-                            )
-                        })?;
-
-                    AttributeContext::builder()
-                        .set_external_provider_id(*external_provider.id())
-                        .to_context()?
-                } else {
-                    // Arguments don't match, bail on this prototype
-                    invalid_attribute_prototypes.push(attribute_prototype);
-                    continue;
-                }
-            }
-        };
-
+        // TODO: create index map
         let prototype = AttributePrototype::new(
             ctx,
             attribute_prototype.func_id,
             *func_binding.id(),
             *fbrv.id(),
-            context,
+            new_context,
             attribute_prototype.key,
-            maybe_parent_attribute_value,
+            new_maybe_parent_attribute_value,
         )
         .await?;
 
-        for argument in arguments_to_create {
+        for (argument, id) in arguments_to_create {
             AttributePrototypeArgument::new_for_intra_component(
                 ctx,
                 *prototype.id(),
                 argument.func_argument_id,
-                argument.internal_provider_id,
+                id,
             )
             .await?;
         }
@@ -549,109 +572,100 @@ pub async fn cleanup_orphaned_objects(
             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id()).await?;
         let mut arguments = Vec::with_capacity(args.len());
         for argument in args {
-            let (kind, name, internal_provider_id) = if argument.tail_component_id().is_some()
+            let (kind, name) = if argument.tail_component_id().is_some()
                 || argument.head_component_id().is_some()
             {
-                (
-                    AttributePrototypeArgumentKind::Invalid,
-                    String::new(),
-                    InternalProviderId::NONE,
-                )
+                (AttributePrototypeArgumentKind::Invalid, String::new())
             } else if let Some(internal_provider) =
                 InternalProvider::get_by_id(ctx, &argument.internal_provider_id()).await?
             {
-                let (kind, name) = if let Some(prop) =
-                    Prop::get_by_id(ctx, internal_provider.prop_id()).await?
+                let (kind, name) = if internal_provider.sockets(ctx).await?.pop().is_some() {
+                    let kind = AttributePrototypeArgumentKind::Socket;
+                    (kind, internal_provider.name().to_owned())
+                } else if let Some(prop) = Prop::get_by_id(ctx, internal_provider.prop_id()).await?
                 {
-                    let kind =
-                        AttributePrototypeArgumentKind::InternalProviderProp { kind: *prop.kind() };
-                    (kind, prop.path().as_str().to_string())
-                } else if let Some(socket) = internal_provider.sockets(ctx).await?.pop() {
-                    let kind = AttributePrototypeArgumentKind::InternalProviderSocket {
-                        kind: *socket.edge_kind(),
-                    };
-                    (kind, socket.name().to_owned())
+                    let kind = AttributePrototypeArgumentKind::Prop { kind: *prop.kind() };
+                    (kind, prop.path().as_str().to_owned())
                 } else {
-                    // A internal provider should always have a socket or a prop
-                    unreachable!();
+                    return Err(SchemaVariantDefinitionError::InvalidState(format!(
+                        "internal provider should have a prop or a socket: {argument:?}"
+                    )));
                 };
-                (kind, name, *internal_provider.id())
+                (kind, name)
             } else {
                 // External Providers require tail_component_id and
                 // head_component_id, which should not exist at a schema level
                 // attribute prototype argument, and are handled by the first branch
                 // so unreachable
-                unreachable!();
+                return Err(SchemaVariantDefinitionError::InvalidState(format!("attribute prototype argument for custom function is taking an input that's not a prop or a input socket: {argument:?}")));
             };
 
             arguments.push(AttributePrototypeArgumentDefinition {
                 func_argument_id: argument.func_argument_id(),
                 name,
                 kind,
-                internal_provider_id,
             });
         }
 
-        let attribute_value =
-            if let Some(attribute_value) = prototype.attribute_values(ctx).await?.pop() {
-                AttributeValueDefinition {
-                    parent: attribute_value
-                        .parent_attribute_value(ctx)
-                        .await?
-                        .map(|a| *a.id()),
-                    value: attribute_value.get_value(ctx).await?,
-                }
+        let attribute_value = if let Some(attribute_value) =
+            prototype.attribute_values(ctx).await?.pop()
+        {
+            let prop = if let Some(parent) = attribute_value.parent_attribute_value(ctx).await? {
+                Prop::get_by_id(ctx, &parent.context.prop_id()).await?
             } else {
-                AttributeValueDefinition {
-                    parent: None,
-                    value: None,
-                }
+                None
             };
+            AttributeValueDefinition {
+                parent: prop.map(|prop| ParentAttributeValueDefinition {
+                    prop_path: prop.path().as_str().to_owned(),
+                    key: attribute_value.key().map(ToOwned::to_owned),
+                }),
+                value: attribute_value.get_value(ctx).await?,
+            }
+        } else {
+            AttributeValueDefinition {
+                parent: None,
+                value: None,
+            }
+        };
 
-        attribute_prototypes.push(AttributePrototypeDefinition {
-            id: *prototype.id(),
-            func_id: prototype.func_id(),
-            attribute_value,
-            context: if let Some(prop) = prototype.context.prop(ctx).await? {
-                AttributePrototypeContextKind::Prop {
-                    path: prop.path().as_str().to_owned(),
-                    kind: *prop.kind(),
-                }
-            } else if let Some(internal_provider) = prototype.context.internal_provider(ctx).await?
-            {
-                if let Some(prop) = Prop::get_by_id(ctx, internal_provider.prop_id()).await? {
-                    AttributePrototypeContextKind::InternalProviderProp {
+        let func = Func::get_by_id(ctx, &prototype.func_id())
+            .await?
+            .ok_or_else(|| SchemaVariantDefinitionError::FuncNotFound(prototype.func_id()))?;
+
+        if !func.is_intrinsic() {
+            attribute_prototypes.push(AttributePrototypeDefinition {
+                id: *prototype.id(),
+                func_id: prototype.func_id(),
+                attribute_value,
+                context: if let Some(prop) = prototype.context.prop(ctx).await? {
+                    AttributePrototypeContextKind::Prop {
                         path: prop.path().as_str().to_owned(),
                         kind: *prop.kind(),
                     }
-                } else if let Some(socket) = internal_provider.sockets(ctx).await?.pop() {
-                    AttributePrototypeContextKind::InternalProviderSocket {
-                        name: socket.name().to_owned(),
-                        kind: *socket.edge_kind(),
+                } else if let Some(external_provider) =
+                    prototype.context.external_provider(ctx).await?
+                {
+                    AttributePrototypeContextKind::ExternalProvider {
+                        name: external_provider.name().to_owned(),
                     }
+                } else if prototype.context.internal_provider_id().is_some() {
+                    continue;
+                } else if prototype.context.component_id().is_some() {
+                    // We disabled that feature, if we decide to bring it back we will need to support it
+                    // here too
+                    return Err(SchemaVariantDefinitionError::InvalidState(format!(
+                        "attribute prototype should not have a component: {prototype:?}"
+                    )));
                 } else {
-                    unreachable!()
-                }
-            } else if let Some(external_provider) = prototype.context.external_provider(ctx).await?
-            {
-                if let Some(socket) = external_provider.sockets(ctx).await?.pop() {
-                    AttributePrototypeContextKind::ExternalProviderSocket {
-                        name: socket.name().to_owned(),
-                        kind: *socket.edge_kind(),
-                    }
-                } else {
-                    unreachable!()
-                }
-            } else if prototype.context.component_id().is_some() {
-                // We disabled that feature, if we decide to bring it back we will need to support it
-                // here too
-                unreachable!();
-            } else {
-                unreachable!("{:?}", prototype);
-            },
-            key: prototype.key().map(ToOwned::to_owned),
-            arguments,
-        });
+                    return Err(SchemaVariantDefinitionError::InvalidState(format!(
+                        "attribute prototype should have a context: {prototype:?}"
+                    )));
+                },
+                key: prototype.key().map(ToOwned::to_owned),
+                arguments,
+            });
+        }
 
         AttributePrototype::remove(ctx, prototype.id(), true).await?;
     }
