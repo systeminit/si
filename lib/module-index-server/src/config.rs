@@ -5,7 +5,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
-use si_settings::{CanonicalFile, CanonicalFileError};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 

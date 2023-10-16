@@ -4,10 +4,6 @@ use config_file::ConfigMap;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
-mod canonical_file;
-
-pub use canonical_file::{safe_canonically_join, CanonicalFile, CanonicalFileError};
-
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SettingsError {

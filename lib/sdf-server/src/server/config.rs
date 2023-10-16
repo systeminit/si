@@ -11,8 +11,7 @@ use si_crypto::SymmetricCryptoServiceConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_posthog::PosthogConfig;
-use si_settings::{CanonicalFile, CanonicalFileError};
-use si_std::SensitiveString;
+use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
 use thiserror::Error;
 

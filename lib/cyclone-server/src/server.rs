@@ -6,7 +6,7 @@ use std::{
 
 use axum::routing::{IntoMakeService, Router};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use si_settings::{CanonicalFile, CanonicalFileError};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
 use thiserror::Error;
 use tokio::{

@@ -9,5 +9,5 @@ publish = false
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
 remain = { workspace = true }
 serde = { workspace = true }
-serde_with = { workspace = true }
+si-std = { path = "../../lib/si-std" }
 thiserror = { workspace = true }

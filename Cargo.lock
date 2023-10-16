@@ -1169,6 +1169,7 @@ dependencies = [
  "serde",
  "serde_json",
  "si-settings",
+ "si-std",
  "sodiumoxide",
  "telemetry",
  "thiserror",
@@ -2776,6 +2777,7 @@ dependencies = [
  "si-pkg",
  "si-posthog",
  "si-settings",
+ "si-std",
  "stream-cancel",
  "telemetry",
  "thiserror",
@@ -3430,6 +3432,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-settings",
+ "si-std",
  "stream-cancel",
  "telemetry",
  "thiserror",
@@ -4856,7 +4859,7 @@ dependencies = [
  "config-file",
  "remain",
  "serde",
- "serde_with 3.3.0",
+ "si-std",
  "thiserror",
 ]
 
@@ -4864,7 +4867,10 @@ dependencies = [
 name = "si-std"
 version = "0.1.0"
 dependencies = [
+ "remain",
  "serde",
+ "serde_with 3.3.0",
+ "thiserror",
 ]
 
 [[package]]

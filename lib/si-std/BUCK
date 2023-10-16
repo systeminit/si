@@ -1,10 +1,15 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
+# NOTE: dependencies should be extremely minimal or very broadly re-used
+# amongst a potential large number of component crates
 rust_library(
     name = "si-std",
     edition = "2021",
     deps = [
+        "//third-party/rust:remain",
         "//third-party/rust:serde",
+        "//third-party/rust:serde_with",
+        "//third-party/rust:thiserror",
     ],
     srcs = glob(["src/**/*.rs"]),
 )

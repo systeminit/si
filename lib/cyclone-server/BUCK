@@ -6,6 +6,7 @@ rust_library(
         "//lib/bytes-lines-codec:bytes-lines-codec",
         "//lib/cyclone-core:cyclone-core",
         "//lib/si-settings:si-settings",
+        "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-trait",
         "//third-party/rust:axum",
