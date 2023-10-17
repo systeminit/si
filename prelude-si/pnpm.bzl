@@ -272,6 +272,91 @@ typescript_check = rule(
     },
 )
 
+def prettier_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
+]]:
+    args = cmd_args()
+    args.add("--check")
+    args.add(ctx.attrs.args)
+    args.add(".")
+
+    return _npm_test_impl(
+        ctx,
+        ctx.attrs.prettier[RunInfo],
+        args,
+        "prettier",
+    )
+
+prettier_check = rule(
+    impl = prettier_check_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """List of package source files to track.""",
+        ),
+        "prod_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent prod package paths to source files to track.""",
+        ),
+        "dev_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent dev package paths to source files from to track.""",
+        ),
+        "prettier": attrs.dep(
+            providers = [RunInfo],
+            doc = """prettier dependency.""",
+        ),
+        "args": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Extra arguments passed to prettier.""",
+        ),
+        "package_node_modules": attrs.source(
+            doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
+        ),
+        "env": attrs.dict(
+            key = attrs.string(),
+            value = attrs.arg(),
+            sorted = False,
+            default = {},
+            doc = """Set environment variables for this rule's invocation of prettier. The
+            environment variable values may include macros which are expanded.""",
+        ),
+        "labels": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "contacts": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "remote_execution": buck.re_opts_for_tests_arg(),
+        "_inject_test_env": attrs.default_only(
+            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    },
+)
+
 def node_pkg_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     bin_name = ctx.attrs.bin_name or ctx.attrs.name
     out = ctx.actions.declare_output(bin_name)

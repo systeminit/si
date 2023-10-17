@@ -6,6 +6,7 @@ load(
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
     _pnpm_workspace = "pnpm_workspace",
+    _prettier_check = "prettier_check",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _typescript_runnable_dist = "typescript_runnable_dist",
@@ -93,6 +94,26 @@ def pnpm_workspace(
         name = name,
         src = src or name,
         workspace_package = workspace_package,
+        visibility = visibility,
+        **kwargs
+    )
+
+def prettier_check(
+        prettier_bin = "prettier",
+        prettier = ":prettier",
+        package_node_modules = ":node_modules",
+        visibility = ["PUBLIC"],
+        **kwargs):
+    if not rule_exists(prettier_bin):
+        _npm_bin(
+            name = prettier_bin,
+            node_modules = package_node_modules,
+            visibility = visibility,
+        )
+
+    _prettier_check(
+        prettier = ":{}".format(prettier_bin),
+        package_node_modules = package_node_modules,
         visibility = visibility,
         **kwargs
     )
