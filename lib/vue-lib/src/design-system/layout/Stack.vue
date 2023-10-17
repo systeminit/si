@@ -2,7 +2,7 @@
 with even spacing between them */
 
 <script lang="ts">
-import { h, VNode, PropType } from "vue";
+import { h, VNode, PropType, Fragment } from "vue";
 import { responsiveSpacingProps } from "../utils/size_utils";
 import {
   FunctionalComponentContextArg,
@@ -34,8 +34,11 @@ const Stack = (
   const wrappedChildren = [] as VNode[];
   const children = getSlotChildren(context.slots.default);
   for (let i = 0; i < children.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    wrappedChildren.push(children[i]!);
+    if (!children[i]) continue;
+
+    // NOTE - ran into a weird errors that only appeared on the built version of the app
+    // but resolved it by adding this Fragment wrapper around each child
+    wrappedChildren.push(h(Fragment, {}, [children[i]]));
     if (props.dividers && i < children.length - 1) {
       wrappedChildren.push(h(Divider));
     }
