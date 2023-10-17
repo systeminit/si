@@ -2172,7 +2172,7 @@ mod test {
 
         let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
         let new_change_set = &new_change_set;
-        let mut new_graph = base_graph.clone();
+        let new_graph = base_graph.clone();
 
         let new_onto_component_id = base_change_set
             .generate_ulid()
@@ -2187,7 +2187,7 @@ mod test {
                 .expect("Unable to create NodeWeight"),
             )
             .expect("Unable to add Component B");
-        let new_onto_root_component_edge_index = base_graph
+        let _new_onto_root_component_edge_index = base_graph
             .add_edge(
                 base_graph.root_index,
                 EdgeWeight::new(base_change_set, EdgeWeightKind::Use)

@@ -481,6 +481,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.pg_pool().clone(),
         services_context.veritech().clone(),
         services_context.job_processor(),
+        services_context.symmetric_crypto_service().clone(),
         false,
     )
     .wrap_err("failed to create Rebaser server")?;

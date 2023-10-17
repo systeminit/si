@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use content::hash::ContentHash;
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::SymmetricCryptoService;
@@ -15,7 +14,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
-use veritech_client::{Client, CycloneEncryptionKey};
+use veritech_client::CycloneEncryptionKey;
 
 use crate::builtins::SelectedTestBuiltinSchemas;
 
