@@ -839,6 +839,9 @@ def package_build_context(ctx: AnalysisContext) -> PackageBuildContext:
     for (name, src) in ctx.attrs.dev_deps_srcs.items():
         cmd.add("--src")
         cmd.add(cmd_args(src, format = name + "={}"))
+    if pnpm_toolchain.editorconfig:
+        cmd.add("--editorconfig")
+        cmd.add(pnpm_toolchain.editorconfig)
     cmd.add(srcs_tree.as_output())
 
     ctx.actions.run(cmd, category = "package_build_context")
