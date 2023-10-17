@@ -28,16 +28,15 @@ load(
 )
 
 TypescriptRunnableDistInfo = provider(fields = [
-    "runnable_dist", # [Artifact]
-    "bin", # [str]
+    "runnable_dist",  # [Artifact]
+    "bin",  # [str]
 ])
 
 def _npm_test_impl(
-    ctx: AnalysisContext,
-    program_run_info: RunInfo,
-    program_args: cmd_args,
-    test_info_type: str,
-) -> list[[
+        ctx: AnalysisContext,
+        program_run_info: RunInfo,
+        program_args: cmd_args,
+        test_info_type: str) -> list[[
     DefaultInfo,
     RunInfo,
     ExternalRunnerTestInfo,
@@ -324,7 +323,7 @@ node_pkg_bin = rule(
         "extra_srcs": attrs.list(
             attrs.source(),
             default = [],
-            doc = "Additional file(s) needed to produce the binary"
+            doc = "Additional file(s) needed to produce the binary",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -422,7 +421,7 @@ package_node_modules = rule(
         ),
         "prod_only": attrs.bool(
             default = False,
-            doc = "Only install production dependencies"
+            doc = "Only install production dependencies",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -552,7 +551,7 @@ typescript_dist = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def typescript_runnable_dist_impl(ctx: AnalysisContext) -> list[[
@@ -577,7 +576,7 @@ def typescript_runnable_dist_impl(ctx: AnalysisContext) -> list[[
         TypescriptRunnableDistInfo(
             runnable_dist = out,
             bin = bin,
-        )
+        ),
     ]
 
 typescript_runnable_dist = rule(
@@ -597,7 +596,7 @@ typescript_runnable_dist = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
@@ -620,7 +619,6 @@ def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo
     )
     cmd.hidden([base_path])
 
-
     ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin")
 
     return [
@@ -642,7 +640,7 @@ typescript_runnable_dist_bin = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def vite_app_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
@@ -781,10 +779,9 @@ NodeModulesContext = record(
 )
 
 def node_modules_context(
-    ctx: AnalysisContext,
-    prod_only: bool = False,
-    out_dir: str = "root",
-) -> NodeModulesContext:
+        ctx: AnalysisContext,
+        prod_only: bool = False,
+        out_dir: str = "root") -> NodeModulesContext:
     out = ctx.actions.declare_output(out_dir, dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -855,9 +852,8 @@ PackageDistContext = record(
 )
 
 def package_runnable_dist_context(
-    ctx: AnalysisContext,
-    dist_path: [Artifact, None] = None,
-) -> PackageDistContext:
+        ctx: AnalysisContext,
+        dist_path: [Artifact, None] = None) -> PackageDistContext:
     out = ctx.actions.declare_output("runnable_dist", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -901,14 +897,14 @@ pnpm run --report-summary "$npm_run_command"
 if [[ ! -z "$output_paths" ]]; then
   cp -vr "$output_paths" "$rootpath/$buck_out_directory/"
 fi
-""", is_executable = True);
+""", is_executable = True)
     out = ctx.actions.declare_output("out", dir = True)
     output_join = " ".join(ctx.attrs.outs)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command, out.as_output(), output_join])
     args.hidden([ctx.attrs.srcs])
     args.hidden([ctx.attrs.deps])
     ctx.actions.run(args, category = "pnpm", identifier = "run_library", local_only = True)
-    return [DefaultInfo(default_outputs=[out])]
+    return [DefaultInfo(default_outputs = [out])]
 
 pnpm_task_library = rule(impl = pnpm_task_library_impl, attrs = {
     "command": attrs.string(default = "start", doc = """pnpm command to run"""),
@@ -929,7 +925,7 @@ npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
-""", is_executable = True);
+""", is_executable = True)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
     args.hidden([ctx.attrs.deps])
     args.hidden([ctx.attrs.srcs])
@@ -953,7 +949,7 @@ npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
-""", is_executable = True);
+""", is_executable = True)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
     args.hidden([ctx.attrs.deps])
     args.hidden([ctx.attrs.srcs])

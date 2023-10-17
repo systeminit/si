@@ -26,7 +26,7 @@ def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
             package_build_context = ctx.attrs._package_build_context,
             package_dist_context = ctx.attrs._package_dist_context,
             run_pnpm_script = ctx.attrs._run_pnpm_script,
-        )
+        ),
     ]
 
 pnpm_toolchain = rule(
