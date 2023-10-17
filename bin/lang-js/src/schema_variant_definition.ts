@@ -3,11 +3,11 @@ import { NodeVM } from "vm2";
 import { base64ToJs } from "./base64";
 
 import {
-    failureExecution,
-    FunctionKind,
-    RequestWithCode,
-    ResultFailure,
-    ResultSuccess,
+  failureExecution,
+  FunctionKind,
+  RequestWithCode,
+  ResultFailure,
+  ResultSuccess,
 } from "./function";
 
 import { createSandbox } from "./sandbox";
@@ -52,7 +52,13 @@ export async function executor<Req extends RequestWithCode, Result>(
 export async function executeSchemaVariantDefinition(
   request: SchemaVariantDefinitionRequest
 ): Promise<void> {
-  await executor(request, FunctionKind.SchemaVariantDefinition, debug, wrapCode, execute);
+  await executor(
+    request,
+    FunctionKind.SchemaVariantDefinition,
+    debug,
+    wrapCode,
+    execute
+  );
 }
 
 async function execute(
@@ -65,9 +71,7 @@ async function execute(
   try {
     const runner = vm.run(code);
     result = await new Promise((resolve) => {
-      runner((resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      runner((resolution: Record<string, unknown>) => resolve(resolution));
     });
     debug({ result: JSON.stringify(result) });
   } catch (err) {

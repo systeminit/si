@@ -23,7 +23,7 @@ export type ReconciliationResult =
   | ReconciliationResultFailure;
 
 export interface ReconciliationResultSuccess extends ResultSuccess {
-  updates: { [key: string]: unknown },
+  updates: { [key: string]: unknown };
   actions: string[];
   message: string | undefined;
 }
@@ -37,7 +37,10 @@ export async function executeReconciliation(
   code = wrapCode(code, request.handler);
   debug({ code });
 
-  const sandbox = createSandbox(FunctionKind.Reconciliation, request.executionId);
+  const sandbox = createSandbox(
+    FunctionKind.Reconciliation,
+    request.executionId
+  );
   const vm = createNodeVm(sandbox);
 
   const result = await execute(vm, code, request.executionId, request.args);
@@ -81,19 +84,22 @@ async function execute(
         executionId,
         error: {
           kind: "ReconciliationFieldWrongType",
-          message: 'The updates field type must be an object',
+          message: "The updates field type must be an object",
         },
       };
     }
 
-    if (!_.isArray(reconciliationResult["actions"]) || reconciliationResult["actions"].some((v) => typeof v !== "string")) {
+    if (
+      !_.isArray(reconciliationResult["actions"]) ||
+      reconciliationResult["actions"].some((v) => typeof v !== "string")
+    ) {
       return {
         protocol: "result",
         status: "failure",
         executionId,
         error: {
           kind: "ReconciliationFieldWrongType",
-          message: 'The actions field type must be an array of strings',
+          message: "The actions field type must be an array of strings",
         },
       };
     }

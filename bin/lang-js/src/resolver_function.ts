@@ -86,7 +86,10 @@ const isInteger = (value: unknown): TypeCheckResult =>
 // between objects, arrays, functions and null in typeof checks. This
 // could return true if the function returns another function.
 const isObject = (value: unknown): TypeCheckResult =>
-  typeof value === 'object' && _.isObject(value) && !_.isArray(value) && !_.isNull(value)
+  typeof value === "object" &&
+  _.isObject(value) &&
+  !_.isArray(value) &&
+  !_.isNull(value)
     ? { valid: true }
     : { valid: false, message: "Return type must be an object." };
 
@@ -96,11 +99,12 @@ const isString = (value: unknown): TypeCheckResult =>
     : { valid: false, message: "Return type must be a string." };
 
 const isCodeGeneration = (value: unknown): TypeCheckResult => {
-  if (typeof value !== 'object' || !value) {
+  if (typeof value !== "object" || !value) {
     return {
       valid: false,
-      message: "CodeGenerations must return an object with 'format' and 'code' fields",
-    }
+      message:
+        "CodeGenerations must return an object with 'format' and 'code' fields",
+    };
   }
 
   if (!("format" in value) || !_.isString(value.format)) {
@@ -122,8 +126,8 @@ const isCodeGeneration = (value: unknown): TypeCheckResult => {
 
 const qualificationStatuses = ["warning", "failure", "success", "unknown"];
 const isQualification = (value: unknown): TypeCheckResult => {
-  if (typeof value !== 'object' || !value) {
-    return { valid: false, message: "A qualification must return an object."};
+  if (typeof value !== "object" || !value) {
+    return { valid: false, message: "A qualification must return an object." };
   }
 
   if (!("result" in value) || !_.isString(value.result)) {
@@ -136,14 +140,19 @@ const isQualification = (value: unknown): TypeCheckResult => {
   if (!qualificationStatuses.includes(value.result)) {
     return {
       valid: false,
-      message: "Qualification result must be one of 'success' | 'warning' | 'failure'",
-    }
+      message:
+        "Qualification result must be one of 'success' | 'warning' | 'failure'",
+    };
   }
 
-  if (value.result !== 'success' && (!("message" in value) || !_.isString(value.message))) {
+  if (
+    value.result !== "success" &&
+    (!("message" in value) || !_.isString(value.message))
+  ) {
     return {
       valid: false,
-      message: "The Qualification message field type must be a string, and must be present unless the status is success",
+      message:
+        "The Qualification message field type must be a string, and must be present unless the status is success",
     };
   }
 
@@ -195,14 +204,16 @@ export async function executeResolverFunction(
 
   const result = await execute(vm, code, request);
   debug({ result });
-  console.log(JSON.stringify({
+  console.log(
+    JSON.stringify({
       protocol: "output",
       executionId: request.executionId,
       stream: "output",
       level: "info",
       group: "log",
       message: `Output: ${JSON.stringify(result, null, 2)}`,
-  }));
+    })
+  );
 
   console.log(JSON.stringify(result));
 }

@@ -1,3 +1,3 @@
 function fail() {
-    throw new Error("wheeeeeeeeeeeeeeee");
+  throw new Error("wheeeeeeeeeeeeeeee");
 }

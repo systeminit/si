@@ -16,15 +16,15 @@ export interface IValueFromBuilder {
   build(): ValueFrom;
 }
 
-  /**
-   * Gets a value from a socket or prop
-   *
-   * @example
-   * const value = new ValueFromBuilder()
-   *  .setKind("prop")
-   *  .setPropPath(["root", "si", "name"])
-   *  .build()
-   */
+/**
+ * Gets a value from a socket or prop
+ *
+ * @example
+ * const value = new ValueFromBuilder()
+ *  .setKind("prop")
+ *  .setPropPath(["root", "si", "name"])
+ *  .build()
+ */
 export class ValueFromBuilder implements IValueFromBuilder {
   valueFrom = <ValueFrom>{};
 
@@ -120,15 +120,15 @@ export interface ISocketDefinitionBuilder {
   build(): SocketDefinition;
 }
 
-  /**
-   * Defines an input or output socket for passing values between components
-   *
-   * @example
-   * const regionSocket = new SocketDefinitionBuilder()
-   *  .setName("Region")
-   *  .setArity("one")
-   *  .build();
-   */
+/**
+ * Defines an input or output socket for passing values between components
+ *
+ * @example
+ * const regionSocket = new SocketDefinitionBuilder()
+ *  .setName("Region")
+ *  .setArity("one")
+ *  .build();
+ */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   socket = <SocketDefinition>{};
 
@@ -247,14 +247,14 @@ export interface IValidationBuilder {
   build(): Validation;
 }
 
-  /**
-   * Validates a prop using a function or from a list of common validations
-   *
-   * @example
-   * const validation = new ValidationBuilder()
-   *  .setKind("stringIsNotEmpty")
-   *  .build()
-   */
+/**
+ * Validates a prop using a function or from a list of common validations
+ *
+ * @example
+ * const validation = new ValidationBuilder()
+ *  .setKind("stringIsNotEmpty")
+ *  .build()
+ */
 export class ValidationBuilder implements IValidationBuilder {
   validation = <Validation>{};
 
@@ -375,16 +375,17 @@ export interface IPropWidgetDefinitionBuilder {
   build(): PropWidgetDefinition;
 }
 
-  /**
-   * Create a widget for interacting with a prop that is displayed in the modelling view.
-   *
-   * @example
-   * const validation = new PropWidgetDefinitionBuilder()
-   *  .setKind("text")
-   *  .build()
-   */
+/**
+ * Create a widget for interacting with a prop that is displayed in the modelling view.
+ *
+ * @example
+ * const validation = new PropWidgetDefinitionBuilder()
+ *  .setKind("text")
+ *  .build()
+ */
 export class PropWidgetDefinitionBuilder
-  implements IPropWidgetDefinitionBuilder {
+  implements IPropWidgetDefinitionBuilder
+{
   propWidget = <PropWidgetDefinition>{};
 
   constructor() {
@@ -454,14 +455,14 @@ export interface IMapKeyFuncBuilder {
   build(): MapKeyFunc;
 }
 
-  /**
-   * Used to add a value to a map
-   *
-   * @example
-   *  const mapButton = new MapKeyFuncBuilder()
-   *    .setKey("Name")
-   *    .build()
-   */
+/**
+ * Used to add a value to a map
+ *
+ * @example
+ *  const mapButton = new MapKeyFuncBuilder()
+ *    .setKey("Name")
+ *    .build()
+ */
 export class MapKeyFuncBuilder implements IMapKeyFuncBuilder {
   mapKeyFunc = <MapKeyFunc>{};
 
@@ -532,7 +533,8 @@ export interface ISiPropValueFromDefinitionBuilder {
 }
 
 export class SiPropValueFromDefinitionBuilder
-  implements ISiPropValueFromDefinitionBuilder {
+  implements ISiPropValueFromDefinitionBuilder
+{
   definition = <SiPropValueFromDefinition>{};
 
   constructor() {
@@ -613,16 +615,16 @@ export interface IPropBuilder {
   build(): PropDefinition;
 }
 
-  /**
-   * Creates a prop to attach values to an asset
-   *
-   * @example
-   *  const propName = new PropBuilder()
-   *   .setName("name")
-   *   .setKind("string")
-   *   .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
-   *  .build();
-   */
+/**
+ * Creates a prop to attach values to an asset
+ *
+ * @example
+ *  const propName = new PropBuilder()
+ *   .setName("name")
+ *   .setKind("string")
+ *   .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+ *  .build();
+ */
 export class PropBuilder implements IPropBuilder {
   prop = <PropDefinition>{};
 
@@ -646,9 +648,7 @@ export class PropBuilder implements IPropBuilder {
    */
   addChild(child: PropDefinition): this {
     if (this.prop.kind !== "object") {
-      throw new Error(
-        "addChild can only be called on props that are objects"
-      );
+      throw new Error("addChild can only be called on props that are objects");
     }
 
     if (!this.prop.children) {
@@ -846,8 +846,10 @@ export class PropBuilder implements IPropBuilder {
    * .build())
    */
   setWidget(widget: PropWidgetDefinition): this {
-    if (widget.kind === 'secret') {
-      throw new Error("Cannot create prop with secret widget. Use addSecretProp() to create those.");
+    if (widget.kind === "secret") {
+      throw new Error(
+        "Cannot create prop with secret widget. Use addSecretProp() to create those."
+      );
     }
     this.prop.widget = widget;
     return this;
@@ -855,7 +857,7 @@ export class PropBuilder implements IPropBuilder {
 }
 
 export interface SecretPropDefinition extends PropDefinition {
-  hasInputSocket: boolean
+  hasInputSocket: boolean;
 }
 
 export interface ISecretPropBuilder {
@@ -893,7 +895,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
   }
 
   setSecretKind(kind: string): this {
-    this.prop.widget?.options.push({label: "secretKind", value: kind});
+    this.prop.widget?.options.push({ label: "secretKind", value: kind });
     return this;
   }
 
@@ -917,7 +919,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 
   skipInputSocket(): this {
     this.prop.hasInputSocket = false;
-    return this
+    return this;
   }
 
   build(): SecretPropDefinition {
@@ -949,7 +951,7 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
 
   constructor() {
     this.definition = <SecretDefinition>{};
-    this.definition.name = '';
+    this.definition.name = "";
     this.definition.props = [];
   }
 
@@ -964,19 +966,14 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
   }
 
   build(): SecretDefinition {
-
-    const def = this.definition
+    const def = this.definition;
 
     if (def.name.length === 0) {
-      throw new Error(
-        "Cannot build SecretDefinition with empty name"
-      );
+      throw new Error("Cannot build SecretDefinition with empty name");
     }
 
     if (def.props.length === 0) {
-      throw new Error(
-        "Cannot build SecretDefinition with no props"
-      );
+      throw new Error("Cannot build SecretDefinition with no props");
     }
 
     return this.definition;
@@ -1040,7 +1037,7 @@ export class AssetBuilder implements IAssetBuilder {
       )?.value;
 
       if (secretKind === undefined) {
-        throw new Error(`Could not find secretKind for ${prop.name}`)
+        throw new Error(`Could not find secretKind for ${prop.name}`);
       }
 
       this.addInputSocket(
@@ -1048,12 +1045,12 @@ export class AssetBuilder implements IAssetBuilder {
           .setArity("one")
           .setName(secretKind)
           .build()
-      )
+      );
 
       prop.valueFrom = new ValueFromBuilder()
         .setKind("inputSocket")
         .setSocketName(secretKind)
-        .build()
+        .build();
     }
 
     this.asset.secretProps?.push(prop);
@@ -1075,9 +1072,14 @@ export class AssetBuilder implements IAssetBuilder {
       new SocketDefinitionBuilder()
         .setArity("one")
         .setName(definition.name)
-        .setValueFrom(new ValueFromBuilder().setKind("prop").setPropPath(["root", "secrets", definition.name]).build())
+        .setValueFrom(
+          new ValueFromBuilder()
+            .setKind("prop")
+            .setPropPath(["root", "secrets", definition.name])
+            .build()
+        )
         .build()
-    )
+    );
 
     return this;
   }
@@ -1124,7 +1126,9 @@ export class AssetBuilder implements IAssetBuilder {
 
   build() {
     if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
-      throw new Error("Secret defining schema shouldn't define any extra secret props")
+      throw new Error(
+        "Secret defining schema shouldn't define any extra secret props"
+      );
     }
 
     return this.asset;

@@ -17,12 +17,12 @@ const STDIN_FD = 0;
 function onError(
   errorFn: (...args: unknown[]) => void,
   err: Error,
-  executionId: string,
+  executionId: string
 ) {
-    debug(err);
-    errorFn("StackTrace", err.stack);
-    console.log(JSON.stringify(failureExecution(err, executionId)));
-    process.exit(1);
+  debug(err);
+  errorFn("StackTrace", err.stack);
+  console.log(JSON.stringify(failureExecution(err, executionId)));
+  process.exit(1);
 }
 
 async function main() {

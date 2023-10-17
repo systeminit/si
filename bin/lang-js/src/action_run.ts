@@ -18,9 +18,7 @@ export interface ActionRunRequest extends RequestWithCode {
   args: unknown;
 }
 
-export type ActionRunResult =
-  | ActionRunResultSuccess
-  | ActionRunResultFailure;
+export type ActionRunResult = ActionRunResultSuccess | ActionRunResultFailure;
 
 export interface ActionRunResultSuccess extends ResultSuccess {
   payload: unknown;
@@ -42,14 +40,16 @@ export async function executeActionRun(
 
   const result = await execute(vm, code, request.executionId, request.args);
   debug({ result });
-  console.log(JSON.stringify({
+  console.log(
+    JSON.stringify({
       protocol: "output",
       executionId: request.executionId,
       stream: "output",
       level: "info",
       group: "log",
       message: `Output: ${JSON.stringify(result, null, 2)}`,
-  }));
+    })
+  );
 
   console.log(JSON.stringify(result));
 }
